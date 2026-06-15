@@ -2197,3 +2197,44 @@ export const getPaymentModes = async (req: AuthRequest, res: Response) => {
     });
   }
 };
+
+// Debug database columns and tables
+export const debugDatabase = async (req: any, res: any) => {
+  try {
+    const tables = await db.raw("SHOW TABLES");
+    
+    let feePaymentsColumns = [];
+    try {
+      feePaymentsColumns = await db.raw("DESCRIBE fee_payments");
+    } catch (e: any) {
+      feePaymentsColumns = [{ error: e.message }];
+    }
+    
+    let monthlyFeesColumns = [];
+    try {
+      monthlyFeesColumns = await db.raw("DESCRIBE monthly_fees");
+    } catch (e: any) {
+      monthlyFeesColumns = [{ error: e.message }];
+    }
+
+    let feeHistoryColumns = [];
+    try {
+      feeHistoryColumns = await db.raw("DESCRIBE fee_history");
+    } catch (e: any) {
+      feeHistoryColumns = [{ error: e.message }];
+    }
+
+    res.json({
+      success: true,
+      tables: tables[0],
+      fee_payments: feePaymentsColumns[0],
+      monthly_fees: monthlyFeesColumns[0],
+      fee_history: feeHistoryColumns[0]
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};

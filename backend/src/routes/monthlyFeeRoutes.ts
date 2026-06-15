@@ -16,10 +16,14 @@ import {
   updatePayment,
   deletePayment,
   getCollections,
-  getPaymentModes // Add this import
+  getPaymentModes,
+  debugDatabase // Add this import
 } from '../controllers/monthlyFeeController.js';
 
 const router = express.Router();
+
+// Public debug route to check schema columns without auth
+router.get('/debug-db', debugDatabase);
 
 // All routes require authentication
 router.use(authMiddleware);
