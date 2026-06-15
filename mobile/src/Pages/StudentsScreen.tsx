@@ -185,15 +185,17 @@ export default function StudentsScreen({ navigation }: any) {
     }, [search]);
 
     // ── Core fetch ────────────────────────────────────────────────────────
-    const fetchPage = useCallback(async (pageNum: number) => {
+    const fetchPage = useCallback(async (pageNum: number, isSilent = false) => {
         abortRef.current?.abort();
         const controller = new AbortController();
         abortRef.current = controller;
 
         try {
             if (pageNum === 1) {
-                setInitialLoading(true);
-                setAllStudents([]);
+                if (!isSilent) {
+                    setInitialLoading(true);
+                    setAllStudents([]);
+                }
             } else {
                 setLoadingMore(true);
             }
@@ -235,7 +237,7 @@ export default function StudentsScreen({ navigation }: any) {
     useEffect(() => {
         setPage(1);
         setHasMore(true);
-        fetchPage(1);
+        fetchPage(1, false);
         return () => { abortRef.current?.abort(); };
     }, [activeTab, debouncedSearch, dateFilter]);
 
@@ -246,7 +248,7 @@ export default function StudentsScreen({ navigation }: any) {
             if (!isMounted.current) { isMounted.current = true; return; }
             setPage(1);
             setHasMore(true);
-            fetchPage(1);
+            fetchPage(1, true);
         });
         return unsubscribe;
     }, [navigation, fetchPage]);

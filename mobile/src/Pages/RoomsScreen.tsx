@@ -37,13 +37,15 @@ export default function RoomsScreen({ navigation, route }: any) {
     const [rooms, setRooms] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('All');
+    const isFirstLoadRef = React.useRef(true);
 
     const fetchRooms = async () => {
         try {
-            setLoading(true);
+            if (isFirstLoadRef.current) setLoading(true);
             const response = await api.get('/rooms?limit=100');
             if (response.data.success) {
                 setRooms(response.data.data);
+                isFirstLoadRef.current = false;
             }
         } catch (error) {
             console.error('Error fetching rooms:', error);

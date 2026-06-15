@@ -278,6 +278,21 @@ export const getIncomeSummary = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// Helper to format date safely in JS
+const safeGetDateString = (d: any): string => {
+  if (!d) return '';
+  try {
+    const date = new Date(d);
+    if (isNaN(date.getTime())) return '';
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  } catch (err) {
+    return '';
+  }
+};
+
 // Get income analytics for breakdown charts
 export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
   try {
@@ -287,25 +302,30 @@ export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
 
     if (!date) return res.status(400).json({ success: false, error: 'Date is required' });
 
-    let startDate: string, endDate: string;
-    const refDate = new Date(date as string);
+    const dateStr = date as string;
+    const parts = dateStr.split('-');
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    const day = parseInt(parts[2], 10);
 
-    // Adjust for JS Date being UTC if not careful, but splitting string is safer
+    let startDate: string, endDate: string;
+
     if (type === 'day') {
-      startDate = date as string;
-      endDate = date as string;
+      startDate = `${dateStr} 00:00:00`;
+      endDate = `${dateStr} 23:59:59`;
     } else if (type === 'week') {
-      // Last 7 days
-      endDate = date as string;
-      const d = new Date(refDate);
+      endDate = `${dateStr} 23:59:59`;
+      const d = new Date(year, month - 1, day);
       d.setDate(d.getDate() - 6);
-      startDate = d.toISOString().split('T')[0];
+      const dy = d.getFullYear();
+      const dm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      startDate = `${dy}-${dm}-${dd} 00:00:00`;
     } else {
       // Current month
-      const y = refDate.getFullYear();
-      const m = refDate.getMonth();
-      startDate = `${y}-${String(m + 1).padStart(2, '0')}-01`;
-      endDate = new Date(y, m + 1, 0).toISOString().split('T')[0];
+      startDate = `${year}-${String(month).padStart(2, '0')}-01 00:00:00`;
+      const lastDay = new Date(year, month, 0).getDate();
+      endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')} 23:59:59`;
     }
 
     // 1. Fetch Income records
@@ -316,7 +336,10 @@ export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
     if (user?.role_id === 2 && hostelId) {
       incomeQuery = incomeQuery.where('i.hostel_id', hostelId);
     }
-    const incomes = await incomeQuery.select('i.*', 'pm.payment_mode_name as payment_mode');
+    const incomes = await incomeQuery.select(
+      'i.*',
+      'pm.payment_mode_name as payment_mode'
+    );
 
     // 2. Fetch Fee Payment records
     let feeQuery = db('fee_payments as fp')
@@ -327,7 +350,12 @@ export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
     if (user?.role_id === 2 && hostelId) {
       feeQuery = feeQuery.where('fp.hostel_id', hostelId);
     }
-    const feePayments = await feeQuery.select('fp.*', 's.first_name', 's.last_name', 'pm.payment_mode_name as payment_mode');
+    const feePayments = await feeQuery.select(
+      'fp.*',
+      's.first_name',
+      's.last_name',
+      'pm.payment_mode_name as payment_mode'
+    );
 
     // 3. Combine Transactions
     const transactions = [
@@ -336,7 +364,7 @@ export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
         title: inc.source || 'Other Income',
         subtitle: inc.payment_mode || 'Cash',
         amount: parseFloat(inc.amount),
-        date: inc.income_date,
+        date: safeGetDateString(inc.income_date),
         type: 'Other',
         description: inc.description
       })),
@@ -345,7 +373,7 @@ export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
         title: `${fp.first_name || 'Student'} ${fp.last_name || ''}`,
         subtitle: `Rent · ${fp.payment_mode || 'Cash'}`,
         amount: parseFloat(fp.amount),
-        date: fp.payment_date,
+        date: safeGetDateString(fp.payment_date),
         student_id: fp.student_id,
         type: 'Rent'
       }))
@@ -360,21 +388,21 @@ export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
     if (type === 'day') {
       // For display, simulate hourly distribution if timestamps aren't precise
       graph = [
-        { label: '6am', value: 0 }, { label: '9am', value: totalAmount * 0.15 },
-        { label: '12pm', value: totalAmount * 0.35 }, { label: '3pm', value: totalAmount * 0.25 },
-        { label: '6pm', value: totalAmount * 0.15 }, { label: '9pm', value: totalAmount * 0.10 }
+        { label: '6am', value: totalAmount * 0.05 },
+        { label: '9am', value: totalAmount * 0.15 },
+        { label: '12pm', value: totalAmount * 0.35 },
+        { label: '3pm', value: totalAmount * 0.25 },
+        { label: '6pm', value: totalAmount * 0.15 },
+        { label: '9pm', value: totalAmount * 0.05 }
       ];
     } else if (type === 'week') {
       const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       for (let i = 6; i >= 0; i--) {
-        const d = new Date(refDate);
+        const d = new Date(year, month - 1, day);
         d.setDate(d.getDate() - i);
-        const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const ds = safeGetDateString(d);
         const val = transactions
-          .filter(t => {
-            const tDate = typeof t.date === 'string' ? t.date.split('T')[0] : new Date(t.date).toISOString().split('T')[0];
-            return tDate === ds;
-          })
+          .filter(t => t.date === ds)
           .reduce((s, t) => s + t.amount, 0);
         graph.push({ label: days[d.getDay()], value: val });
       }
@@ -382,8 +410,16 @@ export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
       // Month - 4 blocks
       for (let i = 0; i < 4; i++) {
         const val = transactions.filter(t => {
-          const day = new Date(t.date).getDate();
-          return day > i * 7 && day <= (i + 1) * 7;
+          let dNum = 1;
+          if (typeof t.date === 'string' && t.date) {
+            dNum = parseInt(t.date.split('-')[2], 10);
+          }
+          if (isNaN(dNum)) return false;
+          if (i === 3) {
+            // Include days 29, 30, 31 in Week 4
+            return dNum > 21;
+          }
+          return dNum > i * 7 && dNum <= (i + 1) * 7;
         }).reduce((s, t) => s + t.amount, 0);
         graph.push({ label: `Week ${i + 1}`, value: val });
       }

@@ -284,16 +284,11 @@ export const createRoom = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Derive capacity from room_type_name
-    const roomType = await db('room_types').where({ room_type_id }).first();
-    const capacity = roomType ? getCapacityFromRoomTypeName(roomType.room_type_name, roomType.description || null) : 0;
-
     const [room_id] = await db('rooms').insert({
       hostel_id: finalHostelId,
       room_number,
       room_type_id,
       floor_number,
-      capacity,
       occupied_beds: occupied_beds !== undefined ? occupied_beds : 0,
       rent_per_bed,
       amenities: amenities ? JSON.stringify(amenities) : null,

@@ -26,8 +26,8 @@ const INITIAL_STATE = {
 };
 
 // ─── Skeleton Block ───────────────────────────────────────────────────────────
-const SkeletonBox = ({ style }: { style?: any }) => (
-    <View style={[{ backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 10 }, style]} />
+const SkeletonBox = ({ style, dark = false }: { style?: any; dark?: boolean }) => (
+    <View style={[{ backgroundColor: dark ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.2)', borderRadius: 10 }, style]} />
 );
 
 // ─── Quick action config ──────────────────────────────────────────────────────
@@ -47,11 +47,12 @@ export default function HomeScreen() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [hasError, setHasError] = useState(false);
+    const isFirstLoadRef = React.useRef(true);
 
     // ── Data loader ───────────────────────────────────────────────────────────
     const load = useCallback(async (isRefresh = false) => {
         try {
-            if (!isRefresh) setLoading(true);
+            if (!isRefresh && isFirstLoadRef.current) setLoading(true);
             setHasError(false);
 
             const today = new Date();
@@ -127,6 +128,7 @@ export default function HomeScreen() {
                     : [],
                 unpaidStudents: topDefaulters,
             });
+            isFirstLoadRef.current = false;
         } catch (e) {
             console.log('Dashboard load error:', e);
             setHasError(true);
@@ -165,10 +167,44 @@ export default function HomeScreen() {
                         <SkeletonBox style={{ flex: 1, height: 56, marginHorizontal: 6, borderRadius: 12 }} />
                     </View>
                 </LinearGradient>
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                    <ActivityIndicator size="large" color={theme.primary} />
-                    <Text style={s.loadingText}>Loading your dashboard…</Text>
-                    <Text style={s.loadingSubText}>This may take a moment on first load</Text>
+                <View style={s.bodyContent}>
+                    {/* Quick Actions Title */}
+                    <SkeletonBox dark style={{ height: 15, width: 100, marginBottom: 12 }} />
+                    {/* Quick Actions Grid */}
+                    <View style={s.quickGrid}>
+                        {[1, 2, 3, 4].map(i => (
+                            <View key={i} style={[s.quickCard, { backgroundColor: '#FFF' }]}>
+                                <SkeletonBox dark style={{ width: 44, height: 44, borderRadius: 14, marginBottom: 8 }} />
+                                <SkeletonBox dark style={{ height: 10, width: 50, alignSelf: 'center', marginBottom: 4 }} />
+                                <SkeletonBox dark style={{ height: 10, width: 30, alignSelf: 'center' }} />
+                            </View>
+                        ))}
+                    </View>
+
+                    {/* Earnings Report Button */}
+                    <View style={s.infoCard}>
+                        <SkeletonBox dark style={{ width: 32, height: 32, borderRadius: 16 }} />
+                        <View style={{ flex: 1, gap: 6 }}>
+                            <SkeletonBox dark style={{ height: 12, width: 140 }} />
+                            <SkeletonBox dark style={{ height: 8, width: 180 }} />
+                        </View>
+                        <SkeletonBox dark style={{ width: 10, height: 16 }} />
+                    </View>
+
+                    {/* Section Title */}
+                    <SkeletonBox dark style={{ height: 15, width: 130, marginBottom: 12, marginTop: 4 }} />
+
+                    {/* List Items */}
+                    {[1, 2].map(i => (
+                        <View key={i} style={[s.studentCard, { backgroundColor: '#FFF' }]}>
+                            <View style={s.studentInfo}>
+                                <SkeletonBox dark style={{ height: 12, width: 100, marginBottom: 6 }} />
+                                <SkeletonBox dark style={{ height: 8, width: 70 }} />
+                            </View>
+                            <SkeletonBox dark style={{ height: 12, width: 50, marginRight: 16 }} />
+                            <SkeletonBox dark style={{ height: 26, width: 50, borderRadius: 8, marginRight: 12 }} />
+                        </View>
+                    ))}
                 </View>
             </View>
         );
