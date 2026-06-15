@@ -216,6 +216,30 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Database health check (public for diagnostics)
+app.get('/api/health-db', async (req, res) => {
+  try {
+    const tables = await db.raw("SHOW TABLES");
+    let feePaymentsColumns = [];
+    try {
+      feePaymentsColumns = await db.raw("DESCRIBE fee_payments");
+    } catch (e: any) {
+      feePaymentsColumns = [{ error: e.message }];
+    }
+    res.json({
+      success: true,
+      tables: tables[0],
+      fee_payments: feePaymentsColumns[0]
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+
 // Root route
 app.get('/', (req, res) => {
   res.json({
