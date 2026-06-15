@@ -33,7 +33,7 @@ const SkeletonBox = ({ style, dark = false }: { style?: any; dark?: boolean }) =
 // ─── Quick action config ──────────────────────────────────────────────────────
 const QUICK_ACTIONS = [
     { label: 'Add\nStudent', emoji: '👤', bg: '#EDE9FE', route: 'AddStudent' },
-    { label: 'Collect\nFee', emoji: '💰', bg: '#DCFCE7', route: 'FeeManagement' },
+    { label: 'Collect\nFee', emoji: '💰', bg: '#DCFCE7', route: 'FinanceTab' },
     { label: 'Add\nRoom', emoji: '🛏', bg: '#DBEAFE', route: 'AddRoom' },
     { label: 'Add\nExpense', emoji: '📋', bg: '#FEF3C7', route: 'AddExpense' },
 ];
@@ -286,7 +286,9 @@ export default function HomeScreen() {
                     </View>
 
                     <Text style={s.amountLabel}>This Month's Collection HELLO! DURGARAO GORIPARTHI</Text>
-                    <Text style={s.bigAmount}>₹{data.monthAmount.toLocaleString('en-IN')}</Text>
+                    <TouchableOpacity onPress={() => navigation.navigate('IncomeDetails', { period: 'month' })} activeOpacity={0.85}>
+                        <Text style={s.bigAmount}>₹{data.monthAmount.toLocaleString('en-IN')}</Text>
+                    </TouchableOpacity>
 
                     <View style={s.progressBg}>
                         <View style={[s.progressFill, { width: `${collectedPct}%` as any }]} />
@@ -314,7 +316,7 @@ export default function HomeScreen() {
                         <View style={s.statDivider} />
                         <TouchableOpacity
                             style={s.statBox}
-                            onPress={() => navigation.navigate('FinanceTab')}
+                            onPress={() => navigation.navigate('IncomeDetails', { period: 'day' })}
                         >
                             <Text style={s.statNum}>
                                 ₹{(data.todayAmount || 0).toLocaleString('en-IN')}
@@ -332,7 +334,13 @@ export default function HomeScreen() {
                             <TouchableOpacity
                                 key={a.route}
                                 style={s.quickCard}
-                                onPress={() => navigation.navigate(a.route)}
+                                onPress={() => {
+                                    if (a.route === 'FinanceTab') {
+                                        navigation.navigate('FinanceTab', { mode: 'Rent', statusFilter: 'Unpaid' });
+                                    } else {
+                                        navigation.navigate(a.route);
+                                    }
+                                }}
                                 activeOpacity={0.8}
                             >
                                 <View style={[s.quickIconBox, { backgroundColor: a.bg }]}>
@@ -381,7 +389,7 @@ export default function HomeScreen() {
                             {data.unpaidStudents.length > 0 ? '⚠️  Who Hasn\'t Paid?' : ''}
                         </Text>
                         {data.unpaidStudents.length > 0 && (
-                            <TouchableOpacity onPress={() => navigation.navigate('FeeManagement')}>
+                            <TouchableOpacity onPress={() => navigation.navigate('FinanceTab', { mode: 'Rent', statusFilter: 'Unpaid' })}>
                                 <Text style={s.seeAllText}>See All →</Text>
                             </TouchableOpacity>
                         )}

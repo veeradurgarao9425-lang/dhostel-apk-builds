@@ -6,7 +6,8 @@ import {
   getExpenseReport,
   getProfitLoss,
   getOccupancyTrends,
-  getPaymentCollectionReport
+  getPaymentCollectionReport,
+  getOwnerStats
 } from '../controllers/reportController.js';
 import {
   downloadPDFReport,
@@ -20,6 +21,7 @@ router.use(authMiddleware);
 
 // Report routes
 router.get('/dashboard-stats', getDashboardStats);
+router.get('/owner-stats', getOwnerStats);
 router.get('/income', getIncomeReport);
 router.get('/expenses', getExpenseReport);
 router.get('/profit-loss', getProfitLoss);

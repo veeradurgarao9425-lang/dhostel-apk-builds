@@ -490,14 +490,22 @@ export default function FinanceScreen() {
     }, [fetchData, currentDate]));
 
     useEffect(() => {
+        if (route.params?.mode) {
+            setMode(route.params.mode);
+        }
+        if (route.params?.statusFilter) {
+            setStatusFilter(route.params.statusFilter);
+        }
         if (route.params?.filter === 'today') {
             // "Today" likely implies "Current Month" in monthly view, but user wants to see today's activity.
             // We set month to current.
             setCurrentDate(new Date());
             setStatusFilter('Paid');
-            navigation.setParams({ filter: undefined });
         }
-    }, [route.params]);
+        if (route.params) {
+            navigation.setParams({ mode: undefined, filter: undefined, statusFilter: undefined });
+        }
+    }, [route.params, navigation]);
 
     const shiftMonth = useCallback((delta: number) => {
         const d = new Date(currentDate);
@@ -668,13 +676,6 @@ export default function FinanceScreen() {
                         </Text>
                     </View>
                     <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
-                        <TouchableOpacity
-                            style={S.feeManagerBtn}
-                            onPress={() => navigation.navigate('FeeManagement')}
-                            activeOpacity={0.85}
-                        >
-                            <Text style={{ fontSize: 13, fontWeight: '900', color: '#FFF' }}>💰 Fee Manager</Text>
-                        </TouchableOpacity>
                         <ProfileMenu />
                     </View>
                 </View>
@@ -927,14 +928,6 @@ const S = StyleSheet.create({
     simpleFilterLabel: { fontSize: 13, fontWeight: '700' },
     simpleFilterIndicator: { position: 'absolute', bottom: -5, width: 4, height: 4, borderRadius: 2 },
 
-    feeManagerBtn: {
-        backgroundColor: 'rgba(255,255,255,0.2)',
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.3)',
-    },
     dateBadgeLarge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', paddingHorizontal: 16, paddingVertical: 14, borderRadius: 14, elevation: 1, marginBottom: 12, gap: 12 },
     dateBadgeTextLarge: { fontSize: 16, fontWeight: '800', color: '#1E293B', flex: 1 },
     listContent: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 150 },

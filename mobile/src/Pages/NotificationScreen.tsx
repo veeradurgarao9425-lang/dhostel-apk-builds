@@ -37,7 +37,7 @@ export const NotificationScreen = () => {
 
         // Navigation logic based on type/content
         if (notif.type === 'success' && notif.title.includes('Payment')) {
-            navigation.navigate('FeeManagementTab');
+            navigation.navigate('FinanceTab', { mode: 'Rent', statusFilter: 'Unpaid' });
         } else if (notif.type === 'info' && notif.title.includes('Admission')) {
             if (notif.data && notif.data.id) {
                 navigation.navigate('StudentDetails', { studentId: notif.data.id });
@@ -45,9 +45,9 @@ export const NotificationScreen = () => {
                 navigation.navigate('StudentsTab');
             }
         } else if (notif.type === 'warning' && notif.title.includes('Expense')) {
-            navigation.navigate('Expenses');
+            navigation.navigate('FinanceTab', { mode: 'Expense' });
         } else if (notif.type === 'success' && notif.title.includes('Income')) {
-            navigation.navigate('Income');
+            navigation.navigate('FinanceTab', { mode: 'Rent' });
         }
     };
 

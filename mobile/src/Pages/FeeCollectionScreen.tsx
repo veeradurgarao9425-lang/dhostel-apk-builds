@@ -343,11 +343,13 @@ const CollectModal = ({
     useEffect(() => {
         if (fee) {
             setAmount(fee.balance?.toString() || '');
-            setModeId(paymentModes?.[0]?.payment_mode_id?.toString() || '1');
+            const upiMode = (paymentModes || []).find((m: any) => m.payment_mode_name?.toLowerCase() === 'upi');
+            const defaultMode = upiMode ? upiMode.payment_mode_id.toString() : (paymentModes?.[0]?.payment_mode_id?.toString() || '1');
+            setModeId(defaultMode);
             setTxnId('');
             setNotes('');
         }
-    }, [fee, visible]);
+    }, [fee, visible, paymentModes]);
 
     if (!fee) return null;
 
@@ -411,7 +413,20 @@ const CollectModal = ({
                         </View>
 
                         {/* Transaction ID */}
-                        <Text style={modal.label}>Transaction ID <Text style={modal.opt}>(Optional)</Text></Text>
+                        {(() => {
+                            const activeMode = (paymentModes || []).find((m: any) => m.payment_mode_id.toString() === modeId);
+                            const isUpiActive = activeMode?.payment_mode_name?.toLowerCase() === 'upi';
+                            return (
+                                <Text style={modal.label}>
+                                    Transaction ID{' '}
+                                    {isUpiActive ? (
+                                        <Text style={modal.req}>*</Text>
+                                    ) : (
+                                        <Text style={modal.opt}>(Optional)</Text>
+                                    )}
+                                </Text>
+                            );
+                        })()}
                         <TextInput
                             style={modal.input}
                             value={txnId}
@@ -577,6 +592,12 @@ export default function FeeCollectionScreen({ navigation, route }: any) {
     const handleConfirmPayment = async ({ amount, modeId, txnId, notes }: any) => {
         if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
             Alert.alert('Invalid Amount', 'Please enter a valid amount.'); return;
+        }
+        const activeMode = (paymentModes || []).find((m: any) => m.payment_mode_id.toString() === modeId);
+        const isUpiActive = activeMode?.payment_mode_name?.toLowerCase() === 'upi';
+        if (isUpiActive && !txnId?.trim()) {
+            Alert.alert('Required Field', 'Please enter the UPI Transaction Reference ID (UTR).');
+            return;
         }
         try {
             setPayLoading(true);

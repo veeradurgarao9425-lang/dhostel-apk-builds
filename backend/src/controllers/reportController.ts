@@ -651,3 +651,93 @@ export const getPaymentCollectionReport = async (req: AuthRequest, res: Response
     });
   }
 };
+
+// Get owner stats for profile screen
+export const getOwnerStats = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user;
+    let hostelIds: number[] = [];
+
+    if (user?.role_id === 2) {
+      if (!user.hostel_id) {
+        return res.status(403).json({
+          success: false,
+          error: 'Your account is not linked to any hostel.'
+        });
+      }
+      hostelIds = [user.hostel_id];
+    }
+
+    // 1. Get occupied beds
+    let occupiedBedsQuery = db('students')
+      .where('status', 1)
+      .whereNotNull('room_id')
+      .count('* as count');
+    if (hostelIds.length > 0) {
+      occupiedBedsQuery = occupiedBedsQuery.whereIn('hostel_id', hostelIds);
+    }
+    const occupiedData = await occupiedBedsQuery.first();
+    const occupiedBeds = occupiedData?.count || 0;
+
+    // 2. Get total beds
+    let totalBedsQuery = db('rooms as r')
+      .leftJoin('room_types as rt', 'r.room_type_id', 'rt.room_type_id')
+      .select(db.raw(`
+        SUM(
+          COALESCE(
+            NULLIF(r.capacity, 0),
+            CASE 
+              WHEN rt.room_type_name REGEXP '^[0-9]+$' THEN CAST(rt.room_type_name AS UNSIGNED)
+              WHEN LOWER(rt.room_type_name) LIKE '%single%' THEN 1
+              WHEN LOWER(rt.room_type_name) LIKE '%double%' THEN 2
+              WHEN LOWER(rt.room_type_name) LIKE '%triple%' THEN 3
+              WHEN LOWER(rt.room_type_name) LIKE '%four%' OR LOWER(rt.room_type_name) LIKE '%4%' THEN 4
+              WHEN LOWER(rt.room_type_name) LIKE '%five%' OR LOWER(rt.room_type_name) LIKE '%5%' THEN 5
+              WHEN LOWER(rt.room_type_name) LIKE '%six%' OR LOWER(rt.room_type_name) LIKE '%6%' THEN 6
+              WHEN LOWER(rt.room_type_name) LIKE '%seven%' OR LOWER(rt.room_type_name) LIKE '%7%' THEN 7
+              WHEN LOWER(rt.room_type_name) LIKE '%eight%' OR LOWER(rt.room_type_name) LIKE '%8%' THEN 8
+              WHEN LOWER(rt.room_type_name) LIKE '%dormitory%' THEN 10
+              ELSE 0
+            END,
+            1
+          )
+        ) as total_beds
+      `));
+    if (hostelIds.length > 0) {
+      totalBedsQuery = totalBedsQuery.whereIn('r.hostel_id', hostelIds);
+    }
+    const bedsData = await totalBedsQuery.first();
+    const totalBeds = bedsData?.total_beds || 0;
+
+    // 3. Get today's collected rent/fees
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    let todayRentQuery = db('fee_payments')
+      .where('payment_date', today)
+      .sum('amount as total');
+    if (hostelIds.length > 0) {
+      todayRentQuery = todayRentQuery.whereIn('hostel_id', hostelIds);
+    }
+    const todayRent = await todayRentQuery.first();
+    const todayCollected = Number(todayRent?.total || 0);
+
+    res.json({
+      success: true,
+      data: {
+        rooms: {
+          occupied_beds: Number(occupiedBeds),
+          total_beds: Number(totalBeds)
+        },
+        fees: {
+          today_collected: todayCollected
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get owner stats error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch owner statistics'
+    });
+  }
+};

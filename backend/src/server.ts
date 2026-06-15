@@ -60,6 +60,7 @@ app.use('/uploads', express.static('uploads'));
 app.use('/api/auth', authRoutes);
 app.use('/api/reports', reportRoutes); // High-accuracy report/dashboard logic
 app.use('/api/analytics', reportRoutes); // Keep for mobile mapping
+app.use('/api/dashboard', reportRoutes); // Map dashboard to reports for owner-stats
 app.use('/api/hostels', hostelRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/rooms', roomRoutes);
