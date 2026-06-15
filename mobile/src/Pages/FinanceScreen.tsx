@@ -562,8 +562,11 @@ export default function FinanceScreen() {
                 Alert.alert('Error', res.data.error || 'Payment was not saved.');
             }
         } catch (e: any) {
-            console.error('Collect error:', e.response?.data || e.message);
-            Alert.alert('Payment Failed', e.response?.data?.error || e.message || 'Could not record payment. Try again.');
+            const errData = e.response?.data;
+            const errDetail = errData?.details || errData?.error || e.message;
+            console.error('Collect error:', errData || e.message);
+            console.error('Collect error DETAILS:', errDetail);
+            Alert.alert('Payment Failed', errDetail || 'Could not record payment. Try again.');
         } finally {
             setPayLoading(false);
         }
