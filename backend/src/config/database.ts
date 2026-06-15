@@ -80,6 +80,14 @@ async function patchDatabaseSchema() {
         console.log('[schema-patch] adding transaction_id to fee_payments...');
         await db.raw("ALTER TABLE fee_payments ADD COLUMN transaction_id VARCHAR(100) NULL");
       }
+      if (!columnNames.includes('transaction_type')) {
+        console.log('[schema-patch] adding transaction_type to fee_payments...');
+        await db.raw("ALTER TABLE fee_payments ADD COLUMN transaction_type VARCHAR(50) NULL DEFAULT 'PAYMENT'");
+      }
+      if (!columnNames.includes('reason')) {
+        console.log('[schema-patch] adding reason to fee_payments...');
+        await db.raw("ALTER TABLE fee_payments ADD COLUMN reason VARCHAR(255) NULL");
+      }
     }
     console.log('[schema-patch] Schema check and patch complete.');
   } catch (err: any) {
