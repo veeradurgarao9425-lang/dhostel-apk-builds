@@ -759,8 +759,7 @@ export default function FinanceScreen() {
                                 Server is Starting Up
                             </Text>
                             <Text style={[S.loaderText, { textAlign: 'center', marginBottom: 20 }]}>
-                                The backend is waking up after inactivity.{'
-'}This can take up to 60 seconds.
+                                The backend is waking up after inactivity.{"\n"}This can take up to 60 seconds.
                             </Text>
                             <TouchableOpacity
                                 style={{ backgroundColor: theme.primary, paddingHorizontal: 28, paddingVertical: 13, borderRadius: 14 }}

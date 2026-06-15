@@ -1155,7 +1155,7 @@ export const recordPayment = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       error: 'Failed to record payment',
-      details: process.env.NODE_ENV === 'development' ? error?.message : undefined
+      details: error?.message || String(error)
     });
   }
 };
