@@ -249,7 +249,7 @@ export default function HomeScreen() {
                         </View>
                     </View>
 
-                    <Text style={s.amountLabel}>This Month's Collection DURGARAO GORIPARTHI</Text>
+                    <Text style={s.amountLabel}>This Month's Collection HELLO! DURGARAO GORIPARTHI</Text>
                     <Text style={s.bigAmount}>₹{data.monthAmount.toLocaleString('en-IN')}</Text>
 
                     <View style={s.progressBg}>

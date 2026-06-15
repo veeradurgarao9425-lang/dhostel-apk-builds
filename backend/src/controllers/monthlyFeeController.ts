@@ -838,8 +838,8 @@ export const recordPayment = async (req: AuthRequest, res: Response) => {
 
     const user = req.user;
 
-    // Authorization check
-    if (user?.role_id === 2 && hostel_id !== user.hostel_id) {
+    // Authorization check (use Number() to avoid string vs number mismatch)
+    if (user?.role_id === 2 && Number(hostel_id) !== Number(user.hostel_id)) {
       return res.status(403).json({
         success: false,
         error: 'You do not have permission to record payments for this hostel.'
@@ -1001,11 +1001,11 @@ export const recordPayment = async (req: AuthRequest, res: Response) => {
       const actualReceiptNumber = receipt_number || `RCP-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
       const paymentData: any = {
         fee_id: actualFeeId,
-        student_id,
-        hostel_id,
+        student_id: Number(student_id),
+        hostel_id: Number(hostel_id),
         amount: paymentAmount,
         payment_date: paymentDateStr,
-        payment_mode_id: payment_mode_id || null,
+        payment_mode_id: payment_mode_id ? Number(payment_mode_id) : null,
         transaction_id: transaction_id || null,
         receipt_number: actualReceiptNumber,
         notes: notes || null,
@@ -1041,25 +1041,29 @@ export const recordPayment = async (req: AuthRequest, res: Response) => {
           updated_at: new Date()
         });
 
-      // Log to fee_history
+      // Log to fee_history (best-effort: if table doesn't exist, skip and continue)
       const oldPaidAmount = parseFloat(monthlyFee.paid_amount || 0);
-      await trx('fee_history').insert({
-        fee_id: actualFeeId,
-        student_id,
-        action: 'paid',
-        old_values: JSON.stringify({
-          paid_amount: oldPaidAmount,
-          balance: monthlyFee.balance,
-          fee_status: monthlyFee.fee_status
-        }),
-        new_values: JSON.stringify({
-          paid_amount: newTotalPaid,
-          balance: newBalance,
-          fee_status: newFeeStatus
-        }),
-        created_by: user?.user_id || null,
-        created_at: new Date()
-      });
+      try {
+        await trx('fee_history').insert({
+          fee_id: actualFeeId,
+          student_id: Number(student_id),
+          action: 'paid',
+          old_values: JSON.stringify({
+            paid_amount: oldPaidAmount,
+            balance: monthlyFee.balance,
+            fee_status: monthlyFee.fee_status
+          }),
+          new_values: JSON.stringify({
+            paid_amount: newTotalPaid,
+            balance: newBalance,
+            fee_status: newFeeStatus
+          }),
+          created_by: user?.user_id || null,
+          created_at: new Date()
+        });
+      } catch (historyErr: any) {
+        console.warn('[recordPayment] fee_history insert skipped (table may not exist):', historyErr?.message);
+      }
 
       // If FULLY PAID, create next month's fee record with due_date (same day, next month)
       if (newFeeStatus === 'Fully Paid') {

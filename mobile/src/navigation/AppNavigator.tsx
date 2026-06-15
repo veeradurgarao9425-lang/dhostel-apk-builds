@@ -62,10 +62,6 @@ const TabNavigator = () => {
                 component={RoomsScreen}
             />
             <Tab.Screen
-                name="FeeManagementTab"
-                component={FeeCollectionScreen}
-            />
-            <Tab.Screen
                 name="FinanceTab"
                 component={FinanceScreen}
             />

@@ -31,13 +31,6 @@ const BottomTabNavigator = ({ state, navigation }: any) => {
             route: 'RoomsTab'
         },
         {
-            name: 'Fees',
-            icon: 'cash',
-            iconOutline: 'cash-outline',
-            label: 'Fees',
-            route: 'FeeManagementTab'
-        },
-        {
             name: 'Finance',
             icon: 'wallet',
             iconOutline: 'wallet-outline',
