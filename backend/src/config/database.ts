@@ -227,6 +227,38 @@ async function patchDatabaseSchema() {
       console.error('[schema-patch] Error checking/creating income table:', e.message);
     }
 
+    // 4. Ensure expenses columns exist
+    try {
+      if (tableNamesLower.includes('expenses')) {
+        console.log('[schema-patch] Checking expenses columns...');
+        const [columns] = await db.raw("SHOW COLUMNS FROM expenses");
+        const columnNames = (columns as any[]).map(col => col.Field.toLowerCase());
+        
+        if (!columnNames.includes('payment_mode_id')) {
+          console.log('[schema-patch] adding payment_mode_id to expenses...');
+          await db.raw("ALTER TABLE expenses ADD COLUMN payment_mode_id INT NULL");
+        }
+        if (!columnNames.includes('vendor_name')) {
+          console.log('[schema-patch] adding vendor_name to expenses...');
+          await db.raw("ALTER TABLE expenses ADD COLUMN vendor_name VARCHAR(255) NULL");
+        }
+        if (!columnNames.includes('bill_number')) {
+          console.log('[schema-patch] adding bill_number to expenses...');
+          await db.raw("ALTER TABLE expenses ADD COLUMN bill_number VARCHAR(100) NULL");
+        }
+        if (!columnNames.includes('created_by')) {
+          console.log('[schema-patch] adding created_by to expenses...');
+          await db.raw("ALTER TABLE expenses ADD COLUMN created_by INT NULL");
+        }
+        if (!columnNames.includes('updated_at')) {
+          console.log('[schema-patch] adding updated_at to expenses...');
+          await db.raw("ALTER TABLE expenses ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+        }
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error checking/updating expenses columns:', e.message);
+    }
+
     console.log('[schema-patch] Schema check and patch complete.');
   } catch (err: any) {
     console.error('[schema-patch] Critical error during schema patching:', err.message);

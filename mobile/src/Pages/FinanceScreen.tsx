@@ -496,18 +496,22 @@ export default function FinanceScreen() {
     }, [fetchData]));
 
     useEffect(() => {
+        let needsClear = false;
         if (route.params?.mode) {
             setMode(route.params.mode);
+            needsClear = true;
         }
         if (route.params?.statusFilter) {
             setStatusFilter(route.params.statusFilter);
+            needsClear = true;
         }
         if (route.params?.filter === 'today') {
             setRentDate(new Date());
             setExpenseDate(new Date());
             setStatusFilter('Paid');
+            needsClear = true;
         }
-        if (route.params) {
+        if (needsClear) {
             navigation.setParams({ mode: undefined, filter: undefined, statusFilter: undefined });
         }
     }, [route.params, navigation]);
