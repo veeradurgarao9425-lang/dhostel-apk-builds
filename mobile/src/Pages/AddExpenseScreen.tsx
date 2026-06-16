@@ -3,16 +3,31 @@ import { View, StyleSheet, ScrollView, Text, TouchableOpacity, ActivityIndicator
 import Toast from 'react-native-toast-message';
 import { Header } from '../components/Header';
 import { InputField } from '../components/InputField';
-import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { LinearGradient } from 'expo-linear-gradient';
+import DateTimePickerModal from "react-native-modal-datetime-picker";
+import { Calendar } from 'lucide-react-native';
 import api from '../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+
+const CAT_COLORS: Record<string, string> = {
+    'Electricity': '#F59E0B',
+    'Water': '#0EA5E9',
+    'Maintenance': '#8B5CF6',
+    'Salary': '#10B981',
+    'Groceries': '#F97316',
+    'Internet': '#06B6D4',
+    'Cleaning': '#EC4899',
+    'Other': '#64748B',
+};
+
+const getCatColor = (name: string) => CAT_COLORS[name] || '#64748B';
 
 export const AddExpenseScreen = ({ navigation }: any) => {
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [categories, setCategories] = useState<any[]>([]);
+    const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
     const [formData, setFormData] = useState({
         title: '',
         amount: '',
@@ -42,6 +57,14 @@ export const AddExpenseScreen = ({ navigation }: any) => {
         }
     };
 
+    const handleConfirmDate = (date: Date) => {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        setFormData({ ...formData, expense_date: `${y}-${m}-${d}` });
+        setDatePickerVisibility(false);
+    };
+
     const handleSave = async () => {
         if (!formData.category_id || !formData.amount || !formData.expense_date) {
             Toast.show({
@@ -61,7 +84,7 @@ export const AddExpenseScreen = ({ navigation }: any) => {
                 amount: parseFloat(formData.amount),
                 payment_mode_id: parseInt(formData.payment_mode_id),
                 vendor_name: formData.vendor_name,
-                description: formData.description || formData.title,
+                description: formData.description || formData.title || categories.find(c => c.category_id.toString() === formData.category_id)?.category_name || 'Expense',
                 bill_number: formData.bill_number,
             };
 
@@ -94,21 +117,25 @@ export const AddExpenseScreen = ({ navigation }: any) => {
                 <Card style={styles.formCard}>
                     <Text style={styles.label}>Category *</Text>
                     <View style={styles.categoryGrid}>
-                        {categories.map((cat) => (
-                            <TouchableOpacity
-                                key={cat.category_id}
-                                style={[
-                                    styles.catButton,
-                                    formData.category_id === cat.category_id.toString() && styles.catButtonActive
-                                ]}
-                                onPress={() => setFormData({ ...formData, category_id: cat.category_id.toString() })}
-                            >
-                                <Text style={[
-                                    styles.catButtonText,
-                                    formData.category_id === cat.category_id.toString() && styles.catButtonTextActive
-                                ]}>{cat.category_name}</Text>
-                            </TouchableOpacity>
-                        ))}
+                        {categories.map((cat) => {
+                            const isSelected = formData.category_id === cat.category_id.toString();
+                            const color = getCatColor(cat.category_name);
+                            return (
+                                <TouchableOpacity
+                                    key={cat.category_id}
+                                    style={[
+                                        styles.catButton,
+                                        isSelected && { borderColor: color, backgroundColor: color + '15' }
+                                    ]}
+                                    onPress={() => setFormData({ ...formData, category_id: cat.category_id.toString() })}
+                                >
+                                    <Text style={[
+                                        styles.catButtonText,
+                                        isSelected && { color: color, fontWeight: '700' }
+                                    ]}>{cat.category_name}</Text>
+                                </TouchableOpacity>
+                            );
+                        })}
                     </View>
 
                     <InputField
@@ -119,34 +146,41 @@ export const AddExpenseScreen = ({ navigation }: any) => {
                         onChangeText={(text) => setFormData({ ...formData, amount: text })}
                     />
 
-                    <InputField
-                        label="Expense Date *"
-                        placeholder="YYYY-MM-DD"
-                        value={formData.expense_date}
-                        onChangeText={(text) => setFormData({ ...formData, expense_date: text })}
-                    />
+                    <View style={styles.inputContainer}>
+                        <Text style={styles.inputLabel}>Expense Date *</Text>
+                        <TouchableOpacity
+                            style={styles.datePickerButton}
+                            onPress={() => setDatePickerVisibility(true)}
+                        >
+                            <Calendar size={18} color="#64748B" style={{ marginRight: 8 }} />
+                            <Text style={styles.dateText}>{formData.expense_date}</Text>
+                        </TouchableOpacity>
+                    </View>
 
                     <Text style={styles.label}>Payment Mode *</Text>
                     <View style={styles.categoryGrid}>
                         {[
-                            { id: '1', name: 'Cash' },
-                            { id: '2', name: 'Online' },
-                            { id: '3', name: 'Bank Transfer' }
-                        ].map((mode) => (
-                            <TouchableOpacity
-                                key={mode.id}
-                                style={[
-                                    styles.catButton,
-                                    formData.payment_mode_id === mode.id && styles.catButtonActive
-                                ]}
-                                onPress={() => setFormData({ ...formData, payment_mode_id: mode.id })}
-                            >
-                                <Text style={[
-                                    styles.catButtonText,
-                                    formData.payment_mode_id === mode.id && styles.catButtonTextActive
-                                ]}>{mode.name}</Text>
-                            </TouchableOpacity>
-                        ))}
+                            { id: '1', name: 'Cash', color: '#10B981' },
+                            { id: '2', name: 'Online', color: '#3B82F6' },
+                            { id: '3', name: 'Bank Transfer', color: '#8B5CF6' }
+                        ].map((mode) => {
+                            const isSelected = formData.payment_mode_id === mode.id;
+                            return (
+                                <TouchableOpacity
+                                    key={mode.id}
+                                    style={[
+                                        styles.catButton,
+                                        isSelected && { borderColor: mode.color, backgroundColor: mode.color + '15' }
+                                    ]}
+                                    onPress={() => setFormData({ ...formData, payment_mode_id: mode.id })}
+                                >
+                                    <Text style={[
+                                        styles.catButtonText,
+                                        isSelected && { color: mode.color, fontWeight: '700' }
+                                    ]}>{mode.name}</Text>
+                                </TouchableOpacity>
+                            );
+                        })}
                     </View>
 
                     <InputField
@@ -193,6 +227,14 @@ export const AddExpenseScreen = ({ navigation }: any) => {
                 </TouchableOpacity>
                 <View style={styles.bottomSpacing} />
             </ScrollView>
+
+            <DateTimePickerModal
+                isVisible={isDatePickerVisible}
+                mode="date"
+                date={new Date(formData.expense_date)}
+                onConfirm={handleConfirmDate}
+                onCancel={() => setDatePickerVisibility(false)}
+            />
         </View>
     );
 };
@@ -211,12 +253,31 @@ const styles = StyleSheet.create({
         borderColor: '#E2E8F0',
         backgroundColor: '#FFF'
     },
-    catButtonActive: {
-        borderColor: '#FF6B6B',
-        backgroundColor: '#FFF1F1'
-    },
     catButtonText: { fontSize: 13, color: '#64748B', fontWeight: '500' },
-    catButtonTextActive: { color: '#FF6B6B', fontWeight: '600' },
+    inputContainer: {
+        marginBottom: 16,
+    },
+    inputLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#334155',
+        marginBottom: 8,
+    },
+    datePickerButton: {
+        height: 50,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        paddingHorizontal: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    dateText: {
+        fontSize: 16,
+        color: '#0F172A',
+        fontWeight: '500',
+    },
     saveButton: {
         height: 54,
         borderRadius: 12,

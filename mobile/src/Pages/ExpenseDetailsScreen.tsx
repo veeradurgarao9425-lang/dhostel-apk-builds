@@ -1,15 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
     View, Text, StyleSheet, ScrollView,
-    TouchableOpacity, StatusBar, Dimensions
+    TouchableOpacity, StatusBar, Dimensions, Alert, ActivityIndicator
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
     ArrowLeft, Calendar, Tag, FileText,
-    Hash, Receipt, TrendingDown
+    Hash, Receipt, TrendingDown, Trash2
 } from 'lucide-react-native';
 import { useTheme } from '../../contexts/ThemeContext';
+import api from '../services/api';
+import Toast from 'react-native-toast-message';
 
 const { width } = Dimensions.get('window');
 
@@ -70,6 +72,7 @@ const ExpenseDetailsScreen = ({ route }: any) => {
     const { theme } = useTheme();
     const navigation = useNavigation();
     const { expense } = route.params || {};
+    const [deleteLoading, setDeleteLoading] = useState(false);
 
     if (!expense) {
         return (
@@ -90,6 +93,49 @@ const ExpenseDetailsScreen = ({ route }: any) => {
         : '—';
 
     const amount = parseFloat(expense.amount || 0);
+
+    const handleDelete = () => {
+        Alert.alert(
+            'Delete Expense',
+            `Are you sure you want to delete this expense of ₹${amount.toLocaleString('en-IN')}?`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            setDeleteLoading(true);
+                            const response = await api.delete(`/expenses/${expense.expense_id}`);
+                            if (response.data.success) {
+                                Toast.show({
+                                    type: 'success',
+                                    text1: 'Success',
+                                    text2: 'Expense deleted successfully',
+                                });
+                                navigation.goBack();
+                            } else {
+                                Toast.show({
+                                    type: 'error',
+                                    text1: 'Error',
+                                    text2: response.data.message || 'Failed to delete expense',
+                                });
+                            }
+                        } catch (error) {
+                            console.error('Error deleting expense:', error);
+                            Toast.show({
+                                type: 'error',
+                                text1: 'Error',
+                                text2: 'Failed to delete expense',
+                            });
+                        } finally {
+                            setDeleteLoading(false);
+                        }
+                    }
+                }
+            ]
+        );
+    };
 
     return (
         <View style={styles.container}>
@@ -119,9 +165,9 @@ const ExpenseDetailsScreen = ({ route }: any) => {
                     ₹{amount.toLocaleString('en-IN')}
                 </Text>
 
-                {/* Title below amount */}
+                {/* Title/Description below amount */}
                 <Text style={styles.expenseTitle} numberOfLines={2}>
-                    {expense.title}
+                    {expense.description || expense.category_name}
                 </Text>
             </LinearGradient>
 
@@ -136,16 +182,6 @@ const ExpenseDetailsScreen = ({ route }: any) => {
                     <View style={[styles.cardAccent, { backgroundColor: theme.gradientStart }]} />
 
                     <DetailRow
-                        icon={<Receipt size={17} color="#64748B" />}
-                        label="Title"
-                        value={expense.title}
-                    />
-                    <DetailRow
-                        icon={<Calendar size={17} color="#64748B" />}
-                        label="Date"
-                        value={formattedDate}
-                    />
-                    <DetailRow
                         icon={<Tag size={17} color="#64748B" />}
                         label="Category"
                         value={expense.category_name}
@@ -157,11 +193,27 @@ const ExpenseDetailsScreen = ({ route }: any) => {
                         accent="#EF4444"
                     />
                     <DetailRow
-                        icon={<Hash size={17} color="#64748B" />}
-                        label="Recorded By"
-                        value={expense.recorded_by || 'Admin'}
+                        icon={<Calendar size={17} color="#64748B" />}
+                        label="Date"
+                        value={formattedDate}
                     />
-                    {/* Description — no bottom border on last row */}
+                    <DetailRow
+                        icon={<Receipt size={17} color="#64748B" />}
+                        label="Payment Mode"
+                        value={expense.payment_mode || 'Cash'}
+                    />
+                    <DetailRow
+                        icon={<FileText size={17} color="#64748B" />}
+                        label="Vendor Name"
+                        value={expense.vendor_name || 'Generic Vendor'}
+                    />
+                    <DetailRow
+                        icon={<Hash size={17} color="#64748B" />}
+                        label="Bill Number"
+                        value={expense.bill_number || '—'}
+                    />
+
+                    {/* Description */}
                     <View style={[rowStyles.row, { borderBottomWidth: 0 }]}>
                         <View style={rowStyles.iconWrap}>
                             <FileText size={17} color="#64748B" />
@@ -173,6 +225,22 @@ const ExpenseDetailsScreen = ({ route }: any) => {
                             </Text>
                         </View>
                     </View>
+
+                    {/* Delete Expense Button */}
+                    <TouchableOpacity
+                        style={[styles.deleteButton, deleteLoading && styles.disabledButton]}
+                        onPress={handleDelete}
+                        disabled={deleteLoading}
+                    >
+                        {deleteLoading ? (
+                            <ActivityIndicator color="#EF4444" size="small" />
+                        ) : (
+                            <>
+                                <Trash2 size={18} color="#EF4444" style={{ marginRight: 8 }} />
+                                <Text style={styles.deleteButtonText}>Delete Expense</Text>
+                            </>
+                        )}
+                    </TouchableOpacity>
                 </View>
             </ScrollView>
         </View>
@@ -254,7 +322,7 @@ const styles = StyleSheet.create({
         borderRadius: 24,
         paddingHorizontal: 20,
         paddingTop: 0,
-        paddingBottom: 8,
+        paddingBottom: 20,
         elevation: 4,
         shadowColor: '#000',
         shadowOpacity: 0.08,
@@ -267,6 +335,26 @@ const styles = StyleSheet.create({
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         marginBottom: 8,
+    },
+    deleteButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#FEF2F2',
+        borderWidth: 1,
+        borderColor: '#FEE2E2',
+        borderRadius: 14,
+        paddingVertical: 14,
+        marginTop: 20,
+        marginBottom: 10,
+    },
+    deleteButtonText: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#EF4444',
+    },
+    disabledButton: {
+        opacity: 0.7,
     },
 });
 

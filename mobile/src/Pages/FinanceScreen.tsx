@@ -22,13 +22,13 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 // ─────────────────────────────────────────────────────────────────────────────
 //  MODULE-LEVEL CACHE
 // ─────────────────────────────────────────────────────────────────────────────
-type CacheStore = { fees: any[]; expenses: any[]; modes: any[]; lastFetched: string; dirty: boolean; };
-const STORE: CacheStore = { fees: [], expenses: [], modes: [], lastFetched: '', dirty: false };
+type CacheStore = { fees: any[]; expenses: any[]; modes: any[]; lastFetchedRent: string; lastFetchedExpense: string; dirty: boolean; };
+const STORE: CacheStore = { fees: [], expenses: [], modes: [], lastFetchedRent: '', lastFetchedExpense: '', dirty: false };
 // FIX: Disable aggressive caching so payments made on other screens (StudentDetails) 
 // are reflected immediately when returning to this screen.
 // STALE_MS already declared
 const STALE_MS = 0;
-const isFresh = (monthStr: string) => !STORE.dirty && STORE.fees.length > 0 && STORE.lastFetched === monthStr;
+const isFresh = (rMonth: string, eMonth: string) => !STORE.dirty && STORE.fees.length > 0 && STORE.lastFetchedRent === rMonth && STORE.lastFetchedExpense === eMonth;
 // Set dirty initially to force first fetch correctly
 STORE.dirty = true;
 
@@ -369,7 +369,8 @@ export default function FinanceScreen() {
     const [loadTimedOut, setLoadTimedOut] = useState(false);
     const [summary, setSummary] = useState<any>(null);
     const [refreshing, setRefreshing] = useState(false);
-    const [currentDate, setCurrentDate] = useState(new Date());
+    const [rentDate, setRentDate] = useState(new Date());
+    const [expenseDate, setExpenseDate] = useState(new Date());
     const [monthStr, setMonthStr] = useState(() => toLocalDateStr(new Date()).slice(0, 7));
     const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
 
@@ -389,12 +390,12 @@ export default function FinanceScreen() {
     const fetchingRef = useRef(false);
     const timeoutRef = useRef<any>(null);
 
-    // Update monthStr when currentDate changes
+    // Update monthStr when rentDate changes
     useEffect(() => {
-        const y = currentDate.getFullYear();
-        const m = String(currentDate.getMonth() + 1).padStart(2, '0');
+        const y = rentDate.getFullYear();
+        const m = String(rentDate.getMonth() + 1).padStart(2, '0');
         setMonthStr(`${y}-${m}`);
-    }, [currentDate]);
+    }, [rentDate]);
 
     // Loading timeout — show retry after 40s if still loading
     useEffect(() => {
@@ -410,12 +411,18 @@ export default function FinanceScreen() {
 
     const fetchData = useCallback(async (isRefresh = false) => {
         if (fetchingRef.current) return;
-        // Construct YYYY-MM
-        const y = currentDate.getFullYear();
-        const m = String(currentDate.getMonth() + 1).padStart(2, '0');
-        const currentMonthStr = `${y}-${m}`;
+        
+        // Construct YYYY-MM for Rent
+        const rentY = rentDate.getFullYear();
+        const rentM = String(rentDate.getMonth() + 1).padStart(2, '0');
+        const rentMonthStr = `${rentY}-${rentM}`;
 
-        if (!isRefresh && isFresh(currentMonthStr)) {
+        // Construct YYYY-MM for Expense
+        const expY = expenseDate.getFullYear();
+        const expM = String(expenseDate.getMonth() + 1).padStart(2, '0');
+        const expMonthStr = `${expY}-${expM}`;
+
+        if (!isRefresh && isFresh(rentMonthStr, expMonthStr)) {
             setFees(STORE.fees);
             setExpenses(STORE.expenses);
             setPaymentModes(STORE.modes);
@@ -427,13 +434,13 @@ export default function FinanceScreen() {
             if (isRefresh) setRefreshing(true);
             else if (STORE.fees.length === 0) setInitialLoading(true);
 
-            // Calculate start/end dates for expenses
-            const startDate = `${currentMonthStr}-01`;
-            const lastDay = new Date(y, currentDate.getMonth() + 1, 0).getDate();
-            const endDate = `${currentMonthStr}-${String(lastDay).padStart(2, '0')}`;
+            // Calculate start/end dates for expenses based on expenseDate
+            const startDate = `${expMonthStr}-01`;
+            const lastDay = new Date(expY, expenseDate.getMonth() + 1, 0).getDate();
+            const endDate = `${expMonthStr}-${String(lastDay).padStart(2, '0')}`;
 
             const reqs: Promise<any>[] = [
-                api.get('/monthly-fees/summary', { params: { fee_month: currentMonthStr } }),
+                api.get('/monthly-fees/summary', { params: { fee_month: rentMonthStr } }),
                 api.get('/expenses', { params: { startDate, endDate } })
             ];
             if (STORE.modes.length === 0) reqs.push(api.get('/monthly-fees/payment-modes'));
@@ -446,7 +453,7 @@ export default function FinanceScreen() {
                 const rawFees = Array.isArray(payload) ? payload : (payload.fees || []);
                 const summaryData = Array.isArray(payload) ? null : payload.summary;
 
-                console.log(`[FinanceScreen] Fetched ${rawFees.length} fees for ${currentMonthStr}`);
+                console.log(`[FinanceScreen] Fetched ${rawFees.length} fees for ${rentMonthStr}`);
                 STORE.fees = rawFees;
                 setFees(rawFees);
                 if (summaryData) setSummary(summaryData);
@@ -469,7 +476,9 @@ export default function FinanceScreen() {
                 if (first) setPayModeId((first.payment_mode_id || first.id)?.toString() || '1');
             }
 
-            STORE.lastFetched = currentMonthStr; STORE.dirty = false;
+            STORE.lastFetchedRent = rentMonthStr;
+            STORE.lastFetchedExpense = expMonthStr;
+            STORE.dirty = false;
         } catch (e) {
             console.error('Finance fetch:', e);
             Toast.show({ type: 'error', text1: 'Failed to load data.' });
@@ -478,16 +487,13 @@ export default function FinanceScreen() {
             setInitialLoading(false);
             setRefreshing(false);
         }
-    }, [currentDate]);
+    }, [rentDate, expenseDate]);
 
     useFocusEffect(useCallback(() => {
-        // Always check if we need to fetch (e.g. if dirty or month changed)
-        const y = currentDate.getFullYear();
-        const m = String(currentDate.getMonth() + 1).padStart(2, '0');
-        // REMOVED fetch skip to ensure data is always fresh when navigating back
+        // Always check if we need to fetch
         const task = InteractionManager.runAfterInteractions(() => { fetchData(); });
         return () => task.cancel();
-    }, [fetchData, currentDate]));
+    }, [fetchData]));
 
     useEffect(() => {
         if (route.params?.mode) {
@@ -497,9 +503,8 @@ export default function FinanceScreen() {
             setStatusFilter(route.params.statusFilter);
         }
         if (route.params?.filter === 'today') {
-            // "Today" likely implies "Current Month" in monthly view, but user wants to see today's activity.
-            // We set month to current.
-            setCurrentDate(new Date());
+            setRentDate(new Date());
+            setExpenseDate(new Date());
             setStatusFilter('Paid');
         }
         if (route.params) {
@@ -508,13 +513,21 @@ export default function FinanceScreen() {
     }, [route.params, navigation]);
 
     const shiftMonth = useCallback((delta: number) => {
-        const d = new Date(currentDate);
-        d.setMonth(d.getMonth() + delta);
-        setCurrentDate(d);
-        // Explicitly mark dirty to ensure refetch? No, useEffect[currentDate] handles it.
-    }, [currentDate]);
+        if (mode === 'Rent') {
+            const d = new Date(rentDate);
+            d.setMonth(d.getMonth() + delta);
+            setRentDate(d);
+        } else {
+            const d = new Date(expenseDate);
+            d.setMonth(d.getMonth() + delta);
+            setExpenseDate(d);
+        }
+    }, [mode, rentDate, expenseDate]);
 
-    const getMonthLabel = () => currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+    const getMonthLabel = () => {
+        const activeDate = mode === 'Rent' ? rentDate : expenseDate;
+        return activeDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+    };
 
     const handleNavigate = useCallback((id: number) => navigation.navigate('StudentDetails', { studentId: id }), [navigation]);
     const handleWhatsApp = useCallback((phone: string, name: string, due: number) => {
@@ -720,10 +733,14 @@ export default function FinanceScreen() {
                 <DateTimePickerModal
                     isVisible={isDatePickerVisible}
                     mode="date"
-                    date={currentDate}
+                    date={mode === 'Rent' ? rentDate : expenseDate}
                     onConfirm={(date) => {
                         setDatePickerVisibility(false);
-                        setCurrentDate(date);
+                        if (mode === 'Rent') {
+                            setRentDate(date);
+                        } else {
+                            setExpenseDate(date);
+                        }
                         STORE.dirty = true;
                     }}
                     onCancel={() => setDatePickerVisibility(false)}

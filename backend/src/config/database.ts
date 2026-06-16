@@ -25,6 +25,9 @@ export const db = knex({
     user: process.env.DB_USER!,
     password: process.env.DB_PASSWORD!,
     database: process.env.DB_NAME!,
+    ssl: {
+      rejectUnauthorized: false
+    }
   },
   pool: {
     min: 5,
@@ -101,6 +104,44 @@ async function patchDatabaseSchema() {
       console.error('[schema-patch] Error creating room_amenities_master table:', e.message);
     }
 
+    // 1.7 Ensure amenities_master exists
+    try {
+      if (!tableNamesLower.includes('amenities_master')) {
+        console.log('[schema-patch] creating missing amenities_master table...');
+        await db.raw(`
+          CREATE TABLE amenities_master (
+            amenity_id INT AUTO_INCREMENT PRIMARY KEY,
+            amenity_name VARCHAR(100) NOT NULL UNIQUE,
+            amenity_icon VARCHAR(50) NULL,
+            description TEXT NULL,
+            is_active BOOLEAN DEFAULT TRUE,
+            display_order INT DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+
+        console.log('[schema-patch] seeding default hostel amenities...');
+        await db.raw(`
+          INSERT INTO amenities_master (amenity_name, amenity_icon, description, display_order) VALUES
+          ('WiFi', 'wifi', 'High-speed internet access', 1),
+          ('CCTV', 'video', '24/7 security surveillance', 2),
+          ('Power Backup', 'battery-charging', 'Uninterrupted power supply', 3),
+          ('Laundry', 'washing-machine', 'Washing machine and drying area', 4),
+          ('Drinking Water', 'droplet', 'RO purified drinking water', 5),
+          ('Security Guard', 'shield-check', 'On-duty security personnel', 6),
+          ('Gym', 'dumbbell', 'Fitness equipment and gym area', 7),
+          ('Food / Mess', 'utensils', 'Daily meals provided in mess', 8)
+        `);
+
+        console.log('[schema-patch] creating indexes for amenities_master...');
+        await db.raw("CREATE INDEX idx_amenities_active ON amenities_master(is_active)");
+        await db.raw("CREATE INDEX idx_amenities_order ON amenities_master(display_order)");
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error creating amenities_master table:', e.message);
+    }
+
     // 2. Ensure fee_payments columns exist
     try {
       if (tableNamesLower.includes('fee_payments')) {
@@ -160,9 +201,30 @@ async function patchDatabaseSchema() {
         console.log('[schema-patch] creating indexes for income table...');
         await db.raw("CREATE INDEX idx_income_hostel ON income(hostel_id)");
         await db.raw("CREATE INDEX idx_income_date ON income(income_date)");
+      } else {
+        console.log('[schema-patch] Checking income columns...');
+        const [columns] = await db.raw("SHOW COLUMNS FROM income");
+        const columnNames = (columns as any[]).map(col => col.Field.toLowerCase());
+        
+        if (!columnNames.includes('payment_mode_id')) {
+          console.log('[schema-patch] adding payment_mode_id to income...');
+          await db.raw("ALTER TABLE income ADD COLUMN payment_mode_id INT NULL");
+        }
+        if (!columnNames.includes('receipt_number')) {
+          console.log('[schema-patch] adding receipt_number to income...');
+          await db.raw("ALTER TABLE income ADD COLUMN receipt_number VARCHAR(100) NULL");
+        }
+        if (!columnNames.includes('description')) {
+          console.log('[schema-patch] adding description to income...');
+          await db.raw("ALTER TABLE income ADD COLUMN description TEXT NULL");
+        }
+        if (!columnNames.includes('updated_at')) {
+          console.log('[schema-patch] adding updated_at to income...');
+          await db.raw("ALTER TABLE income ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+        }
       }
     } catch (e: any) {
-      console.error('[schema-patch] Error creating income table:', e.message);
+      console.error('[schema-patch] Error checking/creating income table:', e.message);
     }
 
     console.log('[schema-patch] Schema check and patch complete.');
