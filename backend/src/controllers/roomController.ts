@@ -177,7 +177,7 @@ export const getRoomById = async (req: AuthRequest, res: Response) => {
     const students = await db('students')
       .where('room_id', roomId)
       .where('status', 1)
-      .select('student_id', 'first_name', 'last_name', 'phone', 'photo');
+      .select('student_id', 'first_name', 'last_name', 'phone');
 
     const occupiedCount = students.length;
 
