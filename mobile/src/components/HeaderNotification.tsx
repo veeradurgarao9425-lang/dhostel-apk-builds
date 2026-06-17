@@ -24,7 +24,7 @@ export const HeaderNotification = ({ navigation }: { navigation?: any }) => {
             if (notif.data && notif.data.id) {
                 nav.navigate('StudentDetails', { studentId: notif.data.id });
             } else {
-                nav.navigate('StudentsTab');
+                nav.navigate('Students');
             }
         } else if (notif.type === 'expense' || notif.title.includes('Expense')) {
             nav.navigate('FinanceTab', { mode: 'Expense' });

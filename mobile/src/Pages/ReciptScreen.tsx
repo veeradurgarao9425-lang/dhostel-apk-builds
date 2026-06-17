@@ -154,7 +154,7 @@ export const ReceiptScreen = ({ navigation, route }: any) => {
             >
                 <View style={styles.headerTop}>
                     <TouchableOpacity onPress={() => navigation.goBack()}>
-                        <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+                        <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>Receipt Details</Text>
                     <View style={{ width: 24 }} />

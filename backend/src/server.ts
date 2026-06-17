@@ -17,6 +17,8 @@ import activityRoutes from './routes/activityRoutes.js';
 import amenitiesRoutes from './routes/amenities.routes.js';
 import relationsRoutes from './routes/relationsRoutes.js';
 import idProofTypesRoutes from './routes/idProofTypesRoutes.js';
+import staffRoutes from './routes/staffRoutes.js';
+import reminderRoutes from './routes/reminderRoutes.js';
 import { startMonthlyFeesGenerationJob } from './jobs/monthlyFeesGeneration.js';
 
 // Load environment variables
@@ -75,6 +77,8 @@ app.use('/api/activity', activityRoutes);
 app.use('/api/amenities', amenitiesRoutes);
 app.use('/api/relations', relationsRoutes);
 app.use('/api/id-proof-types', idProofTypesRoutes);
+app.use('/api/staff', staffRoutes);
+app.use('/api/reminders', reminderRoutes);
 
 // Public QR student signup (no auth)
 app.get('/api/public/qr-signup', async (req, res) => {

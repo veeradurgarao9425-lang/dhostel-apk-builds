@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Bed, Plus, Search, X, Info } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../services/api';
 import { HeaderNotification } from '../components/HeaderNotification';
@@ -125,7 +126,16 @@ export default function RoomsScreen({ navigation, route }: any) {
             <StatusBar barStyle="light-content" />
             <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={styles.header}>
                 <View style={styles.headerTop}>
-                    <View>
+                    {navigation.canGoBack() && (
+                        <TouchableOpacity
+                            style={styles.backBtn}
+                            onPress={() => navigation.goBack()}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons name="chevron-back" size={20} color="#FFF" />
+                        </TouchableOpacity>
+                    )}
+                    <View style={{ flex: 1 }}>
                         <Text style={styles.headerTitle}>Room Status</Text>
                         <Text style={styles.headerSubtitle}>{rooms.length} Total Units</Text>
                     </View>
@@ -200,7 +210,13 @@ export default function RoomsScreen({ navigation, route }: any) {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8FAFC' },
     header: { paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20, borderBottomLeftRadius: 32, borderBottomRightRadius: 32 },
-    headerTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
+    headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
+    backBtn: {
+        width: 40, height: 40, borderRadius: 20,
+        backgroundColor: 'rgba(255,255,255,0.18)',
+        alignItems: 'center', justifyContent: 'center',
+        marginRight: 12,
+    },
     headerTitle: { fontSize: 24, fontWeight: '900', color: '#FFF' },
     headerSubtitle: { fontSize: 12, color: 'rgba(255,255,255,0.8)', fontWeight: '600' },
     headerActions: { flexDirection: 'row', gap: 12 },

@@ -42,7 +42,7 @@ export const NotificationScreen = () => {
             if (notif.data && notif.data.id) {
                 navigation.navigate('StudentDetails', { studentId: notif.data.id });
             } else {
-                navigation.navigate('StudentsTab');
+                navigation.navigate('Students');
             }
         } else if (notif.type === 'warning' && notif.title.includes('Expense')) {
             navigation.navigate('FinanceTab', { mode: 'Expense' });

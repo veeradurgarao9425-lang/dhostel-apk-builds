@@ -344,6 +344,7 @@ export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
     // 2. Fetch Fee Payment records
     let feeQuery = db('fee_payments as fp')
       .leftJoin('students as s', 'fp.student_id', 's.student_id')
+      .leftJoin('rooms as r', 's.room_id', 'r.room_id')
       .leftJoin('payment_modes as pm', 'fp.payment_mode_id', 'pm.payment_mode_id')
       .whereBetween('fp.payment_date', [startDate, endDate]);
 
@@ -354,6 +355,7 @@ export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
       'fp.*',
       's.first_name',
       's.last_name',
+      'r.room_number',
       'pm.payment_mode_name as payment_mode'
     );
 
@@ -375,6 +377,8 @@ export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
         amount: parseFloat(fp.amount),
         date: safeGetDateString(fp.payment_date),
         student_id: fp.student_id,
+        room_number: fp.room_number,
+        payment_mode: fp.payment_mode || 'Cash',
         type: 'Rent'
       }))
     ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());

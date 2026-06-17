@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, TouchableWithoutFeedback, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, TouchableWithoutFeedback, Platform, Image } from 'react-native';
 import { User, LogOut, Palette, ChevronRight, Check } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
@@ -28,10 +28,11 @@ export const ProfileMenu = () => {
                 style={styles.profileButton}
                 activeOpacity={0.8}
             >
-                <View style={[styles.avatarMini, { backgroundColor: theme.cardBg }]}>
-                    <Text style={[styles.avatarText, { color: theme.primary }]}>
-                        {user?.full_name?.charAt(0) || 'A'}
-                    </Text>
+                <View style={[styles.avatarMini, { backgroundColor: '#EDE9FE', overflow: 'hidden' }]}>
+                    <Image
+                        source={{ uri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=80&h=80&q=80' }}
+                        style={styles.avatarImage}
+                    />
                 </View>
             </TouchableOpacity>
 
@@ -137,6 +138,12 @@ const styles = StyleSheet.create({
     avatarMini: {
         width: 40, height: 40, borderRadius: 20,
         justifyContent: 'center', alignItems: 'center',
+    },
+    avatarImage: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 20,
+        resizeMode: 'cover',
     },
     avatarText: { fontSize: 18, fontWeight: '800' }, // Increased font slightly
     modalOverlay: {

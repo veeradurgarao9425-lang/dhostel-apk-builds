@@ -1,11 +1,12 @@
 import React, { useState, useCallback } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
-    ScrollView, StatusBar, Linking, RefreshControl, ActivityIndicator,
+    ScrollView, StatusBar, RefreshControl,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import api from '../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -17,26 +18,64 @@ const INITIAL_STATE = {
     monthAmount: 0,
     monthDue: 0,
     pendingAmount: 0,
+    totalDuesAmount: 0,
     occupiedBeds: 0,
     totalBeds: 0,
     availableBeds: 0,
     todayAmount: 0,
-    todaySplit: [] as { mode: string; total: number }[],
+    activeTenants: 0,
+    leftTenants: 0,
     unpaidStudents: [] as any[],
 };
 
+// ─── Greeting helper ──────────────────────────────────────────────────────────
+const getGreeting = () => {
+    const h = new Date().getHours();
+    if (h < 12) return 'Good Morning';
+    if (h < 17) return 'Good Afternoon';
+    return 'Good Evening';
+};
+
+// ─── Quick Management Actions ─────────────────────────────────────────────────
+const QUICK_ACTIONS = [
+    { label: 'Add\nTenant', icon: 'person-add-outline', color: '#7C3AED', bg: '#EDE9FE', route: 'AddStudent',       comingSoon: false },
+    { label: 'Add\nRoom',   icon: 'home-outline',       color: '#2563EB', bg: '#DBEAFE', route: 'AddRoom',          comingSoon: false },
+    { label: 'Bills',       icon: 'receipt-outline',    color: '#D97706', bg: '#FEF3C7', route: 'BillReminders', comingSoon: false },
+    { label: 'Remind',      icon: 'notifications-outline', color: '#DC2626', bg: '#FEE2E2', route: 'Reminders', comingSoon: false },
+    { label: 'Staff',       icon: 'people-outline',     color: '#059669', bg: '#D1FAE5', route: 'Staff', comingSoon: false },
+];
+
 // ─── Skeleton Block ───────────────────────────────────────────────────────────
-const SkeletonBox = ({ style, dark = false }: { style?: any; dark?: boolean }) => (
-    <View style={[{ backgroundColor: dark ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.2)', borderRadius: 10 }, style]} />
+const Skeleton = ({ style }: { style?: any }) => (
+    <View style={[{ backgroundColor: '#E9D5FF', borderRadius: 8, opacity: 0.5 }, style]} />
 );
 
-// ─── Quick action config ──────────────────────────────────────────────────────
-const QUICK_ACTIONS = [
-    { label: 'Add\nStudent', emoji: '👤', bg: '#EDE9FE', route: 'AddStudent' },
-    { label: 'Collect\nFee', emoji: '💰', bg: '#DCFCE7', route: 'FinanceTab' },
-    { label: 'Add\nRoom', emoji: '🛏', bg: '#DBEAFE', route: 'AddRoom' },
-    { label: 'Add\nExpense', emoji: '📋', bg: '#FEF3C7', route: 'AddExpense' },
-];
+// ─── Simple bar chart using plain Views ───────────────────────────────────────
+const RevenueBar = ({ amount, maxAmount, month, isCurrent }: any) => {
+    const barH = Math.max(6, Math.round((amount / Math.max(maxAmount, 1)) * 72));
+    return (
+        <View style={bc.column}>
+            <Text style={bc.topLabel}>
+                {amount > 0 ? `₹${(amount / 1000).toFixed(0)}k` : ''}
+            </Text>
+            <View style={bc.barWrap}>
+                <View
+                    style={[
+                        bc.bar,
+                        {
+                            height: barH,
+                            backgroundColor: isCurrent ? '#7C3AED' : '#C4B5FD',
+                            borderRadius: isCurrent ? 6 : 4,
+                        },
+                    ]}
+                />
+            </View>
+            <Text style={[bc.month, isCurrent && { color: '#7C3AED', fontWeight: '800' }]}>
+                {month}
+            </Text>
+        </View>
+    );
+};
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function HomeScreen() {
@@ -55,21 +94,9 @@ export default function HomeScreen() {
             if (!isRefresh && isFirstLoadRef.current) setLoading(true);
             setHasError(false);
 
-            const today = new Date();
-            const y = today.getFullYear();
-            const m = String(today.getMonth() + 1).padStart(2, '0');
-            const d = String(today.getDate()).padStart(2, '0');
-            const todayStr = `${y}-${m}-${d}`;
-
             const [statsRes, summaryRes]: any = await Promise.all([
-                api.get('/reports/dashboard-stats').catch(e => {
-                    console.log('Dashboard stats error:', e.message);
-                    return { data: { success: false } };
-                }),
-                api.get('/monthly-fees/summary').catch(e => {
-                    console.log('Monthly fees summary error:', e.message);
-                    return { data: { success: false } };
-                }),
+                api.get('/reports/dashboard-stats').catch(() => ({ data: { success: false } })),
+                api.get('/monthly-fees/summary').catch(() => ({ data: { success: false } })),
             ]);
 
             if (!statsRes.data.success && !summaryRes.data.success) {
@@ -78,59 +105,57 @@ export default function HomeScreen() {
             }
 
             const d2 = statsRes.data.data || {};
-            const todayRent = d2.todayRent || 0;
             const monthCollected = (d2.monthlyRentCollected ?? d2.feeCollection ?? 0) as number;
-            const monthPending = (d2.monthlyRentPending ?? d2.pendingDuesAmount ?? 0) as number;
-            const monthDue = (d2.monthlyRentDue ?? (monthCollected + monthPending)) as number;
+            const monthPending   = (d2.monthlyRentPending  ?? d2.pendingDuesAmount  ?? 0) as number;
+            const monthDue       = (d2.monthlyRentDue ?? (monthCollected + monthPending)) as number;
+            const occupied       = d2.occupiedBeds || 0;
+            const total          = d2.totalBeds || 0;
 
-            // ── Build top defaulters list ────────────────────────────────────
+            // Build top 3 defaulters list
             let topDefaulters: any[] = [];
             if (summaryRes.data.success && summaryRes.data.data?.fees) {
                 const fees: any[] = summaryRes.data.data.fees;
                 const now = new Date();
                 now.setHours(0, 0, 0, 0);
-
                 topDefaulters = fees
                     .filter(f =>
                         (f.balance || 0) > 0 &&
-                        !['paid', 'fully paid'].includes((f.fee_status || '').toLowerCase())
+                        !['paid', 'fully paid'].includes((f.fee_status || '').toLowerCase()),
                     )
                     .sort((a, b) => (b.balance || 0) - (a.balance || 0))
-                    .slice(0, 5)
+                    .slice(0, 3)
                     .map(f => {
                         const due = f.due_date ? new Date(f.due_date) : new Date();
                         due.setHours(0, 0, 0, 0);
                         const diffDays = Math.floor((now.getTime() - due.getTime()) / 86400000);
-                        const isOverdue = diffDays > 0;
                         return {
                             id: f.student_id,
                             name: `${f.first_name || ''} ${f.last_name || ''}`.trim(),
                             amount: f.balance || 0,
                             phone: f.phone,
-                            isOverdue,
-                            daysLate: isOverdue ? diffDays : 0,
-                            daysLeft: isOverdue ? 0 : Math.abs(diffDays),
+                            isOverdue: diffDays > 0,
+                            daysLate: diffDays > 0 ? diffDays : 0,
+                            daysLeft: diffDays <= 0 ? Math.abs(diffDays) : 0,
                         };
                     });
             }
 
             setData({
-                hostelName: user?.hostel_name || d2.hostel_name || 'My Hostel',
-                monthAmount: monthCollected,
+                hostelName:      user?.hostel_name || d2.hostel_name || 'My Hostel',
+                monthAmount:     monthCollected,
                 monthDue,
-                pendingAmount: monthPending,
-                occupiedBeds: d2.occupiedBeds || 0,
-                totalBeds: d2.totalBeds || 0,
-                availableBeds: (d2.totalBeds || 0) - (d2.occupiedBeds || 0),
-                todayAmount: todayRent,
-                todaySplit: Array.isArray(d2.todaySplit)
-                    ? d2.todaySplit.map((x: any) => ({ mode: x.mode, total: Number(x.total || 0) }))
-                    : [],
-                unpaidStudents: topDefaulters,
+                pendingAmount:   monthPending,
+                totalDuesAmount: d2.pendingDuesAmount || 0,
+                occupiedBeds:    occupied,
+                totalBeds:       total,
+                availableBeds:   total - occupied,
+                todayAmount:     d2.todayRent || 0,
+                activeTenants:   occupied,
+                leftTenants:     d2.leftTenants || d2.vacatedStudents || 0,
+                unpaidStudents:  topDefaulters,
             });
             isFirstLoadRef.current = false;
-        } catch (e) {
-            console.log('Dashboard load error:', e);
+        } catch {
             setHasError(true);
         } finally {
             setLoading(false);
@@ -140,115 +165,100 @@ export default function HomeScreen() {
 
     useFocusEffect(useCallback(() => { load(); }, [load]));
 
-    const collectedPct = data.monthDue > 0
-        ? Math.min(100, Math.round((data.monthAmount / data.monthDue) * 100))
-        : 0;
+    // ── Quick action press handler ────────────────────────────────────────────
+    const handleQuickAction = (a: typeof QUICK_ACTIONS[0]) => {
+        if (a.comingSoon) {
+            navigation.navigate('ComingSoon', (a as any).routeParams);
+        } else {
+            navigation.navigate(a.route);
+        }
+    };
 
-    // ── Loading State ─────────────────────────────────────────────────────────
+    // ── Revenue chart data (current month = real; past = 0 until API returns history) ──
+    const currentMonthIdx = new Date().getMonth(); // 0-based
+    const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const revenueData = Array.from({ length: 6 }, (_, i) => {
+        const mIdx = (currentMonthIdx - 5 + i + 12) % 12;
+        const isCurrent = i === 5;
+        return {
+            month: MONTH_NAMES[mIdx],
+            amount: isCurrent ? data.monthAmount : 0,
+            isCurrent,
+        };
+    });
+    const maxRevenue = Math.max(...revenueData.map(r => r.amount), 1);
+
+    // ─── Format currency compactly ───────────────────────────────────────────
+    const fmt = (n: number) =>
+        n >= 1000
+            ? `₹${(n / 1000).toFixed(1)}k`
+            : `₹${n.toLocaleString('en-IN')}`;
+
+    // ─── Avatar initial ──────────────────────────────────────────────────────
+    const avatarLetter = (name: string) => (name || 'T')[0].toUpperCase();
+
+    // ── Loading Screen ────────────────────────────────────────────────────────
     if (loading) {
         return (
             <View style={s.root}>
                 <StatusBar barStyle="light-content" />
-                <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={s.header}>
-                    <View style={s.headerTopRow}>
+                <LinearGradient colors={['#6D28D9', '#7C3AED']} style={s.headerSkeleton}>
+                    <View style={s.skHeaderRow}>
                         <View>
-                            <Text style={s.greeting}>Hello,</Text>
-                            <Text style={s.userName}>{user?.full_name || 'Owner'}</Text>
+                            <Skeleton style={{ width: 100, height: 12, marginBottom: 6 }} />
+                            <Skeleton style={{ width: 160, height: 22 }} />
                         </View>
-                        <ProfileMenu />
-                    </View>
-                    <SkeletonBox style={{ height: 16, width: '50%', marginBottom: 8 }} />
-                    <SkeletonBox style={{ height: 48, width: '70%', marginBottom: 16 }} />
-                    <SkeletonBox style={{ height: 8, marginBottom: 8 }} />
-                    <SkeletonBox style={{ height: 12, width: '60%', marginBottom: 20 }} />
-                    <View style={s.statsRow}>
-                        <SkeletonBox style={{ flex: 1, height: 56, marginHorizontal: 6, borderRadius: 12 }} />
-                        <SkeletonBox style={{ flex: 1, height: 56, marginHorizontal: 6, borderRadius: 12 }} />
-                        <SkeletonBox style={{ flex: 1, height: 56, marginHorizontal: 6, borderRadius: 12 }} />
+                        <Skeleton style={{ width: 40, height: 40, borderRadius: 20 }} />
                     </View>
                 </LinearGradient>
-                <View style={s.bodyContent}>
-                    {/* Quick Actions Title */}
-                    <SkeletonBox dark style={{ height: 15, width: 100, marginBottom: 12 }} />
-                    {/* Quick Actions Grid */}
-                    <View style={s.quickGrid}>
-                        {[1, 2, 3, 4].map(i => (
-                            <View key={i} style={[s.quickCard, { backgroundColor: '#FFF' }]}>
-                                <SkeletonBox dark style={{ width: 44, height: 44, borderRadius: 14, marginBottom: 8 }} />
-                                <SkeletonBox dark style={{ height: 10, width: 50, alignSelf: 'center', marginBottom: 4 }} />
-                                <SkeletonBox dark style={{ height: 10, width: 30, alignSelf: 'center' }} />
-                            </View>
-                        ))}
+                <View style={{ padding: 16, gap: 14 }}>
+                    <Skeleton style={{ height: 110, borderRadius: 18 }} />
+                    <Skeleton style={{ height: 90, borderRadius: 18 }} />
+                    <View style={{ flexDirection: 'row', gap: 12 }}>
+                        <Skeleton style={{ flex: 1, height: 90, borderRadius: 18 }} />
+                        <Skeleton style={{ flex: 1, height: 90, borderRadius: 18 }} />
                     </View>
-
-                    {/* Earnings Report Button */}
-                    <View style={s.infoCard}>
-                        <SkeletonBox dark style={{ width: 32, height: 32, borderRadius: 16 }} />
-                        <View style={{ flex: 1, gap: 6 }}>
-                            <SkeletonBox dark style={{ height: 12, width: 140 }} />
-                            <SkeletonBox dark style={{ height: 8, width: 180 }} />
-                        </View>
-                        <SkeletonBox dark style={{ width: 10, height: 16 }} />
+                    <View style={{ flexDirection: 'row', gap: 12 }}>
+                        <Skeleton style={{ flex: 1, height: 90, borderRadius: 18 }} />
+                        <Skeleton style={{ flex: 1, height: 90, borderRadius: 18 }} />
                     </View>
-
-                    {/* Section Title */}
-                    <SkeletonBox dark style={{ height: 15, width: 130, marginBottom: 12, marginTop: 4 }} />
-
-                    {/* List Items */}
-                    {[1, 2].map(i => (
-                        <View key={i} style={[s.studentCard, { backgroundColor: '#FFF' }]}>
-                            <View style={s.studentInfo}>
-                                <SkeletonBox dark style={{ height: 12, width: 100, marginBottom: 6 }} />
-                                <SkeletonBox dark style={{ height: 8, width: 70 }} />
-                            </View>
-                            <SkeletonBox dark style={{ height: 12, width: 50, marginRight: 16 }} />
-                            <SkeletonBox dark style={{ height: 26, width: 50, borderRadius: 8, marginRight: 12 }} />
-                        </View>
-                    ))}
                 </View>
             </View>
         );
     }
 
-    // ── Error / Offline State ─────────────────────────────────────────────────
+    // ── Error Screen ──────────────────────────────────────────────────────────
     if (hasError) {
         return (
             <View style={s.root}>
                 <StatusBar barStyle="light-content" />
-                <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={s.header}>
-                    <View style={s.headerTopRow}>
+                <LinearGradient colors={['#6D28D9', '#7C3AED']} style={s.header}>
+                    <View style={s.headerRow}>
                         <View>
-                            <Text style={s.greeting}>Hello,</Text>
-                            <Text style={s.userName}>{user?.full_name || 'Owner'}</Text>
+                            <Text style={s.greeting}>{getGreeting()},</Text>
+                            <Text style={s.ownerName}>{(user?.full_name || 'Owner').split(' ')[0]}</Text>
                         </View>
-                        <ProfileMenu />
+                        <TouchableOpacity style={s.bellBtn}>
+                            <Ionicons name="notifications-outline" size={22} color="#FFF" />
+                        </TouchableOpacity>
                     </View>
                 </LinearGradient>
-                <View style={s.errorBox}>
-                    <Text style={s.errorEmoji}>📡</Text>
+                <View style={s.errorCenter}>
+                    <Text style={{ fontSize: 48, marginBottom: 12 }}>📡</Text>
                     <Text style={s.errorTitle}>Server Waking Up…</Text>
                     <Text style={s.errorSub}>
                         The server may be starting up after inactivity.{'\n'}
                         Please wait a moment and tap Retry.
                     </Text>
-                    <TouchableOpacity style={[s.retryBtn, { backgroundColor: theme.primary }]} onPress={() => load()}>
-                        <Text style={s.retryText}>↺  Retry</Text>
+                    <TouchableOpacity
+                        style={s.retryBtn}
+                        onPress={() => load()}
+                        activeOpacity={0.85}
+                    >
+                        <LinearGradient colors={['#6D28D9', '#7C3AED']} style={s.retryGrad}>
+                            <Text style={s.retryText}>↺  Retry</Text>
+                        </LinearGradient>
                     </TouchableOpacity>
-                    {/* Still let them navigate */}
-                    <View style={s.quickGrid}>
-                        {QUICK_ACTIONS.map(a => (
-                            <TouchableOpacity
-                                key={a.route}
-                                style={s.quickCard}
-                                onPress={() => navigation.navigate(a.route)}
-                            >
-                                <View style={[s.quickIconBox, { backgroundColor: a.bg }]}>
-                                    <Text style={s.quickEmoji}>{a.emoji}</Text>
-                                </View>
-                                <Text style={s.quickLabel}>{a.label}</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
                 </View>
             </View>
         );
@@ -258,338 +268,582 @@ export default function HomeScreen() {
     return (
         <View style={s.root}>
             <StatusBar barStyle="light-content" />
+
+            {/* ─────────────────── FIXED HEADER ─────────────────── */}
+            <LinearGradient colors={['#5B21B6', '#7C3AED']} style={s.header}>
+                <View style={s.headerRow}>
+                    <View style={{ flex: 1 }}>
+                        <Text style={s.greeting}>{getGreeting()},</Text>
+                        <Text style={s.ownerName} numberOfLines={1}>
+                            {(user?.full_name || 'Owner').split(' ').slice(0, 2).join(' ')}
+                        </Text>
+                        <Text style={s.hostelTag}>🏠 {data.hostelName}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                        <TouchableOpacity
+                            style={s.bellBtn}
+                            onPress={() => navigation.navigate('Notifications')}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons name="notifications-outline" size={22} color="#FFF" />
+                            {data.totalDuesAmount > 0 && <View style={s.bellDot} />}
+                        </TouchableOpacity>
+                        <ProfileMenu />
+                    </View>
+                </View>
+            </LinearGradient>
+
             <ScrollView
-                style={s.body}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: 110 }}
                 refreshControl={
                     <RefreshControl
                         refreshing={refreshing}
                         onRefresh={() => { setRefreshing(true); load(true); }}
-                        tintColor={theme.primary}
+                        tintColor="#7C3AED"
                     />
                 }
             >
-                {/* ── Header Gradient ── */}
-                <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={s.header}>
-                    <View style={s.headerTopRow}>
-                        <View>
-                            <Text style={s.greeting}>Hello,</Text>
-                            <Text style={s.userName}>{user?.full_name || 'Owner'}</Text>
-                            {data.hostelName ? (
-                                <Text style={s.hostelTag}>🏠 {data.hostelName}</Text>
-                            ) : null}
-                        </View>
-                        <View style={s.headerActions}>
-                            <ProfileMenu />
-                        </View>
-                    </View>
 
-                    <Text style={s.amountLabel}>This Month's Collection HELLO! DURGARAO GORIPARTHI</Text>
-                    <TouchableOpacity onPress={() => navigation.navigate('IncomeDetails', { period: 'month' })} activeOpacity={0.85}>
-                        <Text style={s.bigAmount}>₹{data.monthAmount.toLocaleString('en-IN')}</Text>
-                    </TouchableOpacity>
+                <View style={s.body}>
 
-                    <View style={s.progressBg}>
-                        <View style={[s.progressFill, { width: `${collectedPct}%` as any }]} />
-                    </View>
-                    <Text style={s.progressText}>
-                        {collectedPct}% collected · ₹{data.pendingAmount.toLocaleString('en-IN')} still pending
-                    </Text>
-
-                    <View style={s.statsRow}>
+                    {/* ─────────────────── BEDS OVERVIEW ─────────────────── */}
+                    <View style={s.card}>
                         <TouchableOpacity
-                            style={s.statBox}
-                            onPress={() => navigation.navigate('RoomsTab', { filter: 'Full' })}
+                            style={s.cardHeader}
+                            activeOpacity={0.7}
+                            onPress={() => navigation.navigate('Rooms', { filter: 'All' })}
                         >
-                            <Text style={s.statNum}>{data.occupiedBeds}</Text>
-                            <Text style={s.statLbl}>Rooms Filled</Text>
-                        </TouchableOpacity>
-                        <View style={s.statDivider} />
-                        <TouchableOpacity
-                            style={s.statBox}
-                            onPress={() => navigation.navigate('RoomsTab', { filter: 'Vacant' })}
-                        >
-                            <Text style={s.statNum}>{data.availableBeds}</Text>
-                            <Text style={s.statLbl}>Empty Beds</Text>
-                        </TouchableOpacity>
-                        <View style={s.statDivider} />
-                        <TouchableOpacity
-                            style={s.statBox}
-                            onPress={() => navigation.navigate('IncomeDetails', { period: 'day' })}
-                        >
-                            <Text style={s.statNum}>
-                                ₹{(data.todayAmount || 0).toLocaleString('en-IN')}
+                            <View style={s.cardHeaderLeft}>
+                                <Ionicons name="bed-outline" size={17} color="#7C3AED" />
+                                <Text style={s.cardTitle}>Beds Overview</Text>
+                                <Ionicons name="chevron-forward" size={14} color="#94A3B8" style={{ marginLeft: 2 }} />
+                            </View>
+                            <Text style={s.cardMeta}>
+                                Total: {data.totalBeds} beds
                             </Text>
-                            <Text style={s.statLbl}>Today Rent</Text>
                         </TouchableOpacity>
-                    </View>
-                </LinearGradient>
-
-                <View style={s.bodyContent}>
-                    {/* ── Quick Actions ── */}
-                    <Text style={s.sectionTitle}>Quick Actions</Text>
-                    <View style={s.quickGrid}>
-                        {QUICK_ACTIONS.map(a => (
+                        <View style={s.bedsRow}>
+                            {/* Available */}
                             <TouchableOpacity
-                                key={a.route}
-                                style={s.quickCard}
-                                onPress={() => {
-                                    if (a.route === 'FinanceTab') {
-                                        navigation.navigate('FinanceTab', { mode: 'Rent', statusFilter: 'Unpaid' });
-                                    } else {
-                                        navigation.navigate(a.route);
-                                    }
-                                }}
+                                style={s.bedCell}
+                                activeOpacity={0.7}
+                                onPress={() => navigation.navigate('Rooms', { filter: 'Vacant' })}
+                            >
+                                <View style={[s.bedIcon, { backgroundColor: '#DCFCE7' }]}>
+                                    <Ionicons name="bed-outline" size={20} color="#16A34A" />
+                                </View>
+                                <Text style={[s.bedNum, { color: '#16A34A' }]}>{data.availableBeds}</Text>
+                                <Text style={s.bedLbl}>Available</Text>
+                            </TouchableOpacity>
+
+                            <View style={s.bedSep} />
+
+                            {/* Occupied */}
+                            <TouchableOpacity
+                                style={s.bedCell}
+                                activeOpacity={0.7}
+                                onPress={() => navigation.navigate('Rooms', { filter: 'Full' })}
+                            >
+                                <View style={[s.bedIcon, { backgroundColor: '#FEE2E2' }]}>
+                                    <Ionicons name="bed" size={20} color="#DC2626" />
+                                </View>
+                                <Text style={[s.bedNum, { color: '#DC2626' }]}>{data.occupiedBeds}</Text>
+                                <Text style={s.bedLbl}>Occupied</Text>
+                            </TouchableOpacity>
+
+                            <View style={s.bedSep} />
+
+                            {/* Notice — Coming Soon */}
+                            <TouchableOpacity
+                                style={s.bedCell}
+                                activeOpacity={0.7}
+                                onPress={() =>
+                                    navigation.navigate('ComingSoon', {
+                                        featureName: 'Notice Board',
+                                        description:
+                                            'Send announcements and notices to all tenants. Track who has read them.',
+                                        icon: 'megaphone-outline',
+                                    })
+                                }
+                            >
+                                <View style={[s.bedIcon, { backgroundColor: '#F3F4F6' }]}>
+                                    <Ionicons name="megaphone-outline" size={20} color="#9CA3AF" />
+                                </View>
+                                <View style={s.soonPill}>
+                                    <Text style={s.soonPillText}>Soon</Text>
+                                </View>
+                                <Text style={[s.bedLbl, { color: '#9CA3AF' }]}>Notice</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
+                    {/* ─────────────────── QUICK MANAGEMENT ─────────────────── */}
+                    <View style={s.card}>
+                        <View style={s.cardHeader}>
+                            <View style={s.cardHeaderLeft}>
+                                <Ionicons name="flash-outline" size={17} color="#7C3AED" />
+                                <Text style={s.cardTitle}>Quick Management</Text>
+                            </View>
+                        </View>
+                        <View style={s.quickRow}>
+                            {QUICK_ACTIONS.map((a, i) => (
+                                <TouchableOpacity
+                                    key={i}
+                                    style={s.quickItem}
+                                    activeOpacity={0.75}
+                                    onPress={() => handleQuickAction(a)}
+                                >
+                                    <View style={s.quickIconWrap}>
+                                        <View style={[s.quickIconCircle, { backgroundColor: a.bg }]}>
+                                            <Ionicons name={a.icon as any} size={22} color={a.color} />
+                                        </View>
+                                        {a.comingSoon && (
+                                            <View style={s.lockBadge}>
+                                                <Ionicons name="lock-closed" size={7} color="#FFF" />
+                                            </View>
+                                        )}
+                                    </View>
+                                    <Text
+                                        style={[
+                                            s.quickLabel,
+                                            a.comingSoon && { color: '#9CA3AF' },
+                                        ]}
+                                        numberOfLines={2}
+                                    >
+                                        {a.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </View>
+
+                    {/* ─────────────────── STATISTICS ─────────────────── */}
+                    <View style={s.sectionBlock}>
+                        <Text style={s.sectionTitle}>📊 Statistics</Text>
+                        <View style={s.statsGrid}>
+
+                            {/* Active Tenants */}
+                            <TouchableOpacity
+                                style={[s.statCard, { backgroundColor: '#F5F3FF' }]}
+                                onPress={() => navigation.navigate('Students')}
                                 activeOpacity={0.8}
                             >
-                                <View style={[s.quickIconBox, { backgroundColor: a.bg }]}>
-                                    <Text style={s.quickEmoji}>{a.emoji}</Text>
+                                <View style={[s.statIconBox, { backgroundColor: '#EDE9FE' }]}>
+                                    <Ionicons name="people" size={20} color="#7C3AED" />
                                 </View>
-                                <Text style={s.quickLabel}>{a.label}</Text>
+                                <Text style={[s.statNum, { color: '#7C3AED' }]}>{data.activeTenants}</Text>
+                                <Text style={s.statLbl}>Active Tenants</Text>
                             </TouchableOpacity>
-                        ))}
+
+                            {/* Left Tenants */}
+                            <TouchableOpacity
+                                style={[s.statCard, { backgroundColor: '#F9FAFB' }]}
+                                onPress={() => navigation.navigate('Students', { filter: 'Inactive' })}
+                                activeOpacity={0.8}
+                            >
+                                <View style={[s.statIconBox, { backgroundColor: '#F3F4F6' }]}>
+                                    <Ionicons name="person-remove" size={20} color="#6B7280" />
+                                </View>
+                                <Text style={[s.statNum, { color: '#6B7280' }]}>{data.leftTenants}</Text>
+                                <Text style={s.statLbl}>Left Tenants</Text>
+                            </TouchableOpacity>
+
+                            {/* Collected Amount */}
+                            <TouchableOpacity
+                                style={[s.statCard, { backgroundColor: '#F0FDF4' }]}
+                                onPress={() => navigation.navigate('CollectedPayments')}
+                                activeOpacity={0.8}
+                            >
+                                <View style={[s.statIconBox, { backgroundColor: '#DCFCE7' }]}>
+                                    <Ionicons name="cash" size={20} color="#16A34A" />
+                                </View>
+                                <Text style={[s.statNum, { color: '#16A34A' }]}>{fmt(data.monthAmount)}</Text>
+                                <Text style={s.statLbl}>Collected</Text>
+                            </TouchableOpacity>
+
+                            {/* Pending Dues */}
+                            <TouchableOpacity
+                                style={[s.statCard, { backgroundColor: '#FFFBEB' }]}
+                                onPress={() => navigation.navigate('PendingTab')}
+                                activeOpacity={0.8}
+                            >
+                                <View style={[s.statIconBox, { backgroundColor: '#FEF3C7' }]}>
+                                    <Ionicons name="time" size={20} color="#D97706" />
+                                </View>
+                                <Text style={[s.statNum, { color: '#D97706' }]}>{fmt(data.totalDuesAmount)}</Text>
+                                <Text style={s.statLbl}>Pending Dues</Text>
+                                {data.totalDuesAmount > 0 && <View style={s.redDot} />}
+                            </TouchableOpacity>
+
+                        </View>
                     </View>
 
-                    {/* ── Today Payment Split ── */}
-                    {data.todaySplit.length > 0 && (
-                        <View style={[s.infoCard, { marginBottom: 16 }]}>
-                            <Text style={s.infoCardIcon}>💳</Text>
-                            <View style={{ flex: 1 }}>
-                                <Text style={s.infoCardTitle}>Today by Payment Mode</Text>
-                                <Text style={s.infoCardSub}>Split of today's collections</Text>
-                            </View>
-                            <View style={{ alignItems: 'flex-end' }}>
-                                {data.todaySplit.map((m, idx) => (
-                                    <Text key={idx} style={s.splitText}>
-                                        {m.mode}: ₹{Number(m.total || 0).toLocaleString('en-IN')}
-                                    </Text>
-                                ))}
-                            </View>
-                        </View>
-                    )}
+                    {/* ─────────────────── FINANCE HUB ─────────────────── */}
+                    <View style={s.sectionBlock}>
+                        <Text style={s.sectionTitle}>💹 Finance Hub</Text>
 
-                    {/* ── Earnings Report Button ── */}
+                        {/* Dues Report — full width */}
+                        <TouchableOpacity
+                            style={s.finHubCard}
+                            onPress={() => navigation.navigate('PendingTab')}
+                            activeOpacity={0.85}
+                        >
+                            <View style={[s.finHubAccent, { backgroundColor: '#DC2626' }]} />
+                            <View style={[s.finHubIconBox, { backgroundColor: '#FEE2E2' }]}>
+                                <Ionicons name="time-outline" size={22} color="#DC2626" />
+                            </View>
+                            <View style={s.finHubBody}>
+                                <Text style={s.finHubTitle}>Dues Report</Text>
+                                <Text style={s.finHubSub}>Tap to view all unpaid tenants</Text>
+                            </View>
+                            <View style={s.finHubRight}>
+                                <Text style={[s.finHubAmount, { color: '#DC2626' }]}>
+                                    ₹{data.totalDuesAmount.toLocaleString('en-IN')}
+                                </Text>
+                                <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
+                            </View>
+                        </TouchableOpacity>
+
+                        {/* Receipts — full width */}
+                        <TouchableOpacity
+                            style={s.finHubCard}
+                            onPress={() => navigation.navigate('CollectedPayments')}
+                            activeOpacity={0.85}
+                        >
+                            <View style={[s.finHubAccent, { backgroundColor: '#16A34A' }]} />
+                            <View style={[s.finHubIconBox, { backgroundColor: '#DCFCE7' }]}>
+                                <Ionicons name="receipt-outline" size={22} color="#16A34A" />
+                            </View>
+                            <View style={s.finHubBody}>
+                                <Text style={s.finHubTitle}>Receipts & History</Text>
+                                <Text style={s.finHubSub}>This month's collections</Text>
+                            </View>
+                            <View style={s.finHubRight}>
+                                <Text style={[s.finHubAmount, { color: '#16A34A' }]}>
+                                    ₹{data.monthAmount.toLocaleString('en-IN')}
+                                </Text>
+                                <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
+                            </View>
+                        </TouchableOpacity>
+
+                    </View>
+
+                    {/* ─────────────────── REVENUE OVERVIEW ─────────────────── */}
                     <TouchableOpacity
-                        style={s.infoCard}
+                        style={s.card}
+                        activeOpacity={0.9}
                         onPress={() => navigation.navigate('IncomeDetails', { period: 'month' })}
-                        activeOpacity={0.85}
                     >
-                        <Text style={s.infoCardIcon}>📊</Text>
-                        <View style={{ flex: 1 }}>
-                            <Text style={s.infoCardTitle}>See Full Earnings Report</Text>
-                            <Text style={s.infoCardSub}>Day · Week · Month breakdown</Text>
+                        <View style={s.cardHeader}>
+                            <View style={s.cardHeaderLeft}>
+                                <Ionicons name="trending-up-outline" size={17} color="#7C3AED" />
+                                <Text style={s.cardTitle}>Revenue Overview</Text>
+                            </View>
+                            <Text style={s.cardMeta}>Last 6 months</Text>
                         </View>
-                        <Text style={s.arrowText}>›</Text>
+                        <View style={s.chartWrap}>
+                            {revenueData.map((item, i) => (
+                                <RevenueBar
+                                    key={i}
+                                    amount={item.amount}
+                                    maxAmount={maxRevenue}
+                                    month={item.month}
+                                    isCurrent={item.isCurrent}
+                                />
+                            ))}
+                        </View>
+                        <Text style={s.chartNote}>
+                            * Past months will fill as data accumulates
+                        </Text>
                     </TouchableOpacity>
 
-                    {/* ── Defaulters / Who Hasn't Paid ── */}
-                    <View style={s.sectionHeader}>
-                        <Text style={s.sectionTitle}>
-                            {data.unpaidStudents.length > 0 ? '⚠️  Who Hasn\'t Paid?' : ''}
-                        </Text>
-                        {data.unpaidStudents.length > 0 && (
-                            <TouchableOpacity onPress={() => navigation.navigate('FinanceTab', { mode: 'Rent', statusFilter: 'Unpaid' })}>
-                                <Text style={s.seeAllText}>See All →</Text>
-                            </TouchableOpacity>
-                        )}
-                    </View>
 
-                    {data.unpaidStudents.length > 0 ? (
-                        data.unpaidStudents.map(student => (
-                            <TouchableOpacity
-                                key={student.id}
-                                style={[s.studentCard, student.isOverdue && s.studentCardOverdue]}
-                                activeOpacity={0.9}
-                                onPress={() => navigation.navigate('StudentDetails', { studentId: student.id })}
-                            >
-                                <View style={[s.stripe, { backgroundColor: student.isOverdue ? '#EF4444' : '#F59E0B' }]} />
-                                <View style={s.studentInfo}>
-                                    <Text style={s.studentName}>{student.name}</Text>
-                                    <Text style={[s.studentDays, { color: student.isOverdue ? '#EF4444' : '#D97706' }]}>
-                                        {student.isOverdue
-                                            ? `${student.daysLate} day${student.daysLate !== 1 ? 's' : ''} overdue`
-                                            : `Due in ${student.daysLeft} day${student.daysLeft !== 1 ? 's' : ''}`}
-                                    </Text>
-                                </View>
-                                <Text style={s.studentAmount}>₹{student.amount.toLocaleString('en-IN')}</Text>
-                                <TouchableOpacity
-                                    style={[s.callBtn, student.isOverdue && s.callBtnRed]}
-                                    onPress={() => Linking.openURL(`tel:${student.phone}`)}
-                                >
-                                    <Text style={s.callBtnText}>📞 Call</Text>
-                                </TouchableOpacity>
-                            </TouchableOpacity>
-                        ))
-                    ) : (
-                        <View style={s.allClearBanner}>
-                            <Text style={{ fontSize: 36 }}>🎉</Text>
-                            <View style={{ marginLeft: 16 }}>
-                                <Text style={s.allClearTitle}>All Clear!</Text>
-                                <Text style={s.allClearSub}>No pending payments this month</Text>
-                            </View>
-                        </View>
-                    )}
-
-                    <View style={{ height: 30 }} />
                 </View>
             </ScrollView>
         </View>
     );
 }
 
+// ─── Bar chart styles ─────────────────────────────────────────────────────────
+const bc = StyleSheet.create({
+    column: { flex: 1, alignItems: 'center' },
+    topLabel: { fontSize: 8, color: '#7C3AED', fontWeight: '700', marginBottom: 3, height: 12 },
+    barWrap: {
+        height: 80,
+        justifyContent: 'flex-end',
+        alignItems: 'center',
+        width: '100%',
+        paddingHorizontal: 3,
+    },
+    bar: { width: '80%', borderTopLeftRadius: 4, borderTopRightRadius: 4 },
+    month: { fontSize: 10, color: '#94A3B8', fontWeight: '600', marginTop: 5 },
+});
+
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-    root: { flex: 1, backgroundColor: '#F1F5F9' },
+    root: { flex: 1, backgroundColor: '#F8F7FF' },
 
-    // Header
+    // ── Header ──────────────────────────────────────────────────────────────
     header: {
+        paddingTop: 52,
+        paddingBottom: 24,
+        paddingHorizontal: 20,
+        borderBottomLeftRadius: 28,
+        borderBottomRightRadius: 28,
+    },
+    headerRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+    },
+    greeting: { fontSize: 13, color: 'rgba(255,255,255,0.75)', fontWeight: '600' },
+    ownerName: { fontSize: 22, fontWeight: '900', color: '#FFF', marginTop: 2 },
+    hostelTag: { fontSize: 11, color: 'rgba(255,255,255,0.65)', fontWeight: '600', marginTop: 4 },
+    bellBtn: {
+        width: 42,
+        height: 42,
+        borderRadius: 21,
+        backgroundColor: 'rgba(255,255,255,0.18)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 2,
+    },
+    bellDot: {
+        position: 'absolute',
+        top: 8,
+        right: 8,
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#FBBF24',
+        borderWidth: 1.5,
+        borderColor: '#7C3AED',
+    },
+
+    // ── Loading skeleton ─────────────────────────────────────────────────────
+    headerSkeleton: {
         paddingTop: 52,
         paddingBottom: 28,
         paddingHorizontal: 20,
-        borderBottomLeftRadius: 32,
-        borderBottomRightRadius: 32,
+        borderBottomLeftRadius: 28,
+        borderBottomRightRadius: 28,
     },
-    headerTopRow: {
+    skHeaderRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: 20,
+        alignItems: 'center',
     },
-    greeting: { fontSize: 13, color: 'rgba(255,255,255,0.8)', fontWeight: '600' },
-    userName: { fontSize: 20, fontWeight: '800', color: '#FFF', marginTop: 1 },
-    hostelTag: { fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: '600', marginTop: 3 },
-    headerActions: { flexDirection: 'row', gap: 12 },
 
-    amountLabel: { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.75)', marginBottom: 4 },
-    bigAmount: { fontSize: 44, fontWeight: '900', color: '#FFF', letterSpacing: -1, marginBottom: 16 },
-
-    progressBg: { height: 8, backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 99, overflow: 'hidden', marginBottom: 8 },
-    progressFill: { height: '100%', backgroundColor: '#FFF', borderRadius: 99 },
-    progressText: { fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: '600', marginBottom: 20 },
-
-    statsRow: {
-        flexDirection: 'row',
-        backgroundColor: 'rgba(0,0,0,0.18)',
-        borderRadius: 16,
-        paddingVertical: 14,
+    // ── Error ────────────────────────────────────────────────────────────────
+    errorCenter: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 28,
     },
-    statBox: { flex: 1, alignItems: 'center' },
-    statDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.2)' },
-    statNum: { fontSize: 20, fontWeight: '900', color: '#FFF', marginBottom: 2 },
-    statLbl: { fontSize: 10, color: 'rgba(255,255,255,0.65)', fontWeight: '600' },
-
-    // Body
-    body: { flex: 1 },
-    bodyContent: { padding: 16 },
-
-    // Loading
-    loadingText: { fontSize: 15, fontWeight: '700', color: '#64748B', marginTop: 14 },
-    loadingSubText: { fontSize: 12, color: '#94A3B8', fontWeight: '500', marginTop: 4 },
-
-    // Error
-    errorBox: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
-    errorEmoji: { fontSize: 52, marginBottom: 12 },
     errorTitle: { fontSize: 20, fontWeight: '800', color: '#1E293B', marginBottom: 8 },
-    errorSub: { fontSize: 13, color: '#64748B', textAlign: 'center', lineHeight: 20, marginBottom: 24 },
-    retryBtn: { paddingHorizontal: 32, paddingVertical: 14, borderRadius: 14, marginBottom: 32 },
+    errorSub: {
+        fontSize: 13,
+        color: '#64748B',
+        textAlign: 'center',
+        lineHeight: 20,
+        marginBottom: 28,
+    },
+    retryBtn: {
+        width: '100%',
+        borderRadius: 16,
+        overflow: 'hidden',
+        elevation: 3,
+        shadowColor: '#7C3AED',
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+    },
+    retryGrad: {
+        paddingVertical: 16,
+        alignItems: 'center',
+    },
     retryText: { color: '#FFF', fontWeight: '800', fontSize: 15 },
 
-    // Quick actions
-    sectionTitle: { fontSize: 15, fontWeight: '800', color: '#1E293B', marginBottom: 12 },
-    sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, marginTop: 4 },
-    seeAllText: { fontSize: 13, fontWeight: '700', color: '#6366F1' },
+    // ── Body ─────────────────────────────────────────────────────────────────
+    body: { padding: 14, gap: 14 },
 
-    quickGrid: {
-        flexDirection: 'row',
-        gap: 12,
-        marginBottom: 20,
-    },
-    quickCard: {
-        flex: 1,
+    // ── Generic card ─────────────────────────────────────────────────────────
+    card: {
         backgroundColor: '#FFF',
-        borderRadius: 18,
-        paddingVertical: 14,
-        alignItems: 'center',
+        borderRadius: 20,
+        padding: 16,
+        elevation: 2,
+        shadowColor: '#7C3AED',
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
-        elevation: 1,
-        shadowColor: '#000',
-        shadowOpacity: 0.04,
-        shadowRadius: 4,
+        borderColor: '#F1F5F9',
     },
-    quickIconBox: {
-        width: 44,
-        height: 44,
-        borderRadius: 14,
-        justifyContent: 'center',
+    cardHeader: {
+        flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 14,
+    },
+    cardHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+    cardTitle: { fontSize: 14, fontWeight: '800', color: '#1E293B' },
+    cardMeta: { fontSize: 11, color: '#94A3B8', fontWeight: '600' },
+
+    // ── Beds Overview ────────────────────────────────────────────────────────
+    bedsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    bedCell: { flex: 1, alignItems: 'center', paddingVertical: 4 },
+    bedIcon: {
+        width: 46,
+        height: 46,
+        borderRadius: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
         marginBottom: 8,
     },
-    quickEmoji: { fontSize: 22 },
-    quickLabel: { fontSize: 10, fontWeight: '700', color: '#475569', textAlign: 'center' },
-
-    // Info card (payment split + earnings report)
-    infoCard: {
-        backgroundColor: '#FFF',
-        borderRadius: 18,
-        padding: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        marginBottom: 16,
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowRadius: 6,
+    bedNum: { fontSize: 24, fontWeight: '900', marginBottom: 3 },
+    bedLbl: { fontSize: 11, color: '#64748B', fontWeight: '600' },
+    bedSep: { width: 1, height: 60, backgroundColor: '#F1F5F9', marginHorizontal: 4 },
+    soonPill: {
+        backgroundColor: '#EDE9FE',
+        borderRadius: 8,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        marginBottom: 4,
     },
-    infoCardIcon: { fontSize: 26 },
-    infoCardTitle: { fontSize: 14, fontWeight: '800', color: '#1E293B' },
-    infoCardSub: { fontSize: 11, color: '#64748B', fontWeight: '500', marginTop: 2 },
-    arrowText: { fontSize: 26, color: '#CBD5E1', fontWeight: '300' },
-    splitText: { fontSize: 11, fontWeight: '800', color: '#1E293B' },
+    soonPillText: { fontSize: 9, fontWeight: '800', color: '#7C3AED' },
 
-    // Defaulters list
-    studentCard: {
+    // ── Quick Management ─────────────────────────────────────────────────────
+    quickRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+    },
+    quickItem: { flex: 1, alignItems: 'center', paddingHorizontal: 2 },
+    quickIconWrap: { position: 'relative', marginBottom: 7 },
+    quickIconCircle: {
+        width: 48,
+        height: 48,
+        borderRadius: 15,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    lockBadge: {
+        position: 'absolute',
+        top: -3,
+        right: -3,
+        width: 16,
+        height: 16,
+        borderRadius: 8,
+        backgroundColor: '#94A3B8',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1.5,
+        borderColor: '#FFF',
+    },
+    quickLabel: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: '#374151',
+        textAlign: 'center',
+        lineHeight: 14,
+    },
+
+    // ── Statistics ───────────────────────────────────────────────────────────
+    sectionBlock: { gap: 10 },
+    sectionTitle: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
+    sectionHeaderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    seeAll: { fontSize: 12, fontWeight: '700', color: '#7C3AED' },
+
+    statsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 12,
+    },
+    statCard: {
+        width: '47%',
+        borderRadius: 18,
+        padding: 14,
+        position: 'relative',
+        elevation: 1,
+        shadowColor: '#000',
+        shadowOpacity: 0.03,
+        shadowRadius: 4,
+    },
+    statIconBox: {
+        width: 38,
+        height: 38,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 10,
+    },
+    statNum: { fontSize: 20, fontWeight: '900', marginBottom: 3 },
+    statLbl: { fontSize: 11, color: '#64748B', fontWeight: '600' },
+    redDot: {
+        position: 'absolute',
+        top: 10,
+        right: 10,
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: '#EF4444',
+    },
+
+    // ── Finance Hub — full-width list rows ──────────────────────────────────
+    finHubCard: {
         backgroundColor: '#FFF',
         borderRadius: 16,
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 10,
         overflow: 'hidden',
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
         borderWidth: 1,
-        borderColor: '#FDE68A',
-        elevation: 1,
+        borderColor: '#F1F5F9',
     },
-    studentCardOverdue: { borderColor: '#FECACA' },
-    stripe: { width: 5, alignSelf: 'stretch' },
-    studentInfo: { flex: 1, paddingVertical: 14, paddingLeft: 12 },
-    studentName: { fontSize: 14, fontWeight: '800', color: '#1E293B', marginBottom: 3 },
-    studentDays: { fontSize: 11, fontWeight: '600' },
-    studentAmount: { fontSize: 14, fontWeight: '900', color: '#1E293B', paddingHorizontal: 10 },
-    callBtn: {
-        backgroundColor: '#FEF3C7',
-        borderRadius: 10,
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        marginRight: 12,
+    finHubAccent: {
+        width: 4,
+        alignSelf: 'stretch',
     },
-    callBtnRed: { backgroundColor: '#FEE2E2' },
-    callBtnText: { fontSize: 11, fontWeight: '700', color: '#92400E' },
-
-    // All-clear banner
-    allClearBanner: {
-        backgroundColor: '#F0FDF4',
-        borderRadius: 18,
-        padding: 20,
-        flexDirection: 'row',
+    finHubIconBox: {
+        width: 44,
+        height: 44,
+        borderRadius: 13,
         alignItems: 'center',
-        borderWidth: 1,
-        borderColor: '#BBF7D0',
+        justifyContent: 'center',
+        margin: 12,
+    },
+    finHubBody: { flex: 1, paddingVertical: 14 },
+    finHubTitle: { fontSize: 14, fontWeight: '800', color: '#1E293B', marginBottom: 3 },
+    finHubSub: { fontSize: 11, color: '#94A3B8', fontWeight: '500' },
+    finHubRight: {
+        alignItems: 'flex-end',
+        paddingRight: 14,
+        gap: 4,
+    },
+    finHubAmount: { fontSize: 15, fontWeight: '900' },
+
+    // ── Revenue chart ────────────────────────────────────────────────────────
+    chartWrap: {
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+        paddingVertical: 8,
+    },
+    chartNote: {
+        fontSize: 10,
+        color: '#CBD5E1',
+        fontWeight: '500',
+        textAlign: 'center',
         marginTop: 4,
     },
-    allClearTitle: { fontSize: 16, fontWeight: '800', color: '#15803D' },
-    allClearSub: { fontSize: 12, color: '#4ADE80', fontWeight: '600', marginTop: 3 },
 });

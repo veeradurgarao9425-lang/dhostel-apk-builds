@@ -259,6 +259,79 @@ async function patchDatabaseSchema() {
       console.error('[schema-patch] Error checking/updating expenses columns:', e.message);
     }
 
+    // 5. Ensure staff table exists
+    try {
+      if (!tableNamesLower.includes('staff')) {
+        console.log('[schema-patch] creating missing staff table...');
+        await db.raw(`
+          CREATE TABLE staff (
+            staff_id INT AUTO_INCREMENT PRIMARY KEY,
+            hostel_id INT NOT NULL,
+            full_name VARCHAR(255) NOT NULL,
+            phone VARCHAR(20) NOT NULL,
+            email VARCHAR(255) NULL,
+            role VARCHAR(100) NOT NULL,
+            status VARCHAR(20) DEFAULT 'ACTIVE',
+            join_date DATE NOT NULL,
+            monthly_salary DECIMAL(10, 2) NULL,
+            aadhaar_number VARCHAR(20) NULL,
+            photo VARCHAR(255) NULL,
+            aadhaar_front VARCHAR(255) NULL,
+            aadhaar_back VARCHAR(255) NULL,
+            notes TEXT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (hostel_id) REFERENCES hostel_master(hostel_id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        console.log('[schema-patch] creating indexes for staff table...');
+        await db.raw("CREATE INDEX idx_staff_hostel ON staff(hostel_id)");
+
+        console.log('[schema-patch] seeding default staff record...');
+        const hostels = await db('hostel_master').select('hostel_id').limit(1);
+        if (hostels.length > 0) {
+          const hid = hostels[0].hostel_id;
+          await db('staff').insert({
+            hostel_id: hid,
+            full_name: 'Veera Durgarao',
+            phone: '9797949646',
+            role: 'Cook',
+            status: 'ACTIVE',
+            join_date: '2026-06-01',
+            monthly_salary: 30000.00
+          });
+        }
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error checking/creating staff table:', e.message);
+    }
+
+    // 6. Ensure reminders table exists
+    try {
+      if (!tableNamesLower.includes('reminders')) {
+        console.log('[schema-patch] creating missing reminders table...');
+        await db.raw(`
+          CREATE TABLE reminders (
+            reminder_id INT AUTO_INCREMENT PRIMARY KEY,
+            hostel_id INT NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            reminder_date DATE NOT NULL,
+            description TEXT NULL,
+            priority VARCHAR(20) DEFAULT 'MEDIUM',
+            category VARCHAR(50) DEFAULT 'General',
+            status VARCHAR(20) DEFAULT 'PENDING',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (hostel_id) REFERENCES hostel_master(hostel_id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        console.log('[schema-patch] creating indexes for reminders table...');
+        await db.raw("CREATE INDEX idx_reminders_hostel ON reminders(hostel_id)");
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error checking/creating reminders table:', e.message);
+    }
+
     console.log('[schema-patch] Schema check and patch complete.');
   } catch (err: any) {
     console.error('[schema-patch] Critical error during schema patching:', err.message);

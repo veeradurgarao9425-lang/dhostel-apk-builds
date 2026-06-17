@@ -17,7 +17,7 @@ export const PlaceholderScreen = ({ route, navigation }: any) => {
             >
                 <View style={styles.headerTop}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                        <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+                        <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>{title}</Text>
                     <View style={{ width: 40 }} />

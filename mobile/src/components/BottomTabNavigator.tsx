@@ -1,92 +1,77 @@
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+/**
+ * 4 tabs — each one is a UNIQUE destination not accessible from any home shortcut:
+ *
+ *  Home      → Dashboard overview
+ *  Pending   → Dedicated pending-dues page (reminder + collect)
+ *  Rooms     → Browse / search all rooms
+ *  More      → Everything else (tenants list, finance, settings, profile…)
+ *
+ * Quick Management on Home = CREATE actions (Add Tenant form, Add Room form, Bills filter)
+ * These tabs        = BROWSE / MANAGE destinations
+ */
+
+const TABS = [
+    { label: 'Home',    icon: 'home',             iconOut: 'home-outline',            route: 'HomeTab'     },
+    { label: 'Pending', icon: 'alert-circle',      iconOut: 'alert-circle-outline',    route: 'PendingTab'  },
+    { label: 'More',    icon: 'grid',              iconOut: 'grid-outline',            route: 'MoreTab'     },
+];
+
+const ACTIVE   = '#7C3AED';
+const INACTIVE = '#94A3B8';
+
 const BottomTabNavigator = ({ state, navigation }: any) => {
-    const { t } = useTranslation();
     const insets = useSafeAreaInsets();
 
-    const tabs = [
-        {
-            name: 'Home',
-            icon: 'home',
-            iconOutline: 'home-outline',
-            label: 'Home',
-            route: 'HomeTab'
-        },
-        {
-            name: 'Students',
-            icon: 'people',
-            iconOutline: 'people-outline',
-            label: 'Students',
-            route: 'StudentsTab'
-        },
-        {
-            name: 'Rooms',
-            icon: 'bed',
-            iconOutline: 'bed-outline',
-            label: 'Rooms',
-            route: 'RoomsTab'
-        },
-        {
-            name: 'Finance',
-            icon: 'wallet',
-            iconOutline: 'wallet-outline',
-            label: 'Finance',
-            route: 'FinanceTab'
-        }
-    ];
-
     return (
-        <View style={[styles.container, { paddingBottom: insets.bottom + 10 }]}>
-            <View style={styles.tabsContainer}>
-                {tabs.map((tab, index) => {
-                    // Check if state.routes[state.index] matches or if we need to find by name
-                    const currentRoute = state.routes[state.index];
-                    const isActive = currentRoute.name === tab.route;
+        <View style={[styles.container, { paddingBottom: insets.bottom + 6 }]}>
+            {TABS.map((tab, index) => {
+                const isActive = state.routes[state.index]?.name === tab.route;
+                const isPending = tab.route === 'PendingTab';
 
-                    const handleTabPress = () => {
-                        const event = navigation.emit({
-                            type: 'tabPress',
-                            target: tab.route,
-                            canPreventDefault: true,
-                        });
+                const handlePress = () => {
+                    const event = navigation.emit({
+                        type: 'tabPress',
+                        target: tab.route,
+                        canPreventDefault: true,
+                    });
+                    if (!isActive && !event.defaultPrevented) {
+                        navigation.navigate(tab.route);
+                    }
+                };
 
-                        if (!isActive && !event.defaultPrevented) {
-                            navigation.navigate(tab.route);
-                        }
-                    };
+                return (
+                    <TouchableOpacity
+                        key={index}
+                        style={styles.tabItem}
+                        onPress={handlePress}
+                        activeOpacity={0.7}
+                    >
+                        {/* Active pill at top */}
+                        {isActive && <View style={styles.activePill} />}
 
-                    return (
-                        <TouchableOpacity
-                            key={index}
-                            style={styles.tabItem}
-                            onPress={handleTabPress}
-                            activeOpacity={0.7}
-                        >
-                            <Ionicons
-                                name={(isActive ? tab.icon : tab.iconOutline) as any}
-                                size={24}
-                                color={isActive ? '#FF6B6B' : '#94A3B8'}
-                            />
-                            {isActive && <View style={styles.activeDot} />}
-                            <Text
-                                style={[
-                                    styles.label,
-                                    {
-                                        color: isActive ? '#FF6B6B' : '#94A3B8',
-                                        fontWeight: isActive ? '700' : '500'
-                                    }
-                                ]}
-                            >
-                                {tab.label}
-                            </Text>
-                        </TouchableOpacity>
-                    );
-                })}
-            </View>
+                        <Ionicons
+                            name={(isActive ? tab.icon : tab.iconOut) as any}
+                            size={22}
+                            color={isActive ? ACTIVE : (isPending ? '#DC2626' : INACTIVE)}
+                        />
+
+                        <Text style={[
+                            styles.label,
+                            {
+                                color: isActive ? ACTIVE : (isPending ? '#DC2626' : INACTIVE),
+                                fontWeight: isActive ? '700' : '500',
+                            },
+                        ]}>
+                            {tab.label}
+                        </Text>
+                    </TouchableOpacity>
+                );
+            })}
         </View>
     );
 };
@@ -94,41 +79,38 @@ const BottomTabNavigator = ({ state, navigation }: any) => {
 const styles = StyleSheet.create({
     container: {
         position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
+        bottom: 0, left: 0, right: 0,
         backgroundColor: '#FFFFFF',
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        paddingTop: 12,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-        elevation: 10,
-    },
-    tabsContainer: {
+        borderTopLeftRadius: 22,
+        borderTopRightRadius: 22,
+        paddingTop: 10,
         flexDirection: 'row',
         justifyContent: 'space-around',
-        alignItems: 'center',
+        alignItems: 'flex-start',
+        shadowColor: '#7C3AED',
+        shadowOffset: { width: 0, height: -3 },
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+        elevation: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#F1E8FF',
     },
     tabItem: {
+        flex: 1,
         alignItems: 'center',
-        justifyContent: 'center',
-        width: 60,
+        justifyContent: 'flex-start',
+        paddingTop: 4,
+        gap: 3,
+        position: 'relative',
     },
-    activeDot: {
-        width: 4,
-        height: 4,
+    activePill: {
+        position: 'absolute',
+        top: -10,
+        width: 28, height: 3,
         borderRadius: 2,
-        backgroundColor: '#FF6B6B',
-        marginTop: 4,
-        marginBottom: 2
+        backgroundColor: ACTIVE,
     },
-    label: {
-        fontSize: 10,
-        marginTop: 0,
-    },
+    label: { fontSize: 9, marginTop: 1, letterSpacing: 0.2 },
 });
 
 export default BottomTabNavigator;

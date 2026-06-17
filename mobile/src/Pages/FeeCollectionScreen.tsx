@@ -749,7 +749,7 @@ export default function FeeCollectionScreen({ navigation, route }: any) {
                                 fee={fee}
                                 onCollect={openCollect}
                                 onReceipt={(f: any) => navigation.navigate('Receipt', { feeData: f })}
-                                onPress={() => navigation.navigate('StudentDetails', { studentId: fee.student_id })}
+                                onPress={() => navigation.navigate('TenantTransactions', { studentId: fee.student_id, studentName: `${fee.first_name} ${fee.last_name}` })}
                             />
                         ))
                     )}

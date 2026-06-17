@@ -150,6 +150,16 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
     }
     const pendingDues = await pendingDuesQuery.first();
 
+    // Get left tenants (inactive students) count
+    let leftTenantsQuery = db('students')
+      .where('status', 0)
+      .count('* as count');
+    if (hostelIds.length > 0) {
+      leftTenantsQuery = leftTenantsQuery.whereIn('hostel_id', hostelIds);
+    }
+    const leftTenantsData = await leftTenantsQuery.first();
+    const leftTenants = leftTenantsData?.count || 0;
+
     // Get today's rent collection (from fee_payments table)
     // Get today's rent collection (from fee_payments table)
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -195,6 +205,7 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
         feeCollectionCount: Number(feeCollection?.count || 0),
         pendingDuesCount: Number(pendingDues?.count || 0),
         pendingDuesAmount: Number(pendingDues?.total || 0),
+        leftTenants: Number(leftTenants),
         monthlyRentDue,
         monthlyRentPending,
         monthlyRentCollected,

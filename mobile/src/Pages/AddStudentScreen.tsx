@@ -185,6 +185,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
     const { user } = useAuth();
     const { student, isEdit } = route.params || {};
     const [loading, setLoading] = useState(false);
+    const [residentType, setResidentType] = useState('Student');
     const [formData, setFormData] = useState({
         first_name: '',
         last_name: '',
@@ -201,6 +202,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
         admission_fee: '0',
         admission_status: 'Paid',
         permanent_address: '',
+        present_working_address: '',
         room_id: '',
         floor_number: '',
         monthly_rent: '',
@@ -223,6 +225,8 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
     useEffect(() => {
         fetchInitialData();
         if (isEdit && student) {
+            const isEmp = !!student.present_working_address || student.guardian_phone === '0000000000';
+            setResidentType(isEmp ? 'Employee' : 'Student');
             setFormData({
                 first_name: student.first_name || '',
                 last_name: student.last_name || '',
@@ -233,12 +237,13 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 id_proof_number: student.id_proof_number || '',
                 id_proof_type_id: student.id_proof_type ? student.id_proof_type.toString() : '',
                 guardian_name: student.guardian_name || '',
-                guardian_phone: student.guardian_phone ? student.guardian_phone.replace(/\D/g, '').slice(0, 10) : '',
+                guardian_phone: student.guardian_phone && student.guardian_phone !== '0000000000' ? student.guardian_phone.replace(/\D/g, '').slice(0, 10) : '',
                 guardian_relation_id: student.guardian_relation ? student.guardian_relation.toString() : '',
                 admission_date: student.admission_date ? new Date(student.admission_date).toISOString().split('T')[0] : '',
                 admission_fee: student.admission_fee ? student.admission_fee.toString() : '0',
                 admission_status: student.admission_status === 1 ? 'Paid' : 'Unpaid',
                 permanent_address: student.permanent_address || '',
+                present_working_address: student.present_working_address || '',
                 room_id: student.room_id ? student.room_id.toString() : '',
                 floor_number: student.floor_number ? student.floor_number.toString() : '',
                 monthly_rent: student.monthly_rent ? student.monthly_rent.toString() : '',
@@ -285,11 +290,13 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
             admission_fee: '0',
             admission_status: 'Paid',
             permanent_address: '',
+            present_working_address: '',
             room_id: '',
             floor_number: '',
             monthly_rent: '',
         });
         setErrors({});
+        setResidentType('Student');
     };
 
     const validate = () => {
@@ -321,10 +328,12 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
 
         if (!formData.gender) newErrors.gender = 'Gender is required';
 
-        if (!formData.guardian_phone) {
-            newErrors.guardian_phone = 'Guardian phone is required';
-        } else if (!phoneRegex.test(formData.guardian_phone)) {
-            newErrors.guardian_phone = 'Must be exactly 10 digits';
+        if (residentType === 'Student') {
+            if (!formData.guardian_phone) {
+                newErrors.guardian_phone = 'Guardian phone is required';
+            } else if (!phoneRegex.test(formData.guardian_phone)) {
+                newErrors.guardian_phone = 'Must be exactly 10 digits';
+            }
         }
 
         const isAadhaar = idProofTypes.find(t => t.id.toString() === formData.id_proof_type_id)?.name.toLowerCase().includes('aadhar');
@@ -341,22 +350,9 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
 
     const handleSave = async () => {
         if (!validate()) {
-            // Re-run validation to get errors (since state update might be async/batched, but here we set it in validate)
-            // Actually validate() sets state. We can use the logic inside validate to get keys, 
-            // but since we just ran it, 'errors' state might not be updated yet in this closure?
-            // Wait, validate() returns boolean.
-            // Let's modify validate to RETURN errors or rely on the fact that if it returns false, we can find out why.
-            // Be safer: construct error string inside validate? Or just do this:
-
-            // To be sure we show the correct errors, let's just grab them from the same logic if possible or trust the user sees the red boxes.
-            // But user asked "what error is trigger". So showing the fields is helpful.
-
-            // Let's copy-paste the error detection logic or assume the user sees the red text. 
-            // Actually, I'll alert the fields.
             const validationErrors = [];
             const nameRegex = /^[a-zA-Z0-9\s]+$/;
             const phoneRegex = /^\d{10}$/;
-            const aadhaarRegex = /^\d{12}$/;
 
             if (!formData.first_name) validationErrors.push('First Name');
             else if (!nameRegex.test(formData.first_name)) validationErrors.push('First Name (Invalid)');
@@ -364,8 +360,10 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
             if (!formData.phone) validationErrors.push('Phone');
             else if (!phoneRegex.test(formData.phone)) validationErrors.push('Phone (Must be 10 digits)');
 
-            if (!formData.guardian_phone) validationErrors.push('Guardian Phone');
-            else if (!phoneRegex.test(formData.guardian_phone)) validationErrors.push('Guardian Phone (Must be 10 digits)');
+            if (residentType === 'Student') {
+                if (!formData.guardian_phone) validationErrors.push('Guardian Phone');
+                else if (!phoneRegex.test(formData.guardian_phone)) validationErrors.push('Guardian Phone (Must be 10 digits)');
+            }
 
             if (!formData.gender) validationErrors.push('Gender');
             if (!formData.admission_date) validationErrors.push('Admission Date');
@@ -381,13 +379,15 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
             const payload = {
                 ...formData,
                 hostel_id: user?.hostel_id,
+                guardian_name: residentType === 'Employee' && !formData.guardian_name ? 'N/A' : formData.guardian_name,
+                guardian_phone: residentType === 'Employee' && !formData.guardian_phone ? '0000000000' : formData.guardian_phone,
                 admission_fee: parseFloat(formData.admission_fee),
                 admission_status: formData.admission_status === 'Paid' ? 1 : 0,
                 status: isEdit ? student.status : 1, // Preserve status on edit or default to 1 on create
                 room_id: formData.room_id ? parseInt(formData.room_id) : null,
                 floor_number: formData.floor_number ? parseInt(formData.floor_number) : null,
                 id_proof_type: formData.id_proof_type_id || null,
-                guardian_relation: formData.guardian_relation_id || null,
+                guardian_relation: residentType === 'Employee' ? null : (formData.guardian_relation_id || null),
                 id_proof_status: 1,
                 monthly_rent: parseFloat(formData.monthly_rent || '0'),
             };
@@ -440,6 +440,13 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 keyboardShouldPersistTaps="handled"
             >
                 <View style={styles.formCard}>
+                    <Selector
+                        label="Resident Type *"
+                        options={['Student', 'Employee']}
+                        selected={residentType}
+                        onSelect={(val: string) => setResidentType(val)}
+                    />
+
                     <View style={styles.row}>
                         <View style={{ flex: 1, marginRight: 10 }}>
                             <FormInput
@@ -552,50 +559,68 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                         }}
                     />
 
-                    <Text style={styles.sectionTitle}>Guardian Information</Text>
-                    <FormInput
-                        label="Guardian Name"
-                        icon={User}
-                        placeholder="Ex: Robert Doe"
-                        value={formData.guardian_name}
-                        onChangeText={(text: string) => {
-                            const cleaned = text.replace(/[^a-zA-Z0-9\s]/g, '');
-                            const newFormData = { ...formData, guardian_name: cleaned };
-                            setFormData(newFormData);
-                        }}
-                    />
-
-                    <View style={styles.row}>
-                        <View style={{ flex: 1, marginRight: 10 }}>
-                            <SelectField
-                                label="Relation"
-                                value={relations.find(r => r.relation_id.toString() === formData.guardian_relation_id)?.relation_name}
-                                placeholder="Select Relation"
-                                icon={Users}
-                                onPress={() => setRelationModalVisible(true)}
-                            />
-                        </View>
-                        <View style={{ flex: 1 }}>
+                    {residentType === 'Student' ? (
+                        <>
+                            <Text style={styles.sectionTitle}>Guardian Information</Text>
                             <FormInput
-                                label="Guardian Phone *"
-                                icon={Phone}
-                                placeholder="9876543211"
-                                keyboardType="phone-pad"
-                                value={formData.guardian_phone}
-                                error={errors.guardian_phone}
+                                label="Guardian Name"
+                                icon={User}
+                                placeholder="Ex: Robert Doe"
+                                value={formData.guardian_name}
                                 onChangeText={(text: string) => {
-                                    const cleaned = text.replace(/\D/g, '').slice(0, 10);
-                                    const newFormData = { ...formData, guardian_phone: cleaned };
+                                    const cleaned = text.replace(/[^a-zA-Z0-9\s]/g, '');
+                                    const newFormData = { ...formData, guardian_name: cleaned };
                                     setFormData(newFormData);
-                                    if (errors.guardian_phone && cleaned.length === 10) {
-                                        const newErrors = { ...errors };
-                                        delete newErrors.guardian_phone;
-                                        setErrors(newErrors);
-                                    }
                                 }}
                             />
-                        </View>
-                    </View>
+
+                            <View style={styles.row}>
+                                <View style={{ flex: 1, marginRight: 10 }}>
+                                    <SelectField
+                                        label="Relation"
+                                        value={relations.find(r => r.relation_id.toString() === formData.guardian_relation_id)?.relation_name}
+                                        placeholder="Select Relation"
+                                        icon={Users}
+                                        onPress={() => setRelationModalVisible(true)}
+                                    />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <FormInput
+                                        label="Guardian Phone *"
+                                        icon={Phone}
+                                        placeholder="9876543211"
+                                        keyboardType="phone-pad"
+                                        value={formData.guardian_phone}
+                                        error={errors.guardian_phone}
+                                        onChangeText={(text: string) => {
+                                            const cleaned = text.replace(/\D/g, '').slice(0, 10);
+                                            const newFormData = { ...formData, guardian_phone: cleaned };
+                                            setFormData(newFormData);
+                                            if (errors.guardian_phone && cleaned.length === 10) {
+                                                const newErrors = { ...errors };
+                                                delete newErrors.guardian_phone;
+                                                setErrors(newErrors);
+                                            }
+                                        }}
+                                    />
+                                </View>
+                            </View>
+                        </>
+                    ) : (
+                        <>
+                            <Text style={styles.sectionTitle}>Company & Work Details</Text>
+                            <FormInput
+                                label="Company Name & Office Address"
+                                icon={MapPin}
+                                placeholder="Ex: TCS, Madhapur Office"
+                                value={formData.present_working_address}
+                                onChangeText={(text: string) => {
+                                    const newFormData = { ...formData, present_working_address: text };
+                                    setFormData(newFormData);
+                                }}
+                            />
+                        </>
+                    )}
 
                     <Text style={styles.sectionTitle}>Admission Details</Text>
                     <SelectField

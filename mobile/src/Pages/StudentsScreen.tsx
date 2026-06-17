@@ -18,6 +18,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
 import { Search, Users, Plus, Phone, MessageCircle, X, Calendar } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../contexts/AuthContext';
@@ -158,7 +159,7 @@ const footerStyles = StyleSheet.create({
 });
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
-export default function StudentsScreen({ navigation }: any) {
+export default function StudentsScreen({ navigation, route }: any) {
     const { user } = useAuth();
     const { theme } = useTheme();
 
@@ -173,6 +174,14 @@ export default function StudentsScreen({ navigation }: any) {
     const [counts, setCounts] = useState({ active: 0, inactive: 0, total: 0 });
     const [dateFilter, setDateFilter] = useState<Date | null>(null);
     const [showDatePicker, setShowDatePicker] = useState(false);
+
+    // Update activeTab if passed via params
+    useEffect(() => {
+        if (route?.params?.filter) {
+            setActiveTab(route.params.filter);
+            navigation.setParams({ filter: undefined });
+        }
+    }, [route?.params]);
 
     const abortRef = useRef<AbortController | null>(null);
     const searchTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -360,7 +369,16 @@ export default function StudentsScreen({ navigation }: any) {
 
             <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={styles.header}>
                 <View style={styles.headerRow}>
-                    <View>
+                    {navigation.canGoBack() && (
+                        <TouchableOpacity
+                            style={styles.backBtn}
+                            onPress={() => navigation.goBack()}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons name="chevron-back" size={20} color="#FFF" />
+                        </TouchableOpacity>
+                    )}
+                    <View style={{ flex: 1 }}>
                         <Text style={styles.headerTitle}>Student Directory</Text>
                         <Text style={styles.headerSubtitle}>{subtitleText}</Text>
                     </View>
@@ -494,6 +512,12 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: 20
+    },
+    backBtn: {
+        width: 40, height: 40, borderRadius: 20,
+        backgroundColor: 'rgba(255,255,255,0.18)',
+        alignItems: 'center', justifyContent: 'center',
+        marginRight: 12,
     },
     headerTitle: { fontSize: 24, fontWeight: '900', color: '#FFF' },
     headerSubtitle: { fontSize: 12, color: 'rgba(255,255,255,0.8)', fontWeight: '600' },
