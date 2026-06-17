@@ -12,15 +12,12 @@ import api from '../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { toLocalDateStr as toLocalDateString } from '../utils/dateUtils';
 
 const { width } = Dimensions.get('window');
 
-function toLocalDateString(date: Date): string {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-}
+// toLocalDateString is now imported from utils/dateUtils as an alias.
+
 
 export default function CollectedPaymentsScreen() {
     const navigation = useNavigation<any>();
@@ -227,7 +224,7 @@ export default function CollectedPaymentsScreen() {
             <StatusBar barStyle="light-content" />
 
             {/* HEADER */}
-            <LinearGradient colors={['#059669', '#10B981']} style={s.header}>
+            <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={s.header}>
                 <View style={s.navRow}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtnCircle}>
                         <Ionicons name="chevron-back" size={22} color="#059669" />

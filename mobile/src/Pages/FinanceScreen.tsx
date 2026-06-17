@@ -3,7 +3,6 @@ import {
     View, Text, StyleSheet, TouchableOpacity, StatusBar, FlatList, Modal,
     TextInput, Alert, ActivityIndicator, Dimensions, LayoutAnimation,
     RefreshControl, Linking, ScrollView, Platform, UIManager, InteractionManager,
-    Animated
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Search, MessageCircle, X, TrendingUp, TrendingDown, ChevronRight, ChevronLeft, Calendar, Tag, Plus, Receipt } from 'lucide-react-native';
@@ -13,7 +12,9 @@ import DateTimePickerModal from "react-native-modal-datetime-picker";
 import api from '../services/api';
 import { HeaderNotification } from '../components/HeaderNotification';
 import { ProfileMenu } from '../components/ProfileMenu';
+import { PaymentDrawer } from '../components/PaymentDrawer';
 import { useTheme } from '../../contexts/ThemeContext';
+import { toLocalDateStr } from '../utils/dateUtils';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -86,13 +87,8 @@ const catColor = (name: string) => CAT_COLORS[name] || '#64748B';
 
 const sf = (v: any): number => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
 
-// FIX: Local date string — avoids IST timezone shift from toISOString()
-function toLocalDateStr(date: Date): string {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-}
+// FIX: toLocalDateStr is now in utils/dateUtils.ts and imported above.
+// Kept this comment so git history is clear about the refactor.
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  RENT CARD
@@ -225,131 +221,11 @@ const ExpenseCard = React.memo(({ item, onPress }: { item: any; onPress: (i: any
     );
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  COLLECT DRAWER
-// ─────────────────────────────────────────────────────────────────────────────
-const CollectDrawer = React.memo(({
-    visible, onClose, selectedFee, paymentModes,
-    payAmount, setPayAmount, payNotes, setPayNotes,
-    payTransactionId, setPayTransactionId,
-    payDate, setPayDate, payDueDate, setPayDueDate,
-    payModeId, setPayModeId, payLoading,
-    onConfirm, themeColor,
-}: any) => {
-    const backdropOpacity = useRef(new Animated.Value(0)).current;
-    const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
-    const [isDueDatePickerVisible, setDueDatePickerVisibility] = useState(false);
+// ─── CollectDrawer moved to components/PaymentDrawer.tsx ────────────────────────
+// This was identical to the CollectDrawer in PendingPaymentsScreen.tsx.
+// Both screens now import <PaymentDrawer /> from components/PaymentDrawer.tsx.
 
-    React.useEffect(() => {
-        Animated.timing(backdropOpacity, {
-            toValue: visible ? 1 : 0,
-            duration: visible ? 220 : 160,
-            delay: visible ? 80 : 0,
-            useNativeDriver: true,
-        }).start();
-    }, [visible]);
 
-    const handleConfirmDate = (d: Date) => { setPayDate(toLocalDateStr(d)); setDatePickerVisibility(false); };
-    const handleConfirmDueDate = (d: Date) => { setPayDueDate(toLocalDateStr(d)); setDueDatePickerVisibility(false); };
-
-    return (
-        <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-            <View style={S.modalRoot}>
-                <Animated.View style={[S.modalBackdrop, { opacity: backdropOpacity }]} />
-                <View style={S.modalOverlay}>
-                    <View style={S.drawerContent}>
-                        <View style={S.drawerHandle} />
-                        <View style={S.drawerHeader}>
-                            <Text style={S.drawerTitle}>Record Payment</Text>
-                            <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                                <X color="#64748B" size={20} />
-                            </TouchableOpacity>
-                        </View>
-
-                        {selectedFee && (
-                            <View style={S.infoSummary}>
-                                <View>
-                                    <Text style={S.summaryName}>{selectedFee.first_name} {selectedFee.last_name}</Text>
-                                    <Text style={S.summaryRoom}>Room {selectedFee.room_number}</Text>
-                                </View>
-                                <View style={S.summaryAmtBox}>
-                                    <Text style={S.summaryAmtLabel}>DUE</Text>
-                                    <Text style={S.summaryAmt}>₹{payAmount}</Text>
-                                </View>
-                            </View>
-                        )}
-
-                        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-                            <Text style={S.label}>Amount (₹) *</Text>
-                            <TextInput style={S.inputField} keyboardType="numeric" value={payAmount} onChangeText={setPayAmount} />
-
-                            <View style={S.row}>
-                                <View style={{ flex: 1, marginRight: 6 }}>
-                                    <Text style={S.label}>Payment Date *</Text>
-                                    <TouchableOpacity style={S.dateField} onPress={() => setDatePickerVisibility(true)}>
-                                        <Calendar size={14} color="#64748B" />
-                                        <Text style={S.dateTextLabel}>{payDate}</Text>
-                                    </TouchableOpacity>
-                                </View>
-                                <View style={{ flex: 1, marginLeft: 6 }}>
-                                    <Text style={S.label}>Due Date *</Text>
-                                    <TouchableOpacity style={S.dateField} onPress={() => setDueDatePickerVisibility(true)}>
-                                        <Calendar size={14} color="#64748B" />
-                                        <Text style={S.dateTextLabel}>{payDueDate}</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-
-                            <Text style={S.label}>Payment Mode</Text>
-                            <View style={S.modeRow}>
-                                {paymentModes.map((m: any) => {
-                                    const mId = (m.payment_mode_id || m.id)?.toString();
-                                    const mName = m.payment_mode_name || m.name || 'Cash';
-                                    const active = payModeId === mId;
-                                    return (
-                                        <TouchableOpacity key={mId}
-                                            style={[S.modeChip, active && { backgroundColor: themeColor, borderColor: themeColor }]}
-                                            onPress={() => setPayModeId(mId)}>
-                                            <Text style={[S.modeText, active && { color: '#FFF' }]}>{mName}</Text>
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                            </View>
-
-                            <Text style={S.label}>Transaction ID (Optional)</Text>
-                            <TextInput style={S.inputField} value={payTransactionId}
-                                onChangeText={setPayTransactionId} placeholder="e.g. UPI-123456" />
-
-                            <Text style={S.label}>Notes</Text>
-                            <TextInput style={[S.inputField, { height: 64, textAlignVertical: 'top' }]}
-                                value={payNotes} onChangeText={setPayNotes} multiline placeholder="Any remarks..." />
-
-                            <View style={{ height: 14 }} />
-                            <TouchableOpacity
-                                style={[S.submitBtn, { backgroundColor: themeColor }, payLoading && { opacity: 0.6 }]}
-                                onPress={onConfirm} disabled={payLoading}>
-                                {payLoading ? (
-                                    <View style={S.submitLoadingRow}>
-                                        <ActivityIndicator color="#FFF" size="small" />
-                                        <Text style={S.submitBtnText}>Processing...</Text>
-                                    </View>
-                                ) : (
-                                    <Text style={S.submitBtnText}>CONFIRM PAYMENT</Text>
-                                )}
-                            </TouchableOpacity>
-                            <View style={{ height: 40 }} />
-                        </ScrollView>
-                    </View>
-                </View>
-            </View>
-
-            <DateTimePickerModal isVisible={isDatePickerVisible} mode="date"
-                onConfirm={handleConfirmDate} onCancel={() => setDatePickerVisibility(false)} date={new Date(payDate)} />
-            <DateTimePickerModal isVisible={isDueDatePickerVisible} mode="date"
-                onConfirm={handleConfirmDueDate} onCancel={() => setDueDatePickerVisibility(false)} date={new Date(payDueDate)} />
-        </Modal>
-    );
-});
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  MAIN SCREEN
@@ -859,7 +735,7 @@ export default function FinanceScreen() {
                 </TouchableOpacity>
             )}
 
-            <CollectDrawer
+            <PaymentDrawer
                 visible={collectModalVisible}
                 onClose={() => setCollectModalVisible(false)}
                 selectedFee={selectedFee}

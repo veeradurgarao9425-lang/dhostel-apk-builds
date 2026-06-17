@@ -11,16 +11,13 @@ import { Ionicons } from '@expo/vector-icons';
 import api from '../services/api';
 import { useTheme } from '../../contexts/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { toLocalDateStr as toLocalDateString } from '../utils/dateUtils';
 
 const { width, height } = Dimensions.get('window');
 type Period = 'day' | 'week' | 'month';
 
-function toLocalDateString(date: Date): string {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-}
+// toLocalDateString is now imported from utils/dateUtils as an alias.
+
 
 function getWeekRangeLabel(start: Date, end: Date): string {
     const fmt = (d: Date) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });

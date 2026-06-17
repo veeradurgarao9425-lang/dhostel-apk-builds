@@ -202,7 +202,7 @@ export default function HomeScreen() {
         return (
             <View style={s.root}>
                 <StatusBar barStyle="light-content" />
-                <LinearGradient colors={['#6D28D9', '#7C3AED']} style={s.headerSkeleton}>
+                <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={s.headerSkeleton}>
                     <View style={s.skHeaderRow}>
                         <View>
                             <Skeleton style={{ width: 100, height: 12, marginBottom: 6 }} />
@@ -232,7 +232,7 @@ export default function HomeScreen() {
         return (
             <View style={s.root}>
                 <StatusBar barStyle="light-content" />
-                <LinearGradient colors={['#6D28D9', '#7C3AED']} style={s.header}>
+                <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={s.header}>
                     <View style={s.headerRow}>
                         <View>
                             <Text style={s.greeting}>{getGreeting()},</Text>
@@ -255,7 +255,7 @@ export default function HomeScreen() {
                         onPress={() => load()}
                         activeOpacity={0.85}
                     >
-                        <LinearGradient colors={['#6D28D9', '#7C3AED']} style={s.retryGrad}>
+                        <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={s.retryGrad}>
                             <Text style={s.retryText}>↺  Retry</Text>
                         </LinearGradient>
                     </TouchableOpacity>
@@ -270,7 +270,7 @@ export default function HomeScreen() {
             <StatusBar barStyle="light-content" />
 
             {/* ─────────────────── FIXED HEADER ─────────────────── */}
-            <LinearGradient colors={['#5B21B6', '#7C3AED']} style={s.header}>
+            <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={s.header}>
                 <View style={s.headerRow}>
                     <View style={{ flex: 1 }}>
                         <Text style={s.greeting}>{getGreeting()},</Text>

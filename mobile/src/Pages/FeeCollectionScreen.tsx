@@ -33,6 +33,7 @@ import { Header } from '../components/Header';
 import { CustomLoader } from '../components/CustomLoader';
 import { ProfileMenu } from '../components/ProfileMenu';
 import { useTheme } from '../../contexts/ThemeContext';
+import { fmtINR, getInitials, avatarColor } from '../utils/formatUtils';
 
 const { width } = Dimensions.get('window');
 
@@ -68,21 +69,6 @@ const STATUS_CONFIG = {
 };
 
 type TabType = 'All' | 'Unpaid' | 'Partial' | 'Paid';
-
-// ─── Helpers ──────────────────────────────────────────────────────────
-const fmtINR = (n: number) =>
-    n >= 100000
-        ? `₹${(n / 100000).toFixed(1)}L`
-        : n >= 1000
-            ? `₹${(n / 1000).toFixed(1)}K`
-            : `₹${n}`;
-
-const getInitials = (first: string, last: string) =>
-    `${(first || ' ')[0]}${(last || ' ')[0]}`.toUpperCase();
-
-const AVATAR_COLORS = ['#FF6B6B', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899'];
-const avatarColor = (name: string) =>
-    AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
 
 // ─── Payment Progress Bar ─────────────────────────────────────────────
 const ProgressBar = ({ paid, total, color }: { paid: number; total: number; color: string }) => {

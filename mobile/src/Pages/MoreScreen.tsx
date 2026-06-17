@@ -174,7 +174,7 @@ export default function MoreScreen() {
 
             {/* Header */}
             <TouchableOpacity onPress={() => navigation.navigate('Profile')} activeOpacity={0.9}>
-                <LinearGradient colors={['#6D28D9', '#7C3AED']} style={s.header}>
+                <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={s.header}>
                     <View style={s.headerContent}>
                         <View style={s.avatarCircle}>
                             <Text style={s.avatarText}>

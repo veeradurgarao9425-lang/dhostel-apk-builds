@@ -274,7 +274,7 @@ export default function RemindersScreen() {
             <StatusBar barStyle="light-content" />
 
             {/* Header */}
-            <LinearGradient colors={['#7C3AED', '#5B21B6']} style={s.header}>
+            <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={s.header}>
                 <View style={s.headerTop}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
                         <Ionicons name="chevron-back" size={20} color="#FFF" />

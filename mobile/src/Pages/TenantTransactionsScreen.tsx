@@ -111,7 +111,7 @@ export default function TenantTransactionsScreen() {
             <StatusBar barStyle="light-content" />
 
             {/* Header */}
-            <LinearGradient colors={['#059669', '#10B981']} style={styles.header}>
+            <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={styles.header}>
                 <View style={styles.headerTop}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
                         <Ionicons name="chevron-back" size={20} color="#FFF" />
