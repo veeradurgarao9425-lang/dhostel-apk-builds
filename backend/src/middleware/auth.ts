@@ -23,6 +23,10 @@ export const authMiddleware = (
     const token = authHeader.substring(7);
     const payload = verifyToken(token);
 
+    if (payload && payload.role_id) {
+      payload.role_id = Number(payload.role_id);
+    }
+
     req.user = payload;
     next();
   } catch (error) {
@@ -63,6 +67,11 @@ export const queryTokenMiddleware = (
     }
 
     const payload = verifyToken(token);
+    
+    if (payload && payload.role_id) {
+      payload.role_id = Number(payload.role_id);
+    }
+
     req.user = payload;
     next();
   } catch (error) {

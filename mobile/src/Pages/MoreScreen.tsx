@@ -7,6 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 
 // ─── Menu item definition ─────────────────────────────────────────────────────
 interface MenuItem {
@@ -163,6 +164,7 @@ const MENU_GROUPS: { groupTitle: string; items: MenuItem[] }[] = [
 export default function MoreScreen() {
     const navigation = useNavigation<any>();
     const { user } = useAuth();
+    const { theme } = useTheme();
 
     const handlePress = (item: MenuItem) => {
         navigation.navigate(item.route, item.routeParams);

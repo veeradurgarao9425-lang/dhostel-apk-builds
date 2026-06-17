@@ -214,6 +214,7 @@ export default function StaffScreen() {
         try {
             setFormLoading(true);
             const payload = {
+                hostel_id: user?.hostel_id,
                 full_name: fullName,
                 phone,
                 email: email || null,
