@@ -8,10 +8,11 @@ import {
     TextInput,
     StatusBar,
     ActivityIndicator,
-    RefreshControl
+    RefreshControl,
+    Alert
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowLeft, Plus, Search, Calendar, ChevronDown, Tag, X } from 'lucide-react-native';
+import { ArrowLeft, Plus, Search, Calendar, ChevronDown, Tag, X, Edit3, Trash2 } from 'lucide-react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../services/api';
 import Toast from 'react-native-toast-message';
@@ -63,6 +64,48 @@ export const ExpenseScreen = ({ navigation }: any) => {
             setLoading(false);
             setRefreshing(false);
         }
+    };
+    const handleDelete = (expense: any) => {
+        Alert.alert(
+            'Delete Expense',
+            `Are you sure you want to delete this expense of ₹${parseFloat(expense.amount || 0).toLocaleString('en-IN')}?`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            setLoading(true);
+                            const response = await api.delete(`/expenses/${expense.expense_id}`);
+                            if (response.data.success) {
+                                Toast.show({
+                                    type: 'success',
+                                    text1: 'Success',
+                                    text2: 'Expense deleted successfully',
+                                });
+                                fetchExpenses();
+                            } else {
+                                Toast.show({
+                                    type: 'error',
+                                    text1: 'Error',
+                                    text2: response.data.message || 'Failed to delete expense',
+                                });
+                            }
+                        } catch (error) {
+                            console.error('Error deleting expense:', error);
+                            Toast.show({
+                                type: 'error',
+                                text1: 'Error',
+                                text2: 'Failed to delete expense',
+                            });
+                        } finally {
+                            setLoading(false);
+                        }
+                    }
+                }
+            ]
+        );
     };
 
     useEffect(() => {
@@ -206,39 +249,58 @@ export const ExpenseScreen = ({ navigation }: any) => {
                         filteredExpenses.map((expense) => {
                             const color = getCatColor(expense.category_name);
                             return (
-                                <TouchableOpacity
-                                    key={expense.expense_id}
-                                    style={styles.expenseCard}
-                                    onPress={() => navigation.navigate('ExpenseDetails', { expense })}
-                                >
-                                    <View style={styles.cardInner}>
-                                        <View style={styles.leftSection}>
-                                            <View style={[styles.iconContainer, { backgroundColor: color + '15' }]}>
-                                                <Tag size={20} color={color} />
+                                <View key={expense.expense_id} style={styles.expenseCard}>
+                                    <TouchableOpacity
+                                        onPress={() => navigation.navigate('ExpenseDetails', { expense })}
+                                        activeOpacity={0.7}
+                                    >
+                                        <View style={styles.cardInner}>
+                                            <View style={styles.leftSection}>
+                                                <View style={[styles.iconContainer, { backgroundColor: color + '15' }]}>
+                                                    <Tag size={20} color={color} />
+                                                </View>
+                                                <View style={styles.infoContainer}>
+                                                    <Text style={styles.expenseTitle}>{expense.category_name}</Text>
+                                                    <Text style={styles.vendorText}>
+                                                        {expense.vendor_name || 'Generic Vendor'}
+                                                    </Text>
+                                                    <Text style={styles.dateText}>{formatDate(expense.expense_date)}</Text>
+                                                </View>
                                             </View>
-                                            <View style={styles.infoContainer}>
-                                                <Text style={styles.expenseTitle}>{expense.category_name}</Text>
-                                                <Text style={styles.vendorText}>
-                                                    {expense.vendor_name || 'Generic Vendor'}
+                                            <View style={styles.rightSection}>
+                                                <Text style={styles.amountText}>-₹{parseFloat(expense.amount).toLocaleString('en-IN')}</Text>
+                                                <View style={styles.paymentModeBadge}>
+                                                    <Text style={styles.paymentModeText}>{expense.payment_mode || 'Cash'}</Text>
+                                                </View>
+                                            </View>
+                                        </View>
+                                        {expense.description && (
+                                            <View style={styles.descriptionContainer}>
+                                                <Text style={styles.descriptionText} numberOfLines={2}>
+                                                    {expense.description}
                                                 </Text>
-                                                <Text style={styles.dateText}>{formatDate(expense.expense_date)}</Text>
                                             </View>
-                                        </View>
-                                        <View style={styles.rightSection}>
-                                            <Text style={styles.amountText}>-₹{parseFloat(expense.amount).toLocaleString('en-IN')}</Text>
-                                            <View style={styles.paymentModeBadge}>
-                                                <Text style={styles.paymentModeText}>{expense.payment_mode || 'Cash'}</Text>
-                                            </View>
-                                        </View>
+                                        )}
+                                    </TouchableOpacity>
+                                    
+                                    {/* Action Buttons Row */}
+                                    <View style={styles.cardActions}>
+                                        <TouchableOpacity 
+                                            style={styles.actionBtn} 
+                                            onPress={() => navigation.navigate('AddExpense', { expense })}
+                                        >
+                                            <Edit3 size={14} color="#3B82F6" />
+                                            <Text style={styles.actionBtnTextBlue}>Edit</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity 
+                                            style={styles.actionBtn} 
+                                            onPress={() => handleDelete(expense)}
+                                        >
+                                            <Trash2 size={14} color="#EF4444" />
+                                            <Text style={styles.actionBtnTextRed}>Delete</Text>
+                                        </TouchableOpacity>
                                     </View>
-                                    {expense.description && (
-                                        <View style={styles.descriptionContainer}>
-                                            <Text style={styles.descriptionText} numberOfLines={2}>
-                                                {expense.description}
-                                            </Text>
-                                        </View>
-                                    )}
-                                </TouchableOpacity>
+                                </View>
                             );
                         })
                     )}
@@ -490,6 +552,36 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.3,
         shadowRadius: 6,
         zIndex: 2000,
+    },
+    cardActions: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        gap: 14,
+        marginTop: 10,
+        paddingTop: 10,
+        borderTopWidth: 1,
+        borderTopColor: '#F1F5F9',
+    },
+    actionBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingVertical: 4,
+        paddingHorizontal: 8,
+        borderRadius: 6,
+        backgroundColor: '#F8FAFC',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    actionBtnTextBlue: {
+        fontSize: 11,
+        color: '#3B82F6',
+        fontWeight: '700',
+    },
+    actionBtnTextRed: {
+        fontSize: 11,
+        color: '#EF4444',
+        fontWeight: '700',
     },
 });
 
