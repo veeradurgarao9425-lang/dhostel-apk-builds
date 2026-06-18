@@ -169,6 +169,7 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
       admission_status,
       status,
       room_id,
+      bed_id,
       floor_number,
       monthly_rent
     } = req.body;
@@ -291,6 +292,7 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
       admission_status: typeof admission_status === 'number' ? admission_status : (admission_status === 'Paid' ? 1 : 0),
       status: typeof status === 'number' ? status : (status === 'Active' ? 1 : 0),
       room_id: room_id || null,
+      bed_id: bed_id || null,
       monthly_rent: roomDetails ? roomDetails.rent_per_bed : (monthly_rent || 0),
       floor_number: floor_number || null,
       created_at: new Date()
@@ -419,13 +421,14 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
       'guardian_name', 'guardian_phone', 'guardian_relation',
       'permanent_address', 'present_working_address',
       'id_proof_type', 'id_proof_number', 'id_proof_status',
-      'admission_date', 'admission_fee', 'admission_status', 'status', 'floor_number'
+      'admission_date', 'admission_fee', 'admission_status', 'status', 'floor_number',
+      'vacate_notice_date', 'vacate_notice_reason', 'bed_id'
     ];
 
     allowedFields.forEach(field => {
       if (req.body[field] !== undefined) {
         // Handle date fields - convert ISO datetime strings to date-only format
-        if (field === 'admission_date' || field === 'date_of_birth') {
+        if (field === 'admission_date' || field === 'date_of_birth' || field === 'vacate_notice_date') {
           updateData[field] = convertToDateOnly(req.body[field]);
         } else {
           updateData[field] = req.body[field];
@@ -451,6 +454,7 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
         if (oldRoomId) {
           updateData.room_id = null;
           updateData.monthly_rent = null;
+          updateData.bed_id = null;
         }
         // Convert to 0
         updateData.status = 0;
@@ -480,6 +484,7 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
         // room_id is null or empty - remove room assignment
         updateData.room_id = null;
         updateData.monthly_rent = null;
+        updateData.bed_id = null;
       } else {
         // Validate and set new room
         const newRoom = await db('rooms').where({ room_id }).first();
@@ -630,6 +635,26 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
               updated_at: new Date()
             });
           console.log(`[updateStudent] Updated current month fee for student ${studentId} to match new rent: ${updatedRent}`);
+        } else {
+          // Auto-create monthly fee for current month on check-in/activation
+          const now = new Date();
+          await db('monthly_fees').insert({
+            student_id: studentId,
+            hostel_id: updatedStudent.hostel_id,
+            fee_month: currentMonth,
+            fee_date: now.getMonth() + 1,
+            monthly_rent: updatedRent,
+            carry_forward: 0.00,
+            total_due: updatedRent,
+            paid_amount: 0.00,
+            balance: updatedRent,
+            fee_status: 'Pending',
+            due_date: null,
+            notes: 'Auto-created on student activation',
+            created_at: new Date(),
+            updated_at: new Date()
+          });
+          console.log(`[updateStudent] Auto-created current month fee for student ${studentId}: ${updatedRent}`);
         }
       } catch (feeError) {
         console.error('[updateStudent] Error syncing monthly fee:', feeError);

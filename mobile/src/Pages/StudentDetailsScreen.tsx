@@ -95,6 +95,13 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
     const [student, setStudent] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
+    // Vacancy Notice state
+    const [noticeModalVisible, setNoticeModalVisible] = useState(false);
+    const [noticeDate, setNoticeDate] = useState(new Date().toISOString().split('T')[0]);
+    const [noticeReason, setNoticeReason] = useState('');
+    const [noticeDatePickerVisible, setNoticeDatePickerVisible] = useState(false);
+    const [noticeSubmitLoading, setNoticeSubmitLoading] = useState(false);
+
     // Payment history (loaded after interaction completes — deferred)
     const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
     const [historyLoading, setHistoryLoading] = useState(true);
@@ -219,36 +226,58 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
         setPayModalVisible(true);
     }, [student, outstandingBalance, fetchPaymentModes]);
 
-    // ── Toggle Active / Inactive status ────────────────────────────────────
+    // ── Toggle Active / Inactive / Pre-booked status ────────────────────────
     const [statusLoading, setStatusLoading] = useState(false);
 
     const handleToggleStatus = useCallback(() => {
         if (!student) return;
-        const isCurrentlyActive = student.status === 1;
-        const newStatusLabel = isCurrentlyActive ? 'Inactive' : 'Active';
+        const currentStatus = student.status;
+        let nextStatus = 0;
+        let title = '';
+        let message = '';
+        let confirmText = '';
+        let isDestructive = false;
+
+        if (currentStatus === 1) {
+            nextStatus = 0;
+            title = 'Mark as Inactive?';
+            message = "This tenant will be marked as inactive, and their room allocation will be cleared.";
+            confirmText = 'Yes, mark Inactive';
+            isDestructive = true;
+        } else if (currentStatus === 2) {
+            nextStatus = 1;
+            title = 'Check In Tenant?';
+            message = 'Activate this tenant, start billing, and allocate occupied bed from today?';
+            confirmText = 'Yes, Check In';
+        } else {
+            nextStatus = 1;
+            title = 'Mark as Active?';
+            message = 'This tenant will be marked as active again.';
+            confirmText = 'Yes, mark Active';
+        }
+
         Alert.alert(
-            `Mark as ${newStatusLabel}?`,
-            isCurrentlyActive
-                ? 'This student will be marked as inactive and won\'t appear in active lists.'
-                : 'This student will be marked as active again.',
+            title,
+            message,
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
-                    text: `Yes, mark ${newStatusLabel}`,
-                    style: isCurrentlyActive ? 'destructive' : 'default',
+                    text: confirmText,
+                    style: isDestructive ? 'destructive' : 'default',
                     onPress: async () => {
                         try {
                             setStatusLoading(true);
                             const res = await api.put(`/students/${student.student_id}`, {
-                                status: isCurrentlyActive ? 0 : 1
+                                status: nextStatus
                             });
                             if (res.data.success) {
-                                setStudent((prev: any) => ({ ...prev, status: isCurrentlyActive ? 0 : 1 }));
+                                setStudent((prev: any) => ({ ...prev, status: nextStatus }));
                                 Toast.show({
                                     type: 'success',
-                                    text1: `Marked as ${newStatusLabel}`,
-                                    text2: `${student.first_name} is now ${newStatusLabel.toLowerCase()}.`
+                                    text1: currentStatus === 2 ? 'Checked In Successfully!' : `Marked as ${nextStatus === 1 ? 'Active' : 'Inactive'}`,
+                                    text2: `${student.first_name} is now ${nextStatus === 1 ? 'active' : 'inactive'}.`
                                 });
+                                fetchStudentDetails(); // refresh details to sync billing fee histories
                             }
                         } catch (e: any) {
                             Alert.alert('Error', e.response?.data?.error || 'Failed to update status');
@@ -259,7 +288,62 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                 }
             ]
         );
-    }, [student]);
+    }, [student, fetchStudentDetails]);
+
+    // ── Schedule Vacancy Notice ───────────────────────────────────────────
+    const handleSetVacancyNotice = useCallback(async () => {
+        if (!noticeDate) {
+            Alert.alert('Invalid Date', 'Please select a vacating date.');
+            return;
+        }
+        try {
+            setNoticeSubmitLoading(true);
+            const res = await api.put(`/students/${studentId}`, {
+                vacate_notice_date: noticeDate,
+                vacate_notice_reason: noticeReason || null
+            });
+            if (res.data.success) {
+                Toast.show({ type: 'success', text1: 'Vacancy Notice Scheduled', text2: `Tenant vacating on ${noticeDate}` });
+                setNoticeModalVisible(false);
+                fetchStudentDetails();
+            }
+        } catch (e: any) {
+            Alert.alert('Error', e.response?.data?.error || 'Failed to set vacancy notice');
+        } finally {
+            setNoticeSubmitLoading(false);
+        }
+    }, [studentId, noticeDate, noticeReason, fetchStudentDetails]);
+
+    // ── Clear Vacancy Notice ──────────────────────────────────────────────
+    const handleClearVacancyNotice = useCallback(async () => {
+        Alert.alert(
+            'Cancel Vacancy Notice?',
+            'Are you sure you want to clear the scheduled vacate date?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Yes, Clear Notice',
+                    onPress: async () => {
+                        try {
+                            setLoading(true);
+                            const res = await api.put(`/students/${studentId}`, {
+                                vacate_notice_date: null,
+                                vacate_notice_reason: null
+                            });
+                            if (res.data.success) {
+                                Toast.show({ type: 'success', text1: 'Vacancy Notice Cancelled' });
+                                fetchStudentDetails();
+                            }
+                        } catch (e: any) {
+                            Alert.alert('Error', e.response?.data?.error || 'Failed to clear vacancy notice');
+                        } finally {
+                            setLoading(false);
+                        }
+                    }
+                }
+            ]
+        );
+    }, [studentId, fetchStudentDetails]);
 
     // ── Submit payment ─────────────────────────────────────────────────────
     const handleRecordPayment = useCallback(async () => {
@@ -391,12 +475,18 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                 </View>
                             </View>
 
-                            {/* ── Active / Inactive Toggle ── */}
+                            {/* ── Active / Inactive / Pre-booked Toggle ── */}
                             <View style={styles.statusToggleRow}>
                                 <View style={styles.statusToggleLeft}>
-                                    <View style={[styles.statusIndicator, { backgroundColor: student.status === 1 ? '#DCFCE7' : '#FEE2E2' }]}>
-                                        <Text style={[styles.statusIndicatorText, { color: student.status === 1 ? '#16A34A' : '#DC2626' }]}>
-                                            {student.status === 1 ? '● Active' : '● Inactive'}
+                                    <View style={[
+                                        styles.statusIndicator, 
+                                        { backgroundColor: student.status === 1 ? '#DCFCE7' : student.status === 2 ? '#FEF3C7' : '#FEE2E2' }
+                                    ]}>
+                                        <Text style={[
+                                            styles.statusIndicatorText, 
+                                            { color: student.status === 1 ? '#16A34A' : student.status === 2 ? '#D97706' : '#DC2626' }
+                                        ]}>
+                                            {student.status === 1 ? '● Active' : student.status === 2 ? '● Pre-Booked' : '● Inactive'}
                                         </Text>
                                     </View>
                                     <Text style={styles.statusToggleHint}>Tap to change status</Text>
@@ -405,17 +495,68 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                     <ActivityIndicator size="small" color="#FF6B6B" />
                                 ) : (
                                     <TouchableOpacity
-                                        style={[styles.statusToggleBtn, { backgroundColor: student.status === 1 ? '#FEE2E2' : '#DCFCE7' }]}
+                                        style={[
+                                            styles.statusToggleBtn, 
+                                            { backgroundColor: student.status === 2 ? '#DCFCE7' : student.status === 1 ? '#FEE2E2' : '#DCFCE7' }
+                                        ]}
                                         onPress={handleToggleStatus}
                                         activeOpacity={0.8}
                                     >
-                                        <Text style={[styles.statusToggleBtnText, { color: student.status === 1 ? '#DC2626' : '#16A34A' }]}>
-                                            {student.status === 1 ? 'Mark Inactive' : 'Mark Active'}
+                                        <Text style={[
+                                            styles.statusToggleBtnText, 
+                                            { color: student.status === 2 ? '#16A34A' : student.status === 1 ? '#DC2626' : '#16A34A' }
+                                        ]}>
+                                            {student.status === 2 ? 'Check In (Activate)' : student.status === 1 ? 'Mark Inactive' : 'Mark Active'}
                                         </Text>
                                     </TouchableOpacity>
                                 )}
                             </View>
+
+                            {/* ── Vacancy Notice Action Row (Only for Active residents) ── */}
+                            {student.status === 1 && (
+                                <View style={[styles.statusToggleRow, { marginTop: 12, paddingTop: 12 }]}>
+                                    <View style={styles.statusToggleLeft}>
+                                        <Text style={styles.noticeRowTitle}>📅 Vacancy Notice</Text>
+                                        <Text style={styles.statusToggleHint}>
+                                            {student.vacate_notice_date ? 'Modify scheduled notice' : 'Schedule tenant checkout'}
+                                        </Text>
+                                    </View>
+                                    <TouchableOpacity
+                                        style={[styles.statusToggleBtn, { backgroundColor: '#FEF3C7' }]}
+                                        onPress={() => {
+                                            setNoticeDate(student.vacate_notice_date ? student.vacate_notice_date.split('T')[0] : new Date().toISOString().split('T')[0]);
+                                            setNoticeReason(student.vacate_notice_reason || '');
+                                            setNoticeModalVisible(true);
+                                        }}
+                                        activeOpacity={0.8}
+                                    >
+                                        <Text style={[styles.statusToggleBtnText, { color: '#D97706' }]}>
+                                            {student.vacate_notice_date ? 'Modify Notice' : 'Schedule Vacate'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
                         </Card>
+
+                        {/* ── Vacancy Notice Banner ── */}
+                        {student.vacate_notice_date && (
+                            <Card style={styles.noticeCard}>
+                                <View style={styles.noticeHeader}>
+                                    <View style={styles.noticeInfo}>
+                                        <Text style={styles.noticeTitle}>⚠️ Vacate Date Scheduled</Text>
+                                        <Text style={styles.noticeText}>
+                                            Leaving on: <Text style={{ fontWeight: '700' }}>{new Date(student.vacate_notice_date).toLocaleDateString()}</Text>
+                                        </Text>
+                                        {student.vacate_notice_reason ? (
+                                            <Text style={styles.noticeReason}>Reason: {student.vacate_notice_reason}</Text>
+                                        ) : null}
+                                    </View>
+                                    <TouchableOpacity style={styles.noticeCancelBtn} onPress={handleClearVacancyNotice} activeOpacity={0.75}>
+                                        <Text style={styles.noticeCancelText}>Cancel Notice</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </Card>
+                        )}
 
                         {/* ── Balance & Quick Pay ───────────────────────────────── */}
                         <Card style={styles.rentCard}>
@@ -698,6 +839,69 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                     </View>
                 </View>
             </Modal>
+
+            {/* ── Vacancy Notice Modal ─────────────────────────────────────── */}
+            <Modal
+                visible={noticeModalVisible}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setNoticeModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Schedule Vacate Date</Text>
+                            <TouchableOpacity onPress={() => setNoticeModalVisible(false)}>
+                                <X size={24} color="#666" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+                            <Text style={styles.inputLabel}>Expected Vacate Date *</Text>
+                            <TouchableOpacity
+                                style={styles.dateSelector}
+                                onPress={() => setNoticeDatePickerVisible(true)}
+                            >
+                                <Calendar size={18} color="#FF6B6B" />
+                                <Text style={styles.dateText}>{noticeDate}</Text>
+                            </TouchableOpacity>
+
+                            <Text style={[styles.inputLabel, { marginTop: 16 }]}>Reason / Notes (Optional)</Text>
+                            <TextInput
+                                style={[styles.notesInput, { height: 80 }]}
+                                value={noticeReason}
+                                onChangeText={setNoticeReason}
+                                multiline={true}
+                                placeholder="e.g. Completed course, moving away..."
+                                textAlignVertical="top"
+                            />
+
+                            <TouchableOpacity
+                                style={[styles.submitButton, { backgroundColor: '#F59E0B' }, noticeSubmitLoading && styles.disabledButton]}
+                                onPress={handleSetVacancyNotice}
+                                disabled={noticeSubmitLoading}
+                            >
+                                {noticeSubmitLoading
+                                    ? <ActivityIndicator color="#FFF" />
+                                    : <Text style={styles.submitButtonText}>Schedule Vacate</Text>
+                                }
+                            </TouchableOpacity>
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
+
+            <DateTimePickerModal
+                isVisible={noticeDatePickerVisible}
+                mode="date"
+                date={new Date(noticeDate)}
+                minimumDate={new Date()}
+                onConfirm={(date) => {
+                    setNoticeDate(date.toISOString().split('T')[0]);
+                    setNoticeDatePickerVisible(false);
+                }}
+                onCancel={() => setNoticeDatePickerVisible(false)}
+            />
         </View>
     );
 };
@@ -783,6 +987,15 @@ const styles = StyleSheet.create({
     modeListItemActive: { backgroundColor: '#FFF1F1', borderColor: '#FF6B6B' },
     modeListItemText: { fontSize: 14, fontWeight: '500', color: '#64748B' },
     modeListItemTextActive: { color: '#FF6B6B', fontWeight: '700' },
+    noticeCard: { marginBottom: 20, backgroundColor: '#FFFBEB', borderColor: '#FEF3C7', borderWidth: 1, padding: 16 },
+    noticeHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    noticeInfo: { flex: 1, marginRight: 10 },
+    noticeTitle: { fontSize: 15, fontWeight: '700', color: '#D97706', marginBottom: 4 },
+    noticeText: { fontSize: 13, color: '#B45309', fontWeight: '500' },
+    noticeReason: { fontSize: 12, color: '#B45309', marginTop: 4, fontStyle: 'italic' },
+    noticeCancelBtn: { backgroundColor: '#FFF', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#F59E0B' },
+    noticeCancelText: { color: '#D97706', fontWeight: '700', fontSize: 12 },
+    noticeRowTitle: { fontSize: 14, fontWeight: '700', color: '#1E293B', marginBottom: 2 },
 });
 
 export default StudentDetailsScreen;

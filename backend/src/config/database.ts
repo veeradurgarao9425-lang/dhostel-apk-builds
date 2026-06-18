@@ -178,6 +178,30 @@ async function patchDatabaseSchema() {
       console.error('[schema-patch] Error updating fee_payments columns:', e.message);
     }
 
+    // 2.5 Ensure students table notice and bed columns exist
+    try {
+      if (tableNamesLower.includes('students')) {
+        console.log('[schema-patch] Checking students columns...');
+        const [columns] = await db.raw("SHOW COLUMNS FROM students");
+        const columnNames = (columns as any[]).map(col => col.Field.toLowerCase());
+        
+        if (!columnNames.includes('vacate_notice_date')) {
+          console.log('[schema-patch] adding vacate_notice_date to students...');
+          await db.raw("ALTER TABLE students ADD COLUMN vacate_notice_date DATE NULL");
+        }
+        if (!columnNames.includes('vacate_notice_reason')) {
+          console.log('[schema-patch] adding vacate_notice_reason to students...');
+          await db.raw("ALTER TABLE students ADD COLUMN vacate_notice_reason VARCHAR(255) NULL");
+        }
+        if (!columnNames.includes('bed_id')) {
+          console.log('[schema-patch] adding bed_id to students...');
+          await db.raw("ALTER TABLE students ADD COLUMN bed_id VARCHAR(50) NULL");
+        }
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error updating students columns:', e.message);
+    }
+
     // 3. Ensure income table exists
     try {
       if (!tableNamesLower.includes('income')) {

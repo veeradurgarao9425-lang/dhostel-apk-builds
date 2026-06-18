@@ -33,6 +33,7 @@ import MaintenanceScreen     from '../Pages/MaintenanceScreen';
 import DeleteRoomsScreen     from '../Pages/DeleteRoomsScreen';
 import DeleteExpensesScreen  from '../Pages/DeleteExpensesScreen';
 import QRSignupScreen        from '../Pages/QRSignupScreen';
+import PreBookingScreen      from '../Pages/PreBookingScreen';
 
 // ── New screens ─────────────────────────────────────────────────────────────────
 import ComingSoonScreen      from '../Pages/ComingSoonScreen';
@@ -136,6 +137,7 @@ const AppNavigator = () => {
                 {/* Tools */}
                 <Stack.Screen name="Maintenance" component={MaintenanceScreen} />
                 <Stack.Screen name="QRSignup"    component={QRSignupScreen}    />
+                <Stack.Screen name="PreBooking"  component={PreBookingScreen}  />
 
                 {/* Placeholders for analytics, etc. */}
                 <Stack.Screen

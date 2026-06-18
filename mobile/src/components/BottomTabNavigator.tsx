@@ -1,37 +1,48 @@
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-/**
- * 4 tabs — each one is a UNIQUE destination not accessible from any home shortcut:
- *
- *  Home      → Dashboard overview
- *  Pending   → Dedicated pending-dues page (reminder + collect)
- *  Rooms     → Browse / search all rooms
- *  More      → Everything else (tenants list, finance, settings, profile…)
- *
- * Quick Management on Home = CREATE actions (Add Tenant form, Add Room form, Bills filter)
- * These tabs        = BROWSE / MANAGE destinations
- */
+import {
+    House, AlertCircle, MoreHorizontal,
+    Home, BellDot, LayoutGrid,
+} from 'lucide-react-native';
 
 const TABS = [
-    { label: 'Home',    icon: 'home',             iconOut: 'home-outline',            route: 'HomeTab'     },
-    { label: 'Pending', icon: 'alert-circle',      iconOut: 'alert-circle-outline',    route: 'PendingTab'  },
-    { label: 'More',    icon: 'grid',              iconOut: 'grid-outline',            route: 'MoreTab'     },
+    {
+        label: 'Home',
+        route: 'HomeTab',
+        ActiveIcon: House,
+        InactiveIcon: Home,
+        activeColor: '#7C3AED',
+        activeBg: '#EDE9FE',
+    },
+    {
+        label: 'Pending',
+        route: 'PendingTab',
+        ActiveIcon: BellDot,
+        InactiveIcon: AlertCircle,
+        activeColor: '#DC2626',
+        activeBg: '#FEE2E2',
+    },
+    {
+        label: 'More',
+        route: 'MoreTab',
+        ActiveIcon: LayoutGrid,
+        InactiveIcon: MoreHorizontal,
+        activeColor: '#7C3AED',
+        activeBg: '#EDE9FE',
+    },
 ];
 
-const ACTIVE   = '#7C3AED';
-const INACTIVE = '#94A3B8';
+const INACTIVE_COLOR = '#94A3B8';
 
 const BottomTabNavigator = ({ state, navigation }: any) => {
     const insets = useSafeAreaInsets();
 
     return (
-        <View style={[styles.container, { paddingBottom: insets.bottom + 6 }]}>
+        <View style={[styles.container, { paddingBottom: insets.bottom + 4 }]}>
             {TABS.map((tab, index) => {
                 const isActive = state.routes[state.index]?.name === tab.route;
-                const isPending = tab.route === 'PendingTab';
+                const IconComp = isActive ? tab.ActiveIcon : tab.InactiveIcon;
 
                 const handlePress = () => {
                     const event = navigation.emit({
@@ -49,21 +60,29 @@ const BottomTabNavigator = ({ state, navigation }: any) => {
                         key={index}
                         style={styles.tabItem}
                         onPress={handlePress}
-                        activeOpacity={0.7}
+                        activeOpacity={0.75}
                     >
-                        {/* Active pill at top */}
-                        {isActive && <View style={styles.activePill} />}
+                        {/* Active top pill indicator */}
+                        {isActive && (
+                            <View style={[styles.topPill, { backgroundColor: tab.activeColor }]} />
+                        )}
 
-                        <Ionicons
-                            name={(isActive ? tab.icon : tab.iconOut) as any}
-                            size={22}
-                            color={isActive ? ACTIVE : (isPending ? '#DC2626' : INACTIVE)}
-                        />
+                        {/* Icon container with glow background when active */}
+                        <View style={[
+                            styles.iconWrap,
+                            isActive && { backgroundColor: tab.activeBg },
+                        ]}>
+                            <IconComp
+                                size={22}
+                                color={isActive ? tab.activeColor : INACTIVE_COLOR}
+                                strokeWidth={isActive ? 2.2 : 1.8}
+                            />
+                        </View>
 
                         <Text style={[
                             styles.label,
                             {
-                                color: isActive ? ACTIVE : (isPending ? '#DC2626' : INACTIVE),
+                                color: isActive ? tab.activeColor : INACTIVE_COLOR,
                                 fontWeight: isActive ? '700' : '500',
                             },
                         ]}>
@@ -81,36 +100,47 @@ const styles = StyleSheet.create({
         position: 'absolute',
         bottom: 0, left: 0, right: 0,
         backgroundColor: '#FFFFFF',
-        borderTopLeftRadius: 22,
-        borderTopRightRadius: 22,
-        paddingTop: 10,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        paddingTop: 8,
         flexDirection: 'row',
         justifyContent: 'space-around',
         alignItems: 'flex-start',
         shadowColor: '#7C3AED',
-        shadowOffset: { width: 0, height: -3 },
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
-        elevation: 12,
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.10,
+        shadowRadius: 16,
+        elevation: 16,
         borderTopWidth: 1,
         borderTopColor: '#F1E8FF',
     },
     tabItem: {
         flex: 1,
         alignItems: 'center',
-        justifyContent: 'flex-start',
-        paddingTop: 4,
-        gap: 3,
+        paddingTop: 6,
+        gap: 4,
         position: 'relative',
+        minHeight: 56,
     },
-    activePill: {
+    topPill: {
         position: 'absolute',
-        top: -10,
-        width: 28, height: 3,
+        top: 0,
+        width: 32,
+        height: 3,
         borderRadius: 2,
-        backgroundColor: ACTIVE,
     },
-    label: { fontSize: 9, marginTop: 1, letterSpacing: 0.2 },
+    iconWrap: {
+        width: 44,
+        height: 34,
+        borderRadius: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    label: {
+        fontSize: 10,
+        letterSpacing: 0.2,
+        marginBottom: 2,
+    },
 });
 
 export default BottomTabNavigator;

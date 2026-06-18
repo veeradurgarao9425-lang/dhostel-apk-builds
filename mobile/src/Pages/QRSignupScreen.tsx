@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
     View,
     Text,
@@ -10,6 +10,8 @@ import {
     Alert,
     ActivityIndicator,
     TextInput,
+    Animated,
+    Pressable,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import QRCode from 'react-native-qrcode-svg';
@@ -21,6 +23,49 @@ import { useFocusEffect } from '@react-navigation/native';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Mode = 'general' | 'room';
+
+// ─── Smooth bottom-sheet modal ────────────────────────────────────────────────
+const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: any) => {
+    const [shouldRender, setShouldRender] = useState(visible);
+    const translateY = useRef(new Animated.Value(600)).current;
+    const opacity = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        if (visible) {
+            setShouldRender(true);
+            Animated.parallel([
+                Animated.timing(opacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+                Animated.spring(translateY, { toValue: 0, damping: 22, stiffness: 220, useNativeDriver: true }),
+            ]).start();
+        } else {
+            Animated.parallel([
+                Animated.timing(opacity, { toValue: 0, duration: 180, useNativeDriver: true }),
+                Animated.timing(translateY, { toValue: 600, duration: 180, useNativeDriver: true }),
+            ]).start(({ finished }) => {
+                if (finished) {
+                    setShouldRender(false);
+                }
+            });
+        }
+    }, [visible]);
+
+    if (!shouldRender) return null;
+    return (
+        <Modal transparent visible={visible || shouldRender} animationType="none" statusBarTranslucent onRequestClose={onClose}>
+            <View style={{ flex: 1 }}>
+                <Animated.View style={[s.modalOverlay, { opacity }]}>
+                    <Pressable style={{ flex: 1 }} onPress={onClose} />
+                </Animated.View>
+                <Animated.View style={[
+                    s.modalSheet,
+                    { maxHeight, transform: [{ translateY }] }
+                ]}>
+                    {children}
+                </Animated.View>
+            </View>
+        </Modal>
+    );
+};
 
 // ─── Room Picker Modal (same style as AddStudentScreen) ───────────────────────
 const RoomPickerModal = ({ visible, rooms, selectedRoomId, onSelectRoom, onClose }: any) => {
@@ -41,93 +86,85 @@ const RoomPickerModal = ({ visible, rooms, selectedRoomId, onSelectRoom, onClose
     const statusLabel = (r: any) => r.status === 'MAINTENANCE' ? 'MAINTENANCE' : (r.available_beds ?? 0) > 0 ? 'AVAILABLE' : 'FULL';
 
     return (
-        <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
-            <View style={s.modalOverlay}>
-                <View style={[s.modalSheet, { maxHeight: '85%' }]}>
-                    <View style={s.sheetHandle} />
-                    <View style={s.sheetHeader}>
-                        <Text style={s.sheetTitle}>Select Room</Text>
-                        <TouchableOpacity onPress={onClose} style={s.closeBtn}><Text style={s.closeBtnText}>Close</Text></TouchableOpacity>
-                    </View>
-                    <View style={{ paddingHorizontal: 16, marginBottom: 10 }}>
-                        <View style={s.searchBar}>
-                            <Text style={{ color: '#94A3B8', marginRight: 8 }}>🔍</Text>
-                            <TextInput style={{ flex: 1, fontSize: 15, color: '#1E293B' }} placeholder="Search room number..." placeholderTextColor="#94A3B8" value={search} onChangeText={setSearch} />
-                        </View>
-                    </View>
-                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 16 }}>
-                        {grouped.map(({ floor, rooms: fr }) => (
-                            <View key={floor}>
-                                <View style={s.floorChip}><Text style={s.floorChipText}>FLOOR {floor}</Text></View>
-                                {fr.map((room: any) => {
-                                    const isSelected = selectedRoomId === room.room_id?.toString();
-                                    const avail = room.available_beds ?? 0;
-                                    return (
-                                        <TouchableOpacity
-                                            key={room.room_id}
-                                            style={[s.roomCard, isSelected && s.roomCardSelected, avail <= 0 && s.roomCardDim]}
-                                            onPress={() => { onSelectRoom(room); onClose(); }}
-                                            activeOpacity={0.75}
-                                        >
-                                            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                                                <Text style={[s.roomNum, isSelected && { color: '#FF6B6B' }]}>{room.room_number}</Text>
-                                                <Text style={s.roomCap}>Cap: {room.capacity ?? '—'}</Text>
-                                            </View>
-                                            <Text style={[s.roomAvail, { color: statusColor(room) }]}>Available: {avail}</Text>
-                                            <Text style={s.roomRent}>Rent: ₹{room.rent_per_bed ?? room.base_rent ?? '—'}</Text>
-                                            <Text style={[s.roomStatusTxt, { color: statusColor(room) }]}>Status: {statusLabel(room)}</Text>
-                                            {isSelected && <View style={s.selectedBadge}><Check size={12} color="#FF6B6B" /><Text style={s.selectedBadgeText}>Selected</Text></View>}
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                            </View>
-                        ))}
-                        {grouped.length === 0 && <View style={{ padding: 40, alignItems: 'center' }}><Text style={{ color: '#94A3B8' }}>No rooms found</Text></View>}
-                    </ScrollView>
+        <ModalSheet visible={visible} onClose={onClose} maxHeight="85%">
+            <View style={s.sheetHandle} />
+            <View style={s.sheetHeader}>
+                <Text style={s.sheetTitle}>Select Room</Text>
+                <TouchableOpacity onPress={onClose} style={s.closeBtn}><Text style={s.closeBtnText}>Close</Text></TouchableOpacity>
+            </View>
+            <View style={{ paddingHorizontal: 16, marginBottom: 10 }}>
+                <View style={s.searchBar}>
+                    <Text style={{ color: '#94A3B8', marginRight: 8 }}>🔍</Text>
+                    <TextInput style={{ flex: 1, fontSize: 15, color: '#1E293B' }} placeholder="Search room number..." placeholderTextColor="#94A3B8" value={search} onChangeText={setSearch} />
                 </View>
             </View>
-        </Modal>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 16 }}>
+                {grouped.map(({ floor, rooms: fr }) => (
+                    <View key={floor}>
+                        <View style={s.floorChip}><Text style={s.floorChipText}>FLOOR {floor}</Text></View>
+                        {fr.map((room: any) => {
+                            const isSelected = selectedRoomId === room.room_id?.toString();
+                            const avail = room.available_beds ?? 0;
+                            return (
+                                <TouchableOpacity
+                                    key={room.room_id}
+                                    style={[s.roomCard, isSelected && s.roomCardSelected, avail <= 0 && s.roomCardDim]}
+                                    onPress={() => { onSelectRoom(room); onClose(); }}
+                                    activeOpacity={0.75}
+                                >
+                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                                        <Text style={[s.roomNum, isSelected && { color: '#FF6B6B' }]}>{room.room_number}</Text>
+                                        <Text style={s.roomCap}>Cap: {room.capacity ?? '—'}</Text>
+                                    </View>
+                                    <Text style={[s.roomAvail, { color: statusColor(room) }]}>Available: {avail}</Text>
+                                    <Text style={s.roomRent}>Rent: ₹{room.rent_per_bed ?? room.base_rent ?? '—'}</Text>
+                                    <Text style={[s.roomStatusTxt, { color: statusColor(room) }]}>Status: {statusLabel(room)}</Text>
+                                    {isSelected && <View style={s.selectedBadge}><Check size={12} color="#FF6B6B" /><Text style={s.selectedBadgeText}>Selected</Text></View>}
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+                ))}
+                {grouped.length === 0 && <View style={{ padding: 40, alignItems: 'center' }}><Text style={{ color: '#94A3B8' }}>No rooms found</Text></View>}
+            </ScrollView>
+        </ModalSheet>
     );
 };
 
 // ─── Bed Picker Modal ─────────────────────────────────────────────────────────
 const BedPickerModal = ({ visible, room, beds, selectedBedId, onSelectBed, onClose, loading }: any) => (
-    <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
-        <View style={s.modalOverlay}>
-            <View style={[s.modalSheet, { maxHeight: '70%' }]}>
-                <View style={s.sheetHandle} />
-                <View style={s.sheetHeader}>
-                    <Text style={s.sheetTitle}>Beds in Room {room?.room_number}</Text>
-                    <TouchableOpacity onPress={onClose} style={s.closeBtn}><Text style={s.closeBtnText}>Close</Text></TouchableOpacity>
-                </View>
-                {room && <View style={{ paddingHorizontal: 16, marginBottom: 8 }}><View style={s.floorChip}><Text style={s.floorChipText}>ROOM {room.room_number}</Text></View></View>}
-                {loading ? (
-                    <ActivityIndicator color="#FF6B6B" style={{ marginVertical: 30 }} />
-                ) : (
-                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}>
-                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-                            {beds.map((bed: any) => {
-                                const isAvail = !bed.student_id || bed.status === 'available';
-                                const isSel = selectedBedId === bed.bed_id?.toString();
-                                return (
-                                    <TouchableOpacity
-                                        key={bed.bed_id}
-                                        style={[s.bedCard, isSel && s.bedCardSel, !isAvail && s.bedCardOcc]}
-                                        onPress={() => { if (!isAvail) return; onSelectBed(bed); onClose(); }}
-                                        activeOpacity={0.75}
-                                    >
-                                        <Text style={[s.bedName, isSel && { color: '#FF6B6B' }, !isAvail && { color: '#94A3B8' }]}>{bed.bed_name ?? `Bed ${bed.bed_number}`}</Text>
-                                        <Text style={{ fontSize: 12, fontWeight: '700', color: isAvail ? '#16A34A' : '#DC2626' }}>Status: {isAvail ? 'AVAILABLE' : 'OCCUPIED'}</Text>
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </View>
-                        {beds.length === 0 && <View style={{ padding: 40, alignItems: 'center' }}><Text style={{ color: '#94A3B8' }}>No beds available</Text></View>}
-                    </ScrollView>
-                )}
-            </View>
+    <ModalSheet visible={visible} onClose={onClose} maxHeight="70%">
+        <View style={s.sheetHandle} />
+        <View style={s.sheetHeader}>
+            <Text style={s.sheetTitle}>Beds in Room {room?.room_number}</Text>
+            <TouchableOpacity onPress={onClose} style={s.closeBtn}><Text style={s.closeBtnText}>Close</Text></TouchableOpacity>
         </View>
-    </Modal>
+        {room && <View style={{ paddingHorizontal: 16, marginBottom: 8 }}><View style={s.floorChip}><Text style={s.floorChipText}>ROOM {room.room_number}</Text></View></View>}
+        {loading ? (
+            <ActivityIndicator color="#FF6B6B" style={{ marginVertical: 30 }} />
+        ) : (
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+                    {beds.map((bed: any) => {
+                        const isAvail = !bed.student_id || bed.status === 'available';
+                        const isSel = selectedBedId === bed.bed_id?.toString();
+                        return (
+                            <TouchableOpacity
+                                key={bed.bed_id}
+                                style={[s.bedCard, isSel && s.bedCardSel, !isAvail && s.bedCardOcc]}
+                                onPress={() => { if (!isAvail) return; onSelectBed(bed); onClose(); }}
+                                activeOpacity={0.75}
+                            >
+                                <Text style={[s.bedName, isSel && { color: '#FF6B6B' }, !isAvail && { color: '#94A3B8' }]}>{bed.bed_name ?? `Bed ${bed.bed_number}`}</Text>
+                                <Text style={{ fontSize: 12, fontWeight: '700', color: isAvail ? '#16A34A' : '#DC2626' }}>Status: {isAvail ? 'AVAILABLE' : 'OCCUPIED'}</Text>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </View>
+                {beds.length === 0 && <View style={{ padding: 40, alignItems: 'center' }}><Text style={{ color: '#94A3B8' }}>No beds available</Text></View>}
+            </ScrollView>
+        )}
+    </ModalSheet>
 );
 
 // ─── Main Screen ─────────────────────────────────────────────────────────────

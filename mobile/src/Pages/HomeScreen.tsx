@@ -26,6 +26,8 @@ const INITIAL_STATE = {
     activeTenants: 0,
     leftTenants: 0,
     unpaidStudents: [] as any[],
+    totalRooms: 0,
+    occupancyRate: 0,
 };
 
 // ─── Greeting helper ──────────────────────────────────────────────────────────
@@ -38,8 +40,9 @@ const getGreeting = () => {
 
 // ─── Quick Management Actions ─────────────────────────────────────────────────
 const QUICK_ACTIONS = [
-    { label: 'Add\nTenant', icon: 'person-add-outline', color: '#7C3AED', bg: '#EDE9FE', route: 'AddStudent',       comingSoon: false },
-    { label: 'Add\nRoom',   icon: 'home-outline',       color: '#2563EB', bg: '#DBEAFE', route: 'AddRoom',          comingSoon: false },
+    { label: 'Add\nTenant', icon: 'person-add-outline', color: '#7C3AED', bg: '#EDE9FE', route: 'AddStudent', comingSoon: false },
+    { label: 'Add\nRoom',   icon: 'home-outline',       color: '#2563EB', bg: '#DBEAFE', route: 'AddRoom',    comingSoon: false },
+    { label: 'Pre-Book',    icon: 'calendar-outline',   color: '#EA580C', bg: '#FFEDD5', route: 'PreBooking', comingSoon: false },
     { label: 'Bills',       icon: 'receipt-outline',    color: '#D97706', bg: '#FEF3C7', route: 'BillReminders', comingSoon: false },
     { label: 'Remind',      icon: 'notifications-outline', color: '#DC2626', bg: '#FEE2E2', route: 'Reminders', comingSoon: false },
     { label: 'Staff',       icon: 'people-outline',     color: '#059669', bg: '#D1FAE5', route: 'Staff', comingSoon: false },
@@ -153,6 +156,8 @@ export default function HomeScreen() {
                 activeTenants:   occupied,
                 leftTenants:     d2.leftTenants || d2.vacatedStudents || 0,
                 unpaidStudents:  topDefaulters,
+                totalRooms:      d2.totalRooms || 0,
+                occupancyRate:   d2.occupancyRate || 0,
             });
             isFirstLoadRef.current = false;
         } catch {
@@ -476,6 +481,32 @@ export default function HomeScreen() {
                                 {data.totalDuesAmount > 0 && <View style={s.redDot} />}
                             </TouchableOpacity>
 
+                            {/* Total Rooms */}
+                            <TouchableOpacity
+                                style={[s.statCard, { backgroundColor: '#EFF6FF' }]}
+                                onPress={() => navigation.navigate('Rooms', { filter: 'All' })}
+                                activeOpacity={0.8}
+                            >
+                                <View style={[s.statIconBox, { backgroundColor: '#DBEAFE' }]}>
+                                    <Ionicons name="home" size={20} color="#2563EB" />
+                                </View>
+                                <Text style={[s.statNum, { color: '#2563EB' }]}>{data.totalRooms}</Text>
+                                <Text style={s.statLbl}>Total Rooms</Text>
+                            </TouchableOpacity>
+
+                            {/* Occupancy Rate */}
+                            <TouchableOpacity
+                                style={[s.statCard, { backgroundColor: '#FDF2F8' }]}
+                                onPress={() => navigation.navigate('Rooms', { filter: 'All' })}
+                                activeOpacity={0.8}
+                            >
+                                <View style={[s.statIconBox, { backgroundColor: '#FCE7F3' }]}>
+                                    <Ionicons name="analytics" size={20} color="#DB2777" />
+                                </View>
+                                <Text style={[s.statNum, { color: '#DB2777' }]}>{data.occupancyRate}%</Text>
+                                <Text style={s.statLbl}>Occupancy Rate</Text>
+                            </TouchableOpacity>
+
                         </View>
                     </View>
 
@@ -719,9 +750,11 @@ const s = StyleSheet.create({
     // ── Quick Management ─────────────────────────────────────────────────────
     quickRow: {
         flexDirection: 'row',
+        flexWrap: 'wrap',
         justifyContent: 'space-between',
+        paddingHorizontal: 4,
     },
-    quickItem: { flex: 1, alignItems: 'center', paddingHorizontal: 2 },
+    quickItem: { width: '30%', alignItems: 'center', marginVertical: 8, paddingHorizontal: 2 },
     quickIconWrap: { position: 'relative', marginBottom: 7 },
     quickIconCircle: {
         width: 48,

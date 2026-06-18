@@ -100,7 +100,7 @@ const generateMonthlyFeesForHostel = async (hostel_id: number, fee_month: string
           .first();
 
         const admDate = studentData?.admission_date ? new Date(studentData.admission_date) : null;
-        const studentRent = student.monthly_rent || 0;
+        const studentRent = parseFloat(student.monthly_rent as any) || 0;
 
         if (prevMonthFee) {
           const payments = await db('fee_payments')
@@ -155,7 +155,7 @@ const generateMonthlyFeesForHostel = async (hostel_id: number, fee_month: string
         if (carryForward > 0) totalCarryForward++;
 
         // Step 2: Get student's current monthly rent
-        const monthlyRent = student.monthly_rent || 0;
+        const monthlyRent = parseFloat(student.monthly_rent as any) || 0;
 
         // Step 3: Calculate totals
         const totalDue = monthlyRent + carryForward;
