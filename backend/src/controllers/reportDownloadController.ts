@@ -375,7 +375,7 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Fetch income records
+    // 1. Fetch Income records (Other Income)
     const incomes = await db('income as i')
       .leftJoin('payment_modes as pm', 'i.payment_mode_id', 'pm.payment_mode_id')
       .select(
@@ -390,7 +390,7 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
       .whereBetween('i.income_date', [startDateStr, endDateStr])
       .orderBy('i.income_date', 'asc');
 
-    // Fetch expense records
+    // 2. Fetch Expense records
     const expenses = await db('expenses as e')
       .leftJoin('expense_categories as ec', 'e.category_id', 'ec.category_id')
       .leftJoin('payment_modes as pm', 'e.payment_mode_id', 'pm.payment_mode_id')
@@ -407,10 +407,80 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
       .whereBetween('e.expense_date', [startDateStr, endDateStr])
       .orderBy('e.expense_date', 'asc');
 
+    // 3. Fetch Student (Tenant) records
+    const students = await db('students as s')
+      .leftJoin('room_allocations as ra', function() {
+        this.on('s.student_id', '=', 'ra.student_id').andOn('ra.is_current', '=', db.raw('1'));
+      })
+      .leftJoin('rooms as r', 'ra.room_id', 'r.room_id')
+      .select(
+        's.first_name',
+        's.last_name',
+        's.phone',
+        's.email',
+        's.admission_date',
+        's.is_active',
+        'r.room_number',
+        'ra.bed_number',
+        's.guardian_name',
+        's.guardian_phone',
+        's.permanent_address'
+      )
+      .where('s.hostel_id', hostelId)
+      .orderBy('s.first_name', 'asc');
+
+    // 4. Fetch Fee Payments (Fee Collections)
+    const payments = await db('student_fee_payments as sfp')
+      .join('students as s', 'sfp.student_id', 's.student_id')
+      .leftJoin('payment_modes as pm', 'sfp.payment_mode_id', 'pm.payment_mode_id')
+      .leftJoin('room_allocations as ra', function() {
+        this.on('s.student_id', '=', 'ra.student_id').andOn('ra.is_current', '=', db.raw('1'));
+      })
+      .leftJoin('rooms as r', 'ra.room_id', 'r.room_id')
+      .select(
+        'sfp.payment_date',
+        's.first_name',
+        's.last_name',
+        'r.room_number',
+        'sfp.amount_paid',
+        'pm.payment_mode_name as payment_mode',
+        'sfp.payment_for_month',
+        'sfp.transaction_reference',
+        'sfp.receipt_number',
+        'sfp.remarks'
+      )
+      .where('sfp.hostel_id', hostelId)
+      .whereBetween('sfp.payment_date', [startDateStr, endDateStr])
+      .orderBy('sfp.payment_date', 'asc');
+
+    // 5. Fetch Rooms list
+    const roomsList = await db('rooms as r')
+      .leftJoin('room_types as rt', 'r.room_type_id', 'rt.room_type_id')
+      .select(
+        'r.room_number',
+        'rt.room_type_name',
+        'r.floor_number',
+        'r.capacity',
+        'r.occupied_beds',
+        'r.rent_per_bed',
+        'r.is_available',
+        'r.amenities'
+      )
+      .where('r.hostel_id', hostelId)
+      .orderBy('r.room_number', 'asc');
+
     // Calculate totals
-    const totalIncome = incomes.reduce((sum, inc) => sum + Number(inc.amount || 0), 0);
+    const feeIncome = payments.reduce((sum, p) => sum + Number(p.amount_paid || 0), 0);
+    const otherIncomeVal = incomes.reduce((sum, inc) => sum + Number(inc.amount || 0), 0);
+    const totalIncome = feeIncome + otherIncomeVal;
     const totalExpenses = expenses.reduce((sum, exp) => sum + Number(exp.amount || 0), 0);
     const netProfit = totalIncome - totalExpenses;
+
+    const totalRooms = roomsList.length;
+    const totalCapacity = roomsList.reduce((sum, rm) => sum + (rm.capacity || 0), 0);
+    const occupiedBeds = roomsList.reduce((sum, rm) => sum + (rm.occupied_beds || 0), 0);
+    const availableBeds = totalCapacity - occupiedBeds;
+    const occupancyRate = totalCapacity > 0 ? ((occupiedBeds / totalCapacity) * 100).toFixed(1) : '0';
 
     // Month name
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
@@ -419,244 +489,383 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
 
     // Create Excel workbook
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Income & Expense Report');
 
-    // Set default row height
-    worksheet.properties.defaultRowHeight = 20;
+    // -------------------------------------------------------------
+    // SHEET 1: SUMMARY
+    // -------------------------------------------------------------
+    const summarySheet = workbook.addWorksheet('Summary');
+    summarySheet.properties.defaultRowHeight = 20;
 
-    // Header Section
-    worksheet.mergeCells('A1:F1');
-    const headerCell1 = worksheet.getCell('A1');
-    headerCell1.value = hostelName;
-    headerCell1.font = { size: 16, bold: true, color: { argb: 'FF000000' } };
-    headerCell1.alignment = { horizontal: 'center', vertical: 'middle' };
-    headerCell1.fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FFE0E0E0' }
+    // Header styling helper
+    const applyMainHeader = (sheet: ExcelJS.Worksheet, title: string) => {
+      sheet.mergeCells('A1:G1');
+      const cell = sheet.getCell('A1');
+      cell.value = hostelName;
+      cell.font = { size: 16, bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } }; // Indigo 600
+      sheet.getRow(1).height = 30;
+
+      sheet.mergeCells('A2:G2');
+      const subtitleCell = sheet.getCell('A2');
+      subtitleCell.value = `${title} - ${monthName} ${year}`;
+      subtitleCell.font = { size: 13, bold: true, color: { argb: 'FF1F2937' } };
+      subtitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      subtitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
+      sheet.getRow(2).height = 22;
     };
-    worksheet.getRow(1).height = 25;
 
-    worksheet.mergeCells('A2:F2');
-    const headerCell2 = worksheet.getCell('A2');
-    headerCell2.value = 'Income & Expense Report';
-    headerCell2.font = { size: 14, bold: true, color: { argb: 'FF000000' } };
-    headerCell2.alignment = { horizontal: 'center', vertical: 'middle' };
-    worksheet.getRow(2).height = 22;
+    applyMainHeader(summarySheet, 'Financial & Occupancy Summary');
 
-    worksheet.mergeCells('A3:F3');
-    const headerCell3 = worksheet.getCell('A3');
-    headerCell3.value = `${monthName} ${year}`;
-    headerCell3.font = { size: 12, color: { argb: 'FF000000' } };
-    headerCell3.alignment = { horizontal: 'center', vertical: 'middle' };
-    worksheet.getRow(3).height = 20;
-
-    // Summary Section
-    let row = 5;
-    worksheet.getRow(row).height = 22;
-    const summaryTitle = worksheet.getCell(`A${row}`);
-    summaryTitle.value = 'Summary';
-    summaryTitle.font = { size: 12, bold: true, color: { argb: 'FF000000' } };
-    summaryTitle.fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FFF0F0F0' }
-    };
-    row++;
-
-    // Summary rows
-    const summaryLabels = ['Total Income:', 'Total Expenses:', 'Net Profit/Loss:'];
-    const summaryValues = [totalIncome, totalExpenses, netProfit];
+    let rIdx = 4;
     
-    summaryLabels.forEach((label, index) => {
-      worksheet.getRow(row).height = 18;
-      const labelCell = worksheet.getCell(`A${row}`);
-      labelCell.value = label;
-      labelCell.font = { size: 11, color: { argb: 'FF000000' } };
-      labelCell.alignment = { horizontal: 'left', vertical: 'middle' };
+    // Summary Cards block
+    summarySheet.getCell(`A${rIdx}`).value = 'Financial Metrics';
+    summarySheet.getCell(`A${rIdx}`).font = { size: 12, bold: true };
+    rIdx++;
+
+    const finLabels = [
+      ['Fee Collections (Rent)', feeIncome],
+      ['Other Income', otherIncomeVal],
+      ['TOTAL MONTHLY INCOME', totalIncome],
+      ['TOTAL MONTHLY EXPENSES', totalExpenses],
+      ['NET PROFIT / LOSS', netProfit]
+    ];
+
+    finLabels.forEach(([lbl, val], idx) => {
+      summarySheet.getRow(rIdx).height = 20;
+      const cellA = summarySheet.getCell(`A${rIdx}`);
+      const cellB = summarySheet.getCell(`B${rIdx}`);
+      cellA.value = lbl;
+      cellB.value = val;
+      cellB.numFmt = '₹#,##0.00';
+
+      const isHighlight = idx === 2 || idx === 3 || idx === 4;
+      const font = { size: 11, bold: isHighlight, color: { argb: isHighlight ? 'FF1E1B4B' : 'FF374151' } };
+      cellA.font = font;
+      cellB.font = font;
+
+      if (idx === 4) {
+        // Net profit styling (green bg if positive, red if negative)
+        const isProfit = (val as number) >= 0;
+        const colorBg = isProfit ? 'FFD1FAE5' : 'FFFEE2E2'; // light green vs light red
+        cellA.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colorBg } };
+        cellB.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colorBg } };
+      }
+      rIdx++;
+    });
+
+    rIdx += 2;
+
+    summarySheet.getCell(`A${rIdx}`).value = 'Occupancy Metrics';
+    summarySheet.getCell(`A${rIdx}`).font = { size: 12, bold: true };
+    rIdx++;
+
+    const occLabels = [
+      ['Total Rooms', totalRooms],
+      ['Total Bed Capacity', totalCapacity],
+      ['Occupied Beds', occupiedBeds],
+      ['Available Beds', availableBeds],
+      ['Occupancy Rate', `${occupancyRate}%`]
+    ];
+
+    occLabels.forEach(([lbl, val]) => {
+      summarySheet.getRow(rIdx).height = 20;
+      const cellA = summarySheet.getCell(`A${rIdx}`);
+      const cellB = summarySheet.getCell(`B${rIdx}`);
+      cellA.value = lbl;
+      cellB.value = val;
+      cellA.font = { size: 11, color: { argb: 'FF374151' } };
+      cellB.font = { size: 11, bold: true, color: { argb: 'FF374151' } };
+      rIdx++;
+    });
+
+    summarySheet.getColumn('A').width = 28;
+    summarySheet.getColumn('B').width = 20;
+
+    // -------------------------------------------------------------
+    // SHEET 2: TENANTS
+    // -------------------------------------------------------------
+    const tenantSheet = workbook.addWorksheet('Tenants');
+    applyMainHeader(tenantSheet, 'Active & Inactive Tenants List');
+
+    const tenantHeaders = ['S.No', 'Full Name', 'Phone', 'Email', 'Admission Date', 'Room No', 'Bed No', 'Guardian Name', 'Guardian Phone', 'Status'];
+    tenantSheet.getRow(4).height = 24;
+    
+    tenantHeaders.forEach((h, idx) => {
+      const cell = tenantSheet.getCell(4, idx + 1);
+      cell.value = h;
+      cell.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    });
+
+    let trIdx = 5;
+    students.forEach((s, idx) => {
+      tenantSheet.getRow(trIdx).height = 20;
+      tenantSheet.getCell(`A${trIdx}`).value = idx + 1;
+      tenantSheet.getCell(`B${trIdx}`).value = `${s.first_name || ''} ${s.last_name || ''}`.trim();
+      tenantSheet.getCell(`C${trIdx}`).value = s.phone || '-';
+      tenantSheet.getCell(`D${trIdx}`).value = s.email || '-';
       
-      const valueCell = worksheet.getCell(`B${row}`);
-      valueCell.value = summaryValues[index];
-      valueCell.numFmt = '₹#,##0.00';
-      valueCell.font = { 
-        size: 11, 
-        bold: index === 2, // Bold for Net Profit/Loss
-        color: { argb: 'FF000000' } 
-      };
-      valueCell.alignment = { horizontal: 'right', vertical: 'middle' };
-      row++;
+      const dateVal = s.admission_date ? new Date(s.admission_date) : null;
+      if (dateVal) {
+        tenantSheet.getCell(`E${trIdx}`).value = dateVal;
+        tenantSheet.getCell(`E${trIdx}`).numFmt = 'dd/mm/yyyy';
+      } else {
+        tenantSheet.getCell(`E${trIdx}`).value = '-';
+      }
+      
+      tenantSheet.getCell(`F${trIdx}`).value = s.room_number || 'Unallocated';
+      tenantSheet.getCell(`G${trIdx}`).value = s.bed_number || '-';
+      tenantSheet.getCell(`H${trIdx}`).value = s.guardian_name || '-';
+      tenantSheet.getCell(`I${trIdx}`).value = s.guardian_phone || '-';
+      
+      const isActive = s.is_active === 1 || s.is_active === true;
+      tenantSheet.getCell(`J${trIdx}`).value = isActive ? 'Active' : 'Inactive';
+      tenantSheet.getCell(`J${trIdx}`).font = { bold: true, color: { argb: isActive ? 'FF047857' : 'FFB91C1C' } }; // green vs red
+
+      // Border and Center alignment
+      for (let col = 1; col <= 10; col++) {
+        const cell = tenantSheet.getCell(trIdx, col);
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFECEFf4' } },
+          bottom: { style: 'thin', color: { argb: 'FFECEFf4' } }
+        };
+        if (col === 1 || col === 3 || col === 5 || col === 6 || col === 7 || col === 9 || col === 10) {
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        } else {
+          cell.alignment = { horizontal: 'left', vertical: 'middle' };
+        }
+      }
+      trIdx++;
     });
-    row += 2;
 
-    // Income Details Section
-    worksheet.getRow(row).height = 22;
-    const incomeTitle = worksheet.getCell(`A${row}`);
-    incomeTitle.value = 'Income Details';
-    incomeTitle.font = { size: 12, bold: true, color: { argb: 'FF000000' } };
-    incomeTitle.fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FFF0F0F0' }
-    };
-    row++;
+    tenantSheet.getColumn('A').width = 6;
+    tenantSheet.getColumn('B').width = 22;
+    tenantSheet.getColumn('C').width = 15;
+    tenantSheet.getColumn('D').width = 22;
+    tenantSheet.getColumn('E').width = 15;
+    tenantSheet.getColumn('F').width = 14;
+    tenantSheet.getColumn('G').width = 10;
+    tenantSheet.getColumn('H').width = 20;
+    tenantSheet.getColumn('I').width = 15;
+    tenantSheet.getColumn('J').width = 12;
 
-    // Income table headers
-    const incomeHeaders = ['Date', 'Source', 'Amount', 'Payment Mode', 'Receipt Number', 'Description'];
-    worksheet.getRow(row).height = 20;
-    incomeHeaders.forEach((header, colIndex) => {
-      const cell = worksheet.getCell(row, colIndex + 1);
-      cell.value = header;
-      cell.font = { size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
-      cell.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FF4472C4' } // Blue background
-      };
-      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-      cell.border = {
-        top: { style: 'thin', color: { argb: 'FF000000' } },
-        left: { style: 'thin', color: { argb: 'FF000000' } },
-        bottom: { style: 'thin', color: { argb: 'FF000000' } },
-        right: { style: 'thin', color: { argb: 'FF000000' } }
-      };
+    // -------------------------------------------------------------
+    // SHEET 3: FEE PAYMENTS
+    // -------------------------------------------------------------
+    const paymentSheet = workbook.addWorksheet('Fee Payments');
+    applyMainHeader(paymentSheet, 'Monthly Fee Payments & Collections');
+
+    const paymentHeaders = ['S.No', 'Payment Date', 'Tenant Name', 'Room No', 'Amount Paid', 'Payment Mode', 'For Month', 'Transaction Ref', 'Receipt Number', 'Remarks'];
+    paymentSheet.getRow(4).height = 24;
+    
+    paymentHeaders.forEach((h, idx) => {
+      const cell = paymentSheet.getCell(4, idx + 1);
+      cell.value = h;
+      cell.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF059669' } }; // Green 600
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
     });
-    row++;
 
-    // Income data rows
-    if (incomes.length === 0) {
-      worksheet.getRow(row).height = 18;
-      worksheet.getCell(`A${row}`).value = 'No income records found for this month.';
-      worksheet.mergeCells(`A${row}:F${row}`);
-      row++;
-    } else {
-      incomes.forEach((income: any) => {
-        worksheet.getRow(row).height = 18;
-        
-        worksheet.getCell(`A${row}`).value = new Date(income.income_date);
-        worksheet.getCell(`A${row}`).numFmt = 'dd/mm/yyyy';
-        worksheet.getCell(`A${row}`).alignment = { horizontal: 'center', vertical: 'middle' };
-        
-        worksheet.getCell(`B${row}`).value = income.source || '-';
-        worksheet.getCell(`B${row}`).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
-        
-        worksheet.getCell(`C${row}`).value = Number(income.amount || 0);
-        worksheet.getCell(`C${row}`).numFmt = '₹#,##0.00';
-        worksheet.getCell(`C${row}`).alignment = { horizontal: 'right', vertical: 'middle' };
-        
-        worksheet.getCell(`D${row}`).value = income.payment_mode || '-';
-        worksheet.getCell(`D${row}`).alignment = { horizontal: 'center', vertical: 'middle' };
-        
-        worksheet.getCell(`E${row}`).value = income.receipt_number || '-';
-        worksheet.getCell(`E${row}`).alignment = { horizontal: 'center', vertical: 'middle' };
-        
-        worksheet.getCell(`F${row}`).value = income.description || '-';
-        worksheet.getCell(`F${row}`).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
-        
-        // Add borders to data rows
-        ['A', 'B', 'C', 'D', 'E', 'F'].forEach(col => {
-          const cell = worksheet.getCell(`${col}${row}`);
-          cell.border = {
-            top: { style: 'thin', color: { argb: 'FFCCCCCC' } },
-            left: { style: 'thin', color: { argb: 'FFCCCCCC' } },
-            bottom: { style: 'thin', color: { argb: 'FFCCCCCC' } },
-            right: { style: 'thin', color: { argb: 'FFCCCCCC' } }
-          };
-        });
-        
-        row++;
-      });
-    }
-    row += 2;
+    let prIdx = 5;
+    payments.forEach((p, idx) => {
+      paymentSheet.getRow(prIdx).height = 20;
+      paymentSheet.getCell(`A${prIdx}`).value = idx + 1;
+      
+      const dateVal = p.payment_date ? new Date(p.payment_date) : null;
+      if (dateVal) {
+        paymentSheet.getCell(`B${prIdx}`).value = dateVal;
+        paymentSheet.getCell(`B${prIdx}`).numFmt = 'dd/mm/yyyy';
+      } else {
+        paymentSheet.getCell(`B${prIdx}`).value = '-';
+      }
 
-    // Expense Details Section
-    worksheet.getRow(row).height = 22;
-    const expenseTitle = worksheet.getCell(`A${row}`);
-    expenseTitle.value = 'Expense Details';
-    expenseTitle.font = { size: 12, bold: true, color: { argb: 'FF000000' } };
-    expenseTitle.fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FFF0F0F0' }
-    };
-    row++;
+      paymentSheet.getCell(`C${prIdx}`).value = `${p.first_name || ''} ${p.last_name || ''}`.trim();
+      paymentSheet.getCell(`D${prIdx}`).value = p.room_number || '-';
+      
+      paymentSheet.getCell(`E${prIdx}`).value = Number(p.amount_paid || 0);
+      paymentSheet.getCell(`E${prIdx}`).numFmt = '₹#,##0.00';
+      paymentSheet.getCell(`E${prIdx}`).font = { bold: true };
 
-    // Expense table headers
-    const expenseHeaders = ['Date', 'Category', 'Amount', 'Payment Mode', 'Bill Number', 'Vendor/Description'];
-    worksheet.getRow(row).height = 20;
-    expenseHeaders.forEach((header, colIndex) => {
-      const cell = worksheet.getCell(row, colIndex + 1);
-      cell.value = header;
-      cell.font = { size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
-      cell.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FFC55A11' } // Orange background
-      };
-      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-      cell.border = {
-        top: { style: 'thin', color: { argb: 'FF000000' } },
-        left: { style: 'thin', color: { argb: 'FF000000' } },
-        bottom: { style: 'thin', color: { argb: 'FF000000' } },
-        right: { style: 'thin', color: { argb: 'FF000000' } }
-      };
+      paymentSheet.getCell(`F${prIdx}`).value = p.payment_mode || 'Cash';
+      paymentSheet.getCell(`G${prIdx}`).value = p.payment_for_month || '-';
+      paymentSheet.getCell(`H${prIdx}`).value = p.transaction_reference || '-';
+      paymentSheet.getCell(`I${prIdx}`).value = p.receipt_number || '-';
+      paymentSheet.getCell(`J${prIdx}`).value = p.remarks || '-';
+
+      // Border & Alignment
+      for (let col = 1; col <= 10; col++) {
+        const cell = paymentSheet.getCell(prIdx, col);
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFECEFf4' } },
+          bottom: { style: 'thin', color: { argb: 'FFECEFf4' } }
+        };
+        if (col === 1 || col === 2 || col === 4 || col === 6 || col === 7 || col === 8 || col === 9) {
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        } else if (col === 5) {
+          cell.alignment = { horizontal: 'right', vertical: 'middle' };
+        } else {
+          cell.alignment = { horizontal: 'left', vertical: 'middle' };
+        }
+      }
+      prIdx++;
     });
-    row++;
 
-    // Expense data rows
-    if (expenses.length === 0) {
-      worksheet.getRow(row).height = 18;
-      worksheet.getCell(`A${row}`).value = 'No expense records found for this month.';
-      worksheet.mergeCells(`A${row}:F${row}`);
-      row++;
-    } else {
-      expenses.forEach((expense: any) => {
-        worksheet.getRow(row).height = 18;
-        
-        worksheet.getCell(`A${row}`).value = new Date(expense.expense_date);
-        worksheet.getCell(`A${row}`).numFmt = 'dd/mm/yyyy';
-        worksheet.getCell(`A${row}`).alignment = { horizontal: 'center', vertical: 'middle' };
-        
-        worksheet.getCell(`B${row}`).value = expense.category_name || '-';
-        worksheet.getCell(`B${row}`).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
-        
-        worksheet.getCell(`C${row}`).value = Number(expense.amount || 0);
-        worksheet.getCell(`C${row}`).numFmt = '₹#,##0.00';
-        worksheet.getCell(`C${row}`).alignment = { horizontal: 'right', vertical: 'middle' };
-        
-        worksheet.getCell(`D${row}`).value = expense.payment_mode || '-';
-        worksheet.getCell(`D${row}`).alignment = { horizontal: 'center', vertical: 'middle' };
-        
-        worksheet.getCell(`E${row}`).value = expense.bill_number || '-';
-        worksheet.getCell(`E${row}`).alignment = { horizontal: 'center', vertical: 'middle' };
-        
-        worksheet.getCell(`F${row}`).value = expense.vendor_name || expense.description || '-';
-        worksheet.getCell(`F${row}`).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
-        
-        // Add borders to data rows
-        ['A', 'B', 'C', 'D', 'E', 'F'].forEach(col => {
-          const cell = worksheet.getCell(`${col}${row}`);
-          cell.border = {
-            top: { style: 'thin', color: { argb: 'FFCCCCCC' } },
-            left: { style: 'thin', color: { argb: 'FFCCCCCC' } },
-            bottom: { style: 'thin', color: { argb: 'FFCCCCCC' } },
-            right: { style: 'thin', color: { argb: 'FFCCCCCC' } }
-          };
-        });
-        
-        row++;
-      });
-    }
+    paymentSheet.getColumn('A').width = 6;
+    paymentSheet.getColumn('B').width = 15;
+    paymentSheet.getColumn('C').width = 22;
+    paymentSheet.getColumn('D').width = 12;
+    paymentSheet.getColumn('E').width = 15;
+    paymentSheet.getColumn('F').width = 15;
+    paymentSheet.getColumn('G').width = 15;
+    paymentSheet.getColumn('H').width = 18;
+    paymentSheet.getColumn('I').width = 18;
+    paymentSheet.getColumn('J').width = 25;
 
-    // Set fixed column widths for better readability
-    worksheet.getColumn('A').width = 12; // Date
-    worksheet.getColumn('B').width = 20; // Source/Category
-    worksheet.getColumn('C').width = 15; // Amount
-    worksheet.getColumn('D').width = 15; // Payment Mode
-    worksheet.getColumn('E').width = 15; // Receipt/Bill Number
-    worksheet.getColumn('F').width = 30; // Description
+    // -------------------------------------------------------------
+    // SHEET 4: ROOMS & BEDS
+    // -------------------------------------------------------------
+    const roomSheet = workbook.addWorksheet('Rooms & Occupancy');
+    applyMainHeader(roomSheet, 'Rooms Capacity & Occupancy Status');
+
+    const roomHeaders = ['S.No', 'Room Number', 'Room Type', 'Floor', 'Bed Capacity', 'Occupied Beds', 'Available Beds', 'Rent per Bed', 'Amenities', 'Status'];
+    roomSheet.getRow(4).height = 24;
+    
+    roomHeaders.forEach((h, idx) => {
+      const cell = roomSheet.getCell(4, idx + 1);
+      cell.value = h;
+      cell.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2563EB' } }; // Blue 600
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    });
+
+    let rmrIdx = 5;
+    roomsList.forEach((r, idx) => {
+      roomSheet.getRow(rmrIdx).height = 20;
+      roomSheet.getCell(`A${rmrIdx}`).value = idx + 1;
+      roomSheet.getCell(`B${rmrIdx}`).value = r.room_number;
+      roomSheet.getCell(`C${rmrIdx}`).value = r.room_type_name || 'Standard';
+      roomSheet.getCell(`D${rmrIdx}`).value = r.floor_number !== null ? `Floor ${r.floor_number}` : '-';
+      roomSheet.getCell(`E${rmrIdx}`).value = r.capacity || 0;
+      roomSheet.getCell(`F${rmrIdx}`).value = r.occupied_beds || 0;
+      
+      const avBeds = (r.capacity || 0) - (r.occupied_beds || 0);
+      roomSheet.getCell(`G${rmrIdx}`).value = avBeds >= 0 ? avBeds : 0;
+      
+      roomSheet.getCell(`H${rmrIdx}`).value = Number(r.rent_per_bed || 0);
+      roomSheet.getCell(`H${rmrIdx}`).numFmt = '₹#,##0.00';
+
+      roomSheet.getCell(`I${rmrIdx}`).value = r.amenities || '-';
+      
+      const isAvailable = r.is_available === 1 || r.is_available === true;
+      const statusText = avBeds === 0 ? 'Full' : (isAvailable ? 'Available' : 'Unavailable');
+      roomSheet.getCell(`J${rmrIdx}`).value = statusText;
+      roomSheet.getCell(`J${rmrIdx}`).font = { 
+        bold: true, 
+        color: { argb: avBeds === 0 ? 'FFB91C1C' : (isAvailable ? 'FF047857' : 'FF94A3B8') } 
+      };
+
+      // Border & Alignment
+      for (let col = 1; col <= 10; col++) {
+        const cell = roomSheet.getCell(rmrIdx, col);
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFECEFf4' } },
+          bottom: { style: 'thin', color: { argb: 'FFECEFf4' } }
+        };
+        if (col === 1 || col === 2 || col === 4 || col === 5 || col === 6 || col === 7 || col === 10) {
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        } else if (col === 8) {
+          cell.alignment = { horizontal: 'right', vertical: 'middle' };
+        } else {
+          cell.alignment = { horizontal: 'left', vertical: 'middle' };
+        }
+      }
+      rmrIdx++;
+    });
+
+    roomSheet.getColumn('A').width = 6;
+    roomSheet.getColumn('B').width = 15;
+    roomSheet.getColumn('C').width = 15;
+    roomSheet.getColumn('D').width = 12;
+    roomSheet.getColumn('E').width = 14;
+    roomSheet.getColumn('F').width = 14;
+    roomSheet.getColumn('G').width = 14;
+    roomSheet.getColumn('H').width = 15;
+    roomSheet.getColumn('I').width = 25;
+    roomSheet.getColumn('J').width = 14;
+
+    // -------------------------------------------------------------
+    // SHEET 5: EXPENSES
+    // -------------------------------------------------------------
+    const expenseSheet = workbook.addWorksheet('Expenses');
+    applyMainHeader(expenseSheet, 'Detailed Expenses Breakdown');
+
+    const expenseHeadersList = ['S.No', 'Expense Date', 'Category', 'Amount', 'Payment Mode', 'Bill Number', 'Vendor Name', 'Description'];
+    expenseSheet.getRow(4).height = 24;
+    
+    expenseHeadersList.forEach((h, idx) => {
+      const cell = expenseSheet.getCell(4, idx + 1);
+      cell.value = h;
+      cell.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEA580C' } }; // Orange 600
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    });
+
+    let exrIdx = 5;
+    expenses.forEach((e, idx) => {
+      expenseSheet.getRow(exrIdx).height = 20;
+      expenseSheet.getCell(`A${exrIdx}`).value = idx + 1;
+      
+      const dateVal = e.expense_date ? new Date(e.expense_date) : null;
+      if (dateVal) {
+        expenseSheet.getCell(`B${exrIdx}`).value = dateVal;
+        expenseSheet.getCell(`B${exrIdx}`).numFmt = 'dd/mm/yyyy';
+      } else {
+        expenseSheet.getCell(`B${exrIdx}`).value = '-';
+      }
+
+      expenseSheet.getCell(`C${exrIdx}`).value = e.category_name || 'Miscellaneous';
+      
+      expenseSheet.getCell(`D${exrIdx}`).value = Number(e.amount || 0);
+      expenseSheet.getCell(`D${exrIdx}`).numFmt = '₹#,##0.00';
+      expenseSheet.getCell(`D${exrIdx}`).font = { bold: true, color: { argb: 'FFDC2626' } }; // Red text for expenses
+
+      expenseSheet.getCell(`E${exrIdx}`).value = e.payment_mode || 'Cash';
+      expenseSheet.getCell(`F${exrIdx}`).value = e.bill_number || '-';
+      expenseSheet.getCell(`G${exrIdx}`).value = e.vendor_name || '-';
+      expenseSheet.getCell(`H${exrIdx}`).value = e.description || '-';
+
+      // Border & Alignment
+      for (let col = 1; col <= 8; col++) {
+        const cell = expenseSheet.getCell(exrIdx, col);
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFECEFf4' } },
+          bottom: { style: 'thin', color: { argb: 'FFECEFf4' } }
+        };
+        if (col === 1 || col === 2 || col === 5 || col === 6) {
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        } else if (col === 4) {
+          cell.alignment = { horizontal: 'right', vertical: 'middle' };
+        } else {
+          cell.alignment = { horizontal: 'left', vertical: 'middle' };
+        }
+      }
+      exrIdx++;
+    });
+
+    expenseSheet.getColumn('A').width = 6;
+    expenseSheet.getColumn('B').width = 15;
+    expenseSheet.getColumn('C').width = 18;
+    expenseSheet.getColumn('D').width = 15;
+    expenseSheet.getColumn('E').width = 15;
+    expenseSheet.getColumn('F').width = 15;
+    expenseSheet.getColumn('G').width = 20;
+    expenseSheet.getColumn('H').width = 25;
 
     // Set response headers
-    const filename = `Income_Expense_Report_${monthName}_${year}.xlsx`;
+    const filename = `Hostel_Financial_Report_${monthName}_${year}.xlsx`;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 

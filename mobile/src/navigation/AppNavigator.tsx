@@ -35,6 +35,7 @@ import DeleteExpensesScreen  from '../Pages/DeleteExpensesScreen';
 import QRSignupScreen        from '../Pages/QRSignupScreen';
 import PreBookingScreen      from '../Pages/PreBookingScreen';
 import NoticesScreen         from '../Pages/NoticesScreen';
+import ReportsScreen         from '../Pages/ReportsScreen';
 
 // ── New screens ─────────────────────────────────────────────────────────────────
 import ComingSoonScreen      from '../Pages/ComingSoonScreen';
@@ -147,8 +148,7 @@ const AppNavigator = () => {
                 {/* Placeholders for analytics, etc. */}
                 <Stack.Screen
                     name="Reports"
-                    component={PlaceholderScreen}
-                    initialParams={{ title: 'Analytics & Reports' }}
+                    component={ReportsScreen}
                 />
                 <Stack.Screen
                     name="PersonalInfo"

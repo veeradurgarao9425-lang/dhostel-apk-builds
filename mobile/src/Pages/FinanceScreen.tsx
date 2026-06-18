@@ -614,6 +614,7 @@ export default function FinanceScreen() {
                     isVisible={isDatePickerVisible}
                     mode="date"
                     date={mode === 'Rent' ? rentDate : expenseDate}
+                    maximumDate={new Date()}
                     onConfirm={(date) => {
                         setDatePickerVisibility(false);
                         if (mode === 'Rent') {

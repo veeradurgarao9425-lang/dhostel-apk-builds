@@ -233,6 +233,7 @@ export function PaymentDrawer({
                 onConfirm={handleConfirmDate}
                 onCancel={() => setDatePickerVisibility(false)}
                 date={new Date(payDate)}
+                maximumDate={new Date()}
             />
             <DateTimePickerModal
                 isVisible={isDueDatePickerVisible}

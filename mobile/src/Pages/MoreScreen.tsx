@@ -143,7 +143,6 @@ const MENU_GROUPS: { groupTitle: string; items: MenuItem[] }[] = [
                 iconColor: '#059669',
                 iconBg: '#D1FAE5',
                 route: 'Reports',
-                comingSoon: true,
             },
         ],
     },
