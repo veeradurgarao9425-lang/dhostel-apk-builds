@@ -13,7 +13,8 @@ import {
     LayoutAnimation,
     Platform,
     UIManager,
-    Alert
+    Alert,
+    ScrollView,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
@@ -32,10 +33,11 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 }
 
 const PAGE_SIZE = 10;
-type TabType = 'Active' | 'Inactive' | 'All';
+type TabType = 'Active' | 'Inactive' | 'PreBooked' | 'All';
 
 const TABS: { key: TabType; label: string }[] = [
     { key: 'Active', label: 'Active' },
+    { key: 'PreBooked', label: 'Pre-Booked' },
     { key: 'Inactive', label: 'Inactive' },
     { key: 'All', label: 'Total' }
 ];
@@ -51,13 +53,16 @@ interface StudentCardProps {
 
 const StudentCard = React.memo(({ student, onPress, onWhatsApp, onCall, onToggle }: StudentCardProps) => {
     const isActive = student.status === 1;
+    const isPreBooked = student.status === 2;
+    const indicatorColor = isPreBooked ? '#EA580C' : isActive ? '#10B981' : '#EF4444';
+    
     return (
         <TouchableOpacity
             style={styles.card}
             onPress={() => onPress(student.student_id)}
             activeOpacity={0.8}
         >
-            <View style={[styles.statusIndicator, { backgroundColor: isActive ? '#10B981' : '#EF4444' }]} />
+            <View style={[styles.statusIndicator, { backgroundColor: indicatorColor }]} />
             <View style={styles.cardMain}>
                 <View style={styles.avatarBox}>
                     {student.photo ? (
@@ -70,8 +75,21 @@ const StudentCard = React.memo(({ student, onPress, onWhatsApp, onCall, onToggle
                     <Text style={styles.nameText} numberOfLines={1}>
                         {student.first_name} {student.last_name}
                     </Text>
-                    <View style={styles.roomBadge}>
-                        <Text style={styles.roomText}>ROOM {student.room_number || 'N/A'}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                        {isPreBooked ? (
+                            <View style={[styles.roomBadge, { backgroundColor: '#FFEFE6', borderColor: '#FFE4D6', borderWidth: 1, marginTop: 0 }]}>
+                                <Text style={[styles.roomText, { color: '#EA580C' }]}>PRE-BOOKED</Text>
+                            </View>
+                        ) : (
+                            <View style={[styles.roomBadge, { marginTop: 0 }]}>
+                                <Text style={styles.roomText}>ROOM {student.room_number || 'N/A'}</Text>
+                            </View>
+                        )}
+                        {isPreBooked && student.room_number && (
+                            <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '700' }}>
+                                Room {student.room_number}
+                            </Text>
+                        )}
                     </View>
                 </View>
                 <View style={styles.actionColumn}>
@@ -91,11 +109,20 @@ const StudentCard = React.memo(({ student, onPress, onWhatsApp, onCall, onToggle
                     </TouchableOpacity>
                     <TouchableOpacity
                         onPress={() => onToggle(student)}
-                        style={[styles.statusToggleBtn, { backgroundColor: isActive ? '#FEE2E2' : '#DCFCE7' }]}
+                        style={[
+                            styles.statusToggleBtn, 
+                            { 
+                                backgroundColor: isPreBooked ? '#FFEFE6' : isActive ? '#FEE2E2' : '#DCFCE7' 
+                            }
+                        ]}
                     >
-                        <Text style={[styles.statusToggleText, { color: isActive ? '#EF4444' : '#10B981' }]}>
-                            {isActive ? 'OFF' : 'ON'}
-                        </Text>
+                        {isPreBooked ? (
+                            <Ionicons name="checkmark-circle-outline" size={18} color="#EA580C" />
+                        ) : (
+                            <Text style={[styles.statusToggleText, { color: isActive ? '#EF4444' : '#10B981' }]}>
+                                {isActive ? 'OFF' : 'ON'}
+                            </Text>
+                        )}
                     </TouchableOpacity>
                 </View>
             </View>
@@ -171,7 +198,7 @@ export default function StudentsScreen({ navigation, route }: any) {
     const [activeTab, setActiveTab] = useState<TabType>('Active');
     const [initialLoading, setInitialLoading] = useState(true);
     const [debouncedSearch, setDebouncedSearch] = useState('');
-    const [counts, setCounts] = useState({ active: 0, inactive: 0, total: 0 });
+    const [counts, setCounts] = useState({ active: 0, inactive: 0, prebooked: 0, total: 0 });
     const [dateFilter, setDateFilter] = useState<Date | null>(null);
     const [showDatePicker, setShowDatePicker] = useState(false);
 
@@ -209,7 +236,7 @@ export default function StudentsScreen({ navigation, route }: any) {
                 setLoadingMore(true);
             }
 
-            const statusParam = activeTab === 'Active' ? 1 : activeTab === 'Inactive' ? 0 : undefined;
+            const statusParam = activeTab === 'Active' ? 1 : activeTab === 'Inactive' ? 0 : activeTab === 'PreBooked' ? 2 : undefined;
             const params: Record<string, any> = { page: pageNum, limit: PAGE_SIZE };
             if (debouncedSearch) params.search = debouncedSearch;
             if (statusParam !== undefined) params.status = statusParam;
@@ -266,9 +293,10 @@ export default function StudentsScreen({ navigation, route }: any) {
     const fetchCounts = async () => {
         try {
             // Fetch all counts in parallel. Note: Backend ignores limit, so we get full array.
-            const [resActive, resInactive, resTotal] = await Promise.all([
+            const [resActive, resInactive, resPreBooked, resTotal] = await Promise.all([
                 api.get('/students', { params: { status: 1 } }),
                 api.get('/students', { params: { status: 0 } }),
+                api.get('/students', { params: { status: 2 } }),
                 api.get('/students')
             ]);
 
@@ -277,6 +305,9 @@ export default function StudentsScreen({ navigation, route }: any) {
             }
             if (resInactive.data.success) {
                 setCounts(p => ({ ...p, inactive: resInactive.data.data?.length || 0 }));
+            }
+            if (resPreBooked.data.success) {
+                setCounts(p => ({ ...p, prebooked: resPreBooked.data.data?.length || 0 }));
             }
             if (resTotal.data.success) {
                 setCounts(p => ({ ...p, total: resTotal.data.data?.length || 0 }));
@@ -312,10 +343,29 @@ export default function StudentsScreen({ navigation, route }: any) {
 
     const handleToggleStatus = useCallback((student: any) => {
         const isCurrentlyActive = student.status === 1;
-        const newStatusLabel = isCurrentlyActive ? 'Inactive' : 'Active';
+        const isPreBooked = student.status === 2;
+        
+        let title = '';
+        let msg = '';
+        let targetStatus = 1;
+        
+        if (isPreBooked) {
+            title = 'Confirm Check-In?';
+            msg = `Do you want to confirm check-in for pre-booked tenant ${student.first_name}? This will activate their residency and set up their current month fee.`;
+            targetStatus = 1;
+        } else if (isCurrentlyActive) {
+            title = 'Mark as Inactive?';
+            msg = `Are you sure you want to mark ${student.first_name} as inactive?`;
+            targetStatus = 0;
+        } else {
+            title = 'Mark as Active?';
+            msg = `Are you sure you want to mark ${student.first_name} as active?`;
+            targetStatus = 1;
+        }
+
         Alert.alert(
-            `Mark as ${newStatusLabel}?`,
-            `Are you sure you want to mark ${student.first_name} as ${newStatusLabel.toLowerCase()}?`,
+            title,
+            msg,
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
@@ -323,12 +373,12 @@ export default function StudentsScreen({ navigation, route }: any) {
                     onPress: async () => {
                         try {
                             const res = await api.put(`/students/${student.student_id}`, {
-                                status: isCurrentlyActive ? 0 : 1
+                                status: targetStatus
                             });
                             if (res.data.success) {
                                 // Update local state for immediate feedback
                                 setAllStudents(prev => prev.map(s =>
-                                    s.student_id === student.student_id ? { ...s, status: isCurrentlyActive ? 0 : 1 } : s
+                                    s.student_id === student.student_id ? { ...s, status: targetStatus } : s
                                 ));
                                 fetchCounts(); // Update tab counts
                                 Toast.show({ type: 'success', text1: 'Status Updated' });
@@ -425,15 +475,24 @@ export default function StudentsScreen({ navigation, route }: any) {
                     onCancel={() => setShowDatePicker(false)}
                 />
 
-                <View style={styles.tabContainer}>
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.tabScroll}
+                    contentContainerStyle={styles.tabScrollContent}
+                >
                     {[
                         { key: 'Active', label: 'Active', count: counts.active },
+                        { key: 'PreBooked', label: 'Pre-Booked', count: counts.prebooked },
                         { key: 'Inactive', label: 'Inactive', count: counts.inactive },
                         { key: 'All', label: 'Total', count: counts.total }
                     ].map((tab: any) => (
                         <TouchableOpacity
                             key={tab.key}
-                            style={[styles.tabBtn, activeTab === tab.key && styles.activeTabBtn]}
+                            style={[
+                                styles.pillBtn,
+                                activeTab === tab.key ? styles.activePillBtn : styles.inactivePillBtn
+                            ]}
                             onPress={() => {
                                 if (activeTab === tab.key) return;
                                 LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -441,14 +500,14 @@ export default function StudentsScreen({ navigation, route }: any) {
                             }}
                         >
                             <Text style={[
-                                styles.tabLabel,
+                                styles.pillLabel,
                                 activeTab === tab.key ? { color: theme.primary } : { color: '#FFF' }
                             ]}>
                                 {tab.label} ({tab.count})
                             </Text>
                         </TouchableOpacity>
                     ))}
-                </View>
+                </ScrollView>
             </LinearGradient>
 
             <View style={styles.body}>
@@ -532,15 +591,33 @@ const styles = StyleSheet.create({
         marginBottom: 15
     },
     input: { flex: 1, marginLeft: 10, fontWeight: '600', color: '#1E293B' },
-    tabContainer: {
-        flexDirection: 'row',
-        backgroundColor: 'rgba(0,0,0,0.1)',
-        padding: 4,
-        borderRadius: 14
+    tabScroll: {
+        marginTop: 6,
+        width: '100%',
     },
-    tabBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 10 },
-    activeTabBtn: { backgroundColor: '#FFF' },
-    tabLabel: { fontSize: 12, fontWeight: '800' },
+    tabScrollContent: {
+        paddingHorizontal: 2,
+        gap: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    pillBtn: {
+        paddingVertical: 7,
+        paddingHorizontal: 16,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    activePillBtn: {
+        backgroundColor: '#FFF',
+    },
+    inactivePillBtn: {
+        backgroundColor: 'rgba(255,255,255,0.15)',
+    },
+    pillLabel: {
+        fontSize: 12,
+        fontWeight: '800',
+    },
     body: { flex: 1 },
     listPadding: { padding: 16, paddingBottom: 100 },
     card: {

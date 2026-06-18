@@ -34,6 +34,7 @@ import DeleteRoomsScreen     from '../Pages/DeleteRoomsScreen';
 import DeleteExpensesScreen  from '../Pages/DeleteExpensesScreen';
 import QRSignupScreen        from '../Pages/QRSignupScreen';
 import PreBookingScreen      from '../Pages/PreBookingScreen';
+import NoticesScreen         from '../Pages/NoticesScreen';
 
 // ── New screens ─────────────────────────────────────────────────────────────────
 import ComingSoonScreen      from '../Pages/ComingSoonScreen';
@@ -44,6 +45,7 @@ import BillRemindersScreen   from '../Pages/BillRemindersScreen';
 import RemindersScreen       from '../Pages/RemindersScreen';
 import TenantTransactionsScreen from '../Pages/TenantTransactionsScreen';
 import CollectedPaymentsScreen from '../Pages/CollectedPaymentsScreen';
+import OverviewScreen        from '../Pages/OverviewScreen';
 
 
 // ── Navigators ────────────────────────────────────────────────────────────────
@@ -52,15 +54,16 @@ import BottomTabNavigator from '../components/BottomTabNavigator';
 const Stack = createNativeStackNavigator();
 const Tab   = createBottomTabNavigator();
 
-// ── Tab Navigator (3 unique tabs) ────────────────────────────────────────────
+// ── Tab Navigator (4 unique tabs) ────────────────────────────────────────────
 const TabNavigator = () => (
     <Tab.Navigator
         tabBar={props => <BottomTabNavigator {...props} />}
         screenOptions={{ headerShown: false }}
     >
-        <Tab.Screen name="HomeTab"    component={HomeScreen}           />
-        <Tab.Screen name="PendingTab" component={PendingPaymentsScreen}/>
-        <Tab.Screen name="MoreTab"    component={MoreScreen}           />
+        <Tab.Screen name="HomeTab"     component={HomeScreen}           />
+        <Tab.Screen name="OverviewTab" component={OverviewScreen}       />
+        <Tab.Screen name="PendingTab"  component={PendingPaymentsScreen}/>
+        <Tab.Screen name="MoreTab"     component={MoreScreen}           />
     </Tab.Navigator>
 );
 
@@ -123,6 +126,7 @@ const AppNavigator = () => {
                 <Stack.Screen name="IncomeDetails"  component={IncomeDetailsScreen}  />
                 <Stack.Screen name="CollectedPayments" component={CollectedPaymentsScreen} />
                 <Stack.Screen name="AddIncome"      component={AddIncomeScreen}      />
+                <Stack.Screen name="Overview"       component={OverviewScreen}       />
 
                 {/* Expenses */}
                 <Stack.Screen name="Expenses"        component={ExpenseScreen}        />
@@ -138,6 +142,7 @@ const AppNavigator = () => {
                 <Stack.Screen name="Maintenance" component={MaintenanceScreen} />
                 <Stack.Screen name="QRSignup"    component={QRSignupScreen}    />
                 <Stack.Screen name="PreBooking"  component={PreBookingScreen}  />
+                <Stack.Screen name="Notices"     component={NoticesScreen}     />
 
                 {/* Placeholders for analytics, etc. */}
                 <Stack.Screen

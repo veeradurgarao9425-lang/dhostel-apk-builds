@@ -356,6 +356,28 @@ async function patchDatabaseSchema() {
       console.error('[schema-patch] Error checking/creating reminders table:', e.message);
     }
 
+    // 7. Ensure notices table exists
+    try {
+      if (!tableNamesLower.includes('notices')) {
+        console.log('[schema-patch] creating missing notices table...');
+        await db.raw(`
+          CREATE TABLE notices (
+            notice_id INT AUTO_INCREMENT PRIMARY KEY,
+            hostel_id INT NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            content TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (hostel_id) REFERENCES hostel_master(hostel_id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        console.log('[schema-patch] creating indexes for notices table...');
+        await db.raw("CREATE INDEX idx_notices_hostel ON notices(hostel_id)");
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error checking/creating notices table:', e.message);
+    }
+
     console.log('[schema-patch] Schema check and patch complete.');
   } catch (err: any) {
     console.error('[schema-patch] Critical error during schema patching:', err.message);

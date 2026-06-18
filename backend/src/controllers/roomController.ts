@@ -145,7 +145,6 @@ export const getRoomById = async (req: AuthRequest, res: Response) => {
         'r.occupied_beds',
         'r.rent_per_bed',
         'r.amenities',
-        'r.status',
         'r.is_available',
         'rt.room_type_name',
         'rt.description as room_type_description',

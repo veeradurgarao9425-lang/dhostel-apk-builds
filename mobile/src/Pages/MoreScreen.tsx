@@ -1,7 +1,7 @@
 import React from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
-    StatusBar, SafeAreaView, ScrollView,
+    StatusBar, ScrollView, Platform, Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -22,6 +22,33 @@ interface MenuItem {
     danger?: boolean;
 }
 
+const TOP_TOOLS: MenuItem[] = [
+    {
+        label: 'QR Signup',
+        subtitle: 'Self registration QR',
+        icon: 'qr-code',
+        iconColor: '#7C3AED',
+        iconBg: '#EDE9FE',
+        route: 'QRSignup',
+    },
+    {
+        label: 'Expenses',
+        subtitle: 'Track hostel expenses',
+        icon: 'card',
+        iconColor: '#2563EB',
+        iconBg: '#DBEAFE',
+        route: 'Expenses',
+    },
+    {
+        label: 'Maintenance',
+        subtitle: 'Track repairs & status',
+        icon: 'construct',
+        iconColor: '#D97706',
+        iconBg: '#FEF3C7',
+        route: 'Maintenance',
+    },
+];
+
 const MENU_GROUPS: { groupTitle: string; items: MenuItem[] }[] = [
     {
         groupTitle: 'Management',
@@ -38,42 +65,33 @@ const MENU_GROUPS: { groupTitle: string; items: MenuItem[] }[] = [
                 label: 'Rooms',
                 subtitle: 'View & manage all rooms',
                 icon: 'bed',
-                iconColor: '#7C3AED',
-                iconBg: '#EDE9FE',
+                iconColor: '#2563EB',
+                iconBg: '#DBEAFE',
                 route: 'Rooms',
             },
             {
-                label: 'Finance Hub',
-                subtitle: 'Collections, dues & expenses',
-                icon: 'wallet',
-                iconColor: '#2563EB',
-                iconBg: '#DBEAFE',
-                route: 'FinanceTab',
+                label: 'Vacate Notices',
+                subtitle: 'Scheduled vacate list',
+                icon: 'megaphone',
+                iconColor: '#EA580C',
+                iconBg: '#FFEDD5',
+                route: 'Notices',
+            },
+            {
+                label: 'Pending Payments',
+                subtitle: 'Track pending dues',
+                icon: 'alert-circle',
+                iconColor: '#DC2626',
+                iconBg: '#FEE2E2',
+                route: 'PendingTab',
             },
             {
                 label: 'Staff Management',
-                subtitle: 'Add & manage hostel staff',
+                subtitle: 'Add & manage staff',
                 icon: 'person-circle',
-                iconColor: '#059669',
-                iconBg: '#D1FAE5',
+                iconColor: '#0891B2',
+                iconBg: '#CFFAFE',
                 route: 'Staff',
-                comingSoon: false,
-            },
-            {
-                label: 'Maintenance',
-                subtitle: 'Track repair & maintenance',
-                icon: 'construct',
-                iconColor: '#D97706',
-                iconBg: '#FEF3C7',
-                route: 'Maintenance',
-            },
-            {
-                label: 'Delete Rooms',
-                subtitle: 'Remove unused rooms',
-                icon: 'trash-bin',
-                iconColor: '#DC2626',
-                iconBg: '#FEE2E2',
-                route: 'DeleteRooms',
             },
         ],
     },
@@ -81,16 +99,8 @@ const MENU_GROUPS: { groupTitle: string; items: MenuItem[] }[] = [
         groupTitle: 'Finance',
         items: [
             {
-                label: 'Expenses',
-                subtitle: 'Track hostel expenses',
-                icon: 'card',
-                iconColor: '#2563EB',
-                iconBg: '#DBEAFE',
-                route: 'Expenses',
-            },
-            {
                 label: 'Income Report',
-                subtitle: 'View detailed income data',
+                subtitle: 'View monthly income',
                 icon: 'trending-up',
                 iconColor: '#16A34A',
                 iconBg: '#DCFCE7',
@@ -99,11 +109,19 @@ const MENU_GROUPS: { groupTitle: string; items: MenuItem[] }[] = [
             },
             {
                 label: 'Delete Expenses',
-                subtitle: 'Remove expense records',
-                icon: 'trash',
+                subtitle: 'Remove expense items',
+                icon: 'trash-outline',
                 iconColor: '#DC2626',
                 iconBg: '#FEE2E2',
                 route: 'DeleteExpenses',
+            },
+            {
+                label: 'Delete Rooms',
+                subtitle: 'Remove hostel rooms',
+                icon: 'trash',
+                iconColor: '#DC2626',
+                iconBg: '#FEE2E2',
+                route: 'DeleteRooms',
             },
         ],
     },
@@ -112,24 +130,15 @@ const MENU_GROUPS: { groupTitle: string; items: MenuItem[] }[] = [
         items: [
             {
                 label: 'Reminders',
-                subtitle: 'Set due date reminders',
+                subtitle: 'Due date alerts',
                 icon: 'notifications',
                 iconColor: '#0891B2',
                 iconBg: '#CFFAFE',
                 route: 'Reminders',
-                comingSoon: false,
-            },
-            {
-                label: 'QR Signup',
-                subtitle: 'Tenant self-registration',
-                icon: 'qr-code',
-                iconColor: '#7C3AED',
-                iconBg: '#EDE9FE',
-                route: 'QRSignup',
             },
             {
                 label: 'Reports & Analytics',
-                subtitle: 'Detailed hostel analytics',
+                subtitle: 'Detailed analytics',
                 icon: 'bar-chart',
                 iconColor: '#059669',
                 iconBg: '#D1FAE5',
@@ -143,15 +152,15 @@ const MENU_GROUPS: { groupTitle: string; items: MenuItem[] }[] = [
         items: [
             {
                 label: 'Profile',
-                subtitle: 'Manage your account',
-                icon: 'person-circle',
+                subtitle: 'Your account info',
+                icon: 'person',
                 iconColor: '#6B7280',
                 iconBg: '#F3F4F6',
                 route: 'Profile',
             },
             {
                 label: 'Settings',
-                subtitle: 'App preferences',
+                subtitle: 'Preferences & themes',
                 icon: 'settings',
                 iconColor: '#374151',
                 iconBg: '#F9FAFB',
@@ -163,11 +172,33 @@ const MENU_GROUPS: { groupTitle: string; items: MenuItem[] }[] = [
 
 export default function MoreScreen() {
     const navigation = useNavigation<any>();
-    const { user } = useAuth();
+    const { user, signOut } = useAuth();
     const { theme } = useTheme();
 
     const handlePress = (item: MenuItem) => {
+        if (item.comingSoon) return;
         navigation.navigate(item.route, item.routeParams);
+    };
+
+    const handleLogout = () => {
+        Alert.alert(
+            'Confirm Log Out',
+            'Are you sure you want to log out from the application?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Log Out',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await signOut();
+                        } catch (e) {
+                            console.error('Logout failed:', e);
+                        }
+                    }
+                }
+            ]
+        );
     };
 
     return (
@@ -197,43 +228,64 @@ export default function MoreScreen() {
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: 110, paddingTop: 16 }}
             >
+                {/* Quick Access Tools */}
+                <View style={s.topToolsGroup}>
+                    <Text style={s.groupTitle}>Quick Tools</Text>
+                    <View style={s.topToolsRow}>
+                        {TOP_TOOLS.map((tool, index) => (
+                            <TouchableOpacity
+                                key={index}
+                                style={s.topToolCard}
+                                onPress={() => handlePress(tool)}
+                                activeOpacity={0.7}
+                            >
+                                <View style={[s.topToolIconCircle, { backgroundColor: tool.iconBg }]}>
+                                    <Ionicons name={tool.icon as any} size={20} color={tool.iconColor} />
+                                </View>
+                                <Text style={s.topToolLabel} numberOfLines={1}>{tool.label}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </View>
+
                 {MENU_GROUPS.map((group, gi) => (
                     <View key={gi} style={s.group}>
                         <Text style={s.groupTitle}>{group.groupTitle}</Text>
-                        <View style={s.groupCard}>
+                        <View style={s.gridRow}>
                             {group.items.map((item, ii) => (
                                 <TouchableOpacity
                                     key={ii}
-                                    style={[
-                                        s.menuRow,
-                                        ii < group.items.length - 1 && s.menuRowBorder,
-                                    ]}
+                                    style={[s.gridCard, item.comingSoon && { opacity: 0.6 }]}
                                     onPress={() => handlePress(item)}
                                     activeOpacity={0.7}
                                 >
-                                    {/* Icon */}
-                                    <View style={[s.menuIconWrap, { backgroundColor: item.iconBg }]}>
+                                    <View style={[s.iconCircle, { backgroundColor: item.iconBg }]}>
                                         <Ionicons name={item.icon as any} size={20} color={item.iconColor} />
                                     </View>
-
-                                    {/* Text */}
-                                    <View style={s.menuTextWrap}>
-                                        <View style={s.menuLabelRow}>
-                                            <Text style={s.menuLabel}>{item.label}</Text>
-                                            {item.comingSoon && (
-                                                <View style={s.soonBadge}>
-                                                    <Text style={s.soonBadgeText}>Soon</Text>
-                                                </View>
-                                            )}
-                                        </View>
-                                        <Text style={s.menuSub}>{item.subtitle}</Text>
+                                    <View style={s.cardTextWrap}>
+                                        <Text style={s.cardLabel} numberOfLines={1}>{item.label}</Text>
+                                        <Text style={s.cardSub} numberOfLines={2}>{item.subtitle}</Text>
                                     </View>
-
+                                    {item.comingSoon && (
+                                        <View style={s.soonBadge}>
+                                            <Text style={s.soonBadgeText}>Soon</Text>
+                                        </View>
+                                    )}
                                 </TouchableOpacity>
                             ))}
                         </View>
                     </View>
                 ))}
+
+                {/* Logout Button */}
+                <TouchableOpacity
+                    style={s.logoutBtn}
+                    onPress={handleLogout}
+                    activeOpacity={0.8}
+                >
+                    <Ionicons name="log-out-outline" size={20} color="#DC2626" />
+                    <Text style={s.logoutText}>Log Out</Text>
+                </TouchableOpacity>
 
                 {/* App version */}
                 <Text style={s.version}>dHostel v1.0.0</Text>
@@ -268,69 +320,120 @@ const s = StyleSheet.create({
     avatarText: { fontSize: 22, fontWeight: '900', color: '#FFF' },
     headerName: { fontSize: 18, fontWeight: '800', color: '#FFF', marginBottom: 2 },
     headerSub: { fontSize: 12, color: 'rgba(255,255,255,0.75)', fontWeight: '600' },
-    profileBtn: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: 'rgba(255,255,255,0.15)',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
 
     scroll: { flex: 1 },
 
-    group: { marginHorizontal: 16, marginBottom: 20 },
-    groupTitle: {
-        fontSize: 11,
-        fontWeight: '800',
-        color: '#94A3B8',
-        textTransform: 'uppercase',
-        letterSpacing: 0.8,
-        marginBottom: 8,
-        marginLeft: 4,
+    topToolsGroup: {
+        marginHorizontal: 16,
+        marginBottom: 20,
     },
-    groupCard: {
+    topToolsRow: {
+        flexDirection: 'row',
+        gap: 10,
+        justifyContent: 'space-between',
+    },
+    topToolCard: {
+        flex: 1,
         backgroundColor: '#FFF',
-        borderRadius: 18,
-        overflow: 'hidden',
+        borderRadius: 16,
+        paddingVertical: 14,
+        paddingHorizontal: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
         elevation: 2,
-        shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
+        shadowColor: '#7C3AED',
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
         borderWidth: 1,
         borderColor: '#F1F5F9',
     },
-
-    menuRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 13,
-        gap: 13,
-    },
-    menuRowBorder: {
-        borderBottomWidth: 1,
-        borderBottomColor: '#F1F5F9',
-    },
-    menuIconWrap: {
-        width: 42,
-        height: 42,
-        borderRadius: 13,
+    topToolIconCircle: {
+        width: 38,
+        height: 38,
+        borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
+        marginBottom: 8,
     },
-    menuTextWrap: { flex: 1 },
-    menuLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 2 },
-    menuLabel: { fontSize: 14, fontWeight: '700', color: '#1E293B' },
-    menuSub: { fontSize: 11, color: '#94A3B8', fontWeight: '500' },
+    topToolLabel: {
+        fontSize: 11,
+        fontWeight: '800',
+        color: '#1E293B',
+        textAlign: 'center',
+    },
 
+    group: { marginHorizontal: 16, marginBottom: 24 },
+    groupTitle: {
+        fontSize: 12,
+        fontWeight: '800',
+        color: '#94A3B8',
+        textTransform: 'uppercase',
+        letterSpacing: 1.0,
+        marginBottom: 12,
+        marginLeft: 4,
+    },
+    gridRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        gap: 10,
+    },
+    gridCard: {
+        width: '48%',
+        backgroundColor: '#FFF',
+        borderRadius: 20,
+        padding: 14,
+        elevation: 2,
+        shadowColor: '#7C3AED',
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+        alignItems: 'flex-start',
+        minHeight: 116,
+        position: 'relative',
+        marginBottom: 4,
+    },
+    iconCircle: {
+        width: 38,
+        height: 38,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 10,
+    },
+    cardTextWrap: { flex: 1, width: '100%' },
+    cardLabel: { fontSize: 13, fontWeight: '800', color: '#1E293B', marginBottom: 3 },
+    cardSub: { fontSize: 10, color: '#94A3B8', fontWeight: '500', lineHeight: 13 },
     soonBadge: {
+        position: 'absolute',
+        top: 10,
+        right: 10,
         backgroundColor: '#EDE9FE',
-        borderRadius: 8,
-        paddingHorizontal: 7,
+        borderRadius: 6,
+        paddingHorizontal: 6,
         paddingVertical: 2,
     },
-    soonBadgeText: { fontSize: 9, fontWeight: '800', color: '#7C3AED' },
+    soonBadgeText: { fontSize: 8, fontWeight: '800', color: '#7C3AED' },
+
+    logoutBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#FEE2E2',
+        marginHorizontal: 16,
+        paddingVertical: 14,
+        borderRadius: 16,
+        gap: 8,
+        borderWidth: 1,
+        borderColor: '#FCA5A5',
+        marginBottom: 24,
+    },
+    logoutText: {
+        fontSize: 14,
+        fontWeight: '800',
+        color: '#DC2626',
+    },
 
     version: {
         textAlign: 'center',

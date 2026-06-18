@@ -28,6 +28,8 @@ const INITIAL_STATE = {
     unpaidStudents: [] as any[],
     totalRooms: 0,
     occupancyRate: 0,
+    prebookingsCount: 0,
+    noticesCount: 0,
 };
 
 // ─── Greeting helper ──────────────────────────────────────────────────────────
@@ -58,7 +60,7 @@ const RevenueBar = ({ amount, maxAmount, month, isCurrent }: any) => {
     const barH = Math.max(6, Math.round((amount / Math.max(maxAmount, 1)) * 72));
     return (
         <View style={bc.column}>
-            <Text style={bc.topLabel}>
+            <Text style={[bc.topLabel, isCurrent && { color: '#EA580C' }]}>
                 {amount > 0 ? `₹${(amount / 1000).toFixed(0)}k` : ''}
             </Text>
             <View style={bc.barWrap}>
@@ -67,13 +69,13 @@ const RevenueBar = ({ amount, maxAmount, month, isCurrent }: any) => {
                         bc.bar,
                         {
                             height: barH,
-                            backgroundColor: isCurrent ? '#7C3AED' : '#C4B5FD',
+                            backgroundColor: isCurrent ? '#EA580C' : '#FFEDD5',
                             borderRadius: isCurrent ? 6 : 4,
                         },
                     ]}
                 />
             </View>
-            <Text style={[bc.month, isCurrent && { color: '#7C3AED', fontWeight: '800' }]}>
+            <Text style={[bc.month, isCurrent && { color: '#EA580C', fontWeight: '800' }]}>
                 {month}
             </Text>
         </View>
@@ -158,6 +160,8 @@ export default function HomeScreen() {
                 unpaidStudents:  topDefaulters,
                 totalRooms:      d2.totalRooms || 0,
                 occupancyRate:   d2.occupancyRate || 0,
+                prebookingsCount: d2.prebookingsCount || 0,
+                noticesCount:    d2.noticesCount || 0,
             });
             isFirstLoadRef.current = false;
         } catch {
@@ -320,65 +324,70 @@ export default function HomeScreen() {
                             onPress={() => navigation.navigate('Rooms', { filter: 'All' })}
                         >
                             <View style={s.cardHeaderLeft}>
-                                <Ionicons name="bed-outline" size={17} color="#7C3AED" />
-                                <Text style={s.cardTitle}>Beds Overview</Text>
+                                <Ionicons name="apps" size={17} color="#7C3AED" />
+                                <Text style={s.cardTitle}>Beds & Occupancy Overview</Text>
                                 <Ionicons name="chevron-forward" size={14} color="#94A3B8" style={{ marginLeft: 2 }} />
                             </View>
                             <Text style={s.cardMeta}>
                                 Total: {data.totalBeds} beds
                             </Text>
                         </TouchableOpacity>
-                        <View style={s.bedsRow}>
+
+                        {/* Progress Bar Visual */}
+                        <View style={s.bedProgressContainer}>
+                            <View style={s.progressBarBackground}>
+                                <View style={[s.progressBarFill, { width: `${data.occupancyRate}%` }]} />
+                            </View>
+                            <View style={s.progressTextRow}>
+                                <Text style={s.progressTextLabel}>Occupancy Rate</Text>
+                                <Text style={s.progressTextVal}>{data.occupancyRate}%</Text>
+                            </View>
+                        </View>
+
+                        <View style={s.bedsRowNew}>
                             {/* Available */}
                             <TouchableOpacity
-                                style={s.bedCell}
+                                style={[s.bedCardNew, { borderColor: '#E8F5E9' }]}
                                 activeOpacity={0.7}
                                 onPress={() => navigation.navigate('Rooms', { filter: 'Vacant' })}
                             >
-                                <View style={[s.bedIcon, { backgroundColor: '#DCFCE7' }]}>
-                                    <Ionicons name="bed-outline" size={20} color="#16A34A" />
+                                <View style={[s.bedIconNew, { backgroundColor: '#E8F5E9' }]}>
+                                    <Ionicons name="checkmark-circle-sharp" size={18} color="#2E7D32" />
                                 </View>
-                                <Text style={[s.bedNum, { color: '#16A34A' }]}>{data.availableBeds}</Text>
-                                <Text style={s.bedLbl}>Available</Text>
+                                <View>
+                                    <Text style={[s.bedNumNew, { color: '#2E7D32' }]}>{data.availableBeds}</Text>
+                                    <Text style={s.bedLblNew}>Available</Text>
+                                </View>
                             </TouchableOpacity>
-
-                            <View style={s.bedSep} />
 
                             {/* Occupied */}
                             <TouchableOpacity
-                                style={s.bedCell}
+                                style={[s.bedCardNew, { borderColor: '#FFEBEE' }]}
                                 activeOpacity={0.7}
                                 onPress={() => navigation.navigate('Rooms', { filter: 'Full' })}
                             >
-                                <View style={[s.bedIcon, { backgroundColor: '#FEE2E2' }]}>
-                                    <Ionicons name="bed" size={20} color="#DC2626" />
+                                <View style={[s.bedIconNew, { backgroundColor: '#FFEBEE' }]}>
+                                    <Ionicons name="people-sharp" size={18} color="#C62828" />
                                 </View>
-                                <Text style={[s.bedNum, { color: '#DC2626' }]}>{data.occupiedBeds}</Text>
-                                <Text style={s.bedLbl}>Occupied</Text>
+                                <View>
+                                    <Text style={[s.bedNumNew, { color: '#C62828' }]}>{data.occupiedBeds}</Text>
+                                    <Text style={s.bedLblNew}>Occupied</Text>
+                                </View>
                             </TouchableOpacity>
 
-                            <View style={s.bedSep} />
-
-                            {/* Notice — Coming Soon */}
+                            {/* Notices board */}
                             <TouchableOpacity
-                                style={s.bedCell}
+                                style={[s.bedCardNew, { borderColor: '#FFF3E0' }]}
                                 activeOpacity={0.7}
-                                onPress={() =>
-                                    navigation.navigate('ComingSoon', {
-                                        featureName: 'Notice Board',
-                                        description:
-                                            'Send announcements and notices to all tenants. Track who has read them.',
-                                        icon: 'megaphone-outline',
-                                    })
-                                }
+                                onPress={() => navigation.navigate('Notices')}
                             >
-                                <View style={[s.bedIcon, { backgroundColor: '#F3F4F6' }]}>
-                                    <Ionicons name="megaphone-outline" size={20} color="#9CA3AF" />
+                                <View style={[s.bedIconNew, { backgroundColor: '#FFF3E0' }]}>
+                                    <Ionicons name="megaphone-sharp" size={18} color="#EF6C00" />
                                 </View>
-                                <View style={s.soonPill}>
-                                    <Text style={s.soonPillText}>Soon</Text>
+                                <View>
+                                    <Text style={[s.bedNumNew, { color: '#EF6C00' }]}>{data.noticesCount}</Text>
+                                    <Text style={s.bedLblNew}>Notices</Text>
                                 </View>
-                                <Text style={[s.bedLbl, { color: '#9CA3AF' }]}>Notice</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -408,6 +417,11 @@ export default function HomeScreen() {
                                                 <Ionicons name="lock-closed" size={7} color="#FFF" />
                                             </View>
                                         )}
+                                        {a.route === 'PreBooking' && data.prebookingsCount > 0 && (
+                                            <View style={s.prebookBadge}>
+                                                <Text style={s.prebookBadgeText}>{data.prebookingsCount}</Text>
+                                            </View>
+                                        )}
                                     </View>
                                     <Text
                                         style={[
@@ -428,22 +442,10 @@ export default function HomeScreen() {
                         <Text style={s.sectionTitle}>📊 Statistics</Text>
                         <View style={s.statsGrid}>
 
-                            {/* Active Tenants */}
-                            <TouchableOpacity
-                                style={[s.statCard, { backgroundColor: '#F5F3FF' }]}
-                                onPress={() => navigation.navigate('Students')}
-                                activeOpacity={0.8}
-                            >
-                                <View style={[s.statIconBox, { backgroundColor: '#EDE9FE' }]}>
-                                    <Ionicons name="people" size={20} color="#7C3AED" />
-                                </View>
-                                <Text style={[s.statNum, { color: '#7C3AED' }]}>{data.activeTenants}</Text>
-                                <Text style={s.statLbl}>Active Tenants</Text>
-                            </TouchableOpacity>
-
+                            {/* Line 1: Left Tenants & Occupancy Rate */}
                             {/* Left Tenants */}
                             <TouchableOpacity
-                                style={[s.statCard, { backgroundColor: '#F9FAFB' }]}
+                                style={[s.statCard, { backgroundColor: '#FFF', borderColor: '#E5E7EB', borderWidth: 1.5 }]}
                                 onPress={() => navigation.navigate('Students', { filter: 'Inactive' })}
                                 activeOpacity={0.8}
                             >
@@ -454,22 +456,50 @@ export default function HomeScreen() {
                                 <Text style={s.statLbl}>Left Tenants</Text>
                             </TouchableOpacity>
 
-                            {/* Collected Amount */}
+                            {/* Occupancy Rate */}
                             <TouchableOpacity
-                                style={[s.statCard, { backgroundColor: '#F0FDF4' }]}
-                                onPress={() => navigation.navigate('CollectedPayments')}
+                                style={[s.statCard, { backgroundColor: '#FFF', borderColor: '#FBCFE8', borderWidth: 1.5 }]}
+                                onPress={() => navigation.navigate('Rooms', { filter: 'All' })}
                                 activeOpacity={0.8}
                             >
-                                <View style={[s.statIconBox, { backgroundColor: '#DCFCE7' }]}>
-                                    <Ionicons name="cash" size={20} color="#16A34A" />
+                                <View style={[s.statIconBox, { backgroundColor: '#FCE7F3' }]}>
+                                    <Ionicons name="analytics" size={20} color="#DB2777" />
                                 </View>
-                                <Text style={[s.statNum, { color: '#16A34A' }]}>{fmt(data.monthAmount)}</Text>
-                                <Text style={s.statLbl}>Collected</Text>
+                                <Text style={[s.statNum, { color: '#DB2777' }]}>{data.occupancyRate}%</Text>
+                                <Text style={s.statLbl}>Occupancy Rate</Text>
                             </TouchableOpacity>
 
+                            {/* Line 2: Total Rooms & Active Tenants */}
+                            {/* Total Rooms */}
+                            <TouchableOpacity
+                                style={[s.statCard, { backgroundColor: '#FFF', borderColor: '#BFDBFE', borderWidth: 1.5 }]}
+                                onPress={() => navigation.navigate('Rooms', { filter: 'All' })}
+                                activeOpacity={0.8}
+                            >
+                                <View style={[s.statIconBox, { backgroundColor: '#DBEAFE' }]}>
+                                    <Ionicons name="home" size={20} color="#2563EB" />
+                                </View>
+                                <Text style={[s.statNum, { color: '#2563EB' }]}>{data.totalRooms}</Text>
+                                <Text style={s.statLbl}>Total Rooms</Text>
+                            </TouchableOpacity>
+
+                            {/* Active Tenants */}
+                            <TouchableOpacity
+                                style={[s.statCard, { backgroundColor: '#FFF', borderColor: '#DDD6FE', borderWidth: 1.5 }]}
+                                onPress={() => navigation.navigate('Students')}
+                                activeOpacity={0.8}
+                            >
+                                <View style={[s.statIconBox, { backgroundColor: '#EDE9FE' }]}>
+                                    <Ionicons name="people" size={20} color="#7C3AED" />
+                                </View>
+                                <Text style={[s.statNum, { color: '#7C3AED' }]}>{data.activeTenants}</Text>
+                                <Text style={s.statLbl}>Active Tenants</Text>
+                            </TouchableOpacity>
+
+                            {/* Line 3: Pending Dues & Collected Amount (Swapped) */}
                             {/* Pending Dues */}
                             <TouchableOpacity
-                                style={[s.statCard, { backgroundColor: '#FFFBEB' }]}
+                                style={[s.statCard, { backgroundColor: '#FFF', borderColor: '#FDE68A', borderWidth: 1.5 }]}
                                 onPress={() => navigation.navigate('PendingTab')}
                                 activeOpacity={0.8}
                             >
@@ -481,30 +511,17 @@ export default function HomeScreen() {
                                 {data.totalDuesAmount > 0 && <View style={s.redDot} />}
                             </TouchableOpacity>
 
-                            {/* Total Rooms */}
+                            {/* Collected Amount */}
                             <TouchableOpacity
-                                style={[s.statCard, { backgroundColor: '#EFF6FF' }]}
-                                onPress={() => navigation.navigate('Rooms', { filter: 'All' })}
+                                style={[s.statCard, { backgroundColor: '#FFF', borderColor: '#A7F3D0', borderWidth: 1.5 }]}
+                                onPress={() => navigation.navigate('CollectedPayments')}
                                 activeOpacity={0.8}
                             >
-                                <View style={[s.statIconBox, { backgroundColor: '#DBEAFE' }]}>
-                                    <Ionicons name="home" size={20} color="#2563EB" />
+                                <View style={[s.statIconBox, { backgroundColor: '#DCFCE7' }]}>
+                                    <Ionicons name="cash" size={20} color="#16A34A" />
                                 </View>
-                                <Text style={[s.statNum, { color: '#2563EB' }]}>{data.totalRooms}</Text>
-                                <Text style={s.statLbl}>Total Rooms</Text>
-                            </TouchableOpacity>
-
-                            {/* Occupancy Rate */}
-                            <TouchableOpacity
-                                style={[s.statCard, { backgroundColor: '#FDF2F8' }]}
-                                onPress={() => navigation.navigate('Rooms', { filter: 'All' })}
-                                activeOpacity={0.8}
-                            >
-                                <View style={[s.statIconBox, { backgroundColor: '#FCE7F3' }]}>
-                                    <Ionicons name="analytics" size={20} color="#DB2777" />
-                                </View>
-                                <Text style={[s.statNum, { color: '#DB2777' }]}>{data.occupancyRate}%</Text>
-                                <Text style={s.statLbl}>Occupancy Rate</Text>
+                                <Text style={[s.statNum, { color: '#16A34A' }]}>{fmt(data.monthAmount)}</Text>
+                                <Text style={s.statLbl}>Collected</Text>
                             </TouchableOpacity>
 
                         </View>
@@ -554,6 +571,25 @@ export default function HomeScreen() {
                                 <Text style={[s.finHubAmount, { color: '#16A34A' }]}>
                                     ₹{data.monthAmount.toLocaleString('en-IN')}
                                 </Text>
+                                <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
+                            </View>
+                        </TouchableOpacity>
+
+                        {/* Financial Overview — full width */}
+                        <TouchableOpacity
+                            style={s.finHubCard}
+                            onPress={() => navigation.navigate('OverviewTab')}
+                            activeOpacity={0.85}
+                        >
+                            <View style={[s.finHubAccent, { backgroundColor: '#7C3AED' }]} />
+                            <View style={[s.finHubIconBox, { backgroundColor: '#EDE9FE' }]}>
+                                <Ionicons name="bar-chart-outline" size={22} color="#7C3AED" />
+                            </View>
+                            <View style={s.finHubBody}>
+                                <Text style={s.finHubTitle}>Financial Overview</Text>
+                                <Text style={s.finHubSub}>Profit & Loss, monthly overview</Text>
+                            </View>
+                            <View style={s.finHubRight}>
                                 <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
                             </View>
                         </TouchableOpacity>
@@ -722,30 +758,72 @@ const s = StyleSheet.create({
     cardMeta: { fontSize: 11, color: '#94A3B8', fontWeight: '600' },
 
     // ── Beds Overview ────────────────────────────────────────────────────────
-    bedsRow: {
+    bedProgressContainer: {
+        marginBottom: 16,
+        paddingHorizontal: 4,
+    },
+    progressBarBackground: {
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#F1F5F9',
+        overflow: 'hidden',
+        marginBottom: 6,
+    },
+    progressBarFill: {
+        height: '100%',
+        borderRadius: 4,
+        backgroundColor: '#7C3AED',
+    },
+    progressTextRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    progressTextLabel: {
+        fontSize: 11,
+        color: '#64748B',
+        fontWeight: '600',
+    },
+    progressTextVal: {
+        fontSize: 12,
+        color: '#7C3AED',
+        fontWeight: '800',
+    },
+    bedsRowNew: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: 8,
+    },
+    bedCardNew: {
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
-    },
-    bedCell: { flex: 1, alignItems: 'center', paddingVertical: 4 },
-    bedIcon: {
-        width: 46,
-        height: 46,
+        paddingVertical: 10,
+        paddingHorizontal: 8,
         borderRadius: 14,
+        borderWidth: 1.5,
+        backgroundColor: '#FFF',
+        gap: 8,
+    },
+    bedIconNew: {
+        width: 36,
+        height: 36,
+        borderRadius: 10,
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 8,
     },
-    bedNum: { fontSize: 24, fontWeight: '900', marginBottom: 3 },
-    bedLbl: { fontSize: 11, color: '#64748B', fontWeight: '600' },
-    bedSep: { width: 1, height: 60, backgroundColor: '#F1F5F9', marginHorizontal: 4 },
-    soonPill: {
-        backgroundColor: '#EDE9FE',
-        borderRadius: 8,
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        marginBottom: 4,
+    bedNumNew: {
+        fontSize: 14,
+        fontWeight: '800',
+        lineHeight: 18,
     },
-    soonPillText: { fontSize: 9, fontWeight: '800', color: '#7C3AED' },
+    bedLblNew: {
+        fontSize: 10,
+        color: '#64748B',
+        fontWeight: '600',
+        marginTop: 1,
+    },
 
     // ── Quick Management ─────────────────────────────────────────────────────
     quickRow: {
@@ -878,5 +956,24 @@ const s = StyleSheet.create({
         fontWeight: '500',
         textAlign: 'center',
         marginTop: 4,
+    },
+    prebookBadge: {
+        position: 'absolute',
+        top: -4,
+        right: -4,
+        backgroundColor: '#EA580C',
+        borderRadius: 8,
+        minWidth: 16,
+        height: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 4,
+        borderWidth: 1,
+        borderColor: '#FFF',
+    },
+    prebookBadgeText: {
+        color: '#FFF',
+        fontSize: 9,
+        fontWeight: '900',
     },
 });

@@ -14,6 +14,7 @@ import {
   User,
   CreditCard
 } from 'lucide-react';
+import { BarChart3 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { Tooltip } from '../ui/Tooltip';
 import toast from 'react-hot-toast';
@@ -66,6 +67,7 @@ export const MainLayout: React.FC = () => {
         { name: 'Collections', href: '/owner/collections', icon: CreditCard },
         { name: 'Incomes', href: '/owner/income', icon: TrendingUp },
         { name: 'Expenses', href: '/owner/expenses', icon: FileText },
+        { name: 'Overview', href: '/owner/overview', icon: BarChart3 },
         { name: 'Reports', href: '/owner/reports', icon: FileText },
         { name: 'Settings', href: '/owner/settings', icon: Settings },
       ];
@@ -160,6 +162,7 @@ export const MainLayout: React.FC = () => {
                  location.pathname === '/monthly-fees' || location.pathname === '/owner/monthly-fees' ? 'Monthly Fees' :
                  location.pathname === '/income' || location.pathname === '/owner/income' ? 'Income' :
                  location.pathname === '/expenses' || location.pathname === '/owner/expenses' ? 'Expenses' :
+                 location.pathname === '/overview' || location.pathname === '/owner/overview' ? 'Financial Overview' :
                  location.pathname === '/reports' || location.pathname === '/owner/reports' ? 'Reports' :
                  location.pathname === '/settings' || location.pathname === '/owner/settings' ? 'Settings' :
                  location.pathname === '/profile' || location.pathname === '/owner/profile' ? 'Profile' :

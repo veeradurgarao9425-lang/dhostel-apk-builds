@@ -160,7 +160,27 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
     const leftTenantsData = await leftTenantsQuery.first();
     const leftTenants = leftTenantsData?.count || 0;
 
-    // Get today's rent collection (from fee_payments table)
+    // Get pre-booking count (status = 2)
+    let prebookingQuery = db('students')
+      .where('status', 2)
+      .count('* as count');
+    if (hostelIds.length > 0) {
+      prebookingQuery = prebookingQuery.whereIn('hostel_id', hostelIds);
+    }
+    const prebookingData = await prebookingQuery.first();
+    const prebookingsCount = prebookingData?.count || 0;
+
+    // Get vacate notices count (active students with a scheduled vacate date)
+    let noticesCountQuery = db('students')
+      .where('status', 1)
+      .whereNotNull('vacate_notice_date')
+      .count('* as count');
+    if (hostelIds.length > 0) {
+      noticesCountQuery = noticesCountQuery.whereIn('hostel_id', hostelIds);
+    }
+    const noticesCountData = await noticesCountQuery.first();
+    const noticesCount = noticesCountData?.count || 0;
+
     // Get today's rent collection (from fee_payments table)
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     let todayRentQuery = db('fee_payments')
@@ -188,6 +208,8 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
     console.log('[DEBUG] totalStudents:', totalStudents?.count);
     console.log('[DEBUG] totalBedsRaw:', bedsData?.total_beds);
     console.log('[DEBUG] occupiedBeds:', occupiedBeds);
+    console.log('[DEBUG] prebookingsCount:', prebookingsCount);
+    console.log('[DEBUG] noticesCount:', noticesCount);
     console.log('[DEBUG] todayRent:', todayRent?.total);
 
     res.json({
@@ -206,6 +228,8 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
         pendingDuesCount: Number(pendingDues?.count || 0),
         pendingDuesAmount: Number(pendingDues?.total || 0),
         leftTenants: Number(leftTenants),
+        prebookingsCount: Number(prebookingsCount),
+        noticesCount: Number(noticesCount),
         monthlyRentDue,
         monthlyRentPending,
         monthlyRentCollected,
@@ -749,6 +773,190 @@ export const getOwnerStats = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       error: 'Failed to fetch owner statistics'
+    });
+  }
+};
+
+// Get monthly financial overview (P&L dashboard)
+export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user;
+    const { month } = req.query; // Expected format: YYYY-MM
+
+    // Determine hostel filtering
+    let hostelIds: number[] = [];
+    if (user?.role_id === 2) {
+      if (!user.hostel_id) {
+        return res.status(403).json({
+          success: false,
+          error: 'Your account is not linked to any hostel.'
+        });
+      }
+      hostelIds = [user.hostel_id];
+    }
+
+    // Parse the requested month or default to current
+    const now = new Date();
+    let targetYear: number, targetMonth: number;
+
+    if (month && typeof month === 'string' && /^\d{4}-\d{2}$/.test(month)) {
+      const parts = month.split('-').map(Number);
+      targetYear = parts[0];
+      targetMonth = parts[1];
+    } else {
+      targetYear = now.getFullYear();
+      targetMonth = now.getMonth() + 1;
+    }
+
+    const monthStart = `${targetYear}-${String(targetMonth).padStart(2, '0')}-01`;
+    const lastDay = new Date(targetYear, targetMonth, 0).getDate();
+    const monthEnd = `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    const feeMonthStr = `${targetYear}-${String(targetMonth).padStart(2, '0')}`;
+
+    // ── 1. Fee Collection for the month (from fee_payments) ──
+    let feeQuery = db('fee_payments')
+      .whereBetween('payment_date', [monthStart, monthEnd])
+      .sum('amount as total')
+      .count('* as count');
+    if (hostelIds.length > 0) {
+      feeQuery = feeQuery.whereIn('hostel_id', hostelIds);
+    }
+    const feeResult = await feeQuery.first();
+    const feeCollection = Number(feeResult?.total || 0);
+    const feeCount = Number(feeResult?.count || 0);
+
+    // ── 2. Other Income (from income table) ──
+    let incomeQuery = db('income')
+      .whereBetween('income_date', [monthStart, monthEnd])
+      .sum('amount as total')
+      .count('* as count');
+    if (hostelIds.length > 0) {
+      incomeQuery = incomeQuery.whereIn('hostel_id', hostelIds);
+    }
+    const incomeResult = await incomeQuery.first();
+    const otherIncome = Number(incomeResult?.total || 0);
+
+    const totalIncome = feeCollection + otherIncome;
+
+    // ── 3. Expenses by category for the month ──
+    let expenseCatQuery = db('expenses as e')
+      .leftJoin('expense_categories as ec', 'e.category_id', 'ec.category_id')
+      .whereBetween('e.expense_date', [monthStart, monthEnd])
+      .select(
+        'ec.category_id',
+        'ec.category_name',
+        db.raw('SUM(e.amount) as total_amount'),
+        db.raw('COUNT(e.expense_id) as count')
+      )
+      .groupBy('ec.category_id', 'ec.category_name')
+      .orderBy('total_amount', 'desc');
+    if (hostelIds.length > 0) {
+      expenseCatQuery = expenseCatQuery.whereIn('e.hostel_id', hostelIds);
+    }
+    const expenseBreakdown = await expenseCatQuery;
+
+    const totalExpenses = expenseBreakdown.reduce(
+      (sum: number, item: any) => sum + Number(item.total_amount || 0), 0
+    );
+
+    // Calculate percentages for each category
+    const expenseCategories = expenseBreakdown.map((item: any) => ({
+      category_id: item.category_id,
+      category_name: item.category_name || 'Uncategorized',
+      amount: Number(item.total_amount || 0),
+      count: Number(item.count || 0),
+      percentage: totalExpenses > 0
+        ? Number(((Number(item.total_amount) / totalExpenses) * 100).toFixed(1))
+        : 0
+    }));
+
+    const netProfit = totalIncome - totalExpenses;
+
+    // ── 4. Monthly rent due/collected/pending for context ──
+    let monthlyFeeQuery = db('monthly_fees')
+      .where('fee_month', feeMonthStr)
+      .sum('total_due as total_due')
+      .sum('balance as total_pending');
+    if (hostelIds.length > 0) {
+      monthlyFeeQuery = monthlyFeeQuery.whereIn('hostel_id', hostelIds);
+    }
+    const monthlyFeeResult = await monthlyFeeQuery.first();
+    const totalRentDue = Number(monthlyFeeResult?.total_due || 0);
+    const totalRentPending = Number(monthlyFeeResult?.total_pending || 0);
+
+    // ── 5. 12-month trend (last 12 months including current) ──
+    const trend: any[] = [];
+    for (let i = 11; i >= 0; i--) {
+      const tDate = new Date(targetYear, targetMonth - 1 - i, 1);
+      const tYear = tDate.getFullYear();
+      const tMonth = tDate.getMonth() + 1;
+      const tMonthStr = `${tYear}-${String(tMonth).padStart(2, '0')}`;
+      const tStart = `${tMonthStr}-01`;
+      const tLastDay = new Date(tYear, tMonth, 0).getDate();
+      const tEnd = `${tMonthStr}-${String(tLastDay).padStart(2, '0')}`;
+
+      // Fee collection
+      let tFeeQ = db('fee_payments')
+        .whereBetween('payment_date', [tStart, tEnd])
+        .sum('amount as total');
+      if (hostelIds.length > 0) tFeeQ = tFeeQ.whereIn('hostel_id', hostelIds);
+      const tFee = await tFeeQ.first();
+
+      // Other income
+      let tIncQ = db('income')
+        .whereBetween('income_date', [tStart, tEnd])
+        .sum('amount as total');
+      if (hostelIds.length > 0) tIncQ = tIncQ.whereIn('hostel_id', hostelIds);
+      const tInc = await tIncQ.first();
+
+      // Expenses
+      let tExpQ = db('expenses')
+        .whereBetween('expense_date', [tStart, tEnd])
+        .sum('amount as total');
+      if (hostelIds.length > 0) tExpQ = tExpQ.whereIn('hostel_id', hostelIds);
+      const tExp = await tExpQ.first();
+
+      const tIncome = Number(tFee?.total || 0) + Number(tInc?.total || 0);
+      const tExpenses = Number(tExp?.total || 0);
+
+      trend.push({
+        month: tMonthStr,
+        monthLabel: new Date(tYear, tMonth - 1).toLocaleString('en-US', { month: 'short' }),
+        year: tYear,
+        income: tIncome,
+        feeCollection: Number(tFee?.total || 0),
+        otherIncome: Number(tInc?.total || 0),
+        expenses: tExpenses,
+        profit: tIncome - tExpenses
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        currentMonth: {
+          month: feeMonthStr,
+          monthLabel: new Date(targetYear, targetMonth - 1).toLocaleString('en-US', { month: 'long', year: 'numeric' }),
+          feeCollection,
+          feeCount,
+          otherIncome,
+          totalIncome,
+          totalExpenses,
+          netProfit,
+          profitMargin: totalIncome > 0 ? Number(((netProfit / totalIncome) * 100).toFixed(1)) : 0,
+          expenseBreakdown: expenseCategories,
+          rentDue: totalRentDue,
+          rentPending: totalRentPending,
+          rentCollected: feeCollection
+        },
+        trend
+      }
+    });
+  } catch (error) {
+    console.error('Get monthly overview error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch monthly overview'
     });
   }
 };

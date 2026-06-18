@@ -19,6 +19,7 @@ import relationsRoutes from './routes/relationsRoutes.js';
 import idProofTypesRoutes from './routes/idProofTypesRoutes.js';
 import staffRoutes from './routes/staffRoutes.js';
 import reminderRoutes from './routes/reminderRoutes.js';
+import noticeRoutes from './routes/noticeRoutes.js';
 import { startMonthlyFeesGenerationJob } from './jobs/monthlyFeesGeneration.js';
 
 // Load environment variables
@@ -79,6 +80,7 @@ app.use('/api/relations', relationsRoutes);
 app.use('/api/id-proof-types', idProofTypesRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/reminders', reminderRoutes);
+app.use('/api/notices', noticeRoutes);
 
 // Public QR tenant signup (no auth) — supports optional roomId & bedId pre-fill
 app.get('/api/public/qr-signup', async (req, res) => {

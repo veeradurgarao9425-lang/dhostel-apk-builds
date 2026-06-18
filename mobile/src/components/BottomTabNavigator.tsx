@@ -1,33 +1,38 @@
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-    House, AlertCircle, MoreHorizontal,
-    Home, BellDot, LayoutGrid,
-} from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 const TABS = [
     {
         label: 'Home',
         route: 'HomeTab',
-        ActiveIcon: House,
-        InactiveIcon: Home,
+        activeIcon: 'home',
+        inactiveIcon: 'home-outline',
         activeColor: '#7C3AED',
         activeBg: '#EDE9FE',
     },
     {
+        label: 'Overview',
+        route: 'OverviewTab',
+        activeIcon: 'bar-chart',
+        inactiveIcon: 'bar-chart-outline',
+        activeColor: '#6366F1',
+        activeBg: '#EEF2FF',
+    },
+    {
         label: 'Pending',
         route: 'PendingTab',
-        ActiveIcon: BellDot,
-        InactiveIcon: AlertCircle,
+        activeIcon: 'alert-circle',
+        inactiveIcon: 'alert-circle-outline',
         activeColor: '#DC2626',
         activeBg: '#FEE2E2',
     },
     {
         label: 'More',
         route: 'MoreTab',
-        ActiveIcon: LayoutGrid,
-        InactiveIcon: MoreHorizontal,
+        activeIcon: 'grid',
+        inactiveIcon: 'grid-outline',
         activeColor: '#7C3AED',
         activeBg: '#EDE9FE',
     },
@@ -42,7 +47,7 @@ const BottomTabNavigator = ({ state, navigation }: any) => {
         <View style={[styles.container, { paddingBottom: insets.bottom + 4 }]}>
             {TABS.map((tab, index) => {
                 const isActive = state.routes[state.index]?.name === tab.route;
-                const IconComp = isActive ? tab.ActiveIcon : tab.InactiveIcon;
+                const iconName = isActive ? tab.activeIcon : tab.inactiveIcon;
 
                 const handlePress = () => {
                     const event = navigation.emit({
@@ -72,10 +77,10 @@ const BottomTabNavigator = ({ state, navigation }: any) => {
                             styles.iconWrap,
                             isActive && { backgroundColor: tab.activeBg },
                         ]}>
-                            <IconComp
+                            <Ionicons
+                                name={iconName as any}
                                 size={22}
                                 color={isActive ? tab.activeColor : INACTIVE_COLOR}
-                                strokeWidth={isActive ? 2.2 : 1.8}
                             />
                         </View>
 

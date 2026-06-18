@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo, useRef } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity, StatusBar,
-    FlatList, TextInput, Linking, Modal,
+    FlatList, Linking, Modal,
     RefreshControl, ActivityIndicator, Alert,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -12,7 +12,6 @@ import Toast from 'react-native-toast-message';
 import { HeaderNotification } from '../components/HeaderNotification';
 import { ProfileMenu } from '../components/ProfileMenu';
 import { PaymentDrawer } from '../components/PaymentDrawer';
-import { SearchBar } from '../components/SearchBar';
 import { useTheme } from '../../contexts/ThemeContext';
 import { toLocalDateStr } from '../utils/dateUtils';
 
@@ -124,15 +123,12 @@ const RemindModal = ({ visible, tenant, onClose }: {
 
 
 // ─── Tenant Card ──────────────────────────────────────────────────────────────
-const TenantDueCard = React.memo(({ item, onRemind, onCollect }: {
+const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect }: {
     item: DueTenant;
+    themeColor: string;
     onRemind: (t: DueTenant) => void;
     onCollect: (t: DueTenant) => void;
 }) => {
-    const paidPct = item.totalAmount > 0
-        ? Math.min(100, Math.round((item.paidAmount / item.totalAmount) * 100))
-        : 0;
-
     const accentColor = item.isOverdue ? '#DC2626' : '#D97706';
     const accentBg    = item.isOverdue ? '#FEE2E2' : '#FEF3C7';
     const tagLabel    = item.isOverdue
@@ -141,64 +137,36 @@ const TenantDueCard = React.memo(({ item, onRemind, onCollect }: {
 
     return (
         <View style={tc.card}>
-            {/* Left accent strip */}
-            <View style={[tc.strip, { backgroundColor: accentColor }]} />
-
+            <View style={[tc.accentBar, { backgroundColor: accentColor }]} />
             <View style={tc.inner}>
-                {/* Row 1: Avatar + Name + Status tag */}
-                <View style={tc.row1}>
+                {/* Header Row: Avatar + Info + Amount */}
+                <View style={tc.rowHeader}>
                     <View style={[tc.avatar, { backgroundColor: avatarColor(item.name) + '18' }]}>
                         <Text style={[tc.avatarTxt, { color: avatarColor(item.name) }]}>
                             {item.name[0].toUpperCase()}
                         </Text>
                     </View>
-                    <View style={{ flex: 1 }}>
+                    
+                    <View style={tc.infoCol}>
                         <Text style={tc.name}>{item.name}</Text>
-                        <View style={tc.meta}>
-                            <View style={tc.roomPill}>
-                                <Ionicons name="bed-outline" size={10} color="#7C3AED" />
-                                <Text style={tc.roomText}>Room {item.room}</Text>
-                            </View>
-                            <View style={[tc.statusPill, { backgroundColor: accentBg }]}>
-                                <Ionicons name="time-outline" size={10} color={accentColor} />
-                                <Text style={[tc.statusText, { color: accentColor }]}>{tagLabel}</Text>
-                            </View>
+                        <Text style={tc.roomText}>Room {item.room} · {item.feeMonth}</Text>
+                        
+                        <View style={[tc.statusBadge, { backgroundColor: accentBg }]}>
+                            <Ionicons name="time-outline" size={11} color={accentColor} />
+                            <Text style={[tc.statusText, { color: accentColor }]}>{tagLabel}</Text>
                         </View>
+                    </View>
+
+                    <View style={tc.amountCol}>
+                        <Text style={tc.amountLabel}>Pending</Text>
+                        <Text style={[tc.amountVal, { color: accentColor }]}>
+                            ₹{item.dueAmount.toLocaleString('en-IN')}
+                        </Text>
                     </View>
                 </View>
 
-                {/* Row 2: Amounts (Total | Paid | Due) */}
-                <View style={tc.amounts}>
-                    <View style={tc.amountCell}>
-                        <Text style={tc.amountLabel}>Total</Text>
-                        <Text style={tc.amountVal}>₹{item.totalAmount.toLocaleString('en-IN')}</Text>
-                    </View>
-                    <View style={tc.amountDivider} />
-                    <View style={tc.amountCell}>
-                        <Text style={[tc.amountLabel, { color: '#16A34A' }]}>Paid ✓</Text>
-                        <Text style={[tc.amountVal, { color: '#16A34A' }]}>₹{item.paidAmount.toLocaleString('en-IN')}</Text>
-                    </View>
-                    <View style={tc.amountDivider} />
-                    <View style={tc.amountCell}>
-                        <Text style={[tc.amountLabel, { color: accentColor }]}>Due ⚠</Text>
-                        <Text style={[tc.amountVal, { color: accentColor, fontWeight: '900' }]}>₹{item.dueAmount.toLocaleString('en-IN')}</Text>
-                    </View>
-                </View>
-
-                {/* Progress bar */}
-                {item.totalAmount > 0 && (
-                    <View style={tc.progressRow}>
-                        <View style={tc.progressBg}>
-                            <View style={[tc.progressFill, { width: `${paidPct}%` as any, backgroundColor: paidPct > 0 ? '#16A34A' : '#E2E8F0' }]} />
-                        </View>
-                        <Text style={tc.progressLabel}>{paidPct}% paid</Text>
-                    </View>
-                )}
-
-                {/* Month chip */}
-                {item.feeMonth && (
-                    <Text style={tc.monthChip}>📅 {item.feeMonth}</Text>
-                )}
+                {/* Divider */}
+                <View style={tc.divider} />
 
                 {/* Action buttons */}
                 <View style={tc.actions}>
@@ -207,11 +175,11 @@ const TenantDueCard = React.memo(({ item, onRemind, onCollect }: {
                         onPress={() => onRemind(item)}
                         activeOpacity={0.8}
                     >
-                        <Ionicons name="notifications-outline" size={15} color="#7C3AED" />
+                        <Ionicons name="notifications-outline" size={15} color="#475569" />
                         <Text style={tc.remindText}>Remind</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                        style={tc.collectBtn}
+                        style={[tc.collectBtn, { backgroundColor: themeColor }]}
                         onPress={() => onCollect(item)}
                         activeOpacity={0.85}
                     >
@@ -232,8 +200,6 @@ export default function PendingPaymentsScreen() {
     const [tenants, setTenants]     = useState<DueTenant[]>([]);
     const [loading, setLoading]     = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [search, setSearch]       = useState('');
-    const [sort, setSort]           = useState<SortType>('amount');
     const [remindTarget, setRemindTarget] = useState<DueTenant | null>(null);
 
     // Modal / Collect Drawer States
@@ -336,20 +302,16 @@ export default function PendingPaymentsScreen() {
     const totalPending = useMemo(() => tenants.reduce((s, t) => s + t.dueAmount, 0), [tenants]);
     const partialPaid  = useMemo(() => tenants.filter(t => t.paidAmount > 0).reduce((s, t) => s + t.paidAmount, 0), [tenants]);
 
-    // ── Filtered + sorted list ───────────────────────────────────────────────
-    const filtered = useMemo(() => {
-        const q = search.toLowerCase().trim();
-        let list = q
-            ? tenants.filter(t =>
-                t.name.toLowerCase().includes(q) ||
-                t.room.toLowerCase().includes(q))
-            : tenants;
-
-        if (sort === 'amount')  list = [...list].sort((a, b) => b.dueAmount - a.dueAmount);
-        if (sort === 'room')    list = [...list].sort((a, b) => a.room.localeCompare(b.room));
-        if (sort === 'overdue') list = [...list].sort((a, b) => b.daysOverdue - a.daysOverdue);
-        return list;
-    }, [tenants, search, sort]);
+    // ── Sorted list (Overdue first, then by due amount descending) ───────────
+    const sortedTenants = useMemo(() => {
+        return [...tenants].sort((a, b) => {
+            // Overdue first
+            if (a.isOverdue && !b.isOverdue) return -1;
+            if (!a.isOverdue && b.isOverdue) return 1;
+            // Then by due amount descending
+            return b.dueAmount - a.dueAmount;
+        });
+    }, [tenants]);
 
     // ── Handlers ────────────────────────────────────────────────────────────
     const handleRemind  = useCallback((t: DueTenant) => setRemindTarget(t), []);
@@ -408,8 +370,8 @@ export default function PendingPaymentsScreen() {
 
     const keyExtractor  = useCallback((item: DueTenant) => `due-${item.id}`, []);
     const renderItem    = useCallback(({ item }: { item: DueTenant }) => (
-        <TenantDueCard item={item} onRemind={handleRemind} onCollect={handleCollect} />
-    ), [handleRemind, handleCollect]);
+        <TenantDueCard item={item} themeColor={theme.primary} onRemind={handleRemind} onCollect={handleCollect} />
+    ), [theme.primary, handleRemind, handleCollect]);
 
     // ── Skeleton ─────────────────────────────────────────────────────────────
     if (loading) {
@@ -419,8 +381,8 @@ export default function PendingPaymentsScreen() {
                 <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={s.header}>
                     <View style={s.headerRow}>
                         <View style={{ flex: 1 }}>
-                            <Text style={s.headerTitle}>Pending Payments</Text>
-                            <Text style={s.headerSub}>Loading...</Text>
+                            <Text style={s.headerTitle}>Pending Dues</Text>
+                            <Text style={s.headerSub}>Loading dues...</Text>
                         </View>
                         <View style={s.headerActions}>
                             <HeaderNotification navigation={navigation} />
@@ -445,9 +407,9 @@ export default function PendingPaymentsScreen() {
             <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={s.header}>
                 <View style={s.headerRow}>
                     <View style={{ flex: 1 }}>
-                        <Text style={s.headerTitle}>Pending Payments</Text>
+                        <Text style={s.headerTitle}>Pending Dues</Text>
                         <Text style={s.headerSub}>
-                            {filtered.length} tenant{filtered.length !== 1 ? 's' : ''} pending
+                            {sortedTenants.length} tenant{sortedTenants.length !== 1 ? 's' : ''} with outstanding balance
                         </Text>
                     </View>
                     <View style={s.headerActions}>
@@ -455,79 +417,32 @@ export default function PendingPaymentsScreen() {
                         <ProfileMenu />
                     </View>
                 </View>
+
+                {/* Embedded Summary Row inside Header */}
+                <View style={s.headerSummaryRow}>
+                    <View style={s.headerSummaryItem}>
+                        <View style={[s.summaryDot, { backgroundColor: 'rgba(239, 68, 68, 0.2)' }]}>
+                            <Ionicons name="alert-circle" size={14} color="#FCA5A5" />
+                        </View>
+                        <View style={s.summaryTextCol}>
+                            <Text style={s.summaryItemLabel}>Pending</Text>
+                            <Text style={s.summaryItemValue}>₹{totalPending.toLocaleString('en-IN')}</Text>
+                        </View>
+                    </View>
+                    <View style={s.headerSummaryItem}>
+                        <View style={[s.summaryDot, { backgroundColor: 'rgba(34, 197, 94, 0.2)' }]}>
+                            <Ionicons name="checkmark-circle" size={14} color="#86EFAC" />
+                        </View>
+                        <View style={s.summaryTextCol}>
+                            <Text style={s.summaryItemLabel}>Partial Paid</Text>
+                            <Text style={s.summaryItemValue}>₹{partialPaid.toLocaleString('en-IN')}</Text>
+                        </View>
+                    </View>
+                </View>
             </LinearGradient>
 
-            {/* ── Summary cards ── */}
-            <View style={s.summaryRow}>
-                <View style={[s.summaryCard, { borderLeftColor: '#DC2626' }]}>
-                    <View style={[s.summaryIcon, { backgroundColor: '#FEE2E2' }]}>
-                        <Ionicons name="time-outline" size={18} color="#DC2626" />
-                    </View>
-                    <View>
-                        <Text style={s.summaryLabel}>Total Pending</Text>
-                        <Text style={[s.summaryAmount, { color: '#DC2626' }]}>
-                            ₹{totalPending.toLocaleString('en-IN')}
-                        </Text>
-                    </View>
-                </View>
-                <View style={[s.summaryCard, { borderLeftColor: '#16A34A' }]}>
-                    <View style={[s.summaryIcon, { backgroundColor: '#DCFCE7' }]}>
-                        <Ionicons name="checkmark-circle-outline" size={18} color="#16A34A" />
-                    </View>
-                    <View>
-                        <Text style={s.summaryLabel}>Partial Paid</Text>
-                        <Text style={[s.summaryAmount, { color: '#16A34A' }]}>
-                            ₹{partialPaid.toLocaleString('en-IN')}
-                        </Text>
-                    </View>
-                </View>
-            </View>
-
-            {/* ── Search ── */}
-            <View style={s.searchWrap}>
-                <Ionicons name="search-outline" size={16} color="#94A3B8" />
-                <TextInput
-                    style={s.searchInput}
-                    placeholder="Search by name or room..."
-                    placeholderTextColor="#94A3B8"
-                    value={search}
-                    onChangeText={setSearch}
-                    autoCorrect={false}
-                    autoCapitalize="none"
-                />
-                {search.length > 0 && (
-                    <TouchableOpacity onPress={() => setSearch('')}>
-                        <Ionicons name="close-circle" size={16} color="#94A3B8" />
-                    </TouchableOpacity>
-                )}
-            </View>
-
-            {/* ── Sort chips ── */}
-            <View style={s.sortRow}>
-                {([
-                    { key: 'amount',  label: 'By Amount',  icon: 'trending-down-outline' },
-                    { key: 'overdue', label: 'Overdue First', icon: 'alert-circle-outline' },
-                    { key: 'room',    label: 'By Room',    icon: 'bed-outline' },
-                ] as const).map(opt => (
-                    <TouchableOpacity
-                        key={opt.key}
-                        style={[s.sortChip, sort === opt.key && s.sortChipActive]}
-                        onPress={() => setSort(opt.key)}
-                    >
-                        <Ionicons
-                            name={opt.icon as any}
-                            size={12}
-                            color={sort === opt.key ? '#7C3AED' : '#94A3B8'}
-                        />
-                        <Text style={[s.sortChipText, sort === opt.key && { color: '#7C3AED', fontWeight: '700' }]}>
-                            {opt.label}
-                        </Text>
-                    </TouchableOpacity>
-                ))}
-            </View>
-
             {/* ── List ── */}
-            {filtered.length === 0 ? (
+            {sortedTenants.length === 0 ? (
                 <View style={s.emptyWrap}>
                     <Text style={{ fontSize: 52, marginBottom: 12 }}>🎉</Text>
                     <Text style={s.emptyTitle}>All Clear!</Text>
@@ -535,7 +450,7 @@ export default function PendingPaymentsScreen() {
                 </View>
             ) : (
                 <FlatList
-                    data={filtered}
+                    data={sortedTenants}
                     keyExtractor={keyExtractor}
                     renderItem={renderItem}
                     contentContainerStyle={s.listContent}
@@ -581,96 +496,90 @@ export default function PendingPaymentsScreen() {
 const tc = StyleSheet.create({
     card: {
         backgroundColor: '#FFF',
-        borderRadius: 18,
-        flexDirection: 'row',
+        borderRadius: 20,
         marginHorizontal: 16,
         marginBottom: 12,
         overflow: 'hidden',
-        elevation: 2,
+        elevation: 3,
         shadowColor: '#7C3AED',
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-        borderWidth: 1,
-        borderColor: '#F1F5F9',
+        shadowOpacity: 0.08,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 4 },
+        borderWidth: 1.2,
+        borderColor: '#EDE9FE',
+        flexDirection: 'row',
     },
-    strip: { width: 5 },
-    inner: { flex: 1, padding: 14 },
-
-    row1: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 12 },
+    accentBar: {
+        width: 5,
+    },
+    inner: { padding: 16, flex: 1 },
+    rowHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
     avatar: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+        width: 46,
+        height: 46,
+        borderRadius: 16,
         alignItems: 'center',
         justifyContent: 'center',
     },
     avatarTxt: { fontSize: 18, fontWeight: '900' },
-    name: { fontSize: 15, fontWeight: '800', color: '#1E293B', marginBottom: 5 },
-    meta: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
-    roomPill: {
+    infoCol: { flex: 1 },
+    name: { fontSize: 15, fontWeight: '800', color: '#1E293B', marginBottom: 2 },
+    roomText: { fontSize: 12, color: '#64748B', fontWeight: '600', marginBottom: 4 },
+    statusBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 3,
-        backgroundColor: '#EDE9FE',
+        alignSelf: 'flex-start',
+        gap: 4,
         borderRadius: 8,
-        paddingHorizontal: 7,
+        paddingHorizontal: 8,
         paddingVertical: 3,
     },
-    roomText: { fontSize: 10, fontWeight: '700', color: '#7C3AED' },
-    statusPill: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 3,
-        borderRadius: 8,
-        paddingHorizontal: 7,
-        paddingVertical: 3,
+    statusText: { fontSize: 10, fontWeight: '800' },
+    
+    amountCol: {
+        alignItems: 'flex-end',
+        justifyContent: 'center',
     },
-    statusText: { fontSize: 10, fontWeight: '700' },
+    amountLabel: { fontSize: 9, color: '#94A3B8', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
+    amountVal: { fontSize: 18, fontWeight: '900' },
 
-    amounts: {
-        flexDirection: 'row',
-        backgroundColor: '#F8F7FF',
-        borderRadius: 12,
-        padding: 10,
-        marginBottom: 10,
+    divider: {
+        height: 1,
+        backgroundColor: '#F1F5F9',
+        marginVertical: 12,
     },
-    amountCell: { flex: 1, alignItems: 'center' },
-    amountLabel: { fontSize: 10, color: '#64748B', fontWeight: '600', marginBottom: 3 },
-    amountVal: { fontSize: 13, fontWeight: '800', color: '#1E293B' },
-    amountDivider: { width: 1, backgroundColor: '#E2E8F0', marginVertical: 4 },
 
-    progressRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
-    progressBg: { flex: 1, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, overflow: 'hidden' },
-    progressFill: { height: '100%', borderRadius: 2 },
-    progressLabel: { fontSize: 10, fontWeight: '700', color: '#64748B', minWidth: 45 },
-
-    monthChip: { fontSize: 10, color: '#94A3B8', fontWeight: '600', marginBottom: 10 },
-
-    actions: { flexDirection: 'row', gap: 10 },
+    actions: {
+        flexDirection: 'row',
+        gap: 10,
+    },
     remindBtn: {
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 6,
-        paddingVertical: 10,
-        borderRadius: 12,
-        borderWidth: 1.5,
-        borderColor: '#7C3AED',
-        backgroundColor: '#FFF',
+        paddingVertical: 9,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        backgroundColor: '#F8FAFC',
     },
-    remindText: { fontSize: 13, fontWeight: '700', color: '#7C3AED' },
+    remindText: { fontSize: 12, fontWeight: '600', color: '#475569' },
     collectBtn: {
         flex: 1.2,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 6,
-        paddingVertical: 10,
-        borderRadius: 12,
-        backgroundColor: '#16A34A',
+        paddingVertical: 9,
+        borderRadius: 10,
     },
-    collectText: { fontSize: 13, fontWeight: '700', color: '#FFF' },
+    collectText: { fontSize: 12, fontWeight: '600', color: '#FFF' },
 });
 
 // ─── Remind Modal styles ──────────────────────────────────────────────────────
@@ -727,12 +636,12 @@ const rm = StyleSheet.create({
 
 // ─── Main Screen styles ───────────────────────────────────────────────────────
 const s = StyleSheet.create({
-    root: { flex: 1, backgroundColor: '#F8F7FF' },
+    root: { flex: 1, backgroundColor: '#F3F0FA' },
 
     header: {
         paddingHorizontal: 20,
         paddingTop: 50,
-        paddingBottom: 25,
+        paddingBottom: 20,
         borderBottomLeftRadius: 32,
         borderBottomRightRadius: 32,
     },
@@ -744,50 +653,48 @@ const s = StyleSheet.create({
     headerTitle: { fontSize: 24, fontWeight: '900', color: '#FFF' },
     headerSub: { fontSize: 12, color: 'rgba(255,255,255,0.8)', fontWeight: '600', marginTop: 2 },
     headerActions: { flexDirection: 'row', gap: 12 },
+    headerSummaryRow: {
+        flexDirection: 'row',
+        gap: 10,
+        marginTop: 15,
+    },
+    headerSummaryItem: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255, 255, 255, 0.16)',
+        borderRadius: 14,
+        paddingVertical: 8,
+        paddingHorizontal: 10,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.12)',
+    },
+    summaryDot: {
+        width: 26,
+        height: 26,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    summaryTextCol: {
+        marginLeft: 8,
+        flex: 1,
+    },
+    summaryItemLabel: {
+        fontSize: 9,
+        color: 'rgba(255, 255, 255, 0.8)',
+        fontWeight: '600',
+        textTransform: 'uppercase',
+        letterSpacing: 0.3,
+    },
+    summaryItemValue: {
+        fontSize: 13,
+        color: '#FFF',
+        fontWeight: '800',
+        marginTop: 1,
+    },
 
-    summaryRow: {
-        flexDirection: 'row', gap: 12,
-        paddingHorizontal: 16, paddingVertical: 14,
-    },
-    summaryCard: {
-        flex: 1, backgroundColor: '#FFF',
-        borderRadius: 16, padding: 14,
-        flexDirection: 'row', alignItems: 'center', gap: 10,
-        borderLeftWidth: 4,
-        elevation: 2, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6,
-    },
-    summaryIcon: {
-        width: 38, height: 38, borderRadius: 12,
-        alignItems: 'center', justifyContent: 'center',
-    },
-    summaryLabel: { fontSize: 10, color: '#64748B', fontWeight: '600', marginBottom: 3 },
-    summaryAmount: { fontSize: 16, fontWeight: '900' },
-
-    searchWrap: {
-        flexDirection: 'row', alignItems: 'center', gap: 8,
-        backgroundColor: '#FFF', borderRadius: 14,
-        marginHorizontal: 16, paddingHorizontal: 12, paddingVertical: 10,
-        elevation: 1, shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 4,
-        borderWidth: 1, borderColor: '#F1F5F9', marginBottom: 10,
-    },
-    searchInput: { flex: 1, fontSize: 13, color: '#1E293B', fontWeight: '500' },
-
-    sortRow: {
-        flexDirection: 'row', gap: 8,
-        paddingHorizontal: 16, marginBottom: 10,
-    },
-    sortChip: {
-        flexDirection: 'row', alignItems: 'center', gap: 4,
-        backgroundColor: '#FFF', borderRadius: 20,
-        paddingHorizontal: 10, paddingVertical: 6,
-        borderWidth: 1, borderColor: '#E2E8F0',
-    },
-    sortChipActive: {
-        backgroundColor: '#EDE9FE', borderColor: '#7C3AED',
-    },
-    sortChipText: { fontSize: 10, fontWeight: '600', color: '#94A3B8' },
-
-    listContent: { paddingTop: 4, paddingBottom: 110 },
+    listContent: { paddingTop: 16, paddingBottom: 110 },
 
     emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 80 },
     emptyTitle: { fontSize: 20, fontWeight: '800', color: '#1E293B', marginBottom: 4 },

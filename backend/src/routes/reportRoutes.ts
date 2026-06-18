@@ -7,7 +7,8 @@ import {
   getProfitLoss,
   getOccupancyTrends,
   getPaymentCollectionReport,
-  getOwnerStats
+  getOwnerStats,
+  getMonthlyOverview
 } from '../controllers/reportController.js';
 import {
   downloadPDFReport,
@@ -27,6 +28,7 @@ router.get('/expenses', getExpenseReport);
 router.get('/profit-loss', getProfitLoss);
 router.get('/occupancy-trends', getOccupancyTrends);
 router.get('/payment-collection', getPaymentCollectionReport);
+router.get('/monthly-overview', getMonthlyOverview);
 
 // Download routes
 router.get('/download/pdf', downloadPDFReport);

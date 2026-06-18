@@ -18,6 +18,7 @@ import { MonthlyFeeManagementPage } from './pages/MonthlyFeeManagementPage';
 import { FeeDetailsPage } from './pages/FeeDetailsPage';
 import { IncomePage } from './pages/IncomePage';
 import { ExpensesPage } from './pages/ExpensesPage';
+import { FinancialOverviewPage } from './pages/FinancialOverviewPage';
 import { CollectionsPage } from './pages/CollectionsPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { SettingsPage } from './pages/SettingsPage';
@@ -240,6 +241,17 @@ function App() {
           </Route>
 
           <Route
+            path="/owner/overview"
+            element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<FinancialOverviewPage />} />
+          </Route>
+
+          <Route
             path="/owner/reports"
             element={
               <ProtectedRoute>
@@ -279,6 +291,7 @@ function App() {
           <Route path="/monthly-fees" element={<Navigate to="/owner/monthly-fees" replace />} />
           <Route path="/income" element={<Navigate to="/owner/income" replace />} />
           <Route path="/expenses" element={<Navigate to="/owner/expenses" replace />} />
+          <Route path="/overview" element={<Navigate to="/owner/overview" replace />} />
 
           {/* Catch-all - Redirect to landing page */}
           <Route path="*" element={<Navigate to="/" replace />} />
