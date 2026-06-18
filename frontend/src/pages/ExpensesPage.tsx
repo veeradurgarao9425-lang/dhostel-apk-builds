@@ -59,6 +59,10 @@ export const ExpensesPage: React.FC = () => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
+  const maxMonth = React.useMemo(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  }, []);
   const [formData, setFormData] = useState<ExpenseFormData>({
     hostel_id: '1',
     category_id: '',
@@ -345,6 +349,7 @@ export const ExpensesPage: React.FC = () => {
             <input
               type="month"
               value={selectedMonth}
+              max={maxMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
               className="px-2 py-1.5 text-xs border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
@@ -387,6 +392,7 @@ export const ExpensesPage: React.FC = () => {
               <input
                 type="month"
                 value={selectedMonth}
+                max={maxMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
                 className="px-2 py-1.5 text-xs border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               />

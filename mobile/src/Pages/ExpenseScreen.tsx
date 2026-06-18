@@ -259,6 +259,7 @@ export const ExpenseScreen = ({ navigation }: any) => {
                 isVisible={isDatePickerVisible}
                 mode="date"
                 date={currentDate || new Date()}
+                maximumDate={new Date()}
                 onConfirm={handleConfirmDate}
                 onCancel={() => setDatePickerVisibility(false)}
             />

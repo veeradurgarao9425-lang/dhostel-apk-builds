@@ -378,6 +378,24 @@ async function patchDatabaseSchema() {
       console.error('[schema-patch] Error checking/creating notices table:', e.message);
     }
 
+    // 8. Ensure app_settings table exists
+    try {
+      if (!tableNamesLower.includes('app_settings')) {
+        console.log('[schema-patch] creating missing app_settings table...');
+        await db.raw(`
+          CREATE TABLE app_settings (
+            setting_id INT AUTO_INCREMENT PRIMARY KEY,
+            setting_key VARCHAR(100) NOT NULL UNIQUE,
+            setting_value TEXT NULL,
+            description TEXT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error checking/creating app_settings table:', e.message);
+    }
+
     console.log('[schema-patch] Schema check and patch complete.');
   } catch (err: any) {
     console.error('[schema-patch] Critical error during schema patching:', err.message);

@@ -23,7 +23,8 @@ const CAT_COLORS: Record<string, string> = {
 
 const getCatColor = (name: string) => CAT_COLORS[name] || '#64748B';
 
-export const AddExpenseScreen = ({ navigation }: any) => {
+export const AddExpenseScreen = ({ route, navigation }: any) => {
+    const { expense } = route.params || {};
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [categories, setCategories] = useState<any[]>([]);
@@ -43,12 +44,27 @@ export const AddExpenseScreen = ({ navigation }: any) => {
         fetchCategories();
     }, []);
 
+    useEffect(() => {
+        if (expense) {
+            setFormData({
+                title: expense.description || '',
+                amount: expense.amount.toString(),
+                category_id: expense.category_id.toString(),
+                payment_mode_id: expense.payment_mode_id?.toString() || '1',
+                expense_date: expense.expense_date ? expense.expense_date.split('T')[0] : new Date().toISOString().split('T')[0],
+                description: expense.description || '',
+                vendor_name: expense.vendor_name || '',
+                bill_number: expense.bill_number || '',
+            });
+        }
+    }, [expense]);
+
     const fetchCategories = async () => {
         try {
             const response = await api.get('/expenses/categories');
             if (response.data.success) {
                 setCategories(response.data.data);
-                if (response.data.data.length > 0) {
+                if (response.data.data.length > 0 && !expense) {
                     setFormData(prev => ({ ...prev, category_id: response.data.data[0].category_id.toString() }));
                 }
             }
@@ -88,13 +104,18 @@ export const AddExpenseScreen = ({ navigation }: any) => {
                 bill_number: formData.bill_number,
             };
 
-            const response = await api.post('/expenses', payload);
+            let response;
+            if (expense) {
+                response = await api.put(`/expenses/${expense.expense_id}`, payload);
+            } else {
+                response = await api.post('/expenses', payload);
+            }
 
             if (response.data.success) {
                 Toast.show({
                     type: 'success',
                     text1: 'Success',
-                    text2: 'Expense recorded successfully!',
+                    text2: expense ? 'Expense updated successfully!' : 'Expense recorded successfully!',
                 });
                 navigation?.goBack();
             }
@@ -103,7 +124,7 @@ export const AddExpenseScreen = ({ navigation }: any) => {
             Toast.show({
                 type: 'error',
                 text1: 'Error',
-                text2: error.response?.data?.error || 'Failed to record expense',
+                text2: error.response?.data?.error || 'Failed to save expense',
             });
         } finally {
             setLoading(false);
@@ -112,7 +133,7 @@ export const AddExpenseScreen = ({ navigation }: any) => {
 
     return (
         <View style={styles.container}>
-            <Header title="Add Expense" />
+            <Header title={expense ? "Edit Expense" : "Add Expense"} />
             <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
                 <Card style={styles.formCard}>
                     <Text style={styles.label}>Category *</Text>
@@ -221,7 +242,7 @@ export const AddExpenseScreen = ({ navigation }: any) => {
                         {loading ? (
                             <ActivityIndicator color="#FFFFFF" size="small" />
                         ) : (
-                            <Text style={styles.buttonText}>Save Expense</Text>
+                            <Text style={styles.buttonText}>{expense ? "Update Expense" : "Save Expense"}</Text>
                         )}
                     </LinearGradient>
                 </TouchableOpacity>
@@ -232,6 +253,7 @@ export const AddExpenseScreen = ({ navigation }: any) => {
                 isVisible={isDatePickerVisible}
                 mode="date"
                 date={new Date(formData.expense_date)}
+                maximumDate={new Date()}
                 onConfirm={handleConfirmDate}
                 onCancel={() => setDatePickerVisibility(false)}
             />

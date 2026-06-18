@@ -7,7 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
     ArrowLeft, Calendar, Tag, FileText,
-    Hash, Receipt, TrendingDown, Trash2
+    Hash, Receipt, TrendingDown, Trash2, Edit3
 } from 'lucide-react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import api from '../services/api';
@@ -146,10 +146,20 @@ const ExpenseDetailsScreen = ({ route }: any) => {
                 colors={[theme.gradientStart, theme.gradientEnd]}
                 style={styles.header}
             >
-                {/* Back button */}
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                    <ArrowLeft color="#FFF" size={22} />
-                </TouchableOpacity>
+                <View style={styles.headerTop}>
+                    {/* Back button */}
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                        <ArrowLeft color="#FFF" size={22} />
+                    </TouchableOpacity>
+
+                    {/* Edit button */}
+                    <TouchableOpacity 
+                        onPress={() => navigation.navigate('AddExpense', { expense })} 
+                        style={styles.editBtn}
+                    >
+                        <Edit3 color="#FFF" size={22} />
+                    </TouchableOpacity>
+                </View>
 
                 {/* Category chip */}
                 <View style={styles.categoryChip}>
@@ -264,6 +274,12 @@ const styles = StyleSheet.create({
         borderBottomLeftRadius: 36,
         borderBottomRightRadius: 36,
     },
+    headerTop: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
     backBtn: {
         width: 38,
         height: 38,
@@ -271,7 +287,14 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255,255,255,0.2)',
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 20,
+    },
+    editBtn: {
+        width: 38,
+        height: 38,
+        borderRadius: 12,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     categoryChip: {
         flexDirection: 'row',

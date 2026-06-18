@@ -8,6 +8,91 @@ export const getExpenses = async (req: AuthRequest, res: Response) => {
     const { hostelId, categoryId, startDate, endDate } = req.query;
     const user = req.user;
 
+    // Resolve hostel_id based on user role
+    let hostel_id: number | undefined;
+    if (user?.role_id === 2) {
+      if (user.hostel_id) {
+        hostel_id = user.hostel_id;
+      }
+    } else if (hostelId) {
+      hostel_id = parseInt(hostelId as string);
+    }
+
+    // Auto-carry forward logic for current month
+    if (hostel_id) {
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonthNum = now.getMonth() + 1;
+      const currentMonthStr = `${currentYear}-${String(currentMonthNum).padStart(2, '0')}`;
+      const initKey = `expenses_init_${hostel_id}_${currentMonthStr}`;
+
+      try {
+        const isInitialized = await db('app_settings')
+          .where('setting_key', initKey)
+          .first();
+
+        if (!isInitialized) {
+          // Mark as initialized first to prevent multiple simultaneous requests from race-cloning
+          await db('app_settings').insert({
+            setting_key: initKey,
+            setting_value: 'true',
+            description: `Auto-expenses cloned status for hostel ${hostel_id} for ${currentMonthStr}`
+          });
+
+          // Check if current month has 0 expenses
+          const lastDayCurrent = new Date(currentYear, currentMonthNum, 0).getDate();
+          const startDateCurrent = `${currentMonthStr}-01`;
+          const endDateCurrent = `${currentMonthStr}-${String(lastDayCurrent).padStart(2, '0')}`;
+
+          const currentMonthCount = await db('expenses')
+            .where('hostel_id', hostel_id)
+            .whereBetween('expense_date', [startDateCurrent, endDateCurrent])
+            .count('expense_id as count')
+            .first();
+
+          const count = parseInt(currentMonthCount?.count?.toString() || '0');
+
+          if (count === 0) {
+            // Find previous month
+            const prevMonthNum = currentMonthNum === 1 ? 12 : currentMonthNum - 1;
+            const prevYear = currentMonthNum === 1 ? currentYear - 1 : currentYear;
+            const prevMonthStr = `${prevYear}-${String(prevMonthNum).padStart(2, '0')}`;
+
+            const lastDayPrev = new Date(prevYear, prevMonthNum, 0).getDate();
+            const startDatePrev = `${prevMonthStr}-01`;
+            const endDatePrev = `${prevMonthStr}-${String(lastDayPrev).padStart(2, '0')}`;
+
+            // Fetch previous month's expenses
+            const prevExpenses = await db('expenses')
+              .where('hostel_id', hostel_id)
+              .whereBetween('expense_date', [startDatePrev, endDatePrev]);
+
+            if (prevExpenses && prevExpenses.length > 0) {
+              // Clone expenses to the 1st of the current month
+              const clonedDate = `${currentMonthStr}-01`;
+              const newExpenses = prevExpenses.map(exp => ({
+                hostel_id: exp.hostel_id,
+                category_id: exp.category_id,
+                expense_date: clonedDate,
+                amount: exp.amount,
+                payment_mode_id: exp.payment_mode_id,
+                vendor_name: exp.vendor_name,
+                description: exp.description,
+                bill_number: exp.bill_number,
+                created_by: exp.created_by,
+                created_at: new Date()
+              }));
+
+              await db('expenses').insert(newExpenses);
+              console.log(`Auto-cloned ${newExpenses.length} expenses for hostel ${hostel_id} from ${prevMonthStr} to ${currentMonthStr}`);
+            }
+          }
+        }
+      } catch (err: any) {
+        console.error('Error in auto-carry forward logic:', err);
+      }
+    }
+
     let query = db('expenses as e')
       .leftJoin('hostel_master as h', 'e.hostel_id', 'h.hostel_id')
       .leftJoin('expense_categories as ec', 'e.category_id', 'ec.category_id')
@@ -18,6 +103,7 @@ export const getExpenses = async (req: AuthRequest, res: Response) => {
         'ec.category_name',
         'pm.payment_mode_name as payment_mode'
       );
+
 
     // If user is hostel owner, filter by their hostel from JWT
     if (user?.role_id === 2) {
