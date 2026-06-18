@@ -13,20 +13,20 @@ const TABS = [
         activeBg: '#EDE9FE',
     },
     {
-        label: 'Overview',
-        route: 'OverviewTab',
-        activeIcon: 'bar-chart',
-        inactiveIcon: 'bar-chart-outline',
-        activeColor: '#6366F1',
-        activeBg: '#EEF2FF',
-    },
-    {
         label: 'Pending',
         route: 'PendingTab',
         activeIcon: 'alert-circle',
         inactiveIcon: 'alert-circle-outline',
         activeColor: '#DC2626',
         activeBg: '#FEE2E2',
+    },
+    {
+        label: 'Overview',
+        route: 'OverviewTab',
+        activeIcon: 'bar-chart',
+        inactiveIcon: 'bar-chart-outline',
+        activeColor: '#6366F1',
+        activeBg: '#EEF2FF',
     },
     {
         label: 'More',

@@ -61,8 +61,8 @@ const TabNavigator = () => (
         screenOptions={{ headerShown: false }}
     >
         <Tab.Screen name="HomeTab"     component={HomeScreen}           />
-        <Tab.Screen name="OverviewTab" component={OverviewScreen}       />
         <Tab.Screen name="PendingTab"  component={PendingPaymentsScreen}/>
+        <Tab.Screen name="OverviewTab" component={OverviewScreen}       />
         <Tab.Screen name="MoreTab"     component={MoreScreen}           />
     </Tab.Navigator>
 );

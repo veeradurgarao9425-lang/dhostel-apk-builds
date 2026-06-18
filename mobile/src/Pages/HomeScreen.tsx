@@ -575,24 +575,7 @@ export default function HomeScreen() {
                             </View>
                         </TouchableOpacity>
 
-                        {/* Financial Overview — full width */}
-                        <TouchableOpacity
-                            style={s.finHubCard}
-                            onPress={() => navigation.navigate('OverviewTab')}
-                            activeOpacity={0.85}
-                        >
-                            <View style={[s.finHubAccent, { backgroundColor: '#7C3AED' }]} />
-                            <View style={[s.finHubIconBox, { backgroundColor: '#EDE9FE' }]}>
-                                <Ionicons name="bar-chart-outline" size={22} color="#7C3AED" />
-                            </View>
-                            <View style={s.finHubBody}>
-                                <Text style={s.finHubTitle}>Financial Overview</Text>
-                                <Text style={s.finHubSub}>Profit & Loss, monthly overview</Text>
-                            </View>
-                            <View style={s.finHubRight}>
-                                <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
-                            </View>
-                        </TouchableOpacity>
+
 
                     </View>
 
