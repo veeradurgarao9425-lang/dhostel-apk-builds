@@ -80,84 +80,99 @@ app.use('/api/id-proof-types', idProofTypesRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/reminders', reminderRoutes);
 
-// Public QR student signup (no auth)
+// Public QR tenant signup (no auth) — supports optional roomId & bedId pre-fill
 app.get('/api/public/qr-signup', async (req, res) => {
   const hostelId = req.query.hostelId as string;
+  const roomId   = req.query.roomId   as string | undefined;
+  const bedId    = req.query.bedId    as string | undefined;
+  const bedName  = req.query.bedName  as string | undefined;
+
   if (!hostelId) {
     return res.status(400).send('<h2>Missing hostelId</h2>');
   }
+
+  // Build the room/bed info banner if pre-assigned
+  const roomBanner = roomId ? `
+    <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:14px;margin-bottom:18px;">
+      <div style="font-size:13px;color:#166534;font-weight:700;margin-bottom:4px;">🏠 Pre-assigned Allocation</div>
+      <div style="font-size:14px;color:#15803d;">
+        Room: <strong>${roomId}</strong>${bedName ? `&nbsp;&nbsp;Bed: <strong>${bedName}</strong>` : ''}
+      </div>
+      <div style="font-size:12px;color:#4ade80;margin-top:4px;">This room/bed has been reserved for you by the owner.</div>
+    </div>
+  ` : '';
+
+  const formAction = `/api/public/qr-signup?hostelId=${encodeURIComponent(hostelId)}${roomId ? `&roomId=${encodeURIComponent(roomId)}` : ''}${bedId ? `&bedId=${encodeURIComponent(bedId)}` : ''}${bedName ? `&bedName=${encodeURIComponent(bedName)}` : ''}`;
+
   const html = `
     <!DOCTYPE html>
     <html lang="en">
     <head>
       <meta charset="UTF-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>Hostel Registration</title>
+      <title>Tenant Registration — Hostel</title>
       <style>
-        body { font-family: Arial, sans-serif; background:#f7fafc; margin:0; padding:20px; }
-        .card { max-width: 540px; margin: 0 auto; background:#fff; border-radius:12px; padding:20px; box-shadow:0 8px 24px rgba(0,0,0,0.08); }
-        h2 { margin-top:0; color:#111827; }
-        .field { margin-bottom:12px; }
-        label { display:block; font-size:13px; color:#374151; margin-bottom:6px; }
-        input { width:100%; padding:10px; border:1px solid #e5e7eb; border-radius:8px; font-size:14px; }
-        .row { display:flex; gap:12px; }
+        *, *::before, *::after { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; background: linear-gradient(135deg,#f0f9ff 0%,#fdf4ff 100%); margin:0; min-height:100vh; padding:20px 16px 40px; }
+        .card { max-width:520px; margin:0 auto; background:#fff; border-radius:20px; padding:28px 24px; box-shadow:0 8px 32px rgba(0,0,0,0.10); }
+        .logo { text-align:center; margin-bottom:20px; }
+        .logo-icon { width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#FF8585,#FF6B6B);display:inline-flex;align-items:center;justify-content:center;font-size:28px; }
+        h2 { margin:0 0 4px;color:#111827;font-size:22px;font-weight:700; }
+        .subtitle { color:#6b7280;font-size:13px;margin-bottom:20px; }
+        .section { font-weight:700;color:#374151;font-size:13px;letter-spacing:.5px;text-transform:uppercase;margin:18px 0 10px; }
+        .field { margin-bottom:14px; }
+        label { display:block;font-size:13px;color:#374151;margin-bottom:6px;font-weight:600; }
+        input, select { width:100%;padding:12px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:15px;color:#111827;outline:none;transition:border-color .2s; }
+        input:focus, select:focus { border-color:#FF6B6B; }
+        .row { display:flex;gap:12px; }
         .row .field { flex:1; }
-        .btn { width:100%; background:#10B981; color:#fff; border:none; padding:12px; border-radius:8px; font-weight:600; cursor:pointer; }
-        .note { font-size:12px; color:#6b7280; margin-top:8px; }
-        .success { background:#ecfdf5; color:#065f46; padding:10px; border-radius:8px; margin-bottom:12px; }
-        .error { background:#fef2f2; color:#7f1d1d; padding:10px; border-radius:8px; margin-bottom:12px; }
+        .btn { width:100%;background:linear-gradient(135deg,#FF8585,#FF6B6B);color:#fff;border:none;padding:15px;border-radius:12px;font-weight:700;font-size:16px;cursor:pointer;margin-top:8px;letter-spacing:.3px; }
+        .btn:hover { opacity:.92; }
+        .note { font-size:12px;color:#9ca3af;margin-top:14px;text-align:center; }
+        .success { background:#ecfdf5;color:#065f46;padding:14px;border-radius:10px;margin-bottom:14px;font-weight:600; }
+        .error   { background:#fef2f2;color:#7f1d1d;padding:14px;border-radius:10px;margin-bottom:14px; }
       </style>
     </head>
     <body>
       <div class="card">
-        <h2>Hostel Registration</h2>
-        <p class="note">Fill your details. Your profile will appear as Inactive until the owner approves.</p>
-        <form method="POST" action="/api/public/qr-signup?hostelId=${encodeURIComponent(hostelId)}">
+        <div class="logo"><div class="logo-icon">🏠</div></div>
+        <h2>Tenant Registration</h2>
+        <p class="subtitle">Fill in your details below. The owner will review and activate your profile.</p>
+
+        ${roomBanner}
+
+        <form method="POST" action="${formAction}">
+          <div class="section">Personal Details</div>
           <div class="row">
-            <div class="field">
-              <label>First Name</label>
-              <input name="first_name" required />
-            </div>
-            <div class="field">
-              <label>Last Name</label>
-              <input name="last_name" />
-            </div>
+            <div class="field"><label>First Name *</label><input name="first_name" required placeholder="e.g. Ravi" /></div>
+            <div class="field"><label>Last Name</label><input name="last_name" placeholder="e.g. Kumar" /></div>
           </div>
           <div class="row">
-            <div class="field">
-              <label>Phone</label>
-              <input name="phone" pattern="\\d{10}" required />
-            </div>
-            <div class="field">
-              <label>Email</label>
-              <input name="email" type="email" />
-            </div>
+            <div class="field"><label>Phone *</label><input name="phone" pattern="\\d{10}" required placeholder="10-digit mobile" /></div>
+            <div class="field"><label>Email</label><input name="email" type="email" placeholder="your@email.com" /></div>
           </div>
           <div class="row">
-            <div class="field">
-              <label>Date of Birth</label>
-              <input name="date_of_birth" type="date" />
-            </div>
+            <div class="field"><label>Date of Birth</label><input name="date_of_birth" type="date" /></div>
             <div class="field">
               <label>Gender</label>
-              <input name="gender" placeholder="Male/Female/Other" />
+              <select name="gender">
+                <option value="">Select...</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
             </div>
           </div>
-          <div class="field">
-            <label>Permanent Address</label>
-            <input name="permanent_address" />
-          </div>
+          <div class="field"><label>Permanent Address</label><input name="permanent_address" placeholder="Your home address" /></div>
+
+          <div class="section">Guardian (Optional)</div>
           <div class="row">
-            <div class="field">
-              <label>Guardian Name</label>
-              <input name="guardian_name" />
-            </div>
-            <div class="field">
-              <label>Guardian Phone</label>
-              <input name="guardian_phone" pattern="\\d{10}" />
-            </div>
+            <div class="field"><label>Guardian Name</label><input name="guardian_name" placeholder="Parent/Guardian name" /></div>
+            <div class="field"><label>Guardian Phone</label><input name="guardian_phone" pattern="\\d{10}" placeholder="10-digit number" /></div>
           </div>
-          <button class="btn" type="submit">Submit</button>
+
+          <button class="btn" type="submit">✓ Submit Registration</button>
+          <p class="note">Your details are safe. Once the owner approves, you will be activated in the system.</p>
         </form>
       </div>
     </body>
@@ -169,6 +184,10 @@ app.get('/api/public/qr-signup', async (req, res) => {
 app.post('/api/public/qr-signup', async (req, res) => {
   try {
     const hostelId = req.query.hostelId as string;
+    const roomId   = req.query.roomId   as string | undefined;
+    const bedId    = req.query.bedId    as string | undefined;
+    const bedName  = req.query.bedName  as string | undefined;
+
     if (!hostelId) {
       return res.status(400).send('<div class="error">Missing hostelId</div>');
     }
@@ -177,38 +196,52 @@ app.post('/api/public/qr-signup', async (req, res) => {
       date_of_birth, gender, permanent_address,
       guardian_name, guardian_phone
     } = req.body || {};
+
     if (!first_name || !phone) {
-      return res.status(400).send('<div class="error">First Name and Phone are required</div>');
+      return res.status(400).send('<div style="background:#fef2f2;color:#7f1d1d;padding:14px;border-radius:10px;font-family:sans-serif;">⚠️ First Name and Phone are required</div>');
     }
+
     const now = new Date();
     const insertData: any = {
-      hostel_id: parseInt(hostelId, 10),
+      hostel_id:        parseInt(hostelId, 10),
       first_name,
-      last_name,
+      last_name:        last_name || null,
       phone,
-      email,
-      date_of_birth: date_of_birth ? new Date(date_of_birth) : null,
-      gender,
-      permanent_address,
-      guardian_name,
-      guardian_phone,
-      admission_date: now,
-      admission_fee: 0,
+      email:            email || null,
+      date_of_birth:    date_of_birth ? new Date(date_of_birth) : null,
+      gender:           gender || null,
+      permanent_address: permanent_address || null,
+      guardian_name:    guardian_name || 'N/A',
+      guardian_phone:   guardian_phone || '0000000000',
+      admission_date:   now,
+      admission_fee:    0,
       admission_status: 0,
-      status: 0, // Inactive until owner approves
-      room_id: null,
-      floor_number: null,
-      monthly_rent: null,
-      id_proof_status: 0,
+      status:           0, // Inactive — owner must activate
+      room_id:          roomId ? parseInt(roomId, 10) : null,
+      floor_number:     null,
+      monthly_rent:     null,
+      id_proof_status:  0,
     };
+
     await db('students').insert(insertData);
+
+    const backUrl = `/api/public/qr-signup?hostelId=${encodeURIComponent(hostelId)}${roomId ? `&roomId=${encodeURIComponent(roomId)}` : ''}${bedId ? `&bedId=${encodeURIComponent(bedId)}` : ''}${bedName ? `&bedName=${encodeURIComponent(bedName)}` : ''}`;
     res.status(200).send(`
-      <div class="success">Submitted successfully. Please wait for owner approval.</div>
-      <a href="/api/public/qr-signup?hostelId=${encodeURIComponent(hostelId)}">Back</a>
+      <!DOCTYPE html>
+      <html><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1.0" />
+      <style>body{font-family:sans-serif;background:linear-gradient(135deg,#f0f9ff,#fdf4ff);display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;}.card{background:#fff;border-radius:20px;padding:32px 28px;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.10);text-align:center;}</style>
+      </head><body>
+      <div class="card">
+        <div style="font-size:56px;margin-bottom:16px;">✅</div>
+        <h2 style="color:#065f46;margin:0 0 8px;">Registration Submitted!</h2>
+        <p style="color:#374151;font-size:15px;margin-bottom:24px;">Thank you, <strong>${first_name}</strong>! Your details have been received. The hostel owner will review and activate your profile shortly.</p>
+        ${roomId ? `<div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px;margin-bottom:20px;"><p style="margin:0;color:#166534;font-size:14px;">🏠 Room <strong>${roomId}</strong>${bedName ? ` — Bed <strong>${bedName}</strong>` : ''} has been noted.</p></div>` : ''}
+        <a href="${backUrl}" style="display:inline-block;background:linear-gradient(135deg,#FF8585,#FF6B6B);color:#fff;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:700;">Register Another</a>
+      </div></body></html>
     `);
   } catch (e: any) {
     console.error('QR signup error:', e);
-    res.status(500).send('<div class="error">Internal Server Error</div>');
+    res.status(500).send('<div style="font-family:sans-serif;padding:20px;color:#7f1d1d;">Internal Server Error. Please try again.</div>');
   }
 });
 

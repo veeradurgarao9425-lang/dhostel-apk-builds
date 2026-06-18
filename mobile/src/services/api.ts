@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // const BASE_URL = 'https://mhostel-backend.onrender.com/api';
 
 // For local testing, uncomment the line below and replace with your local IP if testing on a physical device:
-const BASE_URL = 'http://192.168.1.73:8081/api'; // or 'http://10.0.2.2:8081/api' for emulator
+const BASE_URL = 'http://192.168.1.73:5000/api'; // or 'http://10.0.2.2:5000/api' for emulator
 
 export const api = axios.create({
     baseURL: BASE_URL,
