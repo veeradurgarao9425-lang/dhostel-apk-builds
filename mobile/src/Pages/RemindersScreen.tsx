@@ -12,6 +12,7 @@ import DateTimePickerModal from "react-native-modal-datetime-picker";
 import api from '../services/api';
 import { useTheme } from '../../contexts/ThemeContext';
 import { ProfileMenu } from '../components/ProfileMenu';
+import { FormInput, ModalSheet } from '../components/FormComponents';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -331,103 +332,92 @@ export default function RemindersScreen() {
                 <Ionicons name="add" size={28} color="#FFF" />
             </TouchableOpacity>
 
-            {/* Slide up Drawer Modal for Create/Edit */}
-            <Modal visible={isModalVisible} transparent animationType="slide" onRequestClose={() => setIsModalVisible(false)}>
-                <TouchableOpacity style={s.modalBackdrop} activeOpacity={1} onPress={() => setIsModalVisible(false)} />
-                <View style={s.drawerContainer}>
-                    <View style={s.drawerContent}>
-                        <View style={s.drawerHandle} />
-                        <View style={s.drawerHeader}>
-                            <Text style={s.drawerTitle}>{editingReminder ? 'Edit Reminder' : 'Add New Reminder'}</Text>
-                            <TouchableOpacity onPress={() => setIsModalVisible(false)}>
-                                <Ionicons name="close" size={22} color="#475569" />
-                            </TouchableOpacity>
-                        </View>
-
-                        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 50 }} keyboardShouldPersistTaps="handled">
-                            <Text style={s.formLabel}>Title *</Text>
-                            <TextInput
-                                style={s.formInput}
-                                placeholder="Enter title (e.g. Pay Internet Bill)"
-                                placeholderTextColor="#CBD5E1"
-                                value={title}
-                                onChangeText={setTitle}
-                            />
-
-                            <Text style={s.formLabel}>Select Date *</Text>
-                            <TouchableOpacity style={s.dateField} onPress={() => setDatePickerVisible(true)}>
-                                <Ionicons name="calendar-outline" size={18} color="#64748B" />
-                                <Text style={s.dateFieldText}>{date}</Text>
-                            </TouchableOpacity>
-
-                            <Text style={s.formLabel}>Category *</Text>
-                            <View style={s.chipRow}>
-                                {CATEGORIES.map((cat) => {
-                                    const active = category === cat;
-                                    const catColor = CATEGORY_COLORS[cat];
-                                    return (
-                                        <TouchableOpacity
-                                            key={cat}
-                                            style={[s.chip, active && { backgroundColor: catColor, borderColor: catColor }]}
-                                            onPress={() => setCategory(cat)}
-                                        >
-                                            <Text style={[s.chipText, active && { color: '#FFF' }]}>{cat}</Text>
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                            </View>
-
-                            <Text style={s.formLabel}>Priority *</Text>
-                            <View style={s.chipRow}>
-                                {PRIORITIES.map((pri) => {
-                                    const active = priority === pri;
-                                    return (
-                                        <TouchableOpacity
-                                            key={pri}
-                                            style={[s.chip, active && { backgroundColor: '#1E293B', borderColor: '#1E293B' }]}
-                                            onPress={() => setPriority(pri)}
-                                        >
-                                            <Text style={[s.chipText, active && { color: '#FFF' }]}>{pri}</Text>
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                            </View>
-
-                            <Text style={s.formLabel}>Description</Text>
-                            <TextInput
-                                style={[s.formInput, s.textarea]}
-                                placeholder="Add optional details..."
-                                placeholderTextColor="#CBD5E1"
-                                value={description}
-                                onChangeText={setDescription}
-                                multiline
-                                numberOfLines={3}
-                                textAlignVertical="top"
-                            />
-
-                            <TouchableOpacity
-                                style={[s.submitBtn, submitLoading && { opacity: 0.6 }]}
-                                onPress={handleSaveReminder}
-                                disabled={submitLoading}
-                            >
-                                {submitLoading ? (
-                                    <ActivityIndicator color="#FFF" />
-                                ) : (
-                                    <Text style={s.submitBtnText}>{editingReminder ? 'Update Reminder' : 'Add Reminder'}</Text>
-                                )}
-                            </TouchableOpacity>
-                        </ScrollView>
-                    </View>
+            <ModalSheet visible={isModalVisible} onClose={() => setIsModalVisible(false)} maxHeight="82%">
+                <View style={s.drawerHeader}>
+                    <Text style={s.drawerTitle}>{editingReminder ? 'Edit Reminder' : 'Add New Reminder'}</Text>
+                    <TouchableOpacity onPress={() => setIsModalVisible(false)}>
+                        <Ionicons name="close" size={22} color="#475569" />
+                    </TouchableOpacity>
                 </View>
 
-                {/* Date Picker Modal */}
-                <DateTimePickerModal
-                    isVisible={isDatePickerVisible}
-                    mode="date"
-                    onConfirm={(d) => { setDate(d.toISOString().split('T')[0]); setDatePickerVisible(false); }}
-                    onCancel={() => setDatePickerVisible(false)}
-                />
-            </Modal>
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 50, paddingHorizontal: 20 }} keyboardShouldPersistTaps="handled">
+                    <FormInput
+                        label="Title *"
+                        placeholder="Enter title (e.g. Pay Internet Bill)"
+                        value={title}
+                        onChangeText={setTitle}
+                        icon={(props: any) => <Ionicons name="text-outline" size={18} color={props.color} />}
+                    />
+
+                    <Text style={s.formLabel}>Select Date *</Text>
+                    <TouchableOpacity style={s.dateField} onPress={() => setDatePickerVisible(true)}>
+                        <Ionicons name="calendar-outline" size={18} color="#64748B" />
+                        <Text style={s.dateFieldText}>{date}</Text>
+                    </TouchableOpacity>
+
+                    <Text style={s.formLabel}>Category *</Text>
+                    <View style={s.chipRow}>
+                        {CATEGORIES.map((cat) => {
+                            const active = category === cat;
+                            const catColor = CATEGORY_COLORS[cat];
+                            return (
+                                <TouchableOpacity
+                                    key={cat}
+                                    style={[s.chip, active && { backgroundColor: catColor, borderColor: catColor }]}
+                                    onPress={() => setCategory(cat)}
+                                >
+                                    <Text style={[s.chipText, active && { color: '#FFF' }]}>{cat}</Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+
+                    <Text style={s.formLabel}>Priority *</Text>
+                    <View style={s.chipRow}>
+                        {PRIORITIES.map((pri) => {
+                            const active = priority === pri;
+                            return (
+                                <TouchableOpacity
+                                    key={pri}
+                                    style={[s.chip, active && { backgroundColor: '#1E293B', borderColor: '#1E293B' }]}
+                                    onPress={() => setPriority(pri)}
+                                >
+                                    <Text style={[s.chipText, active && { color: '#FFF' }]}>{pri}</Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+
+                    <FormInput
+                        label="Description"
+                        placeholder="Add optional details..."
+                        value={description}
+                        onChangeText={setDescription}
+                        multiline
+                        icon={(props: any) => <Ionicons name="document-text-outline" size={18} color={props.color} />}
+                    />
+
+                    <TouchableOpacity
+                        style={[s.submitBtn, submitLoading && { opacity: 0.6 }]}
+                        onPress={handleSaveReminder}
+                        disabled={submitLoading}
+                    >
+                        {submitLoading ? (
+                            <ActivityIndicator color="#FFF" />
+                        ) : (
+                            <Text style={s.submitBtnText}>{editingReminder ? 'Update Reminder' : 'Add Reminder'}</Text>
+                        )}
+                    </TouchableOpacity>
+                </ScrollView>
+            </ModalSheet>
+
+            {/* Date Picker Modal */}
+            <DateTimePickerModal
+                isVisible={isDatePickerVisible}
+                mode="date"
+                onConfirm={(d) => { setDate(d.toISOString().split('T')[0]); setDatePickerVisible(false); }}
+                onCancel={() => setDatePickerVisible(false)}
+            />
         </View>
     );
 }

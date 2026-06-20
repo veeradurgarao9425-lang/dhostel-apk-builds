@@ -14,9 +14,7 @@
  * - 500      → ₹500
  */
 export function fmtINR(n: number): string {
-    if (n >= 100000) return `₹${(n / 100000).toFixed(1)}L`;
-    if (n >= 1000)   return `₹${(n / 1000).toFixed(1)}K`;
-    return `₹${n}`;
+    return fmtINRFull(n);
 }
 
 /**

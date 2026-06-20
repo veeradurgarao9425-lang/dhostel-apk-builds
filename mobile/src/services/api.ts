@@ -1,11 +1,12 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { navigate } from '../navigation/navigationRef';
 
 // Production backend on Render
-// const BASE_URL = 'https://mhostel-backend.onrender.com/api';
+const BASE_URL = 'https://mhostel-backend.onrender.com/api';
 
 // For local testing, uncomment the line below and replace with your local IP if testing on a physical device:
-const BASE_URL = 'http://192.168.1.73:5000/api'; // or 'http://10.0.2.2:5000/api' for emulator
+// const BASE_URL = 'http://10.52.54.98:5000/api'; // or 'http://10.0.2.2:5000/api' for emulator
 
 export const api = axios.create({
     baseURL: BASE_URL,
@@ -23,6 +24,7 @@ api.interceptors.response.use(
             console.log('[api] 401 received — clearing stored token');
             await AsyncStorage.multiRemove(['token', 'user']);
             delete api.defaults.headers.common['Authorization'];
+            navigate('Login');
         }
         return Promise.reject(error);
     }

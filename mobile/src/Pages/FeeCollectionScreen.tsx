@@ -247,7 +247,7 @@ const SummaryStrip = ({ summary, total }: { summary: any; total: number }) => {
     return (
         <View style={sum.wrap}>
             {/* Collection progress ring replacement — horizontal bar */}
-            <LinearGradient colors={['#FF8585', '#FF6B6B']} style={sum.progressCard}>
+            <LinearGradient colors={['#34D399', '#10B981']} style={sum.progressCard}>
                 <View style={sum.progressTop}>
                     <Text style={sum.progressLabel}>Collection Progress</Text>
                     <Text style={sum.progressPct}>{pct}%</Text>
@@ -481,7 +481,7 @@ const modal = StyleSheet.create({
     balanceAmt: { fontSize: 20, fontWeight: '900', color: '#DC2626' },
     body: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 32, gap: 4 },
     label: { fontSize: 12, fontWeight: '700', color: '#475569', marginTop: 12, marginBottom: 6 },
-    req: { color: '#FF6B6B', fontWeight: '800' },
+    req: { color: '#10B981', fontWeight: '800' },
     opt: { color: '#CBD5E1', fontWeight: '500' },
     input: {
         backgroundColor: '#F8FAFC', borderWidth: 1.5, borderColor: '#E2E8F0',
@@ -495,14 +495,14 @@ const modal = StyleSheet.create({
         borderRadius: 20, backgroundColor: '#F1F5F9',
         borderWidth: 1.5, borderColor: 'transparent',
     },
-    modeChipActive: { backgroundColor: '#FFF0F0', borderColor: '#FF6B6B' },
+    modeChipActive: { backgroundColor: '#ECFDF5', borderColor: '#10B981' },
     modeText: { fontSize: 12, fontWeight: '600', color: '#64748B' },
-    modeTextActive: { color: '#FF6B6B' },
+    modeTextActive: { color: '#10B981' },
     confirmBtn: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-        backgroundColor: '#FF6B6B', paddingVertical: 15, borderRadius: 14,
+        backgroundColor: '#10B981', paddingVertical: 15, borderRadius: 14,
         marginTop: 20,
-        shadowColor: '#FF6B6B', shadowOffset: { width: 0, height: 4 },
+        shadowColor: '#10B981', shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.35, shadowRadius: 8, elevation: 5,
     },
     confirmText: { fontSize: 15, fontWeight: '800', color: '#FFFFFF' },
@@ -616,7 +616,7 @@ export default function FeeCollectionScreen({ navigation, route }: any) {
 
     return (
         <View style={styles.container}>
-            <StatusBar barStyle="light-content" backgroundColor="#FF6B6B" />
+            <StatusBar barStyle="light-content" backgroundColor="#10B981" />
 
             {/* Custom Header similar to StudentsScreen */}
             <LinearGradient
@@ -708,7 +708,7 @@ export default function FeeCollectionScreen({ navigation, route }: any) {
 
                     {loading ? (
                         <View style={styles.centered}>
-                            <ActivityIndicator size="large" color="#FF6B6B" />
+                            <ActivityIndicator size="large" color="#10B981" />
                             <Text style={[styles.emptyTitle, { marginTop: 12, color: '#94A3B8' }]}>
                                 Loading fee records…
                             </Text>

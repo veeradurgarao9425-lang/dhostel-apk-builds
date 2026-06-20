@@ -40,8 +40,8 @@ export const downloadPDFReport = async (req: AuthRequest, res: Response) => {
     const endDateStr = endDate.toISOString().split('T')[0];
 
     // Get hostel info
-    let hostelId: number;
-    let hostelName = 'Hostel';
+    let hostelIds: number[] = [];
+    let hostelName = 'All Hostels';
 
     if (user?.role_id === 2) {
       if (!user.hostel_id) {
@@ -50,23 +50,23 @@ export const downloadPDFReport = async (req: AuthRequest, res: Response) => {
           error: 'Your account is not linked to any hostel.'
         });
       }
-      hostelId = user.hostel_id;
+      hostelIds = [user.hostel_id];
       
       const hostel = await db('hostel_master')
-        .where('hostel_id', hostelId)
+        .where('hostel_id', user.hostel_id)
         .first();
       if (hostel) {
         hostelName = hostel.hostel_name || 'Hostel';
       }
-    } else {
+    } else if (user?.role_id !== 1) {
       return res.status(403).json({
         success: false,
-        error: 'This feature is only available for Hostel Owners.'
+        error: 'This feature is only available for Hostel Owners and Admins.'
       });
     }
 
     // Fetch income records
-    const incomes = await db('income as i')
+    const incomes = db('income as i')
       .leftJoin('payment_modes as pm', 'i.payment_mode_id', 'pm.payment_mode_id')
       .select(
         'i.income_date',
@@ -76,12 +76,17 @@ export const downloadPDFReport = async (req: AuthRequest, res: Response) => {
         'i.receipt_number',
         'i.description'
       )
-      .where('i.hostel_id', hostelId)
       .whereBetween('i.income_date', [startDateStr, endDateStr])
       .orderBy('i.income_date', 'asc');
 
+    if (hostelIds.length > 0) {
+      incomes.whereIn('i.hostel_id', hostelIds);
+    }
+
+    const incomesData = await incomes;
+
     // Fetch expense records
-    const expenses = await db('expenses as e')
+    const expenses = db('expenses as e')
       .leftJoin('expense_categories as ec', 'e.category_id', 'ec.category_id')
       .leftJoin('payment_modes as pm', 'e.payment_mode_id', 'pm.payment_mode_id')
       .select(
@@ -93,13 +98,18 @@ export const downloadPDFReport = async (req: AuthRequest, res: Response) => {
         'e.vendor_name',
         'e.description'
       )
-      .where('e.hostel_id', hostelId)
       .whereBetween('e.expense_date', [startDateStr, endDateStr])
       .orderBy('e.expense_date', 'asc');
 
+    if (hostelIds.length > 0) {
+      expenses.whereIn('e.hostel_id', hostelIds);
+    }
+
+    const expensesData = await expenses;
+
     // Calculate totals
-    const totalIncome = incomes.reduce((sum, inc) => sum + Number(inc.amount || 0), 0);
-    const totalExpenses = expenses.reduce((sum, exp) => sum + Number(exp.amount || 0), 0);
+    const totalIncome = incomesData.reduce((sum, inc) => sum + Number(inc.amount || 0), 0);
+    const totalExpenses = expensesData.reduce((sum, exp) => sum + Number(exp.amount || 0), 0);
     const netProfit = totalIncome - totalExpenses;
 
     // Month name
@@ -163,7 +173,7 @@ export const downloadPDFReport = async (req: AuthRequest, res: Response) => {
     doc.fontSize(14).font('Helvetica-Bold').text('Income Details', margin);
     doc.moveDown(0.5);
     
-    if (incomes.length === 0) {
+    if (incomesData.length === 0) {
       doc.fontSize(10).font('Helvetica').text('No income records found for this month.', margin + 10);
       doc.moveDown(1);
     } else {
@@ -200,7 +210,7 @@ export const downloadPDFReport = async (req: AuthRequest, res: Response) => {
       let currentY = tableTop + rowHeight;
       
       // Data rows
-      incomes.forEach((income: any, index: number) => {
+      incomesData.forEach((income: any, index: number) => {
         if (currentY + rowHeight > pageHeight - margin - 50) {
           doc.addPage();
           currentY = margin;
@@ -240,7 +250,7 @@ export const downloadPDFReport = async (req: AuthRequest, res: Response) => {
     doc.fontSize(14).font('Helvetica-Bold').text('Expense Details', margin);
     doc.moveDown(0.5);
     
-    if (expenses.length === 0) {
+    if (expensesData.length === 0) {
       doc.fontSize(10).font('Helvetica').text('No expense records found for this month.', margin + 10);
     } else {
       // Table header
@@ -276,7 +286,7 @@ export const downloadPDFReport = async (req: AuthRequest, res: Response) => {
       let currentY = tableTop + rowHeight;
       
       // Data rows
-      expenses.forEach((expense: any) => {
+      expensesData.forEach((expense: any) => {
         if (currentY + rowHeight > pageHeight - margin - 50) {
           doc.addPage();
           currentY = margin;
@@ -350,8 +360,8 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
     const endDateStr = endDate.toISOString().split('T')[0];
 
     // Get hostel info
-    let hostelId: number;
-    let hostelName = 'Hostel';
+    let hostelIds: number[] = [];
+    let hostelName = 'All Hostels';
 
     if (user?.role_id === 2) {
       if (!user.hostel_id) {
@@ -360,23 +370,23 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
           error: 'Your account is not linked to any hostel.'
         });
       }
-      hostelId = user.hostel_id;
+      hostelIds = [user.hostel_id];
       
       const hostel = await db('hostel_master')
-        .where('hostel_id', hostelId)
+        .where('hostel_id', user.hostel_id)
         .first();
       if (hostel) {
         hostelName = hostel.hostel_name || 'Hostel';
       }
-    } else {
+    } else if (user?.role_id !== 1) {
       return res.status(403).json({
         success: false,
-        error: 'This feature is only available for Hostel Owners.'
+        error: 'This feature is only available for Hostel Owners and Admins.'
       });
     }
 
     // 1. Fetch Income records (Other Income)
-    const incomes = await db('income as i')
+    const incomes = db('income as i')
       .leftJoin('payment_modes as pm', 'i.payment_mode_id', 'pm.payment_mode_id')
       .select(
         'i.income_date',
@@ -386,12 +396,14 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
         'i.receipt_number',
         'i.description'
       )
-      .where('i.hostel_id', hostelId)
       .whereBetween('i.income_date', [startDateStr, endDateStr])
       .orderBy('i.income_date', 'asc');
 
+    if (hostelIds.length > 0) incomes.whereIn('i.hostel_id', hostelIds);
+    const incomesData = await incomes;
+
     // 2. Fetch Expense records
-    const expenses = await db('expenses as e')
+    const expenses = db('expenses as e')
       .leftJoin('expense_categories as ec', 'e.category_id', 'ec.category_id')
       .leftJoin('payment_modes as pm', 'e.payment_mode_id', 'pm.payment_mode_id')
       .select(
@@ -403,12 +415,14 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
         'e.vendor_name',
         'e.description'
       )
-      .where('e.hostel_id', hostelId)
       .whereBetween('e.expense_date', [startDateStr, endDateStr])
       .orderBy('e.expense_date', 'asc');
 
+    if (hostelIds.length > 0) expenses.whereIn('e.hostel_id', hostelIds);
+    const expensesData = await expenses;
+
     // 3. Fetch Student (Tenant) records
-    const students = await db('students as s')
+    const students = db('students as s')
       .leftJoin('room_allocations as ra', function() {
         this.on('s.student_id', '=', 'ra.student_id').andOn('ra.is_current', '=', db.raw('1'));
       })
@@ -426,11 +440,13 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
         's.guardian_phone',
         's.permanent_address'
       )
-      .where('s.hostel_id', hostelId)
       .orderBy('s.first_name', 'asc');
 
+    if (hostelIds.length > 0) students.whereIn('s.hostel_id', hostelIds);
+    const studentsData = await students;
+
     // 4. Fetch Fee Payments (Fee Collections)
-    const payments = await db('student_fee_payments as sfp')
+    const payments = db('student_fee_payments as sfp')
       .join('students as s', 'sfp.student_id', 's.student_id')
       .leftJoin('payment_modes as pm', 'sfp.payment_mode_id', 'pm.payment_mode_id')
       .leftJoin('room_allocations as ra', function() {
@@ -449,12 +465,14 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
         'sfp.receipt_number',
         'sfp.remarks'
       )
-      .where('sfp.hostel_id', hostelId)
       .whereBetween('sfp.payment_date', [startDateStr, endDateStr])
       .orderBy('sfp.payment_date', 'asc');
 
+    if (hostelIds.length > 0) payments.whereIn('sfp.hostel_id', hostelIds);
+    const paymentsData = await payments;
+
     // 5. Fetch Rooms list
-    const roomsList = await db('rooms as r')
+    const roomsList = db('rooms as r')
       .leftJoin('room_types as rt', 'r.room_type_id', 'rt.room_type_id')
       .select(
         'r.room_number',
@@ -466,19 +484,21 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
         'r.is_available',
         'r.amenities'
       )
-      .where('r.hostel_id', hostelId)
       .orderBy('r.room_number', 'asc');
 
+    if (hostelIds.length > 0) roomsList.whereIn('r.hostel_id', hostelIds);
+    const roomsListData = await roomsList;
+
     // Calculate totals
-    const feeIncome = payments.reduce((sum, p) => sum + Number(p.amount_paid || 0), 0);
-    const otherIncomeVal = incomes.reduce((sum, inc) => sum + Number(inc.amount || 0), 0);
+    const feeIncome = paymentsData.reduce((sum, p) => sum + Number(p.amount_paid || 0), 0);
+    const otherIncomeVal = incomesData.reduce((sum, inc) => sum + Number(inc.amount || 0), 0);
     const totalIncome = feeIncome + otherIncomeVal;
-    const totalExpenses = expenses.reduce((sum, exp) => sum + Number(exp.amount || 0), 0);
+    const totalExpenses = expensesData.reduce((sum, exp) => sum + Number(exp.amount || 0), 0);
     const netProfit = totalIncome - totalExpenses;
 
-    const totalRooms = roomsList.length;
-    const totalCapacity = roomsList.reduce((sum, rm) => sum + (rm.capacity || 0), 0);
-    const occupiedBeds = roomsList.reduce((sum, rm) => sum + (rm.occupied_beds || 0), 0);
+    const totalRooms = roomsListData.length;
+    const totalCapacity = roomsListData.reduce((sum, rm) => sum + (rm.capacity || 0), 0);
+    const occupiedBeds = roomsListData.reduce((sum, rm) => sum + (rm.occupied_beds || 0), 0);
     const availableBeds = totalCapacity - occupiedBeds;
     const occupancyRate = totalCapacity > 0 ? ((occupiedBeds / totalCapacity) * 100).toFixed(1) : '0';
 
@@ -601,7 +621,7 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
     });
 
     let trIdx = 5;
-    students.forEach((s, idx) => {
+    studentsData.forEach((s, idx) => {
       tenantSheet.getRow(trIdx).height = 20;
       tenantSheet.getCell(`A${trIdx}`).value = idx + 1;
       tenantSheet.getCell(`B${trIdx}`).value = `${s.first_name || ''} ${s.last_name || ''}`.trim();
@@ -670,7 +690,7 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
     });
 
     let prIdx = 5;
-    payments.forEach((p, idx) => {
+    paymentsData.forEach((p, idx) => {
       paymentSheet.getRow(prIdx).height = 20;
       paymentSheet.getCell(`A${prIdx}`).value = idx + 1;
       
@@ -742,7 +762,7 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
     });
 
     let rmrIdx = 5;
-    roomsList.forEach((r, idx) => {
+    roomsListData.forEach((r, idx) => {
       roomSheet.getRow(rmrIdx).height = 20;
       roomSheet.getCell(`A${rmrIdx}`).value = idx + 1;
       roomSheet.getCell(`B${rmrIdx}`).value = r.room_number;

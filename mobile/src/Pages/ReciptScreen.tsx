@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
         marginRight: 15,
     },
     headerTitle: {
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: '700',
         color: '#FFF',
     },
@@ -289,7 +289,7 @@ const styles = StyleSheet.create({
         paddingBottom: 4,
     },
     studentName: {
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: 'bold',
         color: '#1A365D',
         flex: 1,
@@ -302,11 +302,11 @@ const styles = StyleSheet.create({
     },
     receiptBadgeText: {
         color: '#FFF',
-        fontSize: 14,
+        fontSize: 12,
         fontWeight: 'bold',
     },
     addressText: {
-        fontSize: 13,
+        fontSize: 12,
         color: '#718096',
         paddingHorizontal: 16,
         paddingBottom: 16,
@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
         borderRadius: 8,
     },
     detailText: {
-        fontSize: 15,
+        fontSize: 13,
         color: '#1A365D',
         marginBottom: 4,
     },
@@ -335,7 +335,7 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     detailValueLarge: {
-        fontSize: 18,
+        fontSize: 15,
         fontWeight: 'bold',
         color: '#1A365D',
         marginTop: 4,
@@ -355,7 +355,7 @@ const styles = StyleSheet.create({
         borderColor: '#E2E8F0',
     },
     th: {
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: 'bold',
         color: '#1A365D',
     },
@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
         borderColor: '#E2E8F0',
     },
     td: {
-        fontSize: 15,
+        fontSize: 13,
         color: '#2D3748',
     },
     wordsRow: {
@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFF',
     },
     wordsText: {
-        fontSize: 14,
+        fontSize: 12,
         color: '#1A365D',
         fontWeight: 'bold',
     },
@@ -390,7 +390,7 @@ const styles = StyleSheet.create({
     },
     noticeText: {
         color: '#B45309',
-        fontSize: 13,
+        fontSize: 12,
         textAlign: 'center',
         fontWeight: '500',
     },
@@ -401,13 +401,13 @@ const styles = StyleSheet.create({
         borderColor: '#E2E8F0',
     },
     signatureTitle: {
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: 'bold',
         color: '#4A5568',
         marginBottom: 4,
     },
     signatureNote: {
-        fontSize: 12,
+        fontSize: 10,
         color: '#A0AEC0',
         textAlign: 'right',
     },
@@ -419,7 +419,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#F0FDF4',
     },
     paymentModeText: {
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: 'bold',
         color: '#1A202C',
     },
@@ -440,7 +440,7 @@ const styles = StyleSheet.create({
         color: '#059669',
         fontWeight: 'bold',
         marginLeft: 4,
-        fontSize: 14,
+        fontSize: 12,
     },
     shareButton: {
         backgroundColor: '#3B82F6',
@@ -454,7 +454,7 @@ const styles = StyleSheet.create({
     },
     shareText: {
         color: '#FFF',
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: 'bold',
         marginLeft: 8,
     },

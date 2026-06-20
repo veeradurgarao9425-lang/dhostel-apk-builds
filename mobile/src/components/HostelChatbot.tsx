@@ -15,6 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as RootNavigation from '../navigation/navigationRef';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface FAQItem {
   id: string;
@@ -295,6 +296,7 @@ export const HostelChatbot: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [activeFaq, setActiveFaq] = useState<FAQItem | null>(null);
   const [currentRoute, setCurrentRoute] = useState<string | null>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
     const updateRouteName = () => {
@@ -341,7 +343,7 @@ export const HostelChatbot: React.FC = () => {
   ]);
 
   const categories = [
-    { id: 'all', label: 'All Topics' },
+    { id: 'all', label: 'History' },
     { id: 'home', label: 'Home Page' },
     { id: 'pending', label: 'Pending Tab' },
     { id: 'overview', label: 'Overview Page' },
@@ -448,6 +450,8 @@ export const HostelChatbot: React.FC = () => {
       { sender: 'bot', text: 'Hi! My name is Durgarao. How can I help you today? You can ask me any question about managing your hostels, rooms, students, fees, or utility expenses!' }
     ]);
   };
+
+  if (!user) return null;
 
   return (
     <>
@@ -618,9 +622,6 @@ export const HostelChatbot: React.FC = () => {
                             activeOpacity={0.7}
                           >
                             <View style={{ flex: 1 }}>
-                              <Text style={s.faqItemCategory}>
-                                {faq.category === 'home' ? '🏠 HOME PAGE' : faq.category === 'pending' ? '📋 PENDING TAB' : faq.category === 'overview' ? '📈 FINANCE OVERVIEW' : '⚙️ MORE OPTIONS'}
-                              </Text>
                               <Text style={s.faqItemQuestion}>{faq.question}</Text>
                             </View>
                             <Ionicons name="chevron-forward" size={16} color="#4F46E5" />
@@ -693,82 +694,7 @@ export const HostelChatbot: React.FC = () => {
                         </View>
                       ))}
 
-                      {/* Unified FAQ Scroll List */}
-                      <View style={s.faqListBlock}>
-                        <Text style={s.commonQuestionsHeader}>Tap any item below to see explanation</Text>
 
-                        {/* Section: Home Screen */}
-                        <View style={s.faqSection}>
-                          <View style={s.faqSectionHeaderRow}>
-                            <Ionicons name="home" size={15} color="#4F46E5" />
-                            <Text style={s.faqSectionTitle}>Home Screen Features</Text>
-                          </View>
-                          {FAQ_DATA.filter(f => f.category === 'home').map(faq => (
-                            <TouchableOpacity
-                              key={faq.id}
-                              onPress={() => handleQuestionSelect(faq)}
-                              style={s.quickFaqBtn}
-                            >
-                              <Text style={s.quickFaqBtnText}>{faq.question}</Text>
-                              <Ionicons name="chevron-forward" size={14} color="#94A3B8" />
-                            </TouchableOpacity>
-                          ))}
-                        </View>
-
-                        {/* Section: Pending Payments Tab */}
-                        <View style={s.faqSection}>
-                          <View style={s.faqSectionHeaderRow}>
-                            <Ionicons name="alert-circle" size={15} color="#DC2626" />
-                            <Text style={s.faqSectionTitle}>Pending Payments Tab</Text>
-                          </View>
-                          {FAQ_DATA.filter(f => f.category === 'pending').map(faq => (
-                            <TouchableOpacity
-                              key={faq.id}
-                              onPress={() => handleQuestionSelect(faq)}
-                              style={s.quickFaqBtn}
-                            >
-                              <Text style={s.quickFaqBtnText}>{faq.question}</Text>
-                              <Ionicons name="chevron-forward" size={14} color="#94A3B8" />
-                            </TouchableOpacity>
-                          ))}
-                        </View>
-
-                        {/* Section: Finance Overview */}
-                        <View style={s.faqSection}>
-                          <View style={s.faqSectionHeaderRow}>
-                            <Ionicons name="analytics" size={15} color="#16A34A" />
-                            <Text style={s.faqSectionTitle}>Finance Overview Features</Text>
-                          </View>
-                          {FAQ_DATA.filter(f => f.category === 'overview').map(faq => (
-                            <TouchableOpacity
-                              key={faq.id}
-                              onPress={() => handleQuestionSelect(faq)}
-                              style={s.quickFaqBtn}
-                            >
-                              <Text style={s.quickFaqBtnText}>{faq.question}</Text>
-                              <Ionicons name="chevron-forward" size={14} color="#94A3B8" />
-                            </TouchableOpacity>
-                          ))}
-                        </View>
-
-                        {/* Section: More Screen Options */}
-                        <View style={s.faqSection}>
-                          <View style={s.faqSectionHeaderRow}>
-                            <Ionicons name="grid" size={15} color="#7C3AED" />
-                            <Text style={s.faqSectionTitle}>More Options & Tools</Text>
-                          </View>
-                          {FAQ_DATA.filter(f => f.category === 'more').map(faq => (
-                            <TouchableOpacity
-                              key={faq.id}
-                              onPress={() => handleQuestionSelect(faq)}
-                              style={s.quickFaqBtn}
-                            >
-                              <Text style={s.quickFaqBtnText}>{faq.question}</Text>
-                              <Ionicons name="chevron-forward" size={14} color="#94A3B8" />
-                            </TouchableOpacity>
-                          ))}
-                        </View>
-                      </View>
                     </View>
                   )}
                 </View>
