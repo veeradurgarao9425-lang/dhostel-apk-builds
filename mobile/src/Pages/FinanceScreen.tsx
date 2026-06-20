@@ -239,7 +239,15 @@ export default function FinanceScreen() {
     const [mode, setMode] = useState<'Rent' | 'Expense'>('Rent');
     const [statusFilter, setStatusFilter] = useState<'Unpaid' | 'Partial' | 'Paid'>('Unpaid');
     const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [fees, setFees] = useState<any[]>(() => STORE.fees);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [search]);
     const [expenses, setExpenses] = useState<any[]>(() => STORE.expenses);
     const [paymentModes, setPaymentModes] = useState<any[]>(() => STORE.modes);
     const [initialLoading, setInitialLoading] = useState(() => STORE.fees.length === 0);
@@ -480,7 +488,7 @@ export default function FinanceScreen() {
 
     // ─── FIX: Rewritten filteredData with correct, robust status filtering ───
     const filteredData = useMemo(() => {
-        const q = search.toLowerCase().trim();
+        const q = debouncedSearch.toLowerCase().trim();
 
         if (mode === 'Rent') {
             return fees.filter(f => {
@@ -489,25 +497,18 @@ export default function FinanceScreen() {
                 const roomMatch = f.room_number?.toString().includes(q);
                 if (q && !nameMatch && !roomMatch) return false;
 
-                // Date filter — check multiple date fields so records aren't hidden wrongly
-                // Removed local date filter because we now filter by month via API.
-                // Status filtering remains local on the fetched monthly dataset.
-
                 // FIX: Status filter — use Sets so any backend variation is handled (case-insensitive)
                 const status = (f.fee_status ?? '').toLowerCase();
                 if (statusFilter === 'Unpaid') {
                     const due = Math.max(0, sf(f.total_amount || f.total_due || f.monthly_rent) - sf(f.amount_paid || f.paid_amount));
                     return (UNPAID_STATUSES.has(status) || due > 0) && !PAID_STATUSES.has(status) && !PARTIAL_STATUSES.has(status);
-                }
-                if (statusFilter === 'Paid') {
-                    return PAID_STATUSES.has(status);
-                }
-                if (statusFilter === 'Partial') {
+                } else if (statusFilter === 'Partial') {
                     const paid = sf(f.amount_paid || f.paid_amount || 0);
                     const total = sf(f.total_amount || f.total_due || f.monthly_rent || 0);
-                    return PARTIAL_STATUSES.has(status) || (paid > 0 && total > 0 && paid < total);
+                    return PARTIAL_STATUSES.has(status) || (paid > 0 && total > 0 && paid < total && !PAID_STATUSES.has(status));
+                } else {
+                    return PAID_STATUSES.has(status);
                 }
-                return true;
             });
         }
 
@@ -519,7 +520,7 @@ export default function FinanceScreen() {
             // Date range is handled by API now.
             return true;
         });
-    }, [mode, statusFilter, fees, expenses, search]);
+    }, [mode, statusFilter, fees, expenses, debouncedSearch]);
 
     // Debug log — remove after testing
     // console.log('fees total:', fees.length, 'filtered:', filteredData.length, 'statusFilter:', statusFilter);

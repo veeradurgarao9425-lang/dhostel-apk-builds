@@ -7,25 +7,25 @@ import {
     TouchableOpacity,
     StatusBar,
     Dimensions,
-    LayoutAnimation,
     Platform,
-    UIManager
+    UIManager,
+    Alert
 } from 'react-native';
 import {
     User,
     Settings,
-    TrendingUp,
-    FileText,
     ChevronRight,
     LogOut,
-    Globe,
     ShieldCheck,
-    Briefcase,
-    Settings2,
-    Wrench
+    Building,
+    DoorOpen,
+    Users,
+    Phone,
+    Mail,
+    Building2,
+    HelpCircle
 } from 'lucide-react-native';
 
-import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { HeaderNotification } from '../components/HeaderNotification';
@@ -39,50 +39,10 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 const { width } = Dimensions.get('window');
 
-const T = {
-    en: {
-        superAdmin: 'Super Admin',
-        hostelManager: 'Hostel Manager',
-        income: 'Total Income',
-        expenses: 'Expenses',
-        occupancy: 'Occupancy',
-        reports: 'Reports',
-        signOut: 'Sign Out',
-        version: 'Version 1.0.0'
-    },
-    hi: {
-        superAdmin: 'सुपर व्यवस्थापक',
-        hostelManager: 'बॉयज हॉस्टल मैनेजर',
-        income: 'कुल आय',
-        expenses: 'खर्चे',
-        occupancy: 'कब्ज़ा',
-        reports: 'रिपोर्ट',
-        signOut: 'साइन आउट',
-        version: 'संस्करण 1.0.0'
-    },
-    te: {
-        superAdmin: 'సూపర్ అడ్మిన్',
-        hostelManager: 'హాస్టల్ మేనేజర్',
-        income: 'మొత్తం ఆదాయం',
-        expenses: 'ఖర్చులు',
-        occupancy: 'సామర్థ్యం',
-        reports: 'నివేదికలు',
-        signOut: 'బయటకు వెళ్ళు',
-        version: 'వెర్షన్ 1.0.0'
-    }
-};
-
 const ProfileScreen = ({ navigation }: any) => {
     const { signOut, user } = useAuth();
-    const { i18n } = useTranslation();
     const { theme, isDark, fontSize } = useTheme();
     const [stats, setStats] = useState<any>(null);
-
-    // TAB STATE
-    const [activeTab, setActiveTab] = useState<'Personal' | 'Business'>('Personal');
-
-    const currentLang = (i18n.language || 'en').split('-')[0];
-    const t = (T as any)[currentLang] || T['en'];
 
     const fetchStats = async () => {
         try {
@@ -102,28 +62,13 @@ const ProfileScreen = ({ navigation }: any) => {
         navigation.replace('Login');
     };
 
-    const handleTabChange = (tab: 'Personal' | 'Business') => {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        setActiveTab(tab);
+    const handleHelpSupport = () => {
+        Alert.alert(
+            "Help & Support",
+            "For any queries, issues, or assistance, please contact us:\n\n📧 support@dhostel.com\n📞 +91 98765 43210\n\nWe are available 24/7.",
+            [{ text: "OK", style: "default" }]
+        );
     };
-
-    // ── Components ─────────────────────────────────────────────────────
-
-    const GridTool = ({ icon: Icon, title, value, color, bg, onPress }: any) => (
-        <TouchableOpacity
-            style={[styles.toolCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}
-            onPress={onPress}
-            activeOpacity={0.8}
-        >
-            <View style={[styles.toolIconWrap, { backgroundColor: isDark ? '#334155' : bg }]}>
-                <Icon color={isDark ? theme.primary : color} size={24} />
-            </View>
-            <View style={styles.toolText}>
-                <Text style={[styles.toolLabel, { fontSize: Math.max(10, fontSize - 3), color: theme.textSecondary }]}>{title}</Text>
-                <Text style={[styles.toolValue, { fontSize: fontSize, color: isDark ? theme.textPrimary : color }]}>{value}</Text>
-            </View>
-        </TouchableOpacity>
-    );
 
     const MenuItem = ({ icon: Icon, title, subtitle, onPress, iconBg, titleColor, rightEl }: any) => (
         <TouchableOpacity style={styles.menuItem} onPress={onPress} activeOpacity={0.7}>
@@ -154,27 +99,9 @@ const ProfileScreen = ({ navigation }: any) => {
                         <View style={styles.verifiedBadge}><ShieldCheck color="#FFF" size={12} /></View>
                     </View>
                     <View style={styles.nameHeader}>
-                        <Text style={[styles.ownerName, { fontSize: fontSize + 6 }]}>{user?.full_name || t.superAdmin}</Text>
-                        <Text style={[styles.hostelSub, { fontSize: fontSize - 1 }]}>{user?.hostel_name || t.hostelManager}</Text>
+                        <Text style={[styles.ownerName, { fontSize: fontSize + 6 }]}>{user?.full_name || 'Hostel Owner'}</Text>
+                        <Text style={[styles.hostelSub, { fontSize: fontSize - 1 }]}>{user?.role || 'Hostel Owner'}</Text>
                     </View>
-                </View>
-
-                {/* ── SEGMENTED TABS ── */}
-                <View style={styles.tabContainer}>
-                    <TouchableOpacity
-                        style={[styles.tab, activeTab === 'Personal' && styles.activeTab, activeTab === 'Personal' && isDark && { backgroundColor: '#1E293B' }]}
-                        onPress={() => handleTabChange('Personal')}
-                    >
-                        <Settings2 color={activeTab === 'Personal' ? theme.primary : '#FFF'} size={18} />
-                        <Text style={[styles.tabText, { fontSize: fontSize - 2 }, activeTab === 'Personal' ? { color: theme.primary } : { color: '#FFF' }]}>Account</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.tab, activeTab === 'Business' && styles.activeTab, activeTab === 'Business' && isDark && { backgroundColor: '#1E293B' }]}
-                        onPress={() => handleTabChange('Business')}
-                    >
-                        <Briefcase color={activeTab === 'Business' ? theme.primary : '#FFF'} size={18} />
-                        <Text style={[styles.tabText, { fontSize: fontSize - 2 }, activeTab === 'Business' ? { color: theme.primary } : { color: '#FFF' }]}>Toolkit</Text>
-                    </TouchableOpacity>
                 </View>
             </AppHeader>
 
@@ -183,60 +110,97 @@ const ProfileScreen = ({ navigation }: any) => {
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.scrollContent}
             >
-                {activeTab === 'Business' ? (
-                    <View style={styles.tabContent}>
-                        <Text style={[styles.sectionLabel, { fontSize: Math.max(10, fontSize - 4), color: theme.textSecondary }]}>OPERATIONS & ANALYTICS</Text>
-                        <View style={styles.toolGrid}>
-                            <GridTool
-                                icon={TrendingUp} title={t.income}
-                                value={stats ? `₹${(stats.fees.today_collected / 1000).toFixed(1)}k` : '₹0k'}
-                                color="#3B82F6" bg="#EFF6FF" onPress={() => navigation.navigate('IncomeDetails', { period: 'month' })}
-                            />
-                            <GridTool
-                                icon={FileText} title={t.reports} value="Reports"
-                                color="#8B5CF6" bg="#F5F3FF" onPress={() => navigation.navigate('Reports')}
-                            />
-                            <GridTool
-                                icon={Wrench} title="Maintenance" value="Issues"
-                                color="#EAB308" bg="#FEF9C3" onPress={() => navigation.navigate('Maintenance')}
-                            />
-                        </View>
+                {/* ── STATS ROW ── */}
+                <View style={styles.statsRow}>
+                    <View style={[styles.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                        <Building color="#3B82F6" size={24} />
+                        <Text style={[styles.statValue, { color: theme.textPrimary }]}>{stats?.hostelsCount ?? 0}</Text>
+                        <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Hostels</Text>
                     </View>
-                ) : (
-                    <View style={styles.tabContent}>
-                        <Text style={[styles.sectionLabel, { fontSize: Math.max(10, fontSize - 4), color: theme.textSecondary }]}>ACCOUNT SETTINGS</Text>
-                        <View style={[styles.menuCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
-                            <MenuItem
-                                icon={Settings}
-                                title="Settings"
-                                subtitle="Profile Details, Password, Font Size, Dark Mode"
-                                onPress={() => navigation.navigate('Settings')}
-                                iconBg={isDark ? '#334155' : theme.lightBg}
-                                titleColor={theme.textPrimary}
-                            />
-                            <View style={[styles.innerDivider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
-                            <MenuItem
-                                icon={Globe}
-                                title="QR Student Signup"
-                                subtitle="Generate QR for self-registration"
-                                onPress={() => navigation.navigate('QRSignup')}
-                                iconBg={isDark ? '#334155' : theme.lightBg}
-                                titleColor={theme.textPrimary}
-                            />
-                            <View style={[styles.innerDivider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
-                            <MenuItem
-                                icon={LogOut}
-                                title={t.signOut}
-                                subtitle="Log out of your account"
-                                onPress={handleLogout}
-                                iconBg={isDark ? '#451A1A' : '#FEF2F2'}
-                                titleColor="#EF4444"
-                            />
-                        </View>
+                    <View style={[styles.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                        <DoorOpen color="#10B981" size={24} />
+                        <Text style={[styles.statValue, { color: theme.textPrimary }]}>{stats?.roomsCount ?? 0}</Text>
+                        <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Rooms</Text>
                     </View>
-                )}
+                    <View style={[styles.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                        <Users color="#8B5CF6" size={24} />
+                        <Text style={[styles.statValue, { color: theme.textPrimary }]}>{stats?.tenantsCount ?? 0}</Text>
+                        <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Tenants</Text>
+                    </View>
+                </View>
 
-                <Text style={[styles.footerVersion, { color: theme.textSecondary }]}>{t.version}</Text>
+                {/* ── PERSONAL INFORMATION ── */}
+                <Text style={[styles.sectionLabel, { fontSize: Math.max(10, fontSize - 4), color: theme.textSecondary }]}>PERSONAL INFORMATION</Text>
+                <View style={[styles.infoCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                    <View style={styles.infoItem}>
+                        <View style={[styles.infoIconWrap, { backgroundColor: isDark ? '#1E293B' : '#EFF6FF' }]}>
+                            <Phone color="#3B82F6" size={18} />
+                        </View>
+                        <View style={styles.infoContent}>
+                            <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Phone Number</Text>
+                            <Text style={[styles.infoVal, { color: theme.textPrimary }]}>{user?.phone || 'Not Provided'}</Text>
+                        </View>
+                    </View>
+
+                    <View style={[styles.infoDivider, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]} />
+
+                    <View style={styles.infoItem}>
+                        <View style={[styles.infoIconWrap, { backgroundColor: isDark ? '#1E293B' : '#ECFDF5' }]}>
+                            <Mail color="#10B981" size={18} />
+                        </View>
+                        <View style={styles.infoContent}>
+                            <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Email Address</Text>
+                            <Text style={[styles.infoVal, { color: theme.textPrimary }]}>{user?.email || 'Not Provided'}</Text>
+                        </View>
+                    </View>
+
+                    <View style={[styles.infoDivider, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]} />
+
+                    <View style={styles.infoItem}>
+                        <View style={[styles.infoIconWrap, { backgroundColor: isDark ? '#1E293B' : '#F5F3FF' }]}>
+                            <Building2 color="#8B5CF6" size={18} />
+                        </View>
+                        <View style={styles.infoContent}>
+                            <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Active Hostel</Text>
+                            <Text style={[styles.infoVal, { color: theme.textPrimary }]}>{user?.hostel_name || 'No Active Hostel'}</Text>
+                        </View>
+                    </View>
+                </View>
+
+                {/* ── SUPPORT & SETTINGS ── */}
+                <Text style={[styles.sectionLabel, { fontSize: Math.max(10, fontSize - 4), color: theme.textSecondary }]}>SUPPORT & SETTINGS</Text>
+                <View style={[styles.menuCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
+                    <MenuItem
+                        icon={Settings}
+                        title="Settings"
+                        subtitle="Change Password, Font Size, Theme"
+                        onPress={() => navigation.navigate('Settings')}
+                        iconBg={isDark ? '#334155' : theme.lightBg}
+                        titleColor={theme.textPrimary}
+                    />
+                    <View style={[styles.innerDivider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
+                    
+                    <MenuItem
+                        icon={HelpCircle}
+                        title="Help & Support"
+                        subtitle="Contact support team, FAQs"
+                        onPress={handleHelpSupport}
+                        iconBg={isDark ? '#334155' : theme.lightBg}
+                        titleColor={theme.textPrimary}
+                    />
+                    <View style={[styles.innerDivider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
+                    
+                    <MenuItem
+                        icon={LogOut}
+                        title="Sign Out"
+                        subtitle="Log out of your account"
+                        onPress={handleLogout}
+                        iconBg={isDark ? '#451A1A' : '#FEF2F2'}
+                        titleColor="#EF4444"
+                    />
+                </View>
+
+                <Text style={[styles.footerVersion, { color: theme.textSecondary }]}>Version 1.0.0</Text>
                 <View style={styles.bottomSpace} />
             </ScrollView>
         </View>
@@ -247,7 +211,7 @@ export default ProfileScreen;
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    profileBrief: { flexDirection: 'row', alignItems: 'center', marginBottom: 25 },
+    profileBrief: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
     avatarWrapper: { width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(255,255,255,0.25)', padding: 4 },
     avatarMain: { flex: 1, borderRadius: 40, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center' },
     verifiedBadge: { position: 'absolute', bottom: 0, right: 0, backgroundColor: '#10B981', borderRadius: 12, padding: 4, borderWidth: 2, borderColor: '#FFF' },
@@ -255,24 +219,88 @@ const styles = StyleSheet.create({
     ownerName: { fontWeight: '900', color: '#FFF' },
     hostelSub: { color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
 
-    tabContainer: { flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.1)', padding: 4, borderRadius: 16 },
-    tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 12, flexDirection: 'row', justifyContent: 'center', gap: 8 },
-    activeTab: { backgroundColor: '#FFF' },
-    tabText: { fontWeight: '800' },
-
     mainScroll: { flex: 1, marginTop: -15 },
     scrollContent: { paddingHorizontal: 16, paddingTop: 20 },
-    tabContent: {},
     sectionLabel: { fontWeight: '800', marginBottom: 12, marginLeft: 4, letterSpacing: 1 },
 
-    // Toolkit Grid
-    toolGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-    toolCard: { width: (width - 44) / 2, borderRadius: 24, padding: 16, marginBottom: 12, flexDirection: 'row', alignItems: 'center', elevation: 2 },
-    toolIconWrap: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-    toolText: { marginLeft: 12, flex: 1 },
-    toolLabel: { fontWeight: '700' },
-    toolValue: { fontWeight: '900', marginTop: 2 },
+    // Stats Row
+    statsRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 20,
+    },
+    statCard: {
+        flex: 1,
+        marginHorizontal: 4,
+        paddingVertical: 16,
+        paddingHorizontal: 12,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+    },
+    statValue: {
+        fontSize: 20,
+        fontWeight: '800',
+        marginTop: 8,
+    },
+    statLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+        marginTop: 2,
+    },
 
+    // Personal Info Card
+    infoCard: {
+        borderRadius: 24,
+        padding: 16,
+        marginBottom: 20,
+        borderWidth: 1,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+    },
+    infoItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 8,
+    },
+    infoIconWrap: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 16,
+    },
+    infoContent: {
+        flex: 1,
+    },
+    infoLabel: {
+        fontSize: 11,
+        fontWeight: '600',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    infoVal: {
+        fontSize: 14,
+        fontWeight: '700',
+        marginTop: 2,
+    },
+    infoDivider: {
+        height: 1,
+        marginVertical: 12,
+        opacity: 0.5,
+    },
+
+    // Menu Card
     menuCard: { borderRadius: 24, marginBottom: 20, paddingVertical: 4, elevation: 1 },
     menuItem: { flexDirection: 'row', alignItems: 'center', padding: 15 },
     menuIconContainer: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 15 },
@@ -281,7 +309,7 @@ const styles = StyleSheet.create({
     menuSubtitle: { marginTop: 2 },
     innerDivider: { height: 1, marginLeft: 65 },
 
-    footerVersion: { textAlign: 'center', fontSize: 11 },
+    footerVersion: { textAlign: 'center', fontSize: 11, marginTop: 10 },
     bottomSpace: { height: 120 },
 });
 

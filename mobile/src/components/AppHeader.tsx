@@ -12,6 +12,7 @@ interface AppHeaderProps {
     showBack?: boolean;
     rightComponent?: React.ReactNode;
     children?: React.ReactNode;
+    alignLeft?: boolean;
 }
 
 export const AppHeader: React.FC<AppHeaderProps> = ({ 
@@ -20,7 +21,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
     onBack, 
     showBack = true,
     rightComponent,
-    children
+    children,
+    alignLeft = false
 }) => {
     const navigation = useNavigation();
 
@@ -40,10 +42,10 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                         <Ionicons name="chevron-back" size={24} color="#FFF" />
                     </TouchableOpacity>
                 ) : (
-                    <View style={styles.placeholder} />
+                    !alignLeft && <View style={styles.placeholder} />
                 )}
                 
-                <View style={styles.titleContainer}>
+                <View style={[styles.titleContainer, alignLeft && { alignItems: 'flex-start', paddingHorizontal: 0 }]}>
                     <Text style={styles.headerTitle}>{title}</Text>
                     {subtitle && <Text style={styles.headerSubtitle}>{subtitle}</Text>}
                 </View>
@@ -51,7 +53,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                 {rightComponent ? (
                     rightComponent
                 ) : (
-                    <View style={styles.placeholder} />
+                    !alignLeft && <View style={styles.placeholder} />
                 )}
             </View>
             {children && <View style={{ marginTop: 16 }}>{children}</View>}

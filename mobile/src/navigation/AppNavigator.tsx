@@ -20,6 +20,7 @@ import AddRoomScreen         from '../Pages/AddRoomScreen';
 import PaymentDetailsScreen  from '../Pages/PaymentDetailsScreen';
 import ProfileScreen         from '../Pages/ProfileScreen';
 import ExpenseScreen         from '../Pages/ExpenseScreen';
+import AddHostelScreen       from '../Pages/AddHostelScreen';
 import AddExpenseScreen      from '../Pages/AddExpenseScreen';
 import ExpenseDetailsScreen  from '../Pages/ExpenseDetailsScreen';
 import FeeCollectionScreen   from '../Pages/FeeCollectionScreen';
@@ -163,6 +164,11 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                 {/* Account & Settings */}
                 <Stack.Screen name="Profile"  component={ProfileScreen}  />
                 <Stack.Screen name="Settings" component={SettingsScreen} />
+                <Stack.Screen
+                    name="AddHostel"
+                    component={AddHostelScreen}
+                    options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+                />
 
                 {/* Tools */}
                 <Stack.Screen name="Maintenance" component={MaintenanceScreen} />

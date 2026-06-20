@@ -11,6 +11,7 @@ type User = {
   role_id?: number;
   hostel_id?: number;
   hostel_name?: string;
+  phone?: string;
 };
 
 type AuthContextType = {
@@ -18,6 +19,7 @@ type AuthContextType = {
   loading: boolean;
   signIn: (identifier: string, password: string) => Promise<{ error: any; user?: User }>;
   signOut: () => Promise<void>;
+  updateTokenAndUser: (token: string, updatedFields: Partial<User>) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType>({
@@ -25,6 +27,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   signIn: async () => ({ error: null }),
   signOut: async () => { },
+  updateTokenAndUser: async () => { },
 });
 
 export const useAuth = () => {
@@ -157,11 +160,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const updateTokenAndUser = async (token: string, updatedFields: Partial<User>) => {
+    try {
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      await AsyncStorage.setItem('token', token);
+      setUser(prev => {
+        if (!prev) return null;
+        const newUser = { ...prev, ...updatedFields };
+        AsyncStorage.setItem('user', JSON.stringify(newUser)).catch(console.error);
+        return newUser;
+      });
+    } catch (error) {
+      console.error('Failed to update token and user in AuthContext', error);
+    }
+  };
+
   const value = {
     user,
     loading,
     signIn,
     signOut,
+    updateTokenAndUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

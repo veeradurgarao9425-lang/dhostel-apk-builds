@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
-    ScrollView, StatusBar, RefreshControl,
+    ScrollView, StatusBar, RefreshControl, Modal, ActivityIndicator, Alert, Platform
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -44,12 +44,12 @@ const getGreeting = () => {
 // ─── Quick Management Actions ─────────────────────────────────────────────────
 // ─── Quick Management Actions ─────────────────────────────────────────────────
 const QUICK_ACTIONS = [
-    { label: 'Add\nTenant', icon: 'person-add-outline', color: '#7C3AED', bg: '#EDE9FE', route: 'AddStudent', comingSoon: false },
-    { label: 'Add\nExpense', icon: 'wallet-outline',    color: '#F97316', bg: '#FFF7ED', route: 'AddExpense', comingSoon: false },
-    { label: 'Pre-Book',    icon: 'calendar-outline',   color: '#EA580C', bg: '#FFEDD5', route: 'PreBooking', comingSoon: false },
-    { label: 'Bills',       icon: 'receipt-outline',    color: '#D97706', bg: '#FEF3C7', route: 'BillReminders', comingSoon: false },
-    { label: 'Remind',      icon: 'notifications-outline', color: '#DC2626', bg: '#FEE2E2', route: 'Reminders', comingSoon: false },
-    { label: 'Staff',       icon: 'people-outline',     color: '#059669', bg: '#D1FAE5', route: 'AddStaff', comingSoon: false },
+    { label: 'Add\nTenant', icon: 'id-card-outline',    color: '#7C3AED', bg: '#EDE9FE', route: 'AddStudent', comingSoon: false },
+    { label: 'Add Exp',     icon: 'card-outline',       color: '#F97316', bg: '#FFF7ED', route: 'AddExpense', comingSoon: false },
+    { label: 'Pre-Book',    icon: 'bookmark-outline',   color: '#EA580C', bg: '#FFEDD5', route: 'PreBooking', comingSoon: false },
+    { label: 'Bills',       icon: 'newspaper-outline',  color: '#D97706', bg: '#FEF3C7', route: 'BillReminders', comingSoon: false },
+    { label: 'Remind',      icon: 'megaphone-outline',  color: '#DC2626', bg: '#FEE2E2', route: 'Reminders', comingSoon: false },
+    { label: 'Staff',       icon: 'briefcase-outline',  color: '#059669', bg: '#D1FAE5', route: 'AddStaff', comingSoon: false },
 ];
 
 // ─── Skeleton Block ───────────────────────────────────────────────────────────
@@ -87,7 +87,7 @@ const RevenueBar = ({ amount, maxAmount, month, isCurrent }: any) => {
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function HomeScreen() {
     const navigation = useNavigation<any>();
-    const { user } = useAuth();
+    const { user, updateTokenAndUser } = useAuth();
     const { theme, isDark, fontSize } = useTheme();
     const [data, setData] = useState(INITIAL_STATE);
     const [loading, setLoading] = useState(true);
@@ -95,11 +95,53 @@ export default function HomeScreen() {
     const [hasError, setHasError] = useState(false);
     const isFirstLoadRef = React.useRef(true);
 
+    const [selectorVisible, setSelectorVisible] = useState(false);
+    const [hostels, setHostels] = useState<any[]>([]);
+    const [switching, setSwitching] = useState(false);
+
+    const fetchHostels = async () => {
+        try {
+            const res = await api.get('/hostels');
+            if (res.data?.success) {
+                setHostels(res.data.data || []);
+            }
+        } catch (e) {
+            console.error('Failed to fetch owned hostels:', e);
+        }
+    };
+
+    const handleSwitchHostel = async (hostelId: number) => {
+        if (hostelId === user?.hostel_id) {
+            setSelectorVisible(false);
+            return;
+        }
+        try {
+            setSwitching(true);
+            const res = await api.put('/auth/active-hostel', { hostel_id: hostelId });
+            if (res.data?.success) {
+                const { token, hostel_name } = res.data.data;
+                await updateTokenAndUser(token, { hostel_id: hostelId, hostel_name });
+                setSelectorVisible(false);
+                load(true);
+            } else {
+                Alert.alert('Error', res.data?.error || 'Failed to switch active hostel');
+            }
+        } catch (err: any) {
+            console.error('Switch active hostel error:', err);
+            Alert.alert('Error', err.response?.data?.error || 'An error occurred while switching hostels.');
+        } finally {
+            setSwitching(false);
+        }
+    };
+
     // ── Data loader ───────────────────────────────────────────────────────────
     const load = useCallback(async (isRefresh = false) => {
         try {
             if (!isRefresh && isFirstLoadRef.current) setLoading(true);
             setHasError(false);
+
+            // Fetch hostels list for switcher dropdown
+            fetchHostels();
 
             const [statsRes, summaryRes, hostelRes]: any = await Promise.all([
                 api.get('/reports/dashboard-stats').catch(() => ({ data: { success: false } })),
@@ -285,8 +327,9 @@ export default function HomeScreen() {
             {/* ─────────────────── FIXED HEADER ─────────────────── */}
             <AppHeader
                 title={`${getGreeting()},`}
-                subtitle={(user?.full_name || 'Owner').split(' ').slice(0, 2).join(' ')}
-                showBack={navigation.canGoBack()}
+                subtitle={(user?.full_name || 'Owner').split(' ')[0]}
+                showBack={false}
+                alignLeft={true}
                 rightComponent={
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                         <TouchableOpacity
@@ -301,7 +344,15 @@ export default function HomeScreen() {
                     </View>
                 }
             >
-                <Text style={s.hostelTag}>🏠 {data.hostelName}</Text>
+                <TouchableOpacity 
+                    style={s.hostelPillBtn} 
+                    onPress={() => setSelectorVisible(true)}
+                    activeOpacity={0.8}
+                >
+                    <Ionicons name="business" size={16} color="#FFF" style={{ marginRight: 6 }} />
+                    <Text style={s.hostelPillText} numberOfLines={1}>{data.hostelName}</Text>
+                    <Ionicons name="chevron-down" size={14} color="#FFF" style={{ marginLeft: 6 }} />
+                </TouchableOpacity>
             </AppHeader>
 
             <ScrollView
@@ -611,6 +662,84 @@ export default function HomeScreen() {
 
                 </View>
             </ScrollView>
+
+            {/* ─────────────────── HOSTEL SWITCHER MODAL ─────────────────── */}
+            <Modal
+                animationType="slide"
+                transparent={true}
+                visible={selectorVisible}
+                onRequestClose={() => setSelectorVisible(false)}
+            >
+                <TouchableOpacity 
+                    style={s.modalOverlay} 
+                    activeOpacity={1} 
+                    onPress={() => setSelectorVisible(false)}
+                >
+                    <View style={[s.modalSheet, { backgroundColor: theme.cardBg }]}>
+                        <View style={s.modalHeader}>
+                            <Text style={[s.modalTitle, { color: theme.textPrimary }]}>Switch Hostel</Text>
+                            <TouchableOpacity 
+                                style={s.modalCloseBtn}
+                                onPress={() => setSelectorVisible(false)}
+                            >
+                                <Ionicons name="close" size={22} color={theme.textPrimary} />
+                            </TouchableOpacity>
+                        </View>
+
+                        {switching ? (
+                            <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+                                <ActivityIndicator size="large" color={theme.primary} />
+                                <Text style={{ marginTop: 12, color: theme.textSecondary, fontWeight: '600' }}>Switching active hostel...</Text>
+                            </View>
+                        ) : (
+                            <ScrollView showsVerticalScrollIndicator={false}>
+                                {hostels.map((h: any) => {
+                                    const isActive = h.hostel_id === user?.hostel_id;
+                                    return (
+                                        <TouchableOpacity
+                                            key={h.hostel_id}
+                                            style={[
+                                                s.hostelItem,
+                                                isActive && s.hostelItemActive,
+                                                isActive && { borderColor: theme.primary, backgroundColor: isDark ? 'rgba(124, 58, 237, 0.15)' : 'rgba(124, 58, 237, 0.08)' }
+                                            ]}
+                                            onPress={() => handleSwitchHostel(h.hostel_id)}
+                                            activeOpacity={0.7}
+                                        >
+                                            <Text style={[s.hostelItemText, { color: theme.textPrimary }]}>
+                                                {h.hostel_name}
+                                            </Text>
+                                            {isActive && (
+                                                <Ionicons name="checkmark-circle" size={22} color={theme.primary} />
+                                            )}
+                                        </TouchableOpacity>
+                                    );
+                                })}
+
+                                {hostels.length < 2 ? (
+                                    <TouchableOpacity
+                                        style={[s.addHostelBtn, { backgroundColor: theme.primary }]}
+                                        onPress={() => {
+                                            setSelectorVisible(false);
+                                            navigation.navigate('AddHostel');
+                                        }}
+                                        activeOpacity={0.8}
+                                    >
+                                        <Ionicons name="add" size={20} color="#FFF" />
+                                        <Text style={s.addHostelText}>Add New Hostel</Text>
+                                    </TouchableOpacity>
+                                ) : (
+                                    <View style={[s.limitNoteContainer, isDark && { backgroundColor: 'rgba(249, 115, 22, 0.15)', borderColor: 'rgba(249, 115, 22, 0.3)' }]}>
+                                        <Text style={s.limitNoteText}>
+                                            ℹ️ Note: Every owner is limited to a maximum of 2 active hostels.
+                                        </Text>
+                                    </View>
+                                )}
+                            </ScrollView>
+                        )}
+                    </View>
+                </TouchableOpacity>
+            </Modal>
         </View>
     );
 }
@@ -958,5 +1087,102 @@ const s = StyleSheet.create({
         color: '#FFF',
         fontSize: 9,
         fontWeight: '900',
+    },
+
+    // Switcher Dropdown Pill
+    hostelPillBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255, 255, 255, 0.18)',
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 20,
+        alignSelf: 'flex-start',
+    },
+    hostelPillText: {
+        color: '#FFF',
+        fontWeight: '700',
+        fontSize: 13,
+        maxWidth: 180,
+    },
+
+    // Switcher Bottom Sheet
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalSheet: {
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+        paddingHorizontal: 20,
+        paddingTop: 20,
+        maxHeight: '75%',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20,
+        paddingBottom: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(148, 163, 184, 0.15)',
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '800',
+    },
+    modalCloseBtn: {
+        padding: 4,
+    },
+    hostelItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        borderRadius: 16,
+        marginBottom: 10,
+        borderWidth: 1.5,
+        borderColor: 'rgba(148, 163, 184, 0.15)',
+    },
+    hostelItemActive: {
+        borderColor: '#7C3AED',
+        backgroundColor: 'rgba(124, 58, 237, 0.08)',
+    },
+    hostelItemText: {
+        fontSize: 15,
+        fontWeight: '700',
+        flex: 1,
+    },
+    addHostelBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#7C3AED',
+        paddingVertical: 14,
+        borderRadius: 16,
+        marginTop: 10,
+        gap: 8,
+    },
+    addHostelText: {
+        color: '#FFF',
+        fontWeight: '800',
+        fontSize: 15,
+    },
+    limitNoteContainer: {
+        backgroundColor: 'rgba(249, 115, 22, 0.08)',
+        borderColor: 'rgba(249, 115, 22, 0.2)',
+        borderWidth: 1,
+        padding: 12,
+        borderRadius: 14,
+        marginTop: 10,
+        alignItems: 'center',
+    },
+    limitNoteText: {
+        color: '#F97316',
+        fontSize: 12,
+        fontWeight: '600',
+        textAlign: 'center',
     },
 });

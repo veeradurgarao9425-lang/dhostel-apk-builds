@@ -498,4 +498,66 @@ export const authController = {
       });
     }
   },
+
+  // Switch active hostel
+  async switchActiveHostel(req: AuthRequest, res: Response) {
+    try {
+      const { hostel_id } = req.body;
+      const user = req.user;
+
+      if (!hostel_id) {
+        return res.status(400).json({
+          success: false,
+          error: 'Hostel ID is required',
+        });
+      }
+
+      // Verify that the user owns the hostel or is admin
+      if (user?.role_id === 2) {
+        const hostel = await db('hostel_master')
+          .where({ hostel_id, owner_id: user.user_id, is_active: 1 })
+          .first();
+
+        if (!hostel) {
+          return res.status(403).json({
+            success: false,
+            error: 'Access denied to this hostel',
+          });
+        }
+      }
+
+      // Update user's active hostel_id in database
+      await db('users')
+        .where('user_id', user.user_id)
+        .update({ hostel_id });
+
+      const hostelDetails = await db('hostel_master')
+        .where('hostel_id', hostel_id)
+        .first();
+
+      // Re-generate JWT token with the new hostel_id
+      const token = generateToken({
+        user_id: user.user_id,
+        email: user.email,
+        role_id: user.role_id,
+        hostel_id,
+      });
+
+      return res.json({
+        success: true,
+        message: 'Active hostel switched successfully',
+        data: {
+          hostel_id,
+          hostel_name: hostelDetails?.hostel_name || 'My Hostel',
+          token,
+        },
+      });
+    } catch (error: any) {
+      console.error('Switch active hostel error:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Internal server error',
+      });
+    }
+  },
 };

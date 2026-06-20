@@ -4,11 +4,11 @@ import { AuthRequest } from '../middleware/auth.js';
 
 export const createHostel = async (req: AuthRequest, res: Response) => {
   try {
-    // Verify Main Admin (role_id = 1)
-    if (req.user?.role_id !== 1) {
+    // Verify permissions: Main Admin (1) or Owner (2)
+    if (req.user?.role_id !== 1 && req.user?.role_id !== 2) {
       return res.status(403).json({
         success: false,
-        error: 'Access denied. Main Admin only.'
+        error: 'Access denied.'
       });
     }
 
@@ -35,7 +35,8 @@ export const createHostel = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    if (!owner_id) {
+    const finalOwnerId = req.user?.role_id === 2 ? req.user.user_id : owner_id;
+    if (!finalOwnerId) {
       return res.status(400).json({
         success: false,
         error: 'Owner ID is required'
@@ -44,7 +45,7 @@ export const createHostel = async (req: AuthRequest, res: Response) => {
 
     // Verify owner exists
     const owner = await db('users')
-      .where({ user_id: owner_id, role_id: 2, is_active: 1 })
+      .where({ user_id: finalOwnerId, role_id: 2, is_active: 1 })
       .first();
 
     if (!owner) {
@@ -54,9 +55,22 @@ export const createHostel = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    // Enforce limit of 2 active hostels
+    const ownerHostelsCount = await db('hostel_master')
+      .where({ owner_id: finalOwnerId, is_active: 1 })
+      .count('hostel_id as count')
+      .first();
+
+    if (ownerHostelsCount && Number(ownerHostelsCount.count) >= 2) {
+      return res.status(400).json({
+        success: false,
+        error: 'Hostel limit reached. An owner can only manage a maximum of 2 active hostels.'
+      });
+    }
+
     // Check for duplicate hostel name
     const existing = await db('hostel_master')
-      .where({ hostel_name })
+      .where({ hostel_name, is_active: 1 })
       .first();
 
     if (existing) {
@@ -74,7 +88,7 @@ export const createHostel = async (req: AuthRequest, res: Response) => {
       state,
       pincode,
       hostel_type,
-      owner_id,
+      owner_id: finalOwnerId,
       admission_fee: admission_fee || 0,
       is_active: 1,
       created_at: new Date()
@@ -93,10 +107,13 @@ export const createHostel = async (req: AuthRequest, res: Response) => {
     // Insert hostel
     const [hostel_id] = await db('hostel_master').insert(hostelData);
 
-    // Update owner's hostel_id in users table (single hostel per owner)
-    await db('users')
-      .where({ user_id: owner_id })
-      .update({ hostel_id });
+    // Update owner's hostel_id in users table if they don't have one active yet
+    const ownerUser = await db('users').where({ user_id: finalOwnerId }).first();
+    if (ownerUser && !ownerUser.hostel_id) {
+      await db('users')
+        .where({ user_id: finalOwnerId })
+        .update({ hostel_id });
+    }
 
     res.status(201).json({
       success: true,
@@ -106,7 +123,7 @@ export const createHostel = async (req: AuthRequest, res: Response) => {
         hostel_name,
         address,
         city,
-        owner_id
+        owner_id: finalOwnerId
       }
     });
   } catch (error) {

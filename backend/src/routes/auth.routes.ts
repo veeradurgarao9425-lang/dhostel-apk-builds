@@ -14,6 +14,7 @@ router.post('/verify-reset-token', authController.verifyResetToken);
 // Protected routes
 router.get('/me', authMiddleware, authController.me);
 router.post('/change-password', authMiddleware, authController.changePassword);
+router.put('/active-hostel', authMiddleware, authController.switchActiveHostel);
 
 // Admin only routes
 router.post('/register-owner', authMiddleware, isAdmin, authController.registerOwner);
