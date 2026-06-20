@@ -11,11 +11,13 @@ import {
     Platform,
     ActivityIndicator,
     Alert,
+    Keyboard,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-    ArrowLeft, User, Phone, Home, Calendar,
+    User, Phone, Home, Calendar,
     ChevronDown, Check, BedDouble, Plus,
 } from 'lucide-react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
@@ -23,7 +25,9 @@ import { useAuth } from '../../contexts/AuthContext';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { useTheme } from '../../contexts/ThemeContext';
-import { COLORS } from '../theme/index';
+import { COLORS, FONT, SPACING } from '../theme/index';
+import { AppHeader } from '../components/AppHeader';
+import { FullScreenLoader } from '../components/FullScreenLoader';
 
 // ─── Reusable custom components ──────────────────────────────────────────────
 const FormInput = ({ label, icon: Icon, placeholder, value, onChangeText, keyboardType, error }: any) => (
@@ -70,9 +74,6 @@ const Selector = ({ label, options, selected, onSelect }: any) => (
 );
 
 // ─── Inline Room Picker Drawer ───────────────────────────────────────────────
-import { AddStudentScreen } from './AddStudentScreen'; // We can reuse ModalSheet if we want, or define a simpler local one
-
-import { View as RNView } from 'react-native';
 import { Modal } from 'react-native';
 
 const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: any) => {
@@ -178,7 +179,7 @@ const BedPickerDrawer = ({ visible, room, beds, selectedBedId, onSelectBed, onCl
 export default function PreBookingScreen({ navigation, route }: any) {
     const { user } = useAuth();
     const { theme } = useTheme();
-    const { showSuccess, showError } = useToast();
+    const insets = useSafeAreaInsets();
     const [loading, setLoading] = useState(false);
     const [rooms, setRooms] = useState<any[]>([]);
     const [beds, setBeds] = useState<any[]>([]);
@@ -203,9 +204,16 @@ export default function PreBookingScreen({ navigation, route }: any) {
 
     const selectedRoom = rooms.find(r => r.room_id?.toString() === formData.room_id);
     const selectedBed = beds.find(b => b.bed_id?.toString() === formData.bed_id);
+    const [isKeyboardVisible, setKeyboardVisible] = useState(false);
 
     useEffect(() => {
         fetchRooms();
+        const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+        const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+        return () => {
+            keyboardDidShowListener.remove();
+            keyboardDidHideListener.remove();
+        };
     }, []);
 
     const fetchRooms = async () => {
@@ -253,35 +261,29 @@ export default function PreBookingScreen({ navigation, route }: any) {
         return Object.keys(e).length === 0;
     };
 
+    const handleReset = () => {
+        setFormData({
+            first_name: '', last_name: '', gender: 'Male', phone: '', expected_join_date: new Date().toISOString().split('T')[0],
+            room_id: '', bed_id: '', floor_number: '', monthly_rent: '',
+        });
+        setErrors({});
+    };
+
     const handleSave = async () => {
-        if (!validate()) {
-            showError('Fix highlighted fields', 'Validation Error');
-            return;
-        }
+        if (!validate()) return;
         setLoading(true);
         try {
             const payload = {
                 ...formData,
                 hostel_id: user?.hostel_id,
-                guardian_phone: '0000000000',
-                guardian_name: 'N/A',
-                admission_fee: 0,
-                admission_status: 0,
-                status: 2, // 2 = Pre-Booked (TINYINT supported)
                 admission_date: formData.expected_join_date,
-                room_id: formData.room_id ? parseInt(formData.room_id) : null,
+                room_id: parseInt(formData.room_id),
                 bed_id: formData.bed_id || null,
-                floor_number: formData.floor_number ? parseInt(formData.floor_number) : null,
-                monthly_rent: parseFloat(formData.monthly_rent || '0'),
             };
-
-            const res = await api.post('/students', payload);
-            if (res.data.success) {
-                showSuccess(`${formData.first_name} pre-booked successfully.`, 'Pre-Booked Success!');
-                setTimeout(() => navigation.goBack(), 900);
-            }
-        } catch (error: any) {
-            showError(error.response?.data?.error || 'Failed to save pre-booking', 'Error');
+            await api.post('/students', payload);
+            navigation.goBack();
+        } catch (e) {
+            Alert.alert('Error', 'Failed to save');
         } finally {
             setLoading(false);
         }
@@ -289,184 +291,55 @@ export default function PreBookingScreen({ navigation, route }: any) {
 
     return (
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.container}>
-            <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+            <StatusBar barStyle="dark-content" />
+            <AppHeader title="Pre-Book Room" />
+            <FullScreenLoader visible={loading} />
 
-            <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={styles.header}>
-                <View style={styles.headerTop}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
-                        <ArrowLeft color="#FFF" size={24} />
-                    </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Pre-Book Room</Text>
-                    <View style={{ width: 40 }} />
-                </View>
-            </LinearGradient>
-
-            <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-                
+            <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
                 <View style={styles.formCard}>
                     <Text style={styles.sectionTitle}>👤 Tenant Information</Text>
-                    <FormInput
-                        label="First Name *"
-                        icon={User}
-                        placeholder="e.g. Rahul"
-                        value={formData.first_name}
-                        error={errors.first_name}
-                        onChangeText={(t: string) => {
-                            up('first_name', t.replace(/[^a-zA-Z0-9\s]/g, ''));
-                            if (errors.first_name && t) setErrors(p => { const e = { ...p }; delete e.first_name; return e; });
-                        }}
-                    />
-                    <FormInput
-                        label="Last Name"
-                        icon={User}
-                        placeholder="e.g. Sharma"
-                        value={formData.last_name}
-                        onChangeText={(t: string) => up('last_name', t.replace(/[^a-zA-Z0-9\s]/g, ''))}
-                    />
-                    <Selector
-                        label="Gender"
-                        options={['Male', 'Female', 'Other']}
-                        selected={formData.gender}
-                        onSelect={(v: string) => up('gender', v)}
-                    />
-                    <FormInput
-                        label="Phone *"
-                        icon={Phone}
-                        placeholder="9876543210"
-                        keyboardType="phone-pad"
-                        value={formData.phone}
-                        error={errors.phone}
-                        onChangeText={(t: string) => {
-                            const c = t.replace(/\D/g, '').slice(0, 10);
-                            up('phone', c);
-                            if (errors.phone && c.length === 10) setErrors(p => { const e = { ...p }; delete e.phone; return e; });
-                        }}
-                    />
+                    <FormInput label="First Name *" icon={User} placeholder="e.g. Rahul" value={formData.first_name} error={errors.first_name} onChangeText={(t: string) => up('first_name', t)} />
+                    <FormInput label="Last Name" icon={User} placeholder="e.g. Sharma" value={formData.last_name} onChangeText={(t: string) => up('last_name', t)} />
+                    <Selector label="Gender" options={['Male', 'Female', 'Other']} selected={formData.gender} onSelect={(v: string) => up('gender', v)} />
+                    <FormInput label="Phone *" icon={Phone} placeholder="9876543210" keyboardType="phone-pad" value={formData.phone} error={errors.phone} onChangeText={(t: string) => up('phone', t.replace(/\D/g, ''))} />
                 </View>
 
                 <View style={styles.formCard}>
                     <Text style={styles.sectionTitle}>📅 Schedule Details</Text>
-                    <SelectField
-                        label="Expected Join Date *"
-                        icon={Calendar}
-                        placeholder="Pick date"
-                        value={formData.expected_join_date}
-                        error={errors.expected_join_date}
-                        onPress={() => setShowDatePicker(true)}
-                    />
+                    <SelectField label="Expected Join Date *" icon={Calendar} placeholder="Pick date" value={formData.expected_join_date} error={errors.expected_join_date} onPress={() => setShowDatePicker(true)} />
                 </View>
 
                 <View style={styles.formCard}>
                     <Text style={styles.sectionTitle}>🏠 Room & Bed Allocation</Text>
-                    {selectedRoom && (
-                        <View style={styles.allocationSummary}>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.allocationLabel}>Selected Room</Text>
-                                <Text style={styles.allocationValue}>Room {selectedRoom.room_number}</Text>
-                                <Text style={styles.allocationMeta}>Floor {selectedRoom.floor_number ?? '—'} • ₹{selectedRoom.rent_per_bed ?? '—'}/bed</Text>
-                            </View>
-                            <View style={styles.allocationDivider} />
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.allocationLabel}>Selected Bed</Text>
-                                <Text style={[styles.allocationValue, !selectedBed && { color: '#94A3B8', fontSize: 14 }]}>
-                                    {selectedBed ? (selectedBed.bed_name ?? `Bed`) : 'Not selected'}
-                                </Text>
-                                {selectedBed && <Text style={styles.allocationMeta}>● Available</Text>}
-                            </View>
-                        </View>
-                    )}
                     <View style={[styles.row, { gap: 12 }]}>
-                        <TouchableOpacity style={[styles.allocationBtn, selectedRoom && styles.allocationBtnActive]} onPress={() => setRoomModal(true)} activeOpacity={0.8}>
+                        <TouchableOpacity style={[styles.allocationBtn, selectedRoom && styles.allocationBtnActive]} onPress={() => setRoomModal(true)}>
                             <Home size={17} color={selectedRoom ? '#EA580C' : '#64748B'} />
-                            <Text style={[styles.allocationBtnText, selectedRoom && { color: '#EA580C' }]} numberOfLines={1}>{selectedRoom ? `Room ${selectedRoom.room_number}` : 'Select Room'}</Text>
-                            <ChevronDown size={15} color={selectedRoom ? '#EA580C' : '#94A3B8'} />
+                            <Text style={styles.allocationBtnText}>{selectedRoom ? `Room ${selectedRoom.room_number}` : 'Select Room'}</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={[styles.allocationBtn, selectedBed && styles.allocationBtnActive, !selectedRoom && styles.allocationBtnDisabled]}
-                            onPress={() => { if (!selectedRoom) { Alert.alert('Select Room First', 'Please pick a room first.'); return; } setBedModal(true); }} activeOpacity={0.8}>
-                            <BedDouble size={17} color={selectedBed ? '#EA580C' : !selectedRoom ? '#CBD5E1' : '#64748B'} />
-                            <Text style={[styles.allocationBtnText, selectedBed && { color: '#EA580C' }, !selectedRoom && { color: '#CBD5E1' }]} numberOfLines={1}>{selectedBed ? (selectedBed.bed_name ?? 'Bed') : 'Select Bed'}</Text>
-                            <ChevronDown size={15} color={selectedBed ? '#EA580C' : '#94A3B8'} />
+                        <TouchableOpacity style={[styles.allocationBtn, selectedBed && styles.allocationBtnActive, !selectedRoom && styles.allocationBtnDisabled]} onPress={() => { if (selectedRoom) setBedModal(true); }}>
+                            <BedDouble size={17} color={selectedBed ? '#EA580C' : '#64748B'} />
+                            <Text style={styles.allocationBtnText}>{selectedBed ? `Bed ${selectedBed.bed_name || ''}` : 'Select Bed'}</Text>
                         </TouchableOpacity>
                     </View>
-                    {selectedRoom && (
-                        <TouchableOpacity onPress={() => { up('room_id', ''); up('bed_id', ''); up('floor_number', ''); up('monthly_rent', ''); setBeds([]); }} style={{ alignSelf: 'flex-end', marginTop: 8 }}>
-                            <Text style={{ color: '#EF4444', fontSize: 12, fontWeight: '600' }}>✕ Clear allocation</Text>
-                        </TouchableOpacity>
-                    )}
-                    <FormInput
-                        label="Monthly Rent (₹)"
-                        icon={Phone} // Using phone icon for rent input since credit card isn't imported
-                        placeholder="Auto-filled from room"
-                        keyboardType="numeric"
-                        value={formData.monthly_rent}
-                        onChangeText={(t: string) => up('monthly_rent', t.replace(/\D/g, ''))}
-                    />
                 </View>
-
             </ScrollView>
 
-            <View style={styles.stickyFooter}>
-                <TouchableOpacity
-                    style={[styles.saveBtn, loading && styles.disabledBtn]}
-                    onPress={handleSave}
-                    disabled={loading}
-                    activeOpacity={0.8}
-                >
-                    <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={styles.saveGrad}>
-                        {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.saveBtnText}>Save Pre-Booking</Text>}
-                    </LinearGradient>
-                </TouchableOpacity>
+            <View style={[styles.stickyFooter, { paddingBottom: isKeyboardVisible ? 0 : insets.bottom + 12 }]}>
+                <TouchableOpacity style={styles.cancelButton} onPress={handleReset}><Text style={styles.cancelButtonText}>Reset</Text></TouchableOpacity>
+                <TouchableOpacity style={[styles.submitButton, { backgroundColor: theme.primary }]} onPress={handleSave}><Text style={styles.submitButtonText}>Save Pre-Booking</Text></TouchableOpacity>
             </View>
 
-            <DateTimePickerModal
-                isVisible={showDatePicker}
-                mode="date"
-                date={new Date(formData.expected_join_date)}
-                minimumDate={new Date()}
-                onConfirm={(date) => {
-                    up('expected_join_date', date.toISOString().split('T')[0]);
-                    setShowDatePicker(false);
-                }}
-                onCancel={() => setShowDatePicker(false)}
-            />
-
-            <RoomPickerDrawer
-                visible={roomModal}
-                rooms={rooms}
-                selectedRoomId={formData.room_id}
-                onSelectRoom={(room: any) => {
-                    up('room_id', room.room_id.toString());
-                    up('floor_number', room.floor_number?.toString() || '');
-                    up('monthly_rent', room.rent_per_bed?.toString() || room.base_rent?.toString() || formData.monthly_rent);
-                    up('bed_id', '');
-                    setBeds([]);
-                    fetchBeds(room.room_id.toString());
-                }}
-                onClose={() => setRoomModal(false)}
-            />
-
-            <BedPickerDrawer
-                visible={bedModal}
-                room={selectedRoom}
-                beds={beds}
-                selectedBedId={formData.bed_id}
-                loading={bedsLoading}
-                onSelectBed={(bed: any) => up('bed_id', bed.bed_id?.toString())}
-                onClose={() => setBedModal(false)}
-            />
-
+            <DateTimePickerModal isVisible={showDatePicker} mode="date" onConfirm={(date) => { up('expected_join_date', date.toISOString().split('T')[0]); setShowDatePicker(false); }} onCancel={() => setShowDatePicker(false)} />
+            <RoomPickerDrawer visible={roomModal} rooms={rooms} selectedRoomId={formData.room_id} onSelectRoom={(room: any) => { up('room_id', room.room_id.toString()); fetchBeds(room.room_id.toString()); }} onClose={() => setRoomModal(false)} />
+            <BedPickerDrawer visible={bedModal} room={selectedRoom} beds={beds} selectedBedId={formData.bed_id} loading={bedsLoading} onSelectBed={(bed: any) => up('bed_id', bed.bed_id.toString())} onClose={() => setBedModal(false)} />
         </KeyboardAvoidingView>
     );
 }
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8FAFC' },
-    header: { paddingTop: 52, paddingBottom: 24, paddingHorizontal: 20 },
-    headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
-    headerTitle: { fontSize: 20, fontWeight: '800', color: '#FFF' },
     content: { flex: 1 },
-    scrollContent: { padding: 16, paddingBottom: 60 },
+    scrollContent: { padding: 16, paddingBottom: 100 },
     formCard: { backgroundColor: '#FFF', borderRadius: 16, padding: 16, marginBottom: 16, elevation: 1, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 6 },
     sectionTitle: { fontSize: 15, fontWeight: '700', color: '#1E293B', marginBottom: 14 },
     inputGroup: { marginBottom: 14 },
@@ -482,20 +355,55 @@ const styles = StyleSheet.create({
     selectorItemActive: { backgroundColor: '#FFEFE6', borderColor: '#F97316' },
     selectorText: { fontSize: 13, color: '#64748B', fontWeight: '600' },
     selectorTextActive: { color: '#F97316', fontWeight: '700' },
-
-    // Allocation UI
     row: { flexDirection: 'row' },
-    allocationSummary: { flexDirection: 'row', backgroundColor: '#FFF8F4', borderLeftWidth: 3, borderLeftColor: '#F97316', padding: 12, borderRadius: 8, marginBottom: 12 },
-    allocationLabel: { fontSize: 11, color: '#94A3B8', fontWeight: '600' },
-    allocationValue: { fontSize: 14, fontWeight: '700', color: '#1E293B', marginTop: 2 },
-    allocationMeta: { fontSize: 11, color: '#64748B', fontWeight: '500', marginTop: 2 },
-    allocationDivider: { width: 1, backgroundColor: '#E2E8F0', marginHorizontal: 12 },
-    allocationBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 13, borderWidth: 1, borderColor: '#E2E8F0', gap: 6 },
-    allocationBtnActive: { backgroundColor: '#FFEFE6', borderColor: '#F97316' },
-    allocationBtnDisabled: { opacity: 0.45 },
-    allocationBtnText: { flex: 1, fontSize: 14, fontWeight: '600', color: '#64748B' },
-
-    // Drawers
+    allocationBtn: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        backgroundColor: '#FFF'
+    },
+    allocationBtnActive: { borderColor: '#EA580C', backgroundColor: '#FFF7ED' },
+    allocationBtnDisabled: { opacity: 0.5 },
+    allocationBtnText: { flex: 1, fontSize: 13, fontWeight: '600', color: '#334155' },
+    stickyFooter: {
+        flexDirection: 'row',
+        gap: 12,
+        paddingHorizontal: 16,
+        paddingTop: 12,
+        backgroundColor: '#FFF',
+        borderTopWidth: 1,
+        borderTopColor: '#F1F5F9',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 8,
+    },
+    cancelButton: {
+        flex: 1,
+        height: 48,
+        borderRadius: 12,
+        borderWidth: 1.5,
+        borderColor: '#CBD5E1',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#FFF'
+    },
+    cancelButtonText: { color: '#475569', fontWeight: '600', fontSize: 15 },
+    submitButton: {
+        flex: 2,
+        height: 48,
+        borderRadius: 12,
+        backgroundColor: '#FF6B6B',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    submitButtonText: { color: '#FFF', fontWeight: '700', fontSize: 15 },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
     sheet: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 8 },
     sheetHandle: { width: 40, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, alignSelf: 'center', marginBottom: 12 },
@@ -514,17 +422,10 @@ const styles = StyleSheet.create({
     roomRent: { fontSize: 13, color: '#475569', marginTop: 3 },
     selectedBadge: { position: 'absolute', top: 10, right: 10, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFEFE6', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, gap: 4 },
     selectedBadgeText: { fontSize: 11, color: '#F97316', fontWeight: '700' },
-
-    // Bed Picker
     bedCard: { backgroundColor: '#FFF8F4', borderRadius: 12, padding: 14, borderWidth: 1.5, borderColor: '#FFE4D6', width: '47%', alignItems: 'center', gap: 6 },
     bedCardSel: { borderColor: '#F97316', backgroundColor: '#FFEFE6' },
     bedCardOcc: { backgroundColor: '#F8FAFC', borderColor: '#E2E8F0', opacity: 0.65 },
     bedName: { fontSize: 16, fontWeight: '700', color: '#1E293B' },
-
-    // Save Button
-    stickyFooter: { paddingHorizontal: 16, paddingBottom: 30, paddingTop: 10, backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#F1F5F9' },
-    saveBtn: { borderRadius: 16, overflow: 'hidden', elevation: 2, shadowColor: '#EA580C', shadowOpacity: 0.15, shadowRadius: 8 },
-    saveGrad: { paddingVertical: 16, alignItems: 'center', justifyContent: 'center' },
     saveBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
     disabledBtn: { opacity: 0.7 },
 });

@@ -9,6 +9,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import api from '../services/api';
 import { ProfileMenu } from '../components/ProfileMenu';
 import { useTheme } from '../../contexts/ThemeContext';
+import { AppHeader } from '../components/AppHeader';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -114,7 +115,7 @@ export default function OverviewScreen() {
         }
     }, [monthStr]);
 
-    useFocusEffect(useCallback(() => { fetchData(); }, [fetchData]));
+    useFocusEffect(useCallback(() => { fetchData(true); }, [fetchData]));
 
     const shiftMonth = (delta: number) => {
         const d = new Date(targetDate);
@@ -130,17 +131,11 @@ export default function OverviewScreen() {
         return (
             <View style={s.root}>
                 <StatusBar barStyle="light-content" />
-                <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={s.header}>
-                    <View style={s.headerRow}>
-                        {canGoBack && (
-                            <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
-                                <Ionicons name="chevron-back" size={22} color="#FFF" />
-                            </TouchableOpacity>
-                        )}
-                        <Text style={s.headerTitle}>Financial Overview</Text>
-                        <ProfileMenu />
-                    </View>
-                </LinearGradient>
+                <AppHeader
+                    title="Financial Overview"
+                    showBack={canGoBack}
+                    rightComponent={<ProfileMenu />}
+                />
                 <View style={{ padding: 16, gap: 14 }}>
                     <Skeleton style={{ height: 120, borderRadius: 24 }} />
                     <View style={{ flexDirection: 'row', gap: 12 }}>
@@ -163,19 +158,11 @@ export default function OverviewScreen() {
             <StatusBar barStyle="light-content" />
 
             {/* ── Header ── */}
-            <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={s.header}>
-                <View style={s.headerRow}>
-                    {canGoBack ? (
-                        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
-                            <Ionicons name="chevron-back" size={22} color="#FFF" />
-                        </TouchableOpacity>
-                    ) : (
-                        <View style={{ width: 10 }} />
-                    )}
-                    <Text style={s.headerTitle}>Financial Overview</Text>
-                    <ProfileMenu />
-                </View>
-
+            <AppHeader
+                title="Financial Overview"
+                showBack={canGoBack}
+                rightComponent={<ProfileMenu />}
+            >
                 {/* Month Navigation */}
                 <View style={s.monthNav}>
                     <TouchableOpacity onPress={() => shiftMonth(-1)} style={s.monthArrow}>
@@ -189,7 +176,7 @@ export default function OverviewScreen() {
                         <Ionicons name="chevron-forward" size={18} color="#FFF" />
                     </TouchableOpacity>
                 </View>
-            </LinearGradient>
+            </AppHeader>
 
             <ScrollView
                 showsVerticalScrollIndicator={false}

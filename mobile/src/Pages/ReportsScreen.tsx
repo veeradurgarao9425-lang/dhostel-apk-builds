@@ -19,6 +19,7 @@ import * as Sharing from 'expo-sharing';
 import api from '../services/api';
 import { ProfileMenu } from '../components/ProfileMenu';
 import { useTheme } from '../../contexts/ThemeContext';
+import { AppHeader } from '../components/AppHeader';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -197,17 +198,11 @@ export default function ReportsScreen() {
         return (
             <View style={s.root}>
                 <StatusBar barStyle="light-content" />
-                <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={s.header}>
-                    <View style={s.headerRow}>
-                        {canGoBack && (
-                            <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
-                                <Ionicons name="chevron-back" size={22} color="#FFF" />
-                            </TouchableOpacity>
-                        )}
-                        <Text style={s.headerTitle}>Reports & Analytics</Text>
-                        <ProfileMenu />
-                    </View>
-                </LinearGradient>
+                <AppHeader
+                    title="Reports & Analytics"
+                    showBack={canGoBack}
+                    rightComponent={<ProfileMenu />}
+                />
                 <View style={s.loaderWrap}>
                     <ActivityIndicator size="large" color={theme.gradientStart} />
                     <Text style={s.loaderText}>Analyzing metrics...</Text>
@@ -230,19 +225,11 @@ export default function ReportsScreen() {
             <StatusBar barStyle="light-content" />
 
             {/* Header */}
-            <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={s.header}>
-                <View style={s.headerRow}>
-                    {canGoBack ? (
-                        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
-                            <Ionicons name="chevron-back" size={22} color="#FFF" />
-                        </TouchableOpacity>
-                    ) : (
-                        <View style={{ width: 10 }} />
-                    )}
-                    <Text style={s.headerTitle}>Reports & Analytics</Text>
-                    <ProfileMenu />
-                </View>
-
+            <AppHeader
+                title="Reports & Analytics"
+                showBack={canGoBack}
+                rightComponent={<ProfileMenu />}
+            >
                 {/* Month Navigator */}
                 <View style={s.monthNav}>
                     <TouchableOpacity onPress={() => shiftMonth(-1)} style={s.monthArrow}>
@@ -260,7 +247,7 @@ export default function ReportsScreen() {
                         <Ionicons name="chevron-forward" size={18} color="#FFF" />
                     </TouchableOpacity>
                 </View>
-            </LinearGradient>
+            </AppHeader>
 
             <ScrollView
                 showsVerticalScrollIndicator={false}

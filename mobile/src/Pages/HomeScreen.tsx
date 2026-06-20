@@ -11,6 +11,7 @@ import api from '../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { ProfileMenu } from '../components/ProfileMenu';
+import { AppHeader } from '../components/AppHeader';
 
 // ─── Initial state ────────────────────────────────────────────────────────────
 const INITIAL_STATE = {
@@ -47,7 +48,7 @@ const QUICK_ACTIONS = [
     { label: 'Pre-Book',    icon: 'calendar-outline',   color: '#EA580C', bg: '#FFEDD5', route: 'PreBooking', comingSoon: false },
     { label: 'Bills',       icon: 'receipt-outline',    color: '#D97706', bg: '#FEF3C7', route: 'BillReminders', comingSoon: false },
     { label: 'Remind',      icon: 'notifications-outline', color: '#DC2626', bg: '#FEE2E2', route: 'Reminders', comingSoon: false },
-    { label: 'Staff',       icon: 'people-outline',     color: '#059669', bg: '#D1FAE5', route: 'Staff', comingSoon: false },
+    { label: 'Staff',       icon: 'people-outline',     color: '#059669', bg: '#D1FAE5', route: 'AddStaff', comingSoon: false },
 ];
 
 // ─── Skeleton Block ───────────────────────────────────────────────────────────
@@ -241,17 +242,16 @@ export default function HomeScreen() {
         return (
             <View style={s.root}>
                 <StatusBar barStyle="light-content" />
-                <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={s.header}>
-                    <View style={s.headerRow}>
-                        <View>
-                            <Text style={s.greeting}>{getGreeting()},</Text>
-                            <Text style={s.ownerName}>{(user?.full_name || 'Owner').split(' ')[0]}</Text>
-                        </View>
+                <AppHeader
+                    title={`${getGreeting()},`}
+                    subtitle={(user?.full_name || 'Owner').split(' ')[0]}
+                    showBack={navigation.canGoBack()}
+                    rightComponent={
                         <TouchableOpacity style={s.bellBtn}>
                             <Ionicons name="notifications-outline" size={22} color="#FFF" />
                         </TouchableOpacity>
-                    </View>
-                </LinearGradient>
+                    }
+                />
                 <View style={s.errorCenter}>
                     <Text style={{ fontSize: 48, marginBottom: 12 }}>📡</Text>
                     <Text style={s.errorTitle}>Server Waking Up…</Text>
@@ -279,15 +279,11 @@ export default function HomeScreen() {
             <StatusBar barStyle="light-content" />
 
             {/* ─────────────────── FIXED HEADER ─────────────────── */}
-            <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={s.header}>
-                <View style={s.headerRow}>
-                    <View style={{ flex: 1 }}>
-                        <Text style={s.greeting}>{getGreeting()},</Text>
-                        <Text style={s.ownerName} numberOfLines={1}>
-                            {(user?.full_name || 'Owner').split(' ').slice(0, 2).join(' ')}
-                        </Text>
-                        <Text style={s.hostelTag}>🏠 {data.hostelName}</Text>
-                    </View>
+            <AppHeader
+                title={`${getGreeting()},`}
+                subtitle={(user?.full_name || 'Owner').split(' ').slice(0, 2).join(' ')}
+                showBack={navigation.canGoBack()}
+                rightComponent={
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                         <TouchableOpacity
                             style={s.bellBtn}
@@ -299,8 +295,10 @@ export default function HomeScreen() {
                         </TouchableOpacity>
                         <ProfileMenu />
                     </View>
-                </View>
-            </LinearGradient>
+                }
+            >
+                <Text style={s.hostelTag}>🏠 {data.hostelName}</Text>
+            </AppHeader>
 
             <ScrollView
                 showsVerticalScrollIndicator={false}

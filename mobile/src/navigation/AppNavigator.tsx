@@ -30,6 +30,7 @@ import IncomeDetailsScreen   from '../Pages/IncomeDetailsScreen';
 import AddIncomeScreen       from '../Pages/AddIncomeScreen';
 import PlaceholderScreen     from '../Pages/PlaceholderScreen';
 import MaintenanceScreen     from '../Pages/MaintenanceScreen';
+import AddMaintenanceScreen  from '../Pages/AddMaintenanceScreen';
 import DeleteRoomsScreen     from '../Pages/DeleteRoomsScreen';
 import DeleteExpensesScreen  from '../Pages/DeleteExpensesScreen';
 import QRSignupScreen        from '../Pages/QRSignupScreen';
@@ -39,6 +40,7 @@ import ReportsScreen         from '../Pages/ReportsScreen';
 import ComingSoonScreen      from '../Pages/ComingSoonScreen';
 import FinanceScreen         from '../Pages/FinanceScreen';
 import StaffScreen           from '../Pages/StaffScreen';
+import AddStaffScreen        from '../Pages/AddStaffScreen';
 import BillRemindersScreen   from '../Pages/BillRemindersScreen';
 import RemindersScreen       from '../Pages/RemindersScreen';
 import TenantTransactionsScreen from '../Pages/TenantTransactionsScreen';
@@ -120,6 +122,11 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
 
                 {/* Staff */}
                 <Stack.Screen name="Staff"           component={StaffScreen}           />
+                <Stack.Screen
+                    name="AddStaff"
+                    component={AddStaffScreen}
+                    options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+                />
 
                 {/* Reminders & Transactions */}
                 <Stack.Screen name="Reminders"          component={RemindersScreen}       />
@@ -160,6 +167,11 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
 
                 {/* Tools */}
                 <Stack.Screen name="Maintenance" component={MaintenanceScreen} />
+                <Stack.Screen
+                    name="AddMaintenance"
+                    component={AddMaintenanceScreen}
+                    options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+                />
                 <Stack.Screen name="QRSignup"    component={QRSignupScreen}    />
                 <Stack.Screen name="PreBooking"  component={PreBookingScreen}  />
                 <Stack.Screen name="Notices"     component={NoticesScreen}     />

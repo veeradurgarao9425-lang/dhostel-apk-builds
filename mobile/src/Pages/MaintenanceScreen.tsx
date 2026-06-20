@@ -29,6 +29,7 @@ import {
     Trash2
 } from 'lucide-react-native';
 import { useTheme } from '../../contexts/ThemeContext';
+import { AppHeader } from '../components/AppHeader';
 // import { useAuth } from '../../contexts/AuthContext'; // If needed for user info
 
 // Mock Data for Issues
@@ -82,7 +83,18 @@ const MaintenanceScreen = ({ navigation, route }: any) => {
     const { theme } = useTheme();
     const [issues, setIssues] = useState(MOCK_ISSUES);
     const [filter, setFilter] = useState('All');
-    const [addModalVisible, setAddModalVisible] = useState(false);
+
+    // Handle newly added issue from AddMaintenanceScreen
+    React.useEffect(() => {
+        if (route.params?.newIssue) {
+            const issue = route.params.newIssue;
+            setIssues(prev => {
+                if (prev.some(i => i.id === issue.id)) return prev;
+                return [issue, ...prev];
+            });
+            navigation.setParams({ newIssue: undefined });
+        }
+    }, [route.params?.newIssue]);
 
     // Handle deep link / notification
     React.useEffect(() => {
@@ -103,16 +115,6 @@ const MaintenanceScreen = ({ navigation, route }: any) => {
     // View Details / Right Drawer State
     const [viewIssue, setViewIssue] = useState<any>(null);
     const [drawerVisible, setDrawerVisible] = useState(false);
-
-    // Form State
-    const [newIssue, setNewIssue] = useState({
-        room: '',
-        category: 'Electrical',
-        title: '',
-        description: '',
-        priority: 'Medium',
-        cost: ''
-    });
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -155,30 +157,7 @@ const MaintenanceScreen = ({ navigation, route }: any) => {
         };
     }, [issues]);
 
-    const handleAddIssue = () => {
-        if (!newIssue.title || !newIssue.room) {
-            Alert.alert('Error', 'Please fill in Room and Title');
-            return;
-        }
 
-        const issue = {
-            id: Date.now().toString(),
-            ...newIssue,
-            status: 'Open',
-            date: new Date().toISOString().split('T')[0]
-        };
-
-        setIssues([issue, ...issues]);
-        setAddModalVisible(false);
-        setNewIssue({
-            room: '',
-            category: 'Electrical',
-            title: '',
-            description: '',
-            priority: 'Medium',
-            cost: ''
-        });
-    };
 
     const markResolved = (id: string) => {
         setIssues(issues.map(i => i.id === id ? { ...i, status: 'Resolved' } : i));
@@ -197,15 +176,7 @@ const MaintenanceScreen = ({ navigation, route }: any) => {
             <StatusBar barStyle="light-content" />
 
             {/* Header */}
-            <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={styles.header}>
-                <View style={styles.headerTop}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                        <ChevronLeft color="#FFF" size={24} />
-                    </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Maintenance</Text>
-                    <View style={{ width: 40 }} />
-                </View>
-            </LinearGradient>
+            <AppHeader title="Maintenance" />
 
             {/* Full Width Filter Tabs with Counts */}
             <View style={styles.filterContainer}>
@@ -279,102 +250,10 @@ const MaintenanceScreen = ({ navigation, route }: any) => {
             {/* FAB Add Button */}
             <TouchableOpacity
                 style={[styles.fab, { backgroundColor: theme.primary }]}
-                onPress={() => setAddModalVisible(true)}
+                onPress={() => navigation.navigate('AddMaintenance')}
             >
                 <Plus color="#FFF" size={30} />
             </TouchableOpacity>
-
-            {/* Add Issue Modal */}
-            <Modal
-                visible={addModalVisible}
-                transparent
-                animationType="slide"
-                onRequestClose={() => setAddModalVisible(false)}
-            >
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    style={styles.modalOverlay}
-                >
-                    <View style={styles.modalContent}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>New Issue</Text>
-                            <TouchableOpacity onPress={() => setAddModalVisible(false)}>
-                                <X size={24} color="#64748B" />
-                            </TouchableOpacity>
-                        </View>
-
-                        <ScrollView style={styles.formScroll}>
-                            <Text style={styles.label}>Room Number</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="e.g. 204"
-                                value={newIssue.room}
-                                onChangeText={t => setNewIssue({ ...newIssue, room: t })}
-                            />
-
-                            <Text style={styles.label}>Title</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Issue Title"
-                                value={newIssue.title}
-                                onChangeText={t => setNewIssue({ ...newIssue, title: t })}
-                            />
-
-                            <Text style={styles.label}>Category</Text>
-                            <View style={styles.pillContainer}>
-                                {CATEGORIES.map(cat => (
-                                    <TouchableOpacity
-                                        key={cat}
-                                        style={[
-                                            styles.optionPill,
-                                            newIssue.category === cat && { backgroundColor: theme.primary, borderColor: theme.primary }
-                                        ]}
-                                        onPress={() => setNewIssue({ ...newIssue, category: cat })}
-                                    >
-                                        <Text style={[
-                                            styles.optionText,
-                                            newIssue.category === cat && { color: '#FFF' }
-                                        ]}>{cat}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-
-                            <Text style={styles.label}>Priority</Text>
-                            <View style={styles.pillContainer}>
-                                {PRIORITIES.map(p => (
-                                    <TouchableOpacity
-                                        key={p}
-                                        style={[
-                                            styles.optionPill,
-                                            newIssue.priority === p && { backgroundColor: getPriorityColor(p), borderColor: getPriorityColor(p) }
-                                        ]}
-                                        onPress={() => setNewIssue({ ...newIssue, priority: p })}
-                                    >
-                                        <Text style={[
-                                            styles.optionText,
-                                            newIssue.priority === p && { color: '#FFF' },
-                                            newIssue.priority !== p && { color: getPriorityColor(p) }
-                                        ]}>{p}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-
-                            <Text style={styles.label}>Cost Estimate (Optional)</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="0.00"
-                                keyboardType="numeric"
-                                value={newIssue.cost}
-                                onChangeText={t => setNewIssue({ ...newIssue, cost: t })}
-                            />
-                        </ScrollView>
-
-                        <TouchableOpacity style={[styles.saveBtn, { backgroundColor: theme.primary }]} onPress={handleAddIssue}>
-                            <Text style={styles.saveBtnText}>Save Issue</Text>
-                        </TouchableOpacity>
-                    </View>
-                </KeyboardAvoidingView>
-            </Modal>
 
             {/* Right Side Drawer for View Details */}
             <Modal

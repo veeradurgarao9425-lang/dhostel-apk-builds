@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import { AppHeader } from '../components/AppHeader';
 
 // Helper for number to words
 const numberToWords = (num: number) => {
@@ -146,12 +147,7 @@ export const ReceiptScreen = ({ navigation, route }: any) => {
             <StatusBar barStyle="light-content" backgroundColor="#1E9E49" />
 
             {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-                    <Ionicons name="arrow-back" size={24} color="#333" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>Payment Receipt</Text>
-            </View>
+            <AppHeader title="Payment Receipt" />
 
             <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
                 {/* Main Card */}

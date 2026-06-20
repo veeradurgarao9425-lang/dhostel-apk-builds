@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity,
     StatusBar, ActivityIndicator, LayoutAnimation, Platform, UIManager,
-    Alert, Modal, ScrollView, RefreshControl
+    Alert, Modal, ScrollView, RefreshControl, Keyboard, KeyboardAvoidingView
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,7 +12,11 @@ import DateTimePickerModal from "react-native-modal-datetime-picker";
 import api from '../services/api';
 import { useTheme } from '../../contexts/ThemeContext';
 import { ProfileMenu } from '../components/ProfileMenu';
-import { FormInput, ModalSheet } from '../components/FormComponents';
+import { FormInput } from '../components/FormComponents';
+import { AppHeader } from '../components/AppHeader';
+import { FullScreenLoader } from '../components/FullScreenLoader';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { COLORS, SPACING } from '../theme/index';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -74,6 +78,17 @@ export default function RemindersScreen() {
 
     const [isDatePickerVisible, setDatePickerVisible] = useState(false);
     const [submitLoading, setSubmitLoading] = useState(false);
+    const insets = useSafeAreaInsets();
+    const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+
+    useEffect(() => {
+        const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+        const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+        return () => {
+            keyboardDidShowListener.remove();
+            keyboardDidHideListener.remove();
+        };
+    }, []);
 
     const fetchReminders = async (isSilent = false) => {
         try {
@@ -275,18 +290,11 @@ export default function RemindersScreen() {
             <StatusBar barStyle="light-content" />
 
             {/* Header */}
-            <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={s.header}>
-                <View style={s.headerTop}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
-                        <Ionicons name="chevron-back" size={20} color="#FFF" />
-                    </TouchableOpacity>
-                    <View style={{ flex: 1 }}>
-                        <Text style={s.headerTitle}>Hostel Reminders</Text>
-                        <Text style={s.headerSubtitle}>Manage alerts & scheduled events</Text>
-                    </View>
-                    <ProfileMenu />
-                </View>
-
+            <AppHeader 
+                title="Hostel Reminders" 
+                subtitle="Manage alerts & scheduled events"
+                onBack={() => navigation.goBack()}
+            >
                 {/* Stat cards in header */}
                 <View style={s.statsRow}>
                     <View style={s.statCard}>
@@ -298,7 +306,7 @@ export default function RemindersScreen() {
                         <Text style={s.statLbl}>Completed</Text>
                     </View>
                 </View>
-            </LinearGradient>
+            </AppHeader>
 
             {/* List */}
             {loading ? (
@@ -332,84 +340,92 @@ export default function RemindersScreen() {
                 <Ionicons name="add" size={28} color="#FFF" />
             </TouchableOpacity>
 
-            <ModalSheet visible={isModalVisible} onClose={() => setIsModalVisible(false)} maxHeight="82%">
-                <View style={s.drawerHeader}>
-                    <Text style={s.drawerTitle}>{editingReminder ? 'Edit Reminder' : 'Add New Reminder'}</Text>
-                    <TouchableOpacity onPress={() => setIsModalVisible(false)}>
-                        <Ionicons name="close" size={22} color="#475569" />
-                    </TouchableOpacity>
-                </View>
-
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 50, paddingHorizontal: 20 }} keyboardShouldPersistTaps="handled">
-                    <FormInput
-                        label="Title *"
-                        placeholder="Enter title (e.g. Pay Internet Bill)"
-                        value={title}
-                        onChangeText={setTitle}
-                        icon={(props: any) => <Ionicons name="text-outline" size={18} color={props.color} />}
+            <Modal visible={isModalVisible} animationType="slide" onRequestClose={() => setIsModalVisible(false)}>
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
+                    <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+                    <AppHeader 
+                        title={editingReminder ? 'Edit Reminder' : 'Add New Reminder'} 
+                        onBack={() => setIsModalVisible(false)} 
                     />
+                    <FullScreenLoader visible={submitLoading} />
 
-                    <Text style={s.formLabel}>Select Date *</Text>
-                    <TouchableOpacity style={s.dateField} onPress={() => setDatePickerVisible(true)}>
-                        <Ionicons name="calendar-outline" size={18} color="#64748B" />
-                        <Text style={s.dateFieldText}>{date}</Text>
-                    </TouchableOpacity>
+                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
+                        <FormInput
+                            label="Title *"
+                            placeholder="Enter title (e.g. Pay Internet Bill)"
+                            value={title}
+                            onChangeText={setTitle}
+                            icon={(props: any) => <Ionicons name="text-outline" size={18} color={props.color} />}
+                        />
 
-                    <Text style={s.formLabel}>Category *</Text>
-                    <View style={s.chipRow}>
-                        {CATEGORIES.map((cat) => {
-                            const active = category === cat;
-                            const catColor = CATEGORY_COLORS[cat];
-                            return (
-                                <TouchableOpacity
-                                    key={cat}
-                                    style={[s.chip, active && { backgroundColor: catColor, borderColor: catColor }]}
-                                    onPress={() => setCategory(cat)}
-                                >
-                                    <Text style={[s.chipText, active && { color: '#FFF' }]}>{cat}</Text>
-                                </TouchableOpacity>
-                            );
-                        })}
+                        <Text style={s.formLabel}>Select Date *</Text>
+                        <TouchableOpacity style={s.dateField} onPress={() => setDatePickerVisible(true)}>
+                            <Ionicons name="calendar-outline" size={18} color="#64748B" />
+                            <Text style={s.dateFieldText}>{date}</Text>
+                        </TouchableOpacity>
+
+                        <Text style={s.formLabel}>Category *</Text>
+                        <View style={s.chipRow}>
+                            {CATEGORIES.map((cat) => {
+                                const active = category === cat;
+                                const catColor = CATEGORY_COLORS[cat];
+                                return (
+                                    <TouchableOpacity
+                                        key={cat}
+                                        style={[s.chip, active && { backgroundColor: catColor, borderColor: catColor }]}
+                                        onPress={() => setCategory(cat)}
+                                    >
+                                        <Text style={[s.chipText, active && { color: '#FFF' }]}>{cat}</Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+
+                        <Text style={s.formLabel}>Priority *</Text>
+                        <View style={s.chipRow}>
+                            {PRIORITIES.map((pri) => {
+                                const active = priority === pri;
+                                return (
+                                    <TouchableOpacity
+                                        key={pri}
+                                        style={[s.chip, active && { backgroundColor: '#1E293B', borderColor: '#1E293B' }]}
+                                        onPress={() => setPriority(pri)}
+                                    >
+                                        <Text style={[s.chipText, active && { color: '#FFF' }]}>{pri}</Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+
+                        <FormInput
+                            label="Description"
+                            placeholder="Add optional details..."
+                            value={description}
+                            onChangeText={setDescription}
+                            multiline
+                            icon={(props: any) => <Ionicons name="document-text-outline" size={18} color={props.color} />}
+                        />
+                    </ScrollView>
+
+                    {/* ─── Sticky Footer ───────────────────────────────────────────────────── */}
+                    <View style={[s.stickyFooter, { paddingBottom: isKeyboardVisible ? SPACING.md : (insets.bottom + SPACING.md) }]}>
+                        <TouchableOpacity
+                            style={s.cancelButton}
+                            onPress={() => setIsModalVisible(false)}
+                            disabled={submitLoading}
+                        >
+                            <Text style={s.cancelButtonText}>Cancel</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[s.submitButton, submitLoading && { opacity: 0.7 }]}
+                            onPress={handleSaveReminder}
+                            disabled={submitLoading}
+                        >
+                            <Text style={s.submitButtonText}>{editingReminder ? 'Update Reminder' : 'Add Reminder'}</Text>
+                        </TouchableOpacity>
                     </View>
-
-                    <Text style={s.formLabel}>Priority *</Text>
-                    <View style={s.chipRow}>
-                        {PRIORITIES.map((pri) => {
-                            const active = priority === pri;
-                            return (
-                                <TouchableOpacity
-                                    key={pri}
-                                    style={[s.chip, active && { backgroundColor: '#1E293B', borderColor: '#1E293B' }]}
-                                    onPress={() => setPriority(pri)}
-                                >
-                                    <Text style={[s.chipText, active && { color: '#FFF' }]}>{pri}</Text>
-                                </TouchableOpacity>
-                            );
-                        })}
-                    </View>
-
-                    <FormInput
-                        label="Description"
-                        placeholder="Add optional details..."
-                        value={description}
-                        onChangeText={setDescription}
-                        multiline
-                        icon={(props: any) => <Ionicons name="document-text-outline" size={18} color={props.color} />}
-                    />
-
-                    <TouchableOpacity
-                        style={[s.submitBtn, submitLoading && { opacity: 0.6 }]}
-                        onPress={handleSaveReminder}
-                        disabled={submitLoading}
-                    >
-                        {submitLoading ? (
-                            <ActivityIndicator color="#FFF" />
-                        ) : (
-                            <Text style={s.submitBtnText}>{editingReminder ? 'Update Reminder' : 'Add Reminder'}</Text>
-                        )}
-                    </TouchableOpacity>
-                </ScrollView>
-            </ModalSheet>
+                </KeyboardAvoidingView>
+            </Modal>
 
             {/* Date Picker Modal */}
             <DateTimePickerModal
@@ -425,13 +441,7 @@ export default function RemindersScreen() {
 const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8FAFC' },
 
-    header: { paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
-    headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-    backBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
-    headerTitle: { fontSize: 20, fontWeight: '900', color: '#FFF' },
-    headerSubtitle: { fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: '600' },
-
-    statsRow: { flexDirection: 'row', gap: 12, marginTop: 20 },
+    statsRow: { flexDirection: 'row', gap: 12 },
     statCard: { flex: 1, backgroundColor: 'rgba(255,255,255,0.14)', borderRadius: 16, padding: 12, alignItems: 'center' },
     statVal: { fontSize: 18, fontWeight: '900', color: '#FFF' },
     statLbl: { fontSize: 10, color: 'rgba(255,255,255,0.8)', fontWeight: '700', marginTop: 2 },
@@ -473,14 +483,6 @@ const s = StyleSheet.create({
 
     fab: { position: 'absolute', bottom: 80, right: 20, width: 60, height: 60, borderRadius: 30, backgroundColor: '#7C3AED', justifyContent: 'center', alignItems: 'center', elevation: 8, shadowColor: '#7C3AED', shadowOpacity: 0.3, shadowRadius: 8 },
 
-    // Modal Drawer
-    modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
-    drawerContainer: { flex: 1, justifyContent: 'flex-end' },
-    drawerContent: { backgroundColor: '#FFF', borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 20, height: '82%' },
-    drawerHandle: { width: 36, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 16 },
-    drawerHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-    drawerTitle: { fontSize: 18, fontWeight: '900', color: '#1E293B' },
-
     formLabel: { fontSize: 12, fontWeight: '800', color: '#475569', marginBottom: 6, marginTop: 12 },
     formInput: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 10, fontSize: 14, color: '#1E293B', fontWeight: '600' },
     textarea: { minHeight: 60, textAlignVertical: 'top' },
@@ -492,6 +494,38 @@ const s = StyleSheet.create({
     dateField: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 12, gap: 10 },
     dateFieldText: { fontSize: 14, fontWeight: '600', color: '#1E293B' },
 
-    submitBtn: { height: 48, borderRadius: 12, backgroundColor: '#7C3AED', justifyContent: 'center', alignItems: 'center', marginTop: 24, elevation: 2 },
-    submitBtnText: { color: '#FFF', fontWeight: '900', fontSize: 14 }
+    stickyFooter: {
+        flexDirection: 'row',
+        gap: 12,
+        paddingHorizontal: 16,
+        paddingTop: 12,
+        backgroundColor: '#FFF',
+        borderTopWidth: 1,
+        borderTopColor: '#F1F5F9',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 8,
+    },
+    cancelButton: {
+        flex: 1,
+        height: 48,
+        borderRadius: 12,
+        borderWidth: 1.5,
+        borderColor: '#CBD5E1',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#FFF'
+    },
+    cancelButtonText: { color: '#475569', fontWeight: '600', fontSize: 15 },
+    submitButton: {
+        flex: 2,
+        height: 48,
+        borderRadius: 12,
+        backgroundColor: '#7C3AED',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    submitButtonText: { color: '#FFF', fontWeight: '900', fontSize: 14 }
 });

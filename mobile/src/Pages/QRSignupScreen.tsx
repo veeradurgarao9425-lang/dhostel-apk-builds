@@ -15,9 +15,10 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import QRCode from 'react-native-qrcode-svg';
-import { ArrowLeft, QrCode, Home, BedDouble, Info, Share2, ChevronDown, Check, X } from 'lucide-react-native';
+import { QrCode, Home, BedDouble, Info, Share2, ChevronDown, Check, X } from 'lucide-react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import { AppHeader } from '../components/AppHeader';
 import api from '../services/api';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -242,18 +243,10 @@ export default function QRSignupScreen({ navigation }: any) {
     return (
         <View style={s.root}>
             {/* ── Header ── */}
-            <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={s.header}>
-                <View style={s.headerRow}>
-                    <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
-                        <ArrowLeft size={22} color="#FFF" />
-                    </TouchableOpacity>
-                    <View style={{ flex: 1, alignItems: 'center' }}>
-                        <Text style={s.headerTitle}>Tenant QR Signup</Text>
-                        <Text style={s.headerSub}>Scan to self-register</Text>
-                    </View>
-                    <View style={{ width: 40 }} />
-                </View>
-
+            <AppHeader 
+                title="Tenant QR Signup" 
+                subtitle="Scan to self-register"
+            >
                 {/* Mode Tabs */}
                 <View style={s.tabRow}>
                     <TouchableOpacity style={[s.tab, mode === 'general' && s.tabActive]} onPress={() => setMode('general')} activeOpacity={0.8}>
@@ -265,7 +258,7 @@ export default function QRSignupScreen({ navigation }: any) {
                         <Text style={[s.tabText, mode === 'room' && { color: theme.primary }]}>Room-Specific QR</Text>
                     </TouchableOpacity>
                 </View>
-            </LinearGradient>
+            </AppHeader>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.body}>
 
@@ -445,11 +438,7 @@ const s = StyleSheet.create({
     root: { flex: 1, backgroundColor: '#F5F7FA' },
 
     // ── Header ────────────────────────────────────────────────────────────────
-    header: { paddingTop: 52, paddingBottom: 0, paddingHorizontal: 20 },
-    headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
-    backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
-    headerTitle: { fontSize: 20, fontWeight: '700', color: '#FFF' },
-    headerSub: { fontSize: 12, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
+    // removed old header styles
 
     // ── Tabs ──────────────────────────────────────────────────────────────────
     tabRow: { flexDirection: 'row', gap: 10, paddingBottom: 20 },

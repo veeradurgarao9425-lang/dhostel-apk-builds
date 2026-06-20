@@ -13,7 +13,8 @@ import {
     Alert
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowLeft, Plus, Search, Calendar, ChevronDown, Tag, X, Edit3, Trash2 } from 'lucide-react-native';
+import { Plus, Search, Calendar, ChevronDown, Tag, X, Edit3, Trash2 } from 'lucide-react-native';
+import { AppHeader } from '../components/AppHeader';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../services/api';
 import Toast from 'react-native-toast-message';
@@ -194,22 +195,15 @@ export const ExpenseScreen = ({ navigation }: any) => {
             <StatusBar barStyle="light-content" />
 
             {/* Header */}
-            <LinearGradient
-                colors={[theme.gradientStart, theme.gradientEnd]}
-                style={[styles.header, { borderBottomLeftRadius: theme.headerRounded, borderBottomRightRadius: theme.headerRounded }]}
-            >
-                <View style={styles.headerTop}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                        <ArrowLeft color="#FFFFFF" size={24} />
-                    </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Expenses</Text>
-
-                    <View style={{ flexDirection: 'row', gap: 8 }}>
+            <AppHeader
+                title="Expenses"
+                rightComponent={
+                    <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
                         <HeaderNotification navigation={navigation} />
                         <ProfileMenu />
                     </View>
-                </View>
-
+                }
+            >
                 {/* Expense Stats */}
                 <View style={styles.statsRow}>
                     <View style={styles.statCard}>
@@ -223,7 +217,7 @@ export const ExpenseScreen = ({ navigation }: any) => {
                         <Text style={styles.statValue}>₹{monthExpensesTotal.toLocaleString('en-IN')}</Text>
                     </View>
                 </View>
-            </LinearGradient>
+            </AppHeader>
 
             {/* Search Bar */}
             <View style={styles.searchSection}>
@@ -266,7 +260,7 @@ export const ExpenseScreen = ({ navigation }: any) => {
             {/* Expense List */}
             {loading ? (
                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                    <ActivityIndicator size="large" color="#FF6B6B" />
+                    <ActivityIndicator size="large" color={theme.primary} />
                 </View>
             ) : (
                 <FlatList
@@ -350,7 +344,7 @@ export const ExpenseScreen = ({ navigation }: any) => {
                     }
                     ListFooterComponent={
                         loadingMore ? (
-                            <ActivityIndicator size="small" color="#FF6B6B" style={{ marginVertical: 20 }} />
+                            <ActivityIndicator size="small" color={theme.primary} style={{ marginVertical: 20 }} />
                         ) : !hasMore && expenses.length > 0 ? (
                             <View style={{ alignItems: 'center', marginVertical: 20 }}>
                                 <Text style={{ color: '#94A3B8', fontSize: 12, fontWeight: '600' }}>All expenses loaded</Text>
@@ -362,7 +356,7 @@ export const ExpenseScreen = ({ navigation }: any) => {
 
             {/* Floating Action Button */}
             <TouchableOpacity
-                style={styles.fab}
+                style={[styles.fab, { backgroundColor: theme.primary }]}
                 onPress={() => navigation.navigate('AddExpense')}
                 activeOpacity={0.9}
             >

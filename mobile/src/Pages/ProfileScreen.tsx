@@ -37,6 +37,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme, themes, ThemeId } from '../../contexts/ThemeContext';
 import { HeaderNotification } from '../components/HeaderNotification';
+import { AppHeader } from '../components/AppHeader';
 import api from '../services/api';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -165,14 +166,12 @@ const ProfileScreen = ({ navigation }: any) => {
             <StatusBar barStyle="light-content" />
 
             {/* ── POWER HEADER ── */}
-            <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={styles.header}>
-                <View style={styles.headerTop}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.glassBtn}>
-                        <ChevronLeft color="#FFFFFF" size={24} />
-                    </TouchableOpacity>
-                    <HeaderNotification navigation={navigation} />
-                </View>
-
+            {/* ── POWER HEADER ── */}
+            <AppHeader
+                title=""
+                showBack={navigation.canGoBack()}
+                rightComponent={<HeaderNotification navigation={navigation} />}
+            >
                 <View style={styles.profileBrief}>
                     <View style={styles.avatarWrapper}>
                         <View style={styles.avatarMain}><User color={theme.primary} size={40} /></View>
@@ -201,7 +200,7 @@ const ProfileScreen = ({ navigation }: any) => {
                         <Text style={[styles.tabText, activeTab === 'Business' ? { color: theme.primary } : { color: '#FFF' }]}>Toolkit</Text>
                     </TouchableOpacity>
                 </View>
-            </LinearGradient>
+            </AppHeader>
 
             <ScrollView
                 style={styles.mainScroll}

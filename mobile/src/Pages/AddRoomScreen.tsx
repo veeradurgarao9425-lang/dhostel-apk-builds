@@ -7,7 +7,11 @@ import { Card } from '../components/Card';
 import api from '../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { Check, ChevronDown, Layers, LayoutGrid } from 'lucide-react-native';
-import { Modal, FlatList } from 'react-native';
+import { Modal, FlatList, Keyboard } from 'react-native';
+import { AppHeader } from '../components/AppHeader';
+import { FullScreenLoader } from '../components/FullScreenLoader';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SPACING } from '../theme/index';
 
 export const AddRoomScreen = ({ navigation, route }: any) => {
     const { user } = useAuth();
@@ -21,6 +25,17 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
 
 
     const [typeModalVisible, setTypeModalVisible] = useState(false);
+    const insets = useSafeAreaInsets();
+    const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+
+    useEffect(() => {
+        const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+        const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+        return () => {
+            keyboardDidShowListener.remove();
+            keyboardDidHideListener.remove();
+        };
+    }, []);
 
     const initialFormState = {
         room_number: roomToEdit?.room_number?.toString() || '',
@@ -159,7 +174,8 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
             style={styles.container}
         >
             <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-            <Header title={isEdit ? "Edit Room" : "Add New Room"} />
+            <AppHeader title={isEdit ? "Edit Room" : "Add New Room"} />
+            <FullScreenLoader visible={loading} />
             <ScrollView
                 style={styles.content}
                 showsVerticalScrollIndicator={false}
@@ -285,29 +301,28 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
                         ))}
                     </View>
                 </Card>
-
-                <View style={styles.buttonRow}>
-                    <TouchableOpacity
-                        style={styles.resetButton}
-                        onPress={handleReset}
-                        activeOpacity={0.7}
-                    >
-                        <Text style={styles.resetButtonText}>Reset</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.saveButton, loading && styles.disabledButton]}
-                        onPress={handleSave}
-                        disabled={loading}
-                        activeOpacity={0.8}
-                    >
-                        {loading ? (
-                            <ActivityIndicator color="#FFF" size="small" />
-                        ) : (
-                            <Text style={styles.saveButtonText}>{isEdit ? "Update" : "Create"}</Text>
-                        )}
-                    </TouchableOpacity>
-                </View>
+                <View style={{ height: 20 }} />
             </ScrollView>
+
+            {/* ─── Sticky Footer ───────────────────────────────────────────────────── */}
+            <View style={[styles.stickyFooter, { paddingBottom: isKeyboardVisible ? SPACING.md : (insets.bottom + SPACING.md) }]}>
+                <TouchableOpacity
+                    style={styles.resetButton}
+                    onPress={handleReset}
+                    activeOpacity={0.7}
+                    disabled={loading}
+                >
+                    <Text style={styles.resetButtonText}>Reset</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.saveButton, loading && styles.disabledButton]}
+                    onPress={handleSave}
+                    disabled={loading}
+                    activeOpacity={0.8}
+                >
+                    <Text style={styles.saveButtonText}>{isEdit ? "Update" : "Create"}</Text>
+                </TouchableOpacity>
+            </View>
 
 
 
@@ -474,10 +489,19 @@ const styles = StyleSheet.create({
     },
     amenityText: { fontSize: 12, color: '#64748B', fontWeight: '500' },
     amenityTextActive: { color: '#FFF', fontWeight: '600' },
-    buttonRow: {
+    stickyFooter: {
         flexDirection: 'row',
         gap: 12,
-        marginBottom: 40
+        paddingHorizontal: 16,
+        paddingTop: 12,
+        backgroundColor: '#FFF',
+        borderTopWidth: 1,
+        borderTopColor: '#F1F5F9',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 8,
     },
     resetButton: {
         flex: 1,

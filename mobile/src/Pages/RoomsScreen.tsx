@@ -25,6 +25,7 @@ import { useToast } from '../context/ToastContext';
 import { EmptyState } from '../components/ui/EmptyState';
 import { SkeletonList } from '../components/ui/SkeletonCard';
 import { COLORS, FONT, RADIUS, SPACING, SHADOW } from '../theme/index';
+import { AppHeader } from '../components/AppHeader';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -144,27 +145,17 @@ export default function RoomsScreen({ navigation, route }: any) {
     return (
         <View style={styles.container}>
             <StatusBar barStyle="light-content" />
-            <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={styles.header}>
-                <View style={styles.headerTop}>
-                    {navigation.canGoBack() && (
-                        <TouchableOpacity
-                            style={styles.backBtn}
-                            onPress={() => navigation.goBack()}
-                            activeOpacity={0.8}
-                        >
-                            <Ionicons name="chevron-back" size={20} color="#FFF" />
-                        </TouchableOpacity>
-                    )}
-                    <View style={{ flex: 1 }}>
-                        <Text style={styles.headerTitle}>Room Status</Text>
-                        <Text style={styles.headerSubtitle}>{rooms.length} Total Units</Text>
-                    </View>
+            <AppHeader
+                title="Room Status"
+                subtitle={`${rooms.length} Total Units`}
+                showBack={navigation.canGoBack()}
+                rightComponent={
                     <View style={styles.headerActions}>
                         <HeaderNotification navigation={navigation} />
                         <ProfileMenu />
                     </View>
-                </View>
-
+                }
+            >
                 <View style={styles.searchContainer}>
                     <Search color="rgba(255,255,255,0.7)" size={18} />
                     <TextInput
@@ -204,7 +195,7 @@ export default function RoomsScreen({ navigation, route }: any) {
                         </TouchableOpacity>
                     ))}
                 </View>
-            </LinearGradient>
+            </AppHeader>
 
             {loading ? (
                 <SkeletonList count={6} />
@@ -366,7 +357,7 @@ const styles = StyleSheet.create({
     capacityText: { fontSize: 10, fontWeight: FONT.bold },
     fab: {
         position: 'absolute',
-        bottom: 88,
+        bottom: 30,
         right: SPACING.xl,
         width: 56,
         height: 56,

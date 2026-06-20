@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ScrollView, Text, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform, Keyboard, StatusBar } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { Header } from '../components/Header';
+import { AppHeader } from '../components/AppHeader';
+import { FullScreenLoader } from '../components/FullScreenLoader';
 import { InputField } from '../components/InputField';
 import { Card } from '../components/Card';
-import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { Calendar } from 'lucide-react-native';
 import api from '../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../../contexts/ThemeContext';
+import { SPACING } from '../theme/index';
 
 const CAT_COLORS: Record<string, string> = {
     'Electricity': '#F59E0B',
@@ -24,6 +27,7 @@ const CAT_COLORS: Record<string, string> = {
 const getCatColor = (name: string) => CAT_COLORS[name] || '#64748B';
 
 export const AddExpenseScreen = ({ route, navigation }: any) => {
+    const { theme } = useTheme();
     const { expense } = route.params || {};
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
@@ -40,8 +44,17 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
         bill_number: '',
     });
 
+    const insets = useSafeAreaInsets();
+    const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+
     useEffect(() => {
         fetchCategories();
+        const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+        const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+        return () => {
+            keyboardDidShowListener.remove();
+            keyboardDidHideListener.remove();
+        };
     }, []);
 
     useEffect(() => {
@@ -79,6 +92,19 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
         const d = String(date.getDate()).padStart(2, '0');
         setFormData({ ...formData, expense_date: `${y}-${m}-${d}` });
         setDatePickerVisibility(false);
+    };
+
+    const handleReset = () => {
+        setFormData({
+            title: '',
+            amount: '',
+            category_id: categories.length > 0 ? categories[0].category_id.toString() : '',
+            payment_mode_id: '1',
+            expense_date: new Date().toISOString().split('T')[0],
+            description: '',
+            vendor_name: '',
+            bill_number: '',
+        });
     };
 
     const handleSave = async () => {
@@ -132,9 +158,11 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
     };
 
     return (
-        <View style={styles.container}>
-            <Header title={expense ? "Edit Expense" : "Add Expense"} />
-            <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.container}>
+            <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+            <AppHeader title={expense ? "Edit Expense" : "Add Expense"} />
+            <FullScreenLoader visible={loading} />
+            <ScrollView style={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 <Card style={styles.formCard}>
                     <Text style={styles.label}>Category *</Text>
                     <View style={styles.categoryGrid}>
@@ -229,25 +257,26 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
                         style={{ height: 80 }}
                     />
                 </Card>
+                <View style={{ height: 20 }} />
+            </ScrollView>
 
+            {/* ─── Sticky Footer ───────────────────────────────────────────────────── */}
+            <View style={[styles.stickyFooter, { paddingBottom: isKeyboardVisible ? SPACING.md : (insets.bottom + SPACING.md) }]}>
                 <TouchableOpacity
-                    style={[styles.saveButton, loading && styles.disabledButton]}
+                    style={styles.cancelButton}
+                    onPress={handleReset}
+                    disabled={loading}
+                >
+                    <Text style={styles.cancelButtonText}>Reset</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.submitButton, { backgroundColor: theme.primary }, loading && styles.disabledButton]}
                     onPress={handleSave}
                     disabled={loading}
                 >
-                    <LinearGradient
-                        colors={['#FF8585', '#FF6B6B']}
-                        style={styles.buttonGradient}
-                    >
-                        {loading ? (
-                            <ActivityIndicator color="#FFFFFF" size="small" />
-                        ) : (
-                            <Text style={styles.buttonText}>{expense ? "Update Expense" : "Save Expense"}</Text>
-                        )}
-                    </LinearGradient>
+                    <Text style={styles.submitButtonText}>{expense ? "Update Expense" : "Save Expense"}</Text>
                 </TouchableOpacity>
-                <View style={styles.bottomSpacing} />
-            </ScrollView>
+            </View>
 
             <DateTimePickerModal
                 isVisible={isDatePickerVisible}
@@ -257,7 +286,7 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
                 onConfirm={handleConfirmDate}
                 onCancel={() => setDatePickerVisibility(false)}
             />
-        </View>
+        </KeyboardAvoidingView>
     );
 };
 
@@ -300,24 +329,41 @@ const styles = StyleSheet.create({
         color: '#0F172A',
         fontWeight: '500',
     },
-    saveButton: {
-        height: 54,
-        borderRadius: 12,
-        overflow: 'hidden',
-        marginBottom: 40
+    stickyFooter: {
+        flexDirection: 'row',
+        gap: 12,
+        paddingHorizontal: 16,
+        paddingTop: 12,
+        backgroundColor: '#FFF',
+        borderTopWidth: 1,
+        borderTopColor: '#F1F5F9',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 8,
     },
-    disabledButton: { opacity: 0.7 },
-    buttonGradient: {
+    cancelButton: {
         flex: 1,
-        justifyContent: 'center',
+        height: 48,
+        borderRadius: 12,
+        borderWidth: 1.5,
+        borderColor: '#CBD5E1',
         alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#FFF'
     },
-    buttonText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '700',
+    cancelButtonText: { color: '#475569', fontWeight: '600', fontSize: 15 },
+    submitButton: {
+        flex: 2,
+        height: 48,
+        borderRadius: 12,
+        backgroundColor: '#FF6B6B',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
-    bottomSpacing: { height: 40 },
+    submitButtonText: { color: '#FFF', fontWeight: '700', fontSize: 15 },
+    disabledButton: { opacity: 0.7 }
 });
 
 export default AddExpenseScreen;

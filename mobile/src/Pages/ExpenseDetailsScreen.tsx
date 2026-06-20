@@ -5,8 +5,9 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { AppHeader } from '../components/AppHeader';
 import {
-    ArrowLeft, Calendar, Tag, FileText,
+    Calendar, Tag, FileText,
     Hash, Receipt, TrendingDown, Trash2, Edit3
 } from 'lucide-react-native';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -142,25 +143,17 @@ const ExpenseDetailsScreen = ({ route }: any) => {
             <StatusBar barStyle="light-content" />
 
             {/* ── HEADER ─────────────────────────────────────────────── */}
-            <LinearGradient
-                colors={[theme.gradientStart, theme.gradientEnd]}
-                style={styles.header}
-            >
-                <View style={styles.headerTop}>
-                    {/* Back button */}
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                        <ArrowLeft color="#FFF" size={22} />
-                    </TouchableOpacity>
-
-                    {/* Edit button */}
+            <AppHeader
+                title="Expense Details"
+                rightComponent={
                     <TouchableOpacity 
                         onPress={() => navigation.navigate('AddExpense', { expense })} 
                         style={styles.editBtn}
                     >
                         <Edit3 color="#FFF" size={22} />
                     </TouchableOpacity>
-                </View>
-
+                }
+            >
                 {/* Category chip */}
                 <View style={styles.categoryChip}>
                     <Tag size={11} color="rgba(255,255,255,0.8)" />
@@ -179,7 +172,8 @@ const ExpenseDetailsScreen = ({ route }: any) => {
                 <Text style={styles.expenseTitle} numberOfLines={2}>
                     {expense.description || expense.category_name}
                 </Text>
-            </LinearGradient>
+                <View style={{ height: 16 }} />
+            </AppHeader>
 
             {/* ── DETAILS CARD (overlaps header) ─────────────────────── */}
             <ScrollView

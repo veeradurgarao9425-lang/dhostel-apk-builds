@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity,
     StatusBar, ActivityIndicator, LayoutAnimation, Platform, UIManager,
-    Alert, Linking, Modal, ScrollView, Animated, SectionList
+    Alert, Linking, Modal, ScrollView, Animated, SectionList, Keyboard, KeyboardAvoidingView
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +14,10 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { HeaderNotification } from '../components/HeaderNotification';
 import { ProfileMenu } from '../components/ProfileMenu';
+import { AppHeader } from '../components/AppHeader';
+import { FullScreenLoader } from '../components/FullScreenLoader';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SPACING } from '../theme/index';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -91,26 +95,6 @@ export default function StaffScreen() {
     const [staffList, setStaffList] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
-    const [isAddModalVisible, setIsAddModalVisible] = useState(false);
-
-    // Form inputs
-    const [fullName, setFullName] = useState('');
-    const [phone, setPhone] = useState('');
-    const [email, setEmail] = useState('');
-    const [role, setRole] = useState('Cook');
-    const [status, setStatus] = useState('ACTIVE');
-    const [joinDate, setJoinDate] = useState(new Date().toISOString().split('T')[0]);
-    const [monthlySalary, setMonthlySalary] = useState('');
-    const [aadhaarNumber, setAadhaarNumber] = useState('');
-    const [notes, setNotes] = useState('');
-    
-    // Mock uploads state
-    const [selfieCaptured, setSelfieCaptured] = useState(false);
-    const [aadhaarFrontUploaded, setAadhaarFrontUploaded] = useState(false);
-    const [aadhaarBackUploaded, setAadhaarBackUploaded] = useState(false);
-    
-    const [isDatePickerVisible, setDatePickerVisible] = useState(false);
-    const [formLoading, setFormLoading] = useState(false);
 
     // ── Fetch Staff list ─────────────────────────────────────────────────────
     const fetchStaff = async (isSilent = false) => {
@@ -205,58 +189,7 @@ export default function StaffScreen() {
         );
     }, []);
 
-    const handleAddStaff = async () => {
-        if (!fullName || !phone || !role || !joinDate) {
-            Alert.alert('Required Fields', 'Please fill Full Name, Phone, Role, and Join Date');
-            return;
-        }
 
-        try {
-            setFormLoading(true);
-            const payload = {
-                hostel_id: user?.hostel_id,
-                full_name: fullName,
-                phone,
-                email: email || null,
-                role,
-                status,
-                join_date: joinDate,
-                monthly_salary: monthlySalary ? parseFloat(monthlySalary) : null,
-                aadhaar_number: aadhaarNumber || null,
-                notes: notes || null,
-                photo: selfieCaptured ? 'https://via.placeholder.com/150' : null,
-                aadhaar_front: aadhaarFrontUploaded ? 'uploaded' : null,
-                aadhaar_back: aadhaarBackUploaded ? 'uploaded' : null
-            };
-
-            const res = await api.post('/staff', payload);
-            if (res.data.success) {
-                setIsAddModalVisible(false);
-                resetForm();
-                fetchStaff(true);
-                Toast.show({ type: 'success', text1: '✓ Staff Added!', text2: `${fullName} registered successfully` });
-            }
-        } catch (e: any) {
-            Alert.alert('Registration Failed', e.response?.data?.error || 'Could not register staff member');
-        } finally {
-            setFormLoading(false);
-        }
-    };
-
-    const resetForm = () => {
-        setFullName('');
-        setPhone('');
-        setEmail('');
-        setRole('Cook');
-        setStatus('ACTIVE');
-        setJoinDate(new Date().toISOString().split('T')[0]);
-        setMonthlySalary('');
-        setAadhaarNumber('');
-        setNotes('');
-        setSelfieCaptured(false);
-        setAadhaarFrontUploaded(false);
-        setAadhaarBackUploaded(false);
-    };
 
     // ── Rendering helper for list items ──────────────────────────────────────
     const renderItem = useCallback(({ item }: any) => (
@@ -273,27 +206,16 @@ export default function StaffScreen() {
             <StatusBar barStyle="light-content" />
 
             {/* Header */}
-            <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={s.header}>
-                <View style={s.headerTop}>
-                    {navigation.canGoBack() && (
-                        <TouchableOpacity
-                            style={s.backBtn}
-                            onPress={() => navigation.goBack()}
-                            activeOpacity={0.8}
-                        >
-                            <Ionicons name="chevron-back" size={20} color="#FFF" />
-                        </TouchableOpacity>
-                    )}
-                    <View style={{ flex: 1 }}>
-                        <Text style={s.headerTitle}>Staff Management</Text>
-                        <Text style={s.headerSubtitle}>{staffList.length} Total Members</Text>
-                    </View>
+            <AppHeader 
+                title="Staff Management" 
+                subtitle={`${staffList.length} Total Members`}
+                rightComponent={
                     <View style={s.headerActions}>
                         <HeaderNotification navigation={navigation} />
                         <ProfileMenu />
                     </View>
-                </View>
-
+                }
+            >
                 {/* Search box */}
                 <View style={s.searchContainer}>
                     <Ionicons name="search" size={18} color="#94A3B8" />
@@ -310,8 +232,7 @@ export default function StaffScreen() {
                         </TouchableOpacity>
                     )}
                 </View>
-
-            </LinearGradient>
+            </AppHeader>
 
             {/* Content List */}
             {loading ? (
@@ -346,142 +267,11 @@ export default function StaffScreen() {
             {/* Floating Action Button (FAB) to Add Staff */}
             <TouchableOpacity
                 style={[s.fab, { backgroundColor: theme.primary }]}
-                onPress={() => setIsAddModalVisible(true)}
+                onPress={() => navigation.navigate('AddStaff')}
                 activeOpacity={0.8}
             >
                 <Ionicons name="add" color="#FFF" size={30} />
             </TouchableOpacity>
-
-            {/* Sliding Form Modal — Add Staff */}
-            <Modal visible={isAddModalVisible} transparent animationType="slide" onRequestClose={() => setIsAddModalVisible(false)}>
-                <TouchableOpacity style={s.modalBackdrop} activeOpacity={1} onPress={() => setIsAddModalVisible(false)} />
-                <View style={s.drawerContainer}>
-                    <View style={s.drawerContent}>
-                        <View style={s.drawerHandle} />
-                        <View style={s.drawerHeader}>
-                            <Text style={s.drawerTitle}>Add Staff</Text>
-                            <TouchableOpacity onPress={() => setIsAddModalVisible(false)}>
-                                <Ionicons name="close" size={24} color="#1E293B" />
-                            </TouchableOpacity>
-                        </View>
-
-                        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
-                            
-                            {/* Profile Selfie Capture Option */}
-                            <Text style={s.formLabel}>Profile Photo *</Text>
-                            <TouchableOpacity 
-                                style={[s.selfieBox, selfieCaptured && { borderColor: '#10B981', backgroundColor: '#ECFDF5' }]} 
-                                onPress={() => { setSelfieCaptured(true); Toast.show({ type: 'success', text1: 'Selfie Captured ✓' }); }}
-                            >
-                                <Ionicons name={selfieCaptured ? 'checkbox' : 'camera-outline'} size={32} color={selfieCaptured ? '#10B981' : '#EC4899'} />
-                                <Text style={[s.selfieLabel, selfieCaptured && { color: '#16A34A' }]}>
-                                    {selfieCaptured ? 'Selfie Captured' : 'Capture Selfie'}
-                                </Text>
-                                <Text style={s.selfieSub}>Take a clear photo for verification</Text>
-                            </TouchableOpacity>
-
-                            <Text style={s.formLabel}>Full Name *</Text>
-                            <TextInput style={s.formInput} placeholder="Enter full name" value={fullName} onChangeText={setFullName} />
-
-                            <Text style={s.formLabel}>Phone Number *</Text>
-                            <TextInput style={s.formInput} placeholder="Enter 10-digit phone number" keyboardType="phone-pad" maxLength={10} value={phone} onChangeText={setPhone} />
-
-                            <Text style={s.formLabel}>Email Address *</Text>
-                            <TextInput style={s.formInput} placeholder="Enter email" keyboardType="email-address" value={email} onChangeText={setEmail} />
-
-                            <Text style={s.formLabel}>Role *</Text>
-                            <View style={s.roleSelector}>
-                                {ROLES.map((r) => (
-                                    <TouchableOpacity 
-                                        key={r} 
-                                        style={[s.roleChip, role === r && { backgroundColor: theme.primary, borderColor: theme.primary }]}
-                                        onPress={() => setRole(r)}
-                                    >
-                                        <Text style={[s.roleChipText, role === r && { color: '#FFF' }]}>{r}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-
-                            <Text style={s.formLabel}>Staff Status *</Text>
-                            <View style={s.statusSelector}>
-                                {['ACTIVE', 'INACTIVE'].map((st) => (
-                                    <TouchableOpacity 
-                                        key={st} 
-                                        style={[s.statusChip, status === st && { backgroundColor: theme.primary, borderColor: theme.primary }]}
-                                        onPress={() => setStatus(st)}
-                                    >
-                                        <Text style={[s.statusChipText, status === st && { color: '#FFF' }]}>{st}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-
-                            <Text style={s.formLabel}>Join Date *</Text>
-                            <TouchableOpacity style={s.dateField} onPress={() => setDatePickerVisible(true)}>
-                                <Ionicons name="calendar-outline" size={18} color="#64748B" />
-                                <Text style={s.dateText}>{joinDate}</Text>
-                            </TouchableOpacity>
-
-                            <Text style={s.formLabel}>Monthly Salary *</Text>
-                            <TextInput style={s.formInput} placeholder="Enter monthly salary (optional)" keyboardType="numeric" value={monthlySalary} onChangeText={setMonthlySalary} />
-
-                            <Text style={s.formLabel}>Aadhaar Number *</Text>
-                            <TextInput style={s.formInput} placeholder="Enter 12-digit Aadhaar Number" keyboardType="numeric" maxLength={12} value={aadhaarNumber} onChangeText={setAadhaarNumber} />
-
-                            {/* Aadhaar Upload Row */}
-                            <View style={s.uploadRow}>
-                                <View style={{ flex: 1, marginRight: 8 }}>
-                                    <Text style={s.formLabel}>Aadhaar Front *</Text>
-                                    <TouchableOpacity 
-                                        style={[s.uploadButton, aadhaarFrontUploaded && { backgroundColor: '#10B981' }]} 
-                                        onPress={() => { setAadhaarFrontUploaded(true); Toast.show({ type: 'success', text1: 'Front Uploaded ✓' }); }}
-                                    >
-                                        <Ionicons name={aadhaarFrontUploaded ? 'checkmark-circle' : 'cloud-upload-outline'} size={16} color="#FFF" />
-                                        <Text style={s.uploadBtnText}>{aadhaarFrontUploaded ? 'Uploaded' : 'Upload'}</Text>
-                                    </TouchableOpacity>
-                                </View>
-                                <View style={{ flex: 1, marginLeft: 8 }}>
-                                    <Text style={s.formLabel}>Aadhaar Back *</Text>
-                                    <TouchableOpacity 
-                                        style={[s.uploadButton, aadhaarBackUploaded && { backgroundColor: '#10B981' }]} 
-                                        onPress={() => { setAadhaarBackUploaded(true); Toast.show({ type: 'success', text1: 'Back Uploaded ✓' }); }}
-                                    >
-                                        <Ionicons name={aadhaarBackUploaded ? 'checkmark-circle' : 'cloud-upload-outline'} size={16} color="#FFF" />
-                                        <Text style={s.uploadBtnText}>{aadhaarBackUploaded ? 'Uploaded' : 'Upload'}</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-
-                            <Text style={s.formLabel}>Notes *</Text>
-                            <TextInput style={[s.formInput, { height: 60, textAlignVertical: 'top' }]} placeholder="Add additional notes (optional)" multiline value={notes} onChangeText={setNotes} />
-
-                            {/* Add Employee Confirm Button */}
-                            <TouchableOpacity 
-                                style={[s.submitBtn, { backgroundColor: theme.primary }, formLoading && { opacity: 0.6 }]}
-                                onPress={handleAddStaff}
-                                disabled={formLoading}
-                            >
-                                {formLoading ? (
-                                    <ActivityIndicator color="#FFF" />
-                                ) : (
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                        <Ionicons name="add" size={18} color="#FFF" />
-                                        <Text style={s.submitBtnText}>Add Employee</Text>
-                                    </View>
-                                )}
-                            </TouchableOpacity>
-
-                        </ScrollView>
-                    </View>
-                </View>
-
-                {/* Join Date Picker */}
-                <DateTimePickerModal
-                    isVisible={isDatePickerVisible}
-                    mode="date"
-                    onConfirm={(d) => { setJoinDate(d.toISOString().split('T')[0]); setDatePickerVisible(false); }}
-                    onCancel={() => setDatePickerVisible(false)}
-                />
-            </Modal>
         </View>
     );
 }
@@ -490,18 +280,7 @@ export default function StaffScreen() {
 const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8FAFC' },
 
-    header: { paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20, borderBottomLeftRadius: 32, borderBottomRightRadius: 32 },
-    headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
-    headerTitle: { fontSize: 24, fontWeight: '900', color: '#FFF' },
-    headerSubtitle: { fontSize: 12, color: 'rgba(255,255,255,0.8)', fontWeight: '600' },
     headerActions: { flexDirection: 'row', gap: 12 },
-
-    backBtn: {
-        width: 40, height: 40, borderRadius: 20,
-        backgroundColor: 'rgba(255,255,255,0.18)',
-        alignItems: 'center', justifyContent: 'center',
-        marginRight: 12,
-    },
 
     searchContainer: { backgroundColor: '#FFF', borderRadius: 16, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, height: 46 },
     searchInput: { flex: 1, marginLeft: 10, fontWeight: '600', color: '#1E293B' },
@@ -592,14 +371,6 @@ const s = StyleSheet.create({
     emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: 80 },
     emptyText: { fontSize: 14, color: '#94A3B8', fontWeight: '600' },
 
-    // Modal Drawer
-    modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
-    drawerContainer: { flex: 1, justifyContent: 'flex-end' },
-    drawerContent: { backgroundColor: '#FFF', borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 20, height: '88%' },
-    drawerHandle: { width: 40, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 16 },
-    drawerHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-    drawerTitle: { fontSize: 18, fontWeight: '900', color: '#1E293B' },
-
     formLabel: { fontSize: 12, fontWeight: '800', color: '#475569', marginBottom: 6, marginTop: 12 },
     formInput: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 10, fontSize: 14, color: '#1E293B', fontWeight: '600' },
     
@@ -623,6 +394,38 @@ const s = StyleSheet.create({
     uploadButton: { height: 42, backgroundColor: '#4F46E5', borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
     uploadBtnText: { color: '#FFF', fontWeight: '800', fontSize: 13 },
 
-    submitBtn: { height: 50, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginTop: 24, shadowColor: '#4F46E5', shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
-    submitBtnText: { color: '#FFF', fontWeight: '900', fontSize: 14, letterSpacing: 0.5 }
+    stickyFooter: {
+        flexDirection: 'row',
+        gap: 12,
+        paddingHorizontal: 16,
+        paddingTop: 12,
+        backgroundColor: '#FFF',
+        borderTopWidth: 1,
+        borderTopColor: '#F1F5F9',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 8,
+    },
+    cancelButton: {
+        flex: 1,
+        height: 48,
+        borderRadius: 12,
+        borderWidth: 1.5,
+        borderColor: '#CBD5E1',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#FFF'
+    },
+    cancelButtonText: { color: '#475569', fontWeight: '600', fontSize: 15 },
+    submitButton: {
+        flex: 2,
+        height: 48,
+        borderRadius: 12,
+        backgroundColor: '#FF6B6B',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    submitButtonText: { color: '#FFF', fontWeight: '700', fontSize: 15 }
 });

@@ -13,8 +13,9 @@ import {
 import Toast from 'react-native-toast-message';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-    ArrowLeft, Calendar, Trash2, User, ChevronRight, AlertTriangle
+    Calendar, Trash2, User, ChevronRight, AlertTriangle
 } from 'lucide-react-native';
+import { AppHeader } from '../components/AppHeader';
 import api from '../services/api';
 import { showErrorToast, showSuccessToast } from '../hooks/Toastconfig';
 
@@ -98,16 +99,10 @@ export default function NoticesScreen({ navigation }: any) {
         <View style={styles.container}>
             <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-            <LinearGradient colors={['#F59E0B', '#D97706']} style={styles.header}>
-                <View style={styles.headerTop}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
-                        <ArrowLeft color="#FFF" size={24} />
-                    </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Vacate Schedules</Text>
-                    <View style={{ width: 40 }} />
-                </View>
-                <Text style={styles.headerSubtitle}>List of active tenants scheduled to leave the hostel</Text>
-            </LinearGradient>
+            <AppHeader 
+                title="Vacate Schedules"
+                subtitle="List of active tenants scheduled to leave the hostel"
+            />
 
             {loading ? (
                 <View style={styles.centerContainer}>
@@ -203,11 +198,6 @@ export default function NoticesScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8FAFC' },
-    header: { paddingTop: 52, paddingBottom: 24, paddingHorizontal: 20 },
-    headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-    backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
-    headerTitle: { fontSize: 20, fontWeight: '800', color: '#FFF' },
-    headerSubtitle: { fontSize: 13, color: '#FEF3C7', fontWeight: '500', marginTop: 4 },
     content: { flex: 1 },
     scrollContent: { padding: 16, paddingBottom: 100 },
     centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },

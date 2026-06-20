@@ -9,18 +9,19 @@ import {
     StatusBar,
     KeyboardAvoidingView,
     Platform,
-    ActivityIndicator,
     Modal,
     FlatList,
     Image,
     Alert,
     Animated,
+    ActivityIndicator,
+    Keyboard,
     Pressable,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-    ArrowLeft, User, Phone, Mail, Home, MapPin,
+    User, Phone, Mail, Home, MapPin,
     CreditCard, Users, Fingerprint, Check,
     ChevronDown, Camera, X, BedDouble, Calendar,
 } from 'lucide-react-native';
@@ -29,7 +30,9 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
-import { COLORS, FONT, RADIUS, SPACING } from '../theme/index';
+import { COLORS, FONT, SPACING } from '../theme/index';
+import { AppHeader } from '../components/AppHeader';
+import { FullScreenLoader } from '../components/FullScreenLoader';
 
 // ─── Smooth bottom-sheet modal ────────────────────────────────────────────────
 const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: any) => {
@@ -336,6 +339,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
     const { showSuccess, showError, showApiError } = useToast();
     const insets = useSafeAreaInsets();
     const [loading, setLoading] = useState(false);
+    const [isKeyboardVisible, setKeyboardVisible] = useState(false);
 
     const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
     const [aadhaarFront, setAadhaarFront] = useState<string | null>(null);
@@ -367,6 +371,15 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
 
     const selectedRoom = availableRooms.find(r => r.room_id?.toString() === formData.room_id);
     const selectedBed = beds.find(b => b.bed_id?.toString() === formData.bed_id);
+
+    useEffect(() => {
+        const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+        const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+        return () => {
+            keyboardDidShowListener.remove();
+            keyboardDidHideListener.remove();
+        };
+    }, []);
 
     useEffect(() => {
         fetchInitialData();
@@ -462,7 +475,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
             const res = isEdit ? await api.put(`/students/${student.student_id}`, payload) : await api.post('/students', payload);
             if (res.data.success) {
                 showSuccess(`Tenant ${isEdit ? 'updated' : 'registered'} successfully!`);
-                setTimeout(() => navigation.goBack(), 900);
+                navigation.goBack();
             }
         } catch (error: any) {
             showApiError(error, 'Failed to save tenant');
@@ -478,21 +491,14 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
 
     return (
         <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={styles.container}
             keyboardVerticalOffset={0}
         >
             <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-            <LinearGradient colors={[COLORS.gradientStart, COLORS.gradientEnd]} style={styles.header}>
-                <View style={styles.headerTop}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
-                        <ArrowLeft color="#FFF" size={24} />
-                    </TouchableOpacity>
-                    <Text style={styles.headerTitle}>{isEdit ? 'Edit Tenant' : 'Add Tenant'}</Text>
-                    <View style={{ width: 40 }} />
-                </View>
-            </LinearGradient>
+            <AppHeader title={isEdit ? 'Edit Tenant' : 'Add Tenant'} />
+            <FullScreenLoader visible={loading} />
 
             <ScrollView
                 style={styles.content}
@@ -601,7 +607,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
             </ScrollView>
 
             {/* ─── Sticky Footer ───────────────────────────────────────────────────── */}
-            <View style={[styles.stickyFooter, { paddingBottom: insets.bottom + SPACING.md }]}>
+            <View style={[styles.stickyFooter, { paddingBottom: isKeyboardVisible ? SPACING.md : (insets.bottom + SPACING.md) }]}>
                 <TouchableOpacity
                     style={styles.cancelButton}
                     onPress={handleReset}

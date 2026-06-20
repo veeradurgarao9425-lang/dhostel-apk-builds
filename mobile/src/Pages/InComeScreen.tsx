@@ -10,13 +10,14 @@ import {
     ActivityIndicator
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowLeft, Plus, Search, Calendar, ChevronDown } from 'lucide-react-native';
+import { Plus, Search, Calendar, ChevronDown } from 'lucide-react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../services/api';
 import Toast from 'react-native-toast-message';
 import { ProfileMenu } from '../components/ProfileMenu';
 import { useTheme } from '../../contexts/ThemeContext';
 import { HeaderNotification } from '../components/HeaderNotification';
+import { AppHeader } from '../components/AppHeader';
 
 export const IncomeScreen = ({ navigation }: any) => {
     const { user } = useAuth();
@@ -159,16 +160,12 @@ export const IncomeScreen = ({ navigation }: any) => {
     return (
         <View style={styles.container}>
             <StatusBar barStyle="light-content" />
-            <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={styles.header}>
-                <View style={styles.headerTop}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                        <ArrowLeft color="#FFFFFF" size={24} />
-                    </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Financial Insights</Text>
-                    <ProfileMenu />
-                </View>
+            <AppHeader 
+                title="Financial Insights" 
+                rightComponent={<ProfileMenu />}
+            >
                 {renderTabs()}
-            </LinearGradient>
+            </AppHeader>
 
             {loading ? (
                 <View style={styles.loader}>
@@ -197,11 +194,7 @@ export const IncomeScreen = ({ navigation }: any) => {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8FAFC' },
-    header: { paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20, borderBottomLeftRadius: 32, borderBottomRightRadius: 32 },
-    headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-    headerTitle: { fontSize: 22, fontWeight: '900', color: '#FFFFFF' },
-    backButton: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255, 255, 255, 0.2)', justifyContent: 'center', alignItems: 'center' },
-    tabContainer: { flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.15)', padding: 4, borderRadius: 14, marginTop: 10 },
+    tabContainer: { flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.15)', padding: 4, borderRadius: 14, marginTop: 10, marginBottom: 10 },
     tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 12 },
     activeTab: { backgroundColor: '#FFFFFF' },
     tabText: { fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.7)' },

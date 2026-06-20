@@ -20,7 +20,7 @@ import { Badge } from '../components/Badge';
 import {
     Phone, Mail, MapPin, Calendar, CreditCard,
     ChevronRight, User, Circle, IndianRupee, Clock,
-    CheckCircle, X, Edit, ArrowLeft, Users, Receipt
+    CheckCircle, X, Edit, Users, Receipt
 } from 'lucide-react-native';
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import api from '../services/api';
@@ -29,6 +29,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../contexts/ThemeContext';
 import { ProfileMenu } from '../components/ProfileMenu';
 import { HeaderNotification } from '../components/HeaderNotification';
+import { AppHeader } from '../components/AppHeader';
 import { useFocusEffect } from '@react-navigation/native';
 
 // ─── Sub-component: a single detail row ──────────────────────────────────────
@@ -405,20 +406,9 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
         <View style={styles.container}>
             <StatusBar barStyle="light-content" />
 
-            <LinearGradient
-                colors={[theme.gradientStart, theme.gradientEnd]}
-                style={[
-                    styles.header,
-                    {
-                        borderBottomLeftRadius: theme.headerRounded,
-                        borderBottomRightRadius: theme.headerRounded
-                    }
-                ]}
-            >
-                <View style={styles.headerTop}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                        <ArrowLeft color="#FFFFFF" size={24} />
-                    </TouchableOpacity>
+            <AppHeader 
+                title="Student Details" 
+                rightComponent={
                     <View style={styles.headerActions}>
                         <TouchableOpacity
                             style={styles.actionButton}
@@ -429,11 +419,8 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                         <HeaderNotification navigation={navigation} />
                         <ProfileMenu />
                     </View>
-                </View>
-                <View style={styles.headerContent}>
-                    <Text style={styles.headerTitle}>Student Details</Text>
-                </View>
-            </LinearGradient>
+                }
+            />
 
             <ScrollView
                 style={styles.content}

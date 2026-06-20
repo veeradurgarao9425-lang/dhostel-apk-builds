@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { AppHeader } from '../components/AppHeader';
 
 export const PlaceholderScreen = ({ route, navigation }: any) => {
     const title = route.params?.title || route.name || 'Screen';
@@ -9,20 +9,7 @@ export const PlaceholderScreen = ({ route, navigation }: any) => {
     return (
         <View style={styles.container}>
             <StatusBar barStyle="light-content" />
-            <LinearGradient
-                colors={['#FF7B7B', '#FF6B6B']}
-                style={styles.header}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-            >
-                <View style={styles.headerTop}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                        <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
-                    </TouchableOpacity>
-                    <Text style={styles.headerTitle}>{title}</Text>
-                    <View style={{ width: 40 }} />
-                </View>
-            </LinearGradient>
+            <AppHeader title={title} />
 
             <View style={styles.content}>
                 <View style={styles.card}>

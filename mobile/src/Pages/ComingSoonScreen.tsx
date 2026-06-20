@@ -6,6 +6,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { AppHeader } from '../components/AppHeader';
 
 interface Props {
     route?: {
@@ -29,18 +30,7 @@ export default function ComingSoonScreen({ route }: Props) {
         <View style={s.root}>
             <StatusBar barStyle="light-content" />
 
-            {/* Top bar */}
-            <LinearGradient colors={['#6D28D9', '#7C3AED']} style={s.topBar}>
-                <SafeAreaView>
-                    <View style={s.topRow}>
-                        <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()}>
-                            <Ionicons name="chevron-back" size={22} color="#FFF" />
-                        </TouchableOpacity>
-                        <Text style={s.topTitle}>{featureName}</Text>
-                        <View style={{ width: 42 }} />
-                    </View>
-                </SafeAreaView>
-            </LinearGradient>
+            <AppHeader title={featureName} />
 
             {/* Body */}
             <View style={s.body}>

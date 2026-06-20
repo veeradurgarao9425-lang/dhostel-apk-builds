@@ -28,6 +28,7 @@ import { HeaderNotification } from '../components/HeaderNotification';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useToast } from '../context/ToastContext';
 import { EmptyState } from '../components/ui/EmptyState';
+import { AppHeader } from '../components/AppHeader';
 import { LoadMoreFooter } from '../components/ui/LoadMoreFooter';
 import { SkeletonList } from '../components/ui/SkeletonCard';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
@@ -407,27 +408,17 @@ export default function StudentsScreen({ navigation, route }: any) {
         <View style={styles.container}>
             <StatusBar barStyle="light-content" />
 
-            <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={styles.header}>
-                <View style={styles.headerRow}>
-                    {navigation.canGoBack() && (
-                        <TouchableOpacity
-                            style={styles.backBtn}
-                            onPress={() => navigation.goBack()}
-                            activeOpacity={0.8}
-                        >
-                            <Ionicons name="chevron-back" size={20} color="#FFF" />
-                        </TouchableOpacity>
-                    )}
-                    <View style={{ flex: 1 }}>
-                        <Text style={styles.headerTitle}>Student Directory</Text>
-                        <Text style={styles.headerSubtitle}>{subtitleText}</Text>
-                    </View>
+            <AppHeader
+                title="Student Directory"
+                subtitle={subtitleText}
+                showBack={navigation.canGoBack()}
+                rightComponent={
                     <View style={styles.headerActions}>
                         <HeaderNotification navigation={navigation} />
                         <ProfileMenu />
                     </View>
-                </View>
-
+                }
+            >
                 <View style={styles.searchBox}>
                     <Search color="rgba(255,255,255,0.7)" size={18} />
                     <TextInput
@@ -498,7 +489,7 @@ export default function StudentsScreen({ navigation, route }: any) {
                         </TouchableOpacity>
                     ))}
                 </ScrollView>
-            </LinearGradient>
+            </AppHeader>
 
             <View style={styles.body}>
                 {initialLoading ? (

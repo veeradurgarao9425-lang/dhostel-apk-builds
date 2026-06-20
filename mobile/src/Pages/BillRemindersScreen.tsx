@@ -9,6 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Toast from 'react-native-toast-message';
 import api from '../services/api';
 import { useTheme } from '../../contexts/ThemeContext';
+import { AppHeader } from '../components/AppHeader';
 
 const sf = (v: any): number => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
 
@@ -168,23 +169,10 @@ export default function BillRemindersScreen() {
             <StatusBar barStyle="light-content" />
 
             {/* Header Layout */}
-            <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={s.header}>
-                <View style={s.headerRow}>
-                    <TouchableOpacity
-                        style={s.backCircle}
-                        onPress={() => navigation.goBack()}
-                        activeOpacity={0.8}
-                    >
-                        <Ionicons name="chevron-back" size={20} color={theme.primary} />
-                    </TouchableOpacity>
-                    <View style={{ flex: 1, marginLeft: 12 }}>
-                        <Text style={s.headerTitle}>Bill Reminders</Text>
-                        <Text style={s.headerSubtitle}>
-                            {filteredTenants.length} total tenant{filteredTenants.length !== 1 ? 's' : ''}
-                        </Text>
-                    </View>
-                </View>
-            </LinearGradient>
+            <AppHeader
+                title="Bill Reminders"
+                subtitle={`${filteredTenants.length} total tenant${filteredTenants.length !== 1 ? 's' : ''}`}
+            />
 
             {/* Search inputs */}
             <View style={s.searchWrap}>

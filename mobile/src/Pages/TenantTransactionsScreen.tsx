@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, ActivityIndicator } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
 import api from '../services/api';
 import { useTheme } from '../../contexts/ThemeContext';
+import { AppHeader } from '../components/AppHeader';
 
 interface PaymentTransaction {
     payment_id: number;
@@ -111,15 +111,7 @@ export default function TenantTransactionsScreen() {
             <StatusBar barStyle="light-content" />
 
             {/* Header */}
-            <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={styles.header}>
-                <View style={styles.headerTop}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                        <Ionicons name="chevron-back" size={20} color="#FFF" />
-                    </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Tenant Transactions</Text>
-                    <View style={{ width: 38 }} />
-                </View>
-            </LinearGradient>
+            <AppHeader title="Tenant Transactions" />
 
             {loading ? (
                 <ActivityIndicator size="large" color="#10B981" style={{ marginTop: 40 }} />

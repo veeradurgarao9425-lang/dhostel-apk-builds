@@ -15,6 +15,7 @@ import { ProfileMenu } from '../components/ProfileMenu';
 import { PaymentDrawer } from '../components/PaymentDrawer';
 import { useTheme } from '../../contexts/ThemeContext';
 import { toLocalDateStr } from '../utils/dateUtils';
+import { AppHeader } from '../components/AppHeader';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -558,20 +559,16 @@ export default function FinanceScreen() {
         <View style={S.container}>
             <StatusBar barStyle="light-content" />
 
-            <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={S.header}>
-                <View style={S.headerTop}>
-                    <View>
-                        <Text style={S.headerTitle}>Finance Hub</Text>
-                        <Text style={S.debtText}>
-                            {mode === 'Rent'
-                                ? `₹${totalDebt.toLocaleString('en-IN')} pending this month`
-                                : `${expenses.length} expense${expenses.length !== 1 ? 's' : ''} recorded`}
-                        </Text>
-                    </View>
-                    <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
-                        <ProfileMenu />
-                    </View>
-                </View>
+            <AppHeader
+                title="Finance Hub"
+                subtitle={
+                    mode === 'Rent'
+                        ? `₹${totalDebt.toLocaleString('en-IN')} pending this month`
+                        : `${expenses.length} expense${expenses.length !== 1 ? 's' : ''} recorded`
+                }
+                showBack={navigation.canGoBack()}
+                rightComponent={<ProfileMenu />}
+            >
                 <View style={S.tabContainer}>
                     {(['Rent', 'Expense'] as const).map(m => (
                         <TouchableOpacity key={m} style={[S.tab, mode === m && S.activeTab]}
@@ -585,7 +582,7 @@ export default function FinanceScreen() {
                         </TouchableOpacity>
                     ))}
                 </View>
-            </LinearGradient>
+            </AppHeader>
 
             <View style={S.searchSection}>
                 <View style={S.searchBar}>

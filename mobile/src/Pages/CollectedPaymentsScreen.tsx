@@ -13,6 +13,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { toLocalDateStr as toLocalDateString } from '../utils/dateUtils';
+import { AppHeader } from '../components/AppHeader';
 
 const { width } = Dimensions.get('window');
 
@@ -262,20 +263,15 @@ export default function CollectedPaymentsScreen() {
             <StatusBar barStyle="light-content" />
 
             {/* HEADER */}
-            <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={s.header}>
-                <View style={s.navRow}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtnCircle}>
-                        <Ionicons name="chevron-back" size={22} color="#059669" />
-                    </TouchableOpacity>
-                    <View style={s.headerTitleContainer}>
-                        <Text style={s.screenTitleText}>Collected Payments</Text>
-                        <Text style={s.screenSubtitleText}>{transactionsCount} payments</Text>
-                    </View>
+            <AppHeader
+                title="Collected Payments"
+                subtitle={`${transactionsCount} payments`}
+                rightComponent={
                     <TouchableOpacity onPress={() => setShowExportModal(true)} style={s.exportBtn}>
                         <Download color="#FFF" size={20} />
                     </TouchableOpacity>
-                </View>
-            </LinearGradient>
+                }
+            />
 
             {/* BODY */}
             {loading ? (

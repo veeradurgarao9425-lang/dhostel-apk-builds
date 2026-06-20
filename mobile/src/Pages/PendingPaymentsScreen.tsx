@@ -14,6 +14,7 @@ import { ProfileMenu } from '../components/ProfileMenu';
 import { PaymentDrawer } from '../components/PaymentDrawer';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useToast } from '../context/ToastContext';
+import { AppHeader } from '../components/AppHeader';
 import { toLocalDateStr } from '../utils/dateUtils';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -393,23 +394,27 @@ export default function PendingPaymentsScreen() {
         return (
             <View style={s.root}>
                 <StatusBar barStyle="light-content" />
-                <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={s.header}>
-                    <View style={s.headerRow}>
-                        <View style={{ flex: 1 }}>
-                            <Text style={s.headerTitle}>Pending Dues</Text>
-                            <Text style={s.headerSub}>Loading dues...</Text>
-                        </View>
+                <AppHeader
+                    title="Pending Dues"
+                    subtitle="Loading dues..."
+                    showBack={navigation.canGoBack()}
+                    rightComponent={
                         <View style={s.headerActions}>
                             <HeaderNotification navigation={navigation} />
                             <ProfileMenu />
                         </View>
-                    </View>
-                </LinearGradient>
+                    }
+                />
 
                 {/* Skeleton for Floating Dashboard */}
                 <View style={s.summaryContainer}>
-                    <View style={[s.totalCollectedCard, { height: 110, opacity: 0.6, backgroundColor: '#FFF', justifyContent: 'center' }]}>
-                        <ActivityIndicator size="small" color={theme.primary} />
+                    <View style={s.cardsRow}>
+                        <View style={[s.smallCard, { height: 100, opacity: 0.6, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center' }]}>
+                            <ActivityIndicator size="small" color={theme.primary} />
+                        </View>
+                        <View style={[s.smallCard, { height: 100, opacity: 0.6, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center' }]}>
+                            <ActivityIndicator size="small" color={theme.primary} />
+                        </View>
                     </View>
                 </View>
 
@@ -428,41 +433,46 @@ export default function PendingPaymentsScreen() {
             <StatusBar barStyle="light-content" />
 
             {/* ── Header ── */}
-            <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={s.header}>
-                <View style={s.headerRow}>
-                    <View style={{ flex: 1 }}>
-                        <Text style={s.headerTitle}>Pending Dues</Text>
-                        <Text style={s.headerSub}>Overview of pending collections</Text>
-                    </View>
+            <AppHeader
+                title="Pending Dues"
+                subtitle="Overview of pending collections"
+                showBack={navigation.canGoBack()}
+                rightComponent={
                     <View style={s.headerActions}>
                         <HeaderNotification navigation={navigation} />
                         <ProfileMenu />
                     </View>
-                </View>
-            </LinearGradient>
+                }
+            />
 
-            {/* ── Premium Floating Dashboard ── */}
+            {/* ── Premium Floating Dashboard (Side-by-Side Cards) ── */}
             <View style={s.summaryContainer}>
-                {/* Primary full-width card: Total Outstanding */}
-                <View style={s.totalCollectedCard}>
-                    <View style={s.totalCollectedRow}>
-                        <View style={s.totalCollectedIconBg}>
-                            <Ionicons name="wallet-outline" size={22} color="#F97316" />
+                <View style={s.cardsRow}>
+                    {/* Card 1: Outstanding Dues */}
+                    <View style={s.smallCard}>
+                        <View style={s.cardHeaderRow}>
+                            <View style={[s.iconCircle, { backgroundColor: '#FEE2E2' }]}>
+                                <Ionicons name="alert-circle" size={20} color="#DC2626" />
+                            </View>
+                            <TouchableOpacity onPress={() => load(1, false)} style={s.smallRefreshBtn} activeOpacity={0.7}>
+                                <Ionicons name="refresh" size={14} color="#94A3B8" />
+                            </TouchableOpacity>
                         </View>
-                        <View style={s.totalCollectedTextContainer}>
-                            <Text style={s.totalCollectedLabel}>Total Outstanding</Text>
-                            <Text style={[s.totalCollectedValue, { color: '#EA580C' }]}>₹{totalPending.toLocaleString('en-IN')}</Text>
-                            <Text style={s.totalCollectedSub}>From {totalDefaulters} defaulters</Text>
-                        </View>
-                        <TouchableOpacity onPress={() => load(1, false)} style={s.refreshBtn} activeOpacity={0.7}>
-                            <Ionicons name="refresh" size={18} color="#F97316" />
-                        </TouchableOpacity>
+                        <Text style={s.cardLabel}>Outstanding Dues</Text>
+                        <Text style={[s.cardValue, { color: '#DC2626' }]}>₹{totalPending.toLocaleString('en-IN')}</Text>
+                        <Text style={s.cardSubText}>{totalDefaulters} defaulters</Text>
                     </View>
-                    <View style={s.totalCollectedFooter}>
-                         <View style={s.footerStat}>
-                             <Text style={s.footerStatLabel}>Partial Paid</Text>
-                             <Text style={s.footerStatValue}>₹{partialPaid.toLocaleString('en-IN')}</Text>
-                         </View>
+
+                    {/* Card 2: Partial Paid */}
+                    <View style={s.smallCard}>
+                        <View style={s.cardHeaderRow}>
+                            <View style={[s.iconCircle, { backgroundColor: '#FEF3C7' }]}>
+                                <Ionicons name="hourglass" size={18} color="#D97706" />
+                            </View>
+                        </View>
+                        <Text style={s.cardLabel}>Partial Paid</Text>
+                        <Text style={[s.cardValue, { color: '#D97706' }]}>₹{partialPaid.toLocaleString('en-IN')}</Text>
+                        <Text style={s.cardSubText}>Dues collected partially</Text>
                     </View>
                 </View>
             </View>
@@ -704,82 +714,61 @@ const s = StyleSheet.create({
         gap: 12,
         marginBottom: 12,
     },
-    totalCollectedCard: {
-        backgroundColor: '#FFF8F4',
-        borderRadius: 20,
-        paddingHorizontal: 16,
-        paddingVertical: 14,
-        marginBottom: 16,
-        borderWidth: 1,
-        borderColor: '#FFE4D6',
-    },
-    totalCollectedRow: {
+    cardsRow: {
         flexDirection: 'row',
-        alignItems: 'center',
+        gap: 12,
+        justifyContent: 'space-between',
+        width: '100%',
     },
-    totalCollectedIconBg: {
-        width: 44, height: 44,
-        borderRadius: 12,
-        backgroundColor: '#FFFFFF',
-        alignItems: 'center', justifyContent: 'center',
-        marginRight: 12,
-        elevation: 1,
+    smallCard: {
+        flex: 1,
+        backgroundColor: '#FFF',
+        borderRadius: 16,
+        padding: 14,
+        borderWidth: 1,
+        borderColor: '#EDE9FE',
+        elevation: 2,
         shadowColor: '#000',
         shadowOpacity: 0.03,
-        shadowRadius: 2,
+        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 2 },
     },
-    totalCollectedTextContainer: {
-        flex: 1,
-    },
-    totalCollectedLabel: {
-        fontSize: 9,
-        color: '#EA580C',
-        fontWeight: '800',
-        textTransform: 'uppercase',
-    },
-    totalCollectedValue: {
-        fontSize: 22,
-        fontWeight: '900',
-        color: '#EA580C',
-        marginTop: 2,
-    },
-    totalCollectedSub: {
-        fontSize: 11,
-        color: '#EA580C',
-        fontWeight: '600',
-        marginTop: 1,
-    },
-    refreshBtn: {
-        width: 36, height: 36,
-        borderRadius: 18,
-        backgroundColor: '#FFFFFF',
-        alignItems: 'center', justifyContent: 'center',
-        elevation: 1,
-        shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-    },
-    totalCollectedFooter: {
-        marginTop: 12,
-        paddingTop: 12,
-        borderTopWidth: 1,
-        borderTopColor: '#FFE4D6',
+    cardHeaderRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
     },
-    footerStat: {
-        flex: 1,
+    iconCircle: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
-    footerStatLabel: {
+    smallRefreshBtn: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: '#F1F5F9',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    cardLabel: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#64748B',
+        marginBottom: 4,
+    },
+    cardValue: {
+        fontSize: 16,
+        fontWeight: '900',
+        marginBottom: 2,
+    },
+    cardSubText: {
         fontSize: 10,
         color: '#94A3B8',
-        fontWeight: '600',
-    },
-    footerStatValue: {
-        fontSize: 14,
-        color: '#1E293B',
-        fontWeight: '800',
-        marginTop: 2,
+        fontWeight: '500',
     },
 
     listContent: { paddingTop: 16, paddingBottom: 160 },

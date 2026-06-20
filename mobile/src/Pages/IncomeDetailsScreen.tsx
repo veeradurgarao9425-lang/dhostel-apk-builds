@@ -12,6 +12,7 @@ import api from '../services/api';
 import { useTheme } from '../../contexts/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { toLocalDateStr as toLocalDateString } from '../utils/dateUtils';
+import { AppHeader } from '../components/AppHeader';
 
 const { width, height } = Dimensions.get('window');
 type Period = 'day' | 'week' | 'month';
@@ -387,15 +388,9 @@ export default function IncomeDetailsScreen() {
             <StatusBar barStyle="light-content" />
 
             {/* ── HEADER (MATCHING APP GRADIENT) ────────────────────────── */}
-            <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={s.header}>
-                <View style={s.navRow}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={s.iconBtn}>
-                        <Ionicons name="chevron-back" size={24} color="#FFF" />
-                    </TouchableOpacity>
-                    <Text style={s.screenTitle}>Earnings</Text>
-                    <View style={{ width: 38 }} />
-                </View>
-
+            <AppHeader
+                title="Earnings"
+            >
                 {/* Outlined Period tab selectors */}
                 <View style={s.tabBarContainer}>
                     {(['day', 'week', 'month'] as const).map(p => (
@@ -416,7 +411,7 @@ export default function IncomeDetailsScreen() {
                         </TouchableOpacity>
                     ))}
                 </View>
-            </LinearGradient>
+            </AppHeader>
 
             {/* BODY */}
             <ScrollView contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>

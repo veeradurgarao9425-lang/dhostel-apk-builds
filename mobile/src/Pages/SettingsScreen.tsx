@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, TextInput, Alert } from 'react-native';
-import { Header } from '../components/Header'; // Assuming this exists as imported before
+import { AppHeader } from '../components/AppHeader';
 import { Card } from '../components/Card'; // Assuming this exists
 import { Bell, Shield, Moon, Globe, ChevronRight, Type, User, Mail, Building } from 'lucide-react-native';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -59,7 +59,7 @@ export const SettingsScreen = ({ navigation }: any) => {
 
     return (
         <View style={styles.container}>
-            <Header title="Settings" />
+            <AppHeader title="Settings" />
             <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
 
                 {/* ── PROFILE DETAILS SECTION ── */}
