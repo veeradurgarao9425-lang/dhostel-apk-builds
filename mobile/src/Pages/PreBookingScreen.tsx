@@ -21,7 +21,9 @@ import {
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../services/api';
-import { showErrorToast, showSuccessToast } from '../hooks/Toastconfig';
+import { useToast } from '../context/ToastContext';
+import { useTheme } from '../../contexts/ThemeContext';
+import { COLORS } from '../theme/index';
 
 // ─── Reusable custom components ──────────────────────────────────────────────
 const FormInput = ({ label, icon: Icon, placeholder, value, onChangeText, keyboardType, error }: any) => (
@@ -175,6 +177,8 @@ const BedPickerDrawer = ({ visible, room, beds, selectedBedId, onSelectBed, onCl
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function PreBookingScreen({ navigation, route }: any) {
     const { user } = useAuth();
+    const { theme } = useTheme();
+    const { showSuccess, showError } = useToast();
     const [loading, setLoading] = useState(false);
     const [rooms, setRooms] = useState<any[]>([]);
     const [beds, setBeds] = useState<any[]>([]);
@@ -251,7 +255,7 @@ export default function PreBookingScreen({ navigation, route }: any) {
 
     const handleSave = async () => {
         if (!validate()) {
-            showErrorToast('Validation Error', 'Fix highlighted fields');
+            showError('Fix highlighted fields', 'Validation Error');
             return;
         }
         setLoading(true);
@@ -273,11 +277,11 @@ export default function PreBookingScreen({ navigation, route }: any) {
 
             const res = await api.post('/students', payload);
             if (res.data.success) {
-                showSuccessToast('Pre-Booked Success!', `${formData.first_name} pre-booked successfully.`);
+                showSuccess(`${formData.first_name} pre-booked successfully.`, 'Pre-Booked Success!');
                 setTimeout(() => navigation.goBack(), 900);
             }
         } catch (error: any) {
-            showErrorToast('Error', error.response?.data?.error || 'Failed to save pre-booking');
+            showError(error.response?.data?.error || 'Failed to save pre-booking', 'Error');
         } finally {
             setLoading(false);
         }
@@ -287,7 +291,7 @@ export default function PreBookingScreen({ navigation, route }: any) {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.container}>
             <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-            <LinearGradient colors={['#F97316', '#EA580C']} style={styles.header}>
+            <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={styles.header}>
                 <View style={styles.headerTop}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
                         <ArrowLeft color="#FFF" size={24} />
@@ -399,18 +403,20 @@ export default function PreBookingScreen({ navigation, route }: any) {
                     />
                 </View>
 
+            </ScrollView>
+
+            <View style={styles.stickyFooter}>
                 <TouchableOpacity
                     style={[styles.saveBtn, loading && styles.disabledBtn]}
                     onPress={handleSave}
                     disabled={loading}
                     activeOpacity={0.8}
                 >
-                    <LinearGradient colors={['#F97316', '#EA580C']} style={styles.saveGrad}>
+                    <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={styles.saveGrad}>
                         {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.saveBtnText}>Save Pre-Booking</Text>}
                     </LinearGradient>
                 </TouchableOpacity>
-
-            </ScrollView>
+            </View>
 
             <DateTimePickerModal
                 isVisible={showDatePicker}
@@ -516,7 +522,8 @@ const styles = StyleSheet.create({
     bedName: { fontSize: 16, fontWeight: '700', color: '#1E293B' },
 
     // Save Button
-    saveBtn: { borderRadius: 16, overflow: 'hidden', marginTop: 10, elevation: 2, shadowColor: '#EA580C', shadowOpacity: 0.15, shadowRadius: 8 },
+    stickyFooter: { paddingHorizontal: 16, paddingBottom: 30, paddingTop: 10, backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#F1F5F9' },
+    saveBtn: { borderRadius: 16, overflow: 'hidden', elevation: 2, shadowColor: '#EA580C', shadowOpacity: 0.15, shadowRadius: 8 },
     saveGrad: { paddingVertical: 16, alignItems: 'center', justifyContent: 'center' },
     saveBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
     disabledBtn: { opacity: 0.7 },

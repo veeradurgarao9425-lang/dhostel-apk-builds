@@ -284,7 +284,7 @@ app.get('/api/health-db', async (req, res) => {
 app.get('/', (req, res) => {
   res.json({
     success: true,
-    message: 'Hostel Management API',
+    message: 'Stivo API',
     version: '1.0.0',
   });
 });

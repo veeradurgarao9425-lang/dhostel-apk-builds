@@ -1,13 +1,13 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 // ── Tab screens ───────────────────────────────────────────────────────────────
 import HomeScreen      from '../Pages/HomeScreen';
+import StudentsScreen  from '../Pages/StudentsScreen';
 import RoomsScreen     from '../Pages/RoomsScreen';
 import MoreScreen      from '../Pages/MoreScreen';
-import PendingPaymentsScreen from '../Pages/PendingPaymentsScreen';
 
 // ── Stack screens ─────────────────────────────────────────────────────────────
 import SplashScreen          from '../Pages/SplashScreen';
@@ -36,10 +36,7 @@ import QRSignupScreen        from '../Pages/QRSignupScreen';
 import PreBookingScreen      from '../Pages/PreBookingScreen';
 import NoticesScreen         from '../Pages/NoticesScreen';
 import ReportsScreen         from '../Pages/ReportsScreen';
-
-// ── New screens ─────────────────────────────────────────────────────────────────
 import ComingSoonScreen      from '../Pages/ComingSoonScreen';
-import StudentsScreen        from '../Pages/StudentsScreen';
 import FinanceScreen         from '../Pages/FinanceScreen';
 import StaffScreen           from '../Pages/StaffScreen';
 import BillRemindersScreen   from '../Pages/BillRemindersScreen';
@@ -47,33 +44,47 @@ import RemindersScreen       from '../Pages/RemindersScreen';
 import TenantTransactionsScreen from '../Pages/TenantTransactionsScreen';
 import CollectedPaymentsScreen from '../Pages/CollectedPaymentsScreen';
 import OverviewScreen        from '../Pages/OverviewScreen';
-
+import PendingPaymentsScreen from '../Pages/PendingPaymentsScreen';
 
 // ── Navigators ────────────────────────────────────────────────────────────────
 import BottomTabNavigator from '../components/BottomTabNavigator';
 
+// ── Navigation Ref ────────────────────────────────────────────────────────────
+import { navigationRef } from './navigationRef';
+
 const Stack = createNativeStackNavigator();
 const Tab   = createBottomTabNavigator();
 
-// ── Tab Navigator (4 unique tabs) ────────────────────────────────────────────
+// ── Tab Navigator — 4 tabs: Home / Pending Dues / Overview / More ───────────
 const TabNavigator = () => (
     <Tab.Navigator
         tabBar={props => <BottomTabNavigator {...props} />}
         screenOptions={{ headerShown: false }}
     >
-        <Tab.Screen name="HomeTab"     component={HomeScreen}           />
-        <Tab.Screen name="PendingTab"  component={PendingPaymentsScreen}/>
-        <Tab.Screen name="OverviewTab" component={OverviewScreen}       />
-        <Tab.Screen name="MoreTab"     component={MoreScreen}           />
+        <Tab.Screen name="HomeTab"        component={HomeScreen}            />
+        <Tab.Screen name="PendingDuesTab" component={PendingPaymentsScreen} />
+        <Tab.Screen name="OverviewTab"    component={OverviewScreen}        />
+        <Tab.Screen name="MoreTab"        component={MoreScreen}            />
     </Tab.Navigator>
 );
 
-// ── Root Stack Navigator ──────────────────────────────────────────────────────
-import { navigationRef } from './navigationRef';
+// ── Props ─────────────────────────────────────────────────────────────────────
+interface AppNavigatorProps {
+  onRouteChange?: (routeName: string) => void;
+}
 
-const AppNavigator = () => {
+// ── Root Stack Navigator ──────────────────────────────────────────────────────
+const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
     return (
-        <NavigationContainer ref={navigationRef}>
+        <NavigationContainer
+            ref={navigationRef}
+            onStateChange={() => {
+                const route = navigationRef.current?.getCurrentRoute();
+                if (route?.name && onRouteChange) {
+                    onRouteChange(route.name);
+                }
+            }}
+        >
             <Stack.Navigator
                 screenOptions={{ headerShown: false }}
                 initialRouteName="Splash"
@@ -117,6 +128,8 @@ const AppNavigator = () => {
                 {/* Finance & Fees */}
                 <Stack.Screen name="FinanceTab"      component={FinanceScreen}         />
                 <Stack.Screen name="PendingPayments" component={PendingPaymentsScreen} />
+                <Stack.Screen name="PendingTab"      component={PendingPaymentsScreen} />
+                <Stack.Screen name="OverviewTab"     component={OverviewScreen}        />
                 <Stack.Screen name="BillReminders"   component={BillRemindersScreen}   />
                 <Stack.Screen name="PaymentDetails"  component={PaymentDetailsScreen}  />
                 <Stack.Screen name="FeeManagement"   component={FeeCollectionScreen}   />
@@ -151,11 +164,8 @@ const AppNavigator = () => {
                 <Stack.Screen name="PreBooking"  component={PreBookingScreen}  />
                 <Stack.Screen name="Notices"     component={NoticesScreen}     />
 
-                {/* Placeholders for analytics, etc. */}
-                <Stack.Screen
-                    name="Reports"
-                    component={ReportsScreen}
-                />
+                {/* Reports */}
+                <Stack.Screen name="Reports" component={ReportsScreen} />
                 <Stack.Screen
                     name="PersonalInfo"
                     component={PlaceholderScreen}
@@ -167,7 +177,7 @@ const AppNavigator = () => {
                     initialParams={{ title: 'Theme Settings' }}
                 />
 
-                {/* Coming Soon — reusable for any unbuilt feature */}
+                {/* Coming Soon */}
                 <Stack.Screen name="ComingSoon" component={ComingSoonScreen} />
             </Stack.Navigator>
         </NavigationContainer>

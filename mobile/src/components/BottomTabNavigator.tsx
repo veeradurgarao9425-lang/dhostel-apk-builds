@@ -2,49 +2,47 @@ import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { COLORS, FONT, SHADOW } from '../theme/index';
 
+// ─── Tab Config ───────────────────────────────────────────────────────────────
 const TABS = [
     {
         label: 'Home',
         route: 'HomeTab',
-        activeIcon: 'home',
-        inactiveIcon: 'home-outline',
-        activeColor: '#7C3AED',
-        activeBg: '#EDE9FE',
+        activeIcon: 'home' as const,
+        inactiveIcon: 'home-outline' as const,
     },
     {
-        label: 'Pending',
-        route: 'PendingTab',
-        activeIcon: 'alert-circle',
-        inactiveIcon: 'alert-circle-outline',
-        activeColor: '#DC2626',
-        activeBg: '#FEE2E2',
+        label: 'Dues',
+        route: 'PendingDuesTab',
+        activeIcon: 'wallet' as const,
+        inactiveIcon: 'wallet-outline' as const,
     },
     {
         label: 'Overview',
         route: 'OverviewTab',
-        activeIcon: 'bar-chart',
-        inactiveIcon: 'bar-chart-outline',
-        activeColor: '#6366F1',
-        activeBg: '#EEF2FF',
+        activeIcon: 'bar-chart' as const,
+        inactiveIcon: 'bar-chart-outline' as const,
     },
     {
         label: 'More',
         route: 'MoreTab',
-        activeIcon: 'grid',
-        inactiveIcon: 'grid-outline',
-        activeColor: '#7C3AED',
-        activeBg: '#EDE9FE',
+        activeIcon: 'menu' as const,
+        inactiveIcon: 'menu-outline' as const,
     },
 ];
 
-const INACTIVE_COLOR = '#94A3B8';
+const TAB_BAR_HEIGHT = 60;
 
+// ─── Component ────────────────────────────────────────────────────────────────
 const BottomTabNavigator = ({ state, navigation }: any) => {
     const insets = useSafeAreaInsets();
 
     return (
-        <View style={[styles.container, { paddingBottom: insets.bottom + 4 }]}>
+        <View style={[
+            styles.container,
+            { paddingBottom: Math.max(insets.bottom, 8) },
+        ]}>
             {TABS.map((tab, index) => {
                 const isActive = state.routes[state.index]?.name === tab.route;
                 const iconName = isActive ? tab.activeIcon : tab.inactiveIcon;
@@ -66,30 +64,30 @@ const BottomTabNavigator = ({ state, navigation }: any) => {
                         style={styles.tabItem}
                         onPress={handlePress}
                         activeOpacity={0.75}
+                        accessibilityRole="button"
+                        accessibilityLabel={tab.label}
                     >
-                        {/* Active top pill indicator */}
+                        {/* Active indicator pill at top */}
                         {isActive && (
-                            <View style={[styles.topPill, { backgroundColor: tab.activeColor }]} />
+                            <View style={styles.topPill} />
                         )}
 
-                        {/* Icon container with glow background when active */}
+                        {/* Icon with subtle highlight background when active */}
                         <View style={[
                             styles.iconWrap,
-                            isActive && { backgroundColor: tab.activeBg },
+                            isActive && styles.iconWrapActive,
                         ]}>
                             <Ionicons
-                                name={iconName as any}
+                                name={iconName}
                                 size={22}
-                                color={isActive ? tab.activeColor : INACTIVE_COLOR}
+                                color={isActive ? COLORS.primary : COLORS.textMuted}
                             />
                         </View>
 
                         <Text style={[
                             styles.label,
-                            {
-                                color: isActive ? tab.activeColor : INACTIVE_COLOR,
-                                fontWeight: isActive ? '700' : '500',
-                            },
+                            { color: isActive ? COLORS.primary : COLORS.textMuted },
+                            isActive && styles.labelActive,
                         ]}>
                             {tab.label}
                         </Text>
@@ -103,48 +101,54 @@ const BottomTabNavigator = ({ state, navigation }: any) => {
 const styles = StyleSheet.create({
     container: {
         position: 'absolute',
-        bottom: 0, left: 0, right: 0,
-        backgroundColor: '#FFFFFF',
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: COLORS.surface,
+        borderTopWidth: 0.5,
+        borderTopColor: COLORS.border,
         paddingTop: 8,
         flexDirection: 'row',
         justifyContent: 'space-around',
         alignItems: 'flex-start',
-        shadowColor: '#7C3AED',
-        shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.10,
-        shadowRadius: 16,
-        elevation: 16,
-        borderTopWidth: 1,
-        borderTopColor: '#F1E8FF',
+        minHeight: TAB_BAR_HEIGHT,
+        ...SHADOW.sheet,
     },
     tabItem: {
         flex: 1,
         alignItems: 'center',
-        paddingTop: 6,
-        gap: 4,
+        paddingTop: 2,
+        gap: 3,
         position: 'relative',
-        minHeight: 56,
+        minHeight: TAB_BAR_HEIGHT - 8,
     },
     topPill: {
         position: 'absolute',
-        top: 0,
-        width: 32,
+        top: -8,
+        width: 28,
         height: 3,
-        borderRadius: 2,
+        borderRadius: COLORS.primary.length, // just full
+        backgroundColor: COLORS.primary,
+        borderBottomLeftRadius: 2,
+        borderBottomRightRadius: 2,
     },
     iconWrap: {
-        width: 44,
-        height: 34,
-        borderRadius: 14,
+        width: 42,
+        height: 32,
+        borderRadius: 10,
         alignItems: 'center',
         justifyContent: 'center',
     },
+    iconWrapActive: {
+        backgroundColor: COLORS.primaryLight,
+    },
     label: {
-        fontSize: 10,
-        letterSpacing: 0.2,
-        marginBottom: 2,
+        fontSize: FONT.xs,
+        letterSpacing: 0.1,
+        fontWeight: FONT.medium,
+    },
+    labelActive: {
+        fontWeight: FONT.semiBold,
     },
 });
 

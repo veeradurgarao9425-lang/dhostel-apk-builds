@@ -17,7 +17,7 @@ import {
     Animated,
     Pressable,
 } from 'react-native';
-import Toast from 'react-native-toast-message';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
     ArrowLeft, User, Phone, Mail, Home, MapPin,
@@ -28,7 +28,8 @@ import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../services/api';
-import { showErrorToast, showSuccessToast } from '../hooks/Toastconfig';
+import { useToast } from '../context/ToastContext';
+import { COLORS, FONT, RADIUS, SPACING } from '../theme/index';
 
 // ─── Smooth bottom-sheet modal ────────────────────────────────────────────────
 const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: any) => {
@@ -332,6 +333,8 @@ const ProfilePhotoCapture = ({ uri, onCapture, onRemove }: any) => {
 export const AddStudentScreen = ({ navigation, route }: any) => {
     const { user } = useAuth();
     const { student, isEdit } = route.params || {};
+    const { showSuccess, showError, showApiError } = useToast();
+    const insets = useSafeAreaInsets();
     const [loading, setLoading] = useState(false);
 
     const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
@@ -437,7 +440,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
     };
 
     const handleSave = async () => {
-        if (!validate()) { showErrorToast('Validation Error', 'Fix highlighted fields'); return; }
+        if (!validate()) { showError('Please fix the highlighted fields.'); return; }
         setLoading(true);
         try {
             const payload = {
@@ -458,11 +461,11 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
             };
             const res = isEdit ? await api.put(`/students/${student.student_id}`, payload) : await api.post('/students', payload);
             if (res.data.success) {
-                showSuccessToast('Success!', `Tenant ${isEdit ? 'updated' : 'registered'}`);
+                showSuccess(`Tenant ${isEdit ? 'updated' : 'registered'} successfully!`);
                 setTimeout(() => navigation.goBack(), 900);
             }
         } catch (error: any) {
-            showErrorToast('Error', error.response?.data?.error || 'Failed to save');
+            showApiError(error, 'Failed to save tenant');
         } finally { setLoading(false); }
     };
 
@@ -474,10 +477,14 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
     const up = (key: string, val: any) => setFormData(p => ({ ...p, [key]: val }));
 
     return (
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.container}>
+        <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.container}
+            keyboardVerticalOffset={0}
+        >
             <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-            <LinearGradient colors={['#FF8585', '#FF6B6B']} style={styles.header}>
+            <LinearGradient colors={[COLORS.gradientStart, COLORS.gradientEnd]} style={styles.header}>
                 <View style={styles.headerTop}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
                         <ArrowLeft color="#FFF" size={24} />
@@ -487,7 +494,12 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 </View>
             </LinearGradient>
 
-            <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+            <ScrollView
+                style={styles.content}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={[styles.scrollContent, { paddingBottom: 120 + insets.bottom }]}
+                keyboardShouldPersistTaps="handled"
+            >
 
                 {/* ── Profile Photo ── */}
                 <ProfilePhotoCapture uri={profilePhoto} onCapture={setProfilePhoto} onRemove={() => setProfilePhoto(null)} />
@@ -584,19 +596,35 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                     <FormInput label="Permanent Address" icon={MapPin} placeholder="Full home address..." multiline value={formData.permanent_address} onChangeText={(t: string) => up('permanent_address', t)} />
                 </View>
 
-                {/* ── Buttons ── */}
-                <View style={styles.buttonRow}>
-                    <TouchableOpacity style={styles.resetButton} onPress={handleReset} disabled={loading}>
-                        <Text style={styles.resetButtonText}>Reset</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.submitButton, loading && styles.disabledButton]} onPress={handleSave} disabled={loading}>
-                        <LinearGradient colors={loading ? ['#DDD', '#BBB'] : ['#FF8585', '#FF6B6B']} style={styles.submitGradient}>
-                            {loading ? <ActivityIndicator color="#FFF" size="small" /> : <Text style={styles.submitText}>{isEdit ? 'Update Tenant' : 'Add Tenant'}</Text>}
-                        </LinearGradient>
-                    </TouchableOpacity>
-                </View>
-                <View style={{ height: 60 }} />
+                {/* ── Buttons (scroll content) ── */}
+                <View style={{ height: 8 }} />
             </ScrollView>
+
+            {/* ─── Sticky Footer ───────────────────────────────────────────────────── */}
+            <View style={[styles.stickyFooter, { paddingBottom: insets.bottom + SPACING.md }]}>
+                <TouchableOpacity
+                    style={styles.cancelButton}
+                    onPress={handleReset}
+                    disabled={loading}
+                >
+                    <Text style={styles.cancelButtonText}>Reset</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.submitButton, loading && styles.disabledButton]}
+                    onPress={handleSave}
+                    disabled={loading}
+                >
+                    <LinearGradient
+                        colors={loading ? ['#BBB', '#999'] : [COLORS.gradientStart, COLORS.gradientEnd]}
+                        style={styles.submitGradient}
+                    >
+                        {loading
+                            ? <ActivityIndicator color="#FFF" size="small" />
+                            : <Text style={styles.submitText}>{isEdit ? 'Update Tenant' : 'Add Tenant'}</Text>
+                        }
+                    </LinearGradient>
+                </TouchableOpacity>
+            </View>
 
             {/* ── Drawers ── */}
             <OptionsDrawer visible={genderModal} title="Select Gender" data={['Male', 'Female', 'Other']} selectedId={formData.gender} keyExtractor={(i: string) => i} labelExtractor={(i: string) => i} onSelect={(i: string) => up('gender', i)} onClose={() => setGenderModal(false)} />
@@ -629,10 +657,10 @@ const styles = StyleSheet.create({
 
     // Profile photo
     profilePhotoWrap: { alignItems: 'center', marginVertical: 20 },
-    profileAvatar: { width: 100, height: 100, borderRadius: 50, borderWidth: 3, borderColor: '#FF6B6B' },
-    profileAvatarPlaceholder: { width: 100, height: 100, borderRadius: 50, backgroundColor: '#FFF1F1', alignItems: 'center', justifyContent: 'center', borderWidth: 2.5, borderColor: '#FFD5D5', borderStyle: 'dashed' },
-    profileEditBadge: { position: 'absolute', bottom: 2, right: 2, width: 28, height: 28, borderRadius: 14, backgroundColor: '#FF6B6B', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#FFF' },
-    profileRemoveBtn: { position: 'absolute', top: 0, right: 0, width: 22, height: 22, borderRadius: 11, backgroundColor: '#EF4444', alignItems: 'center', justifyContent: 'center' },
+    profileAvatar: { width: 100, height: 100, borderRadius: 50, borderWidth: 3, borderColor: COLORS.primary },
+    profileAvatarPlaceholder: { width: 100, height: 100, borderRadius: 50, backgroundColor: COLORS.primaryLight, alignItems: 'center', justifyContent: 'center', borderWidth: 2.5, borderColor: COLORS.border, borderStyle: 'dashed' },
+    profileEditBadge: { position: 'absolute', bottom: 2, right: 2, width: 28, height: 28, borderRadius: 14, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#FFF' },
+    profileRemoveBtn: { position: 'absolute', top: 0, right: 0, width: 22, height: 22, borderRadius: 11, backgroundColor: COLORS.error, alignItems: 'center', justifyContent: 'center' },
     profilePhotoHint: { fontSize: 12, color: '#94A3B8', marginTop: 8, fontWeight: '500' },
 
     formCard: { backgroundColor: '#FFF', borderRadius: 18, padding: 20, marginBottom: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
@@ -649,74 +677,82 @@ const styles = StyleSheet.create({
     errorText: { color: '#EF4444', fontSize: 12, marginTop: 4, fontWeight: '500' },
     selectorRow: { flexDirection: 'row', gap: 10 },
     selectorItem: { flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', backgroundColor: '#F8FAFC' },
-    selectorItemActive: { borderColor: '#FF6B6B', backgroundColor: '#FFF1F1' },
+    selectorItemActive: { borderColor: COLORS.primary, backgroundColor: COLORS.primaryLight },
     selectorText: { fontSize: 14, color: '#64748B', fontWeight: '500' },
-    selectorTextActive: { color: '#FF6B6B', fontWeight: '700' },
+    selectorTextActive: { color: COLORS.primary, fontWeight: '700' },
     row: { flexDirection: 'row' },
 
     // Aadhaar photo
     photoSectionLabel: { fontSize: 13, fontWeight: '700', color: '#334155', marginTop: 4 },
     photoLabel: { fontSize: 12, fontWeight: '600', color: '#64748B', marginBottom: 7 },
-    photoCaptureBtn: { backgroundColor: '#FFF9F9', borderWidth: 1.5, borderColor: '#FFD5D5', borderStyle: 'dashed', borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingVertical: 18, gap: 4 },
-    photoCaptureText: { fontSize: 12, color: '#FF6B6B', fontWeight: '600' },
+    photoCaptureBtn: { backgroundColor: COLORS.primaryLight, borderWidth: 1.5, borderColor: COLORS.border, borderStyle: 'dashed', borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingVertical: 18, gap: 4 },
+    photoCaptureText: { fontSize: 12, color: COLORS.primary, fontWeight: '600' },
     photoCaptureHint: { fontSize: 10, color: '#94A3B8' },
     photoPreviewWrap: { position: 'relative', borderRadius: 12, overflow: 'hidden' },
     photoPreview: { width: '100%', height: 110, borderRadius: 12 },
     photoRemoveBtn: { position: 'absolute', top: 6, right: 6, width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(239,68,68,0.9)', alignItems: 'center', justifyContent: 'center' },
     photoRetakeRow: { position: 'absolute', bottom: 6, right: 6, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFFCC', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3 },
 
-    // Allocation
-    allocationSummary: { flexDirection: 'row', backgroundColor: '#FFF9F9', borderRadius: 14, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: '#FFD5D5' },
+    allocationSummary: { flexDirection: 'row', backgroundColor: COLORS.primaryLight, borderRadius: 14, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: COLORS.border },
     allocationLabel: { fontSize: 11, color: '#94A3B8', fontWeight: '600', marginBottom: 3 },
     allocationValue: { fontSize: 16, fontWeight: '700', color: '#1E293B' },
     allocationMeta: { fontSize: 11, color: '#64748B', marginTop: 2 },
-    allocationDivider: { width: 1, backgroundColor: '#FFD5D5', marginHorizontal: 14 },
+    allocationDivider: { width: 1, backgroundColor: COLORS.border, marginHorizontal: 14 },
     allocationBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9FAFB', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 13, borderWidth: 1, borderColor: '#E2E8F0', gap: 6 },
-    allocationBtnActive: { backgroundColor: '#FFF9F9', borderColor: '#FF6B6B' },
+    allocationBtnActive: { backgroundColor: COLORS.primaryLight, borderColor: COLORS.primary },
     allocationBtnDisabled: { opacity: 0.45 },
     allocationBtnText: { flex: 1, fontSize: 14, fontWeight: '600', color: '#64748B' },
 
-    // Sheet / modal base
     sheet: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 8 },
     sheetHandle: { width: 40, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, alignSelf: 'center', marginBottom: 12 },
     sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
     sheetTitle: { fontSize: 17, fontWeight: '700', color: '#1A1A1A' },
-    doneBtn: { paddingVertical: 6, paddingHorizontal: 14, borderRadius: 8, backgroundColor: '#FFF1F1' },
-    doneBtnText: { color: '#FF6B6B', fontWeight: '700', fontSize: 14 },
+    doneBtn: { paddingVertical: 6, paddingHorizontal: 14, borderRadius: 8, backgroundColor: COLORS.primaryLight },
+    doneBtnText: { color: COLORS.primary, fontWeight: '700', fontSize: 14 },
     searchInput: { backgroundColor: '#F1F5F9', borderRadius: 10, padding: 12, fontSize: 15, color: '#1E293B' },
     searchBarWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10 },
 
-    // Options list
     optionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 15, paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
-    optionRowActive: { backgroundColor: '#FFF9F9' },
+    optionRowActive: { backgroundColor: COLORS.primaryLight },
     optionLabel: { fontSize: 15, color: '#334155', fontWeight: '500' },
-    optionLabelActive: { color: '#FF6B6B', fontWeight: '700' },
+    optionLabelActive: { color: COLORS.primary, fontWeight: '700' },
 
-    // Room picker
     floorChip: { backgroundColor: '#F1F5F9', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 4, alignSelf: 'flex-start', marginBottom: 10, marginTop: 8 },
     floorChipText: { fontSize: 11, fontWeight: '700', color: '#64748B' },
-    roomCard: { backgroundColor: '#FFF9F9', borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1.5, borderColor: '#FFD5D5', position: 'relative' },
-    roomCardSel: { borderColor: '#FF6B6B', backgroundColor: '#FFF1F1' },
+    roomCard: { backgroundColor: COLORS.primaryLight, borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1.5, borderColor: COLORS.border, position: 'relative' },
+    roomCardSel: { borderColor: COLORS.primary, backgroundColor: COLORS.primaryLight },
     roomNum: { fontSize: 18, fontWeight: '700', color: '#1E293B' },
     roomCap: { fontSize: 13, color: '#64748B', fontWeight: '600' },
     roomAvail: { fontSize: 13, fontWeight: '700', marginTop: 4 },
     roomRent: { fontSize: 13, color: '#475569', marginTop: 3 },
-    selectedBadge: { position: 'absolute', top: 10, right: 10, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF1F1', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, gap: 4 },
-    selectedBadgeText: { fontSize: 11, color: '#FF6B6B', fontWeight: '700' },
+    selectedBadge: { position: 'absolute', top: 10, right: 10, flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.primaryLight, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, gap: 4 },
+    selectedBadgeText: { fontSize: 11, color: COLORS.primary, fontWeight: '700' },
 
-    // Bed picker
-    bedCard: { backgroundColor: '#FFF9F9', borderRadius: 12, padding: 14, borderWidth: 1.5, borderColor: '#FFD5D5', width: '47%', alignItems: 'center', gap: 6 },
-    bedCardSel: { borderColor: '#FF6B6B', backgroundColor: '#FFF1F1' },
+    bedCard: { backgroundColor: COLORS.primaryLight, borderRadius: 12, padding: 14, borderWidth: 1.5, borderColor: COLORS.border, width: '47%', alignItems: 'center', gap: 6 },
+    bedCardSel: { borderColor: COLORS.primary, backgroundColor: COLORS.primaryLight },
     bedCardOcc: { backgroundColor: '#F8FAFC', borderColor: '#E2E8F0', opacity: 0.65 },
     bedName: { fontSize: 16, fontWeight: '700', color: '#1E293B' },
 
-    // Buttons
-    buttonRow: { flexDirection: 'row', gap: 12, marginTop: 8 },
-    resetButton: { flex: 1, height: 50, borderRadius: 12, borderWidth: 1.5, borderColor: '#CBD5E1', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF' },
-    resetButtonText: { color: '#475569', fontWeight: '600', fontSize: 15 },
-    submitButton: { flex: 2, borderRadius: 12, overflow: 'hidden' },
+    // Buttons & sticky footer
+    stickyFooter: {
+        flexDirection: 'row',
+        gap: 12,
+        paddingHorizontal: 16,
+        paddingTop: 12,
+        backgroundColor: '#FFF',
+        borderTopWidth: 1,
+        borderTopColor: '#F1F5F9',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 8,
+    },
+    cancelButton: { flex: 1, height: 50, borderRadius: 12, borderWidth: 1.5, borderColor: '#CBD5E1', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF' },
+    cancelButtonText: { color: '#475569', fontWeight: '600', fontSize: 15 },
+    submitButton: { flex: 2, height: 50, borderRadius: 12, overflow: 'hidden' },
     disabledButton: { opacity: 0.7 },
-    submitGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, gap: 6, minHeight: 50 },
+    submitGradient: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
     submitText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
 });
 

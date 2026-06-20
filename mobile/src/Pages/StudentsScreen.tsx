@@ -9,15 +9,14 @@ import {
     StatusBar,
     Image,
     Linking,
-    ActivityIndicator,
     LayoutAnimation,
     Platform,
     UIManager,
-    Alert,
     ScrollView,
+    RefreshControl,
+    ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import Toast from 'react-native-toast-message';
 import { Search, Users, Plus, Phone, MessageCircle, X, Calendar } from 'lucide-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePickerModal from "react-native-modal-datetime-picker";
@@ -27,6 +26,12 @@ import api from '../services/api';
 import { ProfileMenu } from '../components/ProfileMenu';
 import { HeaderNotification } from '../components/HeaderNotification';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useToast } from '../context/ToastContext';
+import { EmptyState } from '../components/ui/EmptyState';
+import { LoadMoreFooter } from '../components/ui/LoadMoreFooter';
+import { SkeletonList } from '../components/ui/SkeletonCard';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { COLORS } from '../theme/index';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -112,7 +117,9 @@ const StudentCard = React.memo(({ student, onPress, onWhatsApp, onCall, onToggle
                         style={[
                             styles.statusToggleBtn, 
                             { 
-                                backgroundColor: isPreBooked ? '#FFEFE6' : isActive ? '#FEE2E2' : '#DCFCE7' 
+                                backgroundColor: isPreBooked ? '#FFF8F4' : isActive ? '#FEF2F2' : '#F0FDF4',
+                                borderColor: isPreBooked ? '#FFE4D6' : isActive ? '#FCA5A5' : '#86EFAC',
+                                borderWidth: 1
                             }
                         ]}
                     >
@@ -189,6 +196,7 @@ const footerStyles = StyleSheet.create({
 export default function StudentsScreen({ navigation, route }: any) {
     const { user } = useAuth();
     const { theme } = useTheme();
+    const { showApiError, showSuccess } = useToast();
 
     const [allStudents, setAllStudents] = useState<any[]>([]);
     const [page, setPage] = useState(1);
@@ -201,6 +209,15 @@ export default function StudentsScreen({ navigation, route }: any) {
     const [counts, setCounts] = useState({ active: 0, inactive: 0, prebooked: 0, total: 0 });
     const [dateFilter, setDateFilter] = useState<Date | null>(null);
     const [showDatePicker, setShowDatePicker] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
+    // Confirm dialog state
+    const [confirmDialog, setConfirmDialog] = useState<{
+        visible: boolean;
+        student: any | null;
+        targetStatus: number;
+        title: string;
+        message: string;
+    }>({ visible: false, student: null, targetStatus: 1, title: '', message: '' });
 
     // Update activeTab if passed via params
     useEffect(() => {
@@ -259,8 +276,7 @@ export default function StudentsScreen({ navigation, route }: any) {
             }
         } catch (error: any) {
             if (error?.name === 'AbortError' || error?.code === 'ERR_CANCELED') return;
-            console.error('Error fetching students:', error);
-            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to fetch students' });
+            showApiError(error, 'Failed to fetch students');
         } finally {
             if (!controller.signal.aborted) {
                 setInitialLoading(false);
@@ -344,52 +360,26 @@ export default function StudentsScreen({ navigation, route }: any) {
     const handleToggleStatus = useCallback((student: any) => {
         const isCurrentlyActive = student.status === 1;
         const isPreBooked = student.status === 2;
-        
+
         let title = '';
         let msg = '';
         let targetStatus = 1;
-        
+
         if (isPreBooked) {
             title = 'Confirm Check-In?';
-            msg = `Do you want to confirm check-in for pre-booked tenant ${student.first_name}? This will activate their residency and set up their current month fee.`;
+            msg = `Confirm check-in for pre-booked tenant ${student.first_name}? This will activate their residency.`;
             targetStatus = 1;
         } else if (isCurrentlyActive) {
             title = 'Mark as Inactive?';
-            msg = `Are you sure you want to mark ${student.first_name} as inactive?`;
+            msg = `Mark ${student.first_name} as inactive? They will lose access to the room.`;
             targetStatus = 0;
         } else {
             title = 'Mark as Active?';
-            msg = `Are you sure you want to mark ${student.first_name} as active?`;
+            msg = `Mark ${student.first_name} as active again?`;
             targetStatus = 1;
         }
 
-        Alert.alert(
-            title,
-            msg,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Yes',
-                    onPress: async () => {
-                        try {
-                            const res = await api.put(`/students/${student.student_id}`, {
-                                status: targetStatus
-                            });
-                            if (res.data.success) {
-                                // Update local state for immediate feedback
-                                setAllStudents(prev => prev.map(s =>
-                                    s.student_id === student.student_id ? { ...s, status: targetStatus } : s
-                                ));
-                                fetchCounts(); // Update tab counts
-                                Toast.show({ type: 'success', text1: 'Status Updated' });
-                            }
-                        } catch (e: any) {
-                            Alert.alert('Error', e.response?.data?.error || 'Failed to update status');
-                        }
-                    }
-                }
-            ]
-        );
+        setConfirmDialog({ visible: true, student, targetStatus, title, message: msg });
     }, []);
 
     const handleCall = useCallback((phone: string) => {
@@ -439,19 +429,19 @@ export default function StudentsScreen({ navigation, route }: any) {
                 </View>
 
                 <View style={styles.searchBox}>
-                    <Search color="#94A3B8" size={18} />
+                    <Search color="rgba(255,255,255,0.7)" size={18} />
                     <TextInput
                         style={styles.input}
                         placeholder="Search name or room..."
                         value={search}
                         onChangeText={setSearch}
-                        placeholderTextColor="#94A3B8"
+                        placeholderTextColor="rgba(255,255,255,0.5)"
                         autoCorrect={false}
                         autoCapitalize="none"
                     />
                     {search.length > 0 && (
                         <TouchableOpacity onPress={() => setSearch('')}>
-                            <X size={18} color="#94A3B8" />
+                            <X size={18} color="rgba(255,255,255,0.7)" />
                         </TouchableOpacity>
                     )}
                     <View style={{ width: 1, height: 20, backgroundColor: 'rgba(255,255,255,0.2)', marginHorizontal: 8 }} />
@@ -460,7 +450,7 @@ export default function StudentsScreen({ navigation, route }: any) {
                     </TouchableOpacity>
                     {dateFilter && (
                         <TouchableOpacity onPress={() => setDateFilter(null)} style={{ marginLeft: 6 }}>
-                            <X size={18} color="#EF4444" />
+                            <X size={18} color="#FFF" />
                         </TouchableOpacity>
                     )}
                 </View>
@@ -501,7 +491,7 @@ export default function StudentsScreen({ navigation, route }: any) {
                         >
                             <Text style={[
                                 styles.pillLabel,
-                                activeTab === tab.key ? { color: theme.primary } : { color: '#FFF' }
+                                activeTab === tab.key ? { color: COLORS.primary } : { color: '#FFF' }
                             ]}>
                                 {tab.label} ({tab.count})
                             </Text>
@@ -512,25 +502,50 @@ export default function StudentsScreen({ navigation, route }: any) {
 
             <View style={styles.body}>
                 {initialLoading ? (
-                    <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 50 }} />
+                    <SkeletonList count={6} />
                 ) : (
                     <FlatList
                         data={allStudents}
                         keyExtractor={keyExtractor}
                         renderItem={renderItem}
-                        contentContainerStyle={styles.listPadding}
+                        contentContainerStyle={[
+                            styles.listPadding,
+                            allStudents.length === 0 && { flex: 1 },
+                        ]}
                         showsVerticalScrollIndicator={false}
-
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={refreshing}
+                                onRefresh={() => {
+                                    setRefreshing(true);
+                                    fetchPage(1, true).finally(() => setRefreshing(false));
+                                }}
+                                tintColor={COLORS.primary}
+                            />
+                        }
+                        ListEmptyComponent={
+                            <EmptyState
+                                variant={debouncedSearch ? 'noResults' : 'noStudents'}
+                                title={debouncedSearch ? 'No Results' : 'No Students Yet'}
+                                subtitle={
+                                    debouncedSearch
+                                        ? `No students match "${debouncedSearch}"`
+                                        : 'Tap the + button to add your first tenant'
+                                }
+                                actionLabel={debouncedSearch ? undefined : 'Add Student'}
+                                onAction={debouncedSearch ? undefined : () => navigation.navigate('AddStudent')}
+                            />
+                        }
                         onEndReached={handleEndReached}
-                        onEndReachedThreshold={0.4}
+                        onEndReachedThreshold={0.2}
                         ListFooterComponent={
-                            <ListFooter
+                            <LoadMoreFooter
                                 loading={loadingMore}
                                 hasMore={hasMore}
                                 total={allStudents.length}
+                                noun="students"
                             />
                         }
-
                         windowSize={7}
                         initialNumToRender={10}
                         maxToRenderPerBatch={10}
@@ -545,12 +560,40 @@ export default function StudentsScreen({ navigation, route }: any) {
                 )}
             </View>
 
+            {/* FAB */}
             <TouchableOpacity
-                style={[styles.fab, { backgroundColor: theme.primary }]}
+                style={[styles.fab, { backgroundColor: COLORS.primary }]}
                 onPress={() => navigation.navigate('AddStudent')}
             >
-                <Plus color="#FFF" size={30} />
+                <Plus color="#FFF" size={28} />
             </TouchableOpacity>
+
+            {/* Confirm Dialog for status toggle */}
+            <ConfirmDialog
+                visible={confirmDialog.visible}
+                title={confirmDialog.title}
+                message={confirmDialog.message}
+                confirmLabel="Yes, proceed"
+                onConfirm={async () => {
+                    const { student, targetStatus } = confirmDialog;
+                    setConfirmDialog(p => ({ ...p, visible: false }));
+                    if (!student) return;
+                    try {
+                        const res = await api.put(`/students/${student.student_id}`, { status: targetStatus });
+                        if (res.data.success) {
+                            setAllStudents(prev => prev.map(s =>
+                                s.student_id === student.student_id ? { ...s, status: targetStatus } : s
+                            ));
+                            fetchCounts();
+                            showSuccess('Student status updated.');
+                        }
+                    } catch (e) {
+                        showApiError(e, 'Failed to update status');
+                    }
+                }}
+                onCancel={() => setConfirmDialog(p => ({ ...p, visible: false }))}
+                destructive={confirmDialog.targetStatus === 0}
+            />
         </View>
     );
 };
@@ -643,10 +686,10 @@ const styles = StyleSheet.create({
     infoContainer: { flex: 1, marginLeft: 15 },
     nameText: { fontSize: 16, fontWeight: '700', color: '#1E293B' },
     roomBadge: {
-        alignSelf: 'flex-start', backgroundColor: '#F1F5F9',
+        alignSelf: 'flex-start', backgroundColor: '#EDE9FF',
         paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, marginTop: 4
     },
-    roomText: { fontSize: 10, fontWeight: '800', color: '#64748B' },
+    roomText: { fontSize: 10, fontWeight: '800', color: '#5F2EEA' },
     actionColumn: { flexDirection: 'row', gap: 10 },
     iconCircle: {
         width: 38, height: 38, borderRadius: 12,

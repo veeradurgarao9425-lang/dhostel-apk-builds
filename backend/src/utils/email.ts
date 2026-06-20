@@ -85,7 +85,7 @@ export const sendPasswordResetEmail = async (
         </p>
 
         <p style="color: #999; font-size: 12px;">
-          Hostel Management System
+          Stivo System
         </p>
       </div>
     </div>
@@ -93,7 +93,7 @@ export const sendPasswordResetEmail = async (
 
   await sendEmail({
     to: email,
-    subject: 'Password Reset Request - Hostel Management',
+    subject: 'Password Reset Request - Stivo',
     html,
   });
 };

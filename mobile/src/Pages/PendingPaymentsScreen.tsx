@@ -13,6 +13,7 @@ import { HeaderNotification } from '../components/HeaderNotification';
 import { ProfileMenu } from '../components/ProfileMenu';
 import { PaymentDrawer } from '../components/PaymentDrawer';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useToast } from '../context/ToastContext';
 import { toLocalDateStr } from '../utils/dateUtils';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -50,17 +51,19 @@ const RemindModal = ({ visible, tenant, onClose }: {
     tenant: DueTenant | null;
     onClose: () => void;
 }) => {
+    const { showError } = useToast();
+
     if (!tenant) return null;
 
     const callTenant = () => {
         onClose();
-        if (!tenant.phone) { Toast.show({ type: 'error', text1: 'No phone number available' }); return; }
+        if (!tenant.phone) { showError('No phone number available'); return; }
         Linking.openURL(`tel:${tenant.phone}`);
     };
 
     const whatsappRemind = () => {
         onClose();
-        if (!tenant.phone) { Toast.show({ type: 'error', text1: 'No phone number available' }); return; }
+        if (!tenant.phone) { showError('No phone number available'); return; }
         const msg = `Hi ${tenant.name.split(' ')[0]}, this is a friendly reminder that your rent of ₹${tenant.dueAmount.toLocaleString('en-IN')} is pending for ${tenant.feeMonth}. Please clear it at the earliest. Thank you! 🏠`;
         Linking.openURL(`whatsapp://send?phone=91${tenant.phone}&text=${encodeURIComponent(msg)}`);
     };
@@ -196,6 +199,7 @@ const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect }: {
 export default function PendingPaymentsScreen() {
     const navigation = useNavigation<any>();
     const { theme } = useTheme();
+    const { showSuccess, showError } = useToast();
 
     const [tenants, setTenants]     = useState<DueTenant[]>([]);
     const [loading, setLoading]     = useState(true);
@@ -364,14 +368,10 @@ export default function PendingPaymentsScreen() {
 
             if (res.data.success) {
                 setCollectModalVisible(false);
-                Toast.show({
-                    type: 'success',
-                    text1: '✓ Payment Collected!',
-                    text2: `₹${payAmount} recorded for ${selectedFee.name}`,
-                });
+                showSuccess(`₹${payAmount} recorded for ${selectedFee.name}`, 'Payment Collected!');
                 setTimeout(() => load(1, true), 500);
             } else {
-                Alert.alert('Error', res.data.error || 'Payment was not saved.');
+                showError(res.data.error || 'Payment was not saved.');
             }
         } catch (e: any) {
             const errData = e.response?.data;
@@ -408,12 +408,8 @@ export default function PendingPaymentsScreen() {
 
                 {/* Skeleton for Floating Dashboard */}
                 <View style={s.summaryContainer}>
-                    <View style={[s.summaryCard, s.primaryCard, { height: 90, opacity: 0.6, backgroundColor: '#FFF', justifyContent: 'center' }]}>
+                    <View style={[s.totalCollectedCard, { height: 110, opacity: 0.6, backgroundColor: '#FFF', justifyContent: 'center' }]}>
                         <ActivityIndicator size="small" color={theme.primary} />
-                    </View>
-                    <View style={s.row}>
-                        <View style={[s.summaryCard, s.secondaryCard, { height: 80, opacity: 0.6, backgroundColor: '#FFF' }]} />
-                        <View style={[s.summaryCard, s.secondaryCard, { height: 80, opacity: 0.6, backgroundColor: '#FFF' }]} />
                     </View>
                 </View>
 
@@ -448,51 +444,25 @@ export default function PendingPaymentsScreen() {
             {/* ── Premium Floating Dashboard ── */}
             <View style={s.summaryContainer}>
                 {/* Primary full-width card: Total Outstanding */}
-                <View style={[s.summaryCard, s.primaryCard]}>
-                    <View style={s.cardHeader}>
-                        <View style={[s.iconBg, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
-                            <Ionicons name="wallet" size={20} color="#DC2626" />
+                <View style={s.totalCollectedCard}>
+                    <View style={s.totalCollectedRow}>
+                        <View style={s.totalCollectedIconBg}>
+                            <Ionicons name="wallet-outline" size={22} color="#F97316" />
                         </View>
-                        <Text style={s.cardLabel}>TOTAL OUTSTANDING</Text>
+                        <View style={s.totalCollectedTextContainer}>
+                            <Text style={s.totalCollectedLabel}>Total Outstanding</Text>
+                            <Text style={[s.totalCollectedValue, { color: '#EA580C' }]}>₹{totalPending.toLocaleString('en-IN')}</Text>
+                            <Text style={s.totalCollectedSub}>From {totalDefaulters} defaulters</Text>
+                        </View>
+                        <TouchableOpacity onPress={() => load(1, false)} style={s.refreshBtn} activeOpacity={0.7}>
+                            <Ionicons name="refresh" size={18} color="#F97316" />
+                        </TouchableOpacity>
                     </View>
-                    <View style={s.cardMain}>
-                        <Text style={[s.cardValue, { color: '#DC2626' }]}>
-                            ₹{totalPending.toLocaleString('en-IN')}
-                        </Text>
-                        <View style={s.badge}>
-                            <Text style={s.badgeText}>Unpaid Dues</Text>
-                        </View>
-                    </View>
-                </View>
-
-                {/* Secondary side-by-side cards */}
-                <View style={s.row}>
-                    {/* Defaulters Card */}
-                    <View style={[s.summaryCard, s.secondaryCard]}>
-                        <View style={s.cardHeader}>
-                            <View style={[s.iconBg, { backgroundColor: 'rgba(217, 119, 6, 0.1)' }]}>
-                                <Ionicons name="people" size={16} color="#D97706" />
-                            </View>
-                            <Text style={s.secondaryCardLabel}>DEFAULTERS</Text>
-                        </View>
-                        <Text style={[s.secondaryCardValue, { color: '#D97706' }]}>
-                            {totalDefaulters}
-                        </Text>
-                        <Text style={s.cardSubLabel}>Tenants pending</Text>
-                    </View>
-
-                    {/* Partially Paid Card */}
-                    <View style={[s.summaryCard, s.secondaryCard]}>
-                        <View style={s.cardHeader}>
-                            <View style={[s.iconBg, { backgroundColor: 'rgba(13, 148, 136, 0.1)' }]}>
-                                <Ionicons name="cash" size={16} color="#0D9488" />
-                            </View>
-                            <Text style={s.secondaryCardLabel}>PARTIAL PAID</Text>
-                        </View>
-                        <Text style={[s.secondaryCardValue, { color: '#0D9488' }]}>
-                            ₹{partialPaid.toLocaleString('en-IN')}
-                        </Text>
-                        <Text style={s.cardSubLabel}>Collected partial</Text>
+                    <View style={s.totalCollectedFooter}>
+                         <View style={s.footerStat}>
+                             <Text style={s.footerStatLabel}>Partial Paid</Text>
+                             <Text style={s.footerStatValue}>₹{partialPaid.toLocaleString('en-IN')}</Text>
+                         </View>
                     </View>
                 </View>
             </View>
@@ -734,82 +704,82 @@ const s = StyleSheet.create({
         gap: 12,
         marginBottom: 12,
     },
-    summaryCard: {
-        backgroundColor: '#FFF',
+    totalCollectedCard: {
+        backgroundColor: '#FFF8F4',
         borderRadius: 20,
-        padding: 16,
-        elevation: 3,
-        shadowColor: '#7C3AED',
-        shadowOpacity: 0.08,
-        shadowRadius: 10,
-        shadowOffset: { width: 0, height: 4 },
-        borderWidth: 1.2,
-        borderColor: '#EDE9FE',
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#FFE4D6',
     },
-    primaryCard: {
-        width: '100%',
+    totalCollectedRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
-    secondaryCard: {
+    totalCollectedIconBg: {
+        width: 44, height: 44,
+        borderRadius: 12,
+        backgroundColor: '#FFFFFF',
+        alignItems: 'center', justifyContent: 'center',
+        marginRight: 12,
+        elevation: 1,
+        shadowColor: '#000',
+        shadowOpacity: 0.03,
+        shadowRadius: 2,
+    },
+    totalCollectedTextContainer: {
         flex: 1,
     },
-    row: {
-        flexDirection: 'row',
-        gap: 12,
-    },
-    cardHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        marginBottom: 6,
-    },
-    iconBg: {
-        width: 32,
-        height: 32,
-        borderRadius: 10,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    cardLabel: {
-        fontSize: 10,
-        color: '#64748B',
-        fontWeight: '800',
-        letterSpacing: 0.8,
-    },
-    secondaryCardLabel: {
+    totalCollectedLabel: {
         fontSize: 9,
-        color: '#64748B',
+        color: '#EA580C',
         fontWeight: '800',
-        letterSpacing: 0.5,
+        textTransform: 'uppercase',
     },
-    cardMain: {
+    totalCollectedValue: {
+        fontSize: 22,
+        fontWeight: '900',
+        color: '#EA580C',
+        marginTop: 2,
+    },
+    totalCollectedSub: {
+        fontSize: 11,
+        color: '#EA580C',
+        fontWeight: '600',
+        marginTop: 1,
+    },
+    refreshBtn: {
+        width: 36, height: 36,
+        borderRadius: 18,
+        backgroundColor: '#FFFFFF',
+        alignItems: 'center', justifyContent: 'center',
+        elevation: 1,
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+    },
+    totalCollectedFooter: {
+        marginTop: 12,
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#FFE4D6',
         flexDirection: 'row',
-        alignItems: 'baseline',
         justifyContent: 'space-between',
     },
-    cardValue: {
-        fontSize: 24,
-        fontWeight: '900',
+    footerStat: {
+        flex: 1,
     },
-    secondaryCardValue: {
-        fontSize: 18,
-        fontWeight: '900',
-        marginBottom: 2,
-    },
-    cardSubLabel: {
+    footerStatLabel: {
         fontSize: 10,
         color: '#94A3B8',
         fontWeight: '600',
     },
-    badge: {
-        backgroundColor: '#FEE2E2',
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: 8,
-    },
-    badgeText: {
-        fontSize: 10,
-        color: '#EF4444',
+    footerStatValue: {
+        fontSize: 14,
+        color: '#1E293B',
         fontWeight: '800',
+        marginTop: 2,
     },
 
     listContent: { paddingTop: 16, paddingBottom: 160 },

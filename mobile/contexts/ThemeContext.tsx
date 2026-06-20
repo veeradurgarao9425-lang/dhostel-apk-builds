@@ -46,10 +46,10 @@ export const themes = {
         ...commonLayout,
         id: 'purple',
         name: 'Royal Purple',
-        primary: '#8B5CF6',
-        gradientStart: '#A78BFA',
-        gradientEnd: '#8B5CF6',
-        lightBg: '#F5F3FF',
+        primary: '#5F2EEA',
+        gradientStart: '#7B4FEA',
+        gradientEnd: '#5F2EEA',
+        lightBg: '#EDE9FF',
     },
     orange: {
         ...commonLayout,
@@ -79,7 +79,7 @@ const ThemeContext = createContext({
 });
 
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
-    const [themeId, setThemeId] = useState<ThemeId>('coral');
+    const [themeId, setThemeId] = useState<ThemeId>('purple');
     const [isDark, setIsDark] = useState(false);
     const [fontSize, setFontSize] = useState(14); // Default font size
 
