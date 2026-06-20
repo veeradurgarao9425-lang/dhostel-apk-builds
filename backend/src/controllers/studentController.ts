@@ -697,8 +697,8 @@ export const deleteStudent = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Only allow deletion of inactive students
-    if (student.status !== 0 && student.status !== 'Inactive') {
+    // Only allow deletion of inactive or QR signup students
+    if (student.status !== 0 && student.status !== 3 && student.status !== 'Inactive') {
       return res.status(400).json({
         success: false,
         error: 'Only inactive students can be deleted. Please mark the student as inactive first.'

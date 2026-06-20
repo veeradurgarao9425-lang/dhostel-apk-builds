@@ -218,7 +218,7 @@ app.post('/api/public/qr-signup', async (req, res) => {
       admission_date:   now,
       admission_fee:    0,
       admission_status: 0,
-      status:           0, // Inactive — owner must activate
+      status:           3, // QR Signup — owner must activate
       room_id:          roomId ? parseInt(roomId, 10) : null,
       floor_number:     null,
       monthly_rent:     null,

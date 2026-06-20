@@ -31,8 +31,7 @@ import AddIncomeScreen       from '../Pages/AddIncomeScreen';
 import PlaceholderScreen     from '../Pages/PlaceholderScreen';
 import MaintenanceScreen     from '../Pages/MaintenanceScreen';
 import AddMaintenanceScreen  from '../Pages/AddMaintenanceScreen';
-import DeleteRoomsScreen     from '../Pages/DeleteRoomsScreen';
-import DeleteExpensesScreen  from '../Pages/DeleteExpensesScreen';
+import BulkDeleteScreen      from '../Pages/BulkDeleteScreen';
 import QRSignupScreen        from '../Pages/QRSignupScreen';
 import PreBookingScreen      from '../Pages/PreBookingScreen';
 import NoticesScreen         from '../Pages/NoticesScreen';
@@ -117,7 +116,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     component={AddRoomScreen}
                     options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
                 />
-                <Stack.Screen name="DeleteRooms"    component={DeleteRoomsScreen}   />
+                <Stack.Screen name="BulkDelete"     component={BulkDeleteScreen}    />
                 <Stack.Screen name="Rooms"          component={RoomsScreen}         />
 
                 {/* Staff */}
@@ -159,7 +158,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
                 />
                 <Stack.Screen name="ExpenseDetails"  component={ExpenseDetailsScreen} />
-                <Stack.Screen name="DeleteExpenses"  component={DeleteExpensesScreen} />
+                {/* Consolidated into BulkDelete screen */}
 
                 {/* Account & Settings */}
                 <Stack.Screen name="Profile"  component={ProfileScreen}  />

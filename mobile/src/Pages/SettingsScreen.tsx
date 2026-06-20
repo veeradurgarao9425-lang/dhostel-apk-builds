@@ -1,24 +1,32 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { AppHeader } from '../components/AppHeader';
-import { Card } from '../components/Card'; // Assuming this exists
-import { Bell, Shield, Moon, Globe, ChevronRight, Type, User, Mail, Building } from 'lucide-react-native';
-import { useTheme } from '../../contexts/ThemeContext';
+import { Card } from '../components/Card';
+import { Bell, Shield, Moon, Globe, ChevronRight, Type, User, Mail, Building, Lock, Palette } from 'lucide-react-native';
+import { useTheme, themes, ThemeId } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
+import api from '../services/api';
 
 export const SettingsScreen = ({ navigation }: any) => {
-    const { theme, isDark, toggleTheme, fontSize, setFontSize } = useTheme();
+    const { theme, themeId, setThemeId, isDark, toggleTheme, fontSize, setFontSize } = useTheme();
     const { user } = useAuth();
     const { i18n } = useTranslation();
 
-    // Local state for toggles (mocking functionality for some)
+    // Local state for toggles
     const [notifications, setNotifications] = useState(true);
 
     // Profile Details state
     const [name, setName] = useState(user?.full_name || '');
     const [email, setEmail] = useState(user?.email || '');
     const [hostelName, setHostelName] = useState(user?.hostel_name || '');
+    const [profileSaving, setProfileSaving] = useState(false);
+
+    // Change Password state
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [passwordLoading, setPasswordLoading] = useState(false);
 
     const SettingRow = ({ icon, label, value, type = 'chevron', onPress, rightElement }: any) => (
         <TouchableOpacity
@@ -27,15 +35,15 @@ export const SettingsScreen = ({ navigation }: any) => {
             disabled={type === 'switch' && !onPress}
             activeOpacity={0.7}
         >
-            <View style={[styles.iconContainer, { backgroundColor: theme.lightBg }]}>
+            <View style={[styles.iconContainer, { backgroundColor: isDark ? '#334155' : theme.lightBg }]}>
                 {icon}
             </View>
-            <Text style={[styles.label, { fontSize: fontSize }]}>{label}</Text>
+            <Text style={[styles.label, { fontSize: fontSize, color: theme.textPrimary }]}>{label}</Text>
 
             {type === 'chevron' && (
                 <View style={styles.rightSide}>
-                    {value && <Text style={[styles.value, { fontSize: fontSize - 1 }]}>{value}</Text>}
-                    <ChevronRight size={20} color="#CBD5E1" />
+                    {value && <Text style={[styles.value, { fontSize: fontSize - 1, color: theme.textSecondary }]}>{value}</Text>}
+                    <ChevronRight size={20} color={isDark ? '#475569' : '#CBD5E1'} />
                 </View>
             )}
 
@@ -52,104 +60,247 @@ export const SettingsScreen = ({ navigation }: any) => {
         </TouchableOpacity>
     );
 
-    const handleSaveProfile = () => {
-        // Here you would call an API update
-        Alert.alert('Success', 'Profile details updated locally (API integration pending).');
+    const handleSaveProfile = async () => {
+        try {
+            setProfileSaving(true);
+            const response = await api.put('/users/profile', {
+                full_name: name,
+            });
+            if (response.data.success) {
+                Alert.alert('Success', 'Profile details updated successfully!');
+            } else {
+                Alert.alert('Error', response.data.error || 'Failed to update profile');
+            }
+        } catch (error: any) {
+            console.error('Update profile error:', error);
+            Alert.alert('Error', error.response?.data?.error || 'Failed to update profile');
+        } finally {
+            setProfileSaving(false);
+        }
+    };
+
+    const handleChangePassword = async () => {
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            Alert.alert('Error', 'All password fields are required.');
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            Alert.alert('Error', 'New password and confirmation do not match.');
+            return;
+        }
+        if (newPassword.length < 6) {
+            Alert.alert('Error', 'Password must be at least 6 characters long.');
+            return;
+        }
+        try {
+            setPasswordLoading(true);
+            const response = await api.post('/auth/change-password', {
+                currentPassword,
+                newPassword,
+            });
+            if (response.data.success) {
+                Alert.alert('Success', 'Password changed successfully!');
+                setCurrentPassword('');
+                setNewPassword('');
+                setConfirmPassword('');
+            } else {
+                Alert.alert('Error', response.data.error || 'Failed to change password');
+            }
+        } catch (error: any) {
+            console.error('Change password error:', error);
+            Alert.alert('Error', error.response?.data?.error || 'Failed to change password');
+        } finally {
+            setPasswordLoading(false);
+        }
     };
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: theme.background }]}>
             <AppHeader title="Settings" />
             <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
 
                 {/* ── PROFILE DETAILS SECTION ── */}
-                <Text style={styles.sectionTitle}>Profile Details</Text>
-                <Card style={styles.card}>
+                <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>Profile Details</Text>
+                <Card style={[styles.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
                     <View style={styles.inputRow}>
-                        <View style={styles.inputIcon}><User size={18} color="#64748B" /></View>
+                        <View style={styles.inputIcon}>
+                            <User size={18} color={isDark ? '#94A3B8' : '#64748B'} />
+                        </View>
                         <TextInput
-                            style={[styles.input, { fontSize }]}
+                            style={[styles.input, { fontSize, color: theme.textPrimary }]}
                             value={name}
                             onChangeText={setName}
                             placeholder="Full Name"
+                            placeholderTextColor={isDark ? '#64748B' : '#A0AEC0'}
                         />
                     </View>
-                    <View style={styles.divider} />
+                    <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
                     <View style={styles.inputRow}>
-                        <View style={styles.inputIcon}><Mail size={18} color="#64748B" /></View>
+                        <View style={styles.inputIcon}>
+                            <Mail size={18} color={isDark ? '#94A3B8' : '#64748B'} />
+                        </View>
                         <TextInput
-                            style={[styles.input, { fontSize }]}
+                            style={[styles.input, { fontSize, color: isDark ? '#64748B' : '#94A3B8' }]}
                             value={email}
                             onChangeText={setEmail}
                             placeholder="Email Address"
-                            editable={false} // usually email is not editable easily
-                        />
-                    </View>
-                    <View style={styles.divider} />
-                    <View style={styles.inputRow}>
-                        <View style={styles.inputIcon}><Building size={18} color="#64748B" /></View>
-                        <TextInput
-                            style={[styles.input, { fontSize }]}
-                            value={hostelName}
-                            onChangeText={setHostelName}
-                            placeholder="Hostel Name"
+                            placeholderTextColor={isDark ? '#64748B' : '#A0AEC0'}
                             editable={false}
                         />
                     </View>
-                    <TouchableOpacity style={[styles.saveBtn, { backgroundColor: theme.primary }]} onPress={handleSaveProfile}>
-                        <Text style={styles.saveBtnText}>Save Changes</Text>
+                    <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
+                    <View style={styles.inputRow}>
+                        <View style={styles.inputIcon}>
+                            <Building size={18} color={isDark ? '#94A3B8' : '#64748B'} />
+                        </View>
+                        <TextInput
+                            style={[styles.input, { fontSize, color: isDark ? '#64748B' : '#94A3B8' }]}
+                            value={hostelName}
+                            onChangeText={setHostelName}
+                            placeholder="Hostel Name"
+                            placeholderTextColor={isDark ? '#64748B' : '#A0AEC0'}
+                            editable={false}
+                        />
+                    </View>
+                    <TouchableOpacity
+                        style={[styles.saveBtn, { backgroundColor: theme.primary }]}
+                        onPress={handleSaveProfile}
+                        disabled={profileSaving}
+                    >
+                        {profileSaving ? (
+                            <ActivityIndicator size="small" color="#FFF" />
+                        ) : (
+                            <Text style={styles.saveBtnText}>Save Changes</Text>
+                        )}
+                    </TouchableOpacity>
+                </Card>
+
+                {/* ── SECURITY / PASSWORD SECTION ── */}
+                <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>Security</Text>
+                <Card style={[styles.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
+                    <View style={styles.inputRow}>
+                        <View style={styles.inputIcon}>
+                            <Lock size={18} color={isDark ? '#94A3B8' : '#64748B'} />
+                        </View>
+                        <TextInput
+                            style={[styles.input, { fontSize, color: theme.textPrimary }]}
+                            value={currentPassword}
+                            onChangeText={setCurrentPassword}
+                            placeholder="Current Password"
+                            secureTextEntry
+                            placeholderTextColor={isDark ? '#64748B' : '#A0AEC0'}
+                        />
+                    </View>
+                    <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
+                    <View style={styles.inputRow}>
+                        <View style={styles.inputIcon}>
+                            <Lock size={18} color={isDark ? '#94A3B8' : '#64748B'} />
+                        </View>
+                        <TextInput
+                            style={[styles.input, { fontSize, color: theme.textPrimary }]}
+                            value={newPassword}
+                            onChangeText={setNewPassword}
+                            placeholder="New Password"
+                            secureTextEntry
+                            placeholderTextColor={isDark ? '#64748B' : '#A0AEC0'}
+                        />
+                    </View>
+                    <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
+                    <View style={styles.inputRow}>
+                        <View style={styles.inputIcon}>
+                            <Lock size={18} color={isDark ? '#94A3B8' : '#64748B'} />
+                        </View>
+                        <TextInput
+                            style={[styles.input, { fontSize, color: theme.textPrimary }]}
+                            value={confirmPassword}
+                            onChangeText={setConfirmPassword}
+                            placeholder="Confirm New Password"
+                            secureTextEntry
+                            placeholderTextColor={isDark ? '#64748B' : '#A0AEC0'}
+                        />
+                    </View>
+                    <TouchableOpacity
+                        style={[styles.saveBtn, { backgroundColor: theme.primary }]}
+                        onPress={handleChangePassword}
+                        disabled={passwordLoading}
+                    >
+                        {passwordLoading ? (
+                            <ActivityIndicator size="small" color="#FFF" />
+                        ) : (
+                            <Text style={styles.saveBtnText}>Update Password</Text>
+                        )}
                     </TouchableOpacity>
                 </Card>
 
                 {/* ── APPEARANCE SECTION ── */}
-                <Text style={styles.sectionTitle}>Appearance</Text>
-                <Card style={styles.card}>
+                <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>Appearance</Text>
+                <Card style={[styles.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
+                    <SettingRow
+                        icon={<Palette size={20} color={theme.primary} />}
+                        label="Theme Color"
+                        type="custom"
+                        rightElement={
+                            <View style={styles.themeGrid}>
+                                {Object.values(themes).map((tItem: any) => (
+                                    <TouchableOpacity
+                                        key={tItem.id}
+                                        style={[
+                                            styles.themeCircle,
+                                            { backgroundColor: tItem.primary },
+                                            themeId === tItem.id && { borderWidth: 2, borderColor: isDark ? '#FFF' : '#1E293B' }
+                                        ]}
+                                        onPress={() => setThemeId(tItem.id)}
+                                        activeOpacity={0.7}
+                                    />
+                                ))}
+                            </View>
+                        }
+                    />
+                    <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
                     <SettingRow
                         icon={<Type size={20} color={theme.primary} />}
                         label="Font Size"
                         type="custom"
                         rightElement={
-                            <View style={styles.fontControls}>
+                            <View style={[styles.fontControls, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
                                 <TouchableOpacity
                                     style={styles.fontBtn}
                                     onPress={() => setFontSize(Math.max(10, fontSize - 1))}
                                 >
-                                    <Text style={styles.fontBtnText}>A-</Text>
+                                    <Text style={[styles.fontBtnText, { color: theme.textSecondary }]}>A-</Text>
                                 </TouchableOpacity>
-                                <Text style={styles.fontValue}>{fontSize}</Text>
+                                <Text style={[styles.fontValue, { color: theme.textPrimary }]}>{fontSize}</Text>
                                 <TouchableOpacity
                                     style={styles.fontBtn}
                                     onPress={() => setFontSize(Math.min(24, fontSize + 1))}
                                 >
-                                    <Text style={styles.fontBtnText}>A+</Text>
+                                    <Text style={[styles.fontBtnText, { color: theme.textSecondary }]}>A+</Text>
                                 </TouchableOpacity>
                             </View>
                         }
                     />
-                    <View style={styles.divider} />
+                    <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
                     <SettingRow
                         icon={<Moon size={20} color={theme.primary} />}
                         label="Dark Mode"
-                        // Note: We are not fully implementing dark mode logic across the app yet, but the toggle is here
                         type="switch"
                         value={isDark}
                         onPress={toggleTheme}
                     />
-                    <View style={styles.divider} />
+                    <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
                     <SettingRow
                         icon={<Globe size={20} color={theme.primary} />}
                         label="Language"
                         value={i18n.language?.toUpperCase() || 'EN'}
                         onPress={() => {
-                            // Could open the language modal from here too, or just link back to Profile
-                            Alert.alert('Language', 'Please use the Profile screen to change language.');
+                            Alert.alert('Language', 'Language changes are currently on hold.');
                         }}
                     />
                 </Card>
 
                 {/* ── PREFERENCES SECTION ── */}
-                <Text style={styles.sectionTitle}>App Preferences</Text>
-                <Card style={styles.card}>
+                <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>App Preferences</Text>
+                <Card style={[styles.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
                     <SettingRow
                         icon={<Bell size={20} color={theme.primary} />}
                         label="Push Notifications"
@@ -159,20 +310,20 @@ export const SettingsScreen = ({ navigation }: any) => {
                     />
                 </Card>
 
-                {/* ── SECURITY SECTION ── */}
-                <Text style={styles.sectionTitle}>Security & Updates</Text>
-                <Card style={styles.card}>
+                {/* ── SECURITY & UPDATES SECTION ── */}
+                <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>Security & Updates</Text>
+                <Card style={[styles.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
                     <SettingRow
                         icon={<Shield size={20} color={theme.primary} />}
                         label="Privacy Policy"
                     />
-                    <View style={styles.divider} />
+                    <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
                     <TouchableOpacity style={styles.row}>
-                        <View style={[styles.iconContainer, { backgroundColor: theme.lightBg }]}>
+                        <View style={[styles.iconContainer, { backgroundColor: isDark ? '#334155' : theme.lightBg }]}>
                             <Bell size={20} color={theme.primary} />
                         </View>
-                        <Text style={[styles.label, { fontSize: fontSize }]}>Check for Updates</Text>
-                        <Text style={styles.version}>v1.0.0</Text>
+                        <Text style={[styles.label, { fontSize: fontSize, color: theme.textPrimary }]}>Check for Updates</Text>
+                        <Text style={[styles.version, { color: theme.textSecondary }]}>v1.0.0</Text>
                     </TouchableOpacity>
                 </Card>
 
@@ -183,31 +334,35 @@ export const SettingsScreen = ({ navigation }: any) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F8FAFC' },
+    container: { flex: 1 },
     content: { flex: 1, padding: 20 },
-    sectionTitle: { fontSize: 13, fontWeight: '700', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, marginTop: 10 },
-    card: { padding: 0, marginBottom: 24, overflow: 'hidden', backgroundColor: '#FFF', borderRadius: 16, elevation: 2 },
+    sectionTitle: { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, marginTop: 10 },
+    card: { padding: 0, marginBottom: 24, overflow: 'hidden', borderRadius: 16, elevation: 2 },
     row: { flexDirection: 'row', alignItems: 'center', padding: 16 },
     iconContainer: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-    label: { fontWeight: '600', color: '#1E293B', flex: 1 },
+    label: { fontWeight: '600', flex: 1 },
     rightSide: { flexDirection: 'row', alignItems: 'center' },
-    value: { color: '#94A3B8', marginRight: 8 },
-    version: { fontSize: 12, color: '#94A3B8' },
-    divider: { height: 1, backgroundColor: '#F1F5F9', marginLeft: 64 },
+    value: { marginRight: 8 },
+    version: { fontSize: 12 },
+    divider: { height: 1, marginLeft: 64 },
     bottomSpacing: { height: 40 },
 
     // Font Controls
-    fontControls: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', borderRadius: 8, padding: 2 },
+    fontControls: { flexDirection: 'row', alignItems: 'center', borderRadius: 8, padding: 2 },
     fontBtn: { paddingHorizontal: 10, paddingVertical: 4 },
-    fontBtnText: { fontWeight: '700', color: '#64748B' },
-    fontValue: { paddingHorizontal: 8, fontWeight: '600', color: '#1E293B' },
+    fontBtnText: { fontWeight: '700' },
+    fontValue: { paddingHorizontal: 8, fontWeight: '600' },
 
     // Input Styles
     inputRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 },
     inputIcon: { width: 30, alignItems: 'center' },
-    input: { flex: 1, marginLeft: 10, color: '#1E293B', fontWeight: '500' },
+    input: { flex: 1, marginLeft: 10, fontWeight: '500' },
     saveBtn: { margin: 16, padding: 12, borderRadius: 12, alignItems: 'center' },
     saveBtnText: { color: '#FFF', fontWeight: '700' },
+
+    // Theme Color Picker Grid
+    themeGrid: { flexDirection: 'row', gap: 6, alignItems: 'center' },
+    themeCircle: { width: 22, height: 22, borderRadius: 11 },
 });
 
 export default SettingsScreen;

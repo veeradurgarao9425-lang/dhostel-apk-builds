@@ -39,11 +39,12 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 }
 
 const PAGE_SIZE = 10;
-type TabType = 'Active' | 'Inactive' | 'PreBooked' | 'All';
+type TabType = 'Active' | 'Inactive' | 'PreBooked' | 'QRRegister' | 'All';
 
 const TABS: { key: TabType; label: string }[] = [
     { key: 'Active', label: 'Active' },
     { key: 'PreBooked', label: 'Pre-Booked' },
+    { key: 'QRRegister', label: 'QR Signups' },
     { key: 'Inactive', label: 'Inactive' },
     { key: 'All', label: 'Total' }
 ];
@@ -60,7 +61,8 @@ interface StudentCardProps {
 const StudentCard = React.memo(({ student, onPress, onWhatsApp, onCall, onToggle }: StudentCardProps) => {
     const isActive = student.status === 1;
     const isPreBooked = student.status === 2;
-    const indicatorColor = isPreBooked ? '#EA580C' : isActive ? '#10B981' : '#EF4444';
+    const isQRSignup = student.status === 3;
+    const indicatorColor = isQRSignup ? '#7C3AED' : isPreBooked ? '#EA580C' : isActive ? '#10B981' : '#EF4444';
     
     return (
         <TouchableOpacity
@@ -82,7 +84,11 @@ const StudentCard = React.memo(({ student, onPress, onWhatsApp, onCall, onToggle
                         {student.first_name} {student.last_name}
                     </Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                        {isPreBooked ? (
+                        {isQRSignup ? (
+                            <View style={[styles.roomBadge, { backgroundColor: '#F5F3FF', borderColor: '#E9E3FF', borderWidth: 1, marginTop: 0 }]}>
+                                <Text style={[styles.roomText, { color: '#7C3AED' }]}>QR SIGNUP</Text>
+                            </View>
+                        ) : isPreBooked ? (
                             <View style={[styles.roomBadge, { backgroundColor: '#FFEFE6', borderColor: '#FFE4D6', borderWidth: 1, marginTop: 0 }]}>
                                 <Text style={[styles.roomText, { color: '#EA580C' }]}>PRE-BOOKED</Text>
                             </View>
@@ -91,11 +97,11 @@ const StudentCard = React.memo(({ student, onPress, onWhatsApp, onCall, onToggle
                                 <Text style={styles.roomText}>ROOM {student.room_number || 'N/A'}</Text>
                             </View>
                         )}
-                        {isPreBooked && student.room_number && (
+                        {(isPreBooked || isQRSignup) && student.room_number ? (
                             <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '700' }}>
                                 Room {student.room_number}
                             </Text>
-                        )}
+                        ) : null}
                     </View>
                 </View>
                 <View style={styles.actionColumn}>
@@ -118,13 +124,15 @@ const StudentCard = React.memo(({ student, onPress, onWhatsApp, onCall, onToggle
                         style={[
                             styles.statusToggleBtn, 
                             { 
-                                backgroundColor: isPreBooked ? '#FFF8F4' : isActive ? '#FEF2F2' : '#F0FDF4',
-                                borderColor: isPreBooked ? '#FFE4D6' : isActive ? '#FCA5A5' : '#86EFAC',
+                                backgroundColor: isQRSignup ? '#F5F3FF' : isPreBooked ? '#FFF8F4' : isActive ? '#FEF2F2' : '#F0FDF4',
+                                borderColor: isQRSignup ? '#E9E3FF' : isPreBooked ? '#FFE4D6' : isActive ? '#FCA5A5' : '#86EFAC',
                                 borderWidth: 1
                             }
                         ]}
                     >
-                        {isPreBooked ? (
+                        {isQRSignup ? (
+                            <Ionicons name="checkmark-circle-outline" size={18} color="#7C3AED" />
+                        ) : isPreBooked ? (
                             <Ionicons name="checkmark-circle-outline" size={18} color="#EA580C" />
                         ) : (
                             <Text style={[styles.statusToggleText, { color: isActive ? '#EF4444' : '#10B981' }]}>
@@ -207,7 +215,7 @@ export default function StudentsScreen({ navigation, route }: any) {
     const [activeTab, setActiveTab] = useState<TabType>('Active');
     const [initialLoading, setInitialLoading] = useState(true);
     const [debouncedSearch, setDebouncedSearch] = useState('');
-    const [counts, setCounts] = useState({ active: 0, inactive: 0, prebooked: 0, total: 0 });
+    const [counts, setCounts] = useState({ active: 0, inactive: 0, prebooked: 0, qrRegister: 0, total: 0 });
     const [dateFilter, setDateFilter] = useState<Date | null>(null);
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
@@ -254,7 +262,7 @@ export default function StudentsScreen({ navigation, route }: any) {
                 setLoadingMore(true);
             }
 
-            const statusParam = activeTab === 'Active' ? 1 : activeTab === 'Inactive' ? 0 : activeTab === 'PreBooked' ? 2 : undefined;
+            const statusParam = activeTab === 'Active' ? 1 : activeTab === 'Inactive' ? 0 : activeTab === 'PreBooked' ? 2 : activeTab === 'QRRegister' ? 3 : undefined;
             const params: Record<string, any> = { page: pageNum, limit: PAGE_SIZE };
             if (debouncedSearch) params.search = debouncedSearch;
             if (statusParam !== undefined) params.status = statusParam;
@@ -310,10 +318,11 @@ export default function StudentsScreen({ navigation, route }: any) {
     const fetchCounts = async () => {
         try {
             // Fetch all counts in parallel. Note: Backend ignores limit, so we get full array.
-            const [resActive, resInactive, resPreBooked, resTotal] = await Promise.all([
+            const [resActive, resInactive, resPreBooked, resQRRegister, resTotal] = await Promise.all([
                 api.get('/students', { params: { status: 1 } }),
                 api.get('/students', { params: { status: 0 } }),
                 api.get('/students', { params: { status: 2 } }),
+                api.get('/students', { params: { status: 3 } }),
                 api.get('/students')
             ]);
 
@@ -325,6 +334,9 @@ export default function StudentsScreen({ navigation, route }: any) {
             }
             if (resPreBooked.data.success) {
                 setCounts(p => ({ ...p, prebooked: resPreBooked.data.data?.length || 0 }));
+            }
+            if (resQRRegister.data.success) {
+                setCounts(p => ({ ...p, qrRegister: resQRRegister.data.data?.length || 0 }));
             }
             if (resTotal.data.success) {
                 setCounts(p => ({ ...p, total: resTotal.data.data?.length || 0 }));
@@ -361,12 +373,17 @@ export default function StudentsScreen({ navigation, route }: any) {
     const handleToggleStatus = useCallback((student: any) => {
         const isCurrentlyActive = student.status === 1;
         const isPreBooked = student.status === 2;
+        const isQRSignup = student.status === 3;
 
         let title = '';
         let msg = '';
         let targetStatus = 1;
 
-        if (isPreBooked) {
+        if (isQRSignup) {
+            title = 'Confirm Check-In?';
+            msg = `Confirm check-in for QR-registered tenant ${student.first_name}? This will activate their residency.`;
+            targetStatus = 1;
+        } else if (isPreBooked) {
             title = 'Confirm Check-In?';
             msg = `Confirm check-in for pre-booked tenant ${student.first_name}? This will activate their residency.`;
             targetStatus = 1;
@@ -465,6 +482,7 @@ export default function StudentsScreen({ navigation, route }: any) {
                     {[
                         { key: 'Active', label: 'Active', count: counts.active },
                         { key: 'PreBooked', label: 'Pre-Booked', count: counts.prebooked },
+                        { key: 'QRRegister', label: 'QR Signups', count: counts.qrRegister },
                         { key: 'Inactive', label: 'Inactive', count: counts.inactive },
                         { key: 'All', label: 'Total', count: counts.total }
                     ].map((tab: any) => (

@@ -133,6 +133,7 @@ const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect }: {
     onRemind: (t: DueTenant) => void;
     onCollect: (t: DueTenant) => void;
 }) => {
+    const { theme, fontSize, isDark } = useTheme();
     const accentColor = item.isOverdue ? '#DC2626' : '#D97706';
     const accentBg    = item.isOverdue ? '#FEE2E2' : '#FEF3C7';
     const tagLabel    = item.isOverdue
@@ -140,7 +141,7 @@ const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect }: {
         : `Due: ${item.dueDate}`;
 
     return (
-        <View style={tc.card}>
+        <View style={[tc.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#EDE9FE', borderWidth: isDark ? 1 : 0 }]}>
             <View style={[tc.accentBar, { backgroundColor: accentColor }]} />
             <View style={tc.inner}>
                 {/* Header Row: Avatar + Info + Amount */}
@@ -152,8 +153,8 @@ const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect }: {
                     </View>
                     
                     <View style={tc.infoCol}>
-                        <Text style={tc.name}>{item.name}</Text>
-                        <Text style={tc.roomText}>Room {item.room} · {item.feeMonth}</Text>
+                        <Text style={[tc.name, { fontSize: fontSize, color: theme.textPrimary }]}>{item.name}</Text>
+                        <Text style={[tc.roomText, { fontSize: fontSize - 2, color: theme.textSecondary }]}>Room {item.room} · {item.feeMonth}</Text>
                         
                         <View style={[tc.statusBadge, { backgroundColor: accentBg }]}>
                             <Ionicons name="time-outline" size={11} color={accentColor} />
@@ -162,25 +163,43 @@ const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect }: {
                     </View>
 
                     <View style={tc.amountCol}>
-                        <Text style={tc.amountLabel}>Pending</Text>
-                        <Text style={[tc.amountVal, { color: accentColor }]}>
+                        <Text style={[tc.amountLabel, { fontSize: fontSize - 5, color: theme.textSecondary }]}>Pending</Text>
+                        <Text style={[tc.amountVal, { color: accentColor, fontSize: fontSize + 4 }]}>
                             ₹{item.dueAmount.toLocaleString('en-IN')}
                         </Text>
                     </View>
                 </View>
 
+                {/* Columns Block */}
+                <View style={[tc.columnsBlock, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC' }]}>
+                    <View style={tc.colItem}>
+                        <Text style={[tc.colLabel, { fontSize: fontSize - 6 }]}>Total</Text>
+                        <Text style={[tc.colValue, { color: theme.textPrimary, fontSize: fontSize - 2 }]}>₹{item.totalAmount.toLocaleString('en-IN')}</Text>
+                    </View>
+                    <View style={[tc.colDivider, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]} />
+                    <View style={tc.colItem}>
+                        <Text style={[tc.colLabel, { color: '#059669', fontSize: fontSize - 6 }]}>Paid</Text>
+                        <Text style={[tc.colValue, { color: '#059669', fontSize: fontSize - 2 }]}>₹{item.paidAmount.toLocaleString('en-IN')}</Text>
+                    </View>
+                    <View style={[tc.colDivider, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]} />
+                    <View style={tc.colItem}>
+                        <Text style={[tc.colLabel, { color: accentColor, fontSize: fontSize - 6 }]}>Pending</Text>
+                        <Text style={[tc.colValue, { color: accentColor, fontSize: fontSize - 2 }]}>₹{item.dueAmount.toLocaleString('en-IN')}</Text>
+                    </View>
+                </View>
+
                 {/* Divider */}
-                <View style={tc.divider} />
+                <View style={[tc.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
 
                 {/* Action buttons */}
                 <View style={tc.actions}>
                     <TouchableOpacity
-                        style={tc.remindBtn}
+                        style={[tc.remindBtn, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
                         onPress={() => onRemind(item)}
                         activeOpacity={0.8}
                     >
-                        <Ionicons name="notifications-outline" size={15} color="#475569" />
-                        <Text style={tc.remindText}>Remind</Text>
+                        <Ionicons name="notifications-outline" size={15} color={isDark ? '#94A3B8' : '#475569'} />
+                        <Text style={[tc.remindText, { fontSize: fontSize - 2, color: theme.textPrimary }]}>Remind</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[tc.collectBtn, { backgroundColor: themeColor }]}
@@ -188,7 +207,7 @@ const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect }: {
                         activeOpacity={0.85}
                     >
                         <Ionicons name="checkmark-circle-outline" size={15} color="#FFF" />
-                        <Text style={tc.collectText}>Collect</Text>
+                        <Text style={[tc.collectText, { fontSize: fontSize - 2, color: '#FFF' }]}>Collect</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -199,7 +218,7 @@ const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect }: {
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function PendingPaymentsScreen() {
     const navigation = useNavigation<any>();
-    const { theme } = useTheme();
+    const { theme, fontSize, isDark } = useTheme();
     const { showSuccess, showError } = useToast();
 
     const [tenants, setTenants]     = useState<DueTenant[]>([]);
@@ -429,7 +448,7 @@ export default function PendingPaymentsScreen() {
     }
 
     return (
-        <View style={s.root}>
+        <View style={[s.root, { backgroundColor: theme.background }]}>
             <StatusBar barStyle="light-content" />
 
             {/* ── Header ── */}
@@ -449,7 +468,7 @@ export default function PendingPaymentsScreen() {
             <View style={s.summaryContainer}>
                 <View style={s.cardsRow}>
                     {/* Card 1: Outstanding Dues */}
-                    <View style={s.smallCard}>
+                    <View style={[s.smallCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#EDE9FE', borderWidth: isDark ? 1 : 0 }]}>
                         <View style={s.cardHeaderRow}>
                             <View style={[s.iconCircle, { backgroundColor: '#FEE2E2' }]}>
                                 <Ionicons name="alert-circle" size={20} color="#DC2626" />
@@ -458,21 +477,21 @@ export default function PendingPaymentsScreen() {
                                 <Ionicons name="refresh" size={14} color="#94A3B8" />
                             </TouchableOpacity>
                         </View>
-                        <Text style={s.cardLabel}>Outstanding Dues</Text>
-                        <Text style={[s.cardValue, { color: '#DC2626' }]}>₹{totalPending.toLocaleString('en-IN')}</Text>
-                        <Text style={s.cardSubText}>{totalDefaulters} defaulters</Text>
+                        <Text style={[s.cardLabel, { fontSize: fontSize - 3, color: theme.textSecondary }]}>Outstanding Dues</Text>
+                        <Text style={[s.cardValue, { color: '#DC2626', fontSize: fontSize + 2 }]}>₹{totalPending.toLocaleString('en-IN')}</Text>
+                        <Text style={[s.cardSubText, { fontSize: fontSize - 4, color: theme.textSecondary }]}>{totalDefaulters} defaulters</Text>
                     </View>
 
                     {/* Card 2: Partial Paid */}
-                    <View style={s.smallCard}>
+                    <View style={[s.smallCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#EDE9FE', borderWidth: isDark ? 1 : 0 }]}>
                         <View style={s.cardHeaderRow}>
                             <View style={[s.iconCircle, { backgroundColor: '#FEF3C7' }]}>
                                 <Ionicons name="hourglass" size={18} color="#D97706" />
                             </View>
                         </View>
-                        <Text style={s.cardLabel}>Partial Paid</Text>
-                        <Text style={[s.cardValue, { color: '#D97706' }]}>₹{partialPaid.toLocaleString('en-IN')}</Text>
-                        <Text style={s.cardSubText}>Dues collected partially</Text>
+                        <Text style={[s.cardLabel, { fontSize: fontSize - 3, color: theme.textSecondary }]}>Partial Paid</Text>
+                        <Text style={[s.cardValue, { color: '#D97706', fontSize: fontSize + 2 }]}>₹{partialPaid.toLocaleString('en-IN')}</Text>
+                        <Text style={[s.cardSubText, { fontSize: fontSize - 4, color: theme.textSecondary }]}>Dues collected partially</Text>
                     </View>
                 </View>
             </View>
@@ -481,8 +500,8 @@ export default function PendingPaymentsScreen() {
             {sortedTenants.length === 0 ? (
                 <View style={s.emptyWrap}>
                     <Text style={{ fontSize: 52, marginBottom: 12 }}>🎉</Text>
-                    <Text style={s.emptyTitle}>All Clear!</Text>
-                    <Text style={s.emptySub}>No pending payments found</Text>
+                    <Text style={[s.emptyTitle, { fontSize: fontSize + 6, color: theme.textPrimary }]}>All Clear!</Text>
+                    <Text style={[s.emptySub, { fontSize: fontSize - 1, color: theme.textSecondary }]}>No pending payments found</Text>
                 </View>
             ) : (
                 <FlatList
@@ -604,7 +623,35 @@ const tc = StyleSheet.create({
     divider: {
         height: 1,
         backgroundColor: '#F1F5F9',
-        marginVertical: 12,
+        marginVertical: 10,
+    },
+    columnsBlock: {
+        flexDirection: 'row',
+        borderRadius: 12,
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: 12,
+    },
+    colItem: {
+        flex: 1,
+        alignItems: 'center',
+    },
+    colLabel: {
+        fontSize: 8,
+        color: '#94A3B8',
+        fontWeight: '800',
+        textTransform: 'uppercase',
+    },
+    colValue: {
+        fontSize: 12,
+        fontWeight: '800',
+        marginTop: 2,
+    },
+    colDivider: {
+        width: 1,
+        height: 24,
     },
 
     actions: {
@@ -709,7 +756,7 @@ const s = StyleSheet.create({
     headerActions: { flexDirection: 'row', gap: 12 },
     
     summaryContainer: {
-        marginTop: -25,
+        marginTop: 16,
         marginHorizontal: 16,
         gap: 12,
         marginBottom: 12,

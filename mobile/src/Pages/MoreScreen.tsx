@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
-    StatusBar, ScrollView, Platform, Alert,
+    StatusBar, ScrollView, Platform, Alert, TextInput,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -108,20 +108,12 @@ const MENU_GROUPS: { groupTitle: string; items: MenuItem[] }[] = [
                 routeParams: { period: 'month' },
             },
             {
-                label: 'Delete Expenses',
-                subtitle: 'Remove expense items',
+                label: 'Bulk Delete',
+                subtitle: 'Manage bulk removals',
                 icon: 'trash-outline',
                 iconColor: '#DC2626',
                 iconBg: '#FEE2E2',
-                route: 'DeleteExpenses',
-            },
-            {
-                label: 'Delete Rooms',
-                subtitle: 'Remove hostel rooms',
-                icon: 'trash',
-                iconColor: '#DC2626',
-                iconBg: '#FEE2E2',
-                route: 'DeleteRooms',
+                route: 'BulkDelete',
             },
         ],
     },
@@ -172,7 +164,10 @@ const MENU_GROUPS: { groupTitle: string; items: MenuItem[] }[] = [
 export default function MoreScreen() {
     const navigation = useNavigation<any>();
     const { user, signOut } = useAuth();
-    const { theme } = useTheme();
+    const { theme, isDark, fontSize } = useTheme();
+
+    const [showSearch, setShowSearch] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
 
     const handlePress = (item: MenuItem) => {
         if (item.comingSoon) return;
@@ -200,26 +195,74 @@ export default function MoreScreen() {
         );
     };
 
+    // Filter TOP_TOOLS
+    const filteredTopTools = useMemo(() => {
+        if (!searchQuery) return TOP_TOOLS;
+        const q = searchQuery.toLowerCase();
+        return TOP_TOOLS.filter(t => t.label.toLowerCase().includes(q) || t.subtitle.toLowerCase().includes(q));
+    }, [searchQuery]);
+
+    // Filter MENU_GROUPS
+    const filteredMenuGroups = useMemo(() => {
+        if (!searchQuery) return MENU_GROUPS;
+        const q = searchQuery.toLowerCase();
+        return MENU_GROUPS.map(group => {
+            const items = group.items.filter(item => 
+                item.label.toLowerCase().includes(q) || 
+                item.subtitle.toLowerCase().includes(q)
+            );
+            return { ...group, items };
+        }).filter(group => group.items.length > 0);
+    }, [searchQuery]);
+
+    const isListEmpty = filteredTopTools.length === 0 && filteredMenuGroups.length === 0;
+
     return (
-        <View style={s.root}>
+        <View style={[s.root, { backgroundColor: theme.background }]}>
             <StatusBar barStyle="light-content" />
 
             {/* Header */}
-            <TouchableOpacity onPress={() => navigation.navigate('Profile')} activeOpacity={0.9}>
-                <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={s.header}>
-                    <View style={s.headerContent}>
+            <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={s.header}>
+                <View style={s.headerContent}>
+                    <TouchableOpacity onPress={() => navigation.navigate('Profile')} activeOpacity={0.9} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
                         <View style={s.avatarCircle}>
                             <Text style={s.avatarText}>
                                 {(user?.full_name || 'O')[0].toUpperCase()}
                             </Text>
                         </View>
                         <View style={{ flex: 1 }}>
-                            <Text style={s.headerName}>{user?.full_name || 'Owner'}</Text>
-                            <Text style={s.headerSub}>🏠 {user?.hostel_name || 'My Hostel'}</Text>
+                            <Text style={[s.headerName, { fontSize: fontSize + 4 }]}>{user?.full_name || 'Owner'}</Text>
+                            <Text style={[s.headerSub, { fontSize: fontSize - 2 }]}>🏠 {user?.hostel_name || 'My Hostel'}</Text>
                         </View>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        onPress={() => { setShowSearch(!showSearch); if(showSearch) setSearchQuery(''); }} 
+                        style={s.searchIconBtn}
+                        activeOpacity={0.7}
+                    >
+                        <Ionicons name={showSearch ? "close" : "search-outline"} size={22} color="#FFF" />
+                    </TouchableOpacity>
+                </View>
+
+                {showSearch && (
+                    <View style={s.headerSearchWrap}>
+                        <Ionicons name="search" size={18} color="#94A3B8" style={{ marginRight: 8 }} />
+                        <TextInput
+                            style={[s.headerSearchInput, { fontSize: fontSize }]}
+                            placeholder="Search menu tools..."
+                            placeholderTextColor="#94A3B8"
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
+                            autoFocus
+                        />
+                        {searchQuery.length > 0 && (
+                            <TouchableOpacity onPress={() => setSearchQuery('')}>
+                                <Ionicons name="close-circle" size={18} color="#94A3B8" />
+                            </TouchableOpacity>
+                        )}
                     </View>
-                </LinearGradient>
-            </TouchableOpacity>
+                )}
+            </LinearGradient>
 
             {/* Menu groups */}
             <ScrollView
@@ -227,43 +270,54 @@ export default function MoreScreen() {
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: 110, paddingTop: 16 }}
             >
-                {/* Quick Access Tools */}
-                <View style={s.topToolsGroup}>
-                    <Text style={s.groupTitle}>Quick Tools</Text>
-                    <View style={s.topToolsRow}>
-                        {TOP_TOOLS.map((tool, index) => (
-                            <TouchableOpacity
-                                key={index}
-                                style={s.topToolCard}
-                                onPress={() => handlePress(tool)}
-                                activeOpacity={0.7}
-                            >
-                                <View style={[s.topToolIconCircle, { backgroundColor: tool.iconBg }]}>
-                                    <Ionicons name={tool.icon as any} size={20} color={tool.iconColor} />
-                                </View>
-                                <Text style={s.topToolLabel} numberOfLines={1}>{tool.label}</Text>
-                            </TouchableOpacity>
-                        ))}
+                {/* Empty State */}
+                {isListEmpty && (
+                    <View style={s.emptyState}>
+                        <Text style={{ fontSize: 40, marginBottom: 12 }}>🔍</Text>
+                        <Text style={[s.emptyText, { color: theme.textPrimary, fontSize: fontSize + 1, fontWeight: '700' }]}>No matching tools found</Text>
+                        <Text style={{ color: theme.textSecondary, fontSize: fontSize - 2, marginTop: 4 }}>Try searching for a different keyword</Text>
                     </View>
-                </View>
+                )}
 
-                {MENU_GROUPS.map((group, gi) => (
+                {/* Quick Access Tools */}
+                {!isListEmpty && filteredTopTools.length > 0 && (
+                    <View style={s.topToolsGroup}>
+                        <Text style={[s.groupTitle, { color: theme.textSecondary, fontSize: fontSize - 2 }]}>Quick Tools</Text>
+                        <View style={s.topToolsRow}>
+                            {filteredTopTools.map((tool, index) => (
+                                <TouchableOpacity
+                                    key={index}
+                                    style={[s.topToolCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
+                                    onPress={() => handlePress(tool)}
+                                    activeOpacity={0.7}
+                                >
+                                    <View style={[s.topToolIconCircle, { backgroundColor: isDark ? '#334155' : tool.iconBg }]}>
+                                        <Ionicons name={tool.icon as any} size={20} color={isDark ? theme.primary : tool.iconColor} />
+                                    </View>
+                                    <Text style={[s.topToolLabel, { color: theme.textPrimary, fontSize: fontSize - 3 }]} numberOfLines={1}>{tool.label}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </View>
+                )}
+
+                {!isListEmpty && filteredMenuGroups.map((group, gi) => (
                     <View key={gi} style={s.group}>
-                        <Text style={s.groupTitle}>{group.groupTitle}</Text>
+                        <Text style={[s.groupTitle, { color: theme.textSecondary, fontSize: fontSize - 2 }]}>{group.groupTitle}</Text>
                         <View style={s.gridRow}>
                             {group.items.map((item, ii) => (
                                 <TouchableOpacity
                                     key={ii}
-                                    style={[s.gridCard, item.comingSoon && { opacity: 0.6 }]}
+                                    style={[s.gridCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }, item.comingSoon && { opacity: 0.6 }]}
                                     onPress={() => handlePress(item)}
                                     activeOpacity={0.7}
                                 >
-                                    <View style={[s.iconCircle, { backgroundColor: item.iconBg }]}>
-                                        <Ionicons name={item.icon as any} size={20} color={item.iconColor} />
+                                    <View style={[s.iconCircle, { backgroundColor: isDark ? '#334155' : item.iconBg }]}>
+                                        <Ionicons name={item.icon as any} size={20} color={isDark ? theme.primary : item.iconColor} />
                                     </View>
                                     <View style={s.cardTextWrap}>
-                                        <Text style={s.cardLabel} numberOfLines={1}>{item.label}</Text>
-                                        <Text style={s.cardSub} numberOfLines={2}>{item.subtitle}</Text>
+                                        <Text style={[s.cardLabel, { color: theme.textPrimary, fontSize: fontSize - 1 }]} numberOfLines={1}>{item.label}</Text>
+                                        <Text style={[s.cardSub, { color: theme.textSecondary, fontSize: fontSize - 3, lineHeight: fontSize - 1 }]} numberOfLines={2}>{item.subtitle}</Text>
                                     </View>
                                     {item.comingSoon && (
                                         <View style={s.soonBadge}>
@@ -278,16 +332,16 @@ export default function MoreScreen() {
 
                 {/* Logout Button */}
                 <TouchableOpacity
-                    style={s.logoutBtn}
+                    style={[s.logoutBtn, { backgroundColor: isDark ? '#450A0A' : '#FEE2E2', borderColor: isDark ? '#991B1B' : '#FCA5A5' }]}
                     onPress={handleLogout}
                     activeOpacity={0.8}
                 >
                     <Ionicons name="log-out-outline" size={20} color="#DC2626" />
-                    <Text style={s.logoutText}>Log Out</Text>
+                    <Text style={[s.logoutText, { color: '#DC2626', fontSize: fontSize }]}>Log Out</Text>
                 </TouchableOpacity>
 
                 {/* App version */}
-                <Text style={s.version}>Stivo v1.0.0</Text>
+                <Text style={[s.version, { fontSize: fontSize - 3, color: theme.textSecondary }]}>Stivo v1.0.0</Text>
             </ScrollView>
         </View>
     );
@@ -302,6 +356,37 @@ const s = StyleSheet.create({
         paddingBottom: 25,
         borderBottomLeftRadius: 32,
         borderBottomRightRadius: 32,
+    },
+    searchIconBtn: {
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        backgroundColor: 'rgba(255,255,255,0.18)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    headerSearchWrap: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFF',
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        height: 44,
+        marginTop: 14,
+    },
+    headerSearchInput: {
+        flex: 1,
+        color: '#1E293B',
+        fontWeight: '600',
+    },
+    emptyState: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 50,
+        paddingHorizontal: 30,
+    },
+    emptyText: {
+        textAlign: 'center',
     },
     headerContent: {
         flexDirection: 'row',

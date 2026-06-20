@@ -47,9 +47,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const storedToken = await AsyncStorage.getItem('token');
 
         if (storedUser && storedToken) {
-          const parsedUser = JSON.parse(storedUser);
+          let parsedUser = JSON.parse(storedUser);
           api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
           setUser(parsedUser);
+
+          // Proactively fetch hostel name if missing
+          if (parsedUser.hostel_id && !parsedUser.hostel_name) {
+            try {
+              const res = await api.get(`/hostels/${parsedUser.hostel_id}`);
+              if (res.data?.success && res.data?.data?.hostel_name) {
+                parsedUser = { ...parsedUser, hostel_name: res.data.data.hostel_name };
+                setUser(parsedUser);
+                await AsyncStorage.setItem('user', JSON.stringify(parsedUser));
+              }
+            } catch (e) {
+              console.warn('Failed to load hostel details in AuthContext:', e);
+            }
+          }
         }
       } catch (error) {
         console.error('Failed to load user from storage', error);
@@ -80,7 +94,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (response.status === 200 && token) {
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
-        const finalUser = userData || { email: identifier, user_id: 'unknown' };
+        let finalUser = userData || { email: identifier, user_id: 'unknown' };
+        
+        // Fetch hostel details if missing
+        if (finalUser.hostel_id && !finalUser.hostel_name) {
+          try {
+            const res = await api.get(`/hostels/${finalUser.hostel_id}`);
+            if (res.data?.success && res.data?.data?.hostel_name) {
+              finalUser = { ...finalUser, hostel_name: res.data.data.hostel_name };
+            }
+          } catch (e) {
+            console.warn('Failed to load hostel details in signIn:', e);
+          }
+        }
+        
         setUser(finalUser);
 
         // Persist data

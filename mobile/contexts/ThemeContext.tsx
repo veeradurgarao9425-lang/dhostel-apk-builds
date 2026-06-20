@@ -90,6 +90,10 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
                 if (storedThemeId && themes[storedThemeId as ThemeId]) {
                     setThemeId(storedThemeId as ThemeId);
                 }
+                const storedIsDark = await AsyncStorage.getItem('isDark');
+                if (storedIsDark) {
+                    setIsDark(storedIsDark === 'true');
+                }
                 const storedFontSize = await AsyncStorage.getItem('fontSize');
                 if (storedFontSize) {
                     const parsedSize = parseInt(storedFontSize, 10);
@@ -102,9 +106,22 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
         loadSettings();
     }, []);
 
-    const theme = themes[themeId];
+    const baseTheme = themes[themeId];
+    const theme = isDark ? {
+        ...baseTheme,
+        background: '#0F172A',
+        cardBg: '#1E293B',
+        textPrimary: '#F8FAFC',
+        textSecondary: '#94A3B8',
+        white: '#1E293B',
+        lightBg: '#334155',
+    } : baseTheme;
 
-    const toggleTheme = () => setIsDark(!isDark);
+    const toggleTheme = () => {
+        const nextDark = !isDark;
+        setIsDark(nextDark);
+        AsyncStorage.setItem('isDark', nextDark.toString()).catch(e => console.error(e));
+    };
 
     const handleSetThemeId = (id: ThemeId) => {
         setThemeId(id);

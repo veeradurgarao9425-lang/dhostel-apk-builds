@@ -42,9 +42,10 @@ const getGreeting = () => {
 };
 
 // ─── Quick Management Actions ─────────────────────────────────────────────────
+// ─── Quick Management Actions ─────────────────────────────────────────────────
 const QUICK_ACTIONS = [
     { label: 'Add\nTenant', icon: 'person-add-outline', color: '#7C3AED', bg: '#EDE9FE', route: 'AddStudent', comingSoon: false },
-    { label: 'Add\nRoom',   icon: 'home-outline',       color: '#2563EB', bg: '#DBEAFE', route: 'AddRoom',    comingSoon: false },
+    { label: 'Add\nExpense', icon: 'wallet-outline',    color: '#F97316', bg: '#FFF7ED', route: 'AddExpense', comingSoon: false },
     { label: 'Pre-Book',    icon: 'calendar-outline',   color: '#EA580C', bg: '#FFEDD5', route: 'PreBooking', comingSoon: false },
     { label: 'Bills',       icon: 'receipt-outline',    color: '#D97706', bg: '#FEF3C7', route: 'BillReminders', comingSoon: false },
     { label: 'Remind',      icon: 'notifications-outline', color: '#DC2626', bg: '#FEE2E2', route: 'Reminders', comingSoon: false },
@@ -87,7 +88,7 @@ const RevenueBar = ({ amount, maxAmount, month, isCurrent }: any) => {
 export default function HomeScreen() {
     const navigation = useNavigation<any>();
     const { user } = useAuth();
-    const { theme } = useTheme();
+    const { theme, isDark, fontSize } = useTheme();
     const [data, setData] = useState(INITIAL_STATE);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -100,9 +101,12 @@ export default function HomeScreen() {
             if (!isRefresh && isFirstLoadRef.current) setLoading(true);
             setHasError(false);
 
-            const [statsRes, summaryRes]: any = await Promise.all([
+            const [statsRes, summaryRes, hostelRes]: any = await Promise.all([
                 api.get('/reports/dashboard-stats').catch(() => ({ data: { success: false } })),
                 api.get('/monthly-fees/summary').catch(() => ({ data: { success: false } })),
+                user?.hostel_id 
+                    ? api.get(`/hostels/${user.hostel_id}`).catch(() => ({ data: { success: false } }))
+                    : Promise.resolve({ data: { success: false } })
             ]);
 
             if (!statsRes.data.success && !summaryRes.data.success) {
@@ -147,7 +151,7 @@ export default function HomeScreen() {
             }
 
             setData({
-                hostelName:      user?.hostel_name || d2.hostel_name || 'My Hostel',
+                hostelName:      user?.hostel_name || d2.hostel_name || hostelRes?.data?.data?.hostel_name || 'My Hostel',
                 monthAmount:     monthCollected,
                 monthDue,
                 pendingAmount:   monthPending,
@@ -210,7 +214,7 @@ export default function HomeScreen() {
     // ── Loading Screen ────────────────────────────────────────────────────────
     if (loading) {
         return (
-            <View style={s.root}>
+            <View style={[s.root, { backgroundColor: theme.background }]}>
                 <StatusBar barStyle="light-content" />
                 <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={s.headerSkeleton}>
                     <View style={s.skHeaderRow}>
@@ -240,7 +244,7 @@ export default function HomeScreen() {
     // ── Error Screen ──────────────────────────────────────────────────────────
     if (hasError) {
         return (
-            <View style={s.root}>
+            <View style={[s.root, { backgroundColor: theme.background }]}>
                 <StatusBar barStyle="light-content" />
                 <AppHeader
                     title={`${getGreeting()},`}
@@ -254,8 +258,8 @@ export default function HomeScreen() {
                 />
                 <View style={s.errorCenter}>
                     <Text style={{ fontSize: 48, marginBottom: 12 }}>📡</Text>
-                    <Text style={s.errorTitle}>Server Waking Up…</Text>
-                    <Text style={s.errorSub}>
+                    <Text style={[s.errorTitle, { color: theme.textPrimary }]}>Server Waking Up…</Text>
+                    <Text style={[s.errorSub, { color: theme.textSecondary }]}>
                         The server may be starting up after inactivity.{'\n'}
                         Please wait a moment and tap Retry.
                     </Text>
@@ -275,7 +279,7 @@ export default function HomeScreen() {
 
     // ── Main Dashboard ────────────────────────────────────────────────────────
     return (
-        <View style={s.root}>
+        <View style={[s.root, { backgroundColor: theme.background }]}>
             <StatusBar barStyle="light-content" />
 
             {/* ─────────────────── FIXED HEADER ─────────────────── */}
@@ -307,7 +311,7 @@ export default function HomeScreen() {
                     <RefreshControl
                         refreshing={refreshing}
                         onRefresh={() => { setRefreshing(true); load(true); }}
-                        tintColor="#7C3AED"
+                        tintColor={theme.primary}
                     />
                 }
             >
@@ -315,37 +319,37 @@ export default function HomeScreen() {
                 <View style={s.body}>
 
                     {/* ─────────────────── BEDS OVERVIEW ─────────────────── */}
-                    <View style={s.card}>
+                    <View style={[s.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
                         <TouchableOpacity
                             style={s.cardHeader}
                             activeOpacity={0.7}
                             onPress={() => navigation.navigate('Rooms', { filter: 'All' })}
                         >
                             <View style={s.cardHeaderLeft}>
-                                <Ionicons name="apps" size={17} color="#7C3AED" />
-                                <Text style={s.cardTitle}>Beds & Occupancy Overview</Text>
-                                <Ionicons name="chevron-forward" size={14} color="#94A3B8" style={{ marginLeft: 2 }} />
+                                <Ionicons name="apps" size={17} color={theme.primary} />
+                                <Text style={[s.cardTitle, { fontSize: fontSize, color: theme.textPrimary }]}>Beds & Occupancy Overview</Text>
+                                <Ionicons name="chevron-forward" size={14} color={theme.textSecondary} style={{ marginLeft: 2 }} />
                             </View>
-                            <Text style={s.cardMeta}>
+                            <Text style={[s.cardMeta, { fontSize: Math.max(10, fontSize - 3), color: theme.textSecondary }]}>
                                 Total: {data.totalBeds} beds
                             </Text>
                         </TouchableOpacity>
 
                         {/* Progress Bar Visual */}
                         <View style={s.bedProgressContainer}>
-                            <View style={s.progressBarBackground}>
-                                <View style={[s.progressBarFill, { width: `${data.occupancyRate}%` }]} />
+                            <View style={[s.progressBarBackground, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                <View style={[s.progressBarFill, { width: `${data.occupancyRate}%`, backgroundColor: theme.primary }]} />
                             </View>
                             <View style={s.progressTextRow}>
-                                <Text style={s.progressTextLabel}>Occupancy Rate</Text>
-                                <Text style={s.progressTextVal}>{data.occupancyRate}%</Text>
+                                <Text style={[s.progressTextLabel, { fontSize: Math.max(10, fontSize - 3), color: theme.textSecondary }]}>Occupancy Rate</Text>
+                                <Text style={[s.progressTextVal, { fontSize: fontSize - 2, color: theme.primary }]}>{data.occupancyRate}%</Text>
                             </View>
                         </View>
 
                         <View style={s.bedsRowNew}>
                             {/* Available */}
                             <TouchableOpacity
-                                style={[s.bedCardNew, { borderColor: '#E8F5E9' }]}
+                                style={[s.bedCardNew, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#E8F5E9' }]}
                                 activeOpacity={0.7}
                                 onPress={() => navigation.navigate('Rooms', { filter: 'Vacant' })}
                             >
@@ -353,14 +357,14 @@ export default function HomeScreen() {
                                     <Ionicons name="checkmark-circle-sharp" size={18} color="#2E7D32" />
                                 </View>
                                 <View>
-                                    <Text style={[s.bedNumNew, { color: '#2E7D32' }]}>{data.availableBeds}</Text>
-                                    <Text style={s.bedLblNew}>Available</Text>
+                                    <Text style={[s.bedNumNew, { fontSize: fontSize, color: isDark ? theme.textPrimary : '#2E7D32' }]}>{data.availableBeds}</Text>
+                                    <Text style={[s.bedLblNew, { fontSize: Math.max(10, fontSize - 4), color: theme.textSecondary }]}>Available</Text>
                                 </View>
                             </TouchableOpacity>
 
                             {/* Occupied */}
                             <TouchableOpacity
-                                style={[s.bedCardNew, { borderColor: '#FFEBEE' }]}
+                                style={[s.bedCardNew, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#FFEBEE' }]}
                                 activeOpacity={0.7}
                                 onPress={() => navigation.navigate('Rooms', { filter: 'Full' })}
                             >
@@ -368,14 +372,14 @@ export default function HomeScreen() {
                                     <Ionicons name="people-sharp" size={18} color="#C62828" />
                                 </View>
                                 <View>
-                                    <Text style={[s.bedNumNew, { color: '#C62828' }]}>{data.occupiedBeds}</Text>
-                                    <Text style={s.bedLblNew}>Occupied</Text>
+                                    <Text style={[s.bedNumNew, { fontSize: fontSize, color: isDark ? theme.textPrimary : '#C62828' }]}>{data.occupiedBeds}</Text>
+                                    <Text style={[s.bedLblNew, { fontSize: Math.max(10, fontSize - 4), color: theme.textSecondary }]}>Occupied</Text>
                                 </View>
                             </TouchableOpacity>
 
                             {/* Notices board */}
                             <TouchableOpacity
-                                style={[s.bedCardNew, { borderColor: '#FFF3E0' }]}
+                                style={[s.bedCardNew, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#FFF3E0' }]}
                                 activeOpacity={0.7}
                                 onPress={() => navigation.navigate('Notices')}
                             >
@@ -383,19 +387,19 @@ export default function HomeScreen() {
                                     <Ionicons name="megaphone-sharp" size={18} color="#EF6C00" />
                                 </View>
                                 <View>
-                                    <Text style={[s.bedNumNew, { color: '#EF6C00' }]}>{data.noticesCount}</Text>
-                                    <Text style={s.bedLblNew}>Notices</Text>
+                                    <Text style={[s.bedNumNew, { fontSize: fontSize, color: isDark ? theme.textPrimary : '#EF6C00' }]}>{data.noticesCount}</Text>
+                                    <Text style={[s.bedLblNew, { fontSize: Math.max(10, fontSize - 4), color: theme.textSecondary }]}>Notices</Text>
                                 </View>
                             </TouchableOpacity>
                         </View>
                     </View>
 
                     {/* ─────────────────── QUICK MANAGEMENT ─────────────────── */}
-                    <View style={s.card}>
+                    <View style={[s.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
                         <View style={s.cardHeader}>
                             <View style={s.cardHeaderLeft}>
-                                <Ionicons name="flash-outline" size={17} color="#7C3AED" />
-                                <Text style={s.cardTitle}>Quick Management</Text>
+                                <Ionicons name="flash-outline" size={17} color={theme.primary} />
+                                <Text style={[s.cardTitle, { fontSize: fontSize, color: theme.textPrimary }]}>Quick Management</Text>
                             </View>
                         </View>
                         <View style={s.quickRow}>
@@ -407,8 +411,8 @@ export default function HomeScreen() {
                                     onPress={() => handleQuickAction(a)}
                                 >
                                     <View style={s.quickIconWrap}>
-                                        <View style={[s.quickIconCircle, { backgroundColor: a.bg }]}>
-                                            <Ionicons name={a.icon as any} size={22} color={a.color} />
+                                        <View style={[s.quickIconCircle, { backgroundColor: isDark ? '#334155' : a.bg }]}>
+                                            <Ionicons name={a.icon as any} size={22} color={isDark ? theme.primary : a.color} />
                                         </View>
                                         {a.comingSoon && (
                                             <View style={s.lockBadge}>
@@ -424,6 +428,7 @@ export default function HomeScreen() {
                                     <Text
                                         style={[
                                             s.quickLabel,
+                                            { fontSize: Math.max(10, fontSize - 4), color: theme.textPrimary },
                                             a.comingSoon && { color: '#9CA3AF' },
                                         ]}
                                         numberOfLines={2}
@@ -437,89 +442,89 @@ export default function HomeScreen() {
 
                     {/* ─────────────────── STATISTICS ─────────────────── */}
                     <View style={s.sectionBlock}>
-                        <Text style={s.sectionTitle}>📊 Statistics</Text>
+                        <Text style={[s.sectionTitle, { fontSize: fontSize + 1, color: theme.textPrimary }]}>📊 Statistics</Text>
                         <View style={s.statsGrid}>
 
                             {/* Line 1: Left Tenants & Occupancy Rate */}
                             {/* Left Tenants */}
                             <TouchableOpacity
-                                style={[s.statCard, { backgroundColor: '#FFF', borderColor: '#E5E7EB', borderWidth: 1.5 }]}
+                                style={[s.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#E5E7EB', borderWidth: 1.5 }]}
                                 onPress={() => navigation.navigate('Students', { filter: 'Inactive' })}
                                 activeOpacity={0.8}
                             >
-                                <View style={[s.statIconBox, { backgroundColor: '#F3F4F6' }]}>
-                                    <Ionicons name="person-remove" size={20} color="#6B7280" />
+                                <View style={[s.statIconBox, { backgroundColor: isDark ? '#334155' : '#F3F4F6' }]}>
+                                    <Ionicons name="person-remove" size={20} color={isDark ? theme.primary : '#6B7280'} />
                                 </View>
-                                <Text style={[s.statNum, { color: '#6B7280' }]}>{data.leftTenants}</Text>
-                                <Text style={s.statLbl}>Left Tenants</Text>
+                                <Text style={[s.statNum, { fontSize: fontSize + 6, color: isDark ? theme.textPrimary : '#6B7280' }]}>{data.leftTenants}</Text>
+                                <Text style={[s.statLbl, { fontSize: Math.max(10, fontSize - 3), color: theme.textSecondary }]}>Left Tenants</Text>
                             </TouchableOpacity>
 
                             {/* Occupancy Rate */}
                             <TouchableOpacity
-                                style={[s.statCard, { backgroundColor: '#FFF', borderColor: '#FBCFE8', borderWidth: 1.5 }]}
+                                style={[s.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#FBCFE8', borderWidth: 1.5 }]}
                                 onPress={() => navigation.navigate('Rooms', { filter: 'All' })}
                                 activeOpacity={0.8}
                             >
-                                <View style={[s.statIconBox, { backgroundColor: '#FCE7F3' }]}>
-                                    <Ionicons name="analytics" size={20} color="#DB2777" />
+                                <View style={[s.statIconBox, { backgroundColor: isDark ? '#334155' : '#FCE7F3' }]}>
+                                    <Ionicons name="analytics" size={20} color={isDark ? theme.primary : '#DB2777'} />
                                 </View>
-                                <Text style={[s.statNum, { color: '#DB2777' }]}>{data.occupancyRate}%</Text>
-                                <Text style={s.statLbl}>Occupancy Rate</Text>
+                                <Text style={[s.statNum, { fontSize: fontSize + 6, color: isDark ? theme.textPrimary : '#DB2777' }]}>{data.occupancyRate}%</Text>
+                                <Text style={[s.statLbl, { fontSize: Math.max(10, fontSize - 3), color: theme.textSecondary }]}>Occupancy Rate</Text>
                             </TouchableOpacity>
 
                             {/* Line 2: Total Rooms & Active Tenants */}
                             {/* Total Rooms */}
                             <TouchableOpacity
-                                style={[s.statCard, { backgroundColor: '#FFF', borderColor: '#BFDBFE', borderWidth: 1.5 }]}
+                                style={[s.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#BFDBFE', borderWidth: 1.5 }]}
                                 onPress={() => navigation.navigate('Rooms', { filter: 'All' })}
                                 activeOpacity={0.8}
                             >
-                                <View style={[s.statIconBox, { backgroundColor: '#DBEAFE' }]}>
-                                    <Ionicons name="home" size={20} color="#2563EB" />
+                                <View style={[s.statIconBox, { backgroundColor: isDark ? '#334155' : '#DBEAFE' }]}>
+                                    <Ionicons name="home" size={20} color={isDark ? theme.primary : '#2563EB'} />
                                 </View>
-                                <Text style={[s.statNum, { color: '#2563EB' }]}>{data.totalRooms}</Text>
-                                <Text style={s.statLbl}>Total Rooms</Text>
+                                <Text style={[s.statNum, { fontSize: fontSize + 6, color: isDark ? theme.textPrimary : '#2563EB' }]}>{data.totalRooms}</Text>
+                                <Text style={[s.statLbl, { fontSize: Math.max(10, fontSize - 3), color: theme.textSecondary }]}>Total Rooms</Text>
                             </TouchableOpacity>
 
                             {/* Active Tenants */}
                             <TouchableOpacity
-                                style={[s.statCard, { backgroundColor: '#FFF', borderColor: '#DDD6FE', borderWidth: 1.5 }]}
+                                style={[s.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#DDD6FE', borderWidth: 1.5 }]}
                                 onPress={() => navigation.navigate('Students')}
                                 activeOpacity={0.8}
                             >
-                                <View style={[s.statIconBox, { backgroundColor: '#EDE9FE' }]}>
-                                    <Ionicons name="people" size={20} color="#7C3AED" />
+                                <View style={[s.statIconBox, { backgroundColor: isDark ? '#334155' : '#EDE9FE' }]}>
+                                    <Ionicons name="people" size={20} color={isDark ? theme.primary : '#7C3AED'} />
                                 </View>
-                                <Text style={[s.statNum, { color: '#7C3AED' }]}>{data.activeTenants}</Text>
-                                <Text style={s.statLbl}>Active Tenants</Text>
+                                <Text style={[s.statNum, { fontSize: fontSize + 6, color: isDark ? theme.textPrimary : '#7C3AED' }]}>{data.activeTenants}</Text>
+                                <Text style={[s.statLbl, { fontSize: Math.max(10, fontSize - 3), color: theme.textSecondary }]}>Active Tenants</Text>
                             </TouchableOpacity>
 
                             {/* Line 3: Pending Dues & Collected Amount (Swapped) */}
                             {/* Pending Dues */}
                             <TouchableOpacity
-                                style={[s.statCard, { backgroundColor: '#FFF', borderColor: '#FDE68A', borderWidth: 1.5 }]}
+                                style={[s.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#FDE68A', borderWidth: 1.5 }]}
                                 onPress={() => navigation.navigate('PendingTab')}
                                 activeOpacity={0.8}
                             >
-                                <View style={[s.statIconBox, { backgroundColor: '#FEF3C7' }]}>
-                                    <Ionicons name="time" size={20} color="#D97706" />
+                                <View style={[s.statIconBox, { backgroundColor: isDark ? '#334155' : '#FEF3C7' }]}>
+                                    <Ionicons name="time" size={20} color={isDark ? theme.primary : '#D97706'} />
                                 </View>
-                                <Text style={[s.statNum, { color: '#D97706' }]}>{fmt(data.totalDuesAmount)}</Text>
-                                <Text style={s.statLbl}>Pending Dues</Text>
+                                <Text style={[s.statNum, { fontSize: fontSize + 6, color: isDark ? theme.textPrimary : '#D97706' }]}>{fmt(data.totalDuesAmount)}</Text>
+                                <Text style={[s.statLbl, { fontSize: Math.max(10, fontSize - 3), color: theme.textSecondary }]}>Pending Dues</Text>
                                 {data.totalDuesAmount > 0 && <View style={s.redDot} />}
                             </TouchableOpacity>
 
                             {/* Collected Amount */}
                             <TouchableOpacity
-                                style={[s.statCard, { backgroundColor: '#FFF', borderColor: '#A7F3D0', borderWidth: 1.5 }]}
+                                style={[s.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#A7F3D0', borderWidth: 1.5 }]}
                                 onPress={() => navigation.navigate('CollectedPayments')}
                                 activeOpacity={0.8}
                             >
-                                <View style={[s.statIconBox, { backgroundColor: '#DCFCE7' }]}>
-                                    <Ionicons name="cash" size={20} color="#16A34A" />
+                                <View style={[s.statIconBox, { backgroundColor: isDark ? '#334155' : '#DCFCE7' }]}>
+                                    <Ionicons name="cash" size={20} color={isDark ? theme.primary : '#16A34A'} />
                                 </View>
-                                <Text style={[s.statNum, { color: '#16A34A' }]}>{fmt(data.monthAmount)}</Text>
-                                <Text style={s.statLbl}>Collected</Text>
+                                <Text style={[s.statNum, { fontSize: fontSize + 6, color: isDark ? theme.textPrimary : '#16A34A' }]}>{fmt(data.monthAmount)}</Text>
+                                <Text style={[s.statLbl, { fontSize: Math.max(10, fontSize - 3), color: theme.textSecondary }]}>Collected</Text>
                             </TouchableOpacity>
 
                         </View>
@@ -527,68 +532,66 @@ export default function HomeScreen() {
 
                     {/* ─────────────────── FINANCE HUB ─────────────────── */}
                     <View style={s.sectionBlock}>
-                        <Text style={s.sectionTitle}>💹 Finance Hub</Text>
+                        <Text style={[s.sectionTitle, { fontSize: fontSize + 1, color: theme.textPrimary }]}>💹 Finance Hub</Text>
 
                         {/* Dues Report — full width */}
                         <TouchableOpacity
-                            style={s.finHubCard}
+                            style={[s.finHubCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
                             onPress={() => navigation.navigate('PendingTab')}
                             activeOpacity={0.85}
                         >
                             <View style={[s.finHubAccent, { backgroundColor: '#DC2626' }]} />
-                            <View style={[s.finHubIconBox, { backgroundColor: '#FEE2E2' }]}>
-                                <Ionicons name="time-outline" size={22} color="#DC2626" />
+                            <View style={[s.finHubIconBox, { backgroundColor: isDark ? '#334155' : '#FEE2E2' }]}>
+                                <Ionicons name="time-outline" size={22} color={isDark ? theme.primary : '#DC2626'} />
                             </View>
                             <View style={s.finHubBody}>
-                                <Text style={s.finHubTitle}>Dues Report</Text>
-                                <Text style={s.finHubSub}>Tap to view all unpaid tenants</Text>
+                                <Text style={[s.finHubTitle, { fontSize: fontSize, color: theme.textPrimary }]}>Dues Report</Text>
+                                <Text style={[s.finHubSub, { fontSize: Math.max(10, fontSize - 3), color: theme.textSecondary }]}>Tap to view all unpaid tenants</Text>
                             </View>
                             <View style={s.finHubRight}>
-                                <Text style={[s.finHubAmount, { color: '#DC2626' }]}>
+                                <Text style={[s.finHubAmount, { fontSize: fontSize + 1, color: isDark ? theme.textPrimary : '#DC2626' }]}>
                                     ₹{data.totalDuesAmount.toLocaleString('en-IN')}
                                 </Text>
-                                <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
+                                <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
                             </View>
                         </TouchableOpacity>
 
                         {/* Receipts — full width */}
                         <TouchableOpacity
-                            style={s.finHubCard}
+                            style={[s.finHubCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
                             onPress={() => navigation.navigate('CollectedPayments')}
                             activeOpacity={0.85}
                         >
                             <View style={[s.finHubAccent, { backgroundColor: '#16A34A' }]} />
-                            <View style={[s.finHubIconBox, { backgroundColor: '#DCFCE7' }]}>
-                                <Ionicons name="receipt-outline" size={22} color="#16A34A" />
+                            <View style={[s.finHubIconBox, { backgroundColor: isDark ? '#334155' : '#DCFCE7' }]}>
+                                <Ionicons name="receipt-outline" size={22} color={isDark ? theme.primary : '#16A34A'} />
                             </View>
                             <View style={s.finHubBody}>
-                                <Text style={s.finHubTitle}>Receipts & History</Text>
-                                <Text style={s.finHubSub}>This month's collections</Text>
+                                <Text style={[s.finHubTitle, { fontSize: fontSize, color: theme.textPrimary }]}>Receipts & History</Text>
+                                <Text style={[s.finHubSub, { fontSize: Math.max(10, fontSize - 3), color: theme.textSecondary }]}>This month's collections</Text>
                             </View>
                             <View style={s.finHubRight}>
-                                <Text style={[s.finHubAmount, { color: '#16A34A' }]}>
+                                <Text style={[s.finHubAmount, { fontSize: fontSize + 1, color: isDark ? theme.textPrimary : '#16A34A' }]}>
                                     ₹{data.monthAmount.toLocaleString('en-IN')}
                                 </Text>
-                                <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
+                                <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
                             </View>
                         </TouchableOpacity>
-
-
 
                     </View>
 
                     {/* ─────────────────── REVENUE OVERVIEW ─────────────────── */}
                     <TouchableOpacity
-                        style={s.card}
+                        style={[s.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
                         activeOpacity={0.9}
                         onPress={() => navigation.navigate('IncomeDetails', { period: 'month' })}
                     >
                         <View style={s.cardHeader}>
                             <View style={s.cardHeaderLeft}>
-                                <Ionicons name="trending-up-outline" size={17} color="#7C3AED" />
-                                <Text style={s.cardTitle}>Revenue Overview</Text>
+                                <Ionicons name="trending-up-outline" size={17} color={theme.primary} />
+                                <Text style={[s.cardTitle, { fontSize: fontSize, color: theme.textPrimary }]}>Revenue Overview</Text>
                             </View>
-                            <Text style={s.cardMeta}>Last 6 months</Text>
+                            <Text style={[s.cardMeta, { fontSize: Math.max(10, fontSize - 3), color: theme.textSecondary }]}>Last 6 months</Text>
                         </View>
                         <View style={s.chartWrap}>
                             {revenueData.map((item, i) => (
@@ -601,11 +604,10 @@ export default function HomeScreen() {
                                 />
                             ))}
                         </View>
-                        <Text style={s.chartNote}>
+                        <Text style={[s.chartNote, { fontSize: Math.max(10, fontSize - 4), color: theme.textSecondary }]}>
                             * Past months will fill as data accumulates
                         </Text>
                     </TouchableOpacity>
-
 
                 </View>
             </ScrollView>

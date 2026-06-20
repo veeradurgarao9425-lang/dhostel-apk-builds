@@ -28,6 +28,7 @@ import {
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { COLORS, FONT, SPACING } from '../theme/index';
@@ -78,50 +79,71 @@ const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: any) => {
 };
 
 // ─── Reusable form components ─────────────────────────────────────────────────
-const FormInput = ({ label, icon: Icon, placeholder, value, onChangeText, keyboardType, multiline, error }: any) => (
-    <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>{label}</Text>
-        <View style={[styles.inputContainer, multiline && styles.multilineContainer, error && styles.inputError]}>
-            <View style={styles.inputIcon}><Icon size={18} color={error ? '#EF4444' : '#FF6B6B'} /></View>
-            <TextInput
-                style={[styles.input, multiline && styles.multilineInput]}
-                placeholder={placeholder}
-                placeholderTextColor="#BBBBBB"
-                value={value}
-                onChangeText={onChangeText}
-                keyboardType={keyboardType}
-                multiline={multiline}
-                numberOfLines={multiline ? 4 : 1}
-            />
+const FormInput = ({ label, icon: Icon, placeholder, value, onChangeText, keyboardType, multiline, error }: any) => {
+    const { theme, isDark, fontSize } = useTheme();
+    return (
+        <View style={styles.inputGroup}>
+            <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }]}>{label}</Text>
+            <View style={[styles.inputContainer, { backgroundColor: isDark ? '#1E293B' : '#F9FAFB', borderColor: isDark ? '#334155' : '#F1F5F9' }, multiline && styles.multilineContainer, error && styles.inputError]}>
+                <View style={styles.inputIcon}><Icon size={18} color={error ? '#EF4444' : theme.primary} /></View>
+                <TextInput
+                    style={[styles.input, { color: theme.textPrimary, fontSize }, multiline && styles.multilineInput]}
+                    placeholder={placeholder}
+                    placeholderTextColor={isDark ? '#475569' : '#BBBBBB'}
+                    value={value}
+                    onChangeText={onChangeText}
+                    keyboardType={keyboardType}
+                    multiline={multiline}
+                    numberOfLines={multiline ? 4 : 1}
+                />
+            </View>
+            {error && <Text style={styles.errorText}>{error}</Text>}
         </View>
-        {error && <Text style={styles.errorText}>{error}</Text>}
-    </View>
-);
+    );
+};
 
-const SelectField = ({ label, value, placeholder, icon: Icon, onPress, error }: any) => (
-    <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>{label}</Text>
-        <TouchableOpacity style={[styles.inputContainer, error && styles.inputError]} onPress={onPress} activeOpacity={0.7}>
-            <View style={styles.inputIcon}><Icon size={18} color={error ? '#EF4444' : '#FF6B6B'} /></View>
-            <Text style={[styles.inputText, !value && { color: '#BBBBBB' }]}>{value || placeholder}</Text>
-            <ChevronDown size={18} color="#94A3B8" />
-        </TouchableOpacity>
-        {error && <Text style={styles.errorText}>{error}</Text>}
-    </View>
-);
-
-const Selector = ({ label, options, selected, onSelect }: any) => (
-    <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>{label}</Text>
-        <View style={styles.selectorRow}>
-            {options.map((opt: string) => (
-                <TouchableOpacity key={opt} style={[styles.selectorItem, selected === opt && styles.selectorItemActive]} onPress={() => onSelect(opt)} activeOpacity={0.7}>
-                    <Text style={[styles.selectorText, selected === opt && styles.selectorTextActive]}>{opt}</Text>
-                </TouchableOpacity>
-            ))}
+const SelectField = ({ label, value, placeholder, icon: Icon, onPress, error }: any) => {
+    const { theme, isDark, fontSize } = useTheme();
+    return (
+        <View style={styles.inputGroup}>
+            <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }]}>{label}</Text>
+            <TouchableOpacity style={[styles.inputContainer, { backgroundColor: isDark ? '#1E293B' : '#F9FAFB', borderColor: isDark ? '#334155' : '#F1F5F9' }, error && styles.inputError]} onPress={onPress} activeOpacity={0.7}>
+                <View style={styles.inputIcon}><Icon size={18} color={error ? '#EF4444' : theme.primary} /></View>
+                <Text style={[styles.inputText, { color: theme.textPrimary, fontSize }, !value && { color: isDark ? '#475569' : '#BBBBBB' }]}>{value || placeholder}</Text>
+                <ChevronDown size={18} color={theme.textSecondary} />
+            </TouchableOpacity>
+            {error && <Text style={styles.errorText}>{error}</Text>}
         </View>
-    </View>
-);
+    );
+};
+
+const Selector = ({ label, options, selected, onSelect }: any) => {
+    const { theme, isDark, fontSize } = useTheme();
+    return (
+        <View style={styles.inputGroup}>
+            <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }]}>{label}</Text>
+            <View style={styles.selectorRow}>
+                {options.map((opt: string) => {
+                    const isAct = selected === opt;
+                    return (
+                        <TouchableOpacity
+                            key={opt}
+                            style={[
+                                styles.selectorItem,
+                                { borderColor: isDark ? '#334155' : '#E2E8F0', backgroundColor: isDark ? '#1E293B' : '#F8FAFC' },
+                                isAct && { borderColor: theme.primary, backgroundColor: isDark ? theme.primary + '30' : theme.lightBg }
+                            ]}
+                            onPress={() => onSelect(opt)}
+                            activeOpacity={0.7}
+                        >
+                            <Text style={[styles.selectorText, { fontSize: fontSize }, isAct && { color: theme.primary, fontWeight: '700' }]}>{opt}</Text>
+                        </TouchableOpacity>
+                    );
+                })}
+            </View>
+        </View>
+    );
+};
 
 // ─── Simple options drawer (gender, proof, relation) ─────────────────────────
 const OptionsDrawer = ({ visible, title, data, selectedId, onSelect, onClose, keyExtractor, labelExtractor, searchable }: any) => {
@@ -163,96 +185,9 @@ const OptionsDrawer = ({ visible, title, data, selectedId, onSelect, onClose, ke
     );
 };
 
-// ─── Floor-grouped room picker ────────────────────────────────────────────────
-const RoomPickerDrawer = ({ visible, rooms, selectedRoomId, onSelectRoom, onClose }: any) => {
-    const [search, setSearch] = useState('');
-    const grouped = React.useMemo(() => {
-        const f = search ? rooms.filter((r: any) => r.room_number?.toString().includes(search)) : rooms;
-        const map: Record<number, any[]> = {};
-        f.forEach((r: any) => { const fl = r.floor_number ?? 0; if (!map[fl]) map[fl] = []; map[fl].push(r); });
-        return Object.keys(map).sort((a, b) => Number(a) - Number(b)).map(fl => ({ floor: Number(fl), rooms: map[Number(fl)] }));
-    }, [rooms, search]);
-
-    const statusColor = (r: any) => r.status === 'MAINTENANCE' ? '#F97316' : (r.available_beds ?? 0) > 0 ? '#16A34A' : '#DC2626';
-
-    return (
-        <ModalSheet visible={visible} onClose={() => { setSearch(''); onClose(); }} maxHeight="90%">
-            <View style={styles.sheetHandle} />
-            <View style={styles.sheetHeader}>
-                <Text style={styles.sheetTitle}>Select Room</Text>
-                <TouchableOpacity onPress={() => { setSearch(''); onClose(); }} style={styles.doneBtn}><Text style={styles.doneBtnText}>Close</Text></TouchableOpacity>
-            </View>
-            <View style={{ paddingHorizontal: 16, marginBottom: 8 }}>
-                <View style={styles.searchBarWrap}>
-                    <Text style={{ color: '#94A3B8', marginRight: 8, fontSize: 16 }}>🔍</Text>
-                    <TextInput style={{ flex: 1, fontSize: 15, color: '#1E293B' }} placeholder="Search room..." placeholderTextColor="#94A3B8" value={search} onChangeText={setSearch} />
-                </View>
-            </View>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 16 }}>
-                {grouped.length === 0 && <View style={{ padding: 40, alignItems: 'center' }}><Text style={{ color: '#94A3B8' }}>No rooms found</Text></View>}
-                {grouped.map(({ floor, rooms: fr }) => (
-                    <View key={floor}>
-                        <View style={styles.floorChip}><Text style={styles.floorChipText}>FLOOR {floor}</Text></View>
-                        {fr.map((room: any) => {
-                            const isSel = selectedRoomId === room.room_id?.toString();
-                            const avail = room.available_beds ?? 0;
-                            return (
-                                <TouchableOpacity key={room.room_id}
-                                    style={[styles.roomCard, isSel && styles.roomCardSel, avail <= 0 && { opacity: 0.55 }]}
-                                    onPress={() => { onSelectRoom(room); setSearch(''); onClose(); }} activeOpacity={0.75}>
-                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                                        <Text style={[styles.roomNum, isSel && { color: '#FF6B6B' }]}>{room.room_number}</Text>
-                                        <Text style={styles.roomCap}>Cap: {room.capacity ?? '—'}</Text>
-                                    </View>
-                                    <Text style={[styles.roomAvail, { color: statusColor(room) }]}>Available: {avail}</Text>
-                                    <Text style={styles.roomRent}>Rent: ₹{room.rent_per_bed ?? room.base_rent ?? '—'}</Text>
-                                    {isSel && <View style={styles.selectedBadge}><Check size={11} color="#FF6B6B" /><Text style={styles.selectedBadgeText}>Selected</Text></View>}
-                                </TouchableOpacity>
-                            );
-                        })}
-                    </View>
-                ))}
-            </ScrollView>
-        </ModalSheet>
-    );
-};
-
-// ─── Bed picker ───────────────────────────────────────────────────────────────
-const BedPickerDrawer = ({ visible, room, beds, selectedBedId, onSelectBed, onClose, loading }: any) => (
-    <ModalSheet visible={visible} onClose={onClose} maxHeight="65%">
-        <View style={styles.sheetHandle} />
-        <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>Beds in Room {room?.room_number}</Text>
-            <TouchableOpacity onPress={onClose} style={styles.doneBtn}><Text style={styles.doneBtnText}>Close</Text></TouchableOpacity>
-        </View>
-        {room && <View style={{ paddingHorizontal: 16, marginBottom: 8 }}><View style={styles.floorChip}><Text style={styles.floorChipText}>ROOM {room.room_number}</Text></View></View>}
-        {loading ? (
-            <ActivityIndicator color="#FF6B6B" size="large" style={{ marginVertical: 40 }} />
-        ) : (
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}>
-                {beds.length === 0 && <View style={{ padding: 40, alignItems: 'center' }}><Text style={{ color: '#94A3B8' }}>No beds in this room</Text></View>}
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-                    {beds.map((bed: any) => {
-                        const isAvail = !bed.student_id || bed.status === 'available';
-                        const isSel = selectedBedId === bed.bed_id?.toString();
-                        return (
-                            <TouchableOpacity key={bed.bed_id}
-                                style={[styles.bedCard, isSel && styles.bedCardSel, !isAvail && styles.bedCardOcc]}
-                                onPress={() => { if (!isAvail) return; onSelectBed(bed); onClose(); }} activeOpacity={0.75}>
-                                <BedDouble size={20} color={isSel ? '#FF6B6B' : !isAvail ? '#CBD5E1' : '#64748B'} />
-                                <Text style={[styles.bedName, isSel && { color: '#FF6B6B' }, !isAvail && { color: '#94A3B8' }]}>{bed.bed_name ?? `Bed ${bed.bed_number}`}</Text>
-                                <Text style={{ fontSize: 11, fontWeight: '700', color: isAvail ? '#16A34A' : '#DC2626', marginTop: 2 }}>{isAvail ? '● AVAILABLE' : '● OCCUPIED'}</Text>
-                            </TouchableOpacity>
-                        );
-                    })}
-                </View>
-            </ScrollView>
-        )}
-    </ModalSheet>
-);
-
 // ─── Aadhaar photo capture ────────────────────────────────────────────────────
 const AadhaarCapture = ({ label, uri, onCapture, onRemove }: any) => {
+    const { theme, isDark, fontSize } = useTheme();
     const pick = () => {
         Alert.alert('Add Photo', label, [
             { text: '📷 Camera', onPress: async () => {
@@ -272,20 +207,24 @@ const AadhaarCapture = ({ label, uri, onCapture, onRemove }: any) => {
     };
     return (
         <View style={{ flex: 1 }}>
-            <Text style={styles.photoLabel}>{label}</Text>
+            <Text style={[styles.photoLabel, { fontSize: fontSize - 2, color: theme.textSecondary }]}>{label}</Text>
             {uri ? (
                 <View style={styles.photoPreviewWrap}>
                     <Image source={{ uri }} style={styles.photoPreview} />
                     <TouchableOpacity style={styles.photoRemoveBtn} onPress={onRemove}><X size={13} color="#FFF" /></TouchableOpacity>
-                    <TouchableOpacity style={styles.photoRetakeRow} onPress={pick}>
-                        <Camera size={13} color="#FF6B6B" /><Text style={{ fontSize: 10, color: '#FF6B6B', fontWeight: '700', marginLeft: 3 }}>Retake</Text>
+                    <TouchableOpacity style={[styles.photoRetakeRow, { backgroundColor: isDark ? '#1E293BCC' : '#FFFFFFCC' }]} onPress={pick}>
+                        <Camera size={13} color={theme.primary} /><Text style={{ fontSize: 10, color: theme.primary, fontWeight: '700', marginLeft: 3 }}>Retake</Text>
                     </TouchableOpacity>
                 </View>
             ) : (
-                <TouchableOpacity style={styles.photoCaptureBtn} onPress={pick} activeOpacity={0.75}>
-                    <Camera size={26} color="#FF6B6B" />
-                    <Text style={styles.photoCaptureText}>Tap to add</Text>
-                    <Text style={styles.photoCaptureHint}>Camera or Gallery</Text>
+                <TouchableOpacity
+                    style={[styles.photoCaptureBtn, { backgroundColor: isDark ? '#1E293B' : theme.lightBg, borderColor: isDark ? '#334155' : COLORS.border, borderStyle: 'dashed', borderWidth: 1.5, borderRadius: 12, height: 110, alignItems: 'center', justifyContent: 'center' }]}
+                    onPress={pick}
+                    activeOpacity={0.75}
+                >
+                    <Camera size={26} color={theme.primary} />
+                    <Text style={[styles.photoCaptureText, { color: theme.primary, fontSize: fontSize - 2, fontWeight: '600', marginTop: 4 }]}>Tap to add</Text>
+                    <Text style={[styles.photoCaptureHint, { fontSize: fontSize - 4, color: theme.textSecondary }]}>Camera or Gallery</Text>
                 </TouchableOpacity>
             )}
         </View>
@@ -294,6 +233,7 @@ const AadhaarCapture = ({ label, uri, onCapture, onRemove }: any) => {
 
 // ─── Profile avatar capture at top ───────────────────────────────────────────
 const ProfilePhotoCapture = ({ uri, onCapture, onRemove }: any) => {
+    const { theme, isDark, fontSize } = useTheme();
     const pick = () => {
         Alert.alert('Profile Photo', 'Choose source', [
             { text: '📷 Camera', onPress: async () => {
@@ -316,18 +256,18 @@ const ProfilePhotoCapture = ({ uri, onCapture, onRemove }: any) => {
             <TouchableOpacity onPress={pick} activeOpacity={0.85}>
                 {uri ? (
                     <View>
-                        <Image source={{ uri }} style={styles.profileAvatar} />
-                        <View style={styles.profileEditBadge}><Camera size={14} color="#FFF" /></View>
+                        <Image source={{ uri }} style={[styles.profileAvatar, { borderColor: theme.primary }]} />
+                        <View style={[styles.profileEditBadge, { backgroundColor: theme.primary }]}><Camera size={14} color="#FFF" /></View>
                         <TouchableOpacity style={styles.profileRemoveBtn} onPress={onRemove}><X size={12} color="#FFF" /></TouchableOpacity>
                     </View>
                 ) : (
-                    <View style={styles.profileAvatarPlaceholder}>
-                        <User size={38} color="#FF6B6B" />
-                        <View style={styles.profileEditBadge}><Camera size={14} color="#FFF" /></View>
+                    <View style={[styles.profileAvatarPlaceholder, { backgroundColor: isDark ? '#1E293B' : theme.lightBg, borderColor: isDark ? '#334155' : COLORS.border }]}>
+                        <User size={38} color={theme.primary} />
+                        <View style={[styles.profileEditBadge, { backgroundColor: theme.primary }]}><Camera size={14} color="#FFF" /></View>
                     </View>
                 )}
             </TouchableOpacity>
-            <Text style={styles.profilePhotoHint}>{uri ? 'Tap to change photo' : 'Add profile photo'}</Text>
+            <Text style={[styles.profilePhotoHint, { fontSize: fontSize - 2, color: theme.textSecondary }]}>{uri ? 'Tap to change photo' : 'Add profile photo'}</Text>
         </View>
     );
 };
@@ -335,6 +275,7 @@ const ProfilePhotoCapture = ({ uri, onCapture, onRemove }: any) => {
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export const AddStudentScreen = ({ navigation, route }: any) => {
     const { user } = useAuth();
+    const { theme, isDark, fontSize } = useTheme();
     const { student, isEdit } = route.params || {};
     const { showSuccess, showError, showApiError } = useToast();
     const insets = useSafeAreaInsets();
@@ -371,6 +312,9 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
 
     const selectedRoom = availableRooms.find(r => r.room_id?.toString() === formData.room_id);
     const selectedBed = beds.find(b => b.bed_id?.toString() === formData.bed_id);
+
+    const selectedIdProofName = idProofTypes.find(t => t.id.toString() === formData.id_proof_type_id)?.name || '';
+    const showIdPhotos = selectedIdProofName.toLowerCase().includes('aadhaar') || selectedIdProofName.toLowerCase().includes('pan');
 
     useEffect(() => {
         const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
@@ -492,7 +436,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
     return (
         <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={styles.container}
+            style={[styles.container, { backgroundColor: theme.background }]}
             keyboardVerticalOffset={0}
         >
             <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
@@ -511,8 +455,8 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 <ProfilePhotoCapture uri={profilePhoto} onCapture={setProfilePhoto} onRemove={() => setProfilePhoto(null)} />
 
                 {/* ── Basic Info ── */}
-                <View style={styles.formCard}>
-                    <Text style={styles.sectionTitle}>👤 Basic Information</Text>
+                <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
+                    <Text style={[styles.sectionTitle, { fontSize: fontSize + 1, color: theme.textPrimary, borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>👤 Basic Information</Text>
                     <FormInput label="First Name *" icon={User} placeholder="e.g. Ravi" value={formData.first_name} error={errors.first_name}
                         onChangeText={(t: string) => { up('first_name', t.replace(/[^a-zA-Z0-9\s]/g, '')); if (errors.first_name && t) setErrors(p => { const e = { ...p }; delete e.first_name; return e; }); }} />
                     <FormInput label="Last Name" icon={User} placeholder="e.g. Kumar" value={formData.last_name} onChangeText={(t: string) => up('last_name', t.replace(/[^a-zA-Z0-9\s]/g, ''))} />
@@ -525,21 +469,26 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 </View>
 
                 {/* ── Identity & Aadhaar ── */}
-                <View style={styles.formCard}>
-                    <Text style={styles.sectionTitle}>🪪 Identity & Documents</Text>
+                <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
+                    <Text style={[styles.sectionTitle, { fontSize: fontSize + 1, color: theme.textPrimary, borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>🪪 Identity & Documents</Text>
                     <SelectField label="ID Proof Type" value={idProofTypes.find(t => t.id.toString() === formData.id_proof_type_id)?.name} placeholder="Select ID Type" icon={Fingerprint} onPress={() => setProofModal(true)} />
                     <FormInput label="Aadhaar / ID Number" icon={CreditCard} placeholder="Enter ID number" value={formData.id_proof_number}
                         onChangeText={(t: string) => up('id_proof_number', t)} />
-                    <Text style={styles.photoSectionLabel}>📸 Aadhaar Photos <Text style={{ color: '#94A3B8', fontWeight: '400', fontSize: 12 }}>(stored locally)</Text></Text>
-                    <View style={{ gap: 14, marginTop: 8 }}>
-                        <AadhaarCapture label="Front Side" uri={aadhaarFront} onCapture={setAadhaarFront} onRemove={() => setAadhaarFront(null)} />
-                        <AadhaarCapture label="Back Side" uri={aadhaarBack} onCapture={setAadhaarBack} onRemove={() => setAadhaarBack(null)} />
-                    </View>
+                    
+                    {showIdPhotos && (
+                        <>
+                            <Text style={[styles.photoSectionLabel, { fontSize: fontSize - 1, color: theme.textPrimary, marginTop: 10 }]}>📸 {selectedIdProofName} Photos <Text style={{ color: theme.textSecondary, fontWeight: '400', fontSize: fontSize - 3 }}>(stored locally)</Text></Text>
+                            <View style={{ gap: 14, marginTop: 8 }}>
+                                <AadhaarCapture label="Front Side" uri={aadhaarFront} onCapture={setAadhaarFront} onRemove={() => setAadhaarFront(null)} />
+                                <AadhaarCapture label="Back Side" uri={aadhaarBack} onCapture={setAadhaarBack} onRemove={() => setAadhaarBack(null)} />
+                            </View>
+                        </>
+                    )}
                 </View>
 
                 {/* ── Guardian (Optional) ── */}
-                <View style={styles.formCard}>
-                    <Text style={styles.sectionTitle}>👨‍👩‍👦 Guardian <Text style={{ fontWeight: '400', color: '#94A3B8', fontSize: 12 }}>(Optional)</Text></Text>
+                <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
+                    <Text style={[styles.sectionTitle, { fontSize: fontSize + 1, color: theme.textPrimary, borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>👨‍👩‍👦 Guardian <Text style={{ fontWeight: '400', color: theme.textSecondary, fontSize: 12 }}>(Optional)</Text></Text>
                     <FormInput label="Guardian Name" icon={User} placeholder="Parent / Guardian" value={formData.guardian_name} onChangeText={(t: string) => up('guardian_name', t.replace(/[^a-zA-Z0-9\s]/g, ''))} />
                     <SelectField label="Relation" value={relations.find(r => r.relation_id.toString() === formData.guardian_relation_id)?.relation_name} placeholder="Relation" icon={Users} onPress={() => setRelationModal(true)} />
                     <FormInput label="Guardian Phone" icon={Phone} placeholder="9876543211" keyboardType="phone-pad" value={formData.guardian_phone} error={errors.guardian_phone}
@@ -547,44 +496,44 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 </View>
 
                 {/* ── Admission ── */}
-                <View style={styles.formCard}>
-                    <Text style={styles.sectionTitle}>📋 Admission Details</Text>
+                <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
+                    <Text style={[styles.sectionTitle, { fontSize: fontSize + 1, color: theme.textPrimary, borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>📋 Admission Details</Text>
                     <SelectField label="Admission Date *" icon={Calendar} placeholder="Pick date" value={formData.admission_date} error={errors.admission_date} onPress={() => { setDateMode('admission'); setShowDatePicker(true); }} />
                     <FormInput label="Admission Fee (₹)" icon={CreditCard} placeholder="0" keyboardType="numeric" value={formData.admission_fee} onChangeText={(t: string) => up('admission_fee', t.replace(/\D/g, ''))} />
                     <Selector label="Payment Status" options={['Paid', 'Unpaid']} selected={formData.admission_status} onSelect={(v: string) => up('admission_status', v)} />
                 </View>
 
                 {/* ── Room & Bed ── */}
-                <View style={styles.formCard}>
-                    <Text style={styles.sectionTitle}>🏠 Room & Bed Allocation</Text>
+                <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
+                    <Text style={[styles.sectionTitle, { fontSize: fontSize + 1, color: theme.textPrimary, borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>🏠 Room & Bed Allocation</Text>
                     {selectedRoom && (
-                        <View style={styles.allocationSummary}>
+                        <View style={[styles.allocationSummary, { backgroundColor: isDark ? '#1E293B' : COLORS.primaryLight, borderColor: isDark ? '#334155' : COLORS.border }]}>
                             <View style={{ flex: 1 }}>
                                 <Text style={styles.allocationLabel}>Room</Text>
-                                <Text style={styles.allocationValue}>Room {selectedRoom.room_number}</Text>
-                                <Text style={styles.allocationMeta}>Floor {selectedRoom.floor_number ?? '—'}  •  ₹{selectedRoom.rent_per_bed ?? '—'}/bed</Text>
+                                <Text style={[styles.allocationValue, { color: theme.textPrimary }]}>Room {selectedRoom.room_number}</Text>
+                                <Text style={[styles.allocationMeta, { color: theme.textSecondary }]}>Floor {selectedRoom.floor_number ?? '—'}  •  ₹{selectedRoom.rent_per_bed ?? '—'}/bed</Text>
                             </View>
-                            <View style={styles.allocationDivider} />
+                            <View style={[styles.allocationDivider, { backgroundColor: isDark ? '#334155' : COLORS.border }]} />
                             <View style={{ flex: 1 }}>
                                 <Text style={styles.allocationLabel}>Bed</Text>
-                                <Text style={[styles.allocationValue, !selectedBed && { color: '#94A3B8', fontSize: 14 }]}>
+                                <Text style={[styles.allocationValue, { color: theme.textPrimary }, !selectedBed && { color: theme.textSecondary, fontSize: 14 }]}>
                                     {selectedBed ? (selectedBed.bed_name ?? `Bed`) : 'Not selected'}
                                 </Text>
-                                {selectedBed && <Text style={styles.allocationMeta}>● Available</Text>}
+                                {selectedBed && <Text style={{ fontSize: 11, color: '#16A34A', marginTop: 2 }}>● Available</Text>}
                             </View>
                         </View>
                     )}
                     <View style={{ gap: 12 }}>
-                        <TouchableOpacity style={[styles.allocationBtn, selectedRoom && styles.allocationBtnActive]} onPress={() => setRoomModal(true)} activeOpacity={0.8}>
-                            <Home size={17} color={selectedRoom ? '#FF6B6B' : '#64748B'} />
-                            <Text style={[styles.allocationBtnText, selectedRoom && { color: '#FF6B6B' }]} numberOfLines={1}>{selectedRoom ? `Room ${selectedRoom.room_number}` : 'Select Room'}</Text>
-                            <ChevronDown size={15} color={selectedRoom ? '#FF6B6B' : '#94A3B8'} />
+                        <TouchableOpacity style={[styles.allocationBtn, { backgroundColor: isDark ? '#1E293B' : '#F9FAFB', borderColor: isDark ? '#334155' : '#E2E8F0' }, selectedRoom && { backgroundColor: isDark ? theme.primary + '20' : COLORS.primaryLight, borderColor: theme.primary }]} onPress={() => setRoomModal(true)} activeOpacity={0.8}>
+                            <Home size={17} color={selectedRoom ? theme.primary : theme.textSecondary} />
+                            <Text style={[styles.allocationBtnText, { color: theme.textSecondary }, selectedRoom && { color: theme.primary }]} numberOfLines={1}>{selectedRoom ? `Room ${selectedRoom.room_number}` : 'Select Room'}</Text>
+                            <ChevronDown size={15} color={selectedRoom ? theme.primary : theme.textSecondary} />
                         </TouchableOpacity>
-                        <TouchableOpacity style={[styles.allocationBtn, selectedBed && styles.allocationBtnActive, !selectedRoom && styles.allocationBtnDisabled]}
+                        <TouchableOpacity style={[styles.allocationBtn, { backgroundColor: isDark ? '#1E293B' : '#F9FAFB', borderColor: isDark ? '#334155' : '#E2E8F0' }, selectedBed && { backgroundColor: isDark ? theme.primary + '20' : COLORS.primaryLight, borderColor: theme.primary }, !selectedRoom && styles.allocationBtnDisabled]}
                             onPress={() => { if (!selectedRoom) { Alert.alert('Select Room First', 'Please pick a room first.'); return; } setBedModal(true); }} activeOpacity={0.8}>
-                            <BedDouble size={17} color={selectedBed ? '#FF6B6B' : !selectedRoom ? '#CBD5E1' : '#64748B'} />
-                            <Text style={[styles.allocationBtnText, selectedBed && { color: '#FF6B6B' }, !selectedRoom && { color: '#CBD5E1' }]} numberOfLines={1}>{selectedBed ? (selectedBed.bed_name ?? 'Bed') : 'Select Bed'}</Text>
-                            <ChevronDown size={15} color={selectedBed ? '#FF6B6B' : '#94A3B8'} />
+                            <BedDouble size={17} color={selectedBed ? theme.primary : !selectedRoom ? (isDark ? '#334155' : '#CBD5E1') : theme.textSecondary} />
+                            <Text style={[styles.allocationBtnText, { color: theme.textSecondary }, selectedBed && { color: theme.primary }, !selectedRoom && { color: isDark ? '#334155' : '#CBD5E1' }]} numberOfLines={1}>{selectedBed ? (selectedBed.bed_name ?? 'Bed') : 'Select Bed'}</Text>
+                            <ChevronDown size={15} color={selectedBed ? theme.primary : theme.textSecondary} />
                         </TouchableOpacity>
                     </View>
                     {selectedRoom && (
@@ -597,8 +546,8 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 </View>
 
                 {/* ── Address ── */}
-                <View style={styles.formCard}>
-                    <Text style={styles.sectionTitle}>📍 Address</Text>
+                <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
+                    <Text style={[styles.sectionTitle, { fontSize: fontSize + 1, color: theme.textPrimary, borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>📍 Address</Text>
                     <FormInput label="Permanent Address" icon={MapPin} placeholder="Full home address..." multiline value={formData.permanent_address} onChangeText={(t: string) => up('permanent_address', t)} />
                 </View>
 
@@ -607,13 +556,13 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
             </ScrollView>
 
             {/* ─── Sticky Footer ───────────────────────────────────────────────────── */}
-            <View style={[styles.stickyFooter, { paddingBottom: isKeyboardVisible ? SPACING.md : (insets.bottom + SPACING.md) }]}>
+            <View style={[styles.stickyFooter, { backgroundColor: theme.cardBg, borderTopColor: isDark ? '#334155' : '#F1F5F9', paddingBottom: isKeyboardVisible ? SPACING.md : (insets.bottom + SPACING.md) }]}>
                 <TouchableOpacity
-                    style={styles.cancelButton}
+                    style={[styles.cancelButton, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#CBD5E1' }]}
                     onPress={handleReset}
                     disabled={loading}
                 >
-                    <Text style={styles.cancelButtonText}>Reset</Text>
+                    <Text style={[styles.cancelButtonText, { color: theme.textSecondary }]}>Reset</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={[styles.submitButton, loading && styles.disabledButton]}
@@ -621,7 +570,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                     disabled={loading}
                 >
                     <LinearGradient
-                        colors={loading ? ['#BBB', '#999'] : [COLORS.gradientStart, COLORS.gradientEnd]}
+                        colors={loading ? ['#BBB', '#999'] : [theme.gradientStart, theme.gradientEnd]}
                         style={styles.submitGradient}
                     >
                         {loading
@@ -652,8 +601,110 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
     );
 };
 
+// ── Floor-grouped room picker ────────────────────────────────────────────────
+const RoomPickerDrawer = ({ visible, rooms, selectedRoomId, onSelectRoom, onClose }: any) => {
+    const { theme, isDark, fontSize } = useTheme();
+    const [search, setSearch] = useState('');
+    const grouped = React.useMemo(() => {
+        const f = search ? rooms.filter((r: any) => r.room_number?.toString().includes(search)) : rooms;
+        const map: Record<number, any[]> = {};
+        f.forEach((r: any) => { const fl = r.floor_number ?? 0; if (!map[fl]) map[fl] = []; map[fl].push(r); });
+        return Object.keys(map).sort((a, b) => Number(a) - Number(b)).map(fl => ({ floor: Number(fl), rooms: map[Number(fl)] }));
+    }, [rooms, search]);
+
+    const statusColor = (r: any) => r.status === 'MAINTENANCE' ? '#F97316' : (r.available_beds ?? 0) > 0 ? '#16A34A' : '#DC2626';
+
+    return (
+        <ModalSheet visible={visible} onClose={() => { setSearch(''); onClose(); }} maxHeight="90%">
+            <View style={styles.sheetHandle} />
+            <View style={[styles.sheetHeader, { borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                <Text style={[styles.sheetTitle, { color: theme.textPrimary }]}>Select Room</Text>
+                <TouchableOpacity onPress={() => { setSearch(''); onClose(); }} style={[styles.doneBtn, { backgroundColor: isDark ? theme.primary + '20' : COLORS.primaryLight }]}><Text style={[styles.doneBtnText, { color: theme.primary }]}>Close</Text></TouchableOpacity>
+            </View>
+            <View style={{ paddingHorizontal: 16, marginBottom: 8, marginTop: 8 }}>
+                <View style={[styles.searchBarWrap, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                    <Text style={{ color: theme.textSecondary, marginRight: 8, fontSize: 16 }}>🔍</Text>
+                    <TextInput style={{ flex: 1, fontSize: 15, color: theme.textPrimary }} placeholder="Search room..." placeholderTextColor={isDark ? '#64748B' : '#94A3B8'} value={search} onChangeText={setSearch} />
+                </View>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 16 }}>
+                {grouped.length === 0 && <View style={{ padding: 40, alignItems: 'center' }}><Text style={{ color: theme.textSecondary }}>No rooms found</Text></View>}
+                {grouped.map(({ floor, rooms: fr }) => (
+                    <View key={floor}>
+                        <View style={[styles.floorChip, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}><Text style={[styles.floorChipText, { color: theme.textSecondary }]}>FLOOR {floor}</Text></View>
+                        {fr.map((room: any) => {
+                            const isSel = selectedRoomId === room.room_id?.toString();
+                            const avail = room.available_beds ?? 0;
+                            return (
+                                <TouchableOpacity key={room.room_id}
+                                    style={[styles.roomCard, { backgroundColor: isDark ? '#1E293B' : COLORS.primaryLight, borderColor: isDark ? '#334155' : COLORS.border }, isSel && { borderColor: theme.primary }, avail <= 0 && { opacity: 0.55 }]}
+                                    onPress={() => { onSelectRoom(room); setSearch(''); onClose(); }} activeOpacity={0.75}>
+                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <Text style={[styles.roomNum, { fontSize: fontSize + 4, color: theme.textPrimary }, isSel && { color: theme.primary }]}>{room.room_number}</Text>
+                                        {!isSel && <Text style={[styles.roomCap, { fontSize: fontSize - 1, color: theme.textSecondary }]}>Cap: {room.capacity ?? '—'}</Text>}
+                                    </View>
+                                    <Text style={[styles.roomAvail, { fontSize: fontSize - 1, color: statusColor(room) }]}>Available: {avail}</Text>
+                                    <Text style={[styles.roomRent, { fontSize: fontSize - 1, color: theme.textSecondary }]}>Rent: ₹{room.rent_per_bed ?? room.base_rent ?? '—'}</Text>
+                                    {isSel && (
+                                        <View style={[styles.selectedBadge, { backgroundColor: isDark ? theme.primary + '20' : COLORS.primaryLight }]}>
+                                            <Check size={11} color={theme.primary} />
+                                            <Text style={[styles.selectedBadgeText, { color: theme.primary }]}>Selected</Text>
+                                        </View>
+                                    )}
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+                ))}
+            </ScrollView>
+        </ModalSheet>
+    );
+};
+
+// ─── Bed picker ───────────────────────────────────────────────────────────────
+const BedPickerDrawer = ({ visible, room, beds, selectedBedId, onSelectBed, onClose, loading }: any) => {
+    const { theme, isDark, fontSize } = useTheme();
+    return (
+        <ModalSheet visible={visible} onClose={onClose} maxHeight="65%">
+            <View style={styles.sheetHandle} />
+            <View style={[styles.sheetHeader, { borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                <Text style={[styles.sheetTitle, { color: theme.textPrimary }]}>Beds in Room {room?.room_number}</Text>
+                <TouchableOpacity onPress={onClose} style={[styles.doneBtn, { backgroundColor: isDark ? theme.primary + '20' : COLORS.primaryLight }]}><Text style={[styles.doneBtnText, { color: theme.primary }]}>Close</Text></TouchableOpacity>
+            </View>
+            {room && <View style={{ paddingHorizontal: 16, marginBottom: 8, marginTop: 8 }}><View style={[styles.floorChip, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}><Text style={[styles.floorChipText, { color: theme.textSecondary }]}>ROOM {room.room_number}</Text></View></View>}
+            {loading ? (
+                <ActivityIndicator color={theme.primary} size="large" style={{ marginVertical: 40 }} />
+            ) : (
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}>
+                    {beds.length === 0 && <View style={{ padding: 40, alignItems: 'center' }}><Text style={{ color: theme.textSecondary }}>No beds in this room</Text></View>}
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+                        {beds.map((bed: any) => {
+                            const isAvail = !bed.student_id || bed.status === 'available';
+                            const isSel = selectedBedId === bed.bed_id?.toString();
+                            return (
+                                <TouchableOpacity key={bed.bed_id}
+                                    style={[
+                                        styles.bedCard,
+                                        { backgroundColor: isDark ? '#1E293B' : COLORS.primaryLight, borderColor: isDark ? '#334155' : COLORS.border },
+                                        isSel && { borderColor: theme.primary },
+                                        !isAvail && { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#1E293B' : '#E2E8F0', opacity: 0.65 }
+                                    ]}
+                                    onPress={() => { if (!isAvail) return; onSelectBed(bed); onClose(); }} activeOpacity={0.75}>
+                                    <BedDouble size={20} color={isSel ? theme.primary : !isAvail ? (isDark ? '#334155' : '#CBD5E1') : theme.textSecondary} />
+                                    <Text style={[styles.bedName, { fontSize: fontSize + 2, color: theme.textPrimary }, isSel && { color: theme.primary }, !isAvail && { color: theme.textSecondary }]}>{bed.bed_name ?? `Bed ${bed.bed_number}`}</Text>
+                                    <Text style={{ fontSize: fontSize - 3, fontWeight: '700', color: isAvail ? '#16A34A' : '#DC2626', marginTop: 2 }}>{isAvail ? '● AVAILABLE' : '● OCCUPIED'}</Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+                </ScrollView>
+            )}
+        </ModalSheet>
+    );
+};
+
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F5F7FA' },
+    container: { flex: 1 },
     header: { paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
     headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
@@ -663,81 +714,78 @@ const styles = StyleSheet.create({
 
     // Profile photo
     profilePhotoWrap: { alignItems: 'center', marginVertical: 20 },
-    profileAvatar: { width: 100, height: 100, borderRadius: 50, borderWidth: 3, borderColor: COLORS.primary },
-    profileAvatarPlaceholder: { width: 100, height: 100, borderRadius: 50, backgroundColor: COLORS.primaryLight, alignItems: 'center', justifyContent: 'center', borderWidth: 2.5, borderColor: COLORS.border, borderStyle: 'dashed' },
-    profileEditBadge: { position: 'absolute', bottom: 2, right: 2, width: 28, height: 28, borderRadius: 14, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#FFF' },
+    profileAvatar: { width: 100, height: 100, borderRadius: 50, borderWidth: 3 },
+    profileAvatarPlaceholder: { width: 100, height: 100, borderRadius: 50, alignItems: 'center', justifyContent: 'center', borderWidth: 2.5, borderStyle: 'dashed' },
+    profileEditBadge: { position: 'absolute', bottom: 2, right: 2, width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#FFF' },
     profileRemoveBtn: { position: 'absolute', top: 0, right: 0, width: 22, height: 22, borderRadius: 11, backgroundColor: COLORS.error, alignItems: 'center', justifyContent: 'center' },
-    profilePhotoHint: { fontSize: 12, color: '#94A3B8', marginTop: 8, fontWeight: '500' },
+    profilePhotoHint: { marginTop: 8, fontWeight: '500' },
 
-    formCard: { backgroundColor: '#FFF', borderRadius: 18, padding: 20, marginBottom: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
-    sectionTitle: { fontSize: 15, fontWeight: '700', color: '#1A1A1A', marginBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', paddingBottom: 10 },
+    formCard: { borderRadius: 18, padding: 20, marginBottom: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+    sectionTitle: { fontWeight: '700', marginBottom: 16, borderBottomWidth: 1, paddingBottom: 10 },
     inputGroup: { marginBottom: 14 },
-    inputLabel: { fontSize: 13, fontWeight: '600', color: '#64748B', marginBottom: 7, marginLeft: 2 },
-    inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9FAFB', borderRadius: 12, paddingHorizontal: 12, height: 50, borderWidth: 1, borderColor: '#F1F5F9' },
+    inputLabel: { fontWeight: '600', marginBottom: 7, marginLeft: 2 },
+    inputContainer: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, paddingHorizontal: 12, height: 50, borderWidth: 1 },
     inputError: { backgroundColor: '#FEF2F2', borderColor: '#EF4444', borderWidth: 1.5 },
     multilineContainer: { height: 100, alignItems: 'flex-start', paddingTop: 12 },
     inputIcon: { marginRight: 10 },
-    input: { flex: 1, fontSize: 15, color: '#1A1A1A' },
-    inputText: { flex: 1, fontSize: 15, color: '#1A1A1A', fontWeight: '500' },
+    input: { flex: 1 },
+    inputText: { flex: 1, fontWeight: '500' },
     multilineInput: { textAlignVertical: 'top', height: 80 },
     errorText: { color: '#EF4444', fontSize: 12, marginTop: 4, fontWeight: '500' },
     selectorRow: { flexDirection: 'row', gap: 10 },
-    selectorItem: { flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', backgroundColor: '#F8FAFC' },
-    selectorItemActive: { borderColor: COLORS.primary, backgroundColor: COLORS.primaryLight },
-    selectorText: { fontSize: 14, color: '#64748B', fontWeight: '500' },
-    selectorTextActive: { color: COLORS.primary, fontWeight: '700' },
+    selectorItem: { flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1, alignItems: 'center' },
+    selectorText: { color: '#64748B', fontWeight: '500' },
     row: { flexDirection: 'row' },
 
     // Aadhaar photo
-    photoSectionLabel: { fontSize: 13, fontWeight: '700', color: '#334155', marginTop: 4 },
-    photoLabel: { fontSize: 12, fontWeight: '600', color: '#64748B', marginBottom: 7 },
-    photoCaptureBtn: { backgroundColor: COLORS.primaryLight, borderWidth: 1.5, borderColor: COLORS.border, borderStyle: 'dashed', borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingVertical: 18, gap: 4 },
-    photoCaptureText: { fontSize: 12, color: COLORS.primary, fontWeight: '600' },
-    photoCaptureHint: { fontSize: 10, color: '#94A3B8' },
+    photoSectionLabel: { fontWeight: '700' },
+    photoLabel: { fontWeight: '600', marginBottom: 7 },
+    photoCaptureBtn: { flex: 1 },
+    photoCaptureText: { fontWeight: '600' },
+    photoCaptureHint: { marginTop: 2 },
     photoPreviewWrap: { position: 'relative', borderRadius: 12, overflow: 'hidden' },
     photoPreview: { width: '100%', height: 110, borderRadius: 12 },
     photoRemoveBtn: { position: 'absolute', top: 6, right: 6, width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(239,68,68,0.9)', alignItems: 'center', justifyContent: 'center' },
-    photoRetakeRow: { position: 'absolute', bottom: 6, right: 6, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFFCC', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3 },
+    photoRetakeRow: { position: 'absolute', bottom: 6, right: 6, flexDirection: 'row', alignItems: 'center', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3 },
 
-    allocationSummary: { flexDirection: 'row', backgroundColor: COLORS.primaryLight, borderRadius: 14, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: COLORS.border },
+    allocationSummary: { flexDirection: 'row', borderRadius: 14, padding: 14, marginBottom: 14, borderWidth: 1 },
     allocationLabel: { fontSize: 11, color: '#94A3B8', fontWeight: '600', marginBottom: 3 },
-    allocationValue: { fontSize: 16, fontWeight: '700', color: '#1E293B' },
-    allocationMeta: { fontSize: 11, color: '#64748B', marginTop: 2 },
-    allocationDivider: { width: 1, backgroundColor: COLORS.border, marginHorizontal: 14 },
-    allocationBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9FAFB', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 13, borderWidth: 1, borderColor: '#E2E8F0', gap: 6 },
-    allocationBtnActive: { backgroundColor: COLORS.primaryLight, borderColor: COLORS.primary },
+    allocationValue: { fontSize: 16, fontWeight: '700' },
+    allocationMeta: { fontSize: 11, marginTop: 2 },
+    allocationDivider: { width: 1, marginHorizontal: 14 },
+    allocationBtn: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 13, borderWidth: 1, gap: 6 },
     allocationBtnDisabled: { opacity: 0.45 },
-    allocationBtnText: { flex: 1, fontSize: 14, fontWeight: '600', color: '#64748B' },
+    allocationBtnText: { flex: 1, fontSize: 14, fontWeight: '600' },
 
-    sheet: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 8 },
+    sheet: { position: 'absolute', bottom: 0, left: 0, right: 0, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 8 },
     sheetHandle: { width: 40, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, alignSelf: 'center', marginBottom: 12 },
-    sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-    sheetTitle: { fontSize: 17, fontWeight: '700', color: '#1A1A1A' },
-    doneBtn: { paddingVertical: 6, paddingHorizontal: 14, borderRadius: 8, backgroundColor: COLORS.primaryLight },
-    doneBtnText: { color: COLORS.primary, fontWeight: '700', fontSize: 14 },
-    searchInput: { backgroundColor: '#F1F5F9', borderRadius: 10, padding: 12, fontSize: 15, color: '#1E293B' },
-    searchBarWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10 },
+    sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1 },
+    sheetTitle: { fontSize: 17, fontWeight: '700' },
+    doneBtn: { paddingVertical: 6, paddingHorizontal: 14, borderRadius: 8 },
+    doneBtnText: { fontWeight: '700', fontSize: 14 },
+    searchInput: { borderRadius: 10, padding: 12, fontSize: 15 },
+    searchBarWrap: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10 },
 
-    optionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 15, paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
+    optionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 15, paddingHorizontal: 20, borderBottomWidth: 1 },
     optionRowActive: { backgroundColor: COLORS.primaryLight },
-    optionLabel: { fontSize: 15, color: '#334155', fontWeight: '500' },
-    optionLabelActive: { color: COLORS.primary, fontWeight: '700' },
+    optionLabel: { color: '#334155', fontWeight: '500' },
+    optionLabelActive: { fontWeight: '700' },
 
-    floorChip: { backgroundColor: '#F1F5F9', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 4, alignSelf: 'flex-start', marginBottom: 10, marginTop: 8 },
-    floorChipText: { fontSize: 11, fontWeight: '700', color: '#64748B' },
-    roomCard: { backgroundColor: COLORS.primaryLight, borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1.5, borderColor: COLORS.border, position: 'relative' },
-    roomCardSel: { borderColor: COLORS.primary, backgroundColor: COLORS.primaryLight },
-    roomNum: { fontSize: 18, fontWeight: '700', color: '#1E293B' },
-    roomCap: { fontSize: 13, color: '#64748B', fontWeight: '600' },
-    roomAvail: { fontSize: 13, fontWeight: '700', marginTop: 4 },
-    roomRent: { fontSize: 13, color: '#475569', marginTop: 3 },
-    selectedBadge: { position: 'absolute', top: 10, right: 10, flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.primaryLight, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, gap: 4 },
-    selectedBadgeText: { fontSize: 11, color: COLORS.primary, fontWeight: '700' },
+    floorChip: { borderRadius: 8, paddingHorizontal: 12, paddingVertical: 4, alignSelf: 'flex-start', marginBottom: 10, marginTop: 8 },
+    floorChipText: { fontSize: 11, fontWeight: '700' },
+    roomCard: { borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1.5, position: 'relative' },
+    roomCardSel: {},
+    roomNum: { fontWeight: '700' },
+    roomCap: { fontWeight: '600' },
+    roomAvail: { fontWeight: '700', marginTop: 4 },
+    roomRent: { marginTop: 3 },
+    selectedBadge: { position: 'absolute', top: 10, right: 10, flexDirection: 'row', alignItems: 'center', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, gap: 4 },
+    selectedBadgeText: { fontSize: 11, fontWeight: '700' },
 
-    bedCard: { backgroundColor: COLORS.primaryLight, borderRadius: 12, padding: 14, borderWidth: 1.5, borderColor: COLORS.border, width: '47%', alignItems: 'center', gap: 6 },
-    bedCardSel: { borderColor: COLORS.primary, backgroundColor: COLORS.primaryLight },
-    bedCardOcc: { backgroundColor: '#F8FAFC', borderColor: '#E2E8F0', opacity: 0.65 },
-    bedName: { fontSize: 16, fontWeight: '700', color: '#1E293B' },
+    bedCard: { borderRadius: 12, padding: 14, borderWidth: 1.5, width: '47%', alignItems: 'center', gap: 6 },
+    bedCardSel: {},
+    bedCardOcc: { opacity: 0.65 },
+    bedName: { fontWeight: '700' },
 
     // Buttons & sticky footer
     stickyFooter: {
