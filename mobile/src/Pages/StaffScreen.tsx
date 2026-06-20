@@ -544,7 +544,7 @@ const s = StyleSheet.create({
         fontWeight: '900'
     },
 
-    listContent: { padding: 16, paddingBottom: 120 },
+    listContent: { padding: 16, paddingBottom: 180 },
     
     // Cards
     card: {
@@ -587,7 +587,7 @@ const s = StyleSheet.create({
         borderWidth: 1, borderColor: '#F1F5F9'
     },
 
-    fab: { position: 'absolute', bottom: 130, right: 20, width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', elevation: 8 },
+    fab: { position: 'absolute', bottom: 30, right: 20, width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', elevation: 8 },
 
     emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: 80 },
     emptyText: { fontSize: 14, color: '#94A3B8', fontWeight: '600' },

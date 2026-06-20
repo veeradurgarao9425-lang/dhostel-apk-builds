@@ -202,6 +202,13 @@ export default function PendingPaymentsScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [remindTarget, setRemindTarget] = useState<DueTenant | null>(null);
 
+    const [page, setPage] = useState(1);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState(true);
+    const [totalPending, setTotalPending] = useState(0);
+    const [partialPaid, setPartialPaid] = useState(0);
+    const [totalDefaulters, setTotalDefaulters] = useState(0);
+
     // Modal / Collect Drawer States
     const [collectModalVisible, setCollectModalVisible] = useState(false);
     const [selectedFee, setSelectedFee] = useState<any>(null);
@@ -220,9 +227,13 @@ export default function PendingPaymentsScreen() {
     const isFirstLoadRef = useRef(true);
 
     // ── Fetch data ───────────────────────────────────────────────────────────
-    const load = useCallback(async (isRefresh = false) => {
+    const load = useCallback(async (pageNum = 1, isSilent = false) => {
         try {
-            if (!isRefresh && isFirstLoadRef.current) setLoading(true);
+            if (pageNum === 1) {
+                if (!isSilent && isFirstLoadRef.current) setLoading(true);
+            } else {
+                setLoadingMore(true);
+            }
 
             // Fetch payment modes if empty
             if (!modesLoadedRef.current) {
@@ -238,80 +249,84 @@ export default function PendingPaymentsScreen() {
                 }
             }
 
-            const res: any = await api.get('/monthly-fees/summary').catch(() => ({ data: { success: false } }));
+            const res: any = await api.get('/monthly-fees/summary', {
+                params: {
+                    onlyPending: 'true',
+                    page: pageNum,
+                    limit: 10
+                }
+            }).catch(() => ({ data: { success: false } }));
             if (!res.data.success) return;
 
-            const fees: any[] = res.data.data?.fees || (Array.isArray(res.data.data) ? res.data.data : []);
+            const fees: any[] = res.data.data?.fees || [];
             const now = new Date(); now.setHours(0, 0, 0, 0);
 
-            const PAID_SET = new Set(['paid', 'fully paid', 'cleared']);
+            const pending: DueTenant[] = fees.map(f => {
+                const total = sf(f.total_amount || f.total_due || f.monthly_rent || 0);
+                const paid  = sf(f.amount_paid || f.paid_amount || 0);
+                const due   = Math.max(0, total - paid);
 
-            const pending: DueTenant[] = fees
-                .filter(f => {
-                    const status = (f.fee_status || '').toLowerCase();
-                    const due = Math.max(0, sf(f.total_amount || f.total_due || f.monthly_rent) - sf(f.amount_paid || f.paid_amount));
-                    return due > 0 && !PAID_SET.has(status);
-                })
-                .map(f => {
-                    const total = sf(f.total_amount || f.total_due || f.monthly_rent || 0);
-                    const paid  = sf(f.amount_paid || f.paid_amount || 0);
-                    const due   = Math.max(0, total - paid);
+                const dueDateObj = f.due_date ? new Date(f.due_date) : new Date();
+                dueDateObj.setHours(0, 0, 0, 0);
+                const diffDays = Math.floor((now.getTime() - dueDateObj.getTime()) / 86400000);
 
-                    const dueDateObj = f.due_date ? new Date(f.due_date) : new Date();
-                    dueDateObj.setHours(0, 0, 0, 0);
-                    const diffDays = Math.floor((now.getTime() - dueDateObj.getTime()) / 86400000);
+                const dueMonth = f.fee_month || f.month || '';
+                const dueDateStr = f.due_date
+                    ? new Date(f.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+                    : '';
 
-                    const dueMonth = f.fee_month || f.month || '';
-                    const dueDateStr = f.due_date
-                        ? new Date(f.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
-                        : '';
+                return {
+                    id: f.student_id,
+                    name: `${f.first_name || ''} ${f.last_name || ''}`.trim(),
+                    first_name: f.first_name || '',
+                    last_name: f.last_name || '',
+                    phone: f.phone || '',
+                    room: f.room_number || 'N/A',
+                    room_number: f.room_number || 'N/A',
+                    hostel_id: f.hostel_id,
+                    totalAmount: total,
+                    paidAmount: paid,
+                    dueAmount: due,
+                    feeMonth: dueMonth,
+                    dueDate: dueDateStr,
+                    daysOverdue: Math.max(0, diffDays),
+                    isOverdue: diffDays > 0,
+                    status: f.fee_status || 'pending',
+                };
+            });
 
-                    return {
-                        id: f.student_id,
-                        name: `${f.first_name || ''} ${f.last_name || ''}`.trim(),
-                        first_name: f.first_name || '',
-                        last_name: f.last_name || '',
-                        phone: f.phone || '',
-                        room: f.room_number || 'N/A',
-                        room_number: f.room_number || 'N/A',
-                        hostel_id: f.hostel_id,
-                        totalAmount: total,
-                        paidAmount: paid,
-                        dueAmount: due,
-                        feeMonth: dueMonth,
-                        dueDate: dueDateStr,
-                        daysOverdue: Math.max(0, diffDays),
-                        isOverdue: diffDays > 0,
-                        status: f.fee_status || 'pending',
-                    };
-                });
+            setHasMore(res.data.data?.hasMore ?? (pending.length === 10));
 
-            setTenants(pending);
+            setTenants(prev => {
+                if (pageNum === 1) return pending;
+                const existingIds = new Set(prev.map(t => t.id));
+                const unique = pending.filter(t => !existingIds.has(t.id));
+                return [...prev, ...unique];
+            });
+
+            const summaryObj = res.data.data?.summary;
+            if (summaryObj) {
+                setTotalPending(summaryObj.total_pending || 0);
+                setPartialPaid(summaryObj.partial_paid_sum || 0);
+                setTotalDefaulters(summaryObj.pending || 0);
+            }
         } catch {
             Toast.show({ type: 'error', text1: 'Failed to load pending dues' });
         } finally {
             isFirstLoadRef.current = false;
             setLoading(false);
             setRefreshing(false);
+            setLoadingMore(false);
         }
     }, []);
 
-    useFocusEffect(useCallback(() => { load(); }, [load]));
+    useFocusEffect(useCallback(() => {
+        setPage(1);
+        setHasMore(true);
+        load(1, false);
+    }, [load]));
 
-    // ── Summary ──────────────────────────────────────────────────────────────
-    const totalPending = useMemo(() => tenants.reduce((s, t) => s + t.dueAmount, 0), [tenants]);
-    const partialPaid  = useMemo(() => tenants.filter(t => t.paidAmount > 0).reduce((s, t) => s + t.paidAmount, 0), [tenants]);
-
-    // ── Sorted list (Overdue first, then by due amount descending) ───────────
-    const sortedTenants = useMemo(() => {
-        return [...tenants].sort((a, b) => {
-            // Overdue first
-            if (a.isOverdue && !b.isOverdue) return -1;
-            if (!a.isOverdue && b.isOverdue) return 1;
-            // Then by due amount descending
-            return b.dueAmount - a.dueAmount;
-        });
-    }, [tenants]);
+    const sortedTenants = tenants;
 
     // ── Handlers ────────────────────────────────────────────────────────────
     const handleRemind  = useCallback((t: DueTenant) => setRemindTarget(t), []);
@@ -354,7 +369,7 @@ export default function PendingPaymentsScreen() {
                     text1: '✓ Payment Collected!',
                     text2: `₹${payAmount} recorded for ${selectedFee.name}`,
                 });
-                setTimeout(() => load(true), 500);
+                setTimeout(() => load(1, true), 500);
             } else {
                 Alert.alert('Error', res.data.error || 'Payment was not saved.');
             }
@@ -390,9 +405,22 @@ export default function PendingPaymentsScreen() {
                         </View>
                     </View>
                 </LinearGradient>
-                <View style={{ padding: 16, gap: 12 }}>
-                    {[1, 2, 3].map(i => (
-                        <View key={i} style={{ height: 140, backgroundColor: '#EDE9FE', borderRadius: 16, opacity: 0.5 }} />
+
+                {/* Skeleton for Floating Dashboard */}
+                <View style={s.summaryContainer}>
+                    <View style={[s.summaryCard, s.primaryCard, { height: 90, opacity: 0.6, backgroundColor: '#FFF', justifyContent: 'center' }]}>
+                        <ActivityIndicator size="small" color={theme.primary} />
+                    </View>
+                    <View style={s.row}>
+                        <View style={[s.summaryCard, s.secondaryCard, { height: 80, opacity: 0.6, backgroundColor: '#FFF' }]} />
+                        <View style={[s.summaryCard, s.secondaryCard, { height: 80, opacity: 0.6, backgroundColor: '#FFF' }]} />
+                    </View>
+                </View>
+
+                {/* Skeleton for List Cards */}
+                <View style={{ paddingHorizontal: 16, gap: 12, flex: 1 }}>
+                    {[1, 2].map(i => (
+                        <View key={i} style={{ height: 140, backgroundColor: '#FFF', borderRadius: 20, opacity: 0.5, borderWidth: 1, borderColor: '#EDE9FE' }} />
                     ))}
                 </View>
             </View>
@@ -408,38 +436,66 @@ export default function PendingPaymentsScreen() {
                 <View style={s.headerRow}>
                     <View style={{ flex: 1 }}>
                         <Text style={s.headerTitle}>Pending Dues</Text>
-                        <Text style={s.headerSub}>
-                            {sortedTenants.length} tenant{sortedTenants.length !== 1 ? 's' : ''} with outstanding balance
-                        </Text>
+                        <Text style={s.headerSub}>Overview of pending collections</Text>
                     </View>
                     <View style={s.headerActions}>
                         <HeaderNotification navigation={navigation} />
                         <ProfileMenu />
                     </View>
                 </View>
+            </LinearGradient>
 
-                {/* Embedded Summary Row inside Header */}
-                <View style={s.headerSummaryRow}>
-                    <View style={s.headerSummaryItem}>
-                        <View style={[s.summaryDot, { backgroundColor: 'rgba(239, 68, 68, 0.2)' }]}>
-                            <Ionicons name="alert-circle" size={14} color="#FCA5A5" />
+            {/* ── Premium Floating Dashboard ── */}
+            <View style={s.summaryContainer}>
+                {/* Primary full-width card: Total Outstanding */}
+                <View style={[s.summaryCard, s.primaryCard]}>
+                    <View style={s.cardHeader}>
+                        <View style={[s.iconBg, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
+                            <Ionicons name="wallet" size={20} color="#DC2626" />
                         </View>
-                        <View style={s.summaryTextCol}>
-                            <Text style={s.summaryItemLabel}>Pending</Text>
-                            <Text style={s.summaryItemValue}>₹{totalPending.toLocaleString('en-IN')}</Text>
-                        </View>
+                        <Text style={s.cardLabel}>TOTAL OUTSTANDING</Text>
                     </View>
-                    <View style={s.headerSummaryItem}>
-                        <View style={[s.summaryDot, { backgroundColor: 'rgba(34, 197, 94, 0.2)' }]}>
-                            <Ionicons name="checkmark-circle" size={14} color="#86EFAC" />
-                        </View>
-                        <View style={s.summaryTextCol}>
-                            <Text style={s.summaryItemLabel}>Partial Paid</Text>
-                            <Text style={s.summaryItemValue}>₹{partialPaid.toLocaleString('en-IN')}</Text>
+                    <View style={s.cardMain}>
+                        <Text style={[s.cardValue, { color: '#DC2626' }]}>
+                            ₹{totalPending.toLocaleString('en-IN')}
+                        </Text>
+                        <View style={s.badge}>
+                            <Text style={s.badgeText}>Unpaid Dues</Text>
                         </View>
                     </View>
                 </View>
-            </LinearGradient>
+
+                {/* Secondary side-by-side cards */}
+                <View style={s.row}>
+                    {/* Defaulters Card */}
+                    <View style={[s.summaryCard, s.secondaryCard]}>
+                        <View style={s.cardHeader}>
+                            <View style={[s.iconBg, { backgroundColor: 'rgba(217, 119, 6, 0.1)' }]}>
+                                <Ionicons name="people" size={16} color="#D97706" />
+                            </View>
+                            <Text style={s.secondaryCardLabel}>DEFAULTERS</Text>
+                        </View>
+                        <Text style={[s.secondaryCardValue, { color: '#D97706' }]}>
+                            {totalDefaulters}
+                        </Text>
+                        <Text style={s.cardSubLabel}>Tenants pending</Text>
+                    </View>
+
+                    {/* Partially Paid Card */}
+                    <View style={[s.summaryCard, s.secondaryCard]}>
+                        <View style={s.cardHeader}>
+                            <View style={[s.iconBg, { backgroundColor: 'rgba(13, 148, 136, 0.1)' }]}>
+                                <Ionicons name="cash" size={16} color="#0D9488" />
+                            </View>
+                            <Text style={s.secondaryCardLabel}>PARTIAL PAID</Text>
+                        </View>
+                        <Text style={[s.secondaryCardValue, { color: '#0D9488' }]}>
+                            ₹{partialPaid.toLocaleString('en-IN')}
+                        </Text>
+                        <Text style={s.cardSubLabel}>Collected partial</Text>
+                    </View>
+                </View>
+            </View>
 
             {/* ── List ── */}
             {sortedTenants.length === 0 ? (
@@ -458,9 +514,27 @@ export default function PendingPaymentsScreen() {
                     refreshControl={
                         <RefreshControl
                             refreshing={refreshing}
-                            onRefresh={() => { setRefreshing(true); load(true); }}
+                            onRefresh={() => { setRefreshing(true); setPage(1); setHasMore(true); load(1, true); }}
                             tintColor="#7C3AED"
                         />
+                    }
+                    onEndReached={() => {
+                        if (loadingMore || !hasMore) return;
+                        setPage(prev => {
+                            const next = prev + 1;
+                            load(next, false);
+                            return next;
+                        });
+                    }}
+                    onEndReachedThreshold={0.4}
+                    ListFooterComponent={
+                        loadingMore ? (
+                            <ActivityIndicator size="small" color="#7C3AED" style={{ marginVertical: 20 }} />
+                        ) : !hasMore && sortedTenants.length > 0 ? (
+                            <View style={{ alignItems: 'center', marginVertical: 20 }}>
+                                <Text style={{ color: '#94A3B8', fontSize: 12, fontWeight: '600' }}>All dues loaded</Text>
+                            </View>
+                        ) : null
                     }
                 />
             )}
@@ -641,7 +715,7 @@ const s = StyleSheet.create({
     header: {
         paddingHorizontal: 20,
         paddingTop: 50,
-        paddingBottom: 20,
+        paddingBottom: 40,
         borderBottomLeftRadius: 32,
         borderBottomRightRadius: 32,
     },
@@ -653,48 +727,92 @@ const s = StyleSheet.create({
     headerTitle: { fontSize: 24, fontWeight: '900', color: '#FFF' },
     headerSub: { fontSize: 12, color: 'rgba(255,255,255,0.8)', fontWeight: '600', marginTop: 2 },
     headerActions: { flexDirection: 'row', gap: 12 },
-    headerSummaryRow: {
-        flexDirection: 'row',
-        gap: 10,
-        marginTop: 15,
+    
+    summaryContainer: {
+        marginTop: -25,
+        marginHorizontal: 16,
+        gap: 12,
+        marginBottom: 12,
     },
-    headerSummaryItem: {
+    summaryCard: {
+        backgroundColor: '#FFF',
+        borderRadius: 20,
+        padding: 16,
+        elevation: 3,
+        shadowColor: '#7C3AED',
+        shadowOpacity: 0.08,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 4 },
+        borderWidth: 1.2,
+        borderColor: '#EDE9FE',
+    },
+    primaryCard: {
+        width: '100%',
+    },
+    secondaryCard: {
         flex: 1,
+    },
+    row: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    cardHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.16)',
-        borderRadius: 14,
-        paddingVertical: 8,
-        paddingHorizontal: 10,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.12)',
+        gap: 8,
+        marginBottom: 6,
     },
-    summaryDot: {
-        width: 26,
-        height: 26,
-        borderRadius: 8,
+    iconBg: {
+        width: 32,
+        height: 32,
+        borderRadius: 10,
         alignItems: 'center',
         justifyContent: 'center',
     },
-    summaryTextCol: {
-        marginLeft: 8,
-        flex: 1,
-    },
-    summaryItemLabel: {
-        fontSize: 9,
-        color: 'rgba(255, 255, 255, 0.8)',
-        fontWeight: '600',
-        textTransform: 'uppercase',
-        letterSpacing: 0.3,
-    },
-    summaryItemValue: {
-        fontSize: 13,
-        color: '#FFF',
+    cardLabel: {
+        fontSize: 10,
+        color: '#64748B',
         fontWeight: '800',
-        marginTop: 1,
+        letterSpacing: 0.8,
+    },
+    secondaryCardLabel: {
+        fontSize: 9,
+        color: '#64748B',
+        fontWeight: '800',
+        letterSpacing: 0.5,
+    },
+    cardMain: {
+        flexDirection: 'row',
+        alignItems: 'baseline',
+        justifyContent: 'space-between',
+    },
+    cardValue: {
+        fontSize: 24,
+        fontWeight: '900',
+    },
+    secondaryCardValue: {
+        fontSize: 18,
+        fontWeight: '900',
+        marginBottom: 2,
+    },
+    cardSubLabel: {
+        fontSize: 10,
+        color: '#94A3B8',
+        fontWeight: '600',
+    },
+    badge: {
+        backgroundColor: '#FEE2E2',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 8,
+    },
+    badgeText: {
+        fontSize: 10,
+        color: '#EF4444',
+        fontWeight: '800',
     },
 
-    listContent: { paddingTop: 16, paddingBottom: 110 },
+    listContent: { paddingTop: 16, paddingBottom: 160 },
 
     emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 80 },
     emptyTitle: { fontSize: 20, fontWeight: '800', color: '#1E293B', marginBottom: 4 },

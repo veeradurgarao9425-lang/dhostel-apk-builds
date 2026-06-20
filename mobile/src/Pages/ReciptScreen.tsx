@@ -6,13 +6,27 @@ import {
     ScrollView,
     TouchableOpacity,
     StatusBar,
-    Linking,
     Alert,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+
+// Helper for number to words
+const numberToWords = (num: number) => {
+    if (num === 0) return 'ZERO ONLY';
+    const a = ['', 'ONE ', 'TWO ', 'THREE ', 'FOUR ', 'FIVE ', 'SIX ', 'SEVEN ', 'EIGHT ', 'NINE ', 'TEN ', 'ELEVEN ', 'TWELVE ', 'THIRTEEN ', 'FOURTEEN ', 'FIFTEEN ', 'SIXTEEN ', 'SEVENTEEN ', 'EIGHTEEN ', 'NINETEEN '];
+    const b = ['', '', 'TWENTY', 'THIRTY', 'FORTY', 'FIFTY', 'SIXTY', 'SEVENTY', 'EIGHTY', 'NINETY'];
+    const n = ('000000000' + num).slice(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
+    if (!n) return '';
+    let str = '';
+    str += (n[1] != '00') ? (a[Number(n[1])] || b[Number(n[1][0])] + ' ' + a[Number(n[1][1])]) + 'CRORE ' : '';
+    str += (n[2] != '00') ? (a[Number(n[2])] || b[Number(n[2][0])] + ' ' + a[Number(n[2][1])]) + 'LAKH ' : '';
+    str += (n[3] != '00') ? (a[Number(n[3])] || b[Number(n[3][0])] + ' ' + a[Number(n[3][1])]) + 'THOUSAND ' : '';
+    str += (n[4] != '0') ? (a[Number(n[4])] || b[Number(n[4][0])] + ' ' + a[Number(n[4][1])]) + 'HUNDRED ' : '';
+    str += (n[5] != '00') ? ((str != '') ? 'AND ' : '') + (a[Number(n[5])] || b[Number(n[5][0])] + ' ' + a[Number(n[5][1])]) : '';
+    return str.trim() + ' ONLY';
+};
 
 export const ReceiptScreen = ({ navigation, route }: any) => {
     const { feeData } = route.params || {};
@@ -20,38 +34,26 @@ export const ReceiptScreen = ({ navigation, route }: any) => {
     if (!feeData) {
         return (
             <View style={styles.container}>
-                <Text style={{ textAlign: 'center', marginTop: 100 }}>No Receipt Data Found</Text>
+                <Text style={{ textAlign: 'center', marginTop: 100, fontSize: 16 }}>No Receipt Data Found</Text>
             </View>
         );
     }
 
-    // Helper to format date
     const formatDate = (dateString: string) => {
         if (!dateString) return 'N/A';
         const date = new Date(dateString);
-        return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-    };
-
-    // Calculate Next Due Date (Assume 1 month after current fee month or due date)
-    const getNextDueDate = () => {
-        if (feeData.due_date) {
-            const dueDate = new Date(feeData.due_date);
-            dueDate.setMonth(dueDate.getMonth() + 1);
-            return dueDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-        }
-        return 'N/A';
+        return date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-');
     };
 
     const receiptData = {
-        receiptNo: `REC-${feeData.fee_id}-${Date.now().toString().slice(-4)}`,
+        receiptNo: feeData.fee_id ? `REC-${feeData.fee_id}-${Date.now().toString().slice(-4)}` : 'N/A',
         student: `${feeData.first_name} ${feeData.last_name}`,
         room: feeData.room_number || 'N/A',
         amountPaid: feeData.paid_amount || 0,
-        paymentMode: 'Online', // Or fetch from payments if available. For summary, it's mixed.
-        date: formatDate(new Date().toISOString()), // Current date for receipt generation
+        paymentMode: 'CASH', // Defaulting to CASH as per design image
+        date: formatDate(new Date().toISOString()),
         mobile: feeData.phone || 'N/A',
-        nextDueDate: getNextDueDate(),
-        month: feeData.fee_month
+        month: feeData.fee_month || 'N/A',
     };
 
     const generateHtml = () => {
@@ -113,10 +115,6 @@ export const ReceiptScreen = ({ navigation, route }: any) => {
                       <th>Amount Paid</th>
                       <td>₹${receiptData.amountPaid.toLocaleString('en-IN')}</td>
                     </tr>
-                    <tr>
-                      <th>Next Due Date</th>
-                      <td style="color: #F59E0B;">${receiptData.nextDueDate}</td>
-                    </tr>
                   </table>
                   
                   <div class="signature">
@@ -145,83 +143,93 @@ export const ReceiptScreen = ({ navigation, route }: any) => {
 
     return (
         <View style={styles.container}>
-            <StatusBar barStyle="light-content" />
+            <StatusBar barStyle="light-content" backgroundColor="#1E9E49" />
 
             {/* Header */}
-            <LinearGradient
-                colors={['#FF7B7B', '#FF6B6B']}
-                style={styles.header}
-            >
-                <View style={styles.headerTop}>
-                    <TouchableOpacity onPress={() => navigation.goBack()}>
-                        <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
-                    </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Receipt Details</Text>
-                    <View style={{ width: 24 }} />
+            <View style={styles.header}>
+                <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+                    <Ionicons name="arrow-back" size={24} color="#333" />
+                </TouchableOpacity>
+                <Text style={styles.headerTitle}>Payment Receipt</Text>
+            </View>
+
+            <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+                {/* Main Card */}
+                <View style={styles.card}>
+                    {/* Top Section */}
+                    <View style={styles.cardHeader}>
+                        <Text style={styles.studentName}>{receiptData.student.toUpperCase()}</Text>
+                        <View style={styles.receiptBadge}>
+                            <Text style={styles.receiptBadgeText}>RECEIPT</Text>
+                        </View>
+                    </View>
+                    <Text style={styles.addressText}>
+                        Hyderabad{'\n'}Ward 104 Kondapur, Ranga Reddy, Serilingampalle mandal
+                    </Text>
+
+                    {/* Details Box */}
+                    <View style={styles.detailsBox}>
+                        <Text style={styles.detailText}><Text style={styles.detailLabel}>Invoice No: </Text>{receiptData.receiptNo}</Text>
+                        <Text style={styles.detailText}><Text style={styles.detailLabel}>Invoice Month: </Text>{receiptData.month}</Text>
+                        <Text style={styles.detailText}><Text style={styles.detailLabel}>Paid at: </Text>{receiptData.date}</Text>
+                        
+                        <View style={styles.rowDetails}>
+                            <View>
+                                <Text style={styles.detailLabel}>Room No:</Text>
+                                <Text style={styles.detailValueLarge}>{receiptData.room}</Text>
+                            </View>
+                            <View style={{ marginRight: 20 }}>
+                                <Text style={styles.detailLabel}>Mobile:</Text>
+                                <Text style={styles.detailValueLarge}>{receiptData.mobile}</Text>
+                            </View>
+                        </View>
+
+                        {/* Table */}
+                        <View style={styles.table}>
+                            <View style={styles.tableHeader}>
+                                <Text style={[styles.th, { flex: 2 }]}>Description</Text>
+                                <Text style={[styles.th, { flex: 1, textAlign: 'center' }]}>Rent</Text>
+                                <Text style={[styles.th, { flex: 1, textAlign: 'center' }]}>Deposit</Text>
+                                <Text style={[styles.th, { flex: 1, textAlign: 'right' }]}>Total</Text>
+                            </View>
+                            <View style={styles.tableRow}>
+                                <Text style={[styles.td, { flex: 2, fontWeight: 'bold' }]}>Monthly Rent</Text>
+                                <Text style={[styles.td, { flex: 1, textAlign: 'center' }]}>₹ {receiptData.amountPaid}</Text>
+                                <Text style={[styles.td, { flex: 1, textAlign: 'center' }]}>₹ 0</Text>
+                                <Text style={[styles.td, { flex: 1, textAlign: 'right' }]}>₹ {receiptData.amountPaid}</Text>
+                            </View>
+                            <View style={styles.wordsRow}>
+                                <Text style={styles.wordsText}>Amount in Words: <Text style={styles.wordsHighlight}>{numberToWords(receiptData.amountPaid)}</Text></Text>
+                            </View>
+                        </View>
+                    </View>
+
+                    {/* Notice */}
+                    <View style={styles.noticeBox}>
+                        <Text style={styles.noticeText}>Notice: Once Advance / Rent paid is non-refundable on any excuse.</Text>
+                    </View>
+
+                    {/* Signature */}
+                    <View style={styles.signatureSection}>
+                        <Text style={styles.signatureTitle}>Incharge Sign</Text>
+                        <Text style={styles.signatureNote}>This is a computer generated receipt and does not require physical signature.</Text>
+                    </View>
+
+                    {/* Payment Mode */}
+                    <View style={styles.paymentSection}>
+                        <Text style={styles.paymentModeText}>Payment Mode: <Text style={styles.paymentModeValue}>{receiptData.paymentMode}</Text></Text>
+                        <View style={styles.paidBadge}>
+                            <Ionicons name="checkmark-circle" size={16} color="#059669" />
+                            <Text style={styles.paidText}>PAID</Text>
+                        </View>
+                    </View>
                 </View>
-            </LinearGradient>
 
-            <ScrollView
-                style={styles.content}
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.scrollContent}
-            >
-                {/* Receipt Card */}
-                <View style={styles.receiptCard}>
-                    <View style={styles.receiptRow}>
-                        <Text style={styles.label}>Receipt No:</Text>
-                        <Text style={styles.value}>{receiptData.receiptNo}</Text>
-                    </View>
-                    <View style={styles.divider} />
-
-                    <View style={styles.receiptRow}>
-                        <Text style={styles.label}>Student:</Text>
-                        <Text style={styles.value}>{receiptData.student}</Text>
-                    </View>
-                    <View style={styles.divider} />
-
-                    <View style={styles.receiptRow}>
-                        <Text style={styles.label}>Mobile:</Text>
-                        <Text style={styles.value}>{receiptData.mobile}</Text>
-                    </View>
-                    <View style={styles.divider} />
-
-                    <View style={styles.receiptRow}>
-                        <Text style={styles.label}>Room:</Text>
-                        <Text style={styles.value}>{receiptData.room}</Text>
-                    </View>
-                    <View style={styles.divider} />
-
-                    <View style={styles.receiptRow}>
-                        <Text style={styles.label}>Amount Paid:</Text>
-                        <Text style={styles.value}>₹{receiptData.amountPaid.toLocaleString('en-IN')}</Text>
-                    </View>
-                    <View style={styles.divider} />
-
-                    <View style={styles.receiptRow}>
-                        <Text style={styles.label}>Generated On:</Text>
-                        <Text style={styles.value}>{receiptData.date}</Text>
-                    </View>
-                    <View style={styles.divider} />
-
-                    <View style={styles.receiptRow}>
-                        <Text style={styles.label}>Next Due Date:</Text>
-                        <Text style={[styles.value, { color: '#F59E0B' }]}>{receiptData.nextDueDate}</Text>
-                    </View>
-                </View>
-
-                {/* Action Buttons */}
-                <View style={styles.actionButtons}>
-                    <TouchableOpacity style={styles.downloadButton} onPress={sharePdf}>
-                        <Ionicons name="download-outline" size={20} color="#666666" />
-                        <Text style={styles.downloadText}>Save PDF</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={styles.shareButton} onPress={sharePdf}>
-                        <Ionicons name="share-social-outline" size={20} color="#FFFFFF" />
-                        <Text style={styles.shareText}>Share Receipt</Text>
-                    </TouchableOpacity>
-                </View>
+                {/* Share Button */}
+                <TouchableOpacity style={styles.shareButton} onPress={sharePdf}>
+                    <Ionicons name="share-social-outline" size={20} color="#FFF" />
+                    <Text style={styles.shareText}>Share Receipt</Text>
+                </TouchableOpacity>
 
             </ScrollView>
         </View>
@@ -231,107 +239,224 @@ export const ReceiptScreen = ({ navigation, route }: any) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F5F5F5',
+        backgroundColor: '#F5F8FA',
     },
     header: {
+        backgroundColor: '#1E9E49',
+        flexDirection: 'row',
+        alignItems: 'center',
         paddingTop: 50,
         paddingBottom: 20,
-        paddingHorizontal: 20,
+        paddingHorizontal: 16,
+        borderBottomLeftRadius: 20,
+        borderBottomRightRadius: 20,
     },
-    headerTop: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+    backButton: {
+        backgroundColor: '#FFF',
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        justifyContent: 'center',
         alignItems: 'center',
+        marginRight: 15,
     },
     headerTitle: {
         fontSize: 20,
         fontWeight: '700',
-        color: '#FFFFFF',
+        color: '#FFF',
     },
     content: {
         flex: 1,
+        padding: 16,
     },
-    scrollContent: {
-        paddingHorizontal: 20,
-        paddingTop: 20,
-    },
-    receiptCard: {
-        backgroundColor: '#FFFFFF',
+    card: {
+        backgroundColor: '#FFF',
         borderRadius: 16,
-        padding: 20,
+        padding: 0, // padding applied inside sections
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
         marginBottom: 20,
+        overflow: 'hidden',
     },
-    receiptRow: {
+    cardHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: 14,
+        padding: 16,
+        paddingBottom: 4,
     },
-    label: {
-        fontSize: 14,
-        color: '#999999',
-        fontWeight: '500',
-    },
-    value: {
-        fontSize: 14,
-        color: '#333333',
-        fontWeight: '600',
-    },
-    divider: {
-        height: 1,
-        backgroundColor: '#F0F0F0',
-    },
-    actionButtons: {
-        flexDirection: 'row',
-        gap: 12,
-        marginBottom: 40,
-    },
-    downloadButton: {
+    studentName: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#1A365D',
         flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#FFFFFF',
-        paddingVertical: 14,
-        borderRadius: 12,
-        gap: 8,
     },
-    downloadText: {
+    receiptBadge: {
+        backgroundColor: '#1E3A8A',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 6,
+    },
+    receiptBadgeText: {
+        color: '#FFF',
         fontSize: 14,
-        fontWeight: '600',
-        color: '#666666',
+        fontWeight: 'bold',
     },
-    shareButton: {
-        flex: 1,
+    addressText: {
+        fontSize: 13,
+        color: '#718096',
+        paddingHorizontal: 16,
+        paddingBottom: 16,
+        lineHeight: 18,
+    },
+    detailsBox: {
+        backgroundColor: '#F4F7FB',
+        marginHorizontal: 16,
+        marginBottom: 16,
+        padding: 16,
+        borderRadius: 8,
+    },
+    detailText: {
+        fontSize: 15,
+        color: '#1A365D',
+        marginBottom: 4,
+    },
+    detailLabel: {
+        fontWeight: 'bold',
+        color: '#1A365D',
+    },
+    rowDetails: {
         flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#25D366',
-        paddingVertical: 14,
-        borderRadius: 12,
-        gap: 8,
-    },
-    shareText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#FFFFFF',
-    },
-    emptyState: {
-        alignItems: 'center',
-        paddingVertical: 60,
-    },
-    emptyIcon: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        backgroundColor: '#F8F8F8',
-        justifyContent: 'center',
-        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginTop: 12,
         marginBottom: 16,
     },
-    emptyText: {
+    detailValueLarge: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#1A365D',
+        marginTop: 4,
+    },
+    table: {
+        backgroundColor: '#FFF',
+        borderRadius: 8,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    tableHeader: {
+        flexDirection: 'row',
+        backgroundColor: '#EBF4FF',
+        padding: 10,
+        borderBottomWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    th: {
         fontSize: 14,
-        color: '#BBBBBB',
+        fontWeight: 'bold',
+        color: '#1A365D',
+    },
+    tableRow: {
+        flexDirection: 'row',
+        padding: 10,
+        borderBottomWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    td: {
+        fontSize: 15,
+        color: '#2D3748',
+    },
+    wordsRow: {
+        padding: 12,
+        backgroundColor: '#FFF',
+    },
+    wordsText: {
+        fontSize: 14,
+        color: '#1A365D',
+        fontWeight: 'bold',
+    },
+    wordsHighlight: {
+        color: '#1A365D',
+    },
+    noticeBox: {
+        backgroundColor: '#FFFBEB',
+        padding: 12,
+        borderTopWidth: 1,
+        borderBottomWidth: 1,
+        borderColor: '#FEF3C7',
+    },
+    noticeText: {
+        color: '#B45309',
+        fontSize: 13,
+        textAlign: 'center',
+        fontWeight: '500',
+    },
+    signatureSection: {
+        padding: 16,
+        alignItems: 'flex-end',
+        borderBottomWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    signatureTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#4A5568',
+        marginBottom: 4,
+    },
+    signatureNote: {
+        fontSize: 12,
+        color: '#A0AEC0',
+        textAlign: 'right',
+    },
+    paymentSection: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 16,
+        backgroundColor: '#F0FDF4',
+    },
+    paymentModeText: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#1A202C',
+    },
+    paymentModeValue: {
+        color: '#1A202C',
+    },
+    paidBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#D1FAE5',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#34D399',
+    },
+    paidText: {
+        color: '#059669',
+        fontWeight: 'bold',
+        marginLeft: 4,
+        fontSize: 14,
+    },
+    shareButton: {
+        backgroundColor: '#3B82F6',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 16,
+        borderRadius: 12,
+        alignSelf: 'center',
+        width: '60%',
+    },
+    shareText: {
+        color: '#FFF',
+        fontSize: 16,
+        fontWeight: 'bold',
+        marginLeft: 8,
     },
 });
 

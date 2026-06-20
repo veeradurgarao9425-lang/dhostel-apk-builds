@@ -375,7 +375,7 @@ export const FinancialOverviewPage: React.FC = () => {
 
           {/* Bar Chart */}
           <div className="flex items-end gap-1 h-48">
-            {trend.map((t, i) => {
+            {trend.map((t) => {
               const incomeH = Math.max(2, (t.income / trendMax) * 160);
               const expenseH = Math.max(2, (t.expenses / trendMax) * 160);
               const isCurrentMonth = t.month === selectedMonth;

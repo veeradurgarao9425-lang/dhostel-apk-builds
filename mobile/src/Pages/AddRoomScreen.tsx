@@ -202,35 +202,30 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
 
                     <View style={{ height: 20 }} />
 
-                    <View style={styles.row}>
-                        <View style={{ flex: 1, marginRight: 10 }}>
-                            <InputField
-                                label="Total Capacity *"
-                                placeholder="Total Beds"
-                                keyboardType="numeric"
-                                value={formData.capacity}
-                                error={errors.capacity}
-                                onChangeText={(text) => {
-                                    const newFormData = { ...formData, capacity: text };
-                                    setFormData(newFormData);
-                                    if (errors.capacity) {
-                                        const newErrors = { ...errors };
-                                        delete newErrors.capacity;
-                                        setErrors(newErrors);
-                                    }
-                                }}
-                            />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                            <InputField
-                                label="Occupied Beds (Auto)"
-                                placeholder="0"
-                                value={formData.occupied_beds}
-                                editable={false}
-                                onChangeText={() => { }}
-                            />
-                        </View>
-                    </View>
+                    <InputField
+                        label="Total Capacity *"
+                        placeholder="Total Beds"
+                        keyboardType="numeric"
+                        value={formData.capacity}
+                        error={errors.capacity}
+                        onChangeText={(text) => {
+                            const newFormData = { ...formData, capacity: text };
+                            setFormData(newFormData);
+                            if (errors.capacity) {
+                                const newErrors = { ...errors };
+                                delete newErrors.capacity;
+                                setErrors(newErrors);
+                            }
+                        }}
+                    />
+
+                    <InputField
+                        label="Occupied Beds (Auto)"
+                        placeholder="0"
+                        value={formData.occupied_beds}
+                        editable={false}
+                        onChangeText={() => { }}
+                    />
 
                     <InputField
                         label="Monthly Rent (per bed) *"

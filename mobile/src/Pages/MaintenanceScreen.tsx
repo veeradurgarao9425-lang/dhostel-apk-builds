@@ -485,7 +485,7 @@ const styles = StyleSheet.create({
     filterTab: { flex: 1, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center' },
     filterText: { fontSize: 11, color: '#64748B', fontWeight: '700' },
 
-    listContent: { paddingHorizontal: 16, paddingBottom: 100 },
+    listContent: { paddingHorizontal: 16, paddingBottom: 180 },
     card: { backgroundColor: '#FFF', borderRadius: 20, padding: 16, marginBottom: 16, elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
     roomBadge: { backgroundColor: '#F1F5F9', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
@@ -505,7 +505,7 @@ const styles = StyleSheet.create({
     emptyState: { alignItems: 'center', justifyContent: 'center', marginTop: 100 },
     emptyText: { marginTop: 10, color: '#94A3B8', fontSize: 16, fontWeight: '600' },
 
-    fab: { position: 'absolute', bottom: 130, right: 30, width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5 },
+    fab: { position: 'absolute', bottom: 30, right: 20, width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5 },
 
     // Add Modal Styles
     modalOverlay: { flex: 1, backgroundColor: 'transparent', justifyContent: 'flex-end' },

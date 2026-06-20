@@ -595,7 +595,7 @@ const s = StyleSheet.create({
     },
     summaryLabel: {
         fontSize: 10,
-        fontWeight: '850',
+        fontWeight: '800',
         color: '#64748B',
         letterSpacing: 1,
         marginBottom: 3,
@@ -663,7 +663,7 @@ const s = StyleSheet.create({
     progressText: {
         fontSize: 10,
         color: '#64748B',
-        fontWeight: '750',
+        fontWeight: '700',
         marginTop: 6,
         textAlign: 'right',
     },
@@ -683,7 +683,7 @@ const s = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
-    catName: { fontSize: 14, fontWeight: '750', color: '#334155' },
+    catName: { fontSize: 14, fontWeight: '700', color: '#334155' },
     catRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     catAmount: { fontSize: 14, fontWeight: '900', color: '#1E293B' },
     catPercent: { fontSize: 11, color: '#94A3B8', fontWeight: '600', width: 36, textAlign: 'right' },
@@ -710,7 +710,7 @@ const s = StyleSheet.create({
     },
     legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     legendDot: { width: 8, height: 8, borderRadius: 4 },
-    legendText: { fontSize: 11, color: '#64748B', fontWeight: '650' },
+    legendText: { fontSize: 11, color: '#64748B', fontWeight: '600' },
 
     // Chart
     chartContainer: {
@@ -732,7 +732,7 @@ const s = StyleSheet.create({
     },
     chartTopVal: {
         fontSize: 8,
-        fontWeight: '750',
+        fontWeight: '700',
         color: '#94A3B8',
         marginBottom: 4,
         height: 10,
@@ -768,5 +768,5 @@ const s = StyleSheet.create({
     avgItem: { flex: 1, alignItems: 'center' },
     avgDivider: { width: 1, backgroundColor: '#F1F5F9', height: 28, alignSelf: 'center' },
     avgLabel: { fontSize: 9, color: '#94A3B8', fontWeight: '600', marginBottom: 4, textTransform: 'uppercase' },
-    avgValue: { fontSize: 14, fontWeight: '850' },
+    avgValue: { fontSize: 14, fontWeight: '800' },
 });

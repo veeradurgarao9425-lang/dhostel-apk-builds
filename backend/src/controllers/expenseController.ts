@@ -5,7 +5,7 @@ import { AuthRequest } from '../middleware/auth.js';
 // Get all expenses
 export const getExpenses = async (req: AuthRequest, res: Response) => {
   try {
-    const { hostelId, categoryId, startDate, endDate } = req.query;
+    const { hostelId, categoryId, startDate, endDate, page, limit, search } = req.query;
     const user = req.user;
 
     // Resolve hostel_id based on user role
@@ -129,11 +129,61 @@ export const getExpenses = async (req: AuthRequest, res: Response) => {
       query = query.whereBetween('e.expense_date', [startDate, endDate]);
     }
 
+    // Apply search filter if provided
+    if (search) {
+      const searchTerm = `%${search}%`;
+      query = query.where(function () {
+        this.where('e.vendor_name', 'like', searchTerm)
+          .orWhere('e.description', 'like', searchTerm)
+          .orWhere('ec.category_name', 'like', searchTerm)
+          .orWhere('e.bill_number', 'like', searchTerm);
+      });
+    }
+
+    // Calculate total stats before pagination is applied
+    let totalExpenses = 0;
+    let monthExpensesTotal = 0;
+
+    const resolvedHostelId = hostel_id || user?.hostel_id;
+    if (resolvedHostelId) {
+      const allTimeResult = await db('expenses')
+        .where('hostel_id', resolvedHostelId)
+        .sum('amount as total')
+        .first();
+      totalExpenses = parseFloat(allTimeResult?.total || 0);
+
+      let mStart = startDate;
+      let mEnd = endDate;
+      if (!mStart || !mEnd) {
+        const now = new Date();
+        const curYear = now.getFullYear();
+        const curMonth = now.getMonth() + 1;
+        const lastDay = new Date(curYear, curMonth, 0).getDate();
+        mStart = `${curYear}-${String(curMonth).padStart(2, '0')}-01`;
+        mEnd = `${curYear}-${String(curMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+      }
+      const monthResult = await db('expenses')
+        .where('hostel_id', resolvedHostelId)
+        .whereBetween('expense_date', [mStart, mEnd])
+        .sum('amount as total')
+        .first();
+      monthExpensesTotal = parseFloat(monthResult?.total || 0);
+    }
+
+    // Apply pagination
+    if (page && limit) {
+      const p = parseInt(page as string);
+      const l = parseInt(limit as string);
+      query = query.limit(l).offset((p - 1) * l);
+    }
+
     const expenses = await query.orderBy('e.expense_date', 'desc');
 
     res.json({
       success: true,
-      data: expenses
+      data: expenses,
+      totalExpenses,
+      monthExpensesTotal
     });
   } catch (error) {
     console.error('Get expenses error:', error);

@@ -296,7 +296,7 @@ const safeGetDateString = (d: any): string => {
 // Get income analytics for breakdown charts
 export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
   try {
-    const { type, date } = req.query; // type: 'day' | 'week' | 'month', date: 'YYYY-MM-DD'
+    const { type, date, page, limit, search } = req.query; // type: 'day' | 'week' | 'month', date: 'YYYY-MM-DD'
     const user = req.user;
     const hostelId = user?.hostel_id;
 
@@ -336,6 +336,16 @@ export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
     if (user?.role_id === 2 && hostelId) {
       incomeQuery = incomeQuery.where('i.hostel_id', hostelId);
     }
+
+    if (search) {
+      const s = `%${search}%`;
+      incomeQuery = incomeQuery.where(function () {
+        this.where('i.source', 'like', s)
+          .orWhere('i.description', 'like', s)
+          .orWhere('pm.payment_mode_name', 'like', s);
+      });
+    }
+
     const incomes = await incomeQuery.select(
       'i.*',
       'pm.payment_mode_name as payment_mode'
@@ -351,6 +361,17 @@ export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
     if (user?.role_id === 2 && hostelId) {
       feeQuery = feeQuery.where('fp.hostel_id', hostelId);
     }
+
+    if (search) {
+      const s = `%${search}%`;
+      feeQuery = feeQuery.where(function () {
+        this.where('s.first_name', 'like', s)
+          .orWhere('s.last_name', 'like', s)
+          .orWhere('r.room_number', 'like', s)
+          .orWhere('pm.payment_mode_name', 'like', s);
+      });
+    }
+
     const feePayments = await feeQuery.select(
       'fp.*',
       's.first_name',
@@ -429,13 +450,27 @@ export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
       }
     }
 
+    let paginatedTransactions = transactions;
+    let hasMore = false;
+    if (page && limit) {
+      const p = parseInt(page as string, 10);
+      const l = parseInt(limit as string, 10);
+      paginatedTransactions = transactions.slice((p - 1) * l, p * l);
+      hasMore = p * l < transactions.length;
+    } else {
+      paginatedTransactions = transactions.slice(0, 50);
+      hasMore = transactions.length > 50;
+    }
+
     res.json({
       success: true,
       data: {
         total_amount: totalAmount,
-        transactions: transactions.slice(0, 50),
+        total_count: transactions.length,
+        transactions: paginatedTransactions,
         breakdown: { rent: rentTotal, other: otherTotal },
-        graph
+        graph,
+        hasMore
       }
     });
   } catch (error) {

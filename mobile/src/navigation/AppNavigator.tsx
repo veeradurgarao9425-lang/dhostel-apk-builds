@@ -69,11 +69,9 @@ const TabNavigator = () => (
 );
 
 // ── Root Stack Navigator ──────────────────────────────────────────────────────
-import { useNavigationContainerRef } from '@react-navigation/native';
+import { navigationRef } from './navigationRef';
 
 const AppNavigator = () => {
-    const navigationRef = useNavigationContainerRef();
-
     return (
         <NavigationContainer ref={navigationRef}>
             <Stack.Navigator
@@ -96,7 +94,7 @@ const AppNavigator = () => {
                 <Stack.Screen
                     name="AddStudent"
                     component={AddStudentScreen}
-                    options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+                    options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
                 />
 
                 {/* Rooms */}
@@ -104,7 +102,7 @@ const AppNavigator = () => {
                 <Stack.Screen
                     name="AddRoom"
                     component={AddRoomScreen}
-                    options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+                    options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
                 />
                 <Stack.Screen name="DeleteRooms"    component={DeleteRoomsScreen}   />
                 <Stack.Screen name="Rooms"          component={RoomsScreen}         />
@@ -126,12 +124,20 @@ const AppNavigator = () => {
                 <Stack.Screen name="Income"         component={IncomeScreen}         />
                 <Stack.Screen name="IncomeDetails"  component={IncomeDetailsScreen}  />
                 <Stack.Screen name="CollectedPayments" component={CollectedPaymentsScreen} />
-                <Stack.Screen name="AddIncome"      component={AddIncomeScreen}      />
+                <Stack.Screen
+                    name="AddIncome"
+                    component={AddIncomeScreen}
+                    options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+                />
                 <Stack.Screen name="Overview"       component={OverviewScreen}       />
 
                 {/* Expenses */}
                 <Stack.Screen name="Expenses"        component={ExpenseScreen}        />
-                <Stack.Screen name="AddExpense"      component={AddExpenseScreen}     />
+                <Stack.Screen
+                    name="AddExpense"
+                    component={AddExpenseScreen}
+                    options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+                />
                 <Stack.Screen name="ExpenseDetails"  component={ExpenseDetailsScreen} />
                 <Stack.Screen name="DeleteExpenses"  component={DeleteExpensesScreen} />
 

@@ -70,7 +70,7 @@ const rowStyles = StyleSheet.create({
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 const ExpenseDetailsScreen = ({ route }: any) => {
     const { theme } = useTheme();
-    const navigation = useNavigation();
+    const navigation = useNavigation<any>();
     const { expense } = route.params || {};
     const [deleteLoading, setDeleteLoading] = useState(false);
 

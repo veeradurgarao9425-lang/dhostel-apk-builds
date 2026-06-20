@@ -7,7 +7,7 @@ export const getNotices = async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user;
 
-    if (!user || user.role_id !== 2) {
+    if (!user || (user.role_id !== 1 && user.role_id !== 2)) {
       return res.status(403).json({
         success: false,
         error: 'Unauthorized access.'
@@ -44,7 +44,7 @@ export const createNotice = async (req: AuthRequest, res: Response) => {
     const user = req.user;
     const { title, content } = req.body;
 
-    if (!user || user.role_id !== 2) {
+    if (!user || (user.role_id !== 1 && user.role_id !== 2)) {
       return res.status(403).json({
         success: false,
         error: 'Unauthorized access.'
@@ -91,7 +91,7 @@ export const deleteNotice = async (req: AuthRequest, res: Response) => {
     const user = req.user;
     const { noticeId } = req.params;
 
-    if (!user || user.role_id !== 2) {
+    if (!user || (user.role_id !== 1 && user.role_id !== 2)) {
       return res.status(403).json({
         success: false,
         error: 'Unauthorized access.'

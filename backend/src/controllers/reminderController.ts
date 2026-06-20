@@ -7,7 +7,7 @@ export const getReminders = async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user;
 
-    if (!user || user.role_id !== 2) {
+    if (!user || (user.role_id !== 1 && user.role_id !== 2)) {
       return res.status(403).json({
         success: false,
         error: 'Unauthorized access.'
@@ -45,7 +45,7 @@ export const createReminder = async (req: AuthRequest, res: Response) => {
     const user = req.user;
     const { title, reminder_date, description, priority, category, status } = req.body;
 
-    if (!user || user.role_id !== 2) {
+    if (!user || (user.role_id !== 1 && user.role_id !== 2)) {
       return res.status(403).json({
         success: false,
         error: 'Unauthorized access.'
@@ -97,7 +97,7 @@ export const updateReminder = async (req: AuthRequest, res: Response) => {
     const { reminderId } = req.params;
     const { title, reminder_date, description, priority, category, status } = req.body;
 
-    if (!user || user.role_id !== 2) {
+    if (!user || (user.role_id !== 1 && user.role_id !== 2)) {
       return res.status(403).json({
         success: false,
         error: 'Unauthorized access.'
@@ -154,7 +154,7 @@ export const deleteReminder = async (req: AuthRequest, res: Response) => {
     const user = req.user;
     const { reminderId } = req.params;
 
-    if (!user || user.role_id !== 2) {
+    if (!user || (user.role_id !== 1 && user.role_id !== 2)) {
       return res.status(403).json({
         success: false,
         error: 'Unauthorized access.'

@@ -4,6 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import AppNavigator from './src/navigation/AppNavigator';
 import Toast from 'react-native-toast-message';
+import { HostelChatbot } from './src/components/HostelChatbot';
 
 import './src/i18n';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -19,6 +20,7 @@ export default function App() {
           <SafeAreaProvider style={styles.container}>
             <AppNavigator />
             <StatusBar barStyle="dark-content" />
+            <HostelChatbot />
             <Toast />
           </SafeAreaProvider>
         </ThemeProvider>

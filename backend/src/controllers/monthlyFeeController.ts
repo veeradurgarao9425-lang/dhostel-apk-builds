@@ -400,7 +400,7 @@ export const getMonthlyFeesSummary = async (req: AuthRequest, res: Response) => 
   console.log('[getMonthlyFeesSummary] User:', req.user);
 
   try {
-    const { hostelId, fee_month } = req.query;
+    const { hostelId, fee_month, page, limit, onlyPending } = req.query;
     const user = req.user;
 
     // Get current month if not specified
@@ -658,19 +658,59 @@ export const getMonthlyFeesSummary = async (req: AuthRequest, res: Response) => 
       total_due: fees.reduce((sum, f) => sum + (f.total_due || 0), 0),
       total_paid: fees.reduce((sum, f) => sum + (f.paid_amount || 0), 0),
       total_pending: fees.reduce((sum, f) => sum + (f.balance || 0), 0),
+      partial_paid_sum: fees.filter(f => (f.paid_amount || 0) > 0 && f.fee_status !== 'Fully Paid').reduce((sum, f) => sum + (f.paid_amount || 0), 0),
       today_earnings: todayEarnings,
       month: currentMonth
     };
 
     console.log('[getMonthlyFeesSummary] Summary calculated:', summary);
 
-    console.log(`[getMonthlyFeesSummary] Returning ${fees.length} fees. First few student names:`, fees.slice(0, 5).map(f => `${f.first_name} (ID: ${f.student_id})`).join(', '));
+    let filteredFees = fees;
+    if (onlyPending === 'true') {
+      filteredFees = fees.filter((f: any) => f.fee_status !== 'Fully Paid');
+    }
+
+    const todayDate = new Date();
+    todayDate.setHours(0, 0, 0, 0);
+    
+    filteredFees.sort((a: any, b: any) => {
+      const aDueDate = a.due_date ? new Date(a.due_date) : new Date();
+      aDueDate.setHours(0, 0, 0, 0);
+      const aDiff = todayDate.getTime() - aDueDate.getTime();
+      const aIsOverdue = aDiff > 0 && a.fee_status !== 'Fully Paid';
+
+      const bDueDate = b.due_date ? new Date(b.due_date) : new Date();
+      bDueDate.setHours(0, 0, 0, 0);
+      const bDiff = todayDate.getTime() - bDueDate.getTime();
+      const bIsOverdue = bDiff > 0 && b.fee_status !== 'Fully Paid';
+
+      // Overdue first
+      if (aIsOverdue && !bIsOverdue) return -1;
+      if (!aIsOverdue && bIsOverdue) return 1;
+      
+      // Then by balance (due amount) descending
+      return (b.balance || 0) - (a.balance || 0);
+    });
+
+    let paginatedFees = filteredFees;
+    let hasMore = false;
+    if (page && limit) {
+      const p = parseInt(page as string, 10);
+      const l = parseInt(limit as string, 10);
+      paginatedFees = filteredFees.slice((p - 1) * l, p * l);
+      hasMore = p * l < filteredFees.length;
+    } else {
+      hasMore = filteredFees.length > 0;
+    }
+
+    console.log(`[getMonthlyFeesSummary] Returning ${paginatedFees.length} fees (total filtered: ${filteredFees.length}). First few student names:`, paginatedFees.slice(0, 5).map(f => `${f.first_name} (ID: ${f.student_id})`).join(', '));
 
     res.json({
       success: true,
       data: {
         summary,
-        fees
+        fees: paginatedFees,
+        hasMore
       }
     });
     console.log('[getMonthlyFeesSummary] Response sent successfully');

@@ -619,7 +619,7 @@ const styles = StyleSheet.create({
         fontWeight: '800',
     },
     body: { flex: 1 },
-    listPadding: { padding: 16, paddingBottom: 100 },
+    listPadding: { padding: 16, paddingBottom: 180 },
     card: {
         backgroundColor: '#FFF',
         borderRadius: 20,
@@ -660,7 +660,7 @@ const styles = StyleSheet.create({
     },
     statusToggleText: { fontSize: 10, fontWeight: '900' },
     fab: {
-        position: 'absolute', bottom: 130, right: 20,
+        position: 'absolute', bottom: 30, right: 20,
         width: 60, height: 60, borderRadius: 30,
         justifyContent: 'center', alignItems: 'center', elevation: 5
     },

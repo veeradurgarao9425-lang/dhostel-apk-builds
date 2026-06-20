@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     View,
     Text,
     StyleSheet,
     ScrollView,
+    FlatList,
     TouchableOpacity,
     TextInput,
     StatusBar,
@@ -38,20 +39,61 @@ export const ExpenseScreen = ({ navigation }: any) => {
     const { user } = useAuth();
     const { theme } = useTheme();
     const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [expenses, setExpenses] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [currentDate, setCurrentDate] = useState<Date | null>(null);
     const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
 
-    const fetchExpenses = async (isRefresh = false) => {
-        try {
-            if (isRefresh) setRefreshing(true);
-            else setLoading(true);
+    const [page, setPage] = useState(1);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState(true);
+    const [totalExpenses, setTotalExpenses] = useState(0);
+    const [monthExpensesTotal, setMonthExpensesTotal] = useState(0);
 
-            const response = await api.get('/expenses');
+    const searchTimeout = useRef<NodeJS.Timeout | null>(null);
+
+    useEffect(() => {
+        if (searchTimeout.current) clearTimeout(searchTimeout.current);
+        searchTimeout.current = setTimeout(() => setDebouncedSearch(search), 350);
+        return () => { if (searchTimeout.current) clearTimeout(searchTimeout.current); };
+    }, [search]);
+
+    const fetchExpenses = async (pageNum = 1, isSilent = false) => {
+        try {
+            if (pageNum === 1) {
+                if (!isSilent) setLoading(true);
+            } else {
+                setLoadingMore(true);
+            }
+
+            const params: Record<string, any> = { page: pageNum, limit: 10 };
+            if (debouncedSearch) params.search = debouncedSearch;
+            
+            if (currentDate) {
+                const y = currentDate.getFullYear();
+                const m = currentDate.getMonth() + 1;
+                const lastDay = new Date(y, m, 0).getDate();
+                params.startDate = `${y}-${String(m).padStart(2, '0')}-01`;
+                params.endDate = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+            }
+
+            const response = await api.get('/expenses', { params });
             if (response.data.success) {
-                setExpenses(response.data.data);
+                const newData = response.data.data || [];
+                if (newData.length < 10) setHasMore(false);
+                else setHasMore(true);
+
+                setExpenses(prev => {
+                    if (pageNum === 1) return newData;
+                    const existingIds = new Set(prev.map(e => e.expense_id));
+                    const unique = newData.filter((e: any) => !existingIds.has(e.expense_id));
+                    return [...prev, ...unique];
+                });
+
+                setTotalExpenses(response.data.totalExpenses || 0);
+                setMonthExpensesTotal(response.data.monthExpensesTotal || 0);
             }
         } catch (error) {
             console.error('Error fetching expenses:', error);
@@ -63,8 +105,10 @@ export const ExpenseScreen = ({ navigation }: any) => {
         } finally {
             setLoading(false);
             setRefreshing(false);
+            setLoadingMore(false);
         }
     };
+
     const handleDelete = (expense: any) => {
         Alert.alert(
             'Delete Expense',
@@ -84,7 +128,7 @@ export const ExpenseScreen = ({ navigation }: any) => {
                                     text1: 'Success',
                                     text2: 'Expense deleted successfully',
                                 });
-                                fetchExpenses();
+                                fetchExpenses(1, true);
                             } else {
                                 Toast.show({
                                     type: 'error',
@@ -109,8 +153,16 @@ export const ExpenseScreen = ({ navigation }: any) => {
     };
 
     useEffect(() => {
+        setPage(1);
+        setHasMore(true);
+        fetchExpenses(1, false);
+    }, [debouncedSearch, currentDate]);
+
+    useEffect(() => {
         const unsubscribe = navigation.addListener('focus', () => {
-            fetchExpenses();
+            setPage(1);
+            setHasMore(true);
+            fetchExpenses(1, true);
         });
         return unsubscribe;
     }, [navigation]);
@@ -125,24 +177,7 @@ export const ExpenseScreen = ({ navigation }: any) => {
         setDatePickerVisibility(false);
     };
 
-    const totalExpenses = expenses.reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0);
-    
-    const currentMonthStr = currentDate
-        ? `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`
-        : null;
-
-    const filteredMonthExpenses = currentMonthStr
-        ? expenses.filter(exp => exp.expense_date?.startsWith(currentMonthStr))
-        : expenses;
-
-    const monthExpensesTotal = filteredMonthExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0);
-
-    const filteredExpenses = filteredMonthExpenses.filter(exp =>
-        exp.vendor_name?.toLowerCase().includes(search.toLowerCase()) ||
-        exp.description?.toLowerCase().includes(search.toLowerCase()) ||
-        exp.category_name?.toLowerCase().includes(search.toLowerCase()) ||
-        exp.bill_number?.toLowerCase().includes(search.toLowerCase())
-    );
+    const filteredExpenses = expenses;
 
     const formatDate = (dateStr: string) => {
         if (!dateStr) return '—';
@@ -234,78 +269,95 @@ export const ExpenseScreen = ({ navigation }: any) => {
                     <ActivityIndicator size="large" color="#FF6B6B" />
                 </View>
             ) : (
-                <ScrollView 
-                    style={styles.content} 
+                <FlatList
+                    data={expenses}
+                    keyExtractor={(item) => `exp-${item.expense_id}`}
+                    renderItem={({ item: expense }) => {
+                        const color = getCatColor(expense.category_name);
+                        return (
+                            <View style={styles.expenseCard}>
+                                <TouchableOpacity
+                                    onPress={() => navigation.navigate('ExpenseDetails', { expense })}
+                                    activeOpacity={0.7}
+                                >
+                                    <View style={styles.cardInner}>
+                                        <View style={styles.leftSection}>
+                                            <View style={[styles.iconContainer, { backgroundColor: color + '15' }]}>
+                                                <Tag size={20} color={color} />
+                                            </View>
+                                            <View style={styles.infoContainer}>
+                                                <Text style={styles.expenseTitle}>{expense.category_name}</Text>
+                                                <Text style={styles.vendorText}>
+                                                    {expense.vendor_name || 'Generic Vendor'}
+                                                </Text>
+                                                <Text style={styles.dateText}>{formatDate(expense.expense_date)}</Text>
+                                            </View>
+                                        </View>
+                                        <View style={styles.rightSection}>
+                                            <Text style={styles.amountText}>-₹{parseFloat(expense.amount).toLocaleString('en-IN')}</Text>
+                                            <View style={styles.paymentModeBadge}>
+                                                <Text style={styles.paymentModeText}>{expense.payment_mode || 'Cash'}</Text>
+                                            </View>
+                                        </View>
+                                    </View>
+                                    {expense.description && (
+                                        <View style={styles.descriptionContainer}>
+                                            <Text style={styles.descriptionText} numberOfLines={2}>
+                                                {expense.description}
+                                            </Text>
+                                        </View>
+                                    )}
+                                </TouchableOpacity>
+                                
+                                {/* Action Buttons Row */}
+                                <View style={styles.cardActions}>
+                                    <TouchableOpacity 
+                                        style={styles.actionBtn} 
+                                        onPress={() => navigation.navigate('AddExpense', { expense })}
+                                    >
+                                        <Edit3 size={14} color="#3B82F6" />
+                                        <Text style={styles.actionBtnTextBlue}>Edit</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity 
+                                        style={styles.actionBtn} 
+                                        onPress={() => handleDelete(expense)}
+                                    >
+                                        <Trash2 size={14} color="#EF4444" />
+                                        <Text style={styles.actionBtnTextRed}>Delete</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        );
+                    }}
+                    contentContainerStyle={styles.listContentContainer}
                     showsVerticalScrollIndicator={false}
                     refreshControl={
-                        <RefreshControl refreshing={refreshing} onRefresh={() => fetchExpenses(true)} />
+                        <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); setPage(1); setHasMore(true); fetchExpenses(1, true); }} />
                     }
-                >
-                    {filteredExpenses.length === 0 ? (
+                    onEndReached={() => {
+                        if (loadingMore || !hasMore) return;
+                        setPage(prev => {
+                            const next = prev + 1;
+                            fetchExpenses(next);
+                            return next;
+                        });
+                    }}
+                    onEndReachedThreshold={0.4}
+                    ListEmptyComponent={
                         <View style={styles.emptyState}>
                             <Text style={styles.emptyText}>No expenses found</Text>
                         </View>
-                    ) : (
-                        filteredExpenses.map((expense) => {
-                            const color = getCatColor(expense.category_name);
-                            return (
-                                <View key={expense.expense_id} style={styles.expenseCard}>
-                                    <TouchableOpacity
-                                        onPress={() => navigation.navigate('ExpenseDetails', { expense })}
-                                        activeOpacity={0.7}
-                                    >
-                                        <View style={styles.cardInner}>
-                                            <View style={styles.leftSection}>
-                                                <View style={[styles.iconContainer, { backgroundColor: color + '15' }]}>
-                                                    <Tag size={20} color={color} />
-                                                </View>
-                                                <View style={styles.infoContainer}>
-                                                    <Text style={styles.expenseTitle}>{expense.category_name}</Text>
-                                                    <Text style={styles.vendorText}>
-                                                        {expense.vendor_name || 'Generic Vendor'}
-                                                    </Text>
-                                                    <Text style={styles.dateText}>{formatDate(expense.expense_date)}</Text>
-                                                </View>
-                                            </View>
-                                            <View style={styles.rightSection}>
-                                                <Text style={styles.amountText}>-₹{parseFloat(expense.amount).toLocaleString('en-IN')}</Text>
-                                                <View style={styles.paymentModeBadge}>
-                                                    <Text style={styles.paymentModeText}>{expense.payment_mode || 'Cash'}</Text>
-                                                </View>
-                                            </View>
-                                        </View>
-                                        {expense.description && (
-                                            <View style={styles.descriptionContainer}>
-                                                <Text style={styles.descriptionText} numberOfLines={2}>
-                                                    {expense.description}
-                                                </Text>
-                                            </View>
-                                        )}
-                                    </TouchableOpacity>
-                                    
-                                    {/* Action Buttons Row */}
-                                    <View style={styles.cardActions}>
-                                        <TouchableOpacity 
-                                            style={styles.actionBtn} 
-                                            onPress={() => navigation.navigate('AddExpense', { expense })}
-                                        >
-                                            <Edit3 size={14} color="#3B82F6" />
-                                            <Text style={styles.actionBtnTextBlue}>Edit</Text>
-                                        </TouchableOpacity>
-                                        <TouchableOpacity 
-                                            style={styles.actionBtn} 
-                                            onPress={() => handleDelete(expense)}
-                                        >
-                                            <Trash2 size={14} color="#EF4444" />
-                                            <Text style={styles.actionBtnTextRed}>Delete</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                </View>
-                            );
-                        })
-                    )}
-                    <View style={styles.bottomSpacing} />
-                </ScrollView>
+                    }
+                    ListFooterComponent={
+                        loadingMore ? (
+                            <ActivityIndicator size="small" color="#FF6B6B" style={{ marginVertical: 20 }} />
+                        ) : !hasMore && expenses.length > 0 ? (
+                            <View style={{ alignItems: 'center', marginVertical: 20 }}>
+                                <Text style={{ color: '#94A3B8', fontSize: 12, fontWeight: '600' }}>All expenses loaded</Text>
+                            </View>
+                        ) : null
+                    }
+                />
             )}
 
             {/* Floating Action Button */}
@@ -534,15 +586,15 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     bottomSpacing: {
-        height: 120,
+        height: 180,
     },
     fab: {
         position: 'absolute',
-        bottom: 90,
+        bottom: 30,
         right: 20,
-        width: 56,
-        height: 56,
-        borderRadius: 28,
+        width: 60,
+        height: 60,
+        borderRadius: 30,
         backgroundColor: '#FF6B6B',
         alignItems: 'center',
         justifyContent: 'center',
@@ -582,6 +634,10 @@ const styles = StyleSheet.create({
         fontSize: 11,
         color: '#EF4444',
         fontWeight: '700',
+    },
+    listContentContainer: {
+        padding: 16,
+        paddingBottom: 180,
     },
 });
 

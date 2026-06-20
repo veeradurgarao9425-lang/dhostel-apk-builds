@@ -592,7 +592,7 @@ const s = StyleSheet.create({
     },
     heroLabel: {
         fontSize: 10,
-        fontWeight: '850',
+        fontWeight: '800',
         letterSpacing: 1.2,
         marginBottom: 4,
     },
@@ -649,7 +649,7 @@ const s = StyleSheet.create({
     },
     statsLabel: {
         fontSize: 9,
-        fontWeight: '850',
+        fontWeight: '800',
         color: '#64748B',
         letterSpacing: 0.8,
         marginBottom: 2,
@@ -680,7 +680,7 @@ const s = StyleSheet.create({
     },
     cardTitle: {
         fontSize: 14,
-        fontWeight: '850',
+        fontWeight: '800',
         color: '#1E293B',
         flex: 1,
     },
@@ -774,7 +774,7 @@ const s = StyleSheet.create({
     },
     catLabelText: {
         fontSize: 13,
-        fontWeight: '750',
+        fontWeight: '700',
         color: '#334155',
     },
     catRight: {

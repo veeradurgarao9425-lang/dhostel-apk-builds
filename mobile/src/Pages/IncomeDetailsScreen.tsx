@@ -96,7 +96,7 @@ export default function IncomeDetailsScreen() {
                 return;
             }
 
-            const baseURL = (api.defaults.baseURL || 'http://192.168.1.4:5000/api').replace(/\/$/, '');
+            const baseURL = (api.defaults.baseURL || 'http://192.168.1.73:5000/api').replace(/\/$/, '');
             const exportUrl = `${baseURL}/income/export?startDate=${startStr}&endDate=${endStr}&token=${encodeURIComponent(token)}&all=true`;
 
             const supported = await Linking.canOpenURL(exportUrl);
@@ -775,7 +775,7 @@ const s = StyleSheet.create({
     },
     tabButtonTextActive: {
         color: '#000000',
-        fontWeight: '850',
+        fontWeight: '800',
     },
 
     // ── SCROLL CONTENT ──────────────────────────────────────────────────────
@@ -933,7 +933,7 @@ const s = StyleSheet.create({
     },
     statsNum: {
         fontSize: 18,
-        fontWeight: '850',
+        fontWeight: '800',
         color: '#000000',
     },
     statsLbl: {
@@ -1011,7 +1011,7 @@ const s = StyleSheet.create({
     },
     txTitleText: {
         fontSize: 13,
-        fontWeight: '750',
+        fontWeight: '700',
         color: '#1E293B',
     },
     txSubText: {
@@ -1142,7 +1142,7 @@ const s = StyleSheet.create({
     },
     exportModalTitle: {
         fontSize: 16,
-        fontWeight: '850',
+        fontWeight: '800',
         color: '#0F172A',
     },
     exportLabel: {

@@ -226,7 +226,7 @@ const styles = StyleSheet.create({
     tabItem: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 10 },
     activeTab: { backgroundColor: '#FFF' },
     tabLabelText: { fontSize: 12, fontWeight: '800' },
-    listContent: { padding: 16, paddingBottom: 120 },
+    listContent: { padding: 16, paddingBottom: 180 },
     floorHeader: { fontSize: 14, fontWeight: '800', color: '#64748B', marginBottom: 12, marginTop: 10, textTransform: 'uppercase', letterSpacing: 1 },
     gridRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
     roomBox: {
@@ -249,5 +249,5 @@ const styles = StyleSheet.create({
     roomNum: { fontSize: 22, fontWeight: '900', color: '#1E293B' },
     capacityBar: { marginTop: 5, backgroundColor: '#F1F5F9', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
     capacityText: { fontSize: 10, fontWeight: '800', color: '#64748B' },
-    fab: { position: 'absolute', bottom: 130, right: 20, width: 64, height: 64, borderRadius: 32, justifyContent: 'center', alignItems: 'center', elevation: 8 },
+    fab: { position: 'absolute', bottom: 30, right: 20, width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', elevation: 8 },
 });

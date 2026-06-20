@@ -1,7 +1,7 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
-    ScrollView, StatusBar, ActivityIndicator, Dimensions, Linking, Modal, Alert, TextInput
+    FlatList, StatusBar, ActivityIndicator, Dimensions, Linking, Modal, Alert, TextInput, RefreshControl
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -26,9 +26,15 @@ export default function CollectedPaymentsScreen() {
 
     const [refDate, setRefDate] = useState(new Date());
     const [loading, setLoading] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [data, setData] = useState<any>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+    const [transactions, setTransactions] = useState<any[]>([]);
+    const [page, setPage] = useState(1);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState(true);
 
     const [showExportModal, setShowExportModal] = useState(false);
     const [exportStart, setExportStart] = useState(() => {
@@ -42,37 +48,77 @@ export default function CollectedPaymentsScreen() {
     const [isEndDatePickerVisible, setEndDatePickerVisible] = useState(false);
     const [isDatePickerVisible, setDatePickerVisible] = useState(false);
 
-    const load = useCallback(async (showIndicator = true) => {
-        if (showIndicator) setLoading(true);
-        setError(null);
+    const searchTimeout = useRef<NodeJS.Timeout | null>(null);
+
+    useEffect(() => {
+        if (searchTimeout.current) clearTimeout(searchTimeout.current);
+        searchTimeout.current = setTimeout(() => setDebouncedSearchQuery(searchQuery), 350);
+        return () => { if (searchTimeout.current) clearTimeout(searchTimeout.current); };
+    }, [searchQuery]);
+
+    const load = useCallback(async (pageNum = 1, showIndicator = true) => {
+        if (pageNum === 1) {
+            if (showIndicator) setLoading(true);
+            setError(null);
+        } else {
+            setLoadingMore(true);
+        }
         try {
             const dateStr = toLocalDateString(refDate);
+            const params: Record<string, any> = {
+                type: 'month',
+                date: dateStr,
+                page: pageNum,
+                limit: 10
+            };
+            if (debouncedSearchQuery) {
+                params.search = debouncedSearchQuery;
+            }
             const res = await api.get('/income/analytics', {
-                params: { type: 'month', date: dateStr },
+                params,
                 timeout: 15000,
             });
 
             if (res.data?.success) {
-                setData(res.data.data ?? null);
+                const analyticsData = res.data.data ?? null;
+                setData(analyticsData);
+                const newTransactions = analyticsData?.transactions ?? [];
+                setHasMore(analyticsData?.hasMore ?? (newTransactions.length === 10));
+
+                setTransactions(prev => {
+                    if (pageNum === 1) return newTransactions;
+                    const existingIds = new Set(prev.map(t => t.id));
+                    const unique = newTransactions.filter((t: any) => !existingIds.has(t.id));
+                    return [...prev, ...unique];
+                });
             } else {
-                setData(null);
+                if (pageNum === 1) {
+                    setData(null);
+                    setTransactions([]);
+                }
                 setError(res.data?.message || 'No data returned from server.');
             }
         } catch (e: any) {
             console.log(e);
-            setData(null);
-            if (e?.code === 'ECONNABORTED') {
-                setError('Request timed out. Check your connection.');
-            } else {
-                setError('Failed to load data. Tap to retry.');
+            if (pageNum === 1) {
+                setData(null);
+                setTransactions([]);
+                if (e?.code === 'ECONNABORTED') {
+                    setError('Request timed out. Check your connection.');
+                } else {
+                    setError('Failed to load data. Tap to retry.');
+                }
             }
         } finally {
             setLoading(false);
+            setLoadingMore(false);
         }
-    }, [refDate]);
+    }, [refDate, debouncedSearchQuery]);
 
     useEffect(() => {
-        load();
+        setPage(1);
+        setHasMore(true);
+        load(1, true);
     }, [load]);
 
     const shiftMonth = (dir: -1 | 1) => {
@@ -103,7 +149,7 @@ export default function CollectedPaymentsScreen() {
                 return;
             }
 
-            const baseURL = (api.defaults.baseURL || 'http://192.168.1.4:5000/api').replace(/\/$/, '');
+            const baseURL = (api.defaults.baseURL || 'http://192.168.1.73:5000/api').replace(/\/$/, '');
             const exportUrl = `${baseURL}/income/export?startDate=${startStr}&endDate=${endStr}&token=${encodeURIComponent(token)}&all=true`;
 
             const supported = await Linking.canOpenURL(exportUrl);
@@ -122,17 +168,9 @@ export default function CollectedPaymentsScreen() {
     };
 
     const total = data?.total_amount ?? 0;
-    const transactionsList = data?.transactions ?? [];
-    const transactionsCount = transactionsList.length;
+    const transactionsCount = data?.total_count ?? 0;
 
-    const filteredTransactions = transactionsList.filter((item: any) => {
-        const q = searchQuery.toLowerCase().trim();
-        if (!q) return true;
-        const titleMatch = (item.title || '').toLowerCase().includes(q);
-        const subMatch = (item.subtitle || '').toLowerCase().includes(q);
-        const roomMatch = item.room_number ? item.room_number.toString().includes(q) : false;
-        return titleMatch || subMatch || roomMatch;
-    });
+    const filteredTransactions = transactions;
 
     const getMonthLabel = (date: Date): string => {
         return date.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
@@ -240,88 +278,124 @@ export default function CollectedPaymentsScreen() {
             </LinearGradient>
 
             {/* BODY */}
-            <ScrollView contentContainerStyle={s.body} showsVerticalScrollIndicator={false}>
-                {/* Retry button on error */}
-                {!loading && error && (
-                    <TouchableOpacity style={s.retryBtn} onPress={() => load()}>
-                        <Text style={s.retryText}>Tap to Retry</Text>
-                    </TouchableOpacity>
-                )}
+            {loading ? (
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                    <ActivityIndicator size="large" color="#059669" style={{ marginTop: 40 }} />
+                </View>
+            ) : (
+                <FlatList
+                    data={transactions}
+                    keyExtractor={(item, index) => item.id || index.toString()}
+                    renderItem={({ item, index }) => renderTransactionCard(item, index)}
+                    contentContainerStyle={s.listContentContainer}
+                    showsVerticalScrollIndicator={false}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={async () => {
+                                setRefreshing(true);
+                                setPage(1);
+                                setHasMore(true);
+                                await load(1, false);
+                                setRefreshing(false);
+                            }}
+                            tintColor="#059669"
+                        />
+                    }
+                    onEndReached={() => {
+                        if (loadingMore || !hasMore) return;
+                        setPage(prev => {
+                            const next = prev + 1;
+                            load(next, false);
+                            return next;
+                        });
+                    }}
+                    onEndReachedThreshold={0.4}
+                    ListHeaderComponent={
+                        <View style={{ gap: 16, marginBottom: 16 }}>
+                            {/* Retry button on error */}
+                            {error && (
+                                <TouchableOpacity style={s.retryBtn} onPress={() => load(1, true)}>
+                                    <Text style={s.retryText}>Tap to Retry</Text>
+                                </TouchableOpacity>
+                            )}
 
-                {/* Total Collected Card */}
-                {!loading && !error && (
-                    <View style={s.totalCollectedCard}>
-                        <View style={s.totalCollectedRow}>
-                            <View style={s.totalCollectedIconBg}>
-                                <Ionicons name="wallet-outline" size={22} color="#059669" />
+                            {/* Total Collected Card */}
+                            {!error && (
+                                <View style={s.totalCollectedCard}>
+                                    <View style={s.totalCollectedRow}>
+                                        <View style={s.totalCollectedIconBg}>
+                                            <Ionicons name="wallet-outline" size={22} color="#059669" />
+                                        </View>
+                                        <View style={s.totalCollectedTextContainer}>
+                                            <Text style={s.totalCollectedLabel}>Total Collected</Text>
+                                            <Text style={s.totalCollectedValue}>₹{total.toLocaleString('en-IN')}</Text>
+                                            <Text style={s.totalCollectedSub}>From {transactionsCount} payment{transactionsCount !== 1 ? 's' : ''}</Text>
+                                        </View>
+                                        <TouchableOpacity onPress={() => load(1, false)} style={s.refreshBtn} activeOpacity={0.7}>
+                                            <Ionicons name="refresh" size={18} color="#059669" />
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            )}
+
+                            {/* Search Bar */}
+                            <View style={s.searchBarContainer}>
+                                <Ionicons name="search" size={18} color="#94A3B8" />
+                                <TextInput
+                                    style={s.searchInput}
+                                    placeholder="Search by name, phone, or room..."
+                                    value={searchQuery}
+                                    onChangeText={setSearchQuery}
+                                    placeholderTextColor="#94A3B8"
+                                />
+                                <TouchableOpacity onPress={() => setDatePickerVisible(true)}>
+                                    <Ionicons name="calendar-outline" size={18} color="#059669" />
+                                </TouchableOpacity>
                             </View>
-                            <View style={s.totalCollectedTextContainer}>
-                                <Text style={s.totalCollectedLabel}>Total Collected</Text>
-                                <Text style={s.totalCollectedValue}>₹{total.toLocaleString('en-IN')}</Text>
-                                <Text style={s.totalCollectedSub}>From {transactionsCount} payment{transactionsCount !== 1 ? 's' : ''}</Text>
+
+                            {/* Monthly Collections Selector Row */}
+                            <View style={s.collectionsHeaderRow}>
+                                <View>
+                                    <Text style={s.collectionsTitle}>Monthly Collections</Text>
+                                    <Text style={s.collectionsSubtitle}>Analytics & revenue overview</Text>
+                                </View>
                             </View>
-                            <TouchableOpacity onPress={() => load(false)} style={s.refreshBtn} activeOpacity={0.7}>
-                                <Ionicons name="refresh" size={18} color="#059669" />
-                            </TouchableOpacity>
+
+                            <View style={s.filterOptionsRow}>
+                                <TouchableOpacity style={s.allFilterBtn} activeOpacity={0.8}>
+                                    <Ionicons name="grid-outline" size={18} color="#059669" />
+                                    <Text style={s.allFilterText}>All</Text>
+                                </TouchableOpacity>
+                                
+                                <TouchableOpacity style={s.monthDropdown} onPress={() => setDatePickerVisible(true)} activeOpacity={0.8}>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={s.dropdownLabel}>Collection Month & Year</Text>
+                                        <Text style={s.dropdownValue}>{getMonthLabel(refDate)}</Text>
+                                    </View>
+                                    <Ionicons name="chevron-down" size={18} color="#1E293B" />
+                                </TouchableOpacity>
+                            </View>
                         </View>
-                    </View>
-                )}
-
-                {/* Search Bar */}
-                <View style={s.searchBarContainer}>
-                    <Ionicons name="search" size={18} color="#94A3B8" />
-                    <TextInput
-                        style={s.searchInput}
-                        placeholder="Search by name, phone, or room..."
-                        value={searchQuery}
-                        onChangeText={setSearchQuery}
-                        placeholderTextColor="#94A3B8"
-                    />
-                    <TouchableOpacity onPress={() => setDatePickerVisible(true)}>
-                        <Ionicons name="calendar-outline" size={18} color="#059669" />
-                    </TouchableOpacity>
-                </View>
-
-                {/* Monthly Collections Selector Row */}
-                <View style={s.collectionsHeaderRow}>
-                    <View>
-                        <Text style={s.collectionsTitle}>Monthly Collections</Text>
-                        <Text style={s.collectionsSubtitle}>Analytics & revenue overview</Text>
-                    </View>
-                </View>
-
-                <View style={s.filterOptionsRow}>
-                    <TouchableOpacity style={s.allFilterBtn} activeOpacity={0.8}>
-                        <Ionicons name="grid-outline" size={18} color="#059669" />
-                        <Text style={s.allFilterText}>All</Text>
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity style={s.monthDropdown} onPress={() => setDatePickerVisible(true)} activeOpacity={0.8}>
-                        <View style={{ flex: 1 }}>
-                            <Text style={s.dropdownLabel}>Collection Month & Year</Text>
-                            <Text style={s.dropdownValue}>{getMonthLabel(refDate)}</Text>
+                    }
+                    ListEmptyComponent={
+                        <View style={s.emptyCard}>
+                            <Text style={s.emptyIcon}>📭</Text>
+                            <Text style={s.emptyTitle}>No Transactions</Text>
+                            <Text style={s.emptyText}>No income matches your filter or search.</Text>
                         </View>
-                        <Ionicons name="chevron-down" size={18} color="#1E293B" />
-                    </TouchableOpacity>
-                </View>
-
-                {/* Transactions List */}
-                {loading ? (
-                    <ActivityIndicator size="large" color="#059669" style={{ marginTop: 30 }} />
-                ) : filteredTransactions.length > 0 ? (
-                    <View style={{ gap: 4 }}>
-                        {filteredTransactions.map((item: any, idx: number) => renderTransactionCard(item, idx))}
-                    </View>
-                ) : (
-                    <View style={s.emptyCard}>
-                        <Text style={s.emptyIcon}>📭</Text>
-                        <Text style={s.emptyTitle}>No Transactions</Text>
-                        <Text style={s.emptyText}>No income matches your filter or search.</Text>
-                    </View>
-                )}
-
-                <View style={{ height: 100 }} />
-            </ScrollView>
+                    }
+                    ListFooterComponent={
+                        loadingMore ? (
+                            <ActivityIndicator size="small" color="#059669" style={{ marginVertical: 20 }} />
+                        ) : !hasMore && transactions.length > 0 ? (
+                            <View style={{ alignItems: 'center', marginVertical: 20 }}>
+                                <Text style={{ color: '#94A3B8', fontSize: 12, fontWeight: '600' }}>All payments loaded</Text>
+                            </View>
+                        ) : null
+                    }
+                />
+            )}
 
             {/* Export Modal */}
             <Modal
@@ -585,7 +659,7 @@ const s = StyleSheet.create({
     },
     collectionsTitle: {
         fontSize: 14,
-        fontWeight: '950',
+        fontWeight: '900',
         color: '#1E293B',
     },
     collectionsSubtitle: {
@@ -696,7 +770,7 @@ const s = StyleSheet.create({
     },
     cardAmtText: {
         fontSize: 15,
-        fontWeight: '950',
+        fontWeight: '900',
     },
     cardStatusSub: {
         fontSize: 9,
@@ -827,4 +901,8 @@ const s = StyleSheet.create({
     },
     exportConfirmBtnDisabled: { backgroundColor: '#94A3B8' },
     exportConfirmText: { fontSize: 16, fontWeight: '700', color: '#FFF' },
+    listContentContainer: {
+        padding: 16,
+        paddingBottom: 120,
+    },
 });

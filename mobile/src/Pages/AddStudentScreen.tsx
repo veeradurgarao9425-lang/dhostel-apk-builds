@@ -495,23 +495,11 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 {/* ── Basic Info ── */}
                 <View style={styles.formCard}>
                     <Text style={styles.sectionTitle}>👤 Basic Information</Text>
-                    <View style={styles.row}>
-                        <View style={{ flex: 1, marginRight: 10 }}>
-                            <FormInput label="First Name *" icon={User} placeholder="e.g. Ravi" value={formData.first_name} error={errors.first_name}
-                                onChangeText={(t: string) => { up('first_name', t.replace(/[^a-zA-Z0-9\s]/g, '')); if (errors.first_name && t) setErrors(p => { const e = { ...p }; delete e.first_name; return e; }); }} />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                            <FormInput label="Last Name" icon={User} placeholder="e.g. Kumar" value={formData.last_name} onChangeText={(t: string) => up('last_name', t.replace(/[^a-zA-Z0-9\s]/g, ''))} />
-                        </View>
-                    </View>
-                    <View style={styles.row}>
-                        <View style={{ flex: 1, marginRight: 10 }}>
-                            <SelectField label="Gender *" value={formData.gender} placeholder="Gender" icon={Users} onPress={() => setGenderModal(true)} />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                            <SelectField label="Date of Birth" icon={Calendar} placeholder="Pick date" value={formData.date_of_birth} onPress={() => { setDateMode('dob'); setShowDatePicker(true); }} />
-                        </View>
-                    </View>
+                    <FormInput label="First Name *" icon={User} placeholder="e.g. Ravi" value={formData.first_name} error={errors.first_name}
+                        onChangeText={(t: string) => { up('first_name', t.replace(/[^a-zA-Z0-9\s]/g, '')); if (errors.first_name && t) setErrors(p => { const e = { ...p }; delete e.first_name; return e; }); }} />
+                    <FormInput label="Last Name" icon={User} placeholder="e.g. Kumar" value={formData.last_name} onChangeText={(t: string) => up('last_name', t.replace(/[^a-zA-Z0-9\s]/g, ''))} />
+                    <SelectField label="Gender *" value={formData.gender} placeholder="Gender" icon={Users} onPress={() => setGenderModal(true)} />
+                    <SelectField label="Date of Birth" icon={Calendar} placeholder="Pick date" value={formData.date_of_birth} onPress={() => { setDateMode('dob'); setShowDatePicker(true); }} />
                     <FormInput label="Phone *" icon={Phone} placeholder="9876543210" keyboardType="phone-pad" value={formData.phone} error={errors.phone}
                         onChangeText={(t: string) => { const c = t.replace(/\D/g, '').slice(0, 10); up('phone', c); if (errors.phone && c.length === 10) setErrors(p => { const e = { ...p }; delete e.phone; return e; }); }} />
                     <FormInput label="Email" icon={Mail} placeholder="tenant@email.com" keyboardType="email-address" value={formData.email} error={errors.email}
@@ -525,7 +513,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                     <FormInput label="Aadhaar / ID Number" icon={CreditCard} placeholder="Enter ID number" value={formData.id_proof_number}
                         onChangeText={(t: string) => up('id_proof_number', t)} />
                     <Text style={styles.photoSectionLabel}>📸 Aadhaar Photos <Text style={{ color: '#94A3B8', fontWeight: '400', fontSize: 12 }}>(stored locally)</Text></Text>
-                    <View style={[styles.row, { gap: 12, marginTop: 8 }]}>
+                    <View style={{ gap: 14, marginTop: 8 }}>
                         <AadhaarCapture label="Front Side" uri={aadhaarFront} onCapture={setAadhaarFront} onRemove={() => setAadhaarFront(null)} />
                         <AadhaarCapture label="Back Side" uri={aadhaarBack} onCapture={setAadhaarBack} onRemove={() => setAadhaarBack(null)} />
                     </View>
@@ -535,15 +523,9 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 <View style={styles.formCard}>
                     <Text style={styles.sectionTitle}>👨‍👩‍👦 Guardian <Text style={{ fontWeight: '400', color: '#94A3B8', fontSize: 12 }}>(Optional)</Text></Text>
                     <FormInput label="Guardian Name" icon={User} placeholder="Parent / Guardian" value={formData.guardian_name} onChangeText={(t: string) => up('guardian_name', t.replace(/[^a-zA-Z0-9\s]/g, ''))} />
-                    <View style={styles.row}>
-                        <View style={{ flex: 1, marginRight: 10 }}>
-                            <SelectField label="Relation" value={relations.find(r => r.relation_id.toString() === formData.guardian_relation_id)?.relation_name} placeholder="Relation" icon={Users} onPress={() => setRelationModal(true)} />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                            <FormInput label="Guardian Phone" icon={Phone} placeholder="9876543211" keyboardType="phone-pad" value={formData.guardian_phone} error={errors.guardian_phone}
-                                onChangeText={(t: string) => { const c = t.replace(/\D/g, '').slice(0, 10); up('guardian_phone', c); }} />
-                        </View>
-                    </View>
+                    <SelectField label="Relation" value={relations.find(r => r.relation_id.toString() === formData.guardian_relation_id)?.relation_name} placeholder="Relation" icon={Users} onPress={() => setRelationModal(true)} />
+                    <FormInput label="Guardian Phone" icon={Phone} placeholder="9876543211" keyboardType="phone-pad" value={formData.guardian_phone} error={errors.guardian_phone}
+                        onChangeText={(t: string) => { const c = t.replace(/\D/g, '').slice(0, 10); up('guardian_phone', c); }} />
                 </View>
 
                 {/* ── Admission ── */}
@@ -574,7 +556,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                             </View>
                         </View>
                     )}
-                    <View style={[styles.row, { gap: 12 }]}>
+                    <View style={{ gap: 12 }}>
                         <TouchableOpacity style={[styles.allocationBtn, selectedRoom && styles.allocationBtnActive]} onPress={() => setRoomModal(true)} activeOpacity={0.8}>
                             <Home size={17} color={selectedRoom ? '#FF6B6B' : '#64748B'} />
                             <Text style={[styles.allocationBtnText, selectedRoom && { color: '#FF6B6B' }]} numberOfLines={1}>{selectedRoom ? `Room ${selectedRoom.room_number}` : 'Select Room'}</Text>
@@ -689,7 +671,7 @@ const styles = StyleSheet.create({
     allocationValue: { fontSize: 16, fontWeight: '700', color: '#1E293B' },
     allocationMeta: { fontSize: 11, color: '#64748B', marginTop: 2 },
     allocationDivider: { width: 1, backgroundColor: '#FFD5D5', marginHorizontal: 14 },
-    allocationBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9FAFB', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 13, borderWidth: 1, borderColor: '#E2E8F0', gap: 6 },
+    allocationBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9FAFB', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 13, borderWidth: 1, borderColor: '#E2E8F0', gap: 6 },
     allocationBtnActive: { backgroundColor: '#FFF9F9', borderColor: '#FF6B6B' },
     allocationBtnDisabled: { opacity: 0.45 },
     allocationBtnText: { flex: 1, fontSize: 14, fontWeight: '600', color: '#64748B' },
