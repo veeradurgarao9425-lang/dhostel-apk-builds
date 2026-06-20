@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as RootNavigation from '../navigation/navigationRef';
 import { useAuth } from '../../contexts/AuthContext';
+import { COLORS } from '../theme/index';
 
 interface FAQItem {
   id: string;
@@ -479,7 +480,7 @@ export const HostelChatbot: React.FC = () => {
             style={s.modalWrapper}
           >
             {/* Header */}
-            <LinearGradient colors={['#4F46E5', '#3730A3']} style={s.header}>
+            <LinearGradient colors={[COLORS.gradientStart, COLORS.gradientEnd]} style={s.header}>
               <View style={s.headerInfoRow}>
                 <View style={s.avatarContainer}>
                   <View style={s.avatar}>
@@ -703,7 +704,7 @@ export const HostelChatbot: React.FC = () => {
 
             {/* Footer */}
             <View style={s.footer}>
-              <Text style={s.footerText}>dHostel Helper • 100% Free & Secure</Text>
+              <Text style={s.footerText}>Stivo Helper • 100% Free & Secure</Text>
             </View>
           </KeyboardAvoidingView>
         </SafeAreaView>
@@ -730,7 +731,7 @@ const s = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#4F46E5',
+    backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 6,
@@ -794,7 +795,7 @@ const s = StyleSheet.create({
     height: 56,
     borderRadius: 28,
     borderWidth: 2,
-    borderColor: '#4F46E5',
+    borderColor: COLORS.primary,
   },
   fabPulseDot: {
     position: 'absolute',
@@ -876,8 +877,8 @@ const s = StyleSheet.create({
     borderColor: '#E2E8F0',
   },
   categoryPillActive: {
-    backgroundColor: '#4F46E5',
-    borderColor: '#4F46E5',
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
   },
   categoryText: {
     fontSize: 10,
@@ -919,7 +920,7 @@ const s = StyleSheet.create({
   botBubbleIconText: {
     fontSize: 10,
     fontWeight: 'bold',
-    color: '#4F46E5',
+    color: COLORS.primary,
   },
   messageBubble: {
     padding: 12,
@@ -927,7 +928,7 @@ const s = StyleSheet.create({
     maxWidth: '82%',
   },
   messageUserBubble: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: COLORS.primary,
     borderTopRightRadius: 0,
   },
   messageBotBubble: {
@@ -965,7 +966,7 @@ const s = StyleSheet.create({
   bubbleLinkText: {
     fontSize: 11,
     fontWeight: 'bold',
-    color: '#4F46E5',
+    color: COLORS.primary,
   },
   faqListBlock: {
     marginTop: 8,
@@ -1026,7 +1027,7 @@ const s = StyleSheet.create({
   backBtnText: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#4F46E5',
+    color: COLORS.primary,
   },
   faqCard: {
     backgroundColor: '#FFF',
@@ -1079,7 +1080,7 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#4F46E5',
+    backgroundColor: COLORS.primary,
     paddingVertical: 10,
     borderRadius: 10,
   },
@@ -1107,7 +1108,7 @@ const s = StyleSheet.create({
   faqItemCategory: {
     fontSize: 9,
     fontWeight: 'bold',
-    color: '#4F46E5',
+    color: COLORS.primary,
     marginBottom: 2,
   },
   faqItemQuestion: {
@@ -1143,7 +1144,7 @@ const s = StyleSheet.create({
   resetBtnText: {
     fontSize: 11,
     fontWeight: 'bold',
-    color: '#4F46E5',
+    color: COLORS.primary,
   },
   footer: {
     paddingVertical: 10,

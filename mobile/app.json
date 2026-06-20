@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "StayNow",
-    "slug": "staynow-mobile",
-    "scheme": "staynow",
+    "name": "Stivo",
+    "slug": "stivo-mobile",
+    "scheme": "stivo",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -20,7 +20,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.durgarao2.staynowmobile"
+      "package": "com.durgarao2.stivomobile"
     },
     "web": {
       "favicon": "./assets/favicon.png"

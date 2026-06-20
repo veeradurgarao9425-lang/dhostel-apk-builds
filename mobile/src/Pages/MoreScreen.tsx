@@ -287,7 +287,7 @@ export default function MoreScreen() {
                 </TouchableOpacity>
 
                 {/* App version */}
-                <Text style={s.version}>dHostel v1.0.0</Text>
+                <Text style={s.version}>Stivo v1.0.0</Text>
             </ScrollView>
         </View>
     );

@@ -48,7 +48,7 @@ export default function LoginScreen() {
                     {/* Header */}
                     <View style={styles.header}>
                         <Text style={styles.logo}>🏠</Text>
-                        <Text style={styles.appName}>StayNow</Text>
+                        <Text style={styles.appName}>Stivo</Text>
                         <Text style={styles.tagline}>Hostel Management System</Text>
                     </View>
 

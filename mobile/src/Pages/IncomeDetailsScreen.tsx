@@ -96,7 +96,7 @@ export default function IncomeDetailsScreen() {
                 return;
             }
 
-            const baseURL = (api.defaults.baseURL || 'https://mhostel-backend.onrender.com/api').replace(/\/$/, '');
+            const baseURL = (api.defaults.baseURL || 'https://dhostel-backend.onrender.com/api').replace(/\/$/, '');
             const exportUrl = `${baseURL}/income/export?startDate=${startStr}&endDate=${endStr}&token=${encodeURIComponent(token)}&all=true`;
 
             const supported = await Linking.canOpenURL(exportUrl);

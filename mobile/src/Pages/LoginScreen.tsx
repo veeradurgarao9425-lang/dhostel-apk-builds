@@ -13,6 +13,7 @@ import {
     ActivityIndicator,
     Keyboard,
     TouchableWithoutFeedback,
+    Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -80,10 +81,12 @@ export default function LoginScreen({ navigation }: any) {
                         end={{ x: 1, y: 1 }}
                     >
                         <View style={styles.logoContainer}>
-                            <View style={styles.logoBadge}>
-                                <Text style={styles.logoText}>S</Text>
-                            </View>
-                            <Text style={styles.appName}>StayNow</Text>
+                            <Image 
+                                source={require('../../assets/stivologo.png')}
+                                style={{ width: 100, height: 100, marginBottom: 16, borderRadius: 20 }}
+                                resizeMode="contain"
+                            />
+                            <Text style={styles.appName}>Stivo</Text>
                             <Text style={styles.tagline}>Smart Hostel Management</Text>
                         </View>
                     </LinearGradient>
