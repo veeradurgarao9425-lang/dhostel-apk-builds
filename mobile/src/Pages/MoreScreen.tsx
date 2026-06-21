@@ -49,6 +49,14 @@ const TOP_TOOLS: MenuItem[] = [
         iconBg: '#FEF3C7',
         route: 'Maintenance',
     },
+    {
+        label: 'Add Hostel',
+        subtitle: 'Create new hostel',
+        icon: 'business',
+        iconColor: '#16A34A',
+        iconBg: '#DCFCE7',
+        route: 'AddHostel',
+    },
 ];
 
 const MENU_GROUPS: { groupTitle: string; items: MenuItem[] }[] = [
@@ -256,8 +264,8 @@ export default function MoreScreen() {
         if (!searchQuery) return MENU_GROUPS;
         const q = searchQuery.toLowerCase();
         return MENU_GROUPS.map(group => {
-            const items = group.items.filter(item => 
-                item.label.toLowerCase().includes(q) || 
+            const items = group.items.filter(item =>
+                item.label.toLowerCase().includes(q) ||
                 item.subtitle.toLowerCase().includes(q)
             );
             return { ...group, items };
@@ -281,20 +289,20 @@ export default function MoreScreen() {
                         </View>
                         <View style={{ flex: 1 }}>
                             <Text style={[s.headerName, { fontSize: fontSize + 4 }]}>{user?.full_name || 'Owner'}</Text>
+                            <TouchableOpacity
+                                style={[s.hostelHeaderBtn, { marginTop: 4, alignSelf: 'flex-start' }]}
+                                onPress={openHostelSelector}
+                                activeOpacity={0.8}
+                            >
+                                <Ionicons name="business" size={12} color="#FFF" style={{ marginRight: 4 }} />
+                                <Text style={s.hostelHeaderBtnText} numberOfLines={1}>{user?.hostel_name || 'My Hostel'}</Text>
+                                <Ionicons name="chevron-down" size={9} color="#FFF" style={{ marginLeft: 2 }} />
+                            </TouchableOpacity>
                         </View>
                     </TouchableOpacity>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <TouchableOpacity 
-                            style={s.hostelHeaderBtn} 
-                            onPress={openHostelSelector}
-                            activeOpacity={0.8}
-                        >
-                            <Ionicons name="business" size={14} color="#FFF" style={{ marginRight: 4 }} />
-                            <Text style={s.hostelHeaderBtnText} numberOfLines={1}>{user?.hostel_name || 'My Hostel'}</Text>
-                            <Ionicons name="chevron-down" size={10} color="#FFF" style={{ marginLeft: 2 }} />
-                        </TouchableOpacity>
-                        <TouchableOpacity 
-                            onPress={() => { setShowSearch(!showSearch); if(showSearch) setSearchQuery(''); }} 
+                        <TouchableOpacity
+                            onPress={() => { setShowSearch(!showSearch); if (showSearch) setSearchQuery(''); }}
                             style={s.searchIconBtn}
                             activeOpacity={0.7}
                         >
@@ -405,20 +413,20 @@ export default function MoreScreen() {
 
             {/* ─────────────────── HOSTEL SWITCHER MODAL ─────────────────── */}
             <Modal
-                animationType="slide"
+                animationType="fade"
                 transparent={true}
                 visible={selectorVisible}
                 onRequestClose={() => setSelectorVisible(false)}
             >
-                <TouchableOpacity 
-                    style={s.modalOverlay} 
-                    activeOpacity={1} 
+                <TouchableOpacity
+                    style={s.modalOverlay}
+                    activeOpacity={1}
                     onPress={() => setSelectorVisible(false)}
                 >
                     <View style={[s.modalSheet, { backgroundColor: theme.cardBg }]}>
                         <View style={s.modalHeader}>
                             <Text style={[s.modalTitle, { color: theme.textPrimary }]}>Switch Hostel</Text>
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 style={s.modalCloseBtn}
                                 onPress={() => setSelectorVisible(false)}
                             >
@@ -434,7 +442,7 @@ export default function MoreScreen() {
                                 </Text>
                             </View>
                         ) : (
-                            <ScrollView showsVerticalScrollIndicator={false}>
+                            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 50 }}>
                                 {hostels.map((h: any) => {
                                     const isActive = h.hostel_id === user?.hostel_id;
                                     return (
@@ -516,7 +524,7 @@ const s = StyleSheet.create({
     headerSearchInput: {
         flex: 1,
         color: '#1E293B',
-        fontWeight: '600',
+        fontWeight: '700',
     },
     emptyState: {
         alignItems: 'center',
@@ -552,11 +560,12 @@ const s = StyleSheet.create({
     },
     topToolsRow: {
         flexDirection: 'row',
+        flexWrap: 'wrap',
         gap: 10,
         justifyContent: 'space-between',
     },
     topToolCard: {
-        flex: 1,
+        width: '48%',
         backgroundColor: '#FFF',
         borderRadius: 16,
         paddingVertical: 14,
@@ -569,6 +578,7 @@ const s = StyleSheet.create({
         shadowRadius: 6,
         borderWidth: 1,
         borderColor: '#F1F5F9',
+        marginBottom: 8,
     },
     topToolIconCircle: {
         width: 38,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, ScrollView, Text, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform, StatusBar } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Header } from '../components/Header';
@@ -29,6 +29,7 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
     const [typeModalVisible, setTypeModalVisible] = useState(false);
     const insets = useSafeAreaInsets();
     const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+    const scrollViewRef = useRef<ScrollView>(null);
 
     useEffect(() => {
         const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
@@ -43,7 +44,7 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
         room_number: roomToEdit?.room_number?.toString() || '',
         floor_number: roomToEdit?.floor_number?.toString() || '',
         room_type_id: roomToEdit?.room_type_id?.toString() || '',
-        capacity: roomToEdit?.total_capacity?.toString() || '4',
+        capacity: roomToEdit?.total_capacity?.toString() || '',
         rent_per_bed: roomToEdit?.rent_per_bed?.toString() || '',
         occupied_beds: roomToEdit?.occupied_beds?.toString() || '',
         selectedAmenities: roomToEdit?.amenities || [] as string[],
@@ -86,7 +87,7 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
                     setFormData(prev => ({ 
                         ...prev, 
                         room_type_id: defaultTypeId,
-                        capacity: prev.capacity || (fourShareType ? '4' : '4')
+                        capacity: prev.capacity || ''
                     }));
                 }
             }
@@ -150,11 +151,11 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
             const payload = {
                 hostel_id: user?.hostel_id,
                 room_number: formData.room_number,
-                room_type_id: parseInt(formData.room_type_id),
-                floor_number: parseInt(formData.floor_number),
-                capacity: parseInt(formData.capacity),
-                rent_per_bed: parseFloat(formData.rent_per_bed),
-                occupied_beds: parseInt(formData.occupied_beds),
+                room_type_id: parseInt(formData.room_type_id) || null,
+                floor_number: parseInt(formData.floor_number) || null,
+                capacity: parseInt(formData.capacity) || 4,
+                rent_per_bed: parseFloat(formData.rent_per_bed) || 0,
+                occupied_beds: formData.occupied_beds ? parseInt(formData.occupied_beds) : 0,
                 amenities: formData.selectedAmenities,
             };
 
@@ -186,33 +187,19 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
         <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={[styles.container, { backgroundColor: isDark ? theme.background : '#F8FAFC' }]}
+            keyboardVerticalOffset={0}
         >
             <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
             <AppHeader title={isEdit ? "Edit Room" : "Add New Room"} />
             <FullScreenLoader visible={loading} />
             <ScrollView
+                ref={scrollViewRef}
                 style={styles.content}
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 60 }}
+                contentContainerStyle={{ paddingBottom: isKeyboardVisible ? 80 : 100 }}
                 keyboardShouldPersistTaps="handled"
             >
                 <Card style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
-                    <InputField
-                        label="Room Number *"
-                        placeholder="e.g. 101"
-                        value={formData.room_number}
-                        error={errors.room_number}
-                        onChangeText={(text) => {
-                            const newFormData = { ...formData, room_number: text };
-                            setFormData(newFormData);
-                            if (errors.room_number) {
-                                const newErrors = { ...errors };
-                                delete newErrors.room_number;
-                                setErrors(newErrors);
-                            }
-                        }}
-                    />
-
                     <InputField
                         label="Floor Number *"
                         placeholder="Enter Floor Number"
@@ -230,7 +217,41 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
                         }}
                     />
 
-                    <View style={{ height: 20 }} />
+                    <InputField
+                        label="Room Number *"
+                        placeholder="e.g. 101"
+                        value={formData.room_number}
+                        error={errors.room_number}
+                        onChangeText={(text) => {
+                            const newFormData = { ...formData, room_number: text };
+                            setFormData(newFormData);
+                            if (errors.room_number) {
+                                const newErrors = { ...errors };
+                                delete newErrors.room_number;
+                                setErrors(newErrors);
+                            }
+                        }}
+                    />
+
+                    <View style={{ marginBottom: 16 }}>
+                        <Text style={[styles.label, { color: theme.textSecondary }]}>Room Type *</Text>
+                        <TouchableOpacity
+                            style={[styles.selectField, { backgroundColor: isDark ? '#1E293B' : '#F9FAFB' }, errors.room_type_id && styles.selectFieldError]}
+                            onPress={() => setTypeModalVisible(true)}
+                            activeOpacity={0.7}
+                        >
+                            <View style={styles.selectLeft}>
+                                <LayoutGrid size={18} color={errors.room_type_id ? "#EF4444" : theme.primary} style={{ marginRight: 10 }} />
+                                <Text style={[styles.selectText, { color: theme.textPrimary }, !formData.room_type_id && { color: isDark ? '#475569' : '#94A3B8' }]}>
+                                    {formData.room_type_id
+                                        ? roomTypes.find(t => t.room_type_id.toString() === formData.room_type_id)?.room_type_name
+                                        : "Select Room Type"}
+                                </Text>
+                            </View>
+                            <ChevronDown size={18} color="#94A3B8" />
+                        </TouchableOpacity>
+                        {errors.room_type_id && <Text style={styles.errorText}>{errors.room_type_id}</Text>}
+                    </View>
 
                     <InputField
                         label="Total Capacity *"
@@ -274,25 +295,12 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
                                 setErrors(newErrors);
                             }
                         }}
+                        onFocus={() => {
+                            setTimeout(() => {
+                                scrollViewRef.current?.scrollToEnd({ animated: true });
+                            }, 100);
+                        }}
                     />
-
-                    <Text style={[styles.label, { color: theme.textSecondary }]}>Room Type *</Text>
-                    <TouchableOpacity
-                        style={[styles.selectField, { backgroundColor: isDark ? '#1E293B' : '#F9FAFB' }, errors.room_type_id && styles.selectFieldError]}
-                        onPress={() => setTypeModalVisible(true)}
-                        activeOpacity={0.7}
-                    >
-                        <View style={styles.selectLeft}>
-                            <LayoutGrid size={18} color={errors.room_type_id ? "#EF4444" : theme.primary} style={{ marginRight: 10 }} />
-                            <Text style={[styles.selectText, { color: theme.textPrimary }, !formData.room_type_id && { color: isDark ? '#475569' : '#94A3B8' }]}>
-                                {formData.room_type_id
-                                    ? roomTypes.find(t => t.room_type_id.toString() === formData.room_type_id)?.room_type_name
-                                    : "Select Room Type"}
-                            </Text>
-                        </View>
-                        <ChevronDown size={18} color="#94A3B8" />
-                    </TouchableOpacity>
-                    {errors.room_type_id && <Text style={styles.errorText}>{errors.room_type_id}</Text>}
 
                     <Text style={[styles.label, { marginTop: 16, color: theme.textSecondary }]}>Amenities</Text>
                     <View style={styles.amenitiesContainer}>
@@ -321,29 +329,53 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
                             );
                         })}
                     </View>
+
+                    {/* ── Duplicate Footer inside Card (only shown when keyboard is open) ── */}
+                    {isKeyboardVisible && (
+                        <View style={[styles.scrollFooter, { borderTopColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                            <TouchableOpacity
+                                style={[styles.resetButton, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#CBD5E1' }]}
+                                onPress={handleReset}
+                                activeOpacity={0.7}
+                                disabled={loading}
+                            >
+                                <Text style={[styles.resetButtonText, { color: theme.textSecondary }]}>Reset</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.saveButton, { backgroundColor: theme.primary }, loading && styles.disabledButton]}
+                                onPress={handleSave}
+                                disabled={loading}
+                                activeOpacity={0.8}
+                            >
+                                <Text style={styles.saveButtonText}>{isEdit ? "Update" : "Create"}</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
                 </Card>
                 <View style={{ height: 20 }} />
             </ScrollView>
 
             {/* ─── Sticky Footer ───────────────────────────────────────────────────── */}
-            <View style={[styles.stickyFooter, { backgroundColor: theme.cardBg, borderTopColor: isDark ? '#334155' : '#F1F5F9', paddingBottom: isKeyboardVisible ? SPACING.md : (insets.bottom + SPACING.md) }]}>
-                <TouchableOpacity
-                    style={[styles.resetButton, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#CBD5E1' }]}
-                    onPress={handleReset}
-                    activeOpacity={0.7}
-                    disabled={loading}
-                >
-                    <Text style={[styles.resetButtonText, { color: theme.textSecondary }]}>Reset</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.saveButton, { backgroundColor: theme.primary }, loading && styles.disabledButton]}
-                    onPress={handleSave}
-                    disabled={loading}
-                    activeOpacity={0.8}
-                >
-                    <Text style={styles.saveButtonText}>{isEdit ? "Update" : "Create"}</Text>
-                </TouchableOpacity>
-            </View>
+            {!isKeyboardVisible && (
+                <View style={[styles.stickyFooter, { backgroundColor: theme.cardBg, borderTopColor: isDark ? '#334155' : '#F1F5F9', paddingBottom: insets.bottom + SPACING.md }]}>
+                    <TouchableOpacity
+                        style={[styles.resetButton, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#CBD5E1' }]}
+                        onPress={handleReset}
+                        activeOpacity={0.7}
+                        disabled={loading}
+                    >
+                        <Text style={[styles.resetButtonText, { color: theme.textSecondary }]}>Reset</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.saveButton, { backgroundColor: theme.primary }, loading && styles.disabledButton]}
+                        onPress={handleSave}
+                        disabled={loading}
+                        activeOpacity={0.8}
+                    >
+                        <Text style={styles.saveButtonText}>{isEdit ? "Update" : "Create"}</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
 
 
 
@@ -551,6 +583,14 @@ const styles = StyleSheet.create({
         marginTop: 4,
         marginLeft: 4,
         fontWeight: '500'
+    },
+    scrollFooter: {
+        flexDirection: 'row',
+        gap: 12,
+        paddingTop: 16,
+        paddingBottom: 16,
+        borderTopWidth: 1,
+        marginTop: 16,
     },
 });
 

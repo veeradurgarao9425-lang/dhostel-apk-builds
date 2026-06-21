@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     View,
     StyleSheet,
@@ -8,8 +8,13 @@ import {
     ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
-    Alert
+    Alert,
+    Keyboard,
+    Modal,
+    FlatList,
+    TextInput
 } from 'react-native';
+import { ChevronDown } from 'lucide-react-native';
 import Toast from 'react-native-toast-message';
 import { AppHeader } from '../components/AppHeader';
 import { InputField } from '../components/InputField';
@@ -17,12 +22,47 @@ import { Card } from '../components/Card';
 import api from '../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const STATES_CITIES: Record<string, string[]> = {
+    'Andhra Pradesh': ['Visakhapatnam', 'Vijayawada', 'Guntur', 'Nellore', 'Tirupati', 'Kurnool', 'Rajahmundry', 'Kakinada', 'Anantapur', 'Eluru'],
+    'Telangana': ['Hyderabad', 'Warangal', 'Nizamabad', 'Khammam', 'Karimnagar', 'Ramagundam', 'Mahbubnagar', 'Nalgonda', 'Adilabad'],
+    'Karnataka': ['Bengaluru', 'Mysuru', 'Hubballi-Dharwad', 'Mangaluru', 'Belagavi', 'Davangere', 'Ballari', 'Tumakuru', 'Shivamogga', 'Kalaburagi'],
+    'Tamil Nadu': ['Chennai', 'Coimbatore', 'Madurai', 'Tiruchirappalli', 'Salem', 'Tiruppur', 'Erode', 'Vellore', 'Thoothukudi', 'Tirunelveli'],
+    'Maharashtra': ['Mumbai', 'Pune', 'Nagpur', 'Thane', 'Pimpri-Chinchwad', 'Nashik', 'Kalyan-Dombivli', 'Vasai-Virar', 'Aurangabad', 'Navi Mumbai', 'Solapur', 'Kolhapur'],
+    'Delhi': ['New Delhi', 'Delhi Cantonment', 'Dwarka', 'Rohini', 'Vasant Kunj'],
+    'Gujarat': ['Ahmedabad', 'Surat', 'Vadodara', 'Rajkot', 'Bhavnagar', 'Jamnagar', 'Gandhinagar', 'Junagadh', 'Gandhidham', 'Anand'],
+    'Rajasthan': ['Jaipur', 'Jodhpur', 'Kota', 'Bikaner', 'Ajmer', 'Udaipur', 'Bhilwara', 'Alwar', 'Sikar', 'Bharatpur'],
+    'Uttar Pradesh': ['Lucknow', 'Kanpur', 'Ghaziabad', 'Agra', 'Meerut', 'Varanasi', 'Noida', 'Prayagraj', 'Bareilly', 'Aligarh', 'Moradabad', 'Gorakhpur'],
+    'Madhya Pradesh': ['Indore', 'Bhopal', 'Jabalpur', 'Gwalior', 'Ujjain', 'Sagar', 'Dewas', 'Satna', 'Ratlam', 'Rewa'],
+    'West Bengal': ['Kolkata', 'Howrah', 'Darjeeling', 'Siliguri', 'Asansol', 'Durgapur', 'Bardhaman', 'Malda', 'Kharagpur', 'Haldia'],
+    'Bihar': ['Patna', 'Gaya', 'Bhagalpur', 'Muzaffarpur', 'Purnia', 'Darbhanga', 'Bihar Sharif', 'Arrah', 'Begusarai', 'Katihar'],
+    'Punjab': ['Ludhiana', 'Amritsar', 'Jalandhar', 'Patiala', 'Bathinda', 'Mohali', 'Pathankot', 'Hoshiarpur', 'Batala'],
+    'Haryana': ['Gurugram', 'Faridabad', 'Panipat', 'Ambala', 'Yamunanagar', 'Rohtak', 'Hisar', 'Karnal', 'Sonipat', 'Panchkula'],
+    'Kerala': ['Thiruvananthapuram', 'Kochi', 'Kozhikode', 'Thrissur', 'Kollam', 'Alappuzha', 'Palakkad', 'Kannur', 'Kottayam'],
+};
 
 export const AddHostelScreen = ({ navigation }: any) => {
     const { theme, isDark } = useTheme();
     const { user, updateTokenAndUser } = useAuth();
+    const insets = useSafeAreaInsets();
     const [loading, setLoading] = useState(false);
-    
+    const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+    const scrollViewRef = useRef<ScrollView>(null);
+    const [stateModalVisible, setStateModalVisible] = useState(false);
+    const [cityModalVisible, setCityModalVisible] = useState(false);
+    const [stateSearch, setStateSearch] = useState('');
+    const [citySearch, setCitySearch] = useState('');
+
+    useEffect(() => {
+        const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+        const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+        return () => {
+            keyboardDidShowListener.remove();
+            keyboardDidHideListener.remove();
+        };
+    }, []);
+
     const [formData, setFormData] = useState({
         hostel_name: '',
         address: '',
@@ -59,7 +99,7 @@ export const AddHostelScreen = ({ navigation }: any) => {
 
             if (response.data.success) {
                 const newHostelId = response.data.data.hostel_id;
-                
+
                 // 2. Set this new hostel as the active hostel immediately
                 const switchRes = await api.put('/auth/active-hostel', { hostel_id: newHostelId });
                 if (switchRes.data?.success) {
@@ -72,7 +112,7 @@ export const AddHostelScreen = ({ navigation }: any) => {
                     text1: 'Success',
                     text2: 'Hostel created and set as active!',
                 });
-                
+
                 navigation.goBack();
             }
         } catch (error: any) {
@@ -84,17 +124,32 @@ export const AddHostelScreen = ({ navigation }: any) => {
         }
     };
 
+    const handleReset = () => {
+        setFormData({
+            hostel_name: '',
+            address: '',
+            city: '',
+            state: '',
+            pincode: '',
+            total_floors: '',
+        });
+        setHostelType('Boys');
+    };
+
     return (
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
             style={[styles.container, { backgroundColor: theme.background }]}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+            keyboardVerticalOffset={0}
         >
             <AppHeader title="Add Hostel" showBack={true} />
 
-            <ScrollView 
-                contentContainerStyle={styles.scrollContent}
+            <ScrollView
+                ref={scrollViewRef}
+                style={{ flex: 1 }}
+                contentContainerStyle={[styles.scrollContent, { paddingBottom: isKeyboardVisible ? 300 : 40 }]}
                 showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
             >
                 <Card style={[styles.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
                     <View style={[styles.limitInfoContainer, isDark && { backgroundColor: 'rgba(249, 115, 22, 0.15)', borderColor: 'rgba(249, 115, 22, 0.3)' }]}>
@@ -112,7 +167,7 @@ export const AddHostelScreen = ({ navigation }: any) => {
 
                     <Text style={[styles.label, { color: theme.textPrimary }]}>Hostel Type *</Text>
                     <View style={styles.typeRow}>
-                        {['Boys', 'Girls', 'Co-living'].map((t) => (
+                        {['Boys', 'Girls', 'Co-ed'].map((t) => (
                             <TouchableOpacity
                                 key={t}
                                 style={[
@@ -139,23 +194,68 @@ export const AddHostelScreen = ({ navigation }: any) => {
                         placeholder="Street address"
                         value={formData.address}
                         onChangeText={(text) => setFormData({ ...formData, address: text })}
+                        onFocus={() => {
+                            setTimeout(() => {
+                                scrollViewRef.current?.scrollToEnd({ animated: true });
+                            }, 100);
+                        }}
                     />
 
                     <View style={styles.row}>
-                        <InputField
-                            label="City *"
-                            placeholder="City"
-                            value={formData.city}
-                            containerStyle={{ flex: 1, marginRight: 8 }}
-                            onChangeText={(text) => setFormData({ ...formData, city: text })}
-                        />
-                        <InputField
-                            label="State *"
-                            placeholder="State"
-                            value={formData.state}
-                            containerStyle={{ flex: 1, marginLeft: 8 }}
-                            onChangeText={(text) => setFormData({ ...formData, state: text })}
-                        />
+                        <View style={{ flex: 1, marginRight: 8, marginBottom: 16 }}>
+                            <Text style={[styles.label, { color: theme.textPrimary }]}>State *</Text>
+                            <TouchableOpacity
+                                style={[
+                                    styles.selectContainer,
+                                    {
+                                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                                        borderColor: isDark ? '#334155' : '#E2E8F0',
+                                    }
+                                ]}
+                                onPress={() => setStateModalVisible(true)}
+                                activeOpacity={0.7}
+                            >
+                                <Text
+                                    numberOfLines={1}
+                                    style={formData.state ? [styles.selectText, { color: theme.textPrimary }] : styles.placeholderText}
+                                >
+                                    {formData.state || 'Select State'}
+                                </Text>
+                                <ChevronDown size={18} color="#94A3B8" />
+                            </TouchableOpacity>
+                        </View>
+                        <View style={{ flex: 1, marginLeft: 8, marginBottom: 16 }}>
+                            <Text style={[styles.label, { color: theme.textPrimary }]}>City *</Text>
+                            <TouchableOpacity
+                                style={[
+                                    styles.selectContainer,
+                                    {
+                                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                                        borderColor: isDark ? '#334155' : '#E2E8F0',
+                                    }
+                                ]}
+                                onPress={() => {
+                                    if (!formData.state) {
+                                        Toast.show({
+                                            type: 'info',
+                                            text1: 'Info',
+                                            text2: 'Please select a state first',
+                                        });
+                                        return;
+                                    }
+                                    setCityModalVisible(true);
+                                }}
+                                activeOpacity={0.7}
+                            >
+                                <Text
+                                    numberOfLines={1}
+                                    style={formData.city ? [styles.selectText, { color: theme.textPrimary }] : styles.placeholderText}
+                                >
+                                    {formData.city || 'Select City'}
+                                </Text>
+                                <ChevronDown size={18} color="#94A3B8" />
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
                     <View style={styles.row}>
@@ -166,6 +266,11 @@ export const AddHostelScreen = ({ navigation }: any) => {
                             value={formData.pincode}
                             containerStyle={{ flex: 1, marginRight: 8 }}
                             onChangeText={(text) => setFormData({ ...formData, pincode: text })}
+                            onFocus={() => {
+                                setTimeout(() => {
+                                    scrollViewRef.current?.scrollToEnd({ animated: true });
+                                }, 100);
+                            }}
                         />
                         <InputField
                             label="Total Floors"
@@ -174,23 +279,218 @@ export const AddHostelScreen = ({ navigation }: any) => {
                             value={formData.total_floors}
                             containerStyle={{ flex: 1, marginLeft: 8 }}
                             onChangeText={(text) => setFormData({ ...formData, total_floors: text })}
+                            onFocus={() => {
+                                setTimeout(() => {
+                                    scrollViewRef.current?.scrollToEnd({ animated: true });
+                                }, 100);
+                            }}
                         />
                     </View>
 
+                    {/* ── Duplicate Footer inside Card (only shown when keyboard is open) ── */}
+                    {isKeyboardVisible && (
+                            <View style={[styles.scrollFooter, { borderTopColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                <TouchableOpacity
+                                    style={[styles.resetButton, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#CBD5E1' }]}
+                                    onPress={handleReset}
+                                    activeOpacity={0.7}
+                                    disabled={loading}
+                                >
+                                    <Text style={[styles.resetButtonText, { color: theme.textSecondary }]}>Reset</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.saveButton, { backgroundColor: theme.primary }, loading && styles.disabledButton]}
+                                    onPress={handleSave}
+                                    disabled={loading}
+                                    activeOpacity={0.8}
+                                >
+                                    <Text style={styles.saveButtonText}>Create</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
+                </Card>
+            </ScrollView>
+
+            {/* ─── Sticky Footer ───────────────────────────────────────────────────── */}
+            {!isKeyboardVisible && (
+                <View style={[styles.stickyFooter, { backgroundColor: theme.cardBg, borderTopColor: isDark ? '#334155' : '#F1F5F9', paddingBottom: insets.bottom + 16 }]}>
                     <TouchableOpacity
-                        style={[styles.saveBtn, { backgroundColor: theme.primary }]}
+                        style={[styles.resetButton, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#CBD5E1' }]}
+                        onPress={handleReset}
+                        activeOpacity={0.7}
+                        disabled={loading}
+                    >
+                        <Text style={[styles.resetButtonText, { color: theme.textSecondary }]}>Reset</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.saveButton, { backgroundColor: theme.primary }, loading && styles.disabledButton]}
                         onPress={handleSave}
                         disabled={loading}
                         activeOpacity={0.8}
                     >
-                        {loading ? (
-                            <ActivityIndicator size="small" color="#FFF" />
-                        ) : (
-                            <Text style={styles.saveText}>Create Hostel</Text>
-                        )}
+                        <Text style={styles.saveButtonText}>Create</Text>
                     </TouchableOpacity>
-                </Card>
-            </ScrollView>
+                </View>
+            )}
+            {/* State Picker Modal */}
+            <Modal
+                visible={stateModalVisible}
+                transparent
+                animationType="slide"
+                statusBarTranslucent
+                onRequestClose={() => setStateModalVisible(false)}
+            >
+                <TouchableOpacity
+                    style={styles.modalOverlay}
+                    activeOpacity={1}
+                    onPress={() => setStateModalVisible(false)}
+                >
+                    <View style={[styles.modalContent, { backgroundColor: theme.cardBg }]}>
+                        <View style={styles.modalHandle} />
+                        <View style={styles.modalHeader}>
+                            <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>Select State</Text>
+                            <TouchableOpacity
+                                onPress={() => setStateModalVisible(false)}
+                                style={styles.closeBtn}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={styles.closeText}>Close</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <View style={{ paddingHorizontal: 20, marginBottom: 10 }}>
+                            <TextInput
+                                style={[
+                                    styles.searchInput,
+                                    {
+                                        backgroundColor: isDark ? '#334155' : '#F1F5F9',
+                                        color: theme.textPrimary
+                                    }
+                                ]}
+                                placeholder="Search or type state..."
+                                placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
+                                value={stateSearch}
+                                onChangeText={setStateSearch}
+                            />
+                        </View>
+                        <FlatList
+                            data={[
+                                ...(stateSearch && !Object.keys(STATES_CITIES).some(s => s.toLowerCase() === stateSearch.toLowerCase()) ? [stateSearch] : []),
+                                ...Object.keys(STATES_CITIES).filter(s => s.toLowerCase().includes(stateSearch.toLowerCase()))
+                            ]}
+                            keyExtractor={(item, index) => index.toString()}
+                            showsVerticalScrollIndicator={false}
+                            renderItem={({ item }) => {
+                                const isCustom = stateSearch && !Object.keys(STATES_CITIES).some(s => s.toLowerCase() === stateSearch.toLowerCase()) && item === stateSearch;
+                                const isSelected = formData.state === item;
+                                return (
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.modalOption,
+                                            isSelected && styles.modalOptionSelected,
+                                            { borderBottomColor: isDark ? '#334155' : '#F8FAFC' }
+                                        ]}
+                                        onPress={() => {
+                                            setFormData(prev => ({ ...prev, state: item, city: prev.state !== item ? '' : prev.city }));
+                                            setStateModalVisible(false);
+                                            setStateSearch('');
+                                        }}
+                                        activeOpacity={0.7}
+                                    >
+                                        <Text style={[
+                                            styles.optionText,
+                                            { color: theme.textPrimary },
+                                            isSelected && styles.optionTextSelected
+                                        ]}>
+                                            {isCustom ? `Use "${item}"` : item}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            }}
+                            contentContainerStyle={{ paddingBottom: 40 }}
+                        />
+                    </View>
+                </TouchableOpacity>
+            </Modal>
+
+            {/* City Picker Modal */}
+            <Modal
+                visible={cityModalVisible}
+                transparent
+                animationType="slide"
+                statusBarTranslucent
+                onRequestClose={() => setCityModalVisible(false)}
+            >
+                <TouchableOpacity
+                    style={styles.modalOverlay}
+                    activeOpacity={1}
+                    onPress={() => setCityModalVisible(false)}
+                >
+                    <View style={[styles.modalContent, { backgroundColor: theme.cardBg }]}>
+                        <View style={styles.modalHandle} />
+                        <View style={styles.modalHeader}>
+                            <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>Select City</Text>
+                            <TouchableOpacity
+                                onPress={() => setCityModalVisible(false)}
+                                style={styles.closeBtn}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={styles.closeText}>Close</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <View style={{ paddingHorizontal: 20, marginBottom: 10 }}>
+                            <TextInput
+                                style={[
+                                    styles.searchInput,
+                                    {
+                                        backgroundColor: isDark ? '#334155' : '#F1F5F9',
+                                        color: theme.textPrimary
+                                    }
+                                ]}
+                                placeholder="Search or type city..."
+                                placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
+                                value={citySearch}
+                                onChangeText={setCitySearch}
+                            />
+                        </View>
+                        <FlatList
+                            data={[
+                                ...(citySearch && !(STATES_CITIES[formData.state] || []).some(c => c.toLowerCase() === citySearch.toLowerCase()) ? [citySearch] : []),
+                                ...(STATES_CITIES[formData.state] || []).filter(c => c.toLowerCase().includes(citySearch.toLowerCase()))
+                            ]}
+                            keyExtractor={(item, index) => index.toString()}
+                            showsVerticalScrollIndicator={false}
+                            renderItem={({ item }) => {
+                                const isCustom = citySearch && !(STATES_CITIES[formData.state] || []).some(c => c.toLowerCase() === citySearch.toLowerCase()) && item === citySearch;
+                                const isSelected = formData.city === item;
+                                return (
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.modalOption,
+                                            isSelected && styles.modalOptionSelected,
+                                            { borderBottomColor: isDark ? '#334155' : '#F8FAFC' }
+                                        ]}
+                                        onPress={() => {
+                                            setFormData(prev => ({ ...prev, city: item }));
+                                            setCityModalVisible(false);
+                                            setCitySearch('');
+                                        }}
+                                        activeOpacity={0.7}
+                                    >
+                                        <Text style={[
+                                            styles.optionText,
+                                            { color: theme.textPrimary },
+                                            isSelected && styles.optionTextSelected
+                                        ]}>
+                                            {isCustom ? `Use "${item}"` : item}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            }}
+                            contentContainerStyle={{ paddingBottom: 40 }}
+                        />
+                    </View>
+                </TouchableOpacity>
+            </Modal>
         </KeyboardAvoidingView>
     );
 };
@@ -265,6 +565,133 @@ const styles = StyleSheet.create({
         color: '#FFF',
         fontSize: 16,
         fontWeight: '800',
+    },
+    stickyFooter: {
+        flexDirection: 'row',
+        gap: 12,
+        paddingHorizontal: 16,
+        paddingTop: 12,
+        backgroundColor: '#FFF',
+        borderTopWidth: 1,
+        borderTopColor: '#F1F5F9',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 8,
+    },
+    resetButton: {
+        flex: 1,
+        height: 48,
+        borderRadius: 12,
+        borderWidth: 1.5,
+        borderColor: '#CBD5E1',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#FFF'
+    },
+    resetButtonText: { color: '#475569', fontWeight: '600', fontSize: 15 },
+    saveButton: {
+        flex: 2,
+        height: 48,
+        borderRadius: 12,
+        backgroundColor: '#FF6B6B',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    saveButtonText: { color: '#FFF', fontWeight: '700', fontSize: 15 },
+    disabledButton: { opacity: 0.7 },
+    scrollFooter: {
+        flexDirection: 'row',
+        gap: 12,
+        paddingTop: 16,
+        paddingBottom: 16,
+        borderTopWidth: 1,
+        marginTop: 16,
+    },
+    selectContainer: {
+        height: 50,
+        borderRadius: 12,
+        borderWidth: 1,
+        paddingHorizontal: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    selectText: {
+        fontSize: 16,
+    },
+    placeholderText: {
+        fontSize: 16,
+        color: '#94A3B8',
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        paddingTop: 12,
+        maxHeight: '70%',
+    },
+    modalHandle: {
+        width: 40,
+        height: 4,
+        backgroundColor: '#E2E8F0',
+        borderRadius: 2,
+        alignSelf: 'center',
+        marginBottom: 12,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingBottom: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F1F5F9',
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+    },
+    closeBtn: {
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+        backgroundColor: '#FFF1F1',
+    },
+    closeText: {
+        color: '#FF6B6B',
+        fontWeight: '700',
+        fontSize: 14,
+    },
+    searchInput: {
+        height: 48,
+        borderRadius: 12,
+        paddingHorizontal: 16,
+        fontSize: 15,
+    },
+    modalOption: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 16,
+        paddingHorizontal: 20,
+        borderBottomWidth: 1,
+    },
+    modalOptionSelected: {
+        backgroundColor: 'rgba(255, 107, 107, 0.08)',
+    },
+    optionText: {
+        fontSize: 16,
+        fontWeight: '500',
+    },
+    optionTextSelected: {
+        color: '#FF6B6B',
+        fontWeight: '700',
     },
 });
 

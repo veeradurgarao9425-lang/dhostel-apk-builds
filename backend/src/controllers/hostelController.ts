@@ -35,7 +35,7 @@ export const createHostel = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const finalOwnerId = req.user?.role_id === 2 ? req.user.user_id : owner_id;
+    const finalOwnerId = req.user?.role_id === 2 ? req.user.user_id : (owner_id || req.user?.user_id);
     if (!finalOwnerId) {
       return res.status(400).json({
         success: false,

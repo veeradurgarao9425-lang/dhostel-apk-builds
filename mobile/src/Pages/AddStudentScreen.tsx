@@ -37,49 +37,24 @@ import { FullScreenLoader } from '../components/FullScreenLoader';
 
 // ─── Smooth bottom-sheet modal ────────────────────────────────────────────────
 const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: any) => {
-    const [shouldRender, setShouldRender] = useState(visible);
-    const translateY = useRef(new Animated.Value(600)).current;
-    const opacity = useRef(new Animated.Value(0)).current;
-
-    useEffect(() => {
-        if (visible) {
-            setShouldRender(true);
-            Animated.parallel([
-                Animated.timing(opacity, { toValue: 1, duration: 200, useNativeDriver: true }),
-                Animated.spring(translateY, { toValue: 0, damping: 22, stiffness: 220, useNativeDriver: true }),
-            ]).start();
-        } else {
-            Animated.parallel([
-                Animated.timing(opacity, { toValue: 0, duration: 180, useNativeDriver: true }),
-                Animated.timing(translateY, { toValue: 600, duration: 180, useNativeDriver: true }),
-            ]).start(({ finished }) => {
-                if (finished) {
-                    setShouldRender(false);
-                }
-            });
-        }
-    }, [visible]);
-
-    if (!shouldRender) return null;
+    const { theme } = useTheme();
     return (
-        <Modal transparent visible={visible || shouldRender} animationType="none" statusBarTranslucent onRequestClose={onClose}>
-            <View style={{ flex: 1 }}>
-                <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.5)', opacity }]}>
-                    <Pressable style={{ flex: 1 }} onPress={onClose} />
-                </Animated.View>
-                <Animated.View style={[
+        <Modal transparent visible={visible} animationType="fade" statusBarTranslucent onRequestClose={onClose}>
+            <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} />
+                <View style={[
                     styles.sheet,
-                    { maxHeight, transform: [{ translateY }] }
+                    { maxHeight, backgroundColor: theme.cardBg || '#FFF' }
                 ]}>
                     {children}
-                </Animated.View>
+                </View>
             </View>
         </Modal>
     );
 };
 
 // ─── Reusable form components ─────────────────────────────────────────────────
-const FormInput = ({ label, icon: Icon, placeholder, value, onChangeText, keyboardType, multiline, error }: any) => {
+const FormInput = ({ label, icon: Icon, placeholder, value, onChangeText, keyboardType, multiline, error, onFocus }: any) => {
     const { theme, isDark, fontSize } = useTheme();
     return (
         <View style={styles.inputGroup}>
@@ -95,6 +70,7 @@ const FormInput = ({ label, icon: Icon, placeholder, value, onChangeText, keyboa
                     keyboardType={keyboardType}
                     multiline={multiline}
                     numberOfLines={multiline ? 4 : 1}
+                    onFocus={onFocus}
                 />
             </View>
             {error && <Text style={styles.errorText}>{error}</Text>}
@@ -147,6 +123,7 @@ const Selector = ({ label, options, selected, onSelect }: any) => {
 
 // ─── Simple options drawer (gender, proof, relation) ─────────────────────────
 const OptionsDrawer = ({ visible, title, data, selectedId, onSelect, onClose, keyExtractor, labelExtractor, searchable }: any) => {
+    const { theme, isDark } = useTheme();
     const [search, setSearch] = React.useState('');
     const filtered = React.useMemo(() => {
         if (!searchable || !search) return data;
@@ -156,13 +133,13 @@ const OptionsDrawer = ({ visible, title, data, selectedId, onSelect, onClose, ke
     return (
         <ModalSheet visible={visible} onClose={() => { setSearch(''); onClose(); }} maxHeight="70%">
             <View style={styles.sheetHandle} />
-            <View style={styles.sheetHeader}>
-                <Text style={styles.sheetTitle}>{title}</Text>
-                <TouchableOpacity onPress={() => { setSearch(''); onClose(); }} style={styles.doneBtn}><Text style={styles.doneBtnText}>Done</Text></TouchableOpacity>
+            <View style={[styles.sheetHeader, { borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                <Text style={[styles.sheetTitle, { color: theme.textPrimary }]}>{title}</Text>
+                <TouchableOpacity onPress={() => { setSearch(''); onClose(); }} style={[styles.doneBtn, { backgroundColor: isDark ? theme.primary + '20' : COLORS.primaryLight }]}><Text style={[styles.doneBtnText, { color: theme.primary }]}>Done</Text></TouchableOpacity>
             </View>
             {searchable && (
                 <View style={{ paddingHorizontal: 20, marginBottom: 10 }}>
-                    <TextInput style={styles.searchInput} placeholder="Search..." placeholderTextColor="#94A3B8" value={search} onChangeText={setSearch} />
+                    <TextInput style={[styles.searchInput, { backgroundColor: isDark ? '#334155' : '#F1F5F9', color: theme.textPrimary }]} placeholder="Search..." placeholderTextColor={isDark ? '#64748B' : '#94A3B8'} value={search} onChangeText={setSearch} />
                 </View>
             )}
             <FlatList
@@ -172,13 +149,13 @@ const OptionsDrawer = ({ visible, title, data, selectedId, onSelect, onClose, ke
                 renderItem={({ item }) => {
                     const isSelected = selectedId === keyExtractor(item);
                     return (
-                        <TouchableOpacity style={[styles.optionRow, isSelected && styles.optionRowActive]} onPress={() => { onSelect(item); setSearch(''); onClose(); }} activeOpacity={0.7}>
-                            <Text style={[styles.optionLabel, isSelected && styles.optionLabelActive]}>{labelExtractor(item)}</Text>
-                            {isSelected && <Check size={18} color="#FF6B6B" />}
+                        <TouchableOpacity style={[styles.optionRow, { borderBottomColor: isDark ? '#334155' : '#F8FAFC' }, isSelected && (isDark ? { backgroundColor: theme.primary + '20' } : styles.optionRowActive)]} onPress={() => { onSelect(item); setSearch(''); onClose(); }} activeOpacity={0.7}>
+                            <Text style={[styles.optionLabel, { color: theme.textPrimary }, isSelected && styles.optionLabelActive, isSelected && { color: theme.primary }]}>{labelExtractor(item)}</Text>
+                            {isSelected && <Check size={18} color={theme.primary} />}
                         </TouchableOpacity>
                     );
                 }}
-                ListEmptyComponent={<View style={{ padding: 40, alignItems: 'center' }}><Text style={{ color: '#94A3B8', fontSize: 14 }}>No options</Text></View>}
+                ListEmptyComponent={<View style={{ padding: 40, alignItems: 'center' }}><Text style={{ color: theme.textSecondary, fontSize: 14 }}>No options</Text></View>}
                 contentContainerStyle={{ paddingBottom: 40 }}
             />
         </ModalSheet>
@@ -190,18 +167,22 @@ const AadhaarCapture = ({ label, uri, onCapture, onRemove }: any) => {
     const { theme, isDark, fontSize } = useTheme();
     const pick = () => {
         Alert.alert('Add Photo', label, [
-            { text: '📷 Camera', onPress: async () => {
-                const p = await ImagePicker.requestCameraPermissionsAsync();
-                if (!p.granted) return;
-                const r = await ImagePicker.launchCameraAsync({ quality: 0.7 });
-                if (!r.canceled) onCapture(r.assets[0].uri);
-            }},
-            { text: '🖼️ Gallery', onPress: async () => {
-                const p = await ImagePicker.requestMediaLibraryPermissionsAsync();
-                if (!p.granted) return;
-                const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.7 });
-                if (!r.canceled) onCapture(r.assets[0].uri);
-            }},
+            {
+                text: '📷 Camera', onPress: async () => {
+                    const p = await ImagePicker.requestCameraPermissionsAsync();
+                    if (!p.granted) return;
+                    const r = await ImagePicker.launchCameraAsync({ quality: 0.7 });
+                    if (!r.canceled) onCapture(r.assets[0].uri);
+                }
+            },
+            {
+                text: '🖼️ Gallery', onPress: async () => {
+                    const p = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                    if (!p.granted) return;
+                    const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.7 });
+                    if (!r.canceled) onCapture(r.assets[0].uri);
+                }
+            },
             { text: 'Cancel', style: 'cancel' },
         ]);
     };
@@ -236,18 +217,22 @@ const ProfilePhotoCapture = ({ uri, onCapture, onRemove }: any) => {
     const { theme, isDark, fontSize } = useTheme();
     const pick = () => {
         Alert.alert('Profile Photo', 'Choose source', [
-            { text: '📷 Camera', onPress: async () => {
-                const p = await ImagePicker.requestCameraPermissionsAsync();
-                if (!p.granted) return;
-                const r = await ImagePicker.launchCameraAsync({ quality: 0.8, allowsEditing: true, aspect: [1, 1] });
-                if (!r.canceled) onCapture(r.assets[0].uri);
-            }},
-            { text: '🖼️ Gallery', onPress: async () => {
-                const p = await ImagePicker.requestMediaLibraryPermissionsAsync();
-                if (!p.granted) return;
-                const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, allowsEditing: true, aspect: [1, 1] });
-                if (!r.canceled) onCapture(r.assets[0].uri);
-            }},
+            {
+                text: '📷 Camera', onPress: async () => {
+                    const p = await ImagePicker.requestCameraPermissionsAsync();
+                    if (!p.granted) return;
+                    const r = await ImagePicker.launchCameraAsync({ quality: 0.8, allowsEditing: true, aspect: [1, 1] });
+                    if (!r.canceled) onCapture(r.assets[0].uri);
+                }
+            },
+            {
+                text: '🖼️ Gallery', onPress: async () => {
+                    const p = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                    if (!p.granted) return;
+                    const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, allowsEditing: true, aspect: [1, 1] });
+                    if (!r.canceled) onCapture(r.assets[0].uri);
+                }
+            },
             { text: 'Cancel', style: 'cancel' },
         ]);
     };
@@ -281,6 +266,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
     const insets = useSafeAreaInsets();
     const [loading, setLoading] = useState(false);
     const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+    const scrollViewRef = useRef<ScrollView>(null);
 
     const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
     const [aadhaarFront, setAadhaarFront] = useState<string | null>(null);
@@ -314,7 +300,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
     const selectedBed = beds.find(b => b.bed_id?.toString() === formData.bed_id);
 
     const selectedIdProofName = idProofTypes.find(t => t.id.toString() === formData.id_proof_type_id)?.name || '';
-    const showIdPhotos = selectedIdProofName.toLowerCase().includes('aadhaar') || selectedIdProofName.toLowerCase().includes('pan');
+    const showIdPhotos = selectedIdProofName.toLowerCase().includes('aadhar') || selectedIdProofName.toLowerCase().includes('aadhaar') || selectedIdProofName.toLowerCase().includes('pan');
 
     useEffect(() => {
         const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
@@ -371,7 +357,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
         try {
             const res = await api.get(`/rooms/${roomId}/beds`);
             if (res.data.success) { setBeds(res.data.data); return; }
-        } catch {}
+        } catch { }
         const room = availableRooms.find(r => r.room_id?.toString() === roomId);
         const cap = room?.capacity ?? 1;
         const fake = Array.from({ length: Number(cap) }, (_, i) => ({
@@ -445,9 +431,10 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
             <FullScreenLoader visible={loading} />
 
             <ScrollView
+                ref={scrollViewRef}
                 style={styles.content}
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={[styles.scrollContent, { paddingBottom: 120 + insets.bottom }]}
+                contentContainerStyle={[styles.scrollContent, { paddingBottom: (isKeyboardVisible ? 180 : 100) + insets.bottom }]}
                 keyboardShouldPersistTaps="handled"
             >
 
@@ -472,9 +459,21 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
                     <Text style={[styles.sectionTitle, { fontSize: fontSize + 1, color: theme.textPrimary, borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>🪪 Identity & Documents</Text>
                     <SelectField label="ID Proof Type" value={idProofTypes.find(t => t.id.toString() === formData.id_proof_type_id)?.name} placeholder="Select ID Type" icon={Fingerprint} onPress={() => setProofModal(true)} />
-                    <FormInput label="Aadhaar / ID Number" icon={CreditCard} placeholder="Enter ID number" value={formData.id_proof_number}
-                        onChangeText={(t: string) => up('id_proof_number', t)} />
-                    
+                    <FormInput
+                        label={`${selectedIdProofName || 'ID'} Number`}
+                        icon={CreditCard}
+                        placeholder="Enter ID number"
+                        value={formData.id_proof_number}
+                        keyboardType={(selectedIdProofName.toLowerCase().includes('aadhar') || selectedIdProofName.toLowerCase().includes('aadhaar')) ? 'number-pad' : 'default'}
+                        onChangeText={(t: string) => {
+                            if (selectedIdProofName.toLowerCase().includes('aadhar') || selectedIdProofName.toLowerCase().includes('aadhaar')) {
+                                up('id_proof_number', t.replace(/\D/g, '').slice(0, 12));
+                            } else {
+                                up('id_proof_number', t);
+                            }
+                        }}
+                    />
+
                     {showIdPhotos && (
                         <>
                             <Text style={[styles.photoSectionLabel, { fontSize: fontSize - 1, color: theme.textPrimary, marginTop: 10 }]}>📸 {selectedIdProofName} Photos <Text style={{ color: theme.textSecondary, fontWeight: '400', fontSize: fontSize - 3 }}>(stored locally)</Text></Text>
@@ -548,7 +547,19 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 {/* ── Address ── */}
                 <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
                     <Text style={[styles.sectionTitle, { fontSize: fontSize + 1, color: theme.textPrimary, borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>📍 Address</Text>
-                    <FormInput label="Permanent Address" icon={MapPin} placeholder="Full home address..." multiline value={formData.permanent_address} onChangeText={(t: string) => up('permanent_address', t)} />
+                    <FormInput
+                        label="Permanent Address"
+                        icon={MapPin}
+                        placeholder="Full home address..."
+                        multiline
+                        value={formData.permanent_address}
+                        onChangeText={(t: string) => up('permanent_address', t)}
+                        onFocus={() => {
+                            setTimeout(() => {
+                                scrollViewRef.current?.scrollToEnd({ animated: true });
+                            }, 100);
+                        }}
+                    />
                 </View>
 
                 {/* ── Buttons (scroll content) ── */}
@@ -556,7 +567,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
             </ScrollView>
 
             {/* ─── Sticky Footer ───────────────────────────────────────────────────── */}
-            <View style={[styles.stickyFooter, { backgroundColor: theme.cardBg, borderTopColor: isDark ? '#334155' : '#F1F5F9', paddingBottom: isKeyboardVisible ? SPACING.md : (insets.bottom + SPACING.md) }]}>
+            <View style={[styles.stickyFooter, { backgroundColor: theme.cardBg, borderTopColor: isDark ? '#334155' : '#F1F5F9', paddingBottom: Math.max(insets.bottom, 16) }]}>
                 <TouchableOpacity
                     style={[styles.cancelButton, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#CBD5E1' }]}
                     onPress={handleReset}
