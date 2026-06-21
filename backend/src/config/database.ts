@@ -202,6 +202,38 @@ async function patchDatabaseSchema() {
       console.error('[schema-patch] Error updating students columns:', e.message);
     }
 
+    // Ensure hostel_master columns exist
+    try {
+      if (tableNamesLower.includes('hostel_master')) {
+        console.log('[schema-patch] Checking hostel_master columns...');
+        const [columns] = await db.raw("SHOW COLUMNS FROM hostel_master");
+        const columnNames = (columns as any[]).map(col => col.Field.toLowerCase());
+        
+        if (!columnNames.includes('state')) {
+          console.log('[schema-patch] adding state to hostel_master...');
+          await db.raw("ALTER TABLE hostel_master ADD COLUMN state VARCHAR(100) NULL");
+        }
+        if (!columnNames.includes('pincode')) {
+          console.log('[schema-patch] adding pincode to hostel_master...');
+          await db.raw("ALTER TABLE hostel_master ADD COLUMN pincode VARCHAR(10) NULL");
+        }
+        if (!columnNames.includes('total_floors')) {
+          console.log('[schema-patch] adding total_floors to hostel_master...');
+          await db.raw("ALTER TABLE hostel_master ADD COLUMN total_floors INT DEFAULT 1");
+        }
+        if (!columnNames.includes('amenities')) {
+          console.log('[schema-patch] adding amenities to hostel_master...');
+          await db.raw("ALTER TABLE hostel_master ADD COLUMN amenities TEXT NULL");
+        }
+        if (!columnNames.includes('admission_fee')) {
+          console.log('[schema-patch] adding admission_fee to hostel_master...');
+          await db.raw("ALTER TABLE hostel_master ADD COLUMN admission_fee DECIMAL(10, 2) DEFAULT 0");
+        }
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error checking/updating hostel_master columns:', e.message);
+    }
+
     // 3. Ensure income table exists
     try {
       if (!tableNamesLower.includes('income')) {
