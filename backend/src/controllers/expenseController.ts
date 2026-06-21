@@ -10,7 +10,7 @@ export const getExpenses = async (req: AuthRequest, res: Response) => {
 
     // Resolve hostel_id based on user role
     let hostel_id: number | undefined;
-    if (user?.role_id === 2) {
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
       if (user.hostel_id) {
         hostel_id = user.hostel_id;
       }
@@ -106,7 +106,7 @@ export const getExpenses = async (req: AuthRequest, res: Response) => {
 
 
     // If user is hostel owner, filter by their hostel from JWT
-    if (user?.role_id === 2) {
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
       if (!user.hostel_id) {
         return res.status(403).json({
           success: false,
@@ -257,7 +257,7 @@ export const createExpense = async (req: AuthRequest, res: Response) => {
     // Determine hostel_id based on user role
     let hostel_id: number;
 
-    if (user?.role_id === 2) {
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
       // Hostel owner - use hostel from JWT
       if (!user.hostel_id) {
         return res.status(403).json({
@@ -323,7 +323,7 @@ export const updateExpense = async (req: AuthRequest, res: Response) => {
     }
 
     // If user is hostel owner, ensure they can only update their own hostel's expense
-    if (user?.role_id === 2) {
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
       if (!user.hostel_id) {
         return res.status(403).json({
           success: false,
@@ -387,7 +387,7 @@ export const deleteExpense = async (req: AuthRequest, res: Response) => {
     }
 
     // If user is hostel owner, ensure they can only delete their own hostel's expense
-    if (user?.role_id === 2) {
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
       if (!user.hostel_id) {
         return res.status(403).json({
           success: false,
@@ -480,7 +480,7 @@ export const getExpenseSummary = async (req: AuthRequest, res: Response) => {
       .groupBy('ec.category_id', 'ec.category_name');
 
     // If user is hostel owner, filter by their hostel from JWT
-    if (user?.role_id === 2) {
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
       if (!user.hostel_id) {
         return res.status(403).json({
           success: false,

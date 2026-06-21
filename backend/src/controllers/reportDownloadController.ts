@@ -44,7 +44,7 @@ export const downloadPDFReport = async (req: AuthRequest, res: Response) => {
     let hostelIds: number[] = [];
     let hostelName = 'All Hostels';
 
-    if (user?.role_id === 2) {
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
       if (!user.hostel_id) {
         return res.status(403).json({
           success: false,
@@ -364,7 +364,7 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
     let hostelIds: number[] = [];
     let hostelName = 'All Hostels';
 
-    if (user?.role_id === 2) {
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
       if (!user.hostel_id) {
         return res.status(403).json({
           success: false,

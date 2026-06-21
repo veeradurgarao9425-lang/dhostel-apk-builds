@@ -49,20 +49,20 @@ const TOP_TOOLS: MenuItem[] = [
         iconBg: '#FEF3C7',
         route: 'Maintenance',
     },
-    {
-        label: 'Add Hostel',
-        subtitle: 'Create new hostel',
-        icon: 'business',
-        iconColor: '#16A34A',
-        iconBg: '#DCFCE7',
-        route: 'AddHostel',
-    },
 ];
 
 const MENU_GROUPS: { groupTitle: string; items: MenuItem[] }[] = [
     {
         groupTitle: 'Management',
         items: [
+            {
+                label: 'Hostels',
+                subtitle: 'View & manage all hostels',
+                icon: 'business',
+                iconColor: '#16A34A',
+                iconBg: '#DCFCE7',
+                route: 'Hostels',
+            },
             {
                 label: 'Tenants',
                 subtitle: 'View & manage all tenants',
@@ -418,11 +418,12 @@ export default function MoreScreen() {
                 visible={selectorVisible}
                 onRequestClose={() => setSelectorVisible(false)}
             >
-                <TouchableOpacity
-                    style={s.modalOverlay}
-                    activeOpacity={1}
-                    onPress={() => setSelectorVisible(false)}
-                >
+                <View style={s.modalOverlay}>
+                    <TouchableOpacity
+                        style={StyleSheet.absoluteFillObject}
+                        activeOpacity={1}
+                        onPress={() => setSelectorVisible(false)}
+                    />
                     <View style={[s.modalSheet, { backgroundColor: theme.cardBg }]}>
                         <View style={s.modalHeader}>
                             <Text style={[s.modalTitle, { color: theme.textPrimary }]}>Switch Hostel</Text>
@@ -488,7 +489,7 @@ export default function MoreScreen() {
                             </ScrollView>
                         )}
                     </View>
-                </TouchableOpacity>
+                </View>
             </Modal>
         </View>
     );
@@ -560,12 +561,11 @@ const s = StyleSheet.create({
     },
     topToolsRow: {
         flexDirection: 'row',
-        flexWrap: 'wrap',
         gap: 10,
         justifyContent: 'space-between',
     },
     topToolCard: {
-        width: '48%',
+        width: '31.5%',
         backgroundColor: '#FFF',
         borderRadius: 16,
         paddingVertical: 14,

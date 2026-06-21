@@ -42,7 +42,7 @@ const STATES_CITIES: Record<string, string[]> = {
     'Kerala': ['Thiruvananthapuram', 'Kochi', 'Kozhikode', 'Thrissur', 'Kollam', 'Alappuzha', 'Palakkad', 'Kannur', 'Kottayam'],
 };
 
-export const AddHostelScreen = ({ navigation }: any) => {
+export const AddHostelScreen = ({ navigation, route }: any) => {
     const { theme, isDark } = useTheme();
     const { user, updateTokenAndUser } = useAuth();
     const insets = useSafeAreaInsets();
@@ -53,6 +53,9 @@ export const AddHostelScreen = ({ navigation }: any) => {
     const [cityModalVisible, setCityModalVisible] = useState(false);
     const [stateSearch, setStateSearch] = useState('');
     const [citySearch, setCitySearch] = useState('');
+
+    const isEdit = route.params?.isEdit || false;
+    const editHostel = route.params?.hostel || null;
 
     useEffect(() => {
         const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
@@ -70,11 +73,27 @@ export const AddHostelScreen = ({ navigation }: any) => {
         state: '',
         pincode: '',
         total_floors: '',
+        admission_fee: '',
     });
     const [hostelType, setHostelType] = useState('Boys');
 
+    useEffect(() => {
+        if (isEdit && editHostel) {
+            setFormData({
+                hostel_name: editHostel.hostel_name || '',
+                address: editHostel.address || '',
+                city: editHostel.city || '',
+                state: editHostel.state || '',
+                pincode: editHostel.pincode ? String(editHostel.pincode) : '',
+                total_floors: editHostel.total_floors ? String(editHostel.total_floors) : '',
+                admission_fee: editHostel.admission_fee ? String(editHostel.admission_fee) : '',
+            });
+            setHostelType(editHostel.hostel_type || 'Boys');
+        }
+    }, [isEdit, editHostel]);
+
     const handleSave = async () => {
-        const { hostel_name, address, city, state, pincode, total_floors } = formData;
+        const { hostel_name, address, city, state, pincode, total_floors, admission_fee } = formData;
         if (!hostel_name || !address || !city || !state || !pincode) {
             Toast.show({
                 type: 'error',
@@ -86,40 +105,66 @@ export const AddHostelScreen = ({ navigation }: any) => {
 
         setLoading(true);
         try {
-            // 1. Create the new hostel
-            const response = await api.post('/hostels', {
-                hostel_name,
-                address,
-                city,
-                state,
-                pincode,
-                hostel_type: hostelType,
-                total_floors: total_floors ? parseInt(total_floors) : 1,
-                owner_id: user?.user_id,
-            });
+            let response;
+            if (isEdit && editHostel) {
+                response = await api.put(`/hostels/${editHostel.hostel_id}`, {
+                    hostel_name,
+                    address,
+                    city,
+                    state,
+                    pincode,
+                    hostel_type: hostelType,
+                    total_floors: total_floors ? parseInt(total_floors) : 1,
+                    admission_fee: admission_fee ? parseFloat(admission_fee) : 0,
+                    owner_id: editHostel.owner_id || user?.user_id,
+                });
+            } else {
+                response = await api.post('/hostels', {
+                    hostel_name,
+                    address,
+                    city,
+                    state,
+                    pincode,
+                    hostel_type: hostelType,
+                    total_floors: total_floors ? parseInt(total_floors) : 1,
+                    admission_fee: admission_fee ? parseFloat(admission_fee) : 0,
+                    owner_id: user?.user_id,
+                });
+            }
 
             if (response.data.success) {
-                const newHostelId = response.data.data.hostel_id;
+                if (isEdit && editHostel) {
+                    if (editHostel.hostel_id === user?.hostel_id) {
+                        await updateTokenAndUser(user?.token, { hostel_id: editHostel.hostel_id, hostel_name });
+                    }
+                    Toast.show({
+                        type: 'success',
+                        text1: 'Success',
+                        text2: 'Hostel details updated successfully!',
+                    });
+                } else {
+                    const newHostelId = response.data.data.hostel_id;
 
-                // 2. Set this new hostel as the active hostel immediately
-                const switchRes = await api.put('/auth/active-hostel', { hostel_id: newHostelId });
-                if (switchRes.data?.success) {
-                    const { token, hostel_name: activeHostelName } = switchRes.data.data;
-                    await updateTokenAndUser(token, { hostel_id: newHostelId, hostel_name: activeHostelName });
+                    // Set this new hostel as the active hostel immediately
+                    const switchRes = await api.put('/auth/active-hostel', { hostel_id: newHostelId });
+                    if (switchRes.data?.success) {
+                        const { token, hostel_name: activeHostelName } = switchRes.data.data;
+                        await updateTokenAndUser(token, { hostel_id: newHostelId, hostel_name: activeHostelName });
+                    }
+
+                    Toast.show({
+                        type: 'success',
+                        text1: 'Success',
+                        text2: 'Hostel created and set as active!',
+                    });
                 }
-
-                Toast.show({
-                    type: 'success',
-                    text1: 'Success',
-                    text2: 'Hostel created and set as active!',
-                });
 
                 navigation.goBack();
             }
         } catch (error: any) {
-            console.error('Error creating hostel:', error);
-            const errMsg = error.response?.data?.error || 'Failed to create hostel. Please try again.';
-            Alert.alert('Creation Failed', errMsg);
+            console.error('Error saving hostel:', error);
+            const errMsg = error.response?.data?.error || 'Failed to save hostel. Please try again.';
+            Alert.alert('Save Failed', errMsg);
         } finally {
             setLoading(false);
         }
@@ -133,6 +178,7 @@ export const AddHostelScreen = ({ navigation }: any) => {
             state: '',
             pincode: '',
             total_floors: '',
+            admission_fee: '',
         });
         setHostelType('Boys');
     };
@@ -143,7 +189,7 @@ export const AddHostelScreen = ({ navigation }: any) => {
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             keyboardVerticalOffset={0}
         >
-            <AppHeader title="Add Hostel" showBack={true} />
+            <AppHeader title={isEdit ? 'Edit Hostel' : 'Add Hostel'} showBack={true} />
 
             <ScrollView
                 ref={scrollViewRef}
@@ -288,6 +334,19 @@ export const AddHostelScreen = ({ navigation }: any) => {
                         />
                     </View>
 
+                    <InputField
+                        label="Admission Fee (₹)"
+                        placeholder="e.g. 1000"
+                        keyboardType="numeric"
+                        value={formData.admission_fee}
+                        onChangeText={(text) => setFormData({ ...formData, admission_fee: text })}
+                        onFocus={() => {
+                            setTimeout(() => {
+                                scrollViewRef.current?.scrollToEnd({ animated: true });
+                            }, 100);
+                        }}
+                    />
+
                     {/* ── Duplicate Footer inside Card (only shown when keyboard is open) ── */}
                     {isKeyboardVisible && (
                             <View style={[styles.scrollFooter, { borderTopColor: isDark ? '#334155' : '#F1F5F9' }]}>
@@ -305,7 +364,7 @@ export const AddHostelScreen = ({ navigation }: any) => {
                                     disabled={loading}
                                     activeOpacity={0.8}
                                 >
-                                    <Text style={styles.saveButtonText}>Create</Text>
+                                    <Text style={styles.saveButtonText}>{isEdit ? 'Save Changes' : 'Create'}</Text>
                                 </TouchableOpacity>
                             </View>
                         )}
@@ -329,7 +388,7 @@ export const AddHostelScreen = ({ navigation }: any) => {
                         disabled={loading}
                         activeOpacity={0.8}
                     >
-                        <Text style={styles.saveButtonText}>Create</Text>
+                        <Text style={styles.saveButtonText}>{isEdit ? 'Save Changes' : 'Create'}</Text>
                     </TouchableOpacity>
                 </View>
             )}

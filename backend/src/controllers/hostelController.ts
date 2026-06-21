@@ -35,7 +35,11 @@ export const createHostel = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const finalOwnerId = req.user?.role_id === 2 ? req.user.user_id : (owner_id || req.user?.user_id);
+    // Determine the final owner: for owner (role 2), always use their own ID.
+    // For admin (role 1), use the sent owner_id if provided, else default to admin's own user_id.
+    const finalOwnerId = req.user?.role_id === 2
+      ? req.user.user_id
+      : (owner_id ? Number(owner_id) : req.user?.user_id);
     if (!finalOwnerId) {
       return res.status(400).json({
         success: false,
@@ -108,13 +112,31 @@ export const createHostel = async (req: AuthRequest, res: Response) => {
     // Insert hostel
     const [hostel_id] = await db('hostel_master').insert(hostelData);
 
-    // Update owner's hostel_id in users table if they don't have one active yet
-    const ownerUser = await db('users').where({ user_id: finalOwnerId }).first();
-    if (ownerUser && !ownerUser.hostel_id) {
-      await db('users')
-        .where({ user_id: finalOwnerId })
-        .update({ hostel_id });
+    // Always set this new hostel as the creator's active hostel.
+    // This ensures the app reflects the new hostel immediately after creation.
+    await db('users')
+      .where({ user_id: req.user?.user_id })
+      .update({ hostel_id });
+
+    // If the owner is a different user than the creator, also update the owner's hostel_id
+    // if they don't have one yet (don't override their existing active hostel).
+    if (finalOwnerId !== req.user?.user_id) {
+      const ownerUser = await db('users').where({ user_id: finalOwnerId }).first();
+      if (ownerUser && !ownerUser.hostel_id) {
+        await db('users')
+          .where({ user_id: finalOwnerId })
+          .update({ hostel_id });
+      }
     }
+
+    // Issue a fresh JWT so the frontend gets the updated hostel_id immediately
+    const { generateToken } = await import('../utils/jwt.js');
+    const newToken = generateToken({
+      user_id: req.user?.user_id,
+      email: req.user?.email,
+      role_id: req.user?.role_id,
+      hostel_id,
+    });
 
     res.status(201).json({
       success: true,
@@ -124,7 +146,8 @@ export const createHostel = async (req: AuthRequest, res: Response) => {
         hostel_name,
         address,
         city,
-        owner_id: finalOwnerId
+        owner_id: finalOwnerId,
+        token: newToken,
       }
     });
   } catch (error) {

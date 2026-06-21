@@ -11,7 +11,7 @@ export const getStaff = async (req: AuthRequest, res: Response) => {
     let query = db('staff').select('*');
 
     // If user is hostel owner (role_id = 2), filter by their hostel_id from JWT token
-    if (user?.role_id === 2) {
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
       if (!user.hostel_id) {
         return res.status(403).json({
           success: false,
@@ -97,7 +97,7 @@ export const createStaff = async (req: AuthRequest, res: Response) => {
     } = req.body;
 
     let hostel_id: number;
-    if (user?.role_id === 2) {
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
       if (!user.hostel_id) {
         return res.status(403).json({
           success: false,

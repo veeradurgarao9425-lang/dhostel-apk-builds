@@ -364,7 +364,7 @@ export const getMonthlyFees = async (req: AuthRequest, res: Response) => {
       .groupBy('mf.fee_id');
 
     // Authorization check: hostel owner can only see their own hostel
-    if (user?.role_id === 2) {
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
       if (!user.hostel_id) {
         return res.status(403).json({
           success: false,
@@ -486,7 +486,7 @@ export const getMonthlyFeesSummary = async (req: AuthRequest, res: Response) => 
     }
 
     // Authorization check
-    if (user?.role_id === 2) {
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
       if (!user.hostel_id) {
         return res.status(403).json({
           success: false,
@@ -636,7 +636,7 @@ export const getMonthlyFeesSummary = async (req: AuthRequest, res: Response) => 
         .sum('fp.amount as total');
 
       // Apply hostel filter
-      if (user?.role_id === 2 && user.hostel_id) {
+      if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && user.hostel_id) {
         todayQuery = todayQuery.where('s.hostel_id', user.hostel_id);
       } else if (hostelId) {
         todayQuery = todayQuery.where('s.hostel_id', hostelId);
@@ -745,7 +745,7 @@ export const getFeePayments = async (req: AuthRequest, res: Response) => {
       .orderBy('fp.created_at', 'desc');
 
     // Authorization check
-    if (user?.role_id === 2 && payments.length > 0) {
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && payments.length > 0) {
       if (payments[0].hostel_id !== user.hostel_id) {
         return res.status(403).json({
           success: false,
@@ -802,7 +802,7 @@ export const getStudentAllPayments = async (req: AuthRequest, res: Response) => 
     }
 
     // Authorization check
-    if (user?.role_id === 2) {
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
       if (!user.hostel_id || student.hostel_id !== user.hostel_id) {
         return res.status(403).json({
           success: false,
@@ -879,7 +879,7 @@ export const recordPayment = async (req: AuthRequest, res: Response) => {
     const user = req.user;
 
     // Authorization check (use Number() to avoid string vs number mismatch)
-    if (user?.role_id === 2 && Number(hostel_id) !== Number(user.hostel_id)) {
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && Number(hostel_id) !== Number(user.hostel_id)) {
       return res.status(403).json({
         success: false,
         error: 'You do not have permission to record payments for this hostel.'
@@ -1232,7 +1232,7 @@ export const getPreviousMonthsFees = async (req: AuthRequest, res: Response) => 
       .where('mf.student_id', studentId);
 
     // Authorization check
-    if (user?.role_id === 2) {
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
       if (!user.hostel_id) {
         return res.status(403).json({
           success: false,
@@ -1306,7 +1306,7 @@ export const editCurrentMonthFee = async (req: AuthRequest, res: Response) => {
     }
 
     // Authorization check
-    if (user?.role_id === 2 && fee.hostel_id !== user.hostel_id) {
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && fee.hostel_id !== user.hostel_id) {
       return res.status(403).json({
         success: false,
         error: 'You do not have permission to edit fees for this hostel.'
@@ -1419,7 +1419,7 @@ export const getAvailableMonths = async (req: AuthRequest, res: Response) => {
       .where('student_id', studentId);
 
     // Authorization check
-    if (user?.role_id === 2) {
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
       if (!user.hostel_id) {
         return res.status(403).json({
           success: false,
@@ -1508,7 +1508,7 @@ export const recordAdjustment = async (req: AuthRequest, res: Response) => {
     }
 
     // Authorization check
-    if (user?.role_id === 2 && monthlyFee.hostel_id !== user.hostel_id) {
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && monthlyFee.hostel_id !== user.hostel_id) {
       return res.status(403).json({
         success: false,
         error: 'You do not have permission to adjust this fee.'
@@ -1641,7 +1641,7 @@ export const recalculateFeeTotals = async (req: AuthRequest, res: Response) => {
     }
 
     // Authorization check
-    if (user?.role_id === 2 && monthlyFee.hostel_id !== user.hostel_id) {
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && monthlyFee.hostel_id !== user.hostel_id) {
       return res.status(403).json({
         success: false,
         error: 'Access denied'
@@ -1734,7 +1734,7 @@ export const recalculateCarryForwardForMonth = async (req: AuthRequest, res: Res
     let query = db('monthly_fees').where('fee_month', fee_month);
 
     // Authorization check: hostel owner can only recalculate their own hostel
-    if (user?.role_id === 2) {
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
       if (!user.hostel_id) {
         return res.status(403).json({
           success: false,
@@ -2189,7 +2189,7 @@ export const getCollections = async (req: AuthRequest, res: Response) => {
       .whereBetween('fp.payment_date', [startDate, endDate]);
 
     // Filter by hostel for owners
-    if (user?.role_id === 2) {
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
       if (!user.hostel_id) {
         return res.status(403).json({ success: false, error: 'Your account is not linked to any hostel.' });
       }

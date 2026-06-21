@@ -25,7 +25,7 @@ export const getAllIncome = async (req: AuthRequest, res: Response) => {
       );
 
     // If user is hostel owner, filter by their current hostel from JWT
-    if (user?.role_id === 2) {
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
       if (!user.hostel_id) {
         return res.status(403).json({
           success: false,
@@ -79,7 +79,7 @@ export const createIncome = async (req: AuthRequest, res: Response) => {
     // Determine hostel_id based on user role
     let hostel_id: number;
 
-    if (user?.role_id === 2) {
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
       // Hostel owner - use hostel from JWT
       if (!user.hostel_id) {
         return res.status(403).json({
@@ -150,7 +150,7 @@ export const updateIncome = async (req: AuthRequest, res: Response) => {
     }
 
     // If user is hostel owner, ensure they can only update their own hostel's income
-    if (user?.role_id === 2) {
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
       if (!user.hostel_id) {
         return res.status(403).json({
           success: false,
@@ -209,7 +209,7 @@ export const deleteIncome = async (req: AuthRequest, res: Response) => {
     }
 
     // If user is hostel owner, ensure they can only delete their own hostel's income
-    if (user?.role_id === 2) {
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
       if (!user.hostel_id) {
         return res.status(403).json({
           success: false,
@@ -253,7 +253,7 @@ export const getIncomeSummary = async (req: AuthRequest, res: Response) => {
       .groupBy('source');
 
     // If user is hostel owner, filter by their current hostel from JWT
-    if (user?.role_id === 2) {
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
       if (!user.hostel_id) {
         return res.status(403).json({
           success: false,
@@ -333,7 +333,7 @@ export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
       .leftJoin('payment_modes as pm', 'i.payment_mode_id', 'pm.payment_mode_id')
       .whereBetween('i.income_date', [startDate, endDate]);
 
-    if (user?.role_id === 2 && hostelId) {
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && hostelId) {
       incomeQuery = incomeQuery.where('i.hostel_id', hostelId);
     }
 
@@ -358,7 +358,7 @@ export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
       .leftJoin('payment_modes as pm', 'fp.payment_mode_id', 'pm.payment_mode_id')
       .whereBetween('fp.payment_date', [startDate, endDate]);
 
-    if (user?.role_id === 2 && hostelId) {
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && hostelId) {
       feeQuery = feeQuery.where('fp.hostel_id', hostelId);
     }
 
@@ -491,7 +491,7 @@ export const getIncomeExport = async (req: AuthRequest, res: Response) => {
       .leftJoin('payment_modes as pm', 'i.payment_mode_id', 'pm.payment_mode_id')
       .select('i.*', 'pm.payment_mode_name as payment_mode');
 
-    if (user?.role_id === 2 && hostelId) {
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && hostelId) {
       incomeQuery = incomeQuery.where('i.hostel_id', hostelId);
     }
     if (startDate && endDate) {
@@ -504,7 +504,7 @@ export const getIncomeExport = async (req: AuthRequest, res: Response) => {
       .leftJoin('payment_modes as pm', 'fp.payment_mode_id', 'pm.payment_mode_id')
       .select('fp.*', 's.first_name', 's.last_name', 'pm.payment_mode_name as payment_mode');
 
-    if (user?.role_id === 2 && hostelId) {
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && hostelId) {
       feeQuery = feeQuery.where('fp.hostel_id', hostelId);
     }
     if (startDate && endDate) {
@@ -518,7 +518,7 @@ export const getIncomeExport = async (req: AuthRequest, res: Response) => {
         .leftJoin('expense_categories as ec', 'e.category_id', 'ec.category_id')
         .select('e.*', 'ec.category_name')
         .where(function () {
-          if (user?.role_id === 2 && hostelId) this.where('e.hostel_id', hostelId);
+          if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && hostelId) this.where('e.hostel_id', hostelId);
           if (startDate && endDate) this.whereBetween('e.expense_date', [startDate, endDate]);
         })
     ]);
