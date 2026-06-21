@@ -95,6 +95,7 @@ export const AddHostelScreen = ({ navigation }: any) => {
                 pincode,
                 hostel_type: hostelType,
                 total_floors: total_floors ? parseInt(total_floors) : 1,
+                owner_id: user?.user_id,
             });
 
             if (response.data.success) {
@@ -336,7 +337,7 @@ export const AddHostelScreen = ({ navigation }: any) => {
             <Modal
                 visible={stateModalVisible}
                 transparent
-                animationType="slide"
+                animationType="fade"
                 statusBarTranslucent
                 onRequestClose={() => setStateModalVisible(false)}
             >
@@ -416,7 +417,7 @@ export const AddHostelScreen = ({ navigation }: any) => {
             <Modal
                 visible={cityModalVisible}
                 transparent
-                animationType="slide"
+                animationType="fade"
                 statusBarTranslucent
                 onRequestClose={() => setCityModalVisible(false)}
             >

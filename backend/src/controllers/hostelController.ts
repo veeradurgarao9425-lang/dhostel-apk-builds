@@ -45,7 +45,8 @@ export const createHostel = async (req: AuthRequest, res: Response) => {
 
     // Verify owner exists
     const owner = await db('users')
-      .where({ user_id: finalOwnerId, role_id: 2, is_active: 1 })
+      .where({ user_id: finalOwnerId, is_active: 1 })
+      .whereIn('role_id', [1, 2])
       .first();
 
     if (!owner) {
@@ -339,7 +340,8 @@ export const updateHostel = async (req: AuthRequest, res: Response) => {
     if (req.user?.role_id === 1 && finalOwnerId !== existingHostel.owner_id) {
       // Verify new owner exists and is a hostel owner
       const newOwner = await db('users')
-        .where({ user_id: finalOwnerId, role_id: 2, is_active: 1 })
+        .where({ user_id: finalOwnerId, is_active: 1 })
+        .whereIn('role_id', [1, 2])
         .first();
 
       if (!newOwner) {
