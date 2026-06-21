@@ -182,6 +182,16 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
     const noticesCountData = await noticesCountQuery.first();
     const noticesCount = noticesCountData?.count || 0;
 
+    // Get active staff count
+    let staffQuery = db('staff')
+      .where('status', 'ACTIVE')
+      .count('* as count');
+    if (hostelIds.length > 0) {
+      staffQuery = staffQuery.whereIn('hostel_id', hostelIds);
+    }
+    const staffData = await staffQuery.first();
+    const staffCount = Number(staffData?.count || 0);
+
     // Get today's rent collection (from fee_payments table)
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     let todayRentQuery = db('fee_payments')
@@ -207,11 +217,24 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
     console.log('[DEBUG] Dashboard Stats Request for user:', user?.user_id, 'Role:', user?.role_id);
     console.log('[DEBUG] totalRooms:', totalRooms?.count);
     console.log('[DEBUG] totalStudents:', totalStudents?.count);
+    // Get new admissions count this month (using admission_date)
+    let newAdmissionsQuery = db('students')
+      .where('status', 1)
+      .whereBetween('admission_date', [monthStart, monthEnd])
+      .count('* as count');
+    if (hostelIds.length > 0) {
+      newAdmissionsQuery = newAdmissionsQuery.whereIn('hostel_id', hostelIds);
+    }
+    const newAdmissionsData = await newAdmissionsQuery.first();
+    const newAdmissionsCount = Number(newAdmissionsData?.count || 0);
+
     console.log('[DEBUG] totalBedsRaw:', bedsData?.total_beds);
     console.log('[DEBUG] occupiedBeds:', occupiedBeds);
     console.log('[DEBUG] prebookingsCount:', prebookingsCount);
     console.log('[DEBUG] noticesCount:', noticesCount);
     console.log('[DEBUG] todayRent:', todayRent?.total);
+    console.log('[DEBUG] staffCount:', staffCount);
+    console.log('[DEBUG] newAdmissionsCount:', newAdmissionsCount);
 
     res.json({
       success: true,
@@ -221,6 +244,7 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
         occupancyRate: Number(occupancyRate),
         totalBeds: Number(totalBeds),
         occupiedBeds: Number(occupiedBeds),
+        staffCount,
         monthlyIncome: Number(income),
         monthlyExpenses: Number(expenses),
         netProfit: Number(netProfit),
@@ -236,7 +260,8 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
         monthlyRentCollected,
         todayRent: Number(todayRent?.total || 0),
         todayCount: Number(todayRent?.count || 0),
-        todaySplit: todaySplit.map(s => ({ mode: s.mode, total: Number(s.total) }))
+        todaySplit: todaySplit.map(s => ({ mode: s.mode, total: Number(s.total) })),
+        newAdmissionsCount
       }
     });
   } catch (error) {

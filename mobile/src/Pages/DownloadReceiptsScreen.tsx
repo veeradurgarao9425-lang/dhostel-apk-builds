@@ -17,10 +17,7 @@ import { AppHeader } from '../components/AppHeader';
 
 const { width } = Dimensions.get('window');
 
-// toLocalDateString is now imported from utils/dateUtils as an alias.
-
-
-export default function CollectedPaymentsScreen() {
+export default function DownloadReceiptsScreen() {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
     const { theme } = useTheme();
@@ -122,17 +119,6 @@ export default function CollectedPaymentsScreen() {
         load(1, true);
     }, [load]);
 
-    const shiftMonth = (dir: -1 | 1) => {
-        const d = new Date(refDate);
-        d.setMonth(d.getMonth() + dir);
-        setRefDate(new Date(d));
-    };
-
-    const canGoForward = (): boolean => {
-        const today = new Date();
-        return !(refDate.getFullYear() === today.getFullYear() && refDate.getMonth() === today.getMonth());
-    };
-
     const handleExport = async () => {
         if (exportStart > exportEnd) {
             Alert.alert('Invalid Range', 'Start date must be before end date.');
@@ -171,8 +157,6 @@ export default function CollectedPaymentsScreen() {
     const total = data?.total_amount ?? 0;
     const transactionsCount = data?.total_count ?? 0;
 
-    const filteredTransactions = transactions;
-
     const getMonthLabel = (date: Date): string => {
         return date.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
     };
@@ -192,28 +176,38 @@ export default function CollectedPaymentsScreen() {
                 style={s.premiumCard}
                 onPress={() => {
                     if (item.student_id) {
-                        navigation.navigate('TenantTransactions', { studentId: item.student_id, studentName: item.title });
+                        const feeData = {
+                            fee_id: item.id?.replace('fee_', '').replace('inc_', '') || 'N/A',
+                            first_name: item.title?.split(' ')[0] || 'Student',
+                            last_name: item.title?.split(' ').slice(1).join(' ') || '',
+                            room_number: item.room_number || 'N/A',
+                            paid_amount: item.amount || 0,
+                            phone: item.phone || 'N/A',
+                            fee_month: item.date ? new Date(item.date).toLocaleString('default', { month: 'long', year: 'numeric' }) : 'N/A',
+                            due_date: item.date || 'N/A'
+                        };
+                        navigation.navigate('Receipt', { feeData });
                     }
                 }}
                 activeOpacity={0.9}
             >
-                <View style={[s.cardAccentLine, { backgroundColor: isRent ? '#10B981' : '#F59E0B' }]} />
+                <View style={[s.cardAccentLine, { backgroundColor: isRent ? '#3B82F6' : '#8B5CF6' }]} />
 
                 <View style={s.cardInner}>
                     <View style={s.cardHeaderRow}>
-                        <View style={[s.cardAvatarBg, { backgroundColor: isRent ? '#E2FBE9' : '#FEF3C7' }]}>
-                            <Ionicons name={isRent ? "person" : "wallet"} size={18} color={isRent ? "#059669" : "#D97706"} />
+                        <View style={[s.cardAvatarBg, { backgroundColor: isRent ? '#EFF6FF' : '#F5F3FF' }]}>
+                            <Ionicons name="document-text-outline" size={18} color={isRent ? "#2563EB" : "#7C3AED"} />
                         </View>
                         <View style={s.cardNameBlock}>
                             <Text style={s.cardNameText}>{item.title}</Text>
                             {isRent && item.room_number && (
-                                <View style={s.roomBadge}>
-                                    <Text style={s.roomBadgeText}>Room {item.room_number}</Text>
+                                <View style={[s.roomBadge, { backgroundColor: '#EFF6FF' }]}>
+                                    <Text style={[s.roomBadgeText, { color: '#2563EB' }]}>Room {item.room_number}</Text>
                                 </View>
                             )}
                         </View>
                         <View style={s.cardRightBlock}>
-                            <Text style={[s.cardAmtText, { color: isRent ? '#059669' : '#D97706' }]}>
+                            <Text style={[s.cardAmtText, { color: isRent ? '#2563EB' : '#7C3AED' }]}>
                                 ₹{item.amount.toLocaleString('en-IN')}
                             </Text>
                             <Text style={s.cardStatusSub}>Paid</Text>
@@ -227,8 +221,8 @@ export default function CollectedPaymentsScreen() {
                         </View>
                         <View style={s.colDivider} />
                         <View style={s.colItem}>
-                            <Text style={[s.colLabel, { color: '#059669' }]}>Paid</Text>
-                            <Text style={[s.colValue, { color: '#059669' }]}>₹{item.amount.toLocaleString('en-IN')}</Text>
+                            <Text style={[s.colLabel, { color: '#2563EB' }]}>Paid</Text>
+                            <Text style={[s.colValue, { color: '#2563EB' }]}>₹{item.amount.toLocaleString('en-IN')}</Text>
                         </View>
                         <View style={s.colDivider} />
                         <View style={s.colItem}>
@@ -248,9 +242,9 @@ export default function CollectedPaymentsScreen() {
                                 <Text style={s.footerMetaText}>{(item.payment_mode || 'Cash').toUpperCase()}</Text>
                             </View>
                         </View>
-                        <View style={[s.clearedBadge, { backgroundColor: '#CCFBF1' }]}>
-                            <Ionicons name="chevron-forward-circle" size={12} color="#0D9488" />
-                            <Text style={[s.clearedBadgeText, { color: '#0D9488', fontWeight: '900' }]}>VIEW HISTORY</Text>
+                        <View style={[s.clearedBadge, { backgroundColor: '#DBEAFE' }]}>
+                            <Ionicons name="download-outline" size={12} color="#2563EB" />
+                            <Text style={[s.clearedBadgeText, { color: '#2563EB', fontWeight: '900' }]}>GET RECEIPT</Text>
                         </View>
                     </View>
                 </View>
@@ -264,8 +258,8 @@ export default function CollectedPaymentsScreen() {
 
             {/* HEADER */}
             <AppHeader
-                title="Collected Rent"
-                subtitle={`${transactionsCount} payments`}
+                title="Download Receipts"
+                subtitle="Select payment to get receipt"
                 rightComponent={
                     <TouchableOpacity onPress={() => setShowExportModal(true)} style={s.exportBtn}>
                         <Download color="#FFF" size={20} />
@@ -276,7 +270,7 @@ export default function CollectedPaymentsScreen() {
             {/* BODY */}
             {loading ? (
                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                    <ActivityIndicator size="large" color="#059669" style={{ marginTop: 40 }} />
+                    <ActivityIndicator size="large" color="#2563EB" style={{ marginTop: 40 }} />
                 </View>
             ) : (
                 <FlatList
@@ -296,7 +290,7 @@ export default function CollectedPaymentsScreen() {
                                 await load(1, false);
                                 setRefreshing(false);
                             }}
-                            tintColor="#059669"
+                            tintColor="#2563EB"
                         />
                     }
                     onEndReached={() => {
@@ -317,51 +311,33 @@ export default function CollectedPaymentsScreen() {
                                 </TouchableOpacity>
                             )}
 
-                            {/* Total Collected Card */}
-                            {!error && (
-                                <View style={s.totalCollectedCard}>
-                                    <View style={s.totalCollectedRow}>
-                                        <View style={s.totalCollectedIconBg}>
-                                            <Ionicons name="wallet-outline" size={22} color="#059669" />
-                                        </View>
-                                        <View style={s.totalCollectedTextContainer}>
-                                            <Text style={s.totalCollectedLabel}>Total Collected</Text>
-                                            <Text style={s.totalCollectedValue}>₹{total.toLocaleString('en-IN')}</Text>
-                                            <Text style={s.totalCollectedSub}>From {transactionsCount} payment{transactionsCount !== 1 ? 's' : ''}</Text>
-                                        </View>
-                                        <TouchableOpacity onPress={() => load(1, false)} style={s.refreshBtn} activeOpacity={0.7}>
-                                            <Ionicons name="refresh" size={18} color="#059669" />
-                                        </TouchableOpacity>
-                                    </View>
-                                </View>
-                            )}
-
                             {/* Search Bar */}
                             <View style={s.searchBarContainer}>
                                 <Ionicons name="search" size={18} color="#94A3B8" />
                                 <TextInput
                                     style={s.searchInput}
-                                    placeholder="Search by name, phone, or room..."
+                                    placeholder="Search student to get receipt..."
                                     value={searchQuery}
                                     onChangeText={setSearchQuery}
                                     placeholderTextColor="#94A3B8"
+                                
                                 />
                                 <TouchableOpacity onPress={() => setDatePickerVisible(true)}>
-                                    <Ionicons name="calendar-outline" size={18} color="#059669" />
+                                    <Ionicons name="calendar-outline" size={18} color="#2563EB" />
                                 </TouchableOpacity>
                             </View>
 
                             {/* Monthly Collections Selector Row */}
                             <View style={s.collectionsHeaderRow}>
                                 <View>
-                                    <Text style={s.collectionsTitle}>Monthly Collections</Text>
-                                    <Text style={s.collectionsSubtitle}>Analytics & revenue overview</Text>
+                                    <Text style={s.collectionsTitle}>Select Payment Receipt</Text>
+                                    <Text style={s.collectionsSubtitle}>Tap card to download receipt PDF</Text>
                                 </View>
                             </View>
 
                             <View style={s.filterOptionsRow}>
                                 <TouchableOpacity style={s.allFilterBtn} activeOpacity={0.8}>
-                                    <Ionicons name="grid-outline" size={18} color="#059669" />
+                                    <Ionicons name="grid-outline" size={18} color="#2563EB" />
                                     <Text style={s.allFilterText}>All</Text>
                                 </TouchableOpacity>
                                 
@@ -384,7 +360,7 @@ export default function CollectedPaymentsScreen() {
                     }
                     ListFooterComponent={
                         loadingMore ? (
-                            <ActivityIndicator size="small" color="#059669" style={{ marginVertical: 20 }} />
+                            <ActivityIndicator size="small" color="#2563EB" style={{ marginVertical: 20 }} />
                         ) : !hasMore && transactions.length > 0 ? (
                             <View style={{ alignItems: 'center', marginVertical: 20 }}>
                                 <Text style={{ color: '#94A3B8', fontSize: 12, fontWeight: '600' }}>All payments loaded</Text>
@@ -493,47 +469,12 @@ export default function CollectedPaymentsScreen() {
 const s = StyleSheet.create({
     root: { flex: 1, backgroundColor: '#F8FAFC' },
 
-    header: {
-        paddingTop: 54,
-        paddingBottom: 20,
-        paddingHorizontal: 20,
-        borderBottomLeftRadius: 28,
-        borderBottomRightRadius: 28,
-    },
-    navRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    backBtnCircle: {
-        width: 38, height: 38,
-        borderRadius: 19,
-        backgroundColor: '#FFFFFF',
-        alignItems: 'center', justifyContent: 'center',
-    },
-    headerTitleContainer: {
-        flex: 1,
-        marginLeft: 12,
-    },
-    screenTitleText: {
-        fontSize: 18,
-        fontWeight: '900',
-        color: '#FFFFFF',
-    },
-    screenSubtitleText: {
-        fontSize: 11,
-        fontWeight: '600',
-        color: 'rgba(255,255,255,0.8)',
-        marginTop: 1,
-    },
     exportBtn: {
         width: 38, height: 38,
         alignItems: 'center', justifyContent: 'center',
         backgroundColor: 'rgba(255,255,255,0.2)',
         borderRadius: 19,
     },
-
-    body: { padding: 16 },
 
     retryBtn: {
         backgroundColor: '#FFF',
@@ -542,87 +483,9 @@ const s = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 14,
         borderWidth: 1,
-        borderColor: '#059669',
+        borderColor: '#2563EB',
     },
-    retryText: { color: '#059669', fontWeight: '700', fontSize: 14 },
-
-    card: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 20,
-        padding: 18,
-        marginBottom: 14,
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
-        elevation: 1,
-        shadowColor: '#000',
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
-        shadowOffset: { width: 0, height: 2 },
-    },
-    cardTitle: {
-        fontSize: 12,
-        fontWeight: '800',
-        color: '#64748B',
-        textTransform: 'uppercase',
-        letterSpacing: 0.8,
-        marginBottom: 10,
-    },
-
-    totalCollectedCard: {
-        backgroundColor: '#E6F7ED',
-        borderRadius: 20,
-        paddingHorizontal: 16,
-        paddingVertical: 14,
-        marginBottom: 16,
-        borderWidth: 1,
-        borderColor: '#BFEAD0',
-    },
-    totalCollectedRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    totalCollectedIconBg: {
-        width: 44, height: 44,
-        borderRadius: 12,
-        backgroundColor: '#FFFFFF',
-        alignItems: 'center', justifyContent: 'center',
-        marginRight: 12,
-        elevation: 1,
-        shadowColor: '#000',
-        shadowOpacity: 0.03,
-        shadowRadius: 2,
-    },
-    totalCollectedTextContainer: {
-        flex: 1,
-    },
-    totalCollectedLabel: {
-        fontSize: 9,
-        color: '#059669',
-        fontWeight: '800',
-        textTransform: 'uppercase',
-    },
-    totalCollectedValue: {
-        fontSize: 22,
-        fontWeight: '900',
-        color: '#059669',
-        marginTop: 2,
-    },
-    totalCollectedSub: {
-        fontSize: 11,
-        color: '#059669',
-        fontWeight: '600',
-        marginTop: 1,
-    },
-    refreshBtn: {
-        width: 36, height: 36,
-        borderRadius: 18,
-        backgroundColor: '#FFFFFF',
-        alignItems: 'center', justifyContent: 'center',
-        elevation: 1,
-        shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-    },
+    retryText: { color: '#2563EB', fontWeight: '700', fontSize: 14 },
 
     searchBarContainer: {
         flexDirection: 'row',
@@ -684,7 +547,7 @@ const s = StyleSheet.create({
     allFilterText: {
         fontSize: 12,
         fontWeight: '800',
-        color: '#059669',
+        color: '#2563EB',
     },
     monthDropdown: {
         flex: 1,
@@ -760,7 +623,7 @@ const s = StyleSheet.create({
     roomBadgeText: {
         fontSize: 9,
         fontWeight: '800',
-        color: '#059669',
+        color: '#2563EB',
     },
     cardRightBlock: {
         alignItems: 'flex-end',
@@ -839,7 +702,7 @@ const s = StyleSheet.create({
     clearedBadgeText: {
         fontSize: 9,
         fontWeight: '900',
-        color: '#059669',
+        color: '#2563EB',
     },
 
     emptyCard: {
@@ -887,7 +750,7 @@ const s = StyleSheet.create({
         fontWeight: '600', marginBottom: 12,
     },
     exportConfirmBtn: {
-        backgroundColor: '#059669',
+        backgroundColor: '#2563EB',
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',

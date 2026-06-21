@@ -1,5 +1,4 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -13,6 +12,7 @@ interface AppHeaderProps {
     rightComponent?: React.ReactNode;
     children?: React.ReactNode;
     alignLeft?: boolean;
+    style?: ViewStyle;
 }
 
 export const AppHeader: React.FC<AppHeaderProps> = ({ 
@@ -22,7 +22,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
     showBack = true,
     rightComponent,
     children,
-    alignLeft = false
+    alignLeft = false,
+    style
 }) => {
     const navigation = useNavigation();
 
@@ -35,7 +36,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
     };
 
     return (
-        <LinearGradient colors={[COLORS.gradientStart, COLORS.gradientEnd]} style={styles.header}>
+        <LinearGradient colors={[COLORS.gradientStart, COLORS.gradientEnd]} style={[styles.header, style]}>
             <View style={styles.headerTop}>
                 {showBack ? (
                     <TouchableOpacity onPress={handleBack} style={styles.backBtn} activeOpacity={0.7}>

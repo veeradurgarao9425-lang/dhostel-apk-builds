@@ -230,6 +230,7 @@ export const createRoom = async (req: AuthRequest, res: Response) => {
       room_number,
       room_type_id,
       floor_number,
+      capacity,
       occupied_beds,
       rent_per_bed,
       amenities
@@ -288,6 +289,7 @@ export const createRoom = async (req: AuthRequest, res: Response) => {
       room_number,
       room_type_id,
       floor_number,
+      capacity: capacity !== undefined ? capacity : 4,
       occupied_beds: occupied_beds !== undefined ? occupied_beds : 0,
       rent_per_bed,
       amenities: amenities ? JSON.stringify(amenities) : null,
@@ -318,6 +320,7 @@ export const updateRoom = async (req: AuthRequest, res: Response) => {
       room_number,
       room_type_id,
       floor_number,
+      capacity,
       occupied_beds,
       rent_per_bed,
       is_available,
@@ -360,6 +363,7 @@ export const updateRoom = async (req: AuthRequest, res: Response) => {
     if (room_number) updateData.room_number = room_number;
     if (room_type_id) updateData.room_type_id = room_type_id;
     if (floor_number !== undefined) updateData.floor_number = floor_number;
+    if (capacity !== undefined) updateData.capacity = capacity;
     if (occupied_beds !== undefined) updateData.occupied_beds = occupied_beds;
     if (rent_per_bed) updateData.rent_per_bed = rent_per_bed;
     if (is_available !== undefined) updateData.is_available = is_available;

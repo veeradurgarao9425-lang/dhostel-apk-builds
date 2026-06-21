@@ -6,6 +6,7 @@ import { InputField } from '../components/InputField';
 import { Card } from '../components/Card';
 import api from '../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import { Check, ChevronDown, Layers, LayoutGrid } from 'lucide-react-native';
 import { Modal, FlatList, Keyboard } from 'react-native';
 import { AppHeader } from '../components/AppHeader';
@@ -15,6 +16,7 @@ import { SPACING } from '../theme/index';
 
 export const AddRoomScreen = ({ navigation, route }: any) => {
     const { user } = useAuth();
+    const { theme, isDark } = useTheme();
     const isEdit = route?.params?.isEdit || false;
     const roomToEdit = route?.params?.room || null;
     const [loading, setLoading] = useState(false);
@@ -39,11 +41,11 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
 
     const initialFormState = {
         room_number: roomToEdit?.room_number?.toString() || '',
-        floor_number: roomToEdit?.floor_number?.toString() || '0',
+        floor_number: roomToEdit?.floor_number?.toString() || '',
         room_type_id: roomToEdit?.room_type_id?.toString() || '',
-        capacity: roomToEdit?.total_capacity?.toString() || '',
+        capacity: roomToEdit?.total_capacity?.toString() || '4',
         rent_per_bed: roomToEdit?.rent_per_bed?.toString() || '',
-        occupied_beds: roomToEdit?.occupied_beds?.toString() || '0',
+        occupied_beds: roomToEdit?.occupied_beds?.toString() || '',
         selectedAmenities: roomToEdit?.amenities || [] as string[],
     };
 
@@ -73,7 +75,19 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
             if (response.data.success) {
                 setRoomTypes(response.data.data);
                 if (!isEdit && response.data.data.length > 0 && !formData.room_type_id) {
-                    setFormData(prev => ({ ...prev, room_type_id: response.data.data[0].room_type_id.toString() }));
+                    const fourShareType = response.data.data.find((t: any) => 
+                        t.room_type_name.toLowerCase().includes('four') || 
+                        t.room_type_name.toLowerCase().includes('4')
+                    );
+                    const defaultTypeId = fourShareType 
+                        ? fourShareType.room_type_id.toString() 
+                        : response.data.data[0].room_type_id.toString();
+
+                    setFormData(prev => ({ 
+                        ...prev, 
+                        room_type_id: defaultTypeId,
+                        capacity: prev.capacity || (fourShareType ? '4' : '4')
+                    }));
                 }
             }
         } catch (error) {
@@ -171,7 +185,7 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
     return (
         <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={styles.container}
+            style={[styles.container, { backgroundColor: isDark ? theme.background : '#F8FAFC' }]}
         >
             <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
             <AppHeader title={isEdit ? "Edit Room" : "Add New Room"} />
@@ -182,7 +196,7 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
                 contentContainerStyle={{ paddingBottom: 60 }}
                 keyboardShouldPersistTaps="handled"
             >
-                <Card style={styles.formCard}>
+                <Card style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
                     <InputField
                         label="Room Number *"
                         placeholder="e.g. 101"
@@ -236,11 +250,13 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
                     />
 
                     <InputField
-                        label="Occupied Beds (Auto)"
+                        label="Occupied Beds"
                         placeholder="0"
+                        keyboardType="numeric"
                         value={formData.occupied_beds}
-                        editable={false}
-                        onChangeText={() => { }}
+                        onChangeText={(text) => {
+                            setFormData({ ...formData, occupied_beds: text });
+                        }}
                     />
 
                     <InputField
@@ -260,15 +276,15 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
                         }}
                     />
 
-                    <Text style={styles.label}>Room Type *</Text>
+                    <Text style={[styles.label, { color: theme.textSecondary }]}>Room Type *</Text>
                     <TouchableOpacity
-                        style={[styles.selectField, errors.room_type_id && styles.selectFieldError]}
+                        style={[styles.selectField, { backgroundColor: isDark ? '#1E293B' : '#F9FAFB' }, errors.room_type_id && styles.selectFieldError]}
                         onPress={() => setTypeModalVisible(true)}
                         activeOpacity={0.7}
                     >
                         <View style={styles.selectLeft}>
-                            <LayoutGrid size={18} color={errors.room_type_id ? "#EF4444" : "#FF6B6B"} style={{ marginRight: 10 }} />
-                            <Text style={[styles.selectText, !formData.room_type_id && { color: '#94A3B8' }]}>
+                            <LayoutGrid size={18} color={errors.room_type_id ? "#EF4444" : theme.primary} style={{ marginRight: 10 }} />
+                            <Text style={[styles.selectText, { color: theme.textPrimary }, !formData.room_type_id && { color: isDark ? '#475569' : '#94A3B8' }]}>
                                 {formData.room_type_id
                                     ? roomTypes.find(t => t.room_type_id.toString() === formData.room_type_id)?.room_type_name
                                     : "Select Room Type"}
@@ -278,44 +294,49 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
                     </TouchableOpacity>
                     {errors.room_type_id && <Text style={styles.errorText}>{errors.room_type_id}</Text>}
 
-                    <Text style={[styles.label, { marginTop: 16 }]}>Amenities</Text>
+                    <Text style={[styles.label, { marginTop: 16, color: theme.textSecondary }]}>Amenities</Text>
                     <View style={styles.amenitiesContainer}>
-                        {amenitiesList.map((amenity, index) => (
-                            <TouchableOpacity
-                                key={index}
-                                style={[
-                                    styles.amenityChip,
-                                    formData.selectedAmenities.includes(amenity.amenity_name) && styles.amenityChipActive
-                                ]}
-                                onPress={() => toggleAmenity(amenity.amenity_name)}
-                                activeOpacity={0.7}
-                            >
-                                {formData.selectedAmenities.includes(amenity.amenity_name) && (
-                                    <Check size={14} color="#FFF" style={{ marginRight: 4 }} />
-                                )}
-                                <Text style={[
-                                    styles.amenityText,
-                                    formData.selectedAmenities.includes(amenity.amenity_name) && styles.amenityTextActive
-                                ]}>{amenity.amenity_name}</Text>
-                            </TouchableOpacity>
-                        ))}
+                        {amenitiesList.map((amenity, index) => {
+                            const isActive = formData.selectedAmenities.includes(amenity.amenity_name);
+                            return (
+                                <TouchableOpacity
+                                    key={index}
+                                    style={[
+                                        styles.amenityChip,
+                                        { backgroundColor: isDark ? '#1E293B' : '#F1F5F9', borderColor: isDark ? '#334155' : '#E2E8F0' },
+                                        isActive && { backgroundColor: theme.primary, borderColor: theme.primary }
+                                    ]}
+                                    onPress={() => toggleAmenity(amenity.amenity_name)}
+                                    activeOpacity={0.7}
+                                >
+                                    {isActive && (
+                                        <Check size={14} color="#FFF" style={{ marginRight: 4 }} />
+                                    )}
+                                    <Text style={[
+                                        styles.amenityText,
+                                        { color: theme.textSecondary },
+                                        isActive && { color: '#FFF', fontWeight: '600' }
+                                    ]}>{amenity.amenity_name}</Text>
+                                </TouchableOpacity>
+                            );
+                        })}
                     </View>
                 </Card>
                 <View style={{ height: 20 }} />
             </ScrollView>
 
             {/* ─── Sticky Footer ───────────────────────────────────────────────────── */}
-            <View style={[styles.stickyFooter, { paddingBottom: isKeyboardVisible ? SPACING.md : (insets.bottom + SPACING.md) }]}>
+            <View style={[styles.stickyFooter, { backgroundColor: theme.cardBg, borderTopColor: isDark ? '#334155' : '#F1F5F9', paddingBottom: isKeyboardVisible ? SPACING.md : (insets.bottom + SPACING.md) }]}>
                 <TouchableOpacity
-                    style={styles.resetButton}
+                    style={[styles.resetButton, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#CBD5E1' }]}
                     onPress={handleReset}
                     activeOpacity={0.7}
                     disabled={loading}
                 >
-                    <Text style={styles.resetButtonText}>Reset</Text>
+                    <Text style={[styles.resetButtonText, { color: theme.textSecondary }]}>Reset</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                    style={[styles.saveButton, loading && styles.disabledButton]}
+                    style={[styles.saveButton, { backgroundColor: theme.primary }, loading && styles.disabledButton]}
                     onPress={handleSave}
                     disabled={loading}
                     activeOpacity={0.8}

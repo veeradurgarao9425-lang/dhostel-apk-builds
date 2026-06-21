@@ -59,88 +59,108 @@ interface StudentCardProps {
 }
 
 const StudentCard = React.memo(({ student, onPress, onWhatsApp, onCall, onToggle }: StudentCardProps) => {
+    const { theme, isDark } = useTheme();
     const isActive = student.status === 1;
     const isPreBooked = student.status === 2;
     const isQRSignup = student.status === 3;
-    const indicatorColor = isQRSignup ? '#7C3AED' : isPreBooked ? '#EA580C' : isActive ? '#10B981' : '#EF4444';
-    
+
+    const getInitials = (first: string, last: string) => {
+        const f = first ? first.charAt(0).toUpperCase() : '';
+        const l = last ? last.charAt(0).toUpperCase() : '';
+        return (f + l).trim() || '?';
+    };
+
+    // Determine colors based on status dynamically from theme
+    let statusColor = theme.error;
+    let statusLabel = 'Inactive';
+
+    if (isActive) {
+        statusColor = theme.success;
+        statusLabel = 'Active';
+    } else if (isPreBooked) {
+        statusColor = theme.warning;
+        statusLabel = 'Pre-Booked';
+    } else if (isQRSignup) {
+        statusColor = theme.primary;
+        statusLabel = 'QR Signup';
+    }
+
+    const badgeBg = statusColor + '15';
+    const badgeText = statusColor;
+    const avatarBg = statusColor + '20';
+    const avatarTextColor = statusColor;
+
     return (
         <TouchableOpacity
-            style={styles.card}
+            style={[styles.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
             onPress={() => onPress(student.student_id)}
             activeOpacity={0.8}
         >
-            <View style={[styles.statusIndicator, { backgroundColor: indicatorColor }]} />
-            <View style={styles.cardMain}>
-                <View style={styles.avatarBox}>
+            <View style={styles.cardHeader}>
+                <View style={[styles.avatarBox, { backgroundColor: avatarBg }]}>
                     {student.photo ? (
                         <Image source={{ uri: student.photo }} style={styles.avatarImg} fadeDuration={0} />
                     ) : (
-                        <Users color="#94A3B8" size={20} />
+                        <Text style={[styles.avatarTextInitials, { color: avatarTextColor }]}>
+                            {getInitials(student.first_name, student.last_name)}
+                        </Text>
                     )}
                 </View>
                 <View style={styles.infoContainer}>
-                    <Text style={styles.nameText} numberOfLines={1}>
-                        {student.first_name} {student.last_name}
+                    <Text style={[styles.nameText, { color: theme.textPrimary }]} numberOfLines={1}>
+                        {student.first_name} {student.last_name || ''}
                     </Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                        {isQRSignup ? (
-                            <View style={[styles.roomBadge, { backgroundColor: '#F5F3FF', borderColor: '#E9E3FF', borderWidth: 1, marginTop: 0 }]}>
-                                <Text style={[styles.roomText, { color: '#7C3AED' }]}>QR SIGNUP</Text>
-                            </View>
-                        ) : isPreBooked ? (
-                            <View style={[styles.roomBadge, { backgroundColor: '#FFEFE6', borderColor: '#FFE4D6', borderWidth: 1, marginTop: 0 }]}>
-                                <Text style={[styles.roomText, { color: '#EA580C' }]}>PRE-BOOKED</Text>
-                            </View>
-                        ) : (
-                            <View style={[styles.roomBadge, { marginTop: 0 }]}>
-                                <Text style={styles.roomText}>ROOM {student.room_number || 'N/A'}</Text>
-                            </View>
-                        )}
-                        {(isPreBooked || isQRSignup) && student.room_number ? (
-                            <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '700' }}>
-                                Room {student.room_number}
-                            </Text>
-                        ) : null}
-                    </View>
+                    <Text style={[styles.subDetailText, { color: theme.textSecondary }]}>
+                        Room {student.room_number || 'N/A'} • {student.phone || 'No phone'}
+                    </Text>
                 </View>
-                <View style={styles.actionColumn}>
+                <View style={[styles.statusBadge, { backgroundColor: badgeBg }]}>
+                    <Text style={[styles.statusBadgeText, { color: badgeText }]}>
+                        {statusLabel}
+                    </Text>
+                </View>
+            </View>
+
+            <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
+
+            <View style={styles.cardActions}>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
                     <TouchableOpacity
                         onPress={() => onWhatsApp(student.phone)}
-                        style={styles.iconCircle}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        style={[styles.actionBtnIcon, { backgroundColor: isDark ? '#334155' : '#F8FAFC', borderColor: isDark ? '#475569' : '#E2E8F0' }]}
                     >
-                        <MessageCircle size={18} color="#25D366" />
+                        <MessageCircle size={14} color="#25D366" />
+                        <Text style={[styles.actionBtnIconText, { color: theme.textSecondary }]}>WhatsApp</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         onPress={() => onCall(student.phone)}
-                        style={styles.iconCircle}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        style={[styles.actionBtnIcon, { backgroundColor: isDark ? '#334155' : '#F8FAFC', borderColor: isDark ? '#475569' : '#E2E8F0' }]}
                     >
-                        <Phone size={18} color="#0EA5E9" />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        onPress={() => onToggle(student)}
-                        style={[
-                            styles.statusToggleBtn, 
-                            { 
-                                backgroundColor: isQRSignup ? '#F5F3FF' : isPreBooked ? '#FFF8F4' : isActive ? '#FEF2F2' : '#F0FDF4',
-                                borderColor: isQRSignup ? '#E9E3FF' : isPreBooked ? '#FFE4D6' : isActive ? '#FCA5A5' : '#86EFAC',
-                                borderWidth: 1
-                            }
-                        ]}
-                    >
-                        {isQRSignup ? (
-                            <Ionicons name="checkmark-circle-outline" size={18} color="#7C3AED" />
-                        ) : isPreBooked ? (
-                            <Ionicons name="checkmark-circle-outline" size={18} color="#EA580C" />
-                        ) : (
-                            <Text style={[styles.statusToggleText, { color: isActive ? '#EF4444' : '#10B981' }]}>
-                                {isActive ? 'OFF' : 'ON'}
-                            </Text>
-                        )}
+                        <Phone size={14} color="#0EA5E9" />
+                        <Text style={[styles.actionBtnIconText, { color: theme.textSecondary }]}>Call</Text>
                     </TouchableOpacity>
                 </View>
+                <TouchableOpacity
+                    onPress={() => onToggle(student)}
+                    style={[
+                        styles.statusToggleBtnNew,
+                        {
+                            backgroundColor: isQRSignup ? theme.primary + '15' : isPreBooked ? theme.warning + '15' : isActive ? theme.error + '15' : theme.success + '15',
+                            borderColor: isQRSignup ? theme.primary + '30' : isPreBooked ? theme.warning + '30' : isActive ? theme.error + '30' : theme.success + '30',
+                            borderWidth: 1
+                        }
+                    ]}
+                >
+                    {isQRSignup ? (
+                        <Text style={[styles.statusToggleTextNew, { color: theme.primary }]}>Check In</Text>
+                    ) : isPreBooked ? (
+                        <Text style={[styles.statusToggleTextNew, { color: theme.warning }]}>Check In</Text>
+                    ) : (
+                        <Text style={[styles.statusToggleTextNew, { color: isActive ? theme.error : theme.success }]}>
+                            {isActive ? 'Deactivate' : 'Activate'}
+                        </Text>
+                    )}
+                </TouchableOpacity>
             </View>
         </TouchableOpacity>
     );
@@ -204,7 +224,7 @@ const footerStyles = StyleSheet.create({
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function StudentsScreen({ navigation, route }: any) {
     const { user } = useAuth();
-    const { theme } = useTheme();
+    const { theme, isDark } = useTheme();
     const { showApiError, showSuccess } = useToast();
 
     const [allStudents, setAllStudents] = useState<any[]>([]);
@@ -422,7 +442,7 @@ export default function StudentsScreen({ navigation, route }: any) {
     }, [allStudents.length, hasMore, activeTab]);
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: isDark ? theme.background : '#F8FAFC' }]}>
             <StatusBar barStyle="light-content" />
 
             <AppHeader
@@ -440,10 +460,10 @@ export default function StudentsScreen({ navigation, route }: any) {
                     <Search color="rgba(255,255,255,0.7)" size={18} />
                     <TextInput
                         style={styles.input}
-                        placeholder="Search name or room..."
+                        placeholder="Search by name, room, or phone..."
                         value={search}
                         onChangeText={setSearch}
-                        placeholderTextColor="rgba(255,255,255,0.5)"
+                        placeholderTextColor="rgba(255,255,255,0.6)"
                         autoCorrect={false}
                         autoCapitalize="none"
                     />
@@ -560,11 +580,6 @@ export default function StudentsScreen({ navigation, route }: any) {
                         maxToRenderPerBatch={10}
                         updateCellsBatchingPeriod={30}
                         removeClippedSubviews={Platform.OS === 'android'}
-                        getItemLayout={(_data, index) => ({
-                            length: CARD_HEIGHT,
-                            offset: CARD_HEIGHT * index,
-                            index,
-                        })}
                     />
                 )}
             </View>
@@ -574,7 +589,7 @@ export default function StudentsScreen({ navigation, route }: any) {
                 style={[styles.fab, { backgroundColor: COLORS.primary }]}
                 onPress={() => navigation.navigate('AddStudent')}
             >
-                <Plus color="#FFF" size={28} />
+                <Plus color="#FFF" size={22} strokeWidth={3.2} />
             </TouchableOpacity>
 
             {/* Confirm Dialog for status toggle */}
@@ -634,7 +649,7 @@ const styles = StyleSheet.create({
     headerSubtitle: { fontSize: 12, color: 'rgba(255,255,255,0.8)', fontWeight: '600' },
     headerActions: { flexDirection: 'row', gap: 12 },
     searchBox: {
-        backgroundColor: '#FFF',
+        backgroundColor: 'rgba(255,255,255,0.16)',
         borderRadius: 16,
         flexDirection: 'row',
         alignItems: 'center',
@@ -642,7 +657,7 @@ const styles = StyleSheet.create({
         height: 48,
         marginBottom: 15
     },
-    input: { flex: 1, marginLeft: 10, fontWeight: '600', color: '#1E293B' },
+    input: { flex: 1, marginLeft: 10, fontWeight: '600', color: '#FFF' },
     tabScroll: {
         marginTop: 6,
         width: '100%',
@@ -674,46 +689,96 @@ const styles = StyleSheet.create({
     listPadding: { padding: 16, paddingBottom: 180 },
     card: {
         backgroundColor: '#FFF',
-        borderRadius: 20,
+        borderRadius: 16,
+        padding: 12,
         marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+    },
+    cardHeader: {
         flexDirection: 'row',
-        overflow: 'hidden',
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        height: CARD_HEIGHT,
+        alignItems: 'center',
     },
-    statusIndicator: { width: 6 },
-    cardMain: { flex: 1, padding: 15, flexDirection: 'row', alignItems: 'center' },
     avatarBox: {
-        width: 45, height: 45, borderRadius: 15,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        justifyContent: 'center',
+        alignItems: 'center',
+        overflow: 'hidden',
+    },
+    avatarImg: {
+        width: 36,
+        height: 36,
+    },
+    avatarTextInitials: {
+        fontSize: 13,
+        fontWeight: '700',
+    },
+    infoContainer: {
+        flex: 1,
+        marginLeft: 12,
+    },
+    nameText: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#1E293B',
+    },
+    subDetailText: {
+        fontSize: 11,
+        color: '#64748B',
+        fontWeight: '500',
+        marginTop: 4,
+    },
+    statusBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
+    },
+    statusBadgeText: {
+        fontSize: 10,
+        fontWeight: '700',
+    },
+    divider: {
+        height: 1,
         backgroundColor: '#F1F5F9',
-        justifyContent: 'center', alignItems: 'center', overflow: 'hidden'
+        marginVertical: 10,
     },
-    avatarImg: { width: 45, height: 45 },
-    infoContainer: { flex: 1, marginLeft: 15 },
-    nameText: { fontSize: 16, fontWeight: '700', color: '#1E293B' },
-    roomBadge: {
-        alignSelf: 'flex-start', backgroundColor: '#EDE9FF',
-        paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, marginTop: 4
+    cardActions: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
     },
-    roomText: { fontSize: 10, fontWeight: '800', color: '#5F2EEA' },
-    actionColumn: { flexDirection: 'row', gap: 10 },
-    iconCircle: {
-        width: 38, height: 38, borderRadius: 12,
+    actionBtnIcon: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
         backgroundColor: '#F8FAFC',
-        justifyContent: 'center', alignItems: 'center',
-        borderWidth: 1, borderColor: '#F1F5F9'
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
     },
-    statusToggleBtn: {
-        width: 38, height: 38, borderRadius: 12,
-        justifyContent: 'center', alignItems: 'center',
+    actionBtnIconText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#475569',
     },
-    statusToggleText: { fontSize: 10, fontWeight: '900' },
+    statusToggleBtnNew: {
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    statusToggleTextNew: {
+        fontSize: 11,
+        fontWeight: '700',
+    },
     fab: {
-        position: 'absolute', bottom: 30, right: 20,
-        width: 60, height: 60, borderRadius: 30,
+        position: 'absolute', bottom: 45, right: 24,
+        width: 50, height: 50, borderRadius: 25,
         justifyContent: 'center', alignItems: 'center', elevation: 5
     },
 });

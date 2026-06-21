@@ -20,7 +20,7 @@ import { Badge } from '../components/Badge';
 import {
     Phone, Mail, MapPin, Calendar, CreditCard,
     ChevronRight, User, Circle, IndianRupee, Clock,
-    CheckCircle, X, Edit, Users, Receipt
+    CheckCircle, X, Edit, Users, Receipt, MessageCircle
 } from 'lucide-react-native';
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import api from '../services/api';
@@ -90,11 +90,18 @@ const PaymentHistoryItem = React.memo(({ payment, student, onPress }: { payment:
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 const StudentDetailsScreen = ({ route, navigation }: any) => {
     const { studentId } = route.params || {};
-    const { theme } = useTheme();
+    const { theme, isDark } = useTheme();
 
     // Core student data (loaded immediately)
     const [student, setStudent] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState<'info' | 'payments'>('info');
+
+    const getInitials = (first: string, last: string) => {
+        const f = first ? first.charAt(0).toUpperCase() : '';
+        const l = last ? last.charAt(0).toUpperCase() : '';
+        return (f + l).trim() || '?';
+    };
 
     // Vacancy Notice state
     const [noticeModalVisible, setNoticeModalVisible] = useState(false);
@@ -407,7 +414,8 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
             <StatusBar barStyle="light-content" />
 
             <AppHeader 
-                title="Student Details" 
+                title="Tenant Details"
+                style={{ paddingTop: 60, paddingBottom: 40 }}
                 rightComponent={
                     <View style={styles.headerActions}>
                         <TouchableOpacity
@@ -435,65 +443,77 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                     </View>
                 ) : (
                     <>
-                        {/* ── Profile Card ─────────────────────────────────────── */}
-                        <Card style={styles.profileCard}>
+                        {/* ── Profile Hero Header ─────────────────────────────────────── */}
+                        <Card style={[styles.profileCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
                             <View style={styles.profileSection}>
                                 {student.photo ? (
-                                    <Image
-                                        source={{ uri: student.photo }}
-                                        style={styles.avatar}
-                                        fadeDuration={0}
-                                    />
+                                    <Image source={{ uri: student.photo }} style={styles.avatar} />
                                 ) : (
-                                    <View style={styles.avatarPlaceholder}>
-                                        <User size={40} color="#94A3B8" />
+                                    <View style={[styles.avatarPlaceholder, { backgroundColor: theme.primary + '15', borderColor: theme.primary + '30' }]}>
+                                        <Text style={{ fontSize: 28, fontWeight: '700', color: theme.primary }}>
+                                            {getInitials(student.first_name, student.last_name)}
+                                        </Text>
                                     </View>
                                 )}
                                 <View style={styles.profileInfo}>
-                                    <Text style={styles.name}>{student.first_name} {student.last_name}</Text>
-                                    <Text style={styles.roomInfo}>Room {student.room_number || 'Not Assigned'}</Text>
+                                    <View style={styles.nameRow}>
+                                        <Text style={[styles.name, { color: theme.textPrimary }]}>
+                                            {student.first_name} {student.last_name || ''}
+                                        </Text>
+                                        <View style={[styles.statusDot, { backgroundColor: student.status === 1 ? theme.success : student.status === 2 ? theme.warning : theme.error }]} />
+                                    </View>
+                                    <Text style={[styles.roomInfo, { color: theme.textSecondary }]}>Room {student.room_number || 'N/A'}</Text>
                                     <View style={styles.badgeRow}>
                                         <Badge
-                                            label={outstandingBalance > 0 ? 'Payment Pending' : 'Paid'}
+                                            label={student.status === 1 ? 'Active' : student.status === 2 ? 'Pre-Booked' : 'Inactive'}
+                                            variant={student.status === 1 ? 'success' : student.status === 2 ? 'warning' : 'default'}
+                                        />
+                                        <Badge
+                                            label={outstandingBalance > 0 ? 'Pending Payment' : 'Fully Paid'}
                                             variant={outstandingBalance > 0 ? 'error' : 'success'}
-                                            style={styles.badge}
                                         />
                                     </View>
                                 </View>
                             </View>
 
                             {/* ── Active / Inactive / Pre-booked Toggle ── */}
-                            <View style={styles.statusToggleRow}>
+                            <View style={[styles.statusToggleRow, { borderTopColor: isDark ? '#334155' : '#F1F5F9' }]}>
                                 <View style={styles.statusToggleLeft}>
                                     <View style={[
                                         styles.statusIndicator, 
-                                        { backgroundColor: student.status === 1 ? '#DCFCE7' : student.status === 2 ? '#FEF3C7' : '#FEE2E2' }
+                                        { backgroundColor: student.status === 1 ? theme.success + '15' : student.status === 2 ? theme.warning + '15' : theme.error + '15' }
                                     ]}>
                                         <Text style={[
                                             styles.statusIndicatorText, 
-                                            { color: student.status === 1 ? '#16A34A' : student.status === 2 ? '#D97706' : '#DC2626' }
+                                            { color: student.status === 1 ? theme.success : student.status === 2 ? theme.warning : theme.error }
                                         ]}>
                                             {student.status === 1 ? '● Active' : student.status === 2 ? '● Pre-Booked' : '● Inactive'}
                                         </Text>
                                     </View>
-                                    <Text style={styles.statusToggleHint}>Tap to change status</Text>
+                                    <Text style={[styles.statusToggleHint, { color: theme.textSecondary }]}>
+                                        {student.status === 1 ? 'Click to deactivate tenant' : student.status === 2 ? 'Click to check in tenant' : 'Click to activate tenant'}
+                                    </Text>
                                 </View>
                                 {statusLoading ? (
-                                    <ActivityIndicator size="small" color="#FF6B6B" />
+                                    <ActivityIndicator size="small" color={theme.primary} />
                                 ) : (
                                     <TouchableOpacity
                                         style={[
                                             styles.statusToggleBtn, 
-                                            { backgroundColor: student.status === 2 ? '#DCFCE7' : student.status === 1 ? '#FEE2E2' : '#DCFCE7' }
+                                            { 
+                                                backgroundColor: student.status === 2 ? theme.success + '15' : student.status === 1 ? theme.error + '15' : theme.success + '15',
+                                                borderColor: student.status === 2 ? theme.success + '30' : student.status === 1 ? theme.error + '30' : theme.success + '30',
+                                                borderWidth: 1
+                                            }
                                         ]}
                                         onPress={handleToggleStatus}
                                         activeOpacity={0.8}
                                     >
                                         <Text style={[
                                             styles.statusToggleBtnText, 
-                                            { color: student.status === 2 ? '#16A34A' : student.status === 1 ? '#DC2626' : '#16A34A' }
+                                            { color: student.status === 2 ? theme.success : student.status === 1 ? theme.error : theme.success }
                                         ]}>
-                                            {student.status === 2 ? 'Check In (Activate)' : student.status === 1 ? 'Mark Inactive' : 'Mark Active'}
+                                            {student.status === 2 ? 'Check In' : student.status === 1 ? 'Deactivate' : 'Activate'}
                                         </Text>
                                     </TouchableOpacity>
                                 )}
@@ -501,15 +521,22 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
 
                             {/* ── Vacancy Notice Action Row (Only for Active residents) ── */}
                             {student.status === 1 && (
-                                <View style={[styles.statusToggleRow, { marginTop: 12, paddingTop: 12 }]}>
+                                <View style={[styles.statusToggleRow, { marginTop: 12, paddingTop: 12, borderTopColor: isDark ? '#334155' : '#F1F5F9' }]}>
                                     <View style={styles.statusToggleLeft}>
-                                        <Text style={styles.noticeRowTitle}>📅 Vacancy Notice</Text>
-                                        <Text style={styles.statusToggleHint}>
+                                        <Text style={[styles.noticeRowTitle, { color: theme.textPrimary }]}>📅 Vacancy Notice</Text>
+                                        <Text style={[styles.statusToggleHint, { color: theme.textSecondary }]}>
                                             {student.vacate_notice_date ? 'Modify scheduled notice' : 'Schedule tenant checkout'}
                                         </Text>
                                     </View>
                                     <TouchableOpacity
-                                        style={[styles.statusToggleBtn, { backgroundColor: '#FEF3C7' }]}
+                                        style={[
+                                            styles.statusToggleBtn, 
+                                            { 
+                                                backgroundColor: theme.warning + '15', 
+                                                borderColor: theme.warning + '30', 
+                                                borderWidth: 1 
+                                            }
+                                        ]}
                                         onPress={() => {
                                             setNoticeDate(student.vacate_notice_date ? student.vacate_notice_date.split('T')[0] : new Date().toISOString().split('T')[0]);
                                             setNoticeReason(student.vacate_notice_reason || '');
@@ -517,7 +544,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                         }}
                                         activeOpacity={0.8}
                                     >
-                                        <Text style={[styles.statusToggleBtnText, { color: '#D97706' }]}>
+                                        <Text style={[styles.statusToggleBtnText, { color: theme.warning }]}>
                                             {student.vacate_notice_date ? 'Modify Notice' : 'Schedule Vacate'}
                                         </Text>
                                     </TouchableOpacity>
@@ -545,146 +572,209 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                             </Card>
                         )}
 
-                        {/* ── Balance & Quick Pay ───────────────────────────────── */}
-                        <Card style={styles.rentCard}>
-                            <View style={styles.rentHeader}>
-                                <View>
-                                    <Text style={styles.rentLabel}>Total Outstanding Balance</Text>
-                                    <Text style={[styles.rentValue, { color: outstandingBalance > 0 ? '#EF4444' : '#10B981' }]}>
-                                        ₹{outstandingBalance}
-                                    </Text>
+                        {/* ── Tab Switcher ── */}
+                        <View style={styles.tabContainer}>
+                            <TouchableOpacity
+                                style={[styles.tabButton, activeTab === 'info' && styles.activeTabButton]}
+                                onPress={() => setActiveTab('info')}
+                                activeOpacity={0.8}
+                            >
+                                <User size={16} color={activeTab === 'info' ? theme.primary : '#64748B'} />
+                                <Text style={[styles.tabButtonText, activeTab === 'info' && { color: theme.primary, fontWeight: '700' }]}>
+                                    Info Details
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.tabButton, activeTab === 'payments' && styles.activeTabButton]}
+                                onPress={() => setActiveTab('payments')}
+                                activeOpacity={0.8}
+                            >
+                                <CreditCard size={16} color={activeTab === 'payments' ? theme.primary : '#64748B'} />
+                                <Text style={[styles.tabButtonText, activeTab === 'payments' && { color: theme.primary, fontWeight: '700' }]}>
+                                    Payments & Ledger
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {activeTab === 'info' ? (
+                            <>
+                                {/* Contact Information */}
+                                <View style={[styles.premiumCardContainer, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                    <View style={styles.premiumCardHeader}>
+                                        <Phone size={16} color={theme.primary} />
+                                        <Text style={[styles.premiumCardHeaderTitle, { color: theme.textPrimary }]}>Contact & Location</Text>
+                                    </View>
+                                    <View style={styles.premiumGrid}>
+                                        <View style={[styles.premiumGridItem, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                            <Text style={styles.premiumLabel}>Phone Number</Text>
+                                            <Text style={[styles.premiumValue, { color: theme.textPrimary }]}>{student.phone || 'N/A'}</Text>
+                                            {student.phone && (
+                                                <View style={styles.premiumActionRow}>
+                                                    <TouchableOpacity style={[styles.premiumActionPill, { backgroundColor: theme.primary + '15' }]} onPress={() => Linking.openURL(`tel:${student.phone}`)}>
+                                                        <Phone size={12} color={theme.primary} />
+                                                        <Text style={[styles.premiumActionPillText, { color: theme.primary }]}>Call</Text>
+                                                    </TouchableOpacity>
+                                                    <TouchableOpacity style={[styles.premiumActionPill, { backgroundColor: '#25D36615' }]} onPress={() => Linking.openURL(`whatsapp://send?phone=91${student.phone}`)}>
+                                                        <MessageCircle size={12} color="#25D366" />
+                                                        <Text style={[styles.premiumActionPillText, { color: '#25D366' }]}>WhatsApp</Text>
+                                                    </TouchableOpacity>
+                                                </View>
+                                            )}
+                                        </View>
+                                        <View style={[styles.premiumGridItem, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                            <Text style={styles.premiumLabel}>Email Address</Text>
+                                            <Text style={[styles.premiumValue, { color: theme.textPrimary }]}>{student.email || 'N/A'}</Text>
+                                            {student.email && (
+                                                <TouchableOpacity style={[styles.premiumActionPill, { backgroundColor: theme.primary + '15', alignSelf: 'flex-start', marginTop: 8 }]} onPress={() => Linking.openURL(`mailto:${student.email}`)}>
+                                                    <Mail size={12} color={theme.primary} />
+                                                    <Text style={[styles.premiumActionPillText, { color: theme.primary }]}>Send Email</Text>
+                                                </TouchableOpacity>
+                                            )}
+                                        </View>
+                                        <View style={[styles.premiumGridItem, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                            <Text style={styles.premiumLabel}>Permanent Address</Text>
+                                            <Text style={[styles.premiumValue, { color: theme.textPrimary }]}>{student.permanent_address || 'N/A'}</Text>
+                                        </View>
+                                    </View>
                                 </View>
-                                {outstandingBalance > 0 && (
-                                    <TouchableOpacity style={styles.payButton} onPress={openPayModal}>
-                                        <Text style={styles.payButtonText}>Pay Now</Text>
-                                    </TouchableOpacity>
-                                )}
-                            </View>
-                        </Card>
 
-                        {/* ── Contact Information ───────────────────────────────── */}
-                        <Text style={styles.sectionTitle}>Contact Information</Text>
-                        <Card style={styles.infoCard}>
-                            <DetailItem
-                                icon={<Phone size={20} color="#FF6B6B" />}
-                                label="Phone Number"
-                                value={student.phone}
-                                onPress={() => Linking.openURL(`tel:${student.phone}`)}
-                            />
-                            <View style={styles.divider} />
-                            <DetailItem
-                                icon={<Mail size={20} color="#FF6B6B" />}
-                                label="Email Address"
-                                value={student.email}
-                                onPress={student.email ? () => Linking.openURL(`mailto:${student.email}`) : undefined}
-                            />
-                            <View style={styles.divider} />
-                            <DetailItem
-                                icon={<MapPin size={20} color="#FF6B6B" />}
-                                label="Address"
-                                value={student.permanent_address}
-                            />
-                        </Card>
+                                {/* Guardian Information */}
+                                <View style={[styles.premiumCardContainer, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                    <View style={styles.premiumCardHeader}>
+                                        <User size={16} color={theme.primary} />
+                                        <Text style={[styles.premiumCardHeaderTitle, { color: theme.textPrimary }]}>Guardian Information</Text>
+                                    </View>
+                                    <View style={styles.premiumGrid}>
+                                        <View style={styles.premiumGridRow}>
+                                            <View style={[styles.premiumGridItem, { flex: 1, backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                                <Text style={styles.premiumLabel}>Guardian Name</Text>
+                                                <Text style={[styles.premiumValue, { color: theme.textPrimary }]}>{student.guardian_name || 'N/A'}</Text>
+                                            </View>
+                                            <View style={[styles.premiumGridItem, { flex: 1, backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                                <Text style={styles.premiumLabel}>Relation</Text>
+                                                <Text style={[styles.premiumValue, { color: theme.textPrimary }]}>{student.guardian_relation_name || student.guardian_relation || 'N/A'}</Text>
+                                            </View>
+                                        </View>
+                                        <View style={[styles.premiumGridItem, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                            <Text style={styles.premiumLabel}>Guardian Phone</Text>
+                                            <Text style={[styles.premiumValue, { color: theme.textPrimary }]}>{student.guardian_phone || 'N/A'}</Text>
+                                            {student.guardian_phone && (
+                                                <TouchableOpacity style={[styles.premiumActionPill, { backgroundColor: theme.primary + '15', alignSelf: 'flex-start', marginTop: 8 }]} onPress={() => Linking.openURL(`tel:${student.guardian_phone}`)}>
+                                                    <Phone size={12} color={theme.primary} />
+                                                    <Text style={[styles.premiumActionPillText, { color: theme.primary }]}>Call Guardian</Text>
+                                                </TouchableOpacity>
+                                            )}
+                                        </View>
+                                    </View>
+                                </View>
 
-                        {/* ── Guardian Information ───────────────────────────────── */}
-                        <Text style={styles.sectionTitle}>Guardian Information</Text>
-                        <Card style={styles.infoCard}>
-                            <DetailItem
-                                icon={<User size={20} color="#FF6B6B" />}
-                                label="Guardian Name"
-                                value={student.guardian_name}
-                            />
-                            <View style={styles.divider} />
-                            <DetailItem
-                                icon={<Phone size={20} color="#FF6B6B" />}
-                                label="Guardian Phone"
-                                value={student.guardian_phone}
-                                onPress={student.guardian_phone ? () => Linking.openURL(`tel:${student.guardian_phone}`) : undefined}
-                            />
-                            <View style={styles.divider} />
-                            <DetailItem
-                                icon={<Users size={20} color="#FF6B6B" />}
-                                label="Relation"
-                                value={student.guardian_relation_name || student.guardian_relation}
-                            />
-                        </Card>
+                                {/* Personal & Identity */}
+                                <View style={[styles.premiumCardContainer, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                    <View style={styles.premiumCardHeader}>
+                                        <CreditCard size={16} color={theme.primary} />
+                                        <Text style={[styles.premiumCardHeaderTitle, { color: theme.textPrimary }]}>Personal & Identity</Text>
+                                    </View>
+                                    <View style={styles.premiumGrid}>
+                                        <View style={styles.premiumGridRow}>
+                                            <View style={[styles.premiumGridItem, { flex: 1, backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                                <Text style={styles.premiumLabel}>Gender</Text>
+                                                <Text style={[styles.premiumValue, { color: theme.textPrimary }]}>{student.gender || 'N/A'}</Text>
+                                            </View>
+                                            <View style={[styles.premiumGridItem, { flex: 1, backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                                <Text style={styles.premiumLabel}>Date of Birth</Text>
+                                                <Text style={[styles.premiumValue, { color: theme.textPrimary }]}>
+                                                    {student.date_of_birth ? new Date(student.date_of_birth).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                        <View style={[styles.premiumGridItem, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                            <Text style={styles.premiumLabel}>ID Proof</Text>
+                                            <Text style={[styles.premiumValue, { color: theme.textPrimary }]}>
+                                                {student.id_proof_type_name || 'ID'}: {student.id_proof_number || 'N/A'}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                </View>
 
-                        {/* ── Personal & Identity ────────────────────────────────── */}
-                        <Text style={styles.sectionTitle}>Personal & Identity</Text>
-                        <Card style={styles.infoCard}>
-                            <DetailItem
-                                icon={<User size={20} color="#4A90E2" />}
-                                label="Gender"
-                                value={student.gender}
-                            />
-                            <View style={styles.divider} />
-                            <DetailItem
-                                icon={<Calendar size={20} color="#4A90E2" />}
-                                label="Date of Birth"
-                                value={student.date_of_birth
-                                    ? new Date(student.date_of_birth).toLocaleDateString()
-                                    : 'N/A'}
-                            />
-                            <View style={styles.divider} />
-                            <DetailItem
-                                icon={<CreditCard size={20} color="#4A90E2" />}
-                                label="ID Proof"
-                                value={`${student.id_proof_type_name || 'ID'} : ${student.id_proof_number || 'N/A'}`}
-                            />
-                        </Card>
-
-                        {/* ── Registration Details ──────────────────────────────── */}
-                        <Text style={styles.sectionTitle}>Registration Details</Text>
-                        <Card style={styles.infoCard}>
-                            <DetailItem
-                                icon={<Calendar size={20} color="#10B981" />}
-                                label="Admission Date"
-                                value={student.admission_date
-                                    ? new Date(student.admission_date).toLocaleDateString()
-                                    : 'N/A'}
-                            />
-                            <View style={styles.divider} />
-                            <DetailItem
-                                icon={<CreditCard size={20} color="#10B981" />}
-                                label="Monthly Rent"
-                                value={`₹${student.monthly_rent || 0}`}
-                            />
-                            <View style={styles.divider} />
-                            <DetailItem
-                                icon={<IndianRupee size={20} color="#10B981" />}
-                                label="Admission Fee"
-                                value={`₹${student.admission_fee || 0} (${student.admission_status === 1 ? 'Paid' : 'Unpaid'})`}
-                            />
-                        </Card>
-
-                        {/* ── Payment History (deferred render) ────────────────── */}
-                        <Text style={styles.sectionTitle}>Payment History</Text>
-                        {historyLoading ? (
-                            <ActivityIndicator size="small" color="#94A3B8" style={{ marginVertical: 20 }} />
-                        ) : paymentHistory.length > 0 ? (
-                            paymentHistory.map((payment: any, index: number) => (
-                                <PaymentHistoryItem
-                                    key={`${payment.payment_id || 'pay'}-${index}`}
-                                    payment={payment}
-                                    student={student}
-                                    onPress={(pay) => navigation.navigate('Receipt', {
-                                        feeData: {
-                                            ...pay,
-                                            first_name: student.first_name,
-                                            last_name: student.last_name,
-                                            phone: student.phone,
-                                            room_number: student.room_number,
-                                            paid_amount: pay.amount,
-                                            fee_id: pay.payment_id || pay.id
-                                        }
-                                    })}
-                                />
-                            ))
+                                {/* Registration Details */}
+                                <View style={[styles.premiumCardContainer, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                    <View style={styles.premiumCardHeader}>
+                                        <Calendar size={16} color={theme.primary} />
+                                        <Text style={[styles.premiumCardHeaderTitle, { color: theme.textPrimary }]}>Hostel Registration</Text>
+                                    </View>
+                                    <View style={styles.premiumGrid}>
+                                        <View style={styles.premiumGridRow}>
+                                            <View style={[styles.premiumGridItem, { flex: 1, backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                                <Text style={styles.premiumLabel}>Admission Date</Text>
+                                                <Text style={[styles.premiumValue, { color: theme.textPrimary }]}>
+                                                    {student.admission_date ? new Date(student.admission_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
+                                                </Text>
+                                            </View>
+                                            <View style={[styles.premiumGridItem, { flex: 1, backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                                <Text style={styles.premiumLabel}>Monthly Rent</Text>
+                                                <Text style={[styles.premiumValue, { color: theme.primary, fontWeight: '800' }]}>
+                                                    ₹{student.monthly_rent || 0}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                        <View style={[styles.premiumGridItem, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                            <Text style={styles.premiumLabel}>Admission Fee</Text>
+                                            <Text style={[styles.premiumValue, { color: theme.textPrimary }]}>
+                                                ₹{student.admission_fee || 0} • <Text style={{ color: student.admission_status === 1 ? theme.success : theme.error, fontWeight: '700' }}>{student.admission_status === 1 ? 'Paid' : 'Unpaid'}</Text>
+                                            </Text>
+                                        </View>
+                                    </View>
+                                </View>
+                            </>
                         ) : (
-                            <Card style={styles.emptyHistoryCard}>
-                                <Clock size={32} color="#CBD5E1" />
-                                <Text style={styles.emptyHistoryText}>No payment history found</Text>
-                            </Card>
+                            <>
+                                {/* ── Balance & Quick Pay ───────────────────────────────── */}
+                                <Card style={styles.rentCard}>
+                                    <View style={styles.rentHeader}>
+                                        <View>
+                                            <Text style={styles.rentLabel}>Total Outstanding Balance</Text>
+                                            <Text style={[styles.rentValue, { color: outstandingBalance > 0 ? '#EF4444' : '#10B981' }]}>
+                                                ₹{outstandingBalance}
+                                            </Text>
+                                        </View>
+                                        {outstandingBalance > 0 && (
+                                            <TouchableOpacity style={styles.payButton} onPress={openPayModal}>
+                                                <Text style={styles.payButtonText}>Pay Now</Text>
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
+                                </Card>
+
+                                {/* ── Payment History (deferred render) ────────────────── */}
+                                <Text style={styles.sectionTitle}>Payment History</Text>
+                                {historyLoading ? (
+                                    <ActivityIndicator size="small" color="#94A3B8" style={{ marginVertical: 20 }} />
+                                ) : paymentHistory.length > 0 ? (
+                                    paymentHistory.map((payment: any, index: number) => (
+                                        <PaymentHistoryItem
+                                            key={`${payment.payment_id || 'pay'}-${index}`}
+                                            payment={payment}
+                                            student={student}
+                                            onPress={(pay) => navigation.navigate('Receipt', {
+                                                feeData: {
+                                                    ...pay,
+                                                    first_name: student.first_name,
+                                                    last_name: student.last_name,
+                                                    phone: student.phone,
+                                                    room_number: student.room_number,
+                                                    paid_amount: pay.amount,
+                                                    fee_id: pay.payment_id || pay.id
+                                                }
+                                            })}
+                                        />
+                                    ))
+                                ) : (
+                                    <Card style={styles.emptyHistoryCard}>
+                                        <Clock size={32} color="#CBD5E1" />
+                                        <Text style={styles.emptyHistoryText}>No payment history found</Text>
+                                    </Card>
+                                )}
+                            </>
                         )}
                     </>
                 )}
@@ -983,6 +1073,185 @@ const styles = StyleSheet.create({
     noticeCancelBtn: { backgroundColor: '#FFF', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#F59E0B' },
     noticeCancelText: { color: '#D97706', fontWeight: '700', fontSize: 12 },
     noticeRowTitle: { fontSize: 14, fontWeight: '700', color: '#1E293B', marginBottom: 2 },
+    tabContainer: {
+        flexDirection: 'row',
+        backgroundColor: '#F1F5F9',
+        borderRadius: 12,
+        padding: 4,
+        marginBottom: 16,
+    },
+    tabButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 10,
+        gap: 8,
+        borderRadius: 8,
+    },
+    activeTabButton: {
+        backgroundColor: '#FFFFFF',
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+    },
+    tabButtonText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#64748B',
+    },
+    heroContainer: {
+        borderRadius: 20,
+        padding: 24,
+        marginBottom: 20,
+        borderWidth: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+    },
+    heroAvatarContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 14,
+    },
+    heroAvatar: {
+        width: 90,
+        height: 90,
+        borderRadius: 45,
+    },
+    heroAvatarPlaceholder: {
+        width: 90,
+        height: 90,
+        borderRadius: 45,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    heroAvatarInitials: {
+        fontSize: 30,
+        fontWeight: '800',
+    },
+    heroName: {
+        fontSize: 20,
+        fontWeight: '800',
+        textAlign: 'center',
+        marginBottom: 4,
+    },
+    heroRoom: {
+        fontSize: 13,
+        color: '#64748B',
+        fontWeight: '600',
+        textAlign: 'center',
+        marginBottom: 12,
+    },
+    heroBadgeRow: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 4,
+    },
+    heroStatusIndicator: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    heroStatusText: {
+        fontSize: 11,
+        fontWeight: '700',
+    },
+    heroBadge: {
+        alignSelf: 'center',
+    },
+    heroDivider: {
+        height: 1,
+        width: '100%',
+        marginVertical: 16,
+    },
+    heroActionsRow: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: 12,
+        width: '100%',
+    },
+    heroActionBtn: {
+        flex: 1,
+        paddingVertical: 10,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    heroActionBtnText: {
+        fontSize: 12,
+        fontWeight: '700',
+    },
+    premiumCardContainer: {
+        borderRadius: 16,
+        borderWidth: 1,
+        padding: 16,
+        marginBottom: 16,
+        elevation: 1,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.02,
+        shadowRadius: 4,
+    },
+    premiumCardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 14,
+    },
+    premiumCardHeaderTitle: {
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    premiumGrid: {
+        flexDirection: 'column',
+        gap: 10,
+    },
+    premiumGridRow: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    premiumGridItem: {
+        borderRadius: 12,
+        padding: 12,
+        borderWidth: 1,
+    },
+    premiumLabel: {
+        fontSize: 9,
+        fontWeight: '600',
+        color: '#94A3B8',
+        marginBottom: 4,
+        textTransform: 'uppercase',
+    },
+    premiumValue: {
+        fontSize: 13,
+        fontWeight: '700',
+    },
+    premiumActionRow: {
+        flexDirection: 'row',
+        gap: 8,
+        marginTop: 8,
+    },
+    premiumActionPill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 6,
+    },
+    premiumActionPillText: {
+        fontSize: 11,
+        fontWeight: '700',
+    },
 });
 
 export default StudentDetailsScreen;

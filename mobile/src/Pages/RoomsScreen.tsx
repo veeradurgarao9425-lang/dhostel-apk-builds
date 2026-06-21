@@ -13,7 +13,6 @@ import {
     RefreshControl,
     Dimensions,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Plus, Search, X } from 'lucide-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
@@ -33,11 +32,11 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 const { width } = Dimensions.get('window');
 const COLUMN_COUNT = 3;
-const ITEM_WIDTH = (width - 48) / COLUMN_COUNT;
+const ITEM_WIDTH = (width - 32 - 24) / COLUMN_COUNT;
 
 export default function RoomsScreen({ navigation, route }: any) {
     const { user } = useAuth();
-    const { theme } = useTheme();
+    const { theme, isDark } = useTheme();
     const { showApiError } = useToast();
     const [search, setSearch] = useState('');
     const [rooms, setRooms] = useState<any[]>([]);
@@ -46,7 +45,7 @@ export default function RoomsScreen({ navigation, route }: any) {
     const [activeTab, setActiveTab] = useState('All');
     const isMountedRef = useRef(true);
 
-    // ── Fetch rooms (isMounted-safe) ──────────────────────────────────────────
+    // ── Fetch rooms ──────────────────────────────────────────────────────────
     const fetchRooms = useCallback(async (isRefresh = false) => {
         try {
             if (!isRefresh) setLoading(true);
@@ -112,14 +111,24 @@ export default function RoomsScreen({ navigation, route }: any) {
         const isFull = room.available_beds === 0;
         const isVacant = room.occupied_beds === 0;
 
-        let statusColor = COLORS.warning;
-        if (isFull) statusColor = COLORS.error;
-        if (isVacant) statusColor = COLORS.success;
+        let statusColor = theme.warning;
+
+        if (isFull) {
+            statusColor = theme.error;
+        } else if (isVacant) {
+            statusColor = theme.success;
+        }
 
         return (
             <TouchableOpacity
                 key={room.room_id}
-                style={[styles.roomBox, { borderColor: statusColor + '55' }]}
+                style={[
+                    styles.roomCard,
+                    {
+                        backgroundColor: theme.cardBg,
+                        borderColor: statusColor + '55',
+                    }
+                ]}
                 onPress={() => navigation.navigate('RoomDetails', { roomId: room.room_id })}
                 activeOpacity={0.85}
             >
@@ -128,8 +137,8 @@ export default function RoomsScreen({ navigation, route }: any) {
                         {isFull ? 'FULL' : `${room.available_beds} FREE`}
                     </Text>
                 </View>
-                <Text style={styles.roomLabel}>RM</Text>
-                <Text style={styles.roomNum}>{room.room_number}</Text>
+                <Text style={[styles.roomLabel, { color: theme.textSecondary }]}>RM</Text>
+                <Text style={[styles.roomNum, { color: theme.textPrimary }]}>{room.room_number}</Text>
                 <View style={[styles.capacityBar, { backgroundColor: statusColor + '22' }]}>
                     <Text style={[styles.capacityText, { color: statusColor }]}>
                         {room.occupied_beds}/{room.total_capacity}
@@ -143,7 +152,7 @@ export default function RoomsScreen({ navigation, route }: any) {
     const showEmpty = !loading && groupedData.length === 0;
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: isDark ? theme.background : '#F8FAFC' }]}>
             <StatusBar barStyle="light-content" />
             <AppHeader
                 title="Room Status"
@@ -184,7 +193,10 @@ export default function RoomsScreen({ navigation, route }: any) {
                                 LayoutAnimation.easeInEaseOut();
                                 setActiveTab(tab.key);
                             }}
-                            style={[styles.tabItem, activeTab === tab.key && styles.activeTab]}
+                            style={[
+                                styles.tabItem,
+                                activeTab === tab.key && { backgroundColor: theme.cardBg }
+                            ]}
                         >
                             <Text style={[
                                 styles.tabLabelText,
@@ -227,11 +239,13 @@ export default function RoomsScreen({ navigation, route }: any) {
                             tintColor={COLORS.primary}
                         />
                     }
-                    renderSectionHeader={({ section: { title } }) => (
+                    renderSectionHeader={({ section }) => (
                         <View style={styles.floorHeaderRow}>
-                            <View style={styles.floorHeaderLine} />
-                            <Text style={styles.floorHeader}>{title}</Text>
-                            <View style={styles.floorHeaderLine} />
+                            <View style={[styles.floorHeaderLine, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]} />
+                            <Text style={[styles.floorHeader, { color: theme.textPrimary }]}>
+                                {section.title} ({section.data[0]?.length || 0} Rooms)
+                            </Text>
+                            <View style={[styles.floorHeaderLine, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]} />
                         </View>
                     )}
                     renderItem={({ item }) => (
@@ -246,35 +260,14 @@ export default function RoomsScreen({ navigation, route }: any) {
                 style={[styles.fab, { backgroundColor: COLORS.primary }]}
                 onPress={() => navigation.navigate('AddRoom')}
             >
-                <Plus color="#FFF" size={28} />
+                <Plus color="#FFF" size={22} strokeWidth={3.5} />
             </TouchableOpacity>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: COLORS.background },
-    header: {
-        paddingTop: 50,
-        paddingBottom: 20,
-        paddingHorizontal: SPACING.xl,
-        borderBottomLeftRadius: RADIUS.xxl,
-        borderBottomRightRadius: RADIUS.xxl,
-    },
-    headerTop: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: SPACING.xl,
-    },
-    backBtn: {
-        width: 40, height: 40, borderRadius: 20,
-        backgroundColor: 'rgba(255,255,255,0.18)',
-        alignItems: 'center', justifyContent: 'center',
-        marginRight: SPACING.md,
-    },
-    headerTitle: { fontSize: FONT.xl, fontWeight: FONT.black, color: '#FFF' },
-    headerSubtitle: { fontSize: FONT.sm, color: 'rgba(255,255,255,0.8)', fontWeight: FONT.semiBold },
+    container: { flex: 1, backgroundColor: '#F8FAFC' },
     headerActions: { flexDirection: 'row', gap: SPACING.md },
     searchContainer: {
         backgroundColor: 'rgba(255,255,255,0.18)',
@@ -306,10 +299,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderRadius: RADIUS.sm + 2,
     },
-    activeTab: { backgroundColor: COLORS.surface },
     tabLabelText: { fontSize: FONT.sm, fontWeight: FONT.bold },
 
-    listContent: { padding: SPACING.lg, paddingBottom: 100 },
+    listContent: { padding: 16, paddingBottom: 120 },
     floorHeaderRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -317,53 +309,69 @@ const styles = StyleSheet.create({
         marginTop: SPACING.sm,
         gap: SPACING.sm,
     },
-    floorHeaderLine: { flex: 1, height: 1, backgroundColor: COLORS.border },
+    floorHeaderLine: { flex: 1, height: 1 },
+    floorHeaderBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 4,
+        backgroundColor: 'rgba(0, 0, 0, 0.03)',
+        borderRadius: 20,
+    },
     floorHeader: {
-        fontSize: FONT.sm,
-        fontWeight: FONT.bold,
-        color: COLORS.textMuted,
+        fontSize: 12,
+        fontWeight: '800',
         textTransform: 'uppercase',
         letterSpacing: 1,
     },
-    gridRow: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.md, marginBottom: SPACING.md },
-    roomBox: {
+    gridRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 12 },
+    roomCard: {
         width: ITEM_WIDTH,
         height: 110,
-        backgroundColor: COLORS.surface,
-        borderRadius: RADIUS.xl,
+        borderRadius: 16,
         borderWidth: 1.5,
         alignItems: 'center',
         justifyContent: 'center',
         paddingTop: 12,
-        ...SHADOW.card,
+        position: 'relative',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.03,
+        shadowRadius: 4,
+        elevation: 1,
     },
     statusTag: {
         position: 'absolute',
         top: -1, left: -1, right: -1,
-        borderTopLeftRadius: RADIUS.xl - 2,
-        borderTopRightRadius: RADIUS.xl - 2,
+        borderTopLeftRadius: 14,
+        borderTopRightRadius: 14,
         paddingVertical: 3,
         alignItems: 'center',
     },
-    statusTagText: { fontSize: 8, fontWeight: FONT.black, color: '#FFF' },
-    roomLabel: { fontSize: FONT.xs, fontWeight: FONT.bold, color: COLORS.textMuted, marginTop: 4 },
-    roomNum: { fontSize: FONT.xl, fontWeight: FONT.black, color: COLORS.textPrimary },
+    statusTagText: { fontSize: 8, fontWeight: '900', color: '#FFF' },
+    roomLabel: { fontSize: 10, fontWeight: '700', marginTop: 4 },
+    roomNum: { fontSize: 20, fontWeight: '900' },
     capacityBar: {
-        marginTop: SPACING.xs,
-        paddingHorizontal: SPACING.sm,
+        marginTop: 6,
+        paddingHorizontal: 8,
         paddingVertical: 2,
-        borderRadius: RADIUS.full,
+        borderRadius: 12,
     },
-    capacityText: { fontSize: 10, fontWeight: FONT.bold },
+    capacityText: { fontSize: 10, fontWeight: '700' },
     fab: {
         position: 'absolute',
-        bottom: 30,
-        right: SPACING.xl,
-        width: 56,
-        height: 56,
-        borderRadius: 28,
+        bottom: 45,
+        right: 24,
+        width: 50,
+        height: 50,
+        borderRadius: 25,
         justifyContent: 'center',
         alignItems: 'center',
-        ...SHADOW.strong,
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 2 },
     },
 });

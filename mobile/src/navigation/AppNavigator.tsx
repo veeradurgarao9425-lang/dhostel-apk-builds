@@ -47,6 +47,7 @@ import TenantTransactionsScreen from '../Pages/TenantTransactionsScreen';
 import CollectedPaymentsScreen from '../Pages/CollectedPaymentsScreen';
 import OverviewScreen        from '../Pages/OverviewScreen';
 import PendingPaymentsScreen from '../Pages/PendingPaymentsScreen';
+import DownloadReceiptsScreen from '../Pages/DownloadReceiptsScreen';
 
 // ── Navigators ────────────────────────────────────────────────────────────────
 import BottomTabNavigator from '../components/BottomTabNavigator';
@@ -144,6 +145,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                 <Stack.Screen name="Income"         component={IncomeScreen}         />
                 <Stack.Screen name="IncomeDetails"  component={IncomeDetailsScreen}  />
                 <Stack.Screen name="CollectedPayments" component={CollectedPaymentsScreen} />
+                <Stack.Screen name="DownloadReceipts" component={DownloadReceiptsScreen} />
                 <Stack.Screen
                     name="AddIncome"
                     component={AddIncomeScreen}

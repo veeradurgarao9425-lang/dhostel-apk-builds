@@ -334,9 +334,9 @@ export const HostelChatbot: React.FC = () => {
   const chatbotPosition = useMemo(() => {
     const listPagesWithFAB = ['Students', 'Rooms', 'Expenses', 'Maintenance', 'Staff'];
     if (currentRoute && listPagesWithFAB.includes(currentRoute)) {
-      return { bottom: 110, right: 22 };
+      return { bottom: 110, right: 24 };
     }
-    return { bottom: 140, right: 12 };
+    return { bottom: 140, right: 24 };
   }, [currentRoute]);
 
   const [chatMessages, setChatMessages] = useState<Array<{ sender: 'bot' | 'user'; text: string; link?: { path: string; label: string }; steps?: string[] }>>([
@@ -463,7 +463,7 @@ export const HostelChatbot: React.FC = () => {
           style={[s.fab, chatbotPosition]}
           activeOpacity={0.8}
         >
-          <Ionicons name="chatbubble-ellipses" size={26} color="#FFF" />
+          <Ionicons name="chatbubble-ellipses" size={22} color="#FFF" />
         </TouchableOpacity>
       )}
 
@@ -727,10 +727,10 @@ const s = StyleSheet.create({
   fab: {
     position: 'absolute',
     bottom: 140,
-    right: 12,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    right: 24,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
