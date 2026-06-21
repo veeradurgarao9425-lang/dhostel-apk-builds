@@ -196,7 +196,7 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
                 ref={scrollViewRef}
                 style={styles.content}
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: isKeyboardVisible ? 80 : 100 }}
+                contentContainerStyle={{ paddingBottom: isKeyboardVisible ? 200 : 100 }}
                 keyboardShouldPersistTaps="handled"
             >
                 <Card style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
@@ -298,7 +298,7 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
                         onFocus={() => {
                             setTimeout(() => {
                                 scrollViewRef.current?.scrollToEnd({ animated: true });
-                            }, 100);
+                            }, 200);
                         }}
                     />
 
@@ -505,9 +505,9 @@ const styles = StyleSheet.create({
         paddingVertical: 6,
         paddingHorizontal: 12,
         borderRadius: 8,
-        backgroundColor: '#FFF1F1',
+        backgroundColor: '#EDE9FE',
     },
-    closeText: { color: '#FF6B6B', fontWeight: '700', fontSize: 14 },
+    closeText: { color: '#7C3AED', fontWeight: '700', fontSize: 14 },
     modalOption: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -522,7 +522,7 @@ const styles = StyleSheet.create({
     },
     optionText: { fontSize: 15, color: '#334155', fontWeight: '500' },
     optionTextSelected: {
-        color: '#FF6B6B',
+        color: '#7C3AED',
         fontWeight: '700',
     },
     amenitiesContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -571,7 +571,7 @@ const styles = StyleSheet.create({
         flex: 2,
         height: 48,
         borderRadius: 12,
-        backgroundColor: '#FF6B6B',
+        backgroundColor: '#7C3AED',
         alignItems: 'center',
         justifyContent: 'center',
     },

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, TouchableWithoutFeedback, Platform, Image } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, TouchableWithoutFeedback, Platform, Image, PanResponder, Alert } from 'react-native';
 import { User, LogOut, Palette, ChevronRight, Check } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
@@ -7,10 +7,61 @@ import { useTheme, themes, ThemeId } from '../../contexts/ThemeContext';
 
 export const ProfileMenu = () => {
     const navigation = useNavigation<any>();
-    const { user, signOut } = useAuth();
+    const { user, signOut, cycleHostels } = useAuth();
     const { theme, themeId, setThemeId } = useTheme();
     const [menuVisible, setMenuVisible] = useState(false);
     const [showThemes, setShowThemes] = useState(false);
+    const [cycling, setCycling] = useState(false);
+    
+    const lastTap = useRef(0);
+
+    const handleCycle = async () => {
+        if (cycling) return;
+        setCycling(true);
+        try {
+            const nextHostelName = await cycleHostels();
+            if (nextHostelName) {
+                Alert.alert("Context Switched", `Switched active hostel to: ${nextHostelName}`);
+            } else {
+                Alert.alert("Context Switch", "Add another active hostel to cycle between them!");
+            }
+        } catch (e) {
+            console.error("Context switch error:", e);
+            Alert.alert("Error", "Failed to switch active hostel.");
+        } finally {
+            setCycling(false);
+        }
+    };
+
+    const handleTap = () => {
+        const now = Date.now();
+        const DOUBLE_PRESS_DELAY = 300;
+        if (now - lastTap.current < DOUBLE_PRESS_DELAY) {
+            handleCycle();
+        } else {
+            lastTap.current = now;
+            setTimeout(() => {
+                if (Date.now() - lastTap.current >= DOUBLE_PRESS_DELAY) {
+                    navigation.navigate('Profile');
+                }
+            }, DOUBLE_PRESS_DELAY);
+        }
+    };
+
+    const panResponder = useRef(
+        PanResponder.create({
+            onStartShouldSetPanResponder: () => true,
+            onMoveShouldSetPanResponder: () => true,
+            onPanResponderRelease: (evt, gestureState) => {
+                const SWIPE_THRESHOLD = 30;
+                if (Math.abs(gestureState.dy) > SWIPE_THRESHOLD) {
+                    handleCycle();
+                } else {
+                    handleTap();
+                }
+            },
+        })
+    ).current;
 
     const handleLogout = async () => {
         setMenuVisible(false);
@@ -23,10 +74,9 @@ export const ProfileMenu = () => {
 
     return (
         <>
-            <TouchableOpacity
-                onPress={() => navigation.navigate('Profile')}
-                style={styles.profileButton}
-                activeOpacity={0.8}
+            <View
+                {...panResponder.panHandlers}
+                style={[styles.profileButton, { cursor: 'pointer' }]}
             >
                 <View style={[styles.avatarMini, { backgroundColor: '#EDE9FE', overflow: 'hidden' }]}>
                     <Image
@@ -34,7 +84,7 @@ export const ProfileMenu = () => {
                         style={styles.avatarImage}
                     />
                 </View>
-            </TouchableOpacity>
+            </View>
 
             {/* Modal commented out as we navigate directly to Profile
             <Modal

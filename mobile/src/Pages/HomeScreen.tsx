@@ -216,7 +216,7 @@ export default function HomeScreen() {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [user]);
+    }, [user, user?.hostel_id]);
 
     useFocusEffect(useCallback(() => { load(); }, [load]));
 
@@ -566,17 +566,17 @@ export default function HomeScreen() {
                                 <Text style={[s.statNum, { color: '#7C3AED' }]} numberOfLines={1}>{data.activeTenants}</Text>
                             </TouchableOpacity>
 
-                            {/* Card 2: Rooms */}
+                            {/* Card 2: Reports */}
                             <TouchableOpacity
                                 style={[s.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
-                                onPress={() => navigation.navigate('Rooms', { filter: 'All' })}
+                                onPress={() => navigation.navigate('Reports')}
                                 activeOpacity={0.8}
                             >
                                 <View style={[s.statIconBox, { backgroundColor: '#FFEDD5' }]}>
-                                    <Ionicons name="home-outline" size={13} color="#EA580C" />
+                                    <Ionicons name="bar-chart-outline" size={13} color="#EA580C" />
                                 </View>
-                                <Text style={[s.statLabel, { color: theme.textSecondary }]} numberOfLines={1}>Rooms</Text>
-                                <Text style={[s.statNum, { color: '#EA580C' }]} numberOfLines={1}>{data.totalRooms}</Text>
+                                <Text style={[s.statLabel, { color: theme.textSecondary }]} numberOfLines={1}>Reports</Text>
+                                <Text style={[s.statNum, { color: '#EA580C', fontSize: 12 }]} numberOfLines={1}>View</Text>
                             </TouchableOpacity>
 
                             {/* Card 3: Expenses (This Month) */}

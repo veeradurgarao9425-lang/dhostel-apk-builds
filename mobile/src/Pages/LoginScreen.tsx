@@ -19,7 +19,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 
-const { width, height } = Dimensions.get('window');
+const { height } = Dimensions.get('window');
 
 export default function LoginScreen({ navigation }: any) {
     const { signIn } = useAuth();
@@ -29,7 +29,6 @@ export default function LoginScreen({ navigation }: any) {
     const [isLoading, setIsLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-    // Ref to scroll view so we can scroll to password field when focused
     const scrollRef = useRef<ScrollView>(null);
     const passwordRef = useRef<TextInput>(null);
 
@@ -55,35 +54,37 @@ export default function LoginScreen({ navigation }: any) {
         }
     };
 
-    // When password field is focused, scroll down so it is always visible
     const onPasswordFocus = () => {
         setTimeout(() => {
             scrollRef.current?.scrollToEnd({ animated: true });
-        }, 300); // wait for keyboard animation to start
+        }, 300);
     };
 
     return (
         <KeyboardAvoidingView
             style={{ flex: 1 }}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            // On Android 'height' shrinks the available space properly
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+            keyboardVerticalOffset={0}
         >
             <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
                 <View style={styles.container}>
                     <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-                    {/* Top gradient header */}
+                    {/* ── Purple gradient header ── */}
                     <LinearGradient
-                        colors={['#FF7B7B', '#FF6B6B']}
+                        colors={['#7C3AED', '#5F2EEA']}
                         style={styles.topSection}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
                     >
+                        {/* Decorative background circles */}
+                        <View style={styles.decorCircle1} />
+                        <View style={styles.decorCircle2} />
+
                         <View style={styles.logoContainer}>
-                            <Image 
+                            <Image
                                 source={require('../../assets/stivologo.png')}
-                                style={{ width: 100, height: 100, marginBottom: 16, borderRadius: 20 }}
+                                style={styles.logoImage}
                                 resizeMode="contain"
                             />
                             <Text style={styles.appName}>Stivo</Text>
@@ -91,7 +92,7 @@ export default function LoginScreen({ navigation }: any) {
                         </View>
                     </LinearGradient>
 
-                    {/* Form — ScrollView so fields scroll above keyboard */}
+                    {/* ── Form section ── */}
                     <ScrollView
                         ref={scrollRef}
                         style={styles.formSection}
@@ -99,16 +100,15 @@ export default function LoginScreen({ navigation }: any) {
                         showsVerticalScrollIndicator={false}
                         keyboardShouldPersistTaps="handled"
                         bounces={false}
-                        // This is the key fix: scroll view adjusts its
-                        // content inset automatically when keyboard shows
                         scrollEnabled={true}
                     >
-                        <Text style={styles.signInTitle}>Sign in</Text>
+                        <Text style={styles.signInTitle}>Welcome back 👋</Text>
+                        <Text style={styles.signInSubtitle}>Sign in to continue managing your hostel</Text>
 
                         {/* Error alert */}
                         {errorMessage && (
                             <View style={styles.alertBox}>
-                                <Ionicons name="warning" size={18} color="#FF6B6B" />
+                                <Ionicons name="warning" size={16} color="#7C3AED" />
                                 <Text style={styles.alertText}>{errorMessage}</Text>
                             </View>
                         )}
@@ -117,9 +117,10 @@ export default function LoginScreen({ navigation }: any) {
                         <View style={styles.inputGroup}>
                             <Text style={styles.label}>Email or Phone</Text>
                             <View style={styles.inputContainer}>
+                                <Ionicons name="person-outline" size={18} color="#7C3AED" style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Enter Email or Phone"
+                                    placeholder="Enter your email or phone"
                                     placeholderTextColor="#B8B8B8"
                                     autoCapitalize="none"
                                     keyboardType="email-address"
@@ -139,10 +140,11 @@ export default function LoginScreen({ navigation }: any) {
                         <View style={styles.inputGroup}>
                             <Text style={styles.label}>Password</Text>
                             <View style={styles.inputContainer}>
+                                <Ionicons name="lock-closed-outline" size={18} color="#7C3AED" style={styles.inputIcon} />
                                 <TextInput
                                     ref={passwordRef}
                                     style={styles.input}
-                                    placeholder="••••••••••"
+                                    placeholder="Enter your password"
                                     placeholderTextColor="#B8B8B8"
                                     value={password}
                                     secureTextEntry={!showPassword}
@@ -161,8 +163,8 @@ export default function LoginScreen({ navigation }: any) {
                                 >
                                     <Ionicons
                                         name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                                        size={22}
-                                        color="#9E9E9E"
+                                        size={20}
+                                        color="#94A3B8"
                                     />
                                 </TouchableOpacity>
                             </View>
@@ -176,7 +178,7 @@ export default function LoginScreen({ navigation }: any) {
                             activeOpacity={0.85}
                         >
                             <LinearGradient
-                                colors={['#FF7B7B', '#FF6B6B']}
+                                colors={['#7C3AED', '#5F2EEA']}
                                 style={styles.loginGradient}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 0 }}
@@ -184,19 +186,23 @@ export default function LoginScreen({ navigation }: any) {
                                 {isLoading ? (
                                     <ActivityIndicator color="#FFFFFF" size="small" />
                                 ) : (
-                                    <Text style={styles.loginButtonText}>Login</Text>
+                                    <Text style={styles.loginButtonText}>Sign In</Text>
                                 )}
                             </LinearGradient>
                         </TouchableOpacity>
 
-                        {/* Extra bottom padding so button is never hidden by keyboard */}
+                        {/* Bottom branding */}
+                        <View style={styles.bottomBranding}>
+                            <Text style={styles.bottomBrandingText}>Powered by Stivo • Hostel OS</Text>
+                        </View>
+
                         <View style={styles.keyboardSpacer} />
                     </ScrollView>
                 </View>
             </TouchableWithoutFeedback>
         </KeyboardAvoidingView>
     );
-};
+}
 
 const styles = StyleSheet.create({
     container: {
@@ -204,74 +210,91 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
     },
     topSection: {
-        height: height * 0.32,
+        height: height * 0.36,
         borderBottomLeftRadius: 40,
         borderBottomRightRadius: 40,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingTop: 20,
+        paddingTop: 28,
+        overflow: 'hidden',
+    },
+    decorCircle1: {
+        position: 'absolute',
+        width: 220,
+        height: 220,
+        borderRadius: 110,
+        backgroundColor: 'rgba(255,255,255,0.07)',
+        top: -60,
+        right: -50,
+    },
+    decorCircle2: {
+        position: 'absolute',
+        width: 160,
+        height: 160,
+        borderRadius: 80,
+        backgroundColor: 'rgba(255,255,255,0.07)',
+        bottom: -40,
+        left: -30,
     },
     logoContainer: {
         alignItems: 'center',
     },
-    logoBadge: {
+    logoImage: {
         width: 90,
         height: 90,
-        borderRadius: 45,
-        backgroundColor: 'rgba(255, 255, 255, 0.25)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    logoText: {
-        fontSize: 50,
-        fontWeight: '800',
-        color: '#FFFFFF',
+        marginBottom: 14,
+        borderRadius: 22,
+        borderWidth: 3,
+        borderColor: 'rgba(255,255,255,0.25)',
     },
     appName: {
-        fontSize: 36,
-        fontWeight: '700',
+        fontSize: 34,
+        fontWeight: '800',
         color: '#FFFFFF',
         marginBottom: 4,
+        letterSpacing: 0.5,
     },
     tagline: {
-        fontSize: 15,
-        color: '#FFFFFF',
-        opacity: 0.95,
-        fontWeight: '400',
+        fontSize: 14,
+        color: 'rgba(255,255,255,0.85)',
+        fontWeight: '500',
+        letterSpacing: 0.3,
     },
-    // Form
     formSection: {
         flex: 1,
     },
     formContent: {
         paddingHorizontal: 28,
-        paddingTop: 36,
+        paddingTop: 30,
         paddingBottom: 20,
-        // flexGrow ensures ScrollView fills remaining height
-        // so short content doesn't look odd on large screens
         flexGrow: 1,
     },
     signInTitle: {
-        fontSize: 30,
-        fontWeight: '700',
-        color: '#000000',
-        marginBottom: 20,
+        fontSize: 26,
+        fontWeight: '800',
+        color: '#1E293B',
+        marginBottom: 4,
+    },
+    signInSubtitle: {
+        fontSize: 14,
+        color: '#64748B',
+        fontWeight: '500',
+        marginBottom: 24,
     },
     alertBox: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFE5E5',
+        backgroundColor: '#F3EEFF',
         borderRadius: 12,
         padding: 14,
-        marginBottom: 24,
+        marginBottom: 20,
         borderLeftWidth: 4,
-        borderLeftColor: '#FF6B6B',
+        borderLeftColor: '#7C3AED',
+        gap: 10,
     },
     alertText: {
         fontSize: 13,
-        color: '#FF6B6B',
-        marginLeft: 10,
+        color: '#5F2EEA',
         flex: 1,
         fontWeight: '500',
     },
@@ -279,26 +302,31 @@ const styles = StyleSheet.create({
         marginBottom: 18,
     },
     label: {
-        fontSize: 15,
-        fontWeight: '600',
-        color: '#333333',
-        marginBottom: 10,
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#374151',
+        marginBottom: 8,
+        textTransform: 'uppercase',
+        letterSpacing: 0.6,
     },
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#F8F9FA',
-        borderRadius: 10,
-        borderWidth: 1,
-        borderColor: '#E8E8E8',
-        paddingHorizontal: 16,
-        height: 52,
+        borderRadius: 14,
+        borderWidth: 1.5,
+        borderColor: '#E8E8F0',
+        paddingHorizontal: 14,
+        height: 54,
+    },
+    inputIcon: {
+        marginRight: 10,
     },
     input: {
         flex: 1,
         fontSize: 15,
-        color: '#000000',
-        fontWeight: '400',
+        color: '#1E293B',
+        fontWeight: '500',
         paddingVertical: 12,
         borderWidth: 0,
         ...Platform.select({
@@ -313,11 +341,16 @@ const styles = StyleSheet.create({
         padding: 4,
     },
     loginButton: {
-        height: 54,
-        borderRadius: 10,
+        height: 56,
+        borderRadius: 14,
         overflow: 'hidden',
-        marginTop: 8,
-        marginBottom: 16,
+        marginTop: 6,
+        marginBottom: 20,
+        shadowColor: '#7C3AED',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.35,
+        shadowRadius: 10,
+        elevation: 8,
     },
     loginGradient: {
         flex: 1,
@@ -326,10 +359,19 @@ const styles = StyleSheet.create({
     },
     loginButtonText: {
         fontSize: 17,
-        fontWeight: '700',
+        fontWeight: '800',
         color: '#FFFFFF',
+        letterSpacing: 0.5,
     },
-    // This spacer ensures the login button is never hidden behind the keyboard
+    bottomBranding: {
+        alignItems: 'center',
+        marginTop: 4,
+    },
+    bottomBrandingText: {
+        fontSize: 11,
+        color: '#94A3B8',
+        fontWeight: '500',
+    },
     keyboardSpacer: {
         height: 120,
     },

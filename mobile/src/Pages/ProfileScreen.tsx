@@ -6,202 +6,207 @@ import {
     ScrollView,
     TouchableOpacity,
     StatusBar,
-    Dimensions,
-    Platform,
-    UIManager,
-    Alert
+    Alert,
 } from 'react-native';
-import {
-    User,
-    Settings,
-    ChevronRight,
-    LogOut,
-    ShieldCheck,
-    Building,
-    DoorOpen,
-    Users,
-    Phone,
-    Mail,
-    Building2,
-    HelpCircle
-} from 'lucide-react-native';
-
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
-import { HeaderNotification } from '../components/HeaderNotification';
-import { AppHeader } from '../components/AppHeader';
 import api from '../services/api';
 import { useFocusEffect } from '@react-navigation/native';
-
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-    UIManager.setLayoutAnimationEnabledExperimental(true);
-}
-
-const { width } = Dimensions.get('window');
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const ProfileScreen = ({ navigation }: any) => {
-    const { signOut, user } = useAuth();
-    const { theme, isDark, fontSize } = useTheme();
+    const { signOut, user, hostels, cycleHostels } = useAuth();
+    const { theme, isDark } = useTheme();
+    const insets = useSafeAreaInsets();
     const [stats, setStats] = useState<any>(null);
+    const [switching, setSwitching] = useState(false);
 
     const fetchStats = async () => {
         try {
             const response = await api.get('/dashboard/owner-stats');
-            if (response.data.success) {
-                setStats(response.data.data);
-            }
-        } catch (error) {
-            console.error('Profile fetch stats error:', error);
-        }
+            if (response.data.success) setStats(response.data.data);
+        } catch {}
     };
 
     useFocusEffect(React.useCallback(() => { fetchStats(); }, []));
 
     const handleLogout = async () => {
-        await signOut();
-        navigation.replace('Login');
+        Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+            { text: 'Cancel', style: 'cancel' },
+            {
+                text: 'Sign Out', style: 'destructive', onPress: async () => {
+                    await signOut();
+                    navigation.replace('Login');
+                }
+            }
+        ]);
     };
 
-    const handleHelpSupport = () => {
-        Alert.alert(
-            "Help & Support",
-            "For any queries, issues, or assistance, please contact us:\n\n📧 support@dhostel.com\n📞 +91 98765 43210\n\nWe are available 24/7.",
-            [{ text: "OK", style: "default" }]
-        );
+    const handleSwitchHostel = async () => {
+        if (!hostels || hostels.length < 2) {
+            Alert.alert('Single Hostel', 'You only have one hostel registered.');
+            return;
+        }
+        setSwitching(true);
+        try {
+            const newName = await cycleHostels();
+            if (newName) {
+                Alert.alert('✓ Hostel Switched', `Now viewing: ${newName}`);
+            }
+        } catch {
+            Alert.alert('Error', 'Could not switch hostel. Please try again.');
+        } finally {
+            setSwitching(false);
+        }
     };
 
-    const MenuItem = ({ icon: Icon, title, subtitle, onPress, iconBg, titleColor, rightEl }: any) => (
-        <TouchableOpacity style={styles.menuItem} onPress={onPress} activeOpacity={0.7}>
-            <View style={[styles.menuIconContainer, { backgroundColor: iconBg || (isDark ? '#334155' : '#F8FAFC') }]}>
-                <Icon color={titleColor || (isDark ? theme.textPrimary : '#64748B')} size={20} />
-            </View>
-            <View style={styles.menuText}>
-                <Text style={[styles.menuTitle, { fontSize: fontSize + 1, color: titleColor || theme.textPrimary }]}>{title}</Text>
-                {subtitle ? <Text style={[styles.menuSubtitle, { fontSize: Math.max(10, fontSize - 3), color: theme.textSecondary }]}>{subtitle}</Text> : null}
-            </View>
-            {rightEl !== undefined ? rightEl : <ChevronRight color={isDark ? '#475569' : '#CBD5E1'} size={18} />}
-        </TouchableOpacity>
-    );
+    const initials = (user?.full_name || user?.email || 'U')
+        .split(' ')
+        .map(w => w[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
+
+    const roleLabel = user?.role_id === 1 ? 'Administrator' : 'Hostel Owner';
 
     return (
-        <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <View style={[styles.root, { backgroundColor: isDark ? '#0F172A' : '#F0F4FF' }]}>
             <StatusBar barStyle="light-content" />
 
-            {/* ── POWER HEADER ── */}
-            <AppHeader
-                title=""
-                showBack={navigation.canGoBack()}
-                rightComponent={<HeaderNotification navigation={navigation} />}
+            {/* ── HERO HEADER ── */}
+            <LinearGradient
+                colors={['#5B21B6', '#7C3AED', '#8B5CF6']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.hero, { paddingTop: insets.top + 16 }]}
             >
-                <View style={styles.profileBrief}>
-                    <View style={styles.avatarWrapper}>
-                        <View style={styles.avatarMain}><User color={theme.primary} size={40} /></View>
-                        <View style={styles.verifiedBadge}><ShieldCheck color="#FFF" size={12} /></View>
-                    </View>
-                    <View style={styles.nameHeader}>
-                        <Text style={[styles.ownerName, { fontSize: fontSize + 6 }]}>{user?.full_name || 'Hostel Owner'}</Text>
-                        <Text style={[styles.hostelSub, { fontSize: fontSize - 1 }]}>{user?.role || 'Hostel Owner'}</Text>
-                    </View>
+                {/* Back button */}
+                {navigation.canGoBack() && (
+                    <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+                        <Ionicons name="chevron-back" size={22} color="#FFF" />
+                    </TouchableOpacity>
+                )}
+
+                {/* Avatar */}
+                <View style={styles.avatarRing}>
+                    <LinearGradient colors={['#FFFFFF', '#E9D5FF']} style={styles.avatarInner}>
+                        <Text style={styles.avatarText}>{initials}</Text>
+                    </LinearGradient>
                 </View>
-            </AppHeader>
+
+                <Text style={styles.heroName}>{user?.full_name || 'Hostel Owner'}</Text>
+                <View style={styles.rolePill}>
+                    <Ionicons name={user?.role_id === 1 ? 'shield-checkmark' : 'business'} size={12} color="#7C3AED" />
+                    <Text style={styles.roleText}>{roleLabel}</Text>
+                </View>
+                <Text style={styles.heroHostel}>{user?.hostel_name || 'No Active Hostel'}</Text>
+            </LinearGradient>
 
             <ScrollView
-                style={styles.mainScroll}
+                style={{ flex: 1 }}
+                contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 120 }}
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.scrollContent}
             >
                 {/* ── STATS ROW ── */}
                 <View style={styles.statsRow}>
-                    <View style={[styles.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
-                        <Building color="#3B82F6" size={24} />
-                        <Text style={[styles.statValue, { color: theme.textPrimary }]}>{stats?.hostelsCount ?? 0}</Text>
-                        <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Hostels</Text>
-                    </View>
-                    <View style={[styles.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
-                        <DoorOpen color="#10B981" size={24} />
-                        <Text style={[styles.statValue, { color: theme.textPrimary }]}>{stats?.roomsCount ?? 0}</Text>
-                        <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Rooms</Text>
-                    </View>
-                    <View style={[styles.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
-                        <Users color="#8B5CF6" size={24} />
-                        <Text style={[styles.statValue, { color: theme.textPrimary }]}>{stats?.tenantsCount ?? 0}</Text>
-                        <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Tenants</Text>
-                    </View>
+                    {[
+                        { icon: 'business-outline', label: 'Hostels', value: hostels?.length ?? 0, color: '#7C3AED', bg: '#EDE9FE' },
+                        { icon: 'bed-outline', label: 'Occupied', value: stats?.occupiedBeds ?? 0, color: '#059669', bg: '#DCFCE7' },
+                        { icon: 'people-outline', label: 'Tenants', value: stats?.tenantsCount ?? stats?.occupiedBeds ?? 0, color: '#0284C7', bg: '#E0F2FE' },
+                    ].map((s, i) => (
+                        <View key={i} style={[styles.statCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]}>
+                            <View style={[styles.statIconBox, { backgroundColor: s.bg }]}>
+                                <Ionicons name={s.icon as any} size={18} color={s.color} />
+                            </View>
+                            <Text style={[styles.statValue, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>{s.value}</Text>
+                            <Text style={[styles.statLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>{s.label}</Text>
+                        </View>
+                    ))}
                 </View>
 
-                {/* ── PERSONAL INFORMATION ── */}
-                <Text style={[styles.sectionLabel, { fontSize: Math.max(10, fontSize - 4), color: theme.textSecondary }]}>PERSONAL INFORMATION</Text>
-                <View style={[styles.infoCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
-                    <View style={styles.infoItem}>
-                        <View style={[styles.infoIconWrap, { backgroundColor: isDark ? '#1E293B' : '#EFF6FF' }]}>
-                            <Phone color="#3B82F6" size={18} />
+                {/* ── ACCOUNT INFO ── */}
+                <Text style={[styles.sectionLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>ACCOUNT DETAILS</Text>
+                <View style={[styles.infoCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]}>
+                    {[
+                        { icon: 'person-outline', label: 'Full Name', value: user?.full_name || 'Not set', color: '#7C3AED', bg: '#EDE9FE' },
+                        { icon: 'mail-outline', label: 'Email', value: user?.email || 'Not set', color: '#0284C7', bg: '#E0F2FE' },
+                        { icon: 'call-outline', label: 'Phone', value: user?.phone || 'Not provided', color: '#059669', bg: '#DCFCE7' },
+                        { icon: 'home-outline', label: 'Active Hostel', value: user?.hostel_name || 'None', color: '#D97706', bg: '#FEF3C7' },
+                    ].map((item, i, arr) => (
+                        <View key={i}>
+                            <View style={styles.infoRow}>
+                                <View style={[styles.infoIcon, { backgroundColor: item.bg }]}>
+                                    <Ionicons name={item.icon as any} size={16} color={item.color} />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={[styles.infoLabel, { color: isDark ? '#94A3B8' : '#94A3B8' }]}>{item.label}</Text>
+                                    <Text style={[styles.infoValue, { color: isDark ? '#F1F5F9' : '#0F172A' }]} numberOfLines={1}>{item.value}</Text>
+                                </View>
+                            </View>
+                            {i < arr.length - 1 && <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />}
                         </View>
-                        <View style={styles.infoContent}>
-                            <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Phone Number</Text>
-                            <Text style={[styles.infoVal, { color: theme.textPrimary }]}>{user?.phone || 'Not Provided'}</Text>
-                        </View>
-                    </View>
-
-                    <View style={[styles.infoDivider, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]} />
-
-                    <View style={styles.infoItem}>
-                        <View style={[styles.infoIconWrap, { backgroundColor: isDark ? '#1E293B' : '#ECFDF5' }]}>
-                            <Mail color="#10B981" size={18} />
-                        </View>
-                        <View style={styles.infoContent}>
-                            <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Email Address</Text>
-                            <Text style={[styles.infoVal, { color: theme.textPrimary }]}>{user?.email || 'Not Provided'}</Text>
-                        </View>
-                    </View>
-
-                    <View style={[styles.infoDivider, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]} />
-
-                    <View style={styles.infoItem}>
-                        <View style={[styles.infoIconWrap, { backgroundColor: isDark ? '#1E293B' : '#F5F3FF' }]}>
-                            <Building2 color="#8B5CF6" size={18} />
-                        </View>
-                        <View style={styles.infoContent}>
-                            <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Active Hostel</Text>
-                            <Text style={[styles.infoVal, { color: theme.textPrimary }]}>{user?.hostel_name || 'No Active Hostel'}</Text>
-                        </View>
-                    </View>
+                    ))}
                 </View>
 
-                {/* ── SUPPORT & SETTINGS ── */}
-                <Text style={[styles.sectionLabel, { fontSize: Math.max(10, fontSize - 4), color: theme.textSecondary }]}>SUPPORT & SETTINGS</Text>
-                <View style={[styles.menuCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
-                    <MenuItem
-                        icon={Settings}
-                        title="Settings"
-                        subtitle="Change Password, Font Size, Theme"
-                        onPress={() => navigation.navigate('Settings')}
-                        iconBg={isDark ? '#334155' : theme.lightBg}
-                        titleColor={theme.textPrimary}
-                    />
-                    <View style={[styles.innerDivider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
-                    
-                    <MenuItem
-                        icon={HelpCircle}
-                        title="Help & Support"
-                        subtitle="Contact support team, FAQs"
-                        onPress={handleHelpSupport}
-                        iconBg={isDark ? '#334155' : theme.lightBg}
-                        titleColor={theme.textPrimary}
-                    />
-                    <View style={[styles.innerDivider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
-                    
-                    <MenuItem
-                        icon={LogOut}
-                        title="Sign Out"
-                        subtitle="Log out of your account"
-                        onPress={handleLogout}
-                        iconBg={isDark ? '#451A1A' : '#FEF2F2'}
-                        titleColor="#EF4444"
-                    />
+                {/* ── HOSTEL SWITCH (only if multiple) ── */}
+                {hostels && hostels.length > 1 && (
+                    <>
+                        <Text style={[styles.sectionLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>HOSTEL</Text>
+                        <TouchableOpacity
+                            style={[styles.switchCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]}
+                            onPress={handleSwitchHostel}
+                            disabled={switching}
+                            activeOpacity={0.8}
+                        >
+                            <View style={[styles.infoIcon, { backgroundColor: '#F0FDF4' }]}>
+                                <Ionicons name="swap-horizontal-outline" size={18} color="#059669" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.switchTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>Switch Active Hostel</Text>
+                                <Text style={[styles.switchSub, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+                                    {switching ? 'Switching...' : `${hostels.length} hostels available — tap to switch`}
+                                </Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={18} color={isDark ? '#475569' : '#CBD5E1'} />
+                        </TouchableOpacity>
+                    </>
+                )}
+
+                {/* ── MENU ── */}
+                <Text style={[styles.sectionLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>SETTINGS & SUPPORT</Text>
+                <View style={[styles.menuCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]}>
+                    {[
+                        { icon: 'settings-outline', label: 'Settings', sub: 'Password, font size, dark mode', color: '#7C3AED', bg: '#EDE9FE', onPress: () => navigation.navigate('Settings') },
+                        { icon: 'business-outline', label: 'Manage Hostels', sub: 'View and edit your hostels', color: '#0284C7', bg: '#E0F2FE', onPress: () => navigation.navigate('Hostels') },
+                        { icon: 'help-circle-outline', label: 'Help & Support', sub: 'Contact support, FAQs', color: '#D97706', bg: '#FEF3C7', onPress: () => Alert.alert('Help & Support', '📧 support@dhostel.com\n📞 +91 98765 43210\n\nAvailable 24/7') },
+                    ].map((item, i, arr) => (
+                        <View key={i}>
+                            <TouchableOpacity style={styles.menuRow} onPress={item.onPress} activeOpacity={0.7}>
+                                <View style={[styles.menuIcon, { backgroundColor: item.bg }]}>
+                                    <Ionicons name={item.icon as any} size={18} color={item.color} />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={[styles.menuTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>{item.label}</Text>
+                                    <Text style={[styles.menuSub, { color: isDark ? '#94A3B8' : '#94A3B8' }]}>{item.sub}</Text>
+                                </View>
+                                <Ionicons name="chevron-forward" size={16} color={isDark ? '#475569' : '#CBD5E1'} />
+                            </TouchableOpacity>
+                            {i < arr.length - 1 && <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9', marginLeft: 62 }]} />}
+                        </View>
+                    ))}
                 </View>
 
-                <Text style={[styles.footerVersion, { color: theme.textSecondary }]}>Version 1.0.0</Text>
-                <View style={styles.bottomSpace} />
+                {/* ── SIGN OUT ── */}
+                <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.85}>
+                    <View style={styles.logoutIconBox}>
+                        <Ionicons name="log-out-outline" size={20} color="#EF4444" />
+                    </View>
+                    <Text style={styles.logoutText}>Sign Out</Text>
+                </TouchableOpacity>
+
+                <Text style={[styles.version, { color: isDark ? '#334155' : '#CBD5E1' }]}>Stivo v1.0.0 · Smart Hostel Management</Text>
             </ScrollView>
         </View>
     );
@@ -210,106 +215,250 @@ const ProfileScreen = ({ navigation }: any) => {
 export default ProfileScreen;
 
 const styles = StyleSheet.create({
-    container: { flex: 1 },
-    profileBrief: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
-    avatarWrapper: { width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(255,255,255,0.25)', padding: 4 },
-    avatarMain: { flex: 1, borderRadius: 40, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center' },
-    verifiedBadge: { position: 'absolute', bottom: 0, right: 0, backgroundColor: '#10B981', borderRadius: 12, padding: 4, borderWidth: 2, borderColor: '#FFF' },
-    nameHeader: { marginLeft: 16 },
-    ownerName: { fontWeight: '900', color: '#FFF' },
-    hostelSub: { color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
+    root: { flex: 1 },
 
-    mainScroll: { flex: 1, marginTop: -15 },
-    scrollContent: { paddingHorizontal: 16, paddingTop: 20 },
-    sectionLabel: { fontWeight: '800', marginBottom: 12, marginLeft: 4, letterSpacing: 1 },
+    // Hero
+    hero: {
+        alignItems: 'center',
+        paddingBottom: 30,
+        paddingHorizontal: 20,
+    },
+    backBtn: {
+        position: 'absolute',
+        left: 16,
+        top: 44,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    avatarRing: {
+        width: 90,
+        height: 90,
+        borderRadius: 45,
+        backgroundColor: 'rgba(255,255,255,0.3)',
+        padding: 3,
+        marginBottom: 12,
+        marginTop: 10,
+    },
+    avatarInner: {
+        flex: 1,
+        borderRadius: 42,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    avatarText: {
+        fontSize: 28,
+        fontWeight: '900',
+        color: '#7C3AED',
+    },
+    heroName: {
+        fontSize: 22,
+        fontWeight: '900',
+        color: '#FFFFFF',
+        marginBottom: 8,
+        textAlign: 'center',
+    },
+    rolePill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        paddingHorizontal: 12,
+        paddingVertical: 4,
+        marginBottom: 10,
+    },
+    roleText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#7C3AED',
+    },
+    heroHostel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: 'rgba(255,255,255,0.8)',
+        letterSpacing: 0.3,
+    },
 
-    // Stats Row
+    // Stats
     statsRow: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
+        gap: 10,
         marginBottom: 20,
     },
     statCard: {
         flex: 1,
-        marginHorizontal: 4,
-        paddingVertical: 16,
-        paddingHorizontal: 12,
-        borderRadius: 20,
+        borderRadius: 16,
+        padding: 14,
         alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
         elevation: 2,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
+        shadowOpacity: 0.07,
+        shadowRadius: 4,
     },
-    statValue: {
-        fontSize: 20,
-        fontWeight: '800',
-        marginTop: 8,
-    },
-    statLabel: {
-        fontSize: 12,
-        fontWeight: '600',
-        marginTop: 2,
-    },
-
-    // Personal Info Card
-    infoCard: {
-        borderRadius: 24,
-        padding: 16,
-        marginBottom: 20,
-        borderWidth: 1,
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-    },
-    infoItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 8,
-    },
-    infoIconWrap: {
-        width: 40,
-        height: 40,
+    statIconBox: {
+        width: 38,
+        height: 38,
         borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 16,
+        marginBottom: 8,
     },
-    infoContent: {
-        flex: 1,
+    statValue: {
+        fontSize: 20,
+        fontWeight: '900',
     },
-    infoLabel: {
+    statLabel: {
         fontSize: 11,
         fontWeight: '600',
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-    },
-    infoVal: {
-        fontSize: 14,
-        fontWeight: '700',
         marginTop: 2,
     },
-    infoDivider: {
-        height: 1,
-        marginVertical: 12,
-        opacity: 0.5,
+
+    // Section label
+    sectionLabel: {
+        fontSize: 10,
+        fontWeight: '800',
+        letterSpacing: 1,
+        marginBottom: 10,
+        marginLeft: 4,
+        textTransform: 'uppercase',
     },
 
-    // Menu Card
-    menuCard: { borderRadius: 24, marginBottom: 20, paddingVertical: 4, elevation: 1 },
-    menuItem: { flexDirection: 'row', alignItems: 'center', padding: 15 },
-    menuIconContainer: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 15 },
-    menuText: { flex: 1 },
-    menuTitle: { fontWeight: '700' },
-    menuSubtitle: { marginTop: 2 },
-    innerDivider: { height: 1, marginLeft: 65 },
+    // Info card
+    infoCard: {
+        borderRadius: 20,
+        padding: 4,
+        marginBottom: 20,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.06,
+        shadowRadius: 4,
+    },
+    infoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 14,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+    },
+    infoIcon: {
+        width: 36,
+        height: 36,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    infoLabel: {
+        fontSize: 10,
+        fontWeight: '700',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginBottom: 2,
+    },
+    infoValue: {
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    divider: {
+        height: 1,
+        marginHorizontal: 14,
+    },
 
-    footerVersion: { textAlign: 'center', fontSize: 11, marginTop: 10 },
-    bottomSpace: { height: 120 },
+    // Switch card
+    switchCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 14,
+        padding: 16,
+        borderRadius: 16,
+        marginBottom: 20,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.06,
+        shadowRadius: 4,
+    },
+    switchTitle: {
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    switchSub: {
+        fontSize: 12,
+        fontWeight: '500',
+        marginTop: 2,
+    },
+
+    // Menu card
+    menuCard: {
+        borderRadius: 20,
+        padding: 4,
+        marginBottom: 20,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.06,
+        shadowRadius: 4,
+    },
+    menuRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 14,
+        paddingHorizontal: 14,
+        paddingVertical: 14,
+    },
+    menuIcon: {
+        width: 36,
+        height: 36,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    menuTitle: {
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    menuSub: {
+        fontSize: 12,
+        fontWeight: '500',
+        marginTop: 2,
+    },
+
+    // Logout
+    logoutBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        backgroundColor: '#FEF2F2',
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 20,
+        borderWidth: 1,
+        borderColor: '#FECACA',
+    },
+    logoutIconBox: {
+        width: 36,
+        height: 36,
+        borderRadius: 12,
+        backgroundColor: '#FFE4E6',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    logoutText: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#EF4444',
+    },
+
+    // Footer
+    version: {
+        textAlign: 'center',
+        fontSize: 11,
+        fontWeight: '600',
+        marginBottom: 10,
+    },
 });
-

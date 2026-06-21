@@ -38,7 +38,7 @@ const getCatColor = (name: string) => CAT_COLORS[name] || '#64748B';
 
 export const ExpenseScreen = ({ navigation }: any) => {
     const { user } = useAuth();
-    const { theme } = useTheme();
+    const { theme, isDark } = useTheme();
     const [search, setSearch] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [expenses, setExpenses] = useState<any[]>([]);
@@ -191,8 +191,8 @@ export const ExpenseScreen = ({ navigation }: any) => {
     };
 
     return (
-        <View style={styles.container}>
-            <StatusBar barStyle="light-content" />
+        <View style={[styles.container, { backgroundColor: theme.background }]}>
+            <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
             {/* Header */}
             <AppHeader
@@ -206,11 +206,11 @@ export const ExpenseScreen = ({ navigation }: any) => {
             >
                 {/* Expense Stats */}
                 <View style={styles.statsRow}>
-                    <View style={styles.statCard}>
+                    <View style={[styles.statCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.2)' }]}>
                         <Text style={styles.statLabel}>Total Expenses</Text>
                         <Text style={styles.statValue}>₹{totalExpenses.toLocaleString('en-IN')}</Text>
                     </View>
-                    <View style={styles.statCard}>
+                    <View style={[styles.statCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.2)' }]}>
                         <Text style={styles.statLabel}>
                             {currentDate ? getMonthLabel() : 'This Month'}
                         </Text>
@@ -221,34 +221,34 @@ export const ExpenseScreen = ({ navigation }: any) => {
 
             {/* Search Bar */}
             <View style={styles.searchSection}>
-                <View style={styles.searchBar}>
-                    <Search color="#999999" size={20} />
+                <View style={[styles.searchBar, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                    <Search color={isDark ? '#94A3B8' : "#999999"} size={20} />
                     <TextInput
-                        style={styles.searchInput}
+                        style={[styles.searchInput, { color: theme.textPrimary }]}
                         placeholder="Search expenses..."
-                        placeholderTextColor="#999999"
+                        placeholderTextColor={isDark ? '#64748B' : "#999999"}
                         value={search}
                         onChangeText={setSearch}
                     />
                     {search.length > 0 && (
                         <TouchableOpacity onPress={() => setSearch('')}>
-                            <X color="#999999" size={16} />
+                            <X color={isDark ? '#94A3B8' : "#999999"} size={16} />
                         </TouchableOpacity>
                     )}
                 </View>
                 
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                     <TouchableOpacity 
-                        style={styles.monthPicker}
+                        style={[styles.monthPicker, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
                         onPress={() => setDatePickerVisibility(true)}
                     >
-                        <Calendar color="#666666" size={18} />
-                        <Text style={styles.monthText}>{getMonthLabel()}</Text>
-                        <ChevronDown color="#666666" size={16} />
+                        <Calendar color={isDark ? '#94A3B8' : "#666666"} size={18} />
+                        <Text style={[styles.monthText, { color: theme.textSecondary }]}>{getMonthLabel()}</Text>
+                        <ChevronDown color={isDark ? '#94A3B8' : "#666666"} size={16} />
                     </TouchableOpacity>
                     {currentDate && (
                         <TouchableOpacity 
-                            style={styles.clearMonthButton}
+                            style={[styles.clearMonthButton, { backgroundColor: isDark ? '#3F2222' : '#FFF1F1', borderColor: isDark ? '#7F1D1D' : '#FEE2E2' }]}
                             onPress={() => setCurrentDate(null)}
                         >
                             <X color="#FF6B6B" size={16} />
@@ -269,34 +269,34 @@ export const ExpenseScreen = ({ navigation }: any) => {
                     renderItem={({ item: expense }) => {
                         const color = getCatColor(expense.category_name);
                         return (
-                            <View style={styles.expenseCard}>
+                            <View style={[styles.expenseCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#E2E8F0', borderWidth: isDark ? 1 : 1.5 }]}>
                                 <TouchableOpacity
                                     onPress={() => navigation.navigate('ExpenseDetails', { expense })}
                                     activeOpacity={0.7}
                                 >
                                     <View style={styles.cardInner}>
                                         <View style={styles.leftSection}>
-                                            <View style={[styles.iconContainer, { backgroundColor: color + '15' }]}>
+                                            <View style={[styles.iconContainer, { backgroundColor: isDark ? color + '25' : color + '15' }]}>
                                                 <Tag size={20} color={color} />
                                             </View>
                                             <View style={styles.infoContainer}>
-                                                <Text style={styles.expenseTitle}>{expense.category_name}</Text>
-                                                <Text style={styles.vendorText}>
+                                                <Text style={[styles.expenseTitle, { color: theme.textPrimary }]}>{expense.category_name}</Text>
+                                                <Text style={[styles.vendorText, { color: theme.textSecondary }]}>
                                                     {expense.vendor_name || 'Generic Vendor'}
                                                 </Text>
-                                                <Text style={styles.dateText}>{formatDate(expense.expense_date)}</Text>
+                                                <Text style={[styles.dateText, { color: isDark ? '#64748B' : '#94A3B8' }]}>{formatDate(expense.expense_date)}</Text>
                                             </View>
                                         </View>
                                         <View style={styles.rightSection}>
                                             <Text style={styles.amountText}>-₹{parseFloat(expense.amount).toLocaleString('en-IN')}</Text>
-                                            <View style={styles.paymentModeBadge}>
-                                                <Text style={styles.paymentModeText}>{expense.payment_mode || 'Cash'}</Text>
+                                            <View style={[styles.paymentModeBadge, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                                <Text style={[styles.paymentModeText, { color: isDark ? '#94A3B8' : '#64748B' }]}>{expense.payment_mode || 'Cash'}</Text>
                                             </View>
                                         </View>
                                     </View>
                                     {expense.description && (
-                                        <View style={styles.descriptionContainer}>
-                                            <Text style={styles.descriptionText} numberOfLines={2}>
+                                        <View style={[styles.descriptionContainer, { borderTopColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                            <Text style={[styles.descriptionText, { color: theme.textSecondary }]} numberOfLines={2}>
                                                 {expense.description}
                                             </Text>
                                         </View>
@@ -304,16 +304,16 @@ export const ExpenseScreen = ({ navigation }: any) => {
                                 </TouchableOpacity>
                                 
                                 {/* Action Buttons Row */}
-                                <View style={styles.cardActions}>
+                                <View style={[styles.cardActions, { borderTopColor: isDark ? '#334155' : '#F1F5F9' }]}>
                                     <TouchableOpacity 
-                                        style={styles.actionBtn} 
+                                        style={[styles.actionBtn, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]} 
                                         onPress={() => navigation.navigate('AddExpense', { expense })}
                                     >
                                         <Edit3 size={14} color="#3B82F6" />
                                         <Text style={styles.actionBtnTextBlue}>Edit</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity 
-                                        style={styles.actionBtn} 
+                                        style={[styles.actionBtn, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]} 
                                         onPress={() => handleDelete(expense)}
                                     >
                                         <Trash2 size={14} color="#EF4444" />

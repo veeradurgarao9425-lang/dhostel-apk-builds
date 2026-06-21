@@ -2,6 +2,7 @@ import React from 'react';
 import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useAuth } from '../../contexts/AuthContext';
 
 // ── Tab screens ───────────────────────────────────────────────────────────────
 import HomeScreen      from '../Pages/HomeScreen';
@@ -79,8 +80,12 @@ interface AppNavigatorProps {
 
 // ── Root Stack Navigator ──────────────────────────────────────────────────────
 const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
+    const { user } = useAuth();
+    const navigationKey = `${user?.user_id || 'guest'}_${user?.hostel_id || 'none'}`;
+
     return (
         <NavigationContainer
+            key={navigationKey}
             ref={navigationRef}
             onStateChange={() => {
                 const route = navigationRef.current?.getCurrentRoute();

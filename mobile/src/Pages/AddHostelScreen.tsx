@@ -48,6 +48,7 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
     const insets = useSafeAreaInsets();
     const [loading, setLoading] = useState(false);
     const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const scrollViewRef = useRef<ScrollView>(null);
     const [stateModalVisible, setStateModalVisible] = useState(false);
     const [cityModalVisible, setCityModalVisible] = useState(false);
@@ -92,16 +93,39 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
         }
     }, [isEdit, editHostel]);
 
-    const handleSave = async () => {
+    const validateForm = () => {
         const { hostel_name, address, city, state, pincode, total_floors, admission_fee } = formData;
-        if (!hostel_name || !address || !city || !state || !pincode) {
+        const errs: Record<string, string> = {};
+
+        if (!hostel_name || hostel_name.trim().length < 3)
+            errs.hostel_name = 'Hostel name must be at least 3 characters';
+        if (!address || address.trim().length === 0)
+            errs.address = 'Address is required';
+        if (!state)
+            errs.state = 'Please select a state';
+        if (!city)
+            errs.city = 'Please select a city';
+        if (!pincode || !/^\d{6}$/.test(pincode.trim()))
+            errs.pincode = 'Pincode must be exactly 6 digits';
+        if (total_floors && (isNaN(Number(total_floors)) || Number(total_floors) < 1))
+            errs.total_floors = 'Floors must be a positive number';
+        if (admission_fee && (isNaN(Number(admission_fee)) || Number(admission_fee) < 0))
+            errs.admission_fee = 'Admission fee must be 0 or more';
+
+        setFieldErrors(errs);
+        return Object.keys(errs).length === 0;
+    };
+
+    const handleSave = async () => {
+        if (!validateForm()) {
             Toast.show({
                 type: 'error',
                 text1: 'Validation Error',
-                text2: 'Please fill in all required fields.',
+                text2: 'Please fix the highlighted fields.',
             });
             return;
         }
+        const { hostel_name, address, city, state, pincode, total_floors, admission_fee } = formData;
 
         setLoading(true);
         try {
@@ -135,7 +159,7 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
             if (response.data.success) {
                 if (isEdit && editHostel) {
                     if (editHostel.hostel_id === user?.hostel_id) {
-                        await updateTokenAndUser(user?.token, { hostel_id: editHostel.hostel_id, hostel_name });
+                        await updateTokenAndUser(undefined, { hostel_id: editHostel.hostel_id, hostel_name });
                     }
                     Toast.show({
                         type: 'success',
@@ -144,18 +168,27 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
                     });
                 } else {
                     const newHostelId = response.data.data.hostel_id;
+                    const newTokenFromCreate = response.data.data.token;
 
-                    // Set this new hostel as the active hostel immediately
-                    const switchRes = await api.put('/auth/active-hostel', { hostel_id: newHostelId });
-                    if (switchRes.data?.success) {
-                        const { token, hostel_name: activeHostelName } = switchRes.data.data;
-                        await updateTokenAndUser(token, { hostel_id: newHostelId, hostel_name: activeHostelName });
+                    if (newTokenFromCreate) {
+                        // Backend now returns a fresh token after creation — use it directly
+                        await updateTokenAndUser(newTokenFromCreate, {
+                            hostel_id: newHostelId,
+                            hostel_name: response.data.data.hostel_name || hostel_name,
+                        });
+                    } else {
+                        // Fallback: make a switch-hostel call
+                        const switchRes = await api.put('/auth/active-hostel', { hostel_id: newHostelId });
+                        if (switchRes.data?.success) {
+                            const { token, hostel_name: activeHostelName } = switchRes.data.data;
+                            await updateTokenAndUser(token, { hostel_id: newHostelId, hostel_name: activeHostelName });
+                        }
                     }
 
                     Toast.show({
                         type: 'success',
-                        text1: 'Success',
-                        text2: 'Hostel created and set as active!',
+                        text1: '✓ Hostel Created',
+                        text2: 'Now active across the entire app!',
                     });
                 }
 
@@ -209,7 +242,11 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
                         label="Hostel Name *"
                         placeholder="e.g. Royal Boys Hostel"
                         value={formData.hostel_name}
-                        onChangeText={(text) => setFormData({ ...formData, hostel_name: text })}
+                        error={fieldErrors.hostel_name}
+                        onChangeText={(text) => {
+                            setFormData({ ...formData, hostel_name: text });
+                            if (fieldErrors.hostel_name) setFieldErrors(prev => { const e = {...prev}; delete e.hostel_name; return e; });
+                        }}
                     />
 
                     <Text style={[styles.label, { color: theme.textPrimary }]}>Hostel Type *</Text>
@@ -240,13 +277,25 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
                         label="Address *"
                         placeholder="Street address"
                         value={formData.address}
-                        onChangeText={(text) => setFormData({ ...formData, address: text })}
+                        error={fieldErrors.address}
+                        onChangeText={(text) => {
+                            setFormData({ ...formData, address: text });
+                            if (fieldErrors.address) setFieldErrors(prev => { const e = {...prev}; delete e.address; return e; });
+                        }}
                         onFocus={() => {
                             setTimeout(() => {
                                 scrollViewRef.current?.scrollToEnd({ animated: true });
                             }, 100);
                         }}
                     />
+
+                    {/* State/City error messages when nothing selected */}
+                    {fieldErrors.state ? (
+                        <Text style={{ color: '#EF4444', fontSize: 11, marginBottom: 4, marginLeft: 4 }}>{fieldErrors.state}</Text>
+                    ) : null}
+                    {fieldErrors.city ? (
+                        <Text style={{ color: '#EF4444', fontSize: 11, marginBottom: 4, marginLeft: 4 }}>{fieldErrors.city}</Text>
+                    ) : null}
 
                     <View style={styles.row}>
                         <View style={{ flex: 1, marginRight: 8, marginBottom: 16 }}>
@@ -311,12 +360,18 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
                             placeholder="6-digit ZIP code"
                             keyboardType="numeric"
                             value={formData.pincode}
+                            error={fieldErrors.pincode}
                             containerStyle={{ flex: 1, marginRight: 8 }}
-                            onChangeText={(text) => setFormData({ ...formData, pincode: text })}
+                            maxLength={6}
+                            onChangeText={(text) => {
+                                const num = text.replace(/[^0-9]/g, '');
+                                setFormData({ ...formData, pincode: num });
+                                if (fieldErrors.pincode) setFieldErrors(prev => { const e = {...prev}; delete e.pincode; return e; });
+                            }}
                             onFocus={() => {
                                 setTimeout(() => {
                                     scrollViewRef.current?.scrollToEnd({ animated: true });
-                                }, 100);
+                                }, 150);
                             }}
                         />
                         <InputField
@@ -324,12 +379,17 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
                             placeholder="e.g. 3"
                             keyboardType="numeric"
                             value={formData.total_floors}
+                            error={fieldErrors.total_floors}
                             containerStyle={{ flex: 1, marginLeft: 8 }}
-                            onChangeText={(text) => setFormData({ ...formData, total_floors: text })}
+                            onChangeText={(text) => {
+                                const num = text.replace(/[^0-9]/g, '');
+                                setFormData({ ...formData, total_floors: num });
+                                if (fieldErrors.total_floors) setFieldErrors(prev => { const e = {...prev}; delete e.total_floors; return e; });
+                            }}
                             onFocus={() => {
                                 setTimeout(() => {
                                     scrollViewRef.current?.scrollToEnd({ animated: true });
-                                }, 100);
+                                }, 150);
                             }}
                         />
                     </View>
@@ -339,11 +399,16 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
                         placeholder="e.g. 1000"
                         keyboardType="numeric"
                         value={formData.admission_fee}
-                        onChangeText={(text) => setFormData({ ...formData, admission_fee: text })}
+                        error={fieldErrors.admission_fee}
+                        onChangeText={(text) => {
+                            const num = text.replace(/[^0-9.]/g, '');
+                            setFormData({ ...formData, admission_fee: num });
+                            if (fieldErrors.admission_fee) setFieldErrors(prev => { const e = {...prev}; delete e.admission_fee; return e; });
+                        }}
                         onFocus={() => {
                             setTimeout(() => {
                                 scrollViewRef.current?.scrollToEnd({ animated: true });
-                            }, 100);
+                            }, 150);
                         }}
                     />
 

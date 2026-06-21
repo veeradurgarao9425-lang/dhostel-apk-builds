@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, ScrollView, Text, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform, Keyboard, StatusBar } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { AppHeader } from '../components/AppHeader';
@@ -30,6 +30,7 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
     const { theme } = useTheme();
     const { expense } = route.params || {};
     const { user } = useAuth();
+    const scrollRef = useRef<ScrollView>(null);
     const [loading, setLoading] = useState(false);
     const [categories, setCategories] = useState<any[]>([]);
     const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
@@ -108,12 +109,12 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
     };
 
     const handleSave = async () => {
-        if (!formData.category_id || !formData.amount || !formData.expense_date) {
-            Toast.show({
-                type: 'error',
-                text1: 'Error',
-                text2: 'Please fill in required fields',
-            });
+        if (!formData.category_id || !formData.expense_date) {
+            Toast.show({ type: 'error', text1: 'Error', text2: 'Please select category and date' });
+            return;
+        }
+        if (!formData.amount || isNaN(Number(formData.amount)) || Number(formData.amount) <= 0) {
+            Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Amount must be greater than 0' });
             return;
         }
 
@@ -162,7 +163,13 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
             <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
             <AppHeader title={expense ? "Edit Expense" : "Add Expense"} />
             <FullScreenLoader visible={loading} />
-            <ScrollView style={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            <ScrollView
+                ref={scrollRef}
+                style={styles.content}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{ paddingBottom: 30 }}
+            >
                 <Card style={styles.formCard}>
                     <Text style={styles.label}>Category *</Text>
                     <View style={styles.categoryGrid}>
@@ -248,13 +255,18 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
 
                     <InputField
                         label="Description"
-                        placeholder="Optional details..."
+                        placeholder="Add details about the expense..."
                         multiline
                         numberOfLines={3}
                         textAlignVertical="top"
                         value={formData.description}
                         onChangeText={(text) => setFormData({ ...formData, description: text })}
-                        style={{ height: 80 }}
+                        onFocus={() => {
+                            setTimeout(() => {
+                                scrollRef.current?.scrollToEnd({ animated: true });
+                            }, 200);
+                        }}
+                        style={{ height: 100, paddingTop: 12 }}
                     />
                 </Card>
                 <View style={{ height: 20 }} />
@@ -358,7 +370,7 @@ const styles = StyleSheet.create({
         flex: 2,
         height: 48,
         borderRadius: 12,
-        backgroundColor: '#FF6B6B',
+        backgroundColor: '#7C3AED',
         alignItems: 'center',
         justifyContent: 'center',
     },

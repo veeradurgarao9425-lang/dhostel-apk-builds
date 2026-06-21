@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     View,
     Text,
@@ -29,6 +29,7 @@ export default function AddMaintenanceScreen() {
     const insets = useSafeAreaInsets();
 
     const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+    const scrollRef = useRef<ScrollView>(null);
     const [loading, setLoading] = useState(false);
 
     // Form inputs
@@ -116,9 +117,10 @@ export default function AddMaintenanceScreen() {
             <AppHeader title="New Issue" onBack={() => navigation.goBack()} />
 
             <ScrollView
+                ref={scrollRef}
                 style={styles.content}
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={[styles.scrollContent, { paddingBottom: 120 + insets.bottom }]}
+                contentContainerStyle={[styles.scrollContent, { paddingBottom: 200 + insets.bottom }]}
                 keyboardShouldPersistTaps="handled"
             >
                 {/* Basic Details Card */}
@@ -236,11 +238,16 @@ export default function AddMaintenanceScreen() {
                         <Ionicons name="document-text-outline" size={18} color={theme.primary} style={[styles.inputIcon, { marginTop: 2 }]} />
                         <TextInput
                             style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
-                            placeholder="Add additional information or instructions..."
+                            placeholder="Add details about the issue, location, urgency..."
                             placeholderTextColor="#A0AEC0"
                             multiline
                             value={description}
                             onChangeText={setDescription}
+                            onFocus={() => {
+                                setTimeout(() => {
+                                    scrollRef.current?.scrollToEnd({ animated: true });
+                                }, 200);
+                            }}
                         />
                     </View>
                 </View>

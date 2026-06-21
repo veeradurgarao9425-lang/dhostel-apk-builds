@@ -50,7 +50,7 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     inputContainer: {
-        height: 50,
+        minHeight: 50,
         backgroundColor: '#FFFFFF',
         borderRadius: 12,
         borderWidth: 1,
@@ -60,8 +60,9 @@ const styles = StyleSheet.create({
     },
     input: {
         fontSize: 16,
-        color: '#0F172A', // Darker text color (slate-900)
-        paddingVertical: 10,
+        color: '#0F172A',
+        minHeight: 50,
+        textAlignVertical: 'top',
     },
     inputError: {
         borderColor: '#EF4444',

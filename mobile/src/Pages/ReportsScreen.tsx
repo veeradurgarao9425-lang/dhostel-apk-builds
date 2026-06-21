@@ -7,788 +7,697 @@ import {
     TouchableOpacity,
     StatusBar,
     RefreshControl,
-    Dimensions,
     ActivityIndicator,
     Alert,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import api from '../services/api';
-import { ProfileMenu } from '../components/ProfileMenu';
 import { useTheme } from '../../contexts/ThemeContext';
 import { AppHeader } from '../components/AppHeader';
+import { ProfileMenu } from '../components/ProfileMenu';
 
-const { width: SCREEN_W } = Dimensions.get('window');
-
-// Category design configs
-const CAT_COLORS: Record<string, string> = {
-    'electricity': '#F59E0B',
-    'utilities': '#3B82F6',
-    'maintenance': '#8B5CF6',
-    'salaries': '#EC4899',
-    'staff': '#EC4899',
-    'groceries': '#F97316',
-    'kitchen': '#F97316',
-    'supplies': '#06B6D4',
-    'rent': '#6366F1',
-    'internet': '#14B8A6',
-    'cleaning': '#EF4444',
-    'water': '#0EA5E9',
-};
-
-const CAT_ICONS: Record<string, string> = {
-    'electricity': 'flash-sharp',
-    'utilities': 'build-sharp',
-    'maintenance': 'settings-sharp',
-    'salaries': 'people-sharp',
-    'staff': 'people-sharp',
-    'groceries': 'restaurant-sharp',
-    'kitchen': 'restaurant-sharp',
-    'supplies': 'cube-sharp',
-    'rent': 'home-sharp',
-    'internet': 'wifi-sharp',
-    'cleaning': 'brush-sharp',
-    'water': 'water-sharp',
-};
-
-const getColor = (name: string) => {
-    const lower = name.toLowerCase();
-    for (const [key, color] of Object.entries(CAT_COLORS)) {
-        if (lower.includes(key)) return color;
-    }
-    return '#64748B';
-};
-
-const getIcon = (name: string) => {
-    const lower = name.toLowerCase();
-    for (const [key, icon] of Object.entries(CAT_ICONS)) {
-        if (lower.includes(key)) return icon;
-    }
-    return 'receipt-sharp';
-};
-
-const getLightColor = (color: string) => {
-    if (color === '#F59E0B') return '#FEF3C7';
-    if (color === '#3B82F6') return '#DBEAFE';
-    if (color === '#8B5CF6') return '#EDE9FE';
-    if (color === '#EC4899') return '#FCE7F3';
-    if (color === '#F97316') return '#FFEDD5';
-    if (color === '#06B6D4') return '#ECFEFF';
-    if (color === '#6366F1') return '#E0E7FF';
-    if (color === '#14B8A6') return '#E6FFFA';
-    if (color === '#EF4444') return '#FEE2E2';
-    if (color === '#0EA5E9') return '#E0F2FE';
-    return '#F1F5F9';
-};
-
+// ── Helpers ─────────────────────────────────────────────────────────────────
 const fmt = (n: number) => {
     if (Math.abs(n) >= 100000) return `₹${(n / 100000).toFixed(1)}L`;
     if (Math.abs(n) >= 1000) return `₹${(n / 1000).toFixed(1)}K`;
     return `₹${n.toLocaleString('en-IN')}`;
 };
 
-const fmtFull = (n: number) => `₹${n.toLocaleString('en-IN')}`;
+const TABS = ['Summary', 'Tenants', 'Finance'] as const;
+type TabType = typeof TABS[number];
 
+// ── Mini Stat Cell ────────────────────────────────────────────────────────────
+const StatCell = ({ icon, label, value, iconBg, iconColor, dark }: any) => (
+    <View style={[sc.cell, { backgroundColor: dark ? '#1E293B' : '#F8FAFC', borderColor: dark ? '#334155' : '#F1F5F9' }]}>
+        <View style={[sc.iconBox, { backgroundColor: iconBg }]}>
+            <Ionicons name={icon} size={16} color={iconColor} />
+        </View>
+        <Text style={[sc.cellValue, { color: dark ? '#F1F5F9' : '#0F172A' }]}>{value}</Text>
+        <Text style={[sc.cellLabel, { color: dark ? '#94A3B8' : '#64748B' }]}>{label}</Text>
+    </View>
+);
+
+// ── Progress Row ─────────────────────────────────────────────────────────────
+const ProgressRow = ({ label, value, total, color }: any) => {
+    const pct = total > 0 ? Math.min(100, Math.round((value / total) * 100)) : 0;
+    return (
+        <View style={pr.row}>
+            <View style={pr.top}>
+                <Text style={pr.label}>{label}</Text>
+                <Text style={[pr.val, { color }]}>{pct}%</Text>
+            </View>
+            <View style={pr.track}>
+                <View style={[pr.fill, { width: `${pct}%`, backgroundColor: color }]} />
+            </View>
+        </View>
+    );
+};
+
+// ── Defaulter Row ─────────────────────────────────────────────────────────────
+const DefaulterRow = ({ rank, name, amount, days, color }: any) => (
+    <View style={dr.row}>
+        <View style={[dr.rank, { backgroundColor: color + '20' }]}>
+            <Text style={[dr.rankNum, { color }]}>#{rank}</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+            <Text style={dr.name} numberOfLines={1}>{name}</Text>
+            <Text style={dr.days}>{days > 0 ? `${days} days overdue` : 'Due soon'}</Text>
+        </View>
+        <Text style={[dr.amt, { color }]}>{fmt(amount)}</Text>
+    </View>
+);
+
+// ── Main Component ─────────────────────────────────────────────────────────────
 export default function ReportsScreen() {
     const navigation = useNavigation<any>();
-    const { theme } = useTheme();
-    
-    // States
-    const [overviewData, setOverviewData] = useState<any>(null);
-    const [statsData, setStatsData] = useState<any>(null);
+    const { theme, isDark } = useTheme();
+
+    const [activeTab, setActiveTab] = useState<TabType>('Summary');
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [downloading, setDownloading] = useState(false);
-    
-    // Target date defaults to current month
-    const [targetDate, setTargetDate] = useState(new Date());
-    const monthStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
-    
-    const now = new Date();
-    const isCurrentMonth = targetDate.getFullYear() === now.getFullYear() && targetDate.getMonth() === now.getMonth();
+    const [exporting, setExporting] = useState(false);
 
-    const fetchData = useCallback(async (isRefresh = false) => {
+    const [stats, setStats] = useState<any>(null);
+    const [monthlyFees, setMonthlyFees] = useState<any>(null);
+    const [defaulters, setDefaulters] = useState<any[]>([]);
+    const [expenses, setExpenses] = useState<any[]>([]);
+    const [trend, setTrend] = useState<any[]>([]);
+
+    const loadData = useCallback(async (silent = false) => {
+        if (!silent) setLoading(true);
         try {
-            if (!isRefresh) setLoading(true);
-            
-            // 1. Fetch monthly financial details
-            const overviewRes = await api.get('/reports/monthly-overview', { params: { month: monthStr } });
-            
-            // 2. Fetch occupancy and general stats
-            const statsRes = await api.get('/reports/dashboard-stats');
-            
-            if (overviewRes.data.success) {
-                setOverviewData(overviewRes.data.data);
+            const [statsRes, feesRes, expRes, trendRes] = await Promise.all([
+                api.get('/reports/dashboard-stats').catch(() => ({ data: { success: false } })),
+                api.get('/monthly-fees/summary').catch(() => ({ data: { success: false } })),
+                api.get('/expenses').catch(() => ({ data: { success: false } })),
+                api.get('/reports/monthly-overview').catch(() => ({ data: { success: false } })),
+            ]);
+
+            if (statsRes.data?.success) setStats(statsRes.data.data);
+            if (trendRes.data?.success && trendRes.data.data?.trend) {
+                setTrend(trendRes.data.data.trend.slice(-6));
             }
-            if (statsRes.data.success) {
-                setStatsData(statsRes.data.data);
+
+            if (feesRes.data?.success && feesRes.data.data?.fees) {
+                const fees: any[] = feesRes.data.data.fees;
+                const now = new Date(); now.setHours(0, 0, 0, 0);
+                const list = fees
+                    .filter(f => (f.balance || 0) > 0 && !['paid', 'fully paid'].includes((f.fee_status || '').toLowerCase()))
+                    .sort((a, b) => (b.balance || 0) - (a.balance || 0))
+                    .slice(0, 5)
+                    .map(f => {
+                        const due = f.due_date ? new Date(f.due_date) : new Date();
+                        due.setHours(0, 0, 0, 0);
+                        return {
+                            id: f.student_id,
+                            name: `${f.first_name || ''} ${f.last_name || ''}`.trim(),
+                            amount: f.balance || 0,
+                            days: Math.floor((now.getTime() - due.getTime()) / 86400000),
+                        };
+                    });
+                setDefaulters(list);
+                setMonthlyFees(feesRes.data.data);
+            }
+
+            if (expRes.data?.success) {
+                setExpenses(expRes.data.data || []);
             }
         } catch (e) {
-            console.error('Reports fetch error:', e);
-            Alert.alert('Error', 'Failed to fetch analytics data. Please check your connection.');
+            console.error('ReportsScreen load error:', e);
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [monthStr]);
+    }, []);
 
-    useFocusEffect(
-        useCallback(() => {
-            fetchData();
-        }, [fetchData])
-    );
+    useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
 
-    const shiftMonth = (delta: number) => {
-        const d = new Date(targetDate);
-        d.setMonth(d.getMonth() + delta);
-        
-        // Block future month selections
-        if (d > now) {
-            return;
-        }
-        setTargetDate(d);
-    };
-
-    const handleDownloadExcel = async () => {
+    // ── Export handler ────────────────────────────────────────────────────────
+    const handleExport = async () => {
+        setExporting(true);
         try {
-            setDownloading(true);
-            
-            const fileUrl = `${api.defaults.baseURL}/reports/download/excel?month=${monthStr}`;
-            const token = api.defaults.headers.common['Authorization'];
-            
-            // Path to save file locally on the device
-            const filename = `Hostel_Report_${monthStr}.xlsx`;
-            const localUri = `${FileSystem.documentDirectory}${filename}`;
-            
-            const downloadResult = await FileSystem.downloadAsync(
-                fileUrl,
-                localUri,
-                {
-                    headers: {
-                        'Authorization': token ? String(token) : '',
-                    }
-                }
-            );
-
-            if (downloadResult.status === 200) {
-                // Share the file natively
-                await Sharing.shareAsync(downloadResult.uri, {
-                    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                    dialogTitle: `Share ${filename}`,
-                    UTI: 'org.openxmlformats.spreadsheetml.sheet'
-                });
-            } else {
-                throw new Error(`Download failed with status ${downloadResult.status}`);
-            }
-        } catch (error) {
-            console.error('Excel report download error:', error);
-            Alert.alert('Download Failed', 'Could not retrieve or share the Excel report. Please try again.');
+            const res = await api.get('/reports/export/csv', { responseType: 'blob' });
+            if (!res.data) throw new Error('Empty response');
+            const uri = FileSystem.documentDirectory + 'report.csv';
+            await FileSystem.writeAsStringAsync(uri, res.data, { encoding: FileSystem.EncodingType.UTF8 });
+            await Sharing.shareAsync(uri, { mimeType: 'text/csv', dialogTitle: 'Export Report' });
+        } catch (e: any) {
+            Alert.alert('Export Failed', e.response?.data?.error || 'Could not export report');
         } finally {
-            setDownloading(false);
+            setExporting(false);
         }
     };
 
-    const monthLabel = targetDate.toLocaleString('en-US', { month: 'long', year: 'numeric' });
-    const canGoBack = navigation.canGoBack();
+    // ── Summary computed values ──────────────────────────────────────────────
+    const totalRent = stats ? (stats.monthlyRentCollected || stats.feeCollection || 0) : 0;
+    const pending = stats ? (stats.monthlyRentPending || stats.pendingDuesAmount || 0) : 0;
+    const totalDue = totalRent + pending;
+    const collectionRate = totalDue > 0 ? Math.round((totalRent / totalDue) * 100) : 0;
+    const occupancyRate = stats?.occupancyRate || 0;
+    const totalBeds = stats?.totalBeds || 0;
+    const occupiedBeds = stats?.occupiedBeds || 0;
+    const totalExpenses = expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+    const netProfit = totalRent - totalExpenses;
 
-    if (loading && !overviewData) {
+    if (loading) {
         return (
-            <View style={s.root}>
-                <StatusBar barStyle="light-content" />
-                <AppHeader
-                    title="Reports & Analytics"
-                    showBack={canGoBack}
-                    rightComponent={<ProfileMenu />}
-                />
-                <View style={s.loaderWrap}>
-                    <ActivityIndicator size="large" color={theme.gradientStart} />
-                    <Text style={s.loaderText}>Analyzing metrics...</Text>
-                </View>
+            <View style={[s.root, { backgroundColor: theme.background }]}>
+                <AppHeader title="Analytics & Reports" />
+                <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 60 }} />
             </View>
         );
     }
 
-    const cm = overviewData?.currentMonth || {};
-    const isProfit = (cm.netProfit || 0) >= 0;
-    
-    // Occupancy information
-    const totalBeds = statsData?.totalBeds || 0;
-    const occupiedBeds = statsData?.occupiedBeds || 0;
-    const availBeds = totalBeds - occupiedBeds;
-    const occupancyRate = statsData?.occupancyRate || 0;
-
     return (
-        <View style={s.root}>
+        <View style={[s.root, { backgroundColor: isDark ? theme.background : '#F0F4FF' }]}>
             <StatusBar barStyle="light-content" />
-
-            {/* Header */}
             <AppHeader
-                title="Reports & Analytics"
-                showBack={canGoBack}
-                rightComponent={<ProfileMenu />}
-            >
-                {/* Month Navigator */}
-                <View style={s.monthNav}>
-                    <TouchableOpacity onPress={() => shiftMonth(-1)} style={s.monthArrow}>
-                        <Ionicons name="chevron-back" size={18} color="#FFF" />
-                    </TouchableOpacity>
-                    <View style={s.monthLabelBox}>
-                        <Ionicons name="calendar-outline" size={14} color="rgba(255,255,255,0.7)" />
-                        <Text style={s.monthLabel}>{monthLabel}</Text>
+                title="Analytics & Reports"
+                rightComponent={
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                        <TouchableOpacity
+                            style={[s.exportBtn, exporting && { opacity: 0.6 }]}
+                            onPress={handleExport}
+                            disabled={exporting}
+                            activeOpacity={0.8}
+                        >
+                            {exporting
+                                ? <ActivityIndicator color="#14B8A6" size="small" />
+                                : <Ionicons name="download-outline" size={18} color="#14B8A6" />
+                            }
+                        </TouchableOpacity>
+                        <ProfileMenu />
                     </View>
-                    <TouchableOpacity 
-                        onPress={() => shiftMonth(1)} 
-                        style={[s.monthArrow, isCurrentMonth && { opacity: 0.3 }]}
-                        disabled={isCurrentMonth}
-                    >
-                        <Ionicons name="chevron-forward" size={18} color="#FFF" />
-                    </TouchableOpacity>
-                </View>
-            </AppHeader>
+                }
+            />
+
+            {/* ── TAB SWITCHER ────────────────────────────────────────────── */}
+            <View style={[s.tabBar, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderBottomColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                {TABS.map((tab) => {
+                    const active = activeTab === tab;
+                    return (
+                        <TouchableOpacity
+                            key={tab}
+                            style={[s.tabBtn, active && s.tabBtnActive]}
+                            onPress={() => setActiveTab(tab)}
+                            activeOpacity={0.8}
+                        >
+                            <Text style={[s.tabText, { color: active ? '#14B8A6' : (isDark ? '#94A3B8' : '#64748B') }]}>
+                                {tab}
+                            </Text>
+                            {active && <View style={s.tabUnderline} />}
+                        </TouchableOpacity>
+                    );
+                })}
+            </View>
 
             <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 14, paddingBottom: 110 }}
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={s.scrollContent}
-                refreshControl={
-                    <RefreshControl
-                        refreshing={refreshing}
-                        onRefresh={() => { setRefreshing(true); fetchData(true); }}
-                        tintColor={theme.gradientStart}
-                    />
-                }
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadData(true); }} colors={['#14B8A6']} />}
             >
-                <View style={s.body}>
-                    
-                    {/* Excel Download Section */}
-                    <TouchableOpacity
-                        style={s.downloadCard}
-                        onPress={handleDownloadExcel}
-                        disabled={downloading}
-                        activeOpacity={0.8}
-                    >
-                        <LinearGradient
-                            colors={['#10B981', '#059669']}
-                            style={s.downloadGradient}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                        >
-                            <View style={s.downloadInfo}>
-                                <View style={s.downloadIconBox}>
-                                    <Ionicons name="document-text" size={26} color="#059669" />
-                                </View>
-                                <View style={s.downloadTextWrap}>
-                                    <Text style={s.downloadTitle}>Export Excel Report</Text>
-                                    <Text style={s.downloadSubtitle}>Download multi-sheet Summary, Tenants, Payments, Rooms & Expenses workbook</Text>
-                                </View>
-                            </View>
-                            {downloading ? (
-                                <ActivityIndicator size="small" color="#FFF" />
-                            ) : (
-                                <View style={s.downloadShareBadge}>
-                                    <Ionicons name="share-social-outline" size={18} color="#FFF" />
-                                    <Text style={s.downloadShareText}>Share</Text>
-                                </View>
-                            )}
-                        </LinearGradient>
-                    </TouchableOpacity>
 
-                    {/* Stats Grid */}
-                    <View style={s.grid}>
-                        {/* Net Income/Loss Hero Card */}
-                        <View style={[s.heroCard, { borderColor: isProfit ? '#A7F3D0' : '#FECACA', backgroundColor: isProfit ? '#ECFDF5' : '#FEF2F2' }]}>
-                            <View style={s.heroContentRow}>
-                                <View>
-                                    <Text style={[s.heroLabel, { color: isProfit ? '#047857' : '#B91C1C' }]}>NET PROFIT / LOSS</Text>
-                                    <Text style={[s.heroValue, { color: isProfit ? '#065F46' : '#991B1B' }]}>{fmtFull(cm.netProfit || 0)}</Text>
-                                </View>
-                                <View style={[s.heroIconCircle, { backgroundColor: isProfit ? '#D1FAE5' : '#FEE2E2' }]}>
-                                    <Ionicons
-                                        name={isProfit ? 'trending-up' : 'trending-down'}
-                                        size={24}
-                                        color={isProfit ? '#10B981' : '#EF4444'}
-                                    />
-                                </View>
-                            </View>
-                            <View style={s.marginBadge}>
-                                <Text style={[s.marginBadgeText, { color: isProfit ? '#047857' : '#B91C1C' }]}>Margin: {cm.profitMargin || 0}%</Text>
-                            </View>
+                {/* ══════════════════ SUMMARY TAB ══════════════════ */}
+                {activeTab === 'Summary' && (
+                    <>
+                        {/* KPI Grid */}
+                        <Text style={[s.sectionLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>KEY METRICS THIS MONTH</Text>
+                        <View style={s.kpiGrid}>
+                            <StatCell icon="cash-sharp" label="Collected" value={fmt(totalRent)} iconBg="#ECFDF5" iconColor="#059669" dark={isDark} />
+                            <StatCell icon="time-sharp" label="Pending" value={fmt(pending)} iconBg="#FEF3C7" iconColor="#D97706" dark={isDark} />
+                            <StatCell icon="trending-down-sharp" label="Expenses" value={fmt(totalExpenses)} iconBg="#FEE2E2" iconColor="#EF4444" dark={isDark} />
+                            <StatCell icon="stats-chart-sharp" label="Net Profit" value={fmt(netProfit)} iconBg="#EDE9FE" iconColor="#7C3AED" dark={isDark} />
                         </View>
 
-                        {/* Income & Expense Summary */}
-                        <View style={s.statsRow}>
-                            <View style={[s.statsCard, s.incomeBg]}>
-                                <View style={[s.statsIconBox, { backgroundColor: '#D1FAE5' }]}>
-                                    <Ionicons name="arrow-up" size={16} color="#10B981" />
+                        {/* Progress section */}
+                        <View style={[s.card, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                            <View style={s.cardHeader}>
+                                <Ionicons name="analytics" size={15} color="#14B8A6" />
+                                <Text style={[s.cardTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>Occupancy & Collection Rate</Text>
+                            </View>
+                            <ProgressRow label={`Occupancy  (${occupiedBeds}/${totalBeds} beds)`} value={occupiedBeds} total={totalBeds} color="#7C3AED" />
+                            <ProgressRow label={`Collection  (${fmt(totalRent)} / ${fmt(totalDue)})`} value={totalRent} total={totalDue} color="#14B8A6" />
+                        </View>
+
+                        {/* Revenue trend mini table */}
+                        {trend.length > 0 && (
+                            <View style={[s.card, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                                <View style={s.cardHeader}>
+                                    <Ionicons name="bar-chart-sharp" size={15} color="#14B8A6" />
+                                    <Text style={[s.cardTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>Monthly Revenue Trend</Text>
                                 </View>
-                                <Text style={s.statsLabel}>TOTAL INCOME</Text>
-                                <Text style={[s.statsValue, { color: '#065F46' }]}>{fmt(cm.totalIncome || 0)}</Text>
-                            </View>
-
-                            <View style={[s.statsCard, s.expenseBg]}>
-                                <View style={[s.statsIconBox, { backgroundColor: '#FEE2E2' }]}>
-                                    <Ionicons name="arrow-down" size={16} color="#EF4444" />
+                                <View style={s.trendTable}>
+                                    <View style={[s.trendHeader, { borderBottomColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                                        <Text style={[s.trendHCol, { flex: 1.5 }]}>MONTH</Text>
+                                        <Text style={s.trendHCol}>INCOME</Text>
+                                        <Text style={s.trendHCol}>EXPENSE</Text>
+                                        <Text style={s.trendHCol}>NET</Text>
+                                    </View>
+                                    {trend.map((t: any, i: number) => {
+                                        const net = (t.income || 0) - (t.expenses || 0);
+                                        const isCurrent = i === trend.length - 1;
+                                        return (
+                                            <View key={i} style={[s.trendRow, isCurrent && { backgroundColor: isDark ? '#0F2027' : '#F0FDFA' }]}>
+                                                <Text style={[s.trendLabel, { flex: 1.5, color: isDark ? '#E2E8F0' : '#334155', fontWeight: isCurrent ? '800' : '500' }]}>
+                                                    {t.monthLabel || t.month}
+                                                </Text>
+                                                <Text style={[s.trendCell, { color: '#059669' }]}>{fmt(t.income || 0)}</Text>
+                                                <Text style={[s.trendCell, { color: '#EF4444' }]}>{fmt(t.expenses || 0)}</Text>
+                                                <Text style={[s.trendCell, { color: net >= 0 ? '#059669' : '#EF4444', fontWeight: '700' }]}>{fmt(net)}</Text>
+                                            </View>
+                                        );
+                                    })}
                                 </View>
-                                <Text style={s.statsLabel}>TOTAL EXPENSES</Text>
-                                <Text style={[s.statsValue, { color: '#991B1B' }]}>{fmt(cm.totalExpenses || 0)}</Text>
                             </View>
-                        </View>
-                    </View>
+                        )}
+                    </>
+                )}
 
-                    {/* Occupancy Card */}
-                    <View style={s.card}>
-                        <View style={s.cardHeader}>
-                            <Ionicons name="bed-outline" size={18} color="#2563EB" />
-                            <Text style={s.cardTitle}>Occupancy Overview</Text>
-                            <Text style={s.rateBadge}>{occupancyRate}% Full</Text>
+                {/* ══════════════════ TENANTS TAB ══════════════════ */}
+                {activeTab === 'Tenants' && (
+                    <>
+                        {/* Tenant stats */}
+                        <Text style={[s.sectionLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>OCCUPANCY BREAKDOWN</Text>
+                        <View style={s.kpiGrid}>
+                            <StatCell icon="people-sharp" label="Active" value={stats?.occupiedBeds || 0} iconBg="#EDE9FE" iconColor="#7C3AED" dark={isDark} />
+                            <StatCell icon="bed-sharp" label="Vacant" value={(stats?.totalBeds || 0) - (stats?.occupiedBeds || 0)} iconBg="#DCFCE7" iconColor="#16A34A" dark={isDark} />
+                            <StatCell icon="calendar-sharp" label="Pre-booked" value={stats?.prebookingsCount || 0} iconBg="#FEF9C3" iconColor="#CA8A04" dark={isDark} />
+                            <StatCell icon="exit-sharp" label="Left" value={stats?.leftTenants || stats?.vacatedStudents || 0} iconBg="#FEE2E2" iconColor="#DC2626" dark={isDark} />
                         </View>
-                        <View style={s.occupancyRow}>
-                            <View style={s.occupancyCell}>
-                                <Text style={s.occVal}>{totalBeds}</Text>
-                                <Text style={s.occLabel}>Total Beds</Text>
-                            </View>
-                            <View style={s.occDivider} />
-                            <View style={s.occupancyCell}>
-                                <Text style={[s.occVal, { color: '#2563EB' }]}>{occupiedBeds}</Text>
-                                <Text style={s.occLabel}>Occupied</Text>
-                            </View>
-                            <View style={s.occDivider} />
-                            <View style={s.occupancyCell}>
-                                <Text style={[s.occVal, { color: '#10B981' }]}>{availBeds >= 0 ? availBeds : 0}</Text>
-                                <Text style={s.occLabel}>Available</Text>
-                            </View>
-                        </View>
-                        <View style={s.progressWrap}>
-                            <View style={s.progressBg}>
-                                <View style={[s.progressFill, { width: `${occupancyRate}%` }]} />
-                            </View>
-                        </View>
-                    </View>
 
-                    {/* Expense Breakdown Category Progress */}
-                    <View style={s.card}>
-                        <View style={s.cardHeader}>
-                            <Ionicons name="pie-chart-outline" size={18} color="#EA580C" />
-                            <Text style={s.cardTitle}>Expense Breakdown</Text>
-                        </View>
-                        
-                        {(!cm.expenseBreakdown || cm.expenseBreakdown.length === 0) ? (
-                            <View style={s.emptyBlock}>
-                                <Ionicons name="receipt-outline" size={32} color="#CBD5E1" />
-                                <Text style={s.emptyText}>No expenses recorded for this month</Text>
-                            </View>
-                        ) : (
-                            <View style={s.categoryList}>
-                                {cm.expenseBreakdown.map((cat: any, i: number) => {
-                                    const color = getColor(cat.category_name);
-                                    const lightBg = getLightColor(color);
-                                    const iconName = getIcon(cat.category_name);
+                        {/* Top defaulters */}
+                        {defaulters.length > 0 && (
+                            <View style={[s.card, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                                <View style={s.cardHeader}>
+                                    <Ionicons name="alert-circle-sharp" size={15} color="#EF4444" />
+                                    <Text style={[s.cardTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>Top Rent Defaulters</Text>
+                                </View>
+                                {defaulters.map((d, i) => {
+                                    const colors = ['#EF4444', '#F97316', '#EAB308', '#7C3AED', '#64748B'];
                                     return (
-                                        <View key={cat.category_id || i} style={s.catBlock}>
-                                            <View style={s.catInfoRow}>
-                                                <View style={s.catLeft}>
-                                                    <View style={[s.catIconCircle, { backgroundColor: lightBg }]}>
-                                                        <Ionicons name={iconName as any} size={14} color={color} />
-                                                    </View>
-                                                    <Text style={s.catLabelText}>{cat.category_name}</Text>
-                                                </View>
-                                                <View style={s.catRight}>
-                                                    <Text style={s.catAmountText}>{fmtFull(cat.amount)}</Text>
-                                                    <Text style={s.catPercentText}>{cat.percentage}%</Text>
-                                                </View>
-                                            </View>
-                                            <View style={s.catProgressBg}>
-                                                <View style={[s.catProgressFill, { width: `${cat.percentage}%`, backgroundColor: color }]} />
-                                            </View>
-                                        </View>
+                                        <DefaulterRow
+                                            key={d.id}
+                                            rank={i + 1}
+                                            name={d.name}
+                                            amount={d.amount}
+                                            days={d.days}
+                                            color={colors[i] || '#64748B'}
+                                        />
                                     );
                                 })}
                             </View>
                         )}
-                    </View>
 
-                </View>
+                        {defaulters.length === 0 && (
+                            <View style={s.emptyBlock}>
+                                <Text style={s.emptyEmoji}>🎉</Text>
+                                <Text style={[s.emptyText, { color: isDark ? '#94A3B8' : '#64748B' }]}>No pending rent dues!</Text>
+                            </View>
+                        )}
+                    </>
+                )}
+
+                {/* ══════════════════ FINANCE TAB ══════════════════ */}
+                {activeTab === 'Finance' && (
+                    <>
+                        <Text style={[s.sectionLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>INCOME vs EXPENSES</Text>
+
+                        {/* P&L summary row */}
+                        <View style={[s.plRow, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                            <View style={s.plItem}>
+                                <View style={[s.plDot, { backgroundColor: '#059669' }]} />
+                                <View>
+                                    <Text style={[s.plLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>Income</Text>
+                                    <Text style={[s.plVal, { color: '#059669' }]}>{fmt(totalRent)}</Text>
+                                </View>
+                            </View>
+                            <View style={[s.plDivider, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]} />
+                            <View style={s.plItem}>
+                                <View style={[s.plDot, { backgroundColor: '#EF4444' }]} />
+                                <View>
+                                    <Text style={[s.plLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>Expenses</Text>
+                                    <Text style={[s.plVal, { color: '#EF4444' }]}>{fmt(totalExpenses)}</Text>
+                                </View>
+                            </View>
+                            <View style={[s.plDivider, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]} />
+                            <View style={s.plItem}>
+                                <View style={[s.plDot, { backgroundColor: netProfit >= 0 ? '#7C3AED' : '#F97316' }]} />
+                                <View>
+                                    <Text style={[s.plLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>Net</Text>
+                                    <Text style={[s.plVal, { color: netProfit >= 0 ? '#7C3AED' : '#F97316' }]}>{fmt(netProfit)}</Text>
+                                </View>
+                            </View>
+                        </View>
+
+                        {/* Expense list */}
+                        {expenses.length > 0 ? (
+                            <View style={[s.card, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                                <View style={s.cardHeader}>
+                                    <Ionicons name="receipt-sharp" size={15} color="#EF4444" />
+                                    <Text style={[s.cardTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>Expense Ledger</Text>
+                                </View>
+                                {expenses.slice(0, 10).map((e: any, i: number) => (
+                                    <View key={i} style={[s.expRow, { borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                        <View style={[s.expDot, { backgroundColor: '#FEE2E2' }]}>
+                                            <Ionicons name="card-sharp" size={13} color="#EF4444" />
+                                        </View>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={[s.expTitle, { color: isDark ? '#E2E8F0' : '#0F172A' }]} numberOfLines={1}>
+                                                {e.description || e.category || 'Expense'}
+                                            </Text>
+                                            <Text style={[s.expDate, { color: isDark ? '#94A3B8' : '#94A3B8' }]}>
+                                                {e.expense_date ? new Date(e.expense_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' }) : ''}
+                                            </Text>
+                                        </View>
+                                        <Text style={[s.expAmt, { color: '#EF4444' }]}>-{fmt(Number(e.amount) || 0)}</Text>
+                                    </View>
+                                ))}
+                                {expenses.length > 10 && (
+                                    <TouchableOpacity style={s.viewMoreBtn} onPress={() => navigation.navigate('Expenses')} activeOpacity={0.7}>
+                                        <Text style={s.viewMoreText}>View All {expenses.length} Expenses →</Text>
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+                        ) : (
+                            <View style={s.emptyBlock}>
+                                <Text style={s.emptyEmoji}>💰</Text>
+                                <Text style={[s.emptyText, { color: isDark ? '#94A3B8' : '#64748B' }]}>No expense records found</Text>
+                            </View>
+                        )}
+
+                        {/* Export banner */}
+                        <TouchableOpacity
+                            style={[s.exportBanner, { opacity: exporting ? 0.7 : 1 }]}
+                            onPress={handleExport}
+                            disabled={exporting}
+                            activeOpacity={0.85}
+                        >
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                                <Ionicons name="document-text-sharp" size={22} color="#FFFFFF" />
+                                <View>
+                                    <Text style={s.exportBannerTitle}>Export Full Report</Text>
+                                    <Text style={s.exportBannerSub}>Download CSV for all transactions</Text>
+                                </View>
+                            </View>
+                            {exporting
+                                ? <ActivityIndicator color="#FFF" size="small" />
+                                : <Ionicons name="download-sharp" size={22} color="#FFFFFF" />
+                            }
+                        </TouchableOpacity>
+                    </>
+                )}
+
             </ScrollView>
         </View>
     );
 }
 
+// ── Styles ────────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-    root: { flex: 1, backgroundColor: '#F8FAFC' },
-
-    // Header
-    header: {
-        paddingTop: 54,
-        paddingBottom: 20,
-        paddingHorizontal: 20,
-        borderBottomLeftRadius: 30,
-        borderBottomRightRadius: 30,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
-        elevation: 6,
-    },
-    headerRow: {
+    root: { flex: 1 },
+    tabBar: {
         flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
+        borderBottomWidth: 1,
+        paddingHorizontal: 16,
     },
-    backBtn: {
-        width: 38,
-        height: 38,
-        borderRadius: 14,
-        backgroundColor: 'rgba(255,255,255,0.18)',
+    tabBtn: {
+        flex: 1,
         alignItems: 'center',
-        justifyContent: 'center',
+        paddingVertical: 12,
+        position: 'relative',
     },
-    headerTitle: {
-        fontSize: 18,
-        fontWeight: '900',
-        color: '#FFF',
+    tabBtnActive: {},
+    tabText: {
+        fontSize: 13,
+        fontWeight: '700',
         letterSpacing: 0.3,
     },
-
-    // Month navigation
-    monthNav: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: 16,
-        gap: 14,
+    tabUnderline: {
+        position: 'absolute',
+        bottom: 0,
+        height: 3,
+        width: '60%',
+        backgroundColor: '#14B8A6',
+        borderRadius: 2,
     },
-    monthArrow: {
-        width: 36,
-        height: 36,
-        borderRadius: 12,
-        backgroundColor: 'rgba(255,255,255,0.16)',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    monthLabelBox: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        backgroundColor: 'rgba(255,255,255,0.16)',
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 14,
-    },
-    monthLabel: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: '#FFF',
-    },
-
-    loaderWrap: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 12,
-    },
-    loaderText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#64748B',
-    },
-
-    scrollContent: {
-        paddingBottom: 40,
-    },
-    body: {
-        padding: 16,
-        gap: 16,
-    },
-
-    // Download button/card
-    downloadCard: {
-        borderRadius: 20,
-        overflow: 'hidden',
-        elevation: 3,
-        shadowColor: '#10B981',
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 4 },
-    },
-    downloadGradient: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: 18,
-    },
-    downloadInfo: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        flex: 1,
-        marginRight: 12,
-    },
-    downloadIconBox: {
-        width: 44,
-        height: 44,
-        borderRadius: 12,
-        backgroundColor: '#FFF',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    downloadTextWrap: {
-        flex: 1,
-    },
-    downloadTitle: {
-        fontSize: 15,
-        fontWeight: '900',
-        color: '#FFF',
-        marginBottom: 2,
-    },
-    downloadSubtitle: {
-        fontSize: 10,
-        color: 'rgba(255,255,255,0.85)',
-        lineHeight: 13,
-        fontWeight: '500',
-    },
-    downloadShareBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        backgroundColor: 'rgba(255,255,255,0.22)',
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 10,
-    },
-    downloadShareText: {
-        fontSize: 11,
-        fontWeight: '800',
-        color: '#FFF',
-    },
-
-    // Hero and grid
-    grid: {
-        gap: 12,
-    },
-    heroCard: {
-        borderRadius: 22,
-        padding: 18,
-        borderWidth: 1.5,
-    },
-    heroContentRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    heroLabel: {
+    sectionLabel: {
         fontSize: 10,
         fontWeight: '800',
-        letterSpacing: 1.2,
-        marginBottom: 4,
+        letterSpacing: 1,
+        marginBottom: 10,
+        marginTop: 4,
     },
-    heroValue: {
-        fontSize: 26,
-        fontWeight: '900',
-    },
-    heroIconCircle: {
-        width: 46,
-        height: 46,
-        borderRadius: 23,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    marginBadge: {
-        alignSelf: 'flex-start',
-        backgroundColor: 'rgba(255, 255, 255, 0.5)',
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: 6,
-        marginTop: 10,
-    },
-    marginBadgeText: {
-        fontSize: 10,
-        fontWeight: '800',
-    },
-
-    // Stats side-by-side
-    statsRow: {
+    kpiGrid: {
         flexDirection: 'row',
-        gap: 12,
+        flexWrap: 'wrap',
+        gap: 10,
+        marginBottom: 14,
     },
-    statsCard: {
-        flex: 1,
-        borderRadius: 18,
-        padding: 14,
-        borderWidth: 1,
-    },
-    incomeBg: {
-        backgroundColor: '#ECFDF5',
-        borderColor: '#D1FAE5',
-    },
-    expenseBg: {
-        backgroundColor: '#FEF2F2',
-        borderColor: '#FEE2E2',
-    },
-    statsIconBox: {
-        width: 30,
-        height: 30,
-        borderRadius: 9,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 8,
-    },
-    statsLabel: {
-        fontSize: 9,
-        fontWeight: '800',
-        color: '#64748B',
-        letterSpacing: 0.8,
-        marginBottom: 2,
-    },
-    statsValue: {
-        fontSize: 18,
-        fontWeight: '900',
-    },
-
-    // Card
     card: {
-        backgroundColor: '#FFF',
-        borderRadius: 22,
-        padding: 16,
+        borderRadius: 16,
         borderWidth: 1,
-        borderColor: '#F1F5F9',
-        elevation: 2,
+        padding: 16,
+        marginBottom: 14,
+        elevation: 1,
         shadowColor: '#000',
-        shadowOpacity: 0.03,
-        shadowRadius: 6,
-        shadowOffset: { width: 0, height: 2 },
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 4,
     },
     cardHeader: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
-        marginBottom: 16,
+        marginBottom: 14,
     },
     cardTitle: {
         fontSize: 14,
-        fontWeight: '800',
-        color: '#1E293B',
+        fontWeight: '700',
+    },
+    exportBtn: {
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        backgroundColor: 'rgba(20,184,166,0.15)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    // Trend table
+    trendTable: {},
+    trendHeader: {
+        flexDirection: 'row',
+        paddingBottom: 8,
+        marginBottom: 4,
+        borderBottomWidth: 1,
+    },
+    trendHCol: {
         flex: 1,
+        fontSize: 9,
+        fontWeight: '700',
+        color: '#94A3B8',
+        letterSpacing: 0.5,
+        textAlign: 'right',
     },
-    rateBadge: {
-        fontSize: 11,
+    trendRow: {
+        flexDirection: 'row',
+        paddingVertical: 8,
+        borderRadius: 8,
+        paddingHorizontal: 4,
+    },
+    trendLabel: {
+        fontSize: 12,
+    },
+    trendCell: {
+        flex: 1,
+        fontSize: 12,
+        fontWeight: '600',
+        textAlign: 'right',
+    },
+    // P&L row
+    plRow: {
+        flexDirection: 'row',
+        borderRadius: 16,
+        borderWidth: 1,
+        padding: 16,
+        marginBottom: 14,
+        alignItems: 'center',
+    },
+    plItem: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    plDot: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+    },
+    plLabel: {
+        fontSize: 10,
+        fontWeight: '700',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    plVal: {
+        fontSize: 15,
         fontWeight: '800',
-        color: '#2563EB',
-        backgroundColor: '#DBEAFE',
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: 6,
+        marginTop: 2,
     },
-
-    // Occupancy
-    occupancyRow: {
+    plDivider: {
+        width: 1,
+        height: 40,
+        marginHorizontal: 8,
+    },
+    // Expense rows
+    expRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 10,
+        borderBottomWidth: 1,
+        gap: 10,
+    },
+    expDot: {
+        width: 32,
+        height: 32,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    expTitle: {
+        fontSize: 13,
+        fontWeight: '600',
+    },
+    expDate: {
+        fontSize: 11,
+        fontWeight: '500',
+        marginTop: 2,
+    },
+    expAmt: {
+        fontSize: 13,
+        fontWeight: '800',
+    },
+    viewMoreBtn: {
+        paddingVertical: 12,
+        alignItems: 'center',
+        marginTop: 4,
+    },
+    viewMoreText: {
+        fontSize: 13,
+        color: '#14B8A6',
+        fontWeight: '700',
+    },
+    // Export banner
+    exportBanner: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: 14,
+        backgroundColor: '#14B8A6',
+        borderRadius: 16,
+        padding: 18,
+        marginTop: 6,
+        elevation: 4,
+        shadowColor: '#14B8A6',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
     },
-    occupancyCell: {
-        flex: 1,
+    exportBannerTitle: {
+        color: '#FFFFFF',
+        fontSize: 15,
+        fontWeight: '800',
+    },
+    exportBannerSub: {
+        color: 'rgba(255,255,255,0.8)',
+        fontSize: 12,
+        fontWeight: '500',
+    },
+    emptyBlock: {
         alignItems: 'center',
+        paddingVertical: 40,
     },
-    occVal: {
-        fontSize: 18,
-        fontWeight: '900',
-        color: '#1E293B',
+    emptyEmoji: {
+        fontSize: 48,
+        marginBottom: 10,
     },
-    occLabel: {
-        fontSize: 10,
+    emptyText: {
+        fontSize: 15,
         fontWeight: '600',
+    },
+});
+
+// ── Sub-component styles ─────────────────────────────────────────────────────
+const sc = StyleSheet.create({
+    cell: {
+        flex: 1,
+        minWidth: '45%',
+        borderRadius: 14,
+        borderWidth: 1,
+        padding: 14,
+        gap: 6,
+    },
+    iconBox: {
+        width: 32,
+        height: 32,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 4,
+    },
+    cellValue: {
+        fontSize: 18,
+        fontWeight: '800',
+    },
+    cellLabel: {
+        fontSize: 11,
+        fontWeight: '600',
+    },
+});
+
+const pr = StyleSheet.create({
+    row: { marginBottom: 14 },
+    top: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+    label: { fontSize: 12, fontWeight: '600', color: '#64748B' },
+    val: { fontSize: 12, fontWeight: '800' },
+    track: { height: 7, backgroundColor: '#F1F5F9', borderRadius: 4, overflow: 'hidden' },
+    fill: { height: '100%', borderRadius: 4 },
+});
+
+const dr = StyleSheet.create({
+    row: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 10,
+        gap: 10,
+    },
+    rank: {
+        width: 36,
+        height: 36,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    rankNum: {
+        fontSize: 12,
+        fontWeight: '800',
+    },
+    name: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#0F172A',
+    },
+    days: {
+        fontSize: 11,
+        fontWeight: '500',
         color: '#94A3B8',
         marginTop: 2,
     },
-    occDivider: {
-        width: 1,
-        height: 24,
-        backgroundColor: '#F1F5F9',
-    },
-    progressWrap: {
-        height: 8,
-        backgroundColor: '#F1F5F9',
-        borderRadius: 4,
-        overflow: 'hidden',
-    },
-    progressBg: {
-        width: '100%',
-        height: '100%',
-    },
-    progressFill: {
-        height: '100%',
-        backgroundColor: '#2563EB',
-        borderRadius: 4,
-    },
-
-    // Category breakdown
-    emptyBlock: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 24,
-        gap: 8,
-    },
-    emptyText: {
-        fontSize: 12,
-        color: '#94A3B8',
-        fontWeight: '600',
-    },
-    categoryList: {
-        gap: 12,
-    },
-    catBlock: {
-        gap: 6,
-    },
-    catInfoRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    catLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    catIconCircle: {
-        width: 28,
-        height: 28,
-        borderRadius: 8,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    catLabelText: {
-        fontSize: 13,
-        fontWeight: '700',
-        color: '#334155',
-    },
-    catRight: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    catAmountText: {
-        fontSize: 13,
-        fontWeight: '900',
-        color: '#1E293B',
-    },
-    catPercentText: {
-        fontSize: 10,
-        fontWeight: '600',
-        color: '#94A3B8',
-        width: 32,
-        textAlign: 'right',
-    },
-    catProgressBg: {
-        height: 5,
-        backgroundColor: '#F1F5F9',
-        borderRadius: 3,
-        overflow: 'hidden',
-    },
-    catProgressFill: {
-        height: '100%',
-        borderRadius: 3,
+    amt: {
+        fontSize: 14,
+        fontWeight: '800',
     },
 });
