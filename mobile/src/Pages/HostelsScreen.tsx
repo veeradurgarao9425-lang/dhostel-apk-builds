@@ -18,6 +18,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import api from '../services/api';
 import { AppHeader } from '../components/AppHeader';
+import { EmptyState } from '../components/ui/EmptyState';
 
 export const HostelsScreen = () => {
     const navigation = useNavigation<any>();
@@ -163,9 +164,13 @@ export const HostelsScreen = () => {
                         <ActivityIndicator size="large" color={theme.primary} />
                     </View>
                 ) : hostels.length === 0 ? (
-                    <View style={styles.empty}>
-                        <Text style={[styles.emptyText, { color: theme.textSecondary }]}>No hostels found</Text>
-                    </View>
+                    <EmptyState
+                        variant="noData"
+                        title="No Hostels Yet"
+                        subtitle="Add your first hostel to start managing tenants, rooms and finances."
+                        actionLabel="Add Hostel"
+                        onAction={() => navigation.navigate('AddHostel')}
+                    />
                 ) : (
                     hostels.map((h: any) => {
                         const isActive = h.hostel_id === user?.hostel_id;

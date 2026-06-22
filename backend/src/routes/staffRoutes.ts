@@ -5,13 +5,21 @@ import {
   getStaffById,
   createStaff,
   updateStaff,
-  deleteStaff
+  deleteStaff,
+  getStaffPayments,
+  addStaffPayment,
+  deleteStaffPayment
 } from '../controllers/staffController.js';
 
 const router = express.Router();
 
 // All routes require authentication
 router.use(authMiddleware);
+
+// Staff wage payments (declare specific routes before '/:staffId')
+router.get('/:staffId/payments', getStaffPayments);
+router.post('/:staffId/payments', addStaffPayment);
+router.delete('/payments/:paymentId', deleteStaffPayment);
 
 // Staff routes
 router.get('/', getStaff);

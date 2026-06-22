@@ -33,8 +33,6 @@ import IncomeScreen          from '../Pages/InComeScreen';
 import IncomeDetailsScreen   from '../Pages/IncomeDetailsScreen';
 import AddIncomeScreen       from '../Pages/AddIncomeScreen';
 import PlaceholderScreen     from '../Pages/PlaceholderScreen';
-import MaintenanceScreen     from '../Pages/MaintenanceScreen';
-import AddMaintenanceScreen  from '../Pages/AddMaintenanceScreen';
 import BulkDeleteScreen      from '../Pages/BulkDeleteScreen';
 import QRSignupScreen        from '../Pages/QRSignupScreen';
 import PreBookingScreen      from '../Pages/PreBookingScreen';
@@ -44,6 +42,9 @@ import ComingSoonScreen      from '../Pages/ComingSoonScreen';
 import FinanceScreen         from '../Pages/FinanceScreen';
 import StaffScreen           from '../Pages/StaffScreen';
 import AddStaffScreen        from '../Pages/AddStaffScreen';
+import StaffPaymentsScreen   from '../Pages/StaffPaymentsScreen';
+import GuestsScreen          from '../Pages/GuestsScreen';
+import AddGuestScreen        from '../Pages/AddGuestScreen';
 import BillRemindersScreen   from '../Pages/BillRemindersScreen';
 import RemindersScreen       from '../Pages/RemindersScreen';
 import TenantTransactionsScreen from '../Pages/TenantTransactionsScreen';
@@ -136,6 +137,15 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     component={AddStaffScreen}
                     options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
                 />
+                <Stack.Screen name="StaffPayments" component={StaffPaymentsScreen} />
+
+                {/* Guests (short-stay) */}
+                <Stack.Screen name="Guests" component={GuestsScreen} />
+                <Stack.Screen
+                    name="AddGuest"
+                    component={AddGuestScreen}
+                    options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+                />
 
                 {/* Reminders & Transactions */}
                 <Stack.Screen name="Reminders"          component={RemindersScreen}       />
@@ -182,12 +192,6 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                 <Stack.Screen name="Hostels" component={HostelsScreen} />
 
                 {/* Tools */}
-                <Stack.Screen name="Maintenance" component={MaintenanceScreen} />
-                <Stack.Screen
-                    name="AddMaintenance"
-                    component={AddMaintenanceScreen}
-                    options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
-                />
                 <Stack.Screen name="QRSignup"    component={QRSignupScreen}    />
                 <Stack.Screen name="PreBooking"  component={PreBookingScreen}  />
                 <Stack.Screen name="Notices"     component={NoticesScreen}     />

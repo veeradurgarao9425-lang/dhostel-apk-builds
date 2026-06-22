@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
 import { Header } from '../components/Header';
 import { Card } from '../components/Card';
+import { EmptyState } from '../components/ui/EmptyState';
 import { Bell, CreditCard, UserPlus, AlertTriangle, CheckCircle2, TrendingUp, Info } from 'lucide-react-native';
 import { useNotifications, Notification } from '../hooks/useNotifications';
 import { useNavigation } from '@react-navigation/native';
@@ -72,11 +73,11 @@ export const NotificationScreen = () => {
                     refreshControl={<RefreshControl refreshing={loading} onRefresh={onRefresh} />}
                 >
                     {notifications.length === 0 ? (
-                        <View style={styles.emptyState}>
-                            <Bell size={48} color="#CBD5E1" />
-                            <Text style={styles.emptyTitle}>No new notifications</Text>
-                            <Text style={styles.emptySubtitle}>We'll notify you when something important happens.</Text>
-                        </View>
+                        <EmptyState
+                            variant="noData"
+                            title="No New Notifications"
+                            subtitle="We'll notify you when something important happens."
+                        />
                     ) : (
                         notifications.map((notif) => (
                             <TouchableOpacity key={notif.id} onPress={() => handleNotifClick(notif)} activeOpacity={0.8}>

@@ -897,7 +897,21 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
       incomeQuery = incomeQuery.whereIn('hostel_id', hostelIds);
     }
     const incomeResult = await incomeQuery.first();
-    const otherIncome = Number(incomeResult?.total || 0);
+    let otherIncome = Number(incomeResult?.total || 0);
+
+    // ── 2b. Guest income (short-stay paying guests) ──
+    let guestIncome = 0;
+    try {
+      let guestQuery = db('guests')
+        .whereBetween('check_in_date', [monthStart, monthEnd])
+        .sum('amount_paid as total');
+      if (hostelIds.length > 0) guestQuery = guestQuery.whereIn('hostel_id', hostelIds);
+      const guestResult = await guestQuery.first();
+      guestIncome = Number(guestResult?.total || 0);
+    } catch (e) {
+      guestIncome = 0; // guests table may not exist on older databases
+    }
+    otherIncome += guestIncome;
 
     const totalIncome = feeCollection + otherIncome;
 
@@ -918,9 +932,25 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
     }
     const expenseBreakdown = await expenseCatQuery;
 
+    // ── 3b. Staff wage payments (recorded separately, surfaced as an expense line) ──
+    let staffWages = 0;
+    let staffWageCount = 0;
+    try {
+      let wagesQuery = db('staff_payments')
+        .whereBetween('payment_date', [monthStart, monthEnd])
+        .sum('amount as total')
+        .count('* as count');
+      if (hostelIds.length > 0) wagesQuery = wagesQuery.whereIn('hostel_id', hostelIds);
+      const wagesResult = await wagesQuery.first();
+      staffWages = Number(wagesResult?.total || 0);
+      staffWageCount = Number(wagesResult?.count || 0);
+    } catch (e) {
+      staffWages = 0; // staff_payments table may not exist on older databases
+    }
+
     const totalExpenses = expenseBreakdown.reduce(
       (sum: number, item: any) => sum + Number(item.total_amount || 0), 0
-    );
+    ) + staffWages;
 
     // Calculate percentages for each category
     const expenseCategories = expenseBreakdown.map((item: any) => ({
@@ -932,6 +962,18 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
         ? Number(((Number(item.total_amount) / totalExpenses) * 100).toFixed(1))
         : 0
     }));
+
+    // Surface staff wages as its own category line so it shows in the breakdown
+    if (staffWages > 0) {
+      expenseCategories.push({
+        category_id: -1,
+        category_name: 'Staff Wages',
+        amount: staffWages,
+        count: staffWageCount,
+        percentage: totalExpenses > 0 ? Number(((staffWages / totalExpenses) * 100).toFixed(1)) : 0,
+      });
+      expenseCategories.sort((a: any, b: any) => b.amount - a.amount);
+    }
 
     const netProfit = totalIncome - totalExpenses;
 
@@ -979,8 +1021,26 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
       if (hostelIds.length > 0) tExpQ = tExpQ.whereIn('hostel_id', hostelIds);
       const tExp = await tExpQ.first();
 
-      const tIncome = Number(tFee?.total || 0) + Number(tInc?.total || 0);
-      const tExpenses = Number(tExp?.total || 0);
+      // Guest income + staff wages for the trend month (best-effort)
+      let tGuest = 0;
+      let tWages = 0;
+      try {
+        let tGuestQ = db('guests')
+          .whereBetween('check_in_date', [tStart, tEnd])
+          .sum('amount_paid as total');
+        if (hostelIds.length > 0) tGuestQ = tGuestQ.whereIn('hostel_id', hostelIds);
+        tGuest = Number((await tGuestQ.first())?.total || 0);
+      } catch (e) { tGuest = 0; }
+      try {
+        let tWagesQ = db('staff_payments')
+          .whereBetween('payment_date', [tStart, tEnd])
+          .sum('amount as total');
+        if (hostelIds.length > 0) tWagesQ = tWagesQ.whereIn('hostel_id', hostelIds);
+        tWages = Number((await tWagesQ.first())?.total || 0);
+      } catch (e) { tWages = 0; }
+
+      const tIncome = Number(tFee?.total || 0) + Number(tInc?.total || 0) + tGuest;
+      const tExpenses = Number(tExp?.total || 0) + tWages;
 
       trend.push({
         month: tMonthStr,
@@ -1003,6 +1063,8 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
           feeCollection,
           feeCount,
           otherIncome,
+          guestIncome,
+          staffWages,
           totalIncome,
           totalExpenses,
           netProfit,

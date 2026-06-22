@@ -16,6 +16,7 @@ import {
     Calendar, Trash2, User, ChevronRight, AlertTriangle
 } from 'lucide-react-native';
 import { AppHeader } from '../components/AppHeader';
+import { EmptyState } from '../components/ui/EmptyState';
 import api from '../services/api';
 import { showErrorToast, showSuccessToast } from '../hooks/Toastconfig';
 
@@ -119,13 +120,11 @@ export default function NoticesScreen({ navigation }: any) {
                     }
                 >
                     {notices.length === 0 ? (
-                        <View style={styles.emptyState}>
-                            <View style={styles.emptyIconWrap}>
-                                <Calendar size={40} color="#94A3B8" />
-                            </View>
-                            <Text style={styles.emptyTitle}>No vacate dates scheduled</Text>
-                            <Text style={styles.emptySubtitle}>You can schedule checkout notices directly from student profile details.</Text>
-                        </View>
+                        <EmptyState
+                            variant="noData"
+                            title="No Vacate Dates Scheduled"
+                            subtitle="You can schedule checkout notices directly from a student's profile details."
+                        />
                     ) : (
                         notices.map((student) => {
                             const overdue = isOverdue(student.vacate_notice_date);

@@ -20,6 +20,7 @@ import idProofTypesRoutes from './routes/idProofTypesRoutes.js';
 import staffRoutes from './routes/staffRoutes.js';
 import reminderRoutes from './routes/reminderRoutes.js';
 import noticeRoutes from './routes/noticeRoutes.js';
+import guestRoutes from './routes/guestRoutes.js';
 import { startMonthlyFeesGenerationJob } from './jobs/monthlyFeesGeneration.js';
 
 // Load environment variables
@@ -85,6 +86,7 @@ app.use('/api/id-proof-types', idProofTypesRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/reminders', reminderRoutes);
 app.use('/api/notices', noticeRoutes);
+app.use('/api/guests', guestRoutes);
 
 // Public QR tenant signup (no auth) — supports optional roomId & bedId pre-fill
 app.get('/api/public/qr-signup', async (req, res) => {
@@ -119,20 +121,20 @@ app.get('/api/public/qr-signup', async (req, res) => {
       <title>Tenant Registration — Hostel</title>
       <style>
         *, *::before, *::after { box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; background: linear-gradient(135deg,#f0f9ff 0%,#fdf4ff 100%); margin:0; min-height:100vh; padding:20px 16px 40px; }
-        .card { max-width:520px; margin:0 auto; background:#fff; border-radius:20px; padding:28px 24px; box-shadow:0 8px 32px rgba(0,0,0,0.10); }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; background: linear-gradient(135deg,#F5F3FF 0%,#EDE9FE 100%); margin:0; min-height:100vh; padding:20px 16px 40px; }
+        .card { max-width:520px; margin:0 auto; background:#fff; border-radius:20px; padding:28px 24px; box-shadow:0 8px 32px rgba(124,58,237,0.12); }
         .logo { text-align:center; margin-bottom:20px; }
-        .logo-icon { width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#FF8585,#FF6B6B);display:inline-flex;align-items:center;justify-content:center;font-size:28px; }
+        .logo-icon { width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#7C3AED,#5F2EEA);display:inline-flex;align-items:center;justify-content:center;font-size:28px; }
         h2 { margin:0 0 4px;color:#111827;font-size:22px;font-weight:700; }
         .subtitle { color:#6b7280;font-size:13px;margin-bottom:20px; }
         .section { font-weight:700;color:#374151;font-size:13px;letter-spacing:.5px;text-transform:uppercase;margin:18px 0 10px; }
         .field { margin-bottom:14px; }
         label { display:block;font-size:13px;color:#374151;margin-bottom:6px;font-weight:600; }
         input, select { width:100%;padding:12px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:15px;color:#111827;outline:none;transition:border-color .2s; }
-        input:focus, select:focus { border-color:#FF6B6B; }
+        input:focus, select:focus { border-color:#7C3AED; }
         .row { display:flex;gap:12px; }
         .row .field { flex:1; }
-        .btn { width:100%;background:linear-gradient(135deg,#FF8585,#FF6B6B);color:#fff;border:none;padding:15px;border-radius:12px;font-weight:700;font-size:16px;cursor:pointer;margin-top:8px;letter-spacing:.3px; }
+        .btn { width:100%;background:linear-gradient(135deg,#7C3AED,#5F2EEA);color:#fff;border:none;padding:15px;border-radius:12px;font-weight:700;font-size:16px;cursor:pointer;margin-top:8px;letter-spacing:.3px; }
         .btn:hover { opacity:.92; }
         .note { font-size:12px;color:#9ca3af;margin-top:14px;text-align:center; }
         .success { background:#ecfdf5;color:#065f46;padding:14px;border-radius:10px;margin-bottom:14px;font-weight:600; }
@@ -207,6 +209,15 @@ app.post('/api/public/qr-signup', async (req, res) => {
       return res.status(400).send('<div style="background:#fef2f2;color:#7f1d1d;padding:14px;border-radius:10px;font-family:sans-serif;">⚠️ First Name and Phone are required</div>');
     }
 
+    const numHostelId = parseInt(hostelId, 10);
+    if (isNaN(numHostelId)) {
+      return res.status(400).send('<div style="background:#fef2f2;color:#7f1d1d;padding:14px;border-radius:10px;font-family:sans-serif;">⚠️ Invalid hostel link</div>');
+    }
+    const hostelExists = await db('hostel_master').where('hostel_id', numHostelId).first();
+    if (!hostelExists) {
+      return res.status(404).send('<div style="background:#fef2f2;color:#7f1d1d;padding:14px;border-radius:10px;font-family:sans-serif;">⚠️ This hostel link is no longer valid</div>');
+    }
+
     const now = new Date();
     const insertData: any = {
       hostel_id:        parseInt(hostelId, 10),
@@ -217,8 +228,8 @@ app.post('/api/public/qr-signup', async (req, res) => {
       date_of_birth:    date_of_birth ? new Date(date_of_birth) : null,
       gender:           gender || null,
       permanent_address: permanent_address || null,
-      guardian_name:    guardian_name || 'N/A',
-      guardian_phone:   guardian_phone || '0000000000',
+      guardian_name:    guardian_name || null,
+      guardian_phone:   guardian_phone || null,
       admission_date:   now,
       admission_fee:    0,
       admission_status: 0,
@@ -235,14 +246,14 @@ app.post('/api/public/qr-signup', async (req, res) => {
     res.status(200).send(`
       <!DOCTYPE html>
       <html><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1.0" />
-      <style>body{font-family:sans-serif;background:linear-gradient(135deg,#f0f9ff,#fdf4ff);display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;}.card{background:#fff;border-radius:20px;padding:32px 28px;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.10);text-align:center;}</style>
+      <style>body{font-family:sans-serif;background:linear-gradient(135deg,#F5F3FF,#EDE9FE);display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;}.card{background:#fff;border-radius:20px;padding:32px 28px;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(124,58,237,.12);text-align:center;}</style>
       </head><body>
       <div class="card">
         <div style="font-size:56px;margin-bottom:16px;">✅</div>
         <h2 style="color:#065f46;margin:0 0 8px;">Registration Submitted!</h2>
         <p style="color:#374151;font-size:15px;margin-bottom:24px;">Thank you, <strong>${first_name}</strong>! Your details have been received. The hostel owner will review and activate your profile shortly.</p>
         ${roomId ? `<div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px;margin-bottom:20px;"><p style="margin:0;color:#166534;font-size:14px;">🏠 Room <strong>${roomId}</strong>${bedName ? ` — Bed <strong>${bedName}</strong>` : ''} has been noted.</p></div>` : ''}
-        <a href="${backUrl}" style="display:inline-block;background:linear-gradient(135deg,#FF8585,#FF6B6B);color:#fff;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:700;">Register Another</a>
+        <a href="${backUrl}" style="display:inline-block;background:linear-gradient(135deg,#7C3AED,#5F2EEA);color:#fff;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:700;">Register Another</a>
       </div></body></html>
     `);
   } catch (e: any) {

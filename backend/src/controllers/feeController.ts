@@ -330,6 +330,10 @@ export const getReceipt = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    if (req.user?.hostel_id && payment.hostel_id !== req.user.hostel_id) {
+      return res.status(403).json({ success: false, error: 'Access denied.' });
+    }
+
     res.json({
       success: true,
       data: payment

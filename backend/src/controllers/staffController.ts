@@ -46,7 +46,7 @@ export const getStaff = async (req: AuthRequest, res: Response) => {
     console.error('Get staff error:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch staff'
+      error: error?.sqlMessage || error?.message || 'Failed to fetch staff'
     });
   }
 };
@@ -62,6 +62,10 @@ export const getStaffById = async (req: AuthRequest, res: Response) => {
         success: false,
         error: 'Staff member not found'
       });
+    }
+
+    if (req.user?.hostel_id && staff.hostel_id !== req.user.hostel_id) {
+      return res.status(403).json({ success: false, error: 'Access denied.' });
     }
 
     res.json({
@@ -166,6 +170,10 @@ export const updateStaff = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    if (req.user?.hostel_id && staff.hostel_id !== req.user.hostel_id) {
+      return res.status(403).json({ success: false, error: 'Access denied.' });
+    }
+
     await db('staff').where('staff_id', staffId).update(updateData);
 
     res.json({
@@ -176,8 +184,93 @@ export const updateStaff = async (req: AuthRequest, res: Response) => {
     console.error('Update staff error:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to update staff member'
+      error: error?.sqlMessage || error?.message || 'Failed to update staff member'
     });
+  }
+};
+
+// ─── Staff wage payments ────────────────────────────────────────────────────
+
+// GET /api/staff/:staffId/payments — per-worker payment history
+export const getStaffPayments = async (req: AuthRequest, res: Response) => {
+  try {
+    const { staffId } = req.params;
+    const staff = await db('staff').where('staff_id', staffId).first();
+    if (!staff) {
+      return res.status(404).json({ success: false, error: 'Staff member not found' });
+    }
+    if (req.user?.hostel_id && staff.hostel_id !== req.user.hostel_id) {
+      return res.status(403).json({ success: false, error: 'Access denied.' });
+    }
+
+    const payments = await db('staff_payments')
+      .where('staff_id', staffId)
+      .orderBy('payment_date', 'desc')
+      .orderBy('payment_id', 'desc');
+
+    const totalPaid = payments.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
+
+    res.json({ success: true, data: payments, summary: { count: payments.length, totalPaid } });
+  } catch (error: any) {
+    console.error('Get staff payments error:', error);
+    res.status(500).json({ success: false, error: error?.message || 'Failed to fetch payments' });
+  }
+};
+
+// POST /api/staff/:staffId/payments — record a wage payment
+export const addStaffPayment = async (req: AuthRequest, res: Response) => {
+  try {
+    const { staffId } = req.params;
+    const { amount, payment_date, days_worked, payment_type, note } = req.body;
+
+    const staff = await db('staff').where('staff_id', staffId).first();
+    if (!staff) {
+      return res.status(404).json({ success: false, error: 'Staff member not found' });
+    }
+    if (req.user?.hostel_id && staff.hostel_id !== req.user.hostel_id) {
+      return res.status(403).json({ success: false, error: 'Access denied.' });
+    }
+
+    if (!amount || Number(amount) <= 0 || !payment_date) {
+      return res.status(400).json({ success: false, error: 'Required fields: amount, payment_date' });
+    }
+
+    const [payment_id] = await db('staff_payments').insert({
+      hostel_id: staff.hostel_id,
+      staff_id: Number(staffId),
+      amount: Number(amount),
+      payment_date,
+      days_worked: days_worked ? Number(days_worked) : null,
+      payment_type: payment_type || 'Wage',
+      note: note || null,
+      created_by: req.user?.user_id || null,
+      created_at: new Date(),
+    });
+
+    res.status(201).json({ success: true, message: 'Payment recorded successfully', data: { payment_id } });
+  } catch (error: any) {
+    console.error('Add staff payment error:', error);
+    res.status(500).json({ success: false, error: error?.sqlMessage || error?.message || 'Failed to record payment' });
+  }
+};
+
+// DELETE /api/staff/payments/:paymentId
+export const deleteStaffPayment = async (req: AuthRequest, res: Response) => {
+  try {
+    const { paymentId } = req.params;
+    const payment = await db('staff_payments').where('payment_id', paymentId).first();
+    if (!payment) {
+      return res.status(404).json({ success: false, error: 'Payment not found' });
+    }
+    if (req.user?.hostel_id && payment.hostel_id !== req.user.hostel_id) {
+      return res.status(403).json({ success: false, error: 'Access denied.' });
+    }
+
+    await db('staff_payments').where('payment_id', paymentId).del();
+    res.json({ success: true, message: 'Payment deleted successfully' });
+  } catch (error: any) {
+    console.error('Delete staff payment error:', error);
+    res.status(500).json({ success: false, error: 'Failed to delete payment' });
   }
 };
 
@@ -192,6 +285,10 @@ export const deleteStaff = async (req: AuthRequest, res: Response) => {
         success: false,
         error: 'Staff member not found'
       });
+    }
+
+    if (req.user?.hostel_id && staff.hostel_id !== req.user.hostel_id) {
+      return res.status(403).json({ success: false, error: 'Access denied.' });
     }
 
     await db('staff').where('staff_id', staffId).del();

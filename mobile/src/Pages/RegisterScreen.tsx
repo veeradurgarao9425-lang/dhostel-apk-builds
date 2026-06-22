@@ -16,6 +16,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
+import api from '../services/api';
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function RegisterScreen({ navigation }: any) {
     const { signUp } = useAuth();
@@ -30,15 +33,72 @@ export default function RegisterScreen({ navigation }: any) {
     const [isLoading, setIsLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+    // Email verification (OTP) state
+    const [otpSent, setOtpSent] = useState(false);
+    const [otp, setOtp] = useState('');
+    const [emailVerified, setEmailVerified] = useState(false);
+    const [sendingOtp, setSendingOtp] = useState(false);
+    const [verifyingOtp, setVerifyingOtp] = useState(false);
+
     const emailRef = useRef<TextInput>(null);
     const phoneRef = useRef<TextInput>(null);
     const hostelRef = useRef<TextInput>(null);
     const passwordRef = useRef<TextInput>(null);
+    const otpRef = useRef<TextInput>(null);
+
+    const handleSendOtp = async () => {
+        Keyboard.dismiss();
+        const trimmed = email.trim();
+        if (!EMAIL_REGEX.test(trimmed)) return setErrorMessage('Enter a valid email to verify');
+
+        setSendingOtp(true);
+        setErrorMessage(null);
+        try {
+            const { data } = await api.post('/auth/send-otp', { email: trimmed });
+            if (data?.success) {
+                setOtpSent(true);
+                setOtp('');
+                setTimeout(() => otpRef.current?.focus(), 100);
+            } else {
+                setErrorMessage(data?.error || data?.message || 'Could not send verification code.');
+            }
+        } catch (err: any) {
+            setErrorMessage(err.response?.data?.error || err.response?.data?.message || 'Could not send verification code.');
+        } finally {
+            setSendingOtp(false);
+        }
+    };
+
+    const handleVerifyOtp = async () => {
+        Keyboard.dismiss();
+        if (otp.trim().length !== 6) return setErrorMessage('Enter the 6-digit code sent to your email');
+
+        setVerifyingOtp(true);
+        setErrorMessage(null);
+        try {
+            const { data } = await api.post('/auth/verify-otp', { email: email.trim(), otp: otp.trim() });
+            if (data?.success) {
+                setEmailVerified(true);
+                setOtpSent(false);
+            } else {
+                setErrorMessage(data?.error || data?.message || 'Invalid or expired code.');
+            }
+        } catch (err: any) {
+            setErrorMessage(err.response?.data?.error || err.response?.data?.message || 'Invalid or expired code.');
+        } finally {
+            setVerifyingOtp(false);
+        }
+    };
 
     const handleRegister = async () => {
         Keyboard.dismiss();
         if (!fullName.trim()) return setErrorMessage('Please enter your full name');
         if (!email.trim() && !phone.trim()) return setErrorMessage('Enter an email or phone number');
+        // Email is optional, but if one is entered it must be valid AND verified.
+        if (email.trim()) {
+            if (!EMAIL_REGEX.test(email.trim())) return setErrorMessage('Please enter a valid email');
+            if (!emailVerified) return setErrorMessage('Please verify your email, or remove it to sign up with phone only');
+        }
         if (password.length < 6) return setErrorMessage('Password must be at least 6 characters');
 
         setIsLoading(true);
@@ -119,8 +179,8 @@ export default function RegisterScreen({ navigation }: any) {
                     />
                 </Field>
 
-                {/* Email */}
-                <Field label="Email">
+                {/* Email + verify */}
+                <Field label="Email (optional)">
                     <Ionicons name="mail-outline" size={18} color="#7C3AED" style={styles.icon} />
                     <TextInput
                         ref={emailRef}
@@ -129,13 +189,66 @@ export default function RegisterScreen({ navigation }: any) {
                         placeholderTextColor="#B8B8B8"
                         autoCapitalize="none"
                         keyboardType="email-address"
+                        editable={!emailVerified}
                         value={email}
                         returnKeyType="next"
                         onSubmitEditing={() => phoneRef.current?.focus()}
                         blurOnSubmit={false}
-                        onChangeText={(t) => { setEmail(t); clearErr(); }}
+                        onChangeText={(t) => {
+                            // Editing the email invalidates any prior verification
+                            setEmail(t);
+                            if (emailVerified) setEmailVerified(false);
+                            if (otpSent) setOtpSent(false);
+                            clearErr();
+                        }}
                     />
+                    {emailVerified ? (
+                        <View style={styles.verifiedBadge}>
+                            <Ionicons name="checkmark-circle" size={16} color="#16A34A" />
+                            <Text style={styles.verifiedText}>Verified</Text>
+                        </View>
+                    ) : (
+                        <TouchableOpacity
+                            style={[styles.verifyBtn, (sendingOtp || !email.trim()) && { opacity: 0.6 }]}
+                            onPress={handleSendOtp}
+                            disabled={sendingOtp || !email.trim()}
+                            activeOpacity={0.8}
+                        >
+                            {sendingOtp
+                                ? <ActivityIndicator color="#5F2EEA" size="small" />
+                                : <Text style={styles.verifyBtnText}>{otpSent ? 'Resend' : 'Verify'}</Text>}
+                        </TouchableOpacity>
+                    )}
                 </Field>
+
+                {/* OTP entry — shown only after a code has been sent and not yet verified */}
+                {otpSent && !emailVerified && (
+                    <Field label="Enter Verification Code">
+                        <Ionicons name="key-outline" size={18} color="#7C3AED" style={styles.icon} />
+                        <TextInput
+                            ref={otpRef}
+                            style={styles.input}
+                            placeholder="6-digit code"
+                            placeholderTextColor="#B8B8B8"
+                            keyboardType="number-pad"
+                            maxLength={6}
+                            value={otp}
+                            returnKeyType="done"
+                            onSubmitEditing={handleVerifyOtp}
+                            onChangeText={(t) => { setOtp(t.replace(/[^0-9]/g, '')); clearErr(); }}
+                        />
+                        <TouchableOpacity
+                            style={[styles.verifyBtn, (verifyingOtp || otp.length !== 6) && { opacity: 0.6 }]}
+                            onPress={handleVerifyOtp}
+                            disabled={verifyingOtp || otp.length !== 6}
+                            activeOpacity={0.8}
+                        >
+                            {verifyingOtp
+                                ? <ActivityIndicator color="#5F2EEA" size="small" />
+                                : <Text style={styles.verifyBtnText}>Confirm</Text>}
+                        </TouchableOpacity>
+                    </Field>
+                )}
 
                 {/* Phone */}
                 <Field label="Mobile Number">
@@ -283,6 +396,23 @@ const styles = StyleSheet.create({
         height: 54,
     },
     icon: { marginRight: 10 },
+    verifyBtn: {
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 10,
+        backgroundColor: '#F3EEFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minWidth: 64,
+    },
+    verifyBtnText: { fontSize: 13, fontWeight: '800', color: '#5F2EEA' },
+    verifiedBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 10,
+    },
+    verifiedText: { fontSize: 13, fontWeight: '700', color: '#16A34A' },
     input: {
         flex: 1,
         fontSize: 15,

@@ -245,15 +245,6 @@ const FAQ_DATA: FAQItem[] = [
     routeLabel: 'Manage Expenses'
   },
   {
-    id: 'more-maintenance',
-    category: 'more',
-    question: '🛠️ What is Maintenance in the More Screen?',
-    answer: 'Use this tool to write down repair tasks in your hostel:\n\n• Log Repairs: Record broken fans, water pipe leaks, AC failures, or electrical faults.\n\n• Tracking: Mark the repairs as Resolved (Fixed) or Pending (Not fixed yet) to manage repairmen easily.',
-    keywords: ['maintenance', 'repair', 'plumbing', 'broken fan', 'electrical fault', 'repairman'],
-    routePath: 'Maintenance',
-    routeLabel: 'Manage Repair Logs'
-  },
-  {
     id: 'more-tenants-rooms',
     category: 'more',
     question: '👥 What are Tenants & Rooms under More Screen?',
@@ -332,7 +323,7 @@ export const HostelChatbot: React.FC = () => {
   }, [currentRoute]);
 
   const chatbotPosition = useMemo(() => {
-    const listPagesWithFAB = ['Students', 'Rooms', 'Expenses', 'Maintenance', 'Staff'];
+    const listPagesWithFAB = ['Students', 'Rooms', 'Expenses', 'Staff'];
     if (currentRoute && listPagesWithFAB.includes(currentRoute)) {
       return { bottom: 110, right: 24 };
     }

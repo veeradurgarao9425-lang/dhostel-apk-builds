@@ -168,6 +168,22 @@ export const getExpenses = async (req: AuthRequest, res: Response) => {
         .sum('amount as total')
         .first();
       monthExpensesTotal = parseFloat(monthResult?.total || 0);
+
+      // ── Fold staff wage payments into the totals so they reconcile with Overview ──
+      try {
+        const allWages = await db('staff_payments')
+          .where('hostel_id', resolvedHostelId)
+          .sum('amount as total')
+          .first();
+        totalExpenses += parseFloat(allWages?.total || 0);
+
+        const monthWages = await db('staff_payments')
+          .where('hostel_id', resolvedHostelId)
+          .whereBetween('payment_date', [mStart, mEnd])
+          .sum('amount as total')
+          .first();
+        monthExpensesTotal += parseFloat(monthWages?.total || 0);
+      } catch (e) { /* staff_payments table may not exist yet */ }
     }
 
     // Apply pagination
@@ -179,9 +195,42 @@ export const getExpenses = async (req: AuthRequest, res: Response) => {
 
     const expenses = await query.orderBy('e.expense_date', 'desc');
 
+    // Surface staff wages as expense line-items (first page / unfiltered only, to keep pagination intact)
+    let wageRows: any[] = [];
+    const isFirstPage = !page || parseInt(page as string) === 1;
+    if (isFirstPage && !categoryId && resolvedHostelId) {
+      try {
+        let wq = db('staff_payments as sp')
+          .leftJoin('staff as st', 'sp.staff_id', 'st.staff_id')
+          .where('sp.hostel_id', resolvedHostelId)
+          .select('sp.payment_id', 'sp.amount', 'sp.payment_date', 'sp.note', 'st.full_name');
+        if (startDate && endDate) wq = wq.whereBetween('sp.payment_date', [startDate, endDate]);
+        if (search) {
+          const term = `%${search}%`;
+          wq = wq.where(function () { this.where('st.full_name', 'like', term).orWhere('sp.note', 'like', term); });
+        }
+        const wages = await wq.orderBy('sp.payment_date', 'desc');
+        wageRows = wages.map((w: any) => ({
+          expense_id: `wage_${w.payment_id}`,
+          hostel_id: resolvedHostelId,
+          category_name: 'Staff Wages',
+          expense_date: w.payment_date,
+          amount: w.amount,
+          payment_mode: 'Cash',
+          vendor_name: w.full_name || 'Staff',
+          description: w.note || 'Wage payment',
+          is_wage: true,
+        }));
+      } catch (e) { wageRows = []; }
+    }
+
+    const data = [...wageRows, ...expenses].sort((a, b) =>
+      String(b.expense_date).localeCompare(String(a.expense_date))
+    );
+
     res.json({
       success: true,
-      data: expenses,
+      data,
       totalExpenses,
       monthExpensesTotal
     });
@@ -217,6 +266,10 @@ export const getExpenseById = async (req: AuthRequest, res: Response) => {
         success: false,
         error: 'Expense not found'
       });
+    }
+
+    if (req.user?.hostel_id && expense.hostel_id !== req.user.hostel_id) {
+      return res.status(403).json({ success: false, error: 'Access denied.' });
     }
 
     res.json({

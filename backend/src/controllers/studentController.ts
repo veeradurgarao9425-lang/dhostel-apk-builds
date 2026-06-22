@@ -201,10 +201,10 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
     }
 
     // Validate required fields
-    if (!first_name || !phone || !guardian_phone || !admission_date || !gender || admission_fee === undefined || admission_status === undefined || admission_status === null) {
+    if (!first_name || !phone || !admission_date || !gender || admission_fee === undefined || admission_status === undefined || admission_status === null) {
       return res.status(400).json({
         success: false,
-        error: 'Required fields: first_name, gender, phone, guardian_phone, admission_date, admission_fee, admission_status'
+        error: 'Required fields: first_name, gender, phone, admission_date, admission_fee, admission_status'
       });
     }
 

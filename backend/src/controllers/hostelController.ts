@@ -150,11 +150,11 @@ export const createHostel = async (req: AuthRequest, res: Response) => {
         token: newToken,
       }
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Create hostel error:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to create hostel'
+      error: error?.sqlMessage || error?.message || 'Failed to create hostel'
     });
   }
 };
@@ -241,6 +241,11 @@ export const getHostelDetails = async (req: AuthRequest, res: Response) => {
         success: false,
         error: 'Hostel not found'
       });
+    }
+
+    // Owners (role 2) may only view their own hostel
+    if (req.user?.role_id === 2 && hostel.owner_id !== req.user.user_id) {
+      return res.status(403).json({ success: false, error: 'Access denied.' });
     }
 
     // Parse amenities
@@ -435,11 +440,11 @@ export const updateHostel = async (req: AuthRequest, res: Response) => {
       message: 'Hostel updated successfully',
       data: updatedHostel
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Update hostel error:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to update hostel'
+      error: error?.sqlMessage || error?.message || 'Failed to update hostel'
     });
   }
 };

@@ -15,6 +15,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Plus, Search, Calendar, ChevronDown, Tag, X, Edit3, Trash2 } from 'lucide-react-native';
 import { AppHeader } from '../components/AppHeader';
+import { EmptyState } from '../components/ui/EmptyState';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../services/api';
 import Toast from 'react-native-toast-message';
@@ -271,7 +272,13 @@ export const ExpenseScreen = ({ navigation }: any) => {
                         return (
                             <View style={[styles.expenseCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#E2E8F0', borderWidth: isDark ? 1 : 1.5 }]}>
                                 <TouchableOpacity
-                                    onPress={() => navigation.navigate('ExpenseDetails', { expense })}
+                                    onPress={() => {
+                                        if (expense.is_wage) {
+                                            Toast.show({ type: 'info', text1: 'Staff Wage', text2: 'Manage this from Staff → wallet → Payments.' });
+                                            return;
+                                        }
+                                        navigation.navigate('ExpenseDetails', { expense });
+                                    }}
                                     activeOpacity={0.7}
                                 >
                                     <View style={styles.cardInner}>
@@ -304,22 +311,30 @@ export const ExpenseScreen = ({ navigation }: any) => {
                                 </TouchableOpacity>
                                 
                                 {/* Action Buttons Row */}
+                                {expense.is_wage ? (
+                                    <View style={[styles.cardActions, { borderTopColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                        <Text style={{ flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '700', color: '#7C3AED' }}>
+                                            Staff Wage · manage in Staff → Payments
+                                        </Text>
+                                    </View>
+                                ) : (
                                 <View style={[styles.cardActions, { borderTopColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                                    <TouchableOpacity 
-                                        style={[styles.actionBtn, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]} 
+                                    <TouchableOpacity
+                                        style={[styles.actionBtn, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
                                         onPress={() => navigation.navigate('AddExpense', { expense })}
                                     >
                                         <Edit3 size={14} color="#3B82F6" />
                                         <Text style={styles.actionBtnTextBlue}>Edit</Text>
                                     </TouchableOpacity>
-                                    <TouchableOpacity 
-                                        style={[styles.actionBtn, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]} 
+                                    <TouchableOpacity
+                                        style={[styles.actionBtn, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
                                         onPress={() => handleDelete(expense)}
                                     >
                                         <Trash2 size={14} color="#EF4444" />
                                         <Text style={styles.actionBtnTextRed}>Delete</Text>
                                     </TouchableOpacity>
                                 </View>
+                                )}
                             </View>
                         );
                     }}
@@ -338,9 +353,17 @@ export const ExpenseScreen = ({ navigation }: any) => {
                     }}
                     onEndReachedThreshold={0.4}
                     ListEmptyComponent={
-                        <View style={styles.emptyState}>
-                            <Text style={styles.emptyText}>No expenses found</Text>
-                        </View>
+                        <EmptyState
+                            variant={debouncedSearch ? 'noResults' : 'noData'}
+                            title={debouncedSearch ? 'No Results' : 'No Expenses Yet'}
+                            subtitle={
+                                debouncedSearch
+                                    ? `No expenses match "${debouncedSearch}"`
+                                    : 'Tap the + button to record your first expense.'
+                            }
+                            actionLabel={debouncedSearch ? undefined : 'Add Expense'}
+                            onAction={debouncedSearch ? undefined : () => navigation.navigate('AddExpense')}
+                        />
                     }
                     ListFooterComponent={
                         loadingMore ? (

@@ -18,6 +18,7 @@ import { ProfileMenu } from '../components/ProfileMenu';
 import { useTheme } from '../../contexts/ThemeContext';
 import { HeaderNotification } from '../components/HeaderNotification';
 import { AppHeader } from '../components/AppHeader';
+import { EmptyState } from '../components/ui/EmptyState';
 
 export const IncomeScreen = ({ navigation }: any) => {
     const { user } = useAuth();
@@ -114,6 +115,15 @@ export const IncomeScreen = ({ navigation }: any) => {
                 </View>
 
                 <Text style={styles.sectionHeader}>Recent Collections</Text>
+                {sortedDays.length === 0 && (
+                    <EmptyState
+                        variant="noData"
+                        title="No Collections Yet"
+                        subtitle="Tap the + button to record your first income entry."
+                        actionLabel="Add Income"
+                        onAction={() => navigation.navigate('AddIncome')}
+                    />
+                )}
                 {sortedDays.map((day: any) => (
                     <TouchableOpacity
                         key={day.date}

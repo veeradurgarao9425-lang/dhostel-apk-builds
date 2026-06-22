@@ -428,6 +428,87 @@ async function patchDatabaseSchema() {
       console.error('[schema-patch] Error checking/creating app_settings table:', e.message);
     }
 
+    // 9. Ensure guests table exists (short-stay paying guests / daily visitors)
+    try {
+      if (!tableNamesLower.includes('guests')) {
+        console.log('[schema-patch] creating missing guests table...');
+        await db.raw(`
+          CREATE TABLE guests (
+            guest_id INT AUTO_INCREMENT PRIMARY KEY,
+            hostel_id INT NOT NULL,
+            full_name VARCHAR(255) NOT NULL,
+            phone VARCHAR(20) NULL,
+            check_in_date DATE NOT NULL,
+            check_out_date DATE NULL,
+            days INT DEFAULT 1,
+            amount_paid DECIMAL(10, 2) DEFAULT 0,
+            purpose VARCHAR(255) NULL,
+            room_number VARCHAR(50) NULL,
+            notes TEXT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (hostel_id) REFERENCES hostel_master(hostel_id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        await db.raw("CREATE INDEX idx_guests_hostel ON guests(hostel_id)");
+        await db.raw("CREATE INDEX idx_guests_checkin ON guests(check_in_date)");
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error checking/creating guests table:', e.message);
+    }
+
+    // 10. Ensure staff_payments table exists (per-worker wage payment history)
+    try {
+      if (!tableNamesLower.includes('staff_payments')) {
+        console.log('[schema-patch] creating missing staff_payments table...');
+        await db.raw(`
+          CREATE TABLE staff_payments (
+            payment_id INT AUTO_INCREMENT PRIMARY KEY,
+            hostel_id INT NOT NULL,
+            staff_id INT NOT NULL,
+            amount DECIMAL(10, 2) NOT NULL,
+            payment_date DATE NOT NULL,
+            days_worked INT NULL,
+            payment_type VARCHAR(30) DEFAULT 'Wage',
+            note TEXT NULL,
+            created_by INT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (hostel_id) REFERENCES hostel_master(hostel_id) ON DELETE CASCADE,
+            FOREIGN KEY (staff_id) REFERENCES staff(staff_id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        await db.raw("CREATE INDEX idx_staff_payments_hostel ON staff_payments(hostel_id)");
+        await db.raw("CREATE INDEX idx_staff_payments_staff ON staff_payments(staff_id)");
+        await db.raw("CREATE INDEX idx_staff_payments_date ON staff_payments(payment_date)");
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error checking/creating staff_payments table:', e.message);
+    }
+
+    // 11. Ensure otps table has a 'verified' column (used to enforce email verification on register)
+    try {
+      if (tableNamesLower.includes('otps')) {
+        const [otpCols] = await db.raw("SHOW COLUMNS FROM otps");
+        const otpColNames = (otpCols as any[]).map(c => c.Field);
+        if (!otpColNames.includes('verified')) {
+          console.log('[schema-patch] adding verified column to otps...');
+          await db.raw("ALTER TABLE otps ADD COLUMN verified TINYINT(1) NOT NULL DEFAULT 0");
+        }
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error checking/updating otps columns:', e.message);
+    }
+
+    // 12. Make guardian fields optional on students (avoid '0000000000'/'N/A' placeholder pollution)
+    try {
+      if (tableNamesLower.includes('students')) {
+        await db.raw("ALTER TABLE students MODIFY COLUMN guardian_phone VARCHAR(15) NULL").catch(() => {});
+        await db.raw("ALTER TABLE students MODIFY COLUMN guardian_name VARCHAR(150) NULL").catch(() => {});
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error relaxing students guardian columns:', e.message);
+    }
+
     console.log('[schema-patch] Schema check and patch complete.');
   } catch (err: any) {
     console.error('[schema-patch] Critical error during schema patching:', err.message);

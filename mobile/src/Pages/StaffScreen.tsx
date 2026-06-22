@@ -16,6 +16,7 @@ import { HeaderNotification } from '../components/HeaderNotification';
 import { ProfileMenu } from '../components/ProfileMenu';
 import { AppHeader } from '../components/AppHeader';
 import { FullScreenLoader } from '../components/FullScreenLoader';
+import { EmptyState } from '../components/ui/EmptyState';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SPACING } from '../theme/index';
 
@@ -35,7 +36,7 @@ const CATEGORIES = [
 const ROLES = ['Cook', 'Housekeeping', 'Security', 'Warden', 'Cleaner', 'Others'];
 
 // ─── Staff Card Component ───────────────────────────────────────────────────
-const StaffCard = React.memo(({ item, onCall, onWhatsApp, onToggleStatus }: any) => {
+const StaffCard = React.memo(({ item, onCall, onWhatsApp, onToggleStatus, onPayments }: any) => {
     const isActive = item.status === 'ACTIVE';
     const initials = item.full_name ? item.full_name[0].toUpperCase() : 'S';
 
@@ -48,8 +49,8 @@ const StaffCard = React.memo(({ item, onCall, onWhatsApp, onToggleStatus }: any)
                 <View style={s.infoContainer}>
                     <Text style={s.nameText} numberOfLines={1}>{item.full_name}</Text>
                     <Text style={s.phoneText}>{item.phone}</Text>
-                    {item.monthly_salary && (
-                        <Text style={s.salaryText}>₹ {parseFloat(item.monthly_salary).toLocaleString('en-IN')}</Text>
+                    {item.monthly_salary != null && item.monthly_salary !== '' && (
+                        <Text style={s.salaryText}>₹ {Number(item.monthly_salary).toLocaleString('en-IN')}</Text>
                     )}
                     <View style={s.badgeRow}>
                         <View style={s.roleBadge}>
@@ -79,6 +80,13 @@ const StaffCard = React.memo(({ item, onCall, onWhatsApp, onToggleStatus }: any)
                         activeOpacity={0.7}
                     >
                         <Ionicons name="logo-whatsapp" size={16} color="#22C55E" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => onPayments(item)}
+                        style={s.iconCircle}
+                        activeOpacity={0.7}
+                    >
+                        <Ionicons name="wallet" size={16} color="#7C3AED" />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -192,14 +200,19 @@ export default function StaffScreen() {
 
 
     // ── Rendering helper for list items ──────────────────────────────────────
+    const handlePayments = useCallback((item: any) => {
+        navigation.navigate('StaffPayments', { staffId: item.staff_id, staffName: item.full_name });
+    }, [navigation]);
+
     const renderItem = useCallback(({ item }: any) => (
         <StaffCard
             item={item}
             onCall={handleCall}
             onWhatsApp={handleWhatsApp}
             onToggleStatus={handleToggleStatus}
+            onPayments={handlePayments}
         />
-    ), [handleCall, handleWhatsApp, handleToggleStatus]);
+    ), [handleCall, handleWhatsApp, handleToggleStatus, handlePayments]);
 
     return (
         <View style={s.container}>
@@ -256,10 +269,17 @@ export default function StaffScreen() {
                     contentContainerStyle={s.listContent}
                     showsVerticalScrollIndicator={false}
                     ListEmptyComponent={
-                        <View style={s.emptyWrap}>
-                            <Text style={{ fontSize: 50, marginBottom: 10 }}>👥</Text>
-                            <Text style={s.emptyText}>No staff members found</Text>
-                        </View>
+                        <EmptyState
+                            variant={search.trim() ? 'noResults' : 'noData'}
+                            title={search.trim() ? 'No Results' : 'No Staff Yet'}
+                            subtitle={
+                                search.trim()
+                                    ? `No staff match "${search.trim()}"`
+                                    : 'Add your first staff member to get started.'
+                            }
+                            actionLabel={search.trim() ? undefined : 'Add Staff'}
+                            onAction={search.trim() ? undefined : () => navigation.navigate('AddStaff')}
+                        />
                     }
                 />
             )}

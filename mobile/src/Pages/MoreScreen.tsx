@@ -42,12 +42,12 @@ const TOP_TOOLS: MenuItem[] = [
         route: 'Expenses',
     },
     {
-        label: 'Maintenance',
-        subtitle: 'Track repairs & status',
-        icon: 'construct',
-        iconColor: '#D97706',
-        iconBg: '#FEF3C7',
-        route: 'Maintenance',
+        label: 'Guests',
+        subtitle: 'Short-stay & daily guests',
+        icon: 'walk',
+        iconColor: '#0891B2',
+        iconBg: '#CFFAFE',
+        route: 'Guests',
     },
 ];
 

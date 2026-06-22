@@ -358,8 +358,8 @@ export default function OverviewScreen() {
                         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                             <View style={s.chartContainer}>
                                 {trend.map((t: any, i: number) => {
-                                    const incH = Math.max(3, (t.income / trendMax) * 120);
-                                    const expH = Math.max(3, (t.expenses / trendMax) * 120);
+                                    const incH = Math.max(3, (t.income / trendMax) * 90);
+                                    const expH = Math.max(3, (t.expenses / trendMax) * 90);
                                     const isCurrent = t.month === monthStr;
                                     return (
                                         <View key={t.month} style={[s.chartCol, isCurrent && s.chartColCurrent]}>
@@ -489,17 +489,17 @@ const s = StyleSheet.create({
         color: '#FFF',
     },
 
-    body: { padding: 16, gap: 16 },
+    body: { padding: 14, gap: 12 },
 
     // Hero Card
     heroCard: {
-        borderRadius: 24,
-        padding: 22,
-        elevation: 4,
+        borderRadius: 18,
+        padding: 16,
+        elevation: 3,
         shadowColor: '#000',
-        shadowOpacity: 0.12,
-        shadowRadius: 10,
-        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.10,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 3 },
     },
     heroContentRow: {
         flexDirection: 'row',
@@ -510,9 +510,9 @@ const s = StyleSheet.create({
         flex: 1,
     },
     heroIconCircle: {
-        width: 52,
-        height: 52,
-        borderRadius: 26,
+        width: 42,
+        height: 42,
+        borderRadius: 21,
         backgroundColor: '#FFFFFF',
         alignItems: 'center',
         justifyContent: 'center',
@@ -522,14 +522,14 @@ const s = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
     },
     heroLabel: {
-        fontSize: 11,
+        fontSize: 10,
         fontWeight: '800',
         color: 'rgba(255,255,255,0.78)',
-        letterSpacing: 1.5,
-        marginBottom: 4,
+        letterSpacing: 1.2,
+        marginBottom: 3,
     },
     heroValue: {
-        fontSize: 32,
+        fontSize: 24,
         fontWeight: '900',
         color: '#FFF',
         letterSpacing: -0.5,
@@ -537,13 +537,13 @@ const s = StyleSheet.create({
     marginBadge: {
         alignSelf: 'flex-start',
         backgroundColor: 'rgba(255,255,255,0.22)',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 8,
-        marginTop: 12,
+        paddingHorizontal: 9,
+        paddingVertical: 3,
+        borderRadius: 7,
+        marginTop: 10,
     },
     marginBadgeText: {
-        fontSize: 11,
+        fontSize: 10,
         fontWeight: '800',
         color: '#FFF',
     },
@@ -551,17 +551,17 @@ const s = StyleSheet.create({
     // Summary row
     summaryRow: {
         flexDirection: 'row',
-        gap: 12,
+        gap: 10,
     },
     summaryCard: {
         flex: 1,
-        borderRadius: 20,
-        padding: 16,
-        borderWidth: 1.5,
-        elevation: 2,
+        borderRadius: 16,
+        padding: 13,
+        borderWidth: 1,
+        elevation: 1,
         shadowColor: '#000',
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
+        shadowOpacity: 0.03,
+        shadowRadius: 5,
         shadowOffset: { width: 0, height: 2 },
     },
     incomeCard: {
@@ -573,30 +573,30 @@ const s = StyleSheet.create({
         borderColor: '#FECACA',
     },
     summaryIconBox: {
-        width: 38,
-        height: 38,
-        borderRadius: 12,
+        width: 32,
+        height: 32,
+        borderRadius: 10,
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 10,
+        marginBottom: 8,
     },
     summaryLabel: {
-        fontSize: 10,
+        fontSize: 9,
         fontWeight: '800',
         color: '#64748B',
-        letterSpacing: 1,
-        marginBottom: 3,
+        letterSpacing: 0.8,
+        marginBottom: 2,
     },
     summaryValue: {
-        fontSize: 22,
+        fontSize: 18,
         fontWeight: '900',
     },
     summaryDetail: {
-        marginTop: 8,
-        gap: 2,
+        marginTop: 6,
+        gap: 1,
     },
     summaryDetailText: {
-        fontSize: 10,
+        fontSize: 9,
         color: '#64748B',
         fontWeight: '600',
     },
@@ -604,12 +604,12 @@ const s = StyleSheet.create({
     // Generic Card
     card: {
         backgroundColor: '#FFF',
-        borderRadius: 22,
-        padding: 18,
-        elevation: 2,
+        borderRadius: 16,
+        padding: 14,
+        elevation: 1,
         shadowColor: '#000',
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
+        shadowOpacity: 0.03,
+        shadowRadius: 5,
         shadowOffset: { width: 0, height: 2 },
         borderWidth: 1,
         borderColor: '#F1F5F9',
@@ -618,10 +618,10 @@ const s = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: 16,
+        marginBottom: 12,
     },
     cardHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    cardTitle: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
+    cardTitle: { fontSize: 14, fontWeight: '800', color: '#1E293B' },
     cardMeta: { fontSize: 13, color: '#EF4444', fontWeight: '800' },
 
     // Rent collection
@@ -728,7 +728,7 @@ const s = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'flex-end',
         gap: 3,
-        height: 120,
+        height: 90,
     },
     chartBar: {
         width: 10,

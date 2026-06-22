@@ -42,9 +42,51 @@ export const getAllIncome = async (req: AuthRequest, res: Response) => {
 
     const incomes = await query.orderBy('i.income_date', 'desc');
 
+    // ── Merge in short-stay guest payments so income totals reconcile with Overview ──
+    let guestRows: any[] = [];
+    try {
+      let guestQuery = db('guests as g')
+        .leftJoin('hostel_master as h', 'g.hostel_id', 'h.hostel_id')
+        .select(
+          'g.guest_id',
+          'g.hostel_id',
+          'h.hostel_name',
+          'g.check_in_date as income_date',
+          'g.amount_paid as amount',
+          'g.full_name',
+          'g.purpose'
+        )
+        .where('g.amount_paid', '>', 0);
+      if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && user.hostel_id) {
+        guestQuery = guestQuery.where('g.hostel_id', user.hostel_id);
+      }
+      if (startDate && endDate) {
+        guestQuery = guestQuery.whereBetween('g.check_in_date', [startDate, endDate]);
+      }
+      const guests = await guestQuery;
+      guestRows = guests.map((g: any) => ({
+        income_id: `guest_${g.guest_id}`,
+        hostel_id: g.hostel_id,
+        hostel_name: g.hostel_name,
+        income_date: g.income_date,
+        amount: g.amount,
+        source: 'Guest Stay',
+        payment_mode: 'Cash',
+        receipt_number: null,
+        description: g.purpose ? `${g.full_name} — ${g.purpose}` : g.full_name,
+        is_guest: true,
+      }));
+    } catch (e) {
+      guestRows = []; // guests table may not exist on older databases
+    }
+
+    const merged = [...incomes, ...guestRows].sort((a, b) =>
+      String(b.income_date).localeCompare(String(a.income_date))
+    );
+
     res.json({
       success: true,
-      data: incomes
+      data: merged
     });
   } catch (error) {
     console.error('Get income error:', error);

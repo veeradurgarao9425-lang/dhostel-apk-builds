@@ -557,7 +557,7 @@ export default function FinanceScreen() {
     }).length, [fees]);
 
     return (
-        <View style={S.container}>
+        <View style={[S.container, { backgroundColor: theme.background }]}>
             <StatusBar barStyle="light-content" />
 
             <AppHeader

@@ -389,8 +389,8 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
             const payload = {
                 ...formData,
                 hostel_id: user?.hostel_id,
-                guardian_phone: formData.guardian_phone || '0000000000',
-                guardian_name: formData.guardian_name || 'N/A',
+                guardian_phone: formData.guardian_phone || null,
+                guardian_name: formData.guardian_name || null,
                 admission_fee: parseFloat(formData.admission_fee || '0'),
                 admission_status: formData.admission_status === 'Paid' ? 1 : 0,
                 status: isEdit ? student.status : 1,
@@ -415,6 +415,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
     const handleReset = () => {
         setFormData({ first_name: '', last_name: '', gender: 'Male', phone: '', email: '', date_of_birth: '', id_proof_number: '', id_proof_type_id: '', guardian_name: '', guardian_phone: '', guardian_relation_id: '', admission_date: new Date().toISOString().split('T')[0], admission_fee: '0', admission_status: 'Paid', permanent_address: '', room_id: '', bed_id: '', floor_number: '', monthly_rent: '' });
         setProfilePhoto(null); setAadhaarFront(null); setAadhaarBack(null); setErrors({});
+        setRoomModal(false); setBedModal(false); setGenderModal(false); setProofModal(false); setRelationModal(false); setShowDatePicker(false);
     };
 
     const up = (key: string, val: any) => setFormData(p => ({ ...p, [key]: val }));

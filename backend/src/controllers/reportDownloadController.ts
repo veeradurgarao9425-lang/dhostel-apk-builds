@@ -110,6 +110,42 @@ export const downloadPDFReport = async (req: AuthRequest, res: Response) => {
 
     const expensesData = await expenses;
 
+    // Merge in short-stay guest income + staff wages so exports reconcile with Overview
+    try {
+      let gq = db('guests')
+        .select('check_in_date as income_date', 'amount_paid as amount', 'full_name', 'purpose')
+        .where('amount_paid', '>', 0)
+        .whereBetween('check_in_date', [startDateStr, endDateStr]);
+      if (hostelIds.length > 0) gq = gq.whereIn('hostel_id', hostelIds);
+      const guestData = await gq;
+      guestData.forEach((g: any) => incomesData.push({
+        income_date: g.income_date,
+        amount: g.amount,
+        source: 'Guest Stay',
+        payment_mode: 'Cash',
+        receipt_number: null,
+        description: g.purpose ? `${g.full_name} — ${g.purpose}` : g.full_name,
+      }));
+    } catch (e) { /* guests table may not exist */ }
+
+    try {
+      let wq = db('staff_payments as sp')
+        .leftJoin('staff as st', 'sp.staff_id', 'st.staff_id')
+        .select('sp.payment_date as expense_date', 'sp.amount', 'sp.note', 'st.full_name')
+        .whereBetween('sp.payment_date', [startDateStr, endDateStr]);
+      if (hostelIds.length > 0) wq = wq.whereIn('sp.hostel_id', hostelIds);
+      const wageData = await wq;
+      wageData.forEach((w: any) => expensesData.push({
+        expense_date: w.expense_date,
+        amount: w.amount,
+        category_name: 'Staff Wages',
+        payment_mode: 'Cash',
+        bill_number: null,
+        vendor_name: w.full_name || 'Staff',
+        description: w.note || 'Wage payment',
+      }));
+    } catch (e) { /* staff_payments table may not exist */ }
+
     // Calculate totals
     const totalIncome = incomesData.reduce((sum, inc) => sum + Number(inc.amount || 0), 0);
     const totalExpenses = expensesData.reduce((sum, exp) => sum + Number(exp.amount || 0), 0);
@@ -423,6 +459,40 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
 
     if (hostelIds.length > 0) expenses.whereIn('e.hostel_id', hostelIds);
     const expensesData = await expenses;
+
+    // Merge in short-stay guest income + staff wages so the export reconciles with Overview
+    try {
+      let gq = db('guests')
+        .select('check_in_date as income_date', 'amount_paid as amount', 'full_name', 'purpose')
+        .where('amount_paid', '>', 0)
+        .whereBetween('check_in_date', [startDateStr, endDateStr]);
+      if (hostelIds.length > 0) gq = gq.whereIn('hostel_id', hostelIds);
+      (await gq).forEach((g: any) => incomesData.push({
+        income_date: g.income_date,
+        amount: g.amount,
+        source: 'Guest Stay',
+        payment_mode: 'Cash',
+        receipt_number: null,
+        description: g.purpose ? `${g.full_name} — ${g.purpose}` : g.full_name,
+      }));
+    } catch (e) { /* guests table may not exist */ }
+
+    try {
+      let wq = db('staff_payments as sp')
+        .leftJoin('staff as st', 'sp.staff_id', 'st.staff_id')
+        .select('sp.payment_date as expense_date', 'sp.amount', 'sp.note', 'st.full_name')
+        .whereBetween('sp.payment_date', [startDateStr, endDateStr]);
+      if (hostelIds.length > 0) wq = wq.whereIn('sp.hostel_id', hostelIds);
+      (await wq).forEach((w: any) => expensesData.push({
+        expense_date: w.expense_date,
+        amount: w.amount,
+        category_name: 'Staff Wages',
+        payment_mode: 'Cash',
+        bill_number: null,
+        vendor_name: w.full_name || 'Staff',
+        description: w.note || 'Wage payment',
+      }));
+    } catch (e) { /* staff_payments table may not exist */ }
 
     // 3. Fetch Student (Tenant) records
     const students = db('students as s')

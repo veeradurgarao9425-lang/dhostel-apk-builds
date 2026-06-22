@@ -197,6 +197,23 @@ export const authController = {
         return res.status(400).json({ success: false, error: 'Invalid phone number.' });
       }
 
+      // If an email was provided, it must have been verified via OTP first.
+      // (Phone-only signups skip this — email is optional.)
+      if (email) {
+        try {
+          const verified = await db('otps').where({ email, verified: 1 }).first();
+          if (!verified) {
+            return res.status(400).json({
+              success: false,
+              error: 'Please verify your email with the OTP before creating an account.',
+            });
+          }
+        } catch (e) {
+          // otps table/column missing on older DBs — don't hard-block, just proceed.
+          console.warn('OTP verification check skipped:', (e as any)?.message);
+        }
+      }
+
       const resolvedEmail = email || `${phone || Date.now()}@dhostel.com`;
       const resolvedUsername = email || phone || `user_${Date.now()}`;
 
@@ -228,6 +245,11 @@ export const authController = {
         is_active: true,
       });
 
+      // Email confirmed and consumed — clear any OTP rows for it
+      if (email) {
+        try { await db('otps').where('email', email).del(); } catch { /* non-fatal */ }
+      }
+
       // Optionally create their first hostel and set it as active
       let hostel_id: number | null = null;
       const trimmedHostel = (hostel_name || '').trim();
@@ -235,6 +257,9 @@ export const authController = {
         [hostel_id] = await db('hostel_master').insert({
           hostel_name: trimmedHostel,
           owner_id: user_id,
+          // hostel_type is NOT NULL in the schema; default to 'Boys' so the row is
+          // valid and can be edited later without a 500. The owner can change it in Edit Hostel.
+          hostel_type: 'Boys',
           address: '',
           is_active: 1,
           created_at: new Date(),
@@ -725,9 +750,11 @@ export const authController = {
       });
     } catch (error: any) {
       console.error('Send OTP error:', error);
-      return res.status(500).json({
+      // Email verification is optional — guide the user to sign up with phone instead
+      // rather than hard-blocking onboarding when the mail service is misconfigured.
+      return res.status(503).json({
         success: false,
-        error: 'Failed to send verification OTP',
+        error: 'Email verification is unavailable right now. You can sign up using your phone number instead.',
       });
     }
   },
@@ -765,8 +792,9 @@ export const authController = {
         });
       }
 
-      // Delete the OTP record so it can't be reused
-      await db('otps').where('id', record.id).del();
+      // Mark this email as verified (kept briefly so register() can confirm it).
+      // The row is cleared once the account is created.
+      await db('otps').where('id', record.id).update({ verified: 1 });
 
       return res.status(200).json({
         success: true,

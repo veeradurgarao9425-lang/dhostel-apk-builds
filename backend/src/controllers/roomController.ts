@@ -272,6 +272,16 @@ export const createRoom = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    // If capacity is explicitly provided it must be a positive number (avoids 0-bed rooms
+    // that can never be allocated).
+    if (capacity !== undefined && capacity !== null && capacity !== '' &&
+        (isNaN(parseInt(capacity)) || parseInt(capacity) < 1)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Room capacity must be at least 1.'
+      });
+    }
+
     // Check for duplicate room number in same hostel
     const existing = await db('rooms')
       .where({ hostel_id: finalHostelId, room_number })
@@ -302,11 +312,11 @@ export const createRoom = async (req: AuthRequest, res: Response) => {
       message: 'Room created successfully',
       data: { room_id }
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Create room error:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to create room'
+      error: error?.sqlMessage || error?.message || 'Failed to create room'
     });
   }
 };
