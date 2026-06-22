@@ -105,3 +105,38 @@ export const sendPasswordResetEmail = async (
     html,
   });
 };
+
+export const sendOtpEmail = async (
+  email: string,
+  otp: string
+): Promise<void> => {
+  const html = `
+    <div style="font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;">
+      <div style="max-width: 600px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <h2 style="color: #333; margin-bottom: 20px; text-align: center;">Verify Your Email</h2>
+        <p style="color: #666; line-height: 1.6;">Hello,</p>
+        <p style="color: #666; line-height: 1.6;">
+          Your One Time Password (OTP) for account verification is:
+        </p>
+        <div style="text-align: center; margin: 30px 0;">
+          <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #3b82f6; background-color: #f0f9ff; padding: 10px 20px; border-radius: 8px; border: 1px dashed #3b82f6;">
+            ${otp}
+          </span>
+        </div>
+        <p style="color: #999; font-size: 12px; margin-top: 30px; text-align: center;">
+          This OTP is valid for 10 minutes. Please do not share this code with anyone.
+        </p>
+        <p style="color: #999; font-size: 12px; text-align: center;">
+          Stivo System
+        </p>
+      </div>
+    </div>
+  `;
+
+  await sendEmail({
+    to: email,
+    subject: 'Your Verification Code - Stivo',
+    html,
+  });
+};
+
