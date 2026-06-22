@@ -68,7 +68,7 @@ export default function RegisterScreen({ navigation }: any) {
     return (
         <KeyboardAvoidingView
             style={{ flex: 1, backgroundColor: '#FFFFFF' }}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
             <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
     headerTitle: { fontSize: 26, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.3 },
     headerSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.85)', fontWeight: '500', marginTop: 4 },
     formSection: { flex: 1 },
-    formContent: { paddingHorizontal: 24, paddingTop: 22 },
+    formContent: { paddingHorizontal: 24, paddingTop: 22, paddingBottom: 150 },
     alertBox: {
         flexDirection: 'row',
         alignItems: 'center',

@@ -235,6 +235,7 @@ export const authController = {
         [hostel_id] = await db('hostel_master').insert({
           hostel_name: trimmedHostel,
           owner_id: user_id,
+          address: '',
           is_active: 1,
           created_at: new Date(),
         });
