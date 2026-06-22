@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
-import { FileSpreadsheet, Download, RefreshCw, BarChart2, Shield, Calendar, Users, Home } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { FileSpreadsheet, Download, RefreshCw, BarChart2, Shield, Calendar, Users, Home, Phone, Mail } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import api from '../services/api';
 import toast from 'react-hot-toast';
@@ -15,6 +15,7 @@ interface ReportStats {
 
 export const ReportsPage: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user } = useAuthStore();
   const isOwner = user?.role_id === 2;
   const isOwnerReports = location.pathname === '/owner/reports';
@@ -258,7 +259,7 @@ export const ReportsPage: React.FC = () => {
       <Card className="glass overflow-hidden border-slate-200/80 dark:border-slate-800/80">
         <div className="px-6 py-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-indigo-500" />
+            <Shield className="h-5 w-5 text-indigo-505 text-cyan-600 dark:text-cyan-400" />
             <h2 className="text-base font-bold text-slate-900 dark:text-white">Hostel Owner Utilization Index</h2>
           </div>
           <button 
@@ -270,44 +271,90 @@ export const ReportsPage: React.FC = () => {
           </button>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="p-6">
           {loadingStats ? (
-            <div className="flex flex-col items-center justify-center py-12 space-y-3">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-              <span className="text-sm text-slate-500">Loading system metrics...</span>
+            <div className="flex flex-col items-center justify-center py-20 space-y-3">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-4 border-cyan-600"></div>
+              <span className="text-sm text-slate-500 font-bold">Loading utilization metrics...</span>
+            </div>
+          ) : adminReportData.length === 0 ? (
+            <div className="text-center py-20 bg-white/50 dark:bg-slate-900/50 rounded-2xl border border-slate-250 dark:border-slate-800">
+              <span className="text-slate-550 dark:text-slate-400">No owner records found in the database.</span>
             </div>
           ) : (
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/50 dark:bg-slate-800/20 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  <th className="px-6 py-4">Owner Name</th>
-                  <th className="px-6 py-4">Email</th>
-                  <th className="px-6 py-4">Phone</th>
-                  <th className="px-6 py-4 text-right">Hostels Owned</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200/60 dark:divide-slate-800/60 text-sm">
-                {adminReportData.map((stat, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50/40 dark:hover:bg-slate-800/10 transition-colors">
-                    <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">{stat.ownerName}</td>
-                    <td className="px-6 py-4 text-slate-600 dark:text-slate-400">{stat.email}</td>
-                    <td className="px-6 py-4 text-slate-600 dark:text-slate-400">{stat.phone}</td>
-                    <td className="px-6 py-4 text-right font-semibold">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400">
-                        {stat.hostelCount} {stat.hostelCount === 1 ? 'Hostel' : 'Hostels'}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {adminReportData.map((stat, idx) => (
+                <div 
+                  key={idx}
+                  className="group relative bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-3xl p-6 flex flex-col justify-between shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden"
+                >
+                  <div>
+                    {/* Header Row: Icon/Avatar, Name, Status */}
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-650 flex items-center justify-center shadow-sm text-white font-extrabold text-lg flex-shrink-0 transition-transform group-hover:scale-105 duration-300">
+                          {stat.ownerName.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <h3 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white leading-tight tracking-tight">
+                            {stat.ownerName}
+                          </h3>
+                          <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold mt-1 uppercase tracking-wider">
+                            System Owner
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Status badge with colored dot */}
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-50 text-indigo-750 border border-indigo-100 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-900/20">
+                        <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                        Report Active
                       </span>
-                    </td>
-                  </tr>
-                ))}
-                {adminReportData.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="text-center py-8 text-slate-500">
-                      No owner records found in the database.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                    </div>
+
+                    {/* Sub-badge: Hostel Count */}
+                    <div className="mb-4">
+                      <span className="inline-flex px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-100/10 text-[10px] font-bold uppercase tracking-wider">
+                        {stat.hostelCount} {stat.hostelCount === 1 ? 'Hostel' : 'Hostels'} Owned
+                      </span>
+                    </div>
+
+                    {/* Metadata List with icons */}
+                    <div className="space-y-2 mb-4">
+                      <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                        <Phone className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                        <span>{stat.phone}</span>
+                      </div>
+                      {stat.email && stat.email !== 'N/A' && (
+                        <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                          <Mail className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                          <span className="truncate">{stat.email}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Highlighted Accent Pill */}
+                    <div className="px-3 py-1.5 rounded-xl text-xs font-extrabold bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border border-amber-100/20 inline-block self-start mb-1">
+                      Contact: {stat.phone}
+                    </div>
+                  </div>
+
+                  {/* Card Footer */}
+                  <div className="flex items-center justify-between pt-4 mt-4 border-t border-slate-100 dark:border-slate-800/60">
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
+                      Owner Stats
+                    </span>
+
+                    <button
+                      onClick={() => navigate('/hostels')}
+                      className="text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 font-bold text-xs flex items-center gap-0.5 transition-all hover:translate-x-0.5"
+                    >
+                      View Hostels &gt;
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </Card>

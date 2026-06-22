@@ -11,11 +11,10 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
     // Determine hostel filtering based on user role
     let hostelIds: number[] = [];
 
-    if (user?.hostel_id) {
-      // Both owner (role 2) and admin (role 1) filter by their active hostel from JWT
+    if (user?.role_id !== 1 && user?.hostel_id) {
+      // Non-admins filter by their active hostel from JWT
       hostelIds = [user.hostel_id];
     }
-    // Only if admin has NO active hostel set do they see all hostels (super-admin view)
 
 
     // Get total rooms

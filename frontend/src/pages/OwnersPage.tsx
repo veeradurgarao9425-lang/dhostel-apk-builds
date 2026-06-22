@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Users, Plus, Mail, Phone, Search, Edit, Trash2, X, ShieldCheck } from 'lucide-react';
-import { Card } from '../components/ui/Card';
+import { Users, Plus, Mail, Phone, Search, Trash2, X } from 'lucide-react';
+
 import { AddOwnerModal } from '../components/modals/AddOwnerModal';
 import { EditOwnerModal } from '../components/modals/EditOwnerModal';
 import { DeleteConfirmModal } from '../components/modals/DeleteConfirmModal';
@@ -193,63 +193,89 @@ export const OwnersPage: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredOwners.map((owner) => (
-            <Card key={owner.user_id} className="group relative overflow-hidden flex flex-col justify-between">
+            <div 
+              key={owner.user_id} 
+              className="group relative bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-3xl p-6 flex flex-col justify-between shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden"
+            >
               <div>
-                <div className="flex items-start justify-between mb-6">
-                  <div className="flex items-center gap-4">
-                    <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 text-white font-bold text-xl transform transition-transform group-hover:scale-105">
+                {/* Header Row: Icon/Avatar, Name & ID, Active Status */}
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center shadow-sm text-white font-extrabold text-lg flex-shrink-0 transition-transform group-hover:scale-105 duration-300">
                       {owner.full_name.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <h3 className="font-bold text-lg text-slate-900 dark:text-white leading-tight">{owner.full_name}</h3>
-                      <div className="flex items-center gap-1 mt-1">
-                        <ShieldCheck className="h-3.5 w-3.5 text-cyan-500" />
-                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Owner ID: {owner.user_id}</p>
-                      </div>
+                      <h3 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white leading-tight tracking-tight">
+                        {owner.full_name}
+                      </h3>
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold mt-1 uppercase tracking-wider">
+                        Owner ID: {owner.user_id}
+                      </p>
                     </div>
                   </div>
+
+                  {/* Status badge with green dot */}
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/20">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    Active
+                  </span>
                 </div>
 
-                <div className="space-y-3 mb-6 bg-slate-50 dark:bg-slate-800/30 p-4 rounded-xl border border-slate-100 dark:border-slate-800/50">
+                {/* Sub-badge: Role Type */}
+                <div className="mb-4">
+                  <span className="inline-flex px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-100/10 text-[10px] font-bold uppercase tracking-wider">
+                    Platform Owner
+                  </span>
+                </div>
+
+                {/* Metadata List with icons */}
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                    <Phone className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                    <span>{owner.phone}</span>
+                  </div>
                   {owner.email && (
-                    <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
-                      <div className="h-8 w-8 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center shadow-sm">
-                        <Mail className="h-4 w-4 text-slate-450" />
-                      </div>
-                      <span className="truncate font-medium">{owner.email}</span>
+                    <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                      <Mail className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                      <span className="truncate">{owner.email}</span>
                     </div>
                   )}
-                  <div className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
-                    <div className="h-8 w-8 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center shadow-sm">
-                      <Phone className="h-4 w-4 text-slate-405" />
-                    </div>
-                    <span className="font-medium">{owner.phone}</span>
-                  </div>
+                </div>
+
+                {/* Highlighted Muted Accent Pill (Corresponding to Salary in image) */}
+                <div className="px-3 py-1.5 rounded-xl text-xs font-extrabold bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border border-amber-100/20 inline-block self-start mb-1">
+                  Contact: {owner.phone}
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800/50">
-                <button
-                  onClick={() => handleDeleteClick(owner.user_id, owner.full_name)}
-                  disabled={deletingId === owner.user_id}
-                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-450 dark:hover:bg-rose-500/10 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  {deletingId === owner.user_id ? 'Deleting...' : 'Delete'}
-                </button>
-                <button
-                  onClick={() => {
-                    setSelectedOwner(owner);
-                    setIsEditModalOpen(true);
-                  }}
-                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-cyan-600 bg-cyan-50 dark:bg-cyan-500/10 hover:bg-cyan-100 dark:hover:bg-cyan-500/20 dark:text-cyan-400 rounded-xl transition-all"
-                >
-                  <Edit className="h-4 w-4" />
-                  Update
-                </button>
+              {/* Card Footer: Left ID, Right Action Link */}
+              <div className="flex items-center justify-between pt-4 mt-4 border-t border-slate-100 dark:border-slate-800/60">
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
+                  O-ID: #{owner.user_id}
+                </span>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleDeleteClick(owner.user_id, owner.full_name)}
+                    disabled={deletingId === owner.user_id}
+                    className="p-1.5 text-rose-500 hover:text-rose-650 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg transition-all disabled:opacity-50"
+                    title="Delete Owner"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                  <span className="text-slate-200 dark:text-slate-800 mx-1">|</span>
+                  <button
+                    onClick={() => {
+                      setSelectedOwner(owner);
+                      setIsEditModalOpen(true);
+                    }}
+                    className="text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 font-bold text-xs flex items-center gap-0.5 transition-all hover:translate-x-0.5"
+                  >
+                    Update Owner &gt;
+                  </button>
+                </div>
               </div>
-            </Card>
+            </div>
           ))}
         </div>
       )}

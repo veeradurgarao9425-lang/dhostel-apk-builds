@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Plus, Mail, Phone, Search, MapPin, Edit, Trash2, X, Star } from 'lucide-react';
+import { Building2, Plus, Phone, Search, MapPin, Edit, Trash2, X } from 'lucide-react';
 import { AddHostelModal } from '../components/modals/AddHostelModal';
 import { EditHostelModal } from '../components/modals/EditHostelModal';
 import api from '../services/api';
@@ -188,133 +188,112 @@ export const HostelsPage: React.FC = () => {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredHostels.map((hostel) => (
             <div 
               key={hostel.hostel_id} 
-              className="group relative bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-3xl p-6 flex flex-col justify-between shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 overflow-hidden"
+              className="group relative bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-3xl p-6 flex flex-col justify-between shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden"
             >
-              {/* Colored Card Accent Top Bar */}
-              <div className={clsx(
-                "absolute top-0 left-0 right-0 h-1.5",
-                hostel.hostel_type === 'Boys' ? "bg-gradient-to-r from-blue-500 to-cyan-500" :
-                hostel.hostel_type === 'Girls' ? "bg-gradient-to-r from-pink-500 to-rose-500" :
-                "bg-gradient-to-r from-purple-500 to-indigo-500"
-              )} />
-
               <div>
-                {/* Title and Badge Row */}
-                <div className="flex items-start justify-between mb-5 pt-2">
-                  <div className="flex items-center gap-3.5">
+                {/* Header Row: Icon, Title & Subtitle, Status Badge */}
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    {/* Icon container inside soft colored gradient background */}
                     <div className={clsx(
-                      "h-12 w-12 rounded-2xl flex items-center justify-center shadow-md text-white transform transition-transform group-hover:scale-105 duration-300",
-                      hostel.hostel_type === 'Boys' ? "bg-gradient-to-br from-blue-500 to-cyan-500 shadow-blue-500/20" :
-                      hostel.hostel_type === 'Girls' ? "bg-gradient-to-br from-pink-500 to-rose-500 shadow-pink-500/20" :
-                      "bg-gradient-to-br from-purple-500 to-indigo-650 shadow-purple-500/20"
+                      "h-11 w-11 rounded-2xl flex items-center justify-center shadow-sm text-white flex-shrink-0 transition-transform group-hover:scale-105 duration-300",
+                      hostel.hostel_type === 'Boys' ? "bg-gradient-to-br from-blue-500 to-cyan-500 shadow-blue-500/10" :
+                      hostel.hostel_type === 'Girls' ? "bg-gradient-to-br from-pink-500 to-rose-500 shadow-pink-500/10" :
+                      "bg-gradient-to-br from-purple-500 to-indigo-650 shadow-purple-500/10"
                     )}>
-                      <Building2 className="h-6 w-6" />
+                      <Building2 className="h-5.5 w-5.5" />
                     </div>
                     <div>
-                      <h3 className="font-extrabold text-base text-slate-900 dark:text-white leading-snug tracking-tight group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
+                      <h3 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white leading-tight tracking-tight group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
                         {hostel.hostel_name}
                       </h3>
-                      <div className="flex items-center gap-1 mt-0.5">
-                        <Star className="h-3 w-3 text-amber-500 fill-amber-500" />
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">ID: {hostel.hostel_id}</p>
-                      </div>
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold mt-1 uppercase tracking-wider">
+                        {hostel.city}, {hostel.state || 'India'}
+                      </p>
                     </div>
                   </div>
 
+                  {/* Status Pill Badge with colored leading dot */}
                   <span className={clsx(
-                    "px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full shadow-sm",
-                    hostel.hostel_type === 'Boys' ? 'bg-blue-50 text-blue-700 border border-blue-105 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900/30' :
-                    hostel.hostel_type === 'Girls' ? 'bg-pink-50 text-pink-700 border border-pink-105 dark:bg-pink-950/40 dark:text-pink-400 dark:border-pink-900/30' :
-                    'bg-purple-50 text-purple-700 border border-purple-105 dark:bg-purple-950/40 dark:text-purple-400 dark:border-purple-900/30'
+                    "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border",
+                    hostel.hostel_type === 'Boys' ? 'bg-blue-50/50 text-blue-700 border-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/20' :
+                    hostel.hostel_type === 'Girls' ? 'bg-pink-50/50 text-pink-700 border-pink-100 dark:bg-pink-950/30 dark:text-pink-400 dark:border-pink-900/20' :
+                    'bg-purple-50/50 text-purple-700 border-purple-100 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-900/20'
                   )}>
+                    <span className={clsx(
+                      "h-1.5 w-1.5 rounded-full",
+                      hostel.hostel_type === 'Boys' ? 'bg-blue-500' :
+                      hostel.hostel_type === 'Girls' ? 'bg-pink-500' :
+                      'bg-purple-500'
+                    )} />
                     {hostel.hostel_type}
                   </span>
                 </div>
 
-                {/* Details Section */}
-                <div className="space-y-2.5 mb-5 bg-slate-50/50 dark:bg-slate-800/20 p-4 rounded-2xl border border-slate-100 dark:border-slate-800/40">
-                  <div className="flex items-start gap-2.5 text-xs text-slate-650 dark:text-slate-350">
-                    <MapPin className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" />
-                    <span className="font-medium leading-relaxed">
-                      {hostel.address}, {hostel.city}
-                      {hostel.state && `, ${hostel.state}`}
-                      {hostel.pincode && ` - ${hostel.pincode}`}
-                    </span>
+                {/* Sub-badge: Hostel Type Pill */}
+                <div className="mb-4">
+                  <span className="inline-flex px-2 py-0.5 rounded bg-cyan-50 dark:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400 border border-cyan-100/10 text-[10px] font-bold uppercase tracking-wider">
+                    {hostel.hostel_type} Hostel
+                  </span>
+                </div>
+
+                {/* Metadata List with small icons */}
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                    <MapPin className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                    <span className="truncate leading-relaxed">{hostel.address}, {hostel.city}</span>
                   </div>
-                  {hostel.email && (
-                    <div className="flex items-center gap-2.5 text-xs text-slate-650 dark:text-slate-350">
-                      <Mail className="h-4 w-4 text-slate-400 flex-shrink-0" />
-                      <span className="truncate font-medium">{hostel.email}</span>
-                    </div>
-                  )}
                   {hostel.contact_number && (
-                    <div className="flex items-center gap-2.5 text-xs text-slate-650 dark:text-slate-350">
+                    <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-medium">
                       <Phone className="h-4 w-4 text-slate-400 flex-shrink-0" />
-                      <span className="font-medium">{hostel.contact_number}</span>
+                      <span>{hostel.contact_number}</span>
                     </div>
                   )}
                 </div>
-                
-                {hostel.owner_name && (
-                  <div className="flex items-center justify-between text-xs px-1 pb-4 border-b border-slate-100 dark:border-slate-800/40 mb-4">
-                    <span className="text-slate-450 font-medium">Assigned Owner</span>
-                    <span className="font-bold text-slate-800 dark:text-white">{hostel.owner_name}</span>
-                  </div>
-                )}
 
-                {/* Amenities chips */}
-                {hostel.amenities && hostel.amenities.length > 0 && (
-                  <div className="pb-2">
-                    <div className="flex flex-wrap gap-1.5">
-                      {hostel.amenities.slice(0, 3).map((amenity, index) => (
-                        <span
-                          key={index}
-                          className="px-2.5 py-1 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700/50 text-[10px] font-bold rounded-lg uppercase tracking-wider"
-                        >
-                          {amenity}
-                        </span>
-                      ))}
-                      {hostel.amenities.length > 3 && (
-                        <span className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800/60 text-slate-500 dark:text-slate-450 text-[10px] font-bold rounded-lg">
-                          +{hostel.amenities.length - 3} More
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
+                {/* Highlighted Muted Accent Pill (Corresponding to Salary in image) */}
+                <div className="px-3 py-1.5 rounded-xl text-xs font-extrabold bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border border-amber-100/20 inline-block self-start mb-1">
+                  Owner: {hostel.owner_name || 'System Unassigned'}
+                </div>
               </div>
 
-              {/* Action Buttons Row */}
-              <div className="flex items-center justify-end gap-2 pt-4 mt-2 border-t border-slate-100 dark:border-slate-800/40">
-                <button
-                  onClick={() => navigate(`/hostels/${hostel.hostel_id}`)}
-                  className="mr-auto flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-cyan-600 dark:text-cyan-400 bg-cyan-50/50 dark:bg-cyan-950/20 hover:bg-cyan-100/50 dark:hover:bg-cyan-950/40 rounded-xl transition-all"
-                >
-                  Details
-                </button>
-                
-                <button
-                  onClick={() => handleDelete(hostel.hostel_id, hostel.hostel_name)}
-                  disabled={deletingId === hostel.hostel_id}
-                  className="flex items-center gap-1 px-3 py-2 text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/20 rounded-xl transition-all disabled:opacity-50"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  {deletingId === hostel.hostel_id ? '...' : 'Delete'}
-                </button>
-                <button
-                  onClick={() => {
-                    setSelectedHostel(hostel);
-                    setIsEditModalOpen(true);
-                  }}
-                  className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-850 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100 rounded-xl transition-all shadow-sm shadow-slate-200 dark:shadow-none"
-                >
-                  <Edit className="h-3.5 w-3.5" />
-                  Edit
-                </button>
+              {/* Card Footer: Left aligned ID, Right aligned actions */}
+              <div className="flex items-center justify-between pt-4 mt-4 border-t border-slate-100 dark:border-slate-800/60">
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
+                  H-ID: #{hostel.hostel_id}
+                </span>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setSelectedHostel(hostel);
+                      setIsEditModalOpen(true);
+                    }}
+                    className="p-1.5 text-slate-450 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-all"
+                    title="Edit Hostel"
+                  >
+                    <Edit className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(hostel.hostel_id, hostel.hostel_name)}
+                    disabled={deletingId === hostel.hostel_id}
+                    className="p-1.5 text-rose-500 hover:text-rose-650 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg transition-all disabled:opacity-50"
+                    title="Delete Hostel"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                  <span className="text-slate-200 dark:text-slate-800 mx-1">|</span>
+                  <button
+                    onClick={() => navigate(`/hostels/${hostel.hostel_id}`)}
+                    className="text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 font-bold text-xs flex items-center gap-0.5 transition-all hover:translate-x-0.5"
+                  >
+                    View Details &gt;
+                  </button>
+                </div>
               </div>
             </div>
           ))}
