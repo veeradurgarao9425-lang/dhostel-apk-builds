@@ -536,6 +536,26 @@ async function patchDatabaseSchema() {
       console.error('[schema-patch] Error checking/creating user_push_tokens table:', e.message);
     }
 
+    // 14. Ensure notifications table has hostel_id and priority columns
+    try {
+      if (tableNamesLower.includes('notifications')) {
+        console.log('[schema-patch] Checking notifications columns...');
+        const [columns] = await db.raw("SHOW COLUMNS FROM notifications");
+        const columnNames = (columns as any[]).map(col => col.Field.toLowerCase());
+
+        if (!columnNames.includes('hostel_id')) {
+          console.log('[schema-patch] adding hostel_id to notifications...');
+          await db.raw("ALTER TABLE notifications ADD COLUMN hostel_id INT NULL, ADD FOREIGN KEY (hostel_id) REFERENCES hostel_master(hostel_id) ON DELETE CASCADE");
+        }
+        if (!columnNames.includes('priority')) {
+          console.log('[schema-patch] adding priority to notifications...');
+          await db.raw("ALTER TABLE notifications ADD COLUMN priority ENUM('Low', 'Medium', 'High') DEFAULT 'Medium'");
+        }
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error checking/updating notifications columns:', e.message);
+    }
+
     console.log('[schema-patch] Schema check and patch complete.');
   } catch (err: any) {
     console.error('[schema-patch] Critical error during schema patching:', err.message);
