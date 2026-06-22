@@ -43,27 +43,81 @@ const createTransporter = () => {
   });
 };
 
-// ─── Core send function ────────────────────────────────────────────────────────
-export const sendEmail = async (options: EmailOptions): Promise<void> => {
+// ─── Parse "Name <email>" or bare "email" into Brevo's sender shape ─────────────
+const parseSender = (): { email: string; name: string } => {
+  const raw = process.env.EMAIL_FROM || process.env.EMAIL_USER || '';
+  const match = raw.match(/^\s*"?([^"<]*)"?\s*<([^>]+)>\s*$/);
+  if (match) return { name: match[1].trim() || 'Stivo Hostel', email: match[2].trim() };
+  return { name: 'Stivo Hostel', email: raw.trim() };
+};
+
+// ─── Send via Brevo HTTP API (port 443) — works on hosts that block SMTP ────────
+const sendViaBrevo = async (options: EmailOptions): Promise<void> => {
+  const sender = parseSender();
+  console.log(`📨 Sending via Brevo HTTP API  |  from: ${sender.email}  to: ${options.to}`);
+
+  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'api-key': process.env.BREVO_API_KEY as string,
+      'content-type': 'application/json',
+      accept: 'application/json',
+    },
+    body: JSON.stringify({
+      sender,
+      to: [{ email: options.to }],
+      subject: options.subject,
+      htmlContent: options.html,
+      ...(options.attachments?.length && {
+        attachment: options.attachments.map((a) => ({
+          name: a.filename,
+          content: Buffer.isBuffer(a.content)
+            ? a.content.toString('base64')
+            : Buffer.from(a.content).toString('base64'),
+        })),
+      }),
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    console.error(`❌ Brevo send FAILED (${res.status}):`, body);
+    throw new Error(`Brevo API ${res.status}: ${body}`);
+  }
+  const data: any = await res.json().catch(() => ({}));
+  console.log(`✅ Email sent via Brevo: ${data.messageId || '(no id)'}`);
+};
+
+// ─── Send via SMTP (nodemailer) — local-dev fallback when no Brevo key is set ────
+const sendViaSmtp = async (options: EmailOptions): Promise<void> => {
   const from = process.env.EMAIL_FROM || `"Stivo Hostel" <${process.env.EMAIL_USER}>`;
 
-  console.log(`📧 Sending email to: ${options.to}  |  Subject: ${options.subject}`);
+  console.log(`📧 Sending email via SMTP to: ${options.to}  |  Subject: ${options.subject}`);
   console.log(`   EMAIL_USER=${process.env.EMAIL_USER || '(not set)'}`);
 
   const transporter = createTransporter();
+  const info = await transporter.sendMail({
+    from,
+    to: options.to,
+    subject: options.subject,
+    html: options.html,
+    attachments: options.attachments,
+  });
+  console.log(`✅ Email sent successfully: ${info.messageId}`);
+};
 
+// ─── Core send function ────────────────────────────────────────────────────────
+// Prefers the Brevo HTTP API (works on hosts like Render that block SMTP ports).
+// Falls back to SMTP when BREVO_API_KEY is not configured (e.g. local dev).
+export const sendEmail = async (options: EmailOptions): Promise<void> => {
   try {
-    const info = await transporter.sendMail({
-      from,
-      to: options.to,
-      subject: options.subject,
-      html: options.html,
-      attachments: options.attachments,
-    });
-    console.log(`✅ Email sent successfully: ${info.messageId}`);
+    if (process.env.BREVO_API_KEY) {
+      await sendViaBrevo(options);
+    } else {
+      await sendViaSmtp(options);
+    }
   } catch (error: any) {
     console.error('❌ Send email FAILED:', error.message);
-    console.error('   Full error:', JSON.stringify(error, null, 2));
     throw new Error(`Failed to send email: ${error.message}`);
   }
 };

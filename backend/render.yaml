@@ -27,7 +27,12 @@ services:
         value: 7d
       - key: ALLOWED_ORIGINS
         sync: false
-      # ── Email (Gmail SMTP) ─────────────────────────────────────────────────
+      # ── Email ──────────────────────────────────────────────────────────────
+      # Render's free plan blocks outbound SMTP (ETIMEDOUT on connect), so email
+      # is sent via the Brevo HTTP API (port 443). Set BREVO_API_KEY below.
+      # EMAIL_FROM must be a sender address verified in your Brevo account.
+      - key: BREVO_API_KEY
+        sync: false
       - key: EMAIL_SERVICE
         value: gmail
       - key: EMAIL_USER
