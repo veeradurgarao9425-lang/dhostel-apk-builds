@@ -18,8 +18,9 @@ export interface EmailOptions {
 
 // ─── Create transporter lazily (reads env vars at call-time, not module-load) ──
 const createTransporter = () => {
-  const user = process.env.EMAIL_USER;
-  const pass = process.env.EMAIL_PASSWORD;
+  const user = (process.env.EMAIL_USER || '').trim();
+  // Gmail App Passwords are sometimes copied with spaces between groups — strip them
+  const pass = (process.env.EMAIL_PASSWORD || '').replace(/\s/g, '');
   const service = process.env.EMAIL_SERVICE || 'gmail';
 
   if (!user || !pass) {
@@ -27,6 +28,8 @@ const createTransporter = () => {
       `Email credentials missing. EMAIL_USER="${user || '(not set)'}" EMAIL_PASSWORD="${pass ? '(set)' : '(not set)'}"`
     );
   }
+
+  console.log(`📮 Creating Gmail transporter for user: ${user}`);
 
   return nodemailer.createTransport({
     service,
