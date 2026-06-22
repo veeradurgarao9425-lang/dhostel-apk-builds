@@ -58,16 +58,23 @@ export default function RegisterScreen({ navigation }: any) {
             if (data?.success) {
                 setOtpSent(true);
                 setOtp('');
+                // Dev mode: backend returns the OTP directly — auto-fill for testing
+                if (data?.dev_otp) {
+                    setOtp(data.dev_otp);
+                    setErrorMessage(`[Dev] OTP auto-filled: ${data.dev_otp}`);
+                }
                 setTimeout(() => otpRef.current?.focus(), 100);
             } else {
                 setErrorMessage(data?.error || data?.message || 'Could not send verification code.');
             }
         } catch (err: any) {
-            setErrorMessage(err.response?.data?.error || err.response?.data?.message || 'Could not send verification code.');
+            const serverMsg = err.response?.data?.error || err.response?.data?.message;
+            setErrorMessage(serverMsg || 'Could not send OTP. Check your internet connection and try again.');
         } finally {
             setSendingOtp(false);
         }
     };
+
 
     const handleVerifyOtp = async () => {
         Keyboard.dismiss();

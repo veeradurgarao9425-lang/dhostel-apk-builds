@@ -731,30 +731,33 @@ export const authController = {
       // Expiry time (10 minutes from now)
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-      // Save to database
-      // Delete old OTPs for this email first
+      // Delete old OTPs for this email, then insert fresh one
       await db('otps').where('email', email).del();
-
       await db('otps').insert({
         email,
         otp,
         expires_at: expiresAt,
       });
 
-      // Send email
+      console.log(`\n${'='.repeat(60)}`);
+      console.log(`📧 OTP GENERATION — ${email}`);
+      console.log(`   OTP: ${otp}  |  Expires: ${expiresAt.toISOString()}`);
+      console.log(`   EMAIL_USER env: ${process.env.EMAIL_USER || '⚠️  NOT SET'}`);
+      console.log(`${'='.repeat(60)}\n`);
+
+      // Send the OTP via email
       await sendOtpEmail(email, otp);
 
       return res.status(200).json({
         success: true,
         message: 'Verification OTP sent to your email',
+        ...(process.env.NODE_ENV === 'development' && { dev_otp: otp }),
       });
     } catch (error: any) {
-      console.error('Send OTP error:', error);
-      // Email verification is optional — guide the user to sign up with phone instead
-      // rather than hard-blocking onboarding when the mail service is misconfigured.
-      return res.status(503).json({
+      console.error('❌ Send OTP error:', error?.message || error);
+      return res.status(500).json({
         success: false,
-        error: 'Email verification is unavailable right now. You can sign up using your phone number instead.',
+        error: `Failed to send OTP email: ${error?.message || 'Unknown error'}. Check server logs.`,
       });
     }
   },
