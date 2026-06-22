@@ -270,72 +270,95 @@ export const ExpenseScreen = ({ navigation }: any) => {
                     renderItem={({ item: expense }) => {
                         const color = getCatColor(expense.category_name);
                         return (
-                            <View style={[styles.expenseCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#E2E8F0', borderWidth: isDark ? 1 : 1.5 }]}>
-                                <TouchableOpacity
-                                    onPress={() => {
-                                        if (expense.is_wage) {
-                                            Toast.show({ type: 'info', text1: 'Staff Wage', text2: 'Manage this from Staff → wallet → Payments.' });
-                                            return;
-                                        }
-                                        navigation.navigate('ExpenseDetails', { expense });
-                                    }}
-                                    activeOpacity={0.7}
-                                >
-                                    <View style={styles.cardInner}>
-                                        <View style={styles.leftSection}>
-                                            <View style={[styles.iconContainer, { backgroundColor: isDark ? color + '25' : color + '15' }]}>
-                                                <Tag size={20} color={color} />
-                                            </View>
-                                            <View style={styles.infoContainer}>
-                                                <Text style={[styles.expenseTitle, { color: theme.textPrimary }]}>{expense.category_name}</Text>
-                                                <Text style={[styles.vendorText, { color: theme.textSecondary }]}>
-                                                    {expense.vendor_name || 'Generic Vendor'}
-                                                </Text>
-                                                <Text style={[styles.dateText, { color: isDark ? '#64748B' : '#94A3B8' }]}>{formatDate(expense.expense_date)}</Text>
-                                            </View>
+                            <TouchableOpacity
+                                key={`exp-${expense.expense_id}`}
+                                style={[styles.premiumCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}
+                                onPress={() => {
+                                    if (expense.is_wage) {
+                                        Toast.show({ type: 'info', text1: 'Staff Wage', text2: 'Manage this from Staff → Payments.' });
+                                        return;
+                                    }
+                                    navigation.navigate('ExpenseDetails', { expense });
+                                }}
+                                activeOpacity={0.9}
+                            >
+                                <View style={[styles.cardAccentLine, { backgroundColor: color }]} />
+                                <View style={styles.cardInner}>
+                                    <View style={styles.cardHeaderRow}>
+                                        <View style={[styles.cardAvatarBg, { backgroundColor: isDark ? color + '25' : color + '15' }]}>
+                                            <Tag size={18} color={color} />
                                         </View>
-                                        <View style={styles.rightSection}>
-                                            <Text style={styles.amountText}>-₹{parseFloat(expense.amount).toLocaleString('en-IN')}</Text>
-                                            <View style={[styles.paymentModeBadge, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                                                <Text style={[styles.paymentModeText, { color: isDark ? '#94A3B8' : '#64748B' }]}>{expense.payment_mode || 'Cash'}</Text>
-                                            </View>
+                                        <View style={styles.cardNameBlock}>
+                                            <Text style={[styles.cardNameText, { color: theme.textPrimary }]} numberOfLines={1}>{expense.category_name}</Text>
+                                            {expense.vendor_name && (
+                                                <View style={[styles.roomBadge, { backgroundColor: isDark ? color + '25' : color + '15' }]}>
+                                                    <Text style={[styles.roomBadgeText, { color }]}>{expense.vendor_name}</Text>
+                                                </View>
+                                            )}
                                         </View>
-                                    </View>
-                                    {expense.description && (
-                                        <View style={[styles.descriptionContainer, { borderTopColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                                            <Text style={[styles.descriptionText, { color: theme.textSecondary }]} numberOfLines={2}>
-                                                {expense.description}
+                                        <View style={styles.cardRightBlock}>
+                                            <Text style={[styles.cardAmtText, { color: '#EF4444' }]}>
+                                                -₹{parseFloat(expense.amount || 0).toLocaleString('en-IN')}
                                             </Text>
+                                            <Text style={styles.cardStatusSub}>Deducted</Text>
                                         </View>
-                                    )}
-                                </TouchableOpacity>
-                                
-                                {/* Action Buttons Row */}
-                                {expense.is_wage ? (
-                                    <View style={[styles.cardActions, { borderTopColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                                        <Text style={{ flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '700', color: '#7C3AED' }}>
-                                            Staff Wage · manage in Staff → Payments
-                                        </Text>
                                     </View>
-                                ) : (
-                                <View style={[styles.cardActions, { borderTopColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                                    <TouchableOpacity
-                                        style={[styles.actionBtn, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
-                                        onPress={() => navigation.navigate('AddExpense', { expense })}
-                                    >
-                                        <Edit3 size={14} color="#3B82F6" />
-                                        <Text style={styles.actionBtnTextBlue}>Edit</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={[styles.actionBtn, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
-                                        onPress={() => handleDelete(expense)}
-                                    >
-                                        <Trash2 size={14} color="#EF4444" />
-                                        <Text style={styles.actionBtnTextRed}>Delete</Text>
-                                    </TouchableOpacity>
+
+                                    {expense.description && (
+                                        <Text style={[styles.descriptionText, { color: theme.textSecondary }]} numberOfLines={2}>
+                                            {expense.description}
+                                        </Text>
+                                    )}
+
+                                    <View style={[styles.columnsBlock, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC' }]}>
+                                        <View style={styles.colItem}>
+                                            <Text style={styles.colLabel}>Total</Text>
+                                            <Text style={[styles.colValue, { color: theme.textPrimary }]}>₹{parseFloat(expense.amount || 0).toLocaleString('en-IN')}</Text>
+                                        </View>
+                                        <View style={styles.colDivider} />
+                                        <View style={styles.colItem}>
+                                            <Text style={[styles.colLabel, { color: '#059669' }]}>Paid</Text>
+                                            <Text style={[styles.colValue, { color: '#059669' }]}>₹{parseFloat(expense.amount || 0).toLocaleString('en-IN')}</Text>
+                                        </View>
+                                        <View style={styles.colDivider} />
+                                        <View style={styles.colItem}>
+                                            <Text style={styles.colLabel}>Mode</Text>
+                                            <Text style={[styles.colValue, { color: theme.textPrimary }]}>{(expense.payment_mode || 'Cash').toUpperCase()}</Text>
+                                        </View>
+                                    </View>
+
+                                    <View style={[styles.cardFooterRow, { borderTopColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                        <View style={styles.footerLeftGroup}>
+                                            <View style={styles.footerMetaItem}>
+                                                <Calendar size={13} color="#94A3B8" />
+                                                <Text style={styles.footerMetaText}>{formatDate(expense.expense_date)}</Text>
+                                            </View>
+                                        </View>
+                                        {expense.is_wage ? (
+                                            <Text style={{ fontSize: 10, fontWeight: '700', color: '#7C3AED' }}>
+                                                Staff Wage · manage in Staff
+                                            </Text>
+                                        ) : (
+                                            <View style={styles.cardActions}>
+                                                <TouchableOpacity
+                                                    style={[styles.actionBtn, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
+                                                    onPress={() => navigation.navigate('AddExpense', { expense })}
+                                                >
+                                                    <Edit3 size={12} color="#3B82F6" />
+                                                    <Text style={styles.actionBtnTextBlue}>Edit</Text>
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    style={[styles.actionBtn, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
+                                                    onPress={() => handleDelete(expense)}
+                                                >
+                                                    <Trash2 size={12} color="#EF4444" />
+                                                    <Text style={styles.actionBtnTextRed}>Delete</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        )}
+                                    </View>
                                 </View>
-                                )}
-                            </View>
+                            </TouchableOpacity>
                         );
                     }}
                     contentContainerStyle={styles.listContentContainer}
@@ -506,91 +529,143 @@ const styles = StyleSheet.create({
         flex: 1,
         paddingHorizontal: 16,
     },
-    expenseCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        padding: 16,
+    premiumCard: {
+        borderRadius: 20,
         marginBottom: 12,
-        borderWidth: 1,
-        borderColor: '#F1F5F9',
-        shadowColor: '#0F172A',
+        flexDirection: 'row',
+        overflow: 'hidden',
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowRadius: 6,
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.03,
-        shadowRadius: 8,
-        elevation: 1,
+    },
+    cardAccentLine: {
+        width: 5,
     },
     cardInner: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    leftSection: {
-        flexDirection: 'row',
-        alignItems: 'center',
         flex: 1,
+        padding: 14,
+        gap: 12,
     },
-    iconContainer: {
-        width: 44,
-        height: 44,
-        borderRadius: 12,
-        justifyContent: 'center',
+    cardHeaderRow: {
+        flexDirection: 'row',
         alignItems: 'center',
-        marginRight: 12,
     },
-    infoContainer: {
+    cardAvatarBg: {
+        width: 38, height: 38,
+        borderRadius: 19,
+        alignItems: 'center', justifyContent: 'center',
+        marginRight: 10,
+    },
+    cardNameBlock: {
         flex: 1,
-        justifyContent: 'center',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
     },
-    expenseTitle: {
-        fontSize: 15,
-        fontWeight: '700',
-        color: '#1E293B',
-        marginBottom: 2,
-    },
-    vendorText: {
-        fontSize: 13,
-        color: '#64748B',
-        fontWeight: '500',
-        marginBottom: 2,
-    },
-    dateText: {
-        fontSize: 11,
-        color: '#94A3B8',
-        fontWeight: '600',
-    },
-    rightSection: {
-        alignItems: 'flex-end',
-        justifyContent: 'center',
-        marginLeft: 10,
-    },
-    amountText: {
-        fontSize: 16,
+    cardNameText: {
+        fontSize: 14,
         fontWeight: '800',
-        color: '#EF4444',
-        marginBottom: 4,
     },
-    paymentModeBadge: {
-        backgroundColor: '#F1F5F9',
+    roomBadge: {
         paddingHorizontal: 8,
         paddingVertical: 3,
-        borderRadius: 6,
+        borderRadius: 8,
     },
-    paymentModeText: {
-        fontSize: 10,
-        fontWeight: '700',
-        color: '#64748B',
-        textTransform: 'uppercase',
+    roomBadgeText: {
+        fontSize: 9,
+        fontWeight: '800',
     },
-    descriptionContainer: {
-        marginTop: 10,
-        paddingTop: 10,
-        borderTopWidth: 1,
-        borderTopColor: '#F1F5F9',
+    cardRightBlock: {
+        alignItems: 'flex-end',
+    },
+    cardAmtText: {
+        fontSize: 15,
+        fontWeight: '900',
+    },
+    cardStatusSub: {
+        fontSize: 9,
+        color: '#94A3B8',
+        fontWeight: '600',
+        marginTop: 1,
     },
     descriptionText: {
         fontSize: 12,
-        color: '#64748B',
         lineHeight: 16,
+        paddingHorizontal: 4,
+    },
+    columnsBlock: {
+        flexDirection: 'row',
+        borderRadius: 12,
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    colItem: {
+        flex: 1,
+        alignItems: 'center',
+    },
+    colLabel: {
+        fontSize: 8,
+        color: '#94A3B8',
+        fontWeight: '800',
+        textTransform: 'uppercase',
+    },
+    colValue: {
+        fontSize: 12,
+        fontWeight: '800',
+        marginTop: 2,
+    },
+    colDivider: {
+        width: 1,
+        height: 24,
+        backgroundColor: '#E2E8F0',
+    },
+    cardFooterRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        borderTopWidth: 1,
+        paddingTop: 10,
+    },
+    footerLeftGroup: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    footerMetaItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    footerMetaText: {
+        fontSize: 10,
+        color: '#94A3B8',
+        fontWeight: '700',
+    },
+    cardActions: {
+        flexDirection: 'row',
+        gap: 10,
+    },
+    actionBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingVertical: 4,
+        paddingHorizontal: 8,
+        borderRadius: 6,
+        borderWidth: 1,
+    },
+    actionBtnTextBlue: {
+        fontSize: 10,
+        color: '#3B82F6',
+        fontWeight: '700',
+    },
+    actionBtnTextRed: {
+        fontSize: 10,
+        color: '#EF4444',
+        fontWeight: '700',
     },
     emptyState: {
         alignItems: 'center',
@@ -622,35 +697,9 @@ const styles = StyleSheet.create({
         shadowRadius: 6,
         zIndex: 2000,
     },
-    cardActions: {
-        flexDirection: 'row',
-        justifyContent: 'flex-end',
-        gap: 14,
-        marginTop: 10,
-        paddingTop: 10,
-        borderTopWidth: 1,
-        borderTopColor: '#F1F5F9',
-    },
-    actionBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        paddingVertical: 4,
-        paddingHorizontal: 8,
-        borderRadius: 6,
-        backgroundColor: '#F8FAFC',
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
-    },
-    actionBtnTextBlue: {
-        fontSize: 11,
-        color: '#3B82F6',
-        fontWeight: '700',
-    },
-    actionBtnTextRed: {
-        fontSize: 11,
-        color: '#EF4444',
-        fontWeight: '700',
+    listContentContainer: {
+        padding: 16,
+        paddingBottom: 180,
     },
     listContentContainer: {
         padding: 16,

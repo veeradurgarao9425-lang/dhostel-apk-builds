@@ -489,8 +489,8 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 {/* ── Guardian (Optional) ── */}
                 <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
                     <Text style={[styles.sectionTitle, { fontSize: fontSize + 1, color: theme.textPrimary, borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>👨‍👩‍👦 Guardian <Text style={{ fontWeight: '400', color: theme.textSecondary, fontSize: 12 }}>(Optional)</Text></Text>
-                    <FormInput label="Guardian Name" icon={User} placeholder="Parent / Guardian" value={formData.guardian_name} onChangeText={(t: string) => up('guardian_name', t.replace(/[^a-zA-Z0-9\s]/g, ''))} />
                     <SelectField label="Relation" value={relations.find(r => r.relation_id.toString() === formData.guardian_relation_id)?.relation_name} placeholder="Relation" icon={Users} onPress={() => setRelationModal(true)} />
+                    <FormInput label="Guardian Name" icon={User} placeholder="Parent / Guardian" value={formData.guardian_name} onChangeText={(t: string) => up('guardian_name', t.replace(/[^a-zA-Z0-9\s]/g, ''))} />
                     <FormInput label="Guardian Phone" icon={Phone} placeholder="9876543211" keyboardType="phone-pad" value={formData.guardian_phone} error={errors.guardian_phone}
                         onChangeText={(t: string) => { const c = t.replace(/\D/g, '').slice(0, 10); up('guardian_phone', c); }} />
                 </View>

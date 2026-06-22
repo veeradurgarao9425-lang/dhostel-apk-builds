@@ -26,11 +26,7 @@ import { ProfileMenu } from '../components/ProfileMenu';
 import { buildReportHtml } from '../utils/reportHtml';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
-const fmt = (n: number) => {
-    if (Math.abs(n) >= 100000) return `₹${(n / 100000).toFixed(1)}L`;
-    if (Math.abs(n) >= 1000) return `₹${(n / 1000).toFixed(1)}K`;
-    return `₹${n.toLocaleString('en-IN')}`;
-};
+const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 
 const TABS = ['Summary', 'Tenants', 'Finance'] as const;
 type TabType = typeof TABS[number];

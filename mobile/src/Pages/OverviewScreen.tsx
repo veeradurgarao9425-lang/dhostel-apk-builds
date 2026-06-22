@@ -75,11 +75,7 @@ const getLightColor = (color: string) => {
 };
 
 // ─── Format currency ──────────────────────────────────────────────────────────
-const fmt = (n: number) => {
-    if (Math.abs(n) >= 100000) return `₹${(n / 100000).toFixed(1)}L`;
-    if (Math.abs(n) >= 1000) return `₹${(n / 1000).toFixed(1)}K`;
-    return `₹${n.toLocaleString('en-IN')}`;
-};
+const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 
 const fmtFull = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 
@@ -317,14 +313,7 @@ export default function OverviewScreen() {
                                                 </View>
                                                 <View style={s.catRight}>
                                                     <Text style={s.catAmount}>{fmtFull(cat.amount)}</Text>
-                                                    <Text style={s.catPercent}>{cat.percentage}%</Text>
                                                 </View>
-                                            </View>
-                                            <View style={s.catBarBg}>
-                                                <View style={[s.catBarFill, {
-                                                    width: `${cat.percentage}%`,
-                                                    backgroundColor: color,
-                                                }]} />
                                             </View>
                                         </View>
                                     );

@@ -234,52 +234,55 @@ export default function RemindersScreen() {
 
         return (
             <View style={[s.card, isCompleted && s.completedCard]}>
-                {/* Left: Category Icon Circle */}
-                <View style={[s.iconCircle, { backgroundColor: isCompleted ? '#F1F5F9' : color + '15' }]}>
-                    <Ionicons name={icon as any} size={18} color={isCompleted ? '#94A3B8' : color} />
-                </View>
+                <View style={s.cardMain}>
+                    {/* Left: Category Icon Circle */}
+                    <View style={[s.iconCircle, { backgroundColor: isCompleted ? '#F1F5F9' : color + '15' }]}>
+                        <Ionicons name={icon as any} size={18} color={isCompleted ? '#94A3B8' : color} />
+                    </View>
 
-                {/* Middle: Info */}
-                <View style={s.info}>
-                    <Text style={[s.cardTitle, isCompleted && s.completedText]} numberOfLines={1}>
-                        {item.title}
-                    </Text>
-                    {item.description ? (
-                        <Text style={[s.cardSub, isCompleted && s.completedText]} numberOfLines={2}>
-                            {item.description}
+                    {/* Middle: Info */}
+                    <View style={s.info}>
+                        <Text style={[s.cardTitle, isCompleted && s.completedText]} numberOfLines={1}>
+                            {item.title}
                         </Text>
-                    ) : null}
-                    <Text style={s.cardDate}>📅 {dateStr}</Text>
-                </View>
+                        {item.description ? (
+                            <Text style={[s.cardSub, isCompleted && s.completedText]} numberOfLines={2}>
+                                {item.description}
+                            </Text>
+                        ) : null}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 8 }}>
+                            <Text style={s.cardDate}>📅 {dateStr}</Text>
+                            {!isCompleted && (
+                                <View style={[s.priBadge, { backgroundColor: pri.bg }]}>
+                                    <Text style={[s.priText, { color: pri.text }]}>{item.priority}</Text>
+                                </View>
+                            )}
+                        </View>
+                    </View>
 
-                {/* Right: Actions and Badges */}
-                <View style={s.actions}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                        {/* Priority Badge */}
-                        {!isCompleted && (
-                            <View style={[s.priBadge, { backgroundColor: pri.bg }]}>
-                                <Text style={[s.priText, { color: pri.text }]}>{item.priority}</Text>
-                            </View>
-                        )}
-                        {/* Checkbox status toggle */}
-                        <TouchableOpacity onPress={() => handleToggleStatus(item)}>
+                    {/* Right: Checkbox */}
+                    <View style={s.checkboxContainer}>
+                        <TouchableOpacity onPress={() => handleToggleStatus(item)} style={{ padding: 8 }}>
                             <Ionicons
                                 name={isCompleted ? 'checkmark-circle' : 'ellipse-outline'}
-                                size={22}
+                                size={26}
                                 color={isCompleted ? '#10B981' : '#CBD5E1'}
                             />
                         </TouchableOpacity>
                     </View>
+                </View>
 
-                    {/* Edit/Delete Buttons */}
-                    <View style={s.actionRow}>
-                        <TouchableOpacity style={s.actionBtn} onPress={() => handleOpenEdit(item)}>
-                            <Ionicons name="pencil-outline" size={14} color="#64748B" />
-                        </TouchableOpacity>
-                        <TouchableOpacity style={s.actionBtn} onPress={() => handleDeleteReminder(item.reminder_id)}>
-                            <Ionicons name="trash-outline" size={14} color="#EF4444" />
-                        </TouchableOpacity>
-                    </View>
+                {/* Bottom Action Row */}
+                <View style={s.bottomActions}>
+                    <TouchableOpacity style={s.bottomBtn} onPress={() => handleOpenEdit(item)}>
+                        <Ionicons name="pencil-outline" size={16} color="#64748B" />
+                        <Text style={s.bottomBtnText}>Edit</Text>
+                    </TouchableOpacity>
+                    <View style={s.actionDivider} />
+                    <TouchableOpacity style={s.bottomBtn} onPress={() => handleDeleteReminder(item.reminder_id)}>
+                        <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                        <Text style={[s.bottomBtnText, { color: '#EF4444' }]}>Delete</Text>
+                    </TouchableOpacity>
                 </View>
             </View>
         );
@@ -450,32 +453,48 @@ const s = StyleSheet.create({
 
     // Card styling
     card: {
-        flexDirection: 'row',
         backgroundColor: '#FFF',
         borderRadius: 20,
-        padding: 15,
         marginBottom: 12,
-        alignItems: 'center',
         elevation: 2,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,
         shadowRadius: 4,
+        overflow: 'hidden'
     },
     completedCard: { opacity: 0.65 },
+    cardMain: {
+        flexDirection: 'row',
+        padding: 15,
+        alignItems: 'center',
+    },
     iconCircle: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
     info: { flex: 1, gap: 2 },
-    cardTitle: { fontSize: 14, fontWeight: '700', color: '#1E293B' },
-    cardSub: { fontSize: 11, color: '#64748B', fontWeight: '500' },
-    cardDate: { fontSize: 10, color: '#94A3B8', fontWeight: '600', marginTop: 2 },
+    cardTitle: { fontSize: 15, fontWeight: '700', color: '#1E293B' },
+    cardSub: { fontSize: 12, color: '#64748B', fontWeight: '500' },
+    cardDate: { fontSize: 11, color: '#94A3B8', fontWeight: '600' },
     completedText: { textDecorationLine: 'line-through' },
 
-    actions: { alignItems: 'flex-end', justifyContent: 'center', paddingLeft: 8 },
+    checkboxContainer: { justifyContent: 'center', alignItems: 'center' },
     priBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
-    priText: { fontSize: 8, fontWeight: '900' },
+    priText: { fontSize: 9, fontWeight: '800' },
 
-    actionRow: { flexDirection: 'row', gap: 6, marginTop: 4 },
-    actionBtn: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
+    bottomActions: {
+        flexDirection: 'row',
+        borderTopWidth: 1,
+        borderTopColor: '#F1F5F9',
+        height: 44,
+    },
+    bottomBtn: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6
+    },
+    bottomBtnText: { fontSize: 13, fontWeight: '600', color: '#64748B' },
+    actionDivider: { width: 1, backgroundColor: '#F1F5F9', marginVertical: 8 },
 
     emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: 80, paddingHorizontal: 30 },
     emptyText: { fontSize: 16, color: '#1E293B', fontWeight: '800', marginTop: 12 },

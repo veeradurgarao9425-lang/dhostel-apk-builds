@@ -112,12 +112,43 @@ export default function RoomsScreen({ navigation, route }: any) {
         const isVacant = room.occupied_beds === 0;
 
         let statusColor = theme.warning;
-
         if (isFull) {
             statusColor = theme.error;
         } else if (isVacant) {
             statusColor = theme.success;
         }
+
+        const total = room.total_capacity || 0;
+        const occupied = room.occupied_beds || 0;
+        const maxDots = 5;
+        const dotsToShow = Math.min(total, maxDots);
+        const bedDots = [];
+
+        for (let i = 0; i < dotsToShow; i++) {
+            const isBedOccupied = i < occupied;
+            bedDots.push(
+                <View
+                    key={i}
+                    style={[
+                        styles.bedDot,
+                        {
+                            backgroundColor: isBedOccupied ? statusColor : 'transparent',
+                            borderColor: isBedOccupied ? 'transparent' : (isDark ? '#475569' : '#CBD5E1'),
+                            borderWidth: isBedOccupied ? 0 : 1,
+                        }
+                    ]}
+                />
+            );
+        }
+
+        const getShortRoomType = (typeName?: string) => {
+            if (!typeName) return 'ROOM';
+            let clean = typeName.replace(/sharing/gi, 'Share').replace(/bed/gi, 'B').trim();
+            if (clean.length > 9) {
+                clean = clean.substring(0, 9);
+            }
+            return clean.toUpperCase();
+        };
 
         return (
             <TouchableOpacity
@@ -126,22 +157,40 @@ export default function RoomsScreen({ navigation, route }: any) {
                     styles.roomCard,
                     {
                         backgroundColor: theme.cardBg,
-                        borderColor: statusColor + '55',
+                        borderColor: isDark ? '#334155' : '#E2E8F0',
+                        borderWidth: isDark ? 1 : 1.2,
                     }
                 ]}
                 onPress={() => navigation.navigate('RoomDetails', { roomId: room.room_id })}
                 activeOpacity={0.85}
             >
-                <View style={[styles.statusTag, { backgroundColor: statusColor }]}>
-                    <Text style={styles.statusTagText}>
-                        {isFull ? 'FULL' : `${room.available_beds} FREE`}
+                {/* Header row: Room type on left, status dot on right */}
+                <View style={styles.cardHeader}>
+                    <Text style={[styles.roomLabel, { color: theme.textSecondary }]} numberOfLines={1}>
+                        {getShortRoomType(room.room_type_name)}
+                    </Text>
+                    <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+                </View>
+
+                {/* Center: Room Number */}
+                <View style={styles.roomNumContainer}>
+                    <Text style={[styles.roomNum, { color: theme.textPrimary }]}>
+                        {room.room_number}
                     </Text>
                 </View>
-                <Text style={[styles.roomLabel, { color: theme.textSecondary }]}>RM</Text>
-                <Text style={[styles.roomNum, { color: theme.textPrimary }]}>{room.room_number}</Text>
-                <View style={[styles.capacityBar, { backgroundColor: statusColor + '22' }]}>
-                    <Text style={[styles.capacityText, { color: statusColor }]}>
-                        {room.occupied_beds}/{room.total_capacity}
+
+                {/* Footer: Bed occupancy dots + text */}
+                <View style={styles.cardFooter}>
+                    <View style={styles.bedDotsContainer}>
+                        {bedDots}
+                        {total > maxDots && (
+                            <Text style={[styles.extraBedsText, { color: theme.textSecondary }]}>
+                                +{total - maxDots}
+                            </Text>
+                        )}
+                    </View>
+                    <Text style={[styles.capacityText, { color: theme.textSecondary }]}>
+                        {occupied}/{total} Beds
                     </Text>
                 </View>
             </TouchableOpacity>
@@ -328,12 +377,12 @@ const styles = StyleSheet.create({
     gridRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 12 },
     roomCard: {
         width: ITEM_WIDTH,
-        height: 110,
+        height: 120,
         borderRadius: 16,
-        borderWidth: 1.5,
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingTop: 12,
+        borderWidth: 1,
+        paddingVertical: 10,
+        paddingHorizontal: 8,
+        justifyContent: 'space-between',
         position: 'relative',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
@@ -341,24 +390,60 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 1,
     },
-    statusTag: {
-        position: 'absolute',
-        top: -1, left: -1, right: -1,
-        borderTopLeftRadius: 14,
-        borderTopRightRadius: 14,
-        paddingVertical: 3,
+    cardHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'center',
+        width: '100%',
+        paddingHorizontal: 4,
     },
-    statusTagText: { fontSize: 8, fontWeight: '900', color: '#FFF' },
-    roomLabel: { fontSize: 10, fontWeight: '700', marginTop: 4 },
-    roomNum: { fontSize: 20, fontWeight: '900' },
-    capacityBar: {
-        marginTop: 6,
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: 12,
+    statusDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
     },
-    capacityText: { fontSize: 10, fontWeight: '700' },
+    roomLabel: {
+        fontSize: 9,
+        fontWeight: '700',
+        letterSpacing: 0.5,
+        maxWidth: '75%',
+    },
+    roomNumContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        flex: 1,
+        marginTop: 2,
+    },
+    roomNum: {
+        fontSize: 22,
+        fontWeight: '800',
+    },
+    cardFooter: {
+        alignItems: 'center',
+        width: '100%',
+    },
+    bedDotsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 4,
+        marginBottom: 4,
+    },
+    bedDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+    },
+    extraBedsText: {
+        fontSize: 8,
+        fontWeight: '700',
+        marginLeft: 2,
+    },
+    capacityText: {
+        fontSize: 9,
+        fontWeight: '600',
+        textAlign: 'center',
+    },
     fab: {
         position: 'absolute',
         bottom: 45,

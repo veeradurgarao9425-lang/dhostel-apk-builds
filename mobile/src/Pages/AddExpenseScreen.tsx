@@ -1,17 +1,35 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, ScrollView, Text, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform, Keyboard, StatusBar } from 'react-native';
+import {
+    View,
+    StyleSheet,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    TextInput,
+    ActivityIndicator,
+    KeyboardAvoidingView,
+    Platform,
+    Keyboard,
+    StatusBar,
+    Pressable,
+} from 'react-native';
 import Toast from 'react-native-toast-message';
-import { AppHeader } from '../components/AppHeader';
-import { FullScreenLoader } from '../components/FullScreenLoader';
-import { InputField } from '../components/InputField';
-import { Card } from '../components/Card';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePickerModal from "react-native-modal-datetime-picker";
-import { Calendar } from 'lucide-react-native';
+import {
+    Calendar,
+    ChevronDown,
+    IndianRupee,
+    CreditCard,
+    User,
+    FileText,
+} from 'lucide-react-native';
 import api from '../services/api';
 import { useAuth } from '../../contexts/AuthContext';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../contexts/ThemeContext';
 import { SPACING } from '../theme/index';
+import { AppHeader } from '../components/AppHeader';
+import { FullScreenLoader } from '../components/FullScreenLoader';
 
 const CAT_COLORS: Record<string, string> = {
     'Electricity': '#F59E0B',
@@ -26,8 +44,59 @@ const CAT_COLORS: Record<string, string> = {
 
 const getCatColor = (name: string) => CAT_COLORS[name] || '#64748B';
 
+// ─── Reusable custom components inside AddExpenseScreen ─────────────────────────
+const FormInput = ({ label, icon: Icon, placeholder, value, onChangeText, keyboardType, multiline, error, onFocus }: any) => {
+    const { theme, isDark, fontSize } = useTheme();
+    return (
+        <View style={styles.inputGroup}>
+            <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }]}>{label}</Text>
+            <View style={[
+                styles.inputContainer,
+                { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' },
+                multiline && styles.multilineContainer,
+                error && styles.inputError
+            ]}>
+                <View style={[styles.inputIcon, multiline && { paddingTop: 10 }]}>
+                    <Icon size={18} color={error ? '#EF4444' : theme.primary} />
+                </View>
+                <TextInput
+                    style={[
+                        styles.input,
+                        { color: theme.textPrimary, fontSize, outlineStyle: 'none' } as any,
+                        multiline && styles.multilineInput
+                    ]}
+                    placeholder={placeholder}
+                    placeholderTextColor={isDark ? '#475569' : '#BBBBBB'}
+                    value={value}
+                    onChangeText={onChangeText}
+                    keyboardType={keyboardType}
+                    multiline={multiline}
+                    numberOfLines={multiline ? 4 : 1}
+                    onFocus={onFocus}
+                />
+            </View>
+            {error && <Text style={styles.errorText}>{error}</Text>}
+        </View>
+    );
+};
+
+const SelectField = ({ label, value, placeholder, icon: Icon, onPress, error }: any) => {
+    const { theme, isDark, fontSize } = useTheme();
+    return (
+        <View style={styles.inputGroup}>
+            <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }]}>{label}</Text>
+            <TouchableOpacity style={[styles.inputContainer, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }, error && styles.inputError]} onPress={onPress} activeOpacity={0.7}>
+                <View style={styles.inputIcon}><Icon size={18} color={error ? '#EF4444' : theme.primary} /></View>
+                <Text style={[styles.inputText, { color: theme.textPrimary, fontSize }, !value && { color: isDark ? '#475569' : '#BBBBBB' }]}>{value || placeholder}</Text>
+                <ChevronDown size={18} color={theme.textSecondary} style={{ marginRight: 12 }} />
+            </TouchableOpacity>
+            {error && <Text style={styles.errorText}>{error}</Text>}
+        </View>
+    );
+};
+
 export const AddExpenseScreen = ({ route, navigation }: any) => {
-    const { theme } = useTheme();
+    const { theme, isDark, fontSize } = useTheme();
     const { expense } = route.params || {};
     const { user } = useAuth();
     const scrollRef = useRef<ScrollView>(null);
@@ -159,19 +228,22 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
     };
 
     return (
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.container}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.container} keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}>
             <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
             <AppHeader title={expense ? "Edit Expense" : "Add Expense"} />
             <FullScreenLoader visible={loading} />
             <ScrollView
                 ref={scrollRef}
-                style={styles.content}
+                style={styles.scrollView}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
-                contentContainerStyle={{ paddingBottom: 30 }}
+                contentContainerStyle={[styles.scrollContent, { paddingBottom: (isKeyboardVisible ? 250 : 120) + insets.bottom }]}
             >
-                <Card style={styles.formCard}>
-                    <Text style={styles.label}>Category *</Text>
+                {/* ── Card 1: Expense details ── */}
+                <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#EDE9FE', borderWidth: 1 }]}>
+                    <Text style={[styles.sectionTitle, { fontSize: fontSize + 1, color: theme.textPrimary, borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>🏷️ Expense Details</Text>
+                    
+                    <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }]}>Category *</Text>
                     <View style={styles.categoryGrid}>
                         {categories.map((cat) => {
                             const isSelected = formData.category_id === cat.category_id.toString();
@@ -181,12 +253,14 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
                                     key={cat.category_id}
                                     style={[
                                         styles.catButton,
+                                        { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' },
                                         isSelected && { borderColor: color, backgroundColor: color + '15' }
                                     ]}
                                     onPress={() => setFormData({ ...formData, category_id: cat.category_id.toString() })}
                                 >
                                     <Text style={[
                                         styles.catButtonText,
+                                        { fontSize: fontSize - 2 },
                                         isSelected && { color: color, fontWeight: '700' }
                                     ]}>{cat.category_name}</Text>
                                 </TouchableOpacity>
@@ -194,26 +268,29 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
                         })}
                     </View>
 
-                    <InputField
+                    <FormInput
                         label="Amount (₹) *"
+                        icon={IndianRupee}
                         placeholder="0.00"
                         keyboardType="numeric"
                         value={formData.amount}
-                        onChangeText={(text) => setFormData({ ...formData, amount: text })}
+                        onChangeText={(text: string) => setFormData({ ...formData, amount: text })}
+                    />
+                </View>
+
+                {/* ── Card 2: Date & Payment info ── */}
+                <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#EDE9FE', borderWidth: 1 }]}>
+                    <Text style={[styles.sectionTitle, { fontSize: fontSize + 1, color: theme.textPrimary, borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>📅 Payment Info</Text>
+                    
+                    <SelectField
+                        label="Expense Date *"
+                        icon={Calendar}
+                        value={formData.expense_date}
+                        placeholder="Select Date"
+                        onPress={() => setDatePickerVisibility(true)}
                     />
 
-                    <View style={styles.inputContainer}>
-                        <Text style={styles.inputLabel}>Expense Date *</Text>
-                        <TouchableOpacity
-                            style={styles.datePickerButton}
-                            onPress={() => setDatePickerVisibility(true)}
-                        >
-                            <Calendar size={18} color="#64748B" style={{ marginRight: 8 }} />
-                            <Text style={styles.dateText}>{formData.expense_date}</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    <Text style={styles.label}>Payment Mode *</Text>
+                    <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary, marginTop: 12 }]}>Payment Mode *</Text>
                     <View style={styles.categoryGrid}>
                         {[
                             { id: '1', name: 'Cash', color: '#10B981' },
@@ -226,60 +303,66 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
                                     key={mode.id}
                                     style={[
                                         styles.catButton,
+                                        { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' },
                                         isSelected && { borderColor: mode.color, backgroundColor: mode.color + '15' }
                                     ]}
                                     onPress={() => setFormData({ ...formData, payment_mode_id: mode.id })}
                                 >
                                     <Text style={[
                                         styles.catButtonText,
+                                        { fontSize: fontSize - 2 },
                                         isSelected && { color: mode.color, fontWeight: '700' }
                                     ]}>{mode.name}</Text>
                                 </TouchableOpacity>
                             );
                         })}
                     </View>
+                </View>
 
-                    <InputField
-                        label="Vendor Name (Optional)"
+                {/* ── Card 3: Vendor details & description ── */}
+                <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#EDE9FE', borderWidth: 1 }]}>
+                    <Text style={[styles.sectionTitle, { fontSize: fontSize + 1, color: theme.textPrimary, borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>📄 Additional Info (Optional)</Text>
+                    
+                    <FormInput
+                        label="Vendor Name"
+                        icon={User}
                         placeholder="e.g. Reliance Fresh"
                         value={formData.vendor_name}
-                        onChangeText={(text) => setFormData({ ...formData, vendor_name: text })}
+                        onChangeText={(text: string) => setFormData({ ...formData, vendor_name: text })}
                     />
 
-                    <InputField
-                        label="Bill Number (Optional)"
+                    <FormInput
+                        label="Bill Number"
+                        icon={FileText}
                         placeholder="e.g. INV-001"
                         value={formData.bill_number}
-                        onChangeText={(text) => setFormData({ ...formData, bill_number: text })}
+                        onChangeText={(text: string) => setFormData({ ...formData, bill_number: text })}
                     />
 
-                    <InputField
+                    <FormInput
                         label="Description"
+                        icon={FileText}
                         placeholder="Add details about the expense..."
-                        multiline
-                        numberOfLines={3}
-                        textAlignVertical="top"
                         value={formData.description}
-                        onChangeText={(text) => setFormData({ ...formData, description: text })}
+                        onChangeText={(text: string) => setFormData({ ...formData, description: text })}
+                        multiline
                         onFocus={() => {
                             setTimeout(() => {
                                 scrollRef.current?.scrollToEnd({ animated: true });
                             }, 200);
                         }}
-                        style={{ height: 100, paddingTop: 12 }}
                     />
-                </Card>
-                <View style={{ height: 20 }} />
+                </View>
             </ScrollView>
 
             {/* ─── Sticky Footer ───────────────────────────────────────────────────── */}
-            <View style={[styles.stickyFooter, { paddingBottom: isKeyboardVisible ? SPACING.md : (insets.bottom + SPACING.md) }]}>
+            <View style={[styles.stickyFooter, { backgroundColor: theme.cardBg, borderTopColor: isDark ? '#334155' : '#F1F5F9', paddingBottom: isKeyboardVisible ? SPACING.md : (insets.bottom + SPACING.md) }]}>
                 <TouchableOpacity
-                    style={styles.cancelButton}
+                    style={[styles.cancelButton, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#CBD5E1' }]}
                     onPress={handleReset}
                     disabled={loading}
                 >
-                    <Text style={styles.cancelButtonText}>Reset</Text>
+                    <Text style={[styles.cancelButtonText, { color: theme.textSecondary }]}>Reset</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={[styles.submitButton, { backgroundColor: theme.primary }, loading && styles.disabledButton]}
@@ -304,51 +387,73 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8FAFC' },
-    content: { flex: 1, padding: 20 },
-    formCard: { padding: 20, marginBottom: 24 },
-    label: { fontSize: 14, fontWeight: '600', color: '#475569', marginBottom: 12 },
-    categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
+    scrollView: { flex: 1 },
+    scrollContent: { padding: 16, flexGrow: 1 },
+    formCard: {
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 16,
+        elevation: 1,
+        shadowColor: '#000',
+        shadowOpacity: 0.02,
+        shadowRadius: 6,
+    },
+    sectionTitle: {
+        fontWeight: '700',
+        marginBottom: 14,
+        paddingBottom: 8,
+        borderBottomWidth: 1,
+    },
+    inputGroup: { marginBottom: 14 },
+    inputLabel: { fontWeight: '600', marginBottom: 6 },
+    inputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderRadius: 12,
+        height: 48,
+        overflow: 'hidden',
+        borderWidth: 1,
+    },
+    inputIcon: {
+        width: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    input: {
+        flex: 1,
+        height: '100%',
+        fontWeight: '500',
+        paddingRight: 12,
+    },
+    inputText: {
+        flex: 1,
+        fontWeight: '500',
+    },
+    multilineContainer: {
+        height: 100,
+        alignItems: 'flex-start',
+    },
+    multilineInput: {
+        paddingTop: 10,
+        paddingBottom: 10,
+        height: '100%',
+    },
+    inputError: { borderColor: '#EF4444', backgroundColor: '#FEF2F2' },
+    errorText: { color: '#EF4444', fontSize: 11, fontWeight: '600', marginTop: 4, marginLeft: 4 },
+    categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 14, marginTop: 4 },
     catButton: {
         paddingHorizontal: 12,
         paddingVertical: 8,
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
-        backgroundColor: '#FFF'
     },
-    catButtonText: { fontSize: 13, color: '#64748B', fontWeight: '500' },
-    inputContainer: {
-        marginBottom: 16,
-    },
-    inputLabel: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#334155',
-        marginBottom: 8,
-    },
-    datePickerButton: {
-        height: 50,
-        backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
-        paddingHorizontal: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    dateText: {
-        fontSize: 16,
-        color: '#0F172A',
-        fontWeight: '500',
-    },
+    catButtonText: { color: '#64748B', fontWeight: '500' },
     stickyFooter: {
         flexDirection: 'row',
         gap: 12,
         paddingHorizontal: 16,
         paddingTop: 12,
-        backgroundColor: '#FFF',
         borderTopWidth: 1,
-        borderTopColor: '#F1F5F9',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: -2 },
         shadowOpacity: 0.05,
@@ -360,17 +465,14 @@ const styles = StyleSheet.create({
         height: 48,
         borderRadius: 12,
         borderWidth: 1.5,
-        borderColor: '#CBD5E1',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#FFF'
     },
-    cancelButtonText: { color: '#475569', fontWeight: '600', fontSize: 15 },
+    cancelButtonText: { fontWeight: '600', fontSize: 15 },
     submitButton: {
         flex: 2,
         height: 48,
         borderRadius: 12,
-        backgroundColor: '#7C3AED',
         alignItems: 'center',
         justifyContent: 'center',
     },

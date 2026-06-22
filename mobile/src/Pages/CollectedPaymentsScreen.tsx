@@ -185,6 +185,24 @@ export default function CollectedPaymentsScreen() {
         });
 
         const isRent = item.type === 'Rent';
+        const isGuest = item.type === 'Guest';
+        
+        let accentColor = '#F59E0B'; // Amber for Other
+        let textColor = '#D97706';
+        let bgAvatar = '#FEF3C7';
+        let iconName = 'wallet';
+
+        if (isRent) {
+            accentColor = '#10B981';
+            textColor = '#059669';
+            bgAvatar = '#E2FBE9';
+            iconName = 'person';
+        } else if (isGuest) {
+            accentColor = '#6366F1';
+            textColor = '#4338CA';
+            bgAvatar = '#E0E7FF';
+            iconName = 'people';
+        }
 
         return (
             <TouchableOpacity
@@ -197,23 +215,28 @@ export default function CollectedPaymentsScreen() {
                 }}
                 activeOpacity={0.9}
             >
-                <View style={[s.cardAccentLine, { backgroundColor: isRent ? '#10B981' : '#F59E0B' }]} />
+                <View style={[s.cardAccentLine, { backgroundColor: accentColor }]} />
 
                 <View style={s.cardInner}>
                     <View style={s.cardHeaderRow}>
-                        <View style={[s.cardAvatarBg, { backgroundColor: isRent ? '#E2FBE9' : '#FEF3C7' }]}>
-                            <Ionicons name={isRent ? "person" : "wallet"} size={18} color={isRent ? "#059669" : "#D97706"} />
+                        <View style={[s.cardAvatarBg, { backgroundColor: bgAvatar }]}>
+                            <Ionicons name={iconName as any} size={18} color={textColor} />
                         </View>
                         <View style={s.cardNameBlock}>
                             <Text style={s.cardNameText}>{item.title}</Text>
-                            {isRent && item.room_number && (
-                                <View style={s.roomBadge}>
-                                    <Text style={s.roomBadgeText}>Room {item.room_number}</Text>
+                            {(isRent && item.room_number) ? (
+                                <View style={[s.roomBadge, { backgroundColor: bgAvatar }]}>
+                                    <Text style={[s.roomBadgeText, { color: textColor }]}>Room {item.room_number}</Text>
+                                </View>
+                            ) : null}
+                            {isGuest && (
+                                <View style={[s.roomBadge, { backgroundColor: bgAvatar }]}>
+                                    <Text style={[s.roomBadgeText, { color: textColor }]}>Guest</Text>
                                 </View>
                             )}
                         </View>
                         <View style={s.cardRightBlock}>
-                            <Text style={[s.cardAmtText, { color: isRent ? '#059669' : '#D97706' }]}>
+                            <Text style={[s.cardAmtText, { color: textColor }]}>
                                 ₹{item.amount.toLocaleString('en-IN')}
                             </Text>
                             <Text style={s.cardStatusSub}>Paid</Text>
@@ -227,8 +250,8 @@ export default function CollectedPaymentsScreen() {
                         </View>
                         <View style={s.colDivider} />
                         <View style={s.colItem}>
-                            <Text style={[s.colLabel, { color: '#059669' }]}>Paid</Text>
-                            <Text style={[s.colValue, { color: '#059669' }]}>₹{item.amount.toLocaleString('en-IN')}</Text>
+                            <Text style={[s.colLabel, { color: textColor }]}>Paid</Text>
+                            <Text style={[s.colValue, { color: textColor }]}>₹{item.amount.toLocaleString('en-IN')}</Text>
                         </View>
                         <View style={s.colDivider} />
                         <View style={s.colItem}>
@@ -248,10 +271,12 @@ export default function CollectedPaymentsScreen() {
                                 <Text style={s.footerMetaText}>{(item.payment_mode || 'Cash').toUpperCase()}</Text>
                             </View>
                         </View>
-                        <View style={[s.clearedBadge, { backgroundColor: '#CCFBF1' }]}>
-                            <Ionicons name="chevron-forward-circle" size={12} color="#0D9488" />
-                            <Text style={[s.clearedBadgeText, { color: '#0D9488', fontWeight: '900' }]}>VIEW HISTORY</Text>
-                        </View>
+                        {isRent ? (
+                            <View style={[s.clearedBadge, { backgroundColor: '#CCFBF1' }]}>
+                                <Ionicons name="chevron-forward-circle" size={12} color="#0D9488" />
+                                <Text style={[s.clearedBadgeText, { color: '#0D9488', fontWeight: '900' }]}>VIEW HISTORY</Text>
+                            </View>
+                        ) : null}
                     </View>
                 </View>
             </TouchableOpacity>

@@ -34,6 +34,12 @@
           "color": "#ffffff"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "7303856b-fde0-4922-baf9-c6487aa06e02"
+      }
+    },
+    "owner": "durgarao2"
   }
 }

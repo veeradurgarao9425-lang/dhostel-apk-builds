@@ -221,7 +221,7 @@ export default function BillRemindersScreen() {
                     }
                     ListFooterComponent={
                         <View style={s.footer}>
-                            <Text style={s.footerText}>Powered by PG OWNER</Text>
+                            <Text style={s.footerText}>Powered by Stivo • Durgarao</Text>
                             <Text style={s.footerTextCopy}>© 2026 All Rights Reserved.</Text>
                         </View>
                     }

@@ -422,6 +422,29 @@ export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
       'pm.payment_mode_name as payment_mode'
     );
 
+    // 2.5 Fetch Guest payments
+    let guestQuery = db('guests as g')
+      .where('g.amount_paid', '>', 0)
+      .whereBetween('g.check_in_date', [startDate, endDate]);
+
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && hostelId) {
+      guestQuery = guestQuery.where('g.hostel_id', hostelId);
+    }
+    if (search) {
+      const s = `%${search}%`;
+      guestQuery = guestQuery.where(function () {
+        this.where('g.full_name', 'like', s)
+          .orWhere('g.purpose', 'like', s);
+      });
+    }
+
+    let guests: any[] = [];
+    try {
+        guests = await guestQuery.select('g.*');
+    } catch (e) {
+        guests = [];
+    }
+
     // 3. Combine Transactions
     const transactions = [
       ...incomes.map(inc => ({
@@ -443,12 +466,22 @@ export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
         room_number: fp.room_number,
         payment_mode: fp.payment_mode || 'Cash',
         type: 'Rent'
+      })),
+      ...guests.map(g => ({
+        id: `guest_${g.guest_id}`,
+        title: g.full_name || 'Guest',
+        subtitle: `Guest Stay · Cash`,
+        amount: parseFloat(g.amount_paid),
+        date: safeGetDateString(g.check_in_date),
+        type: 'Guest',
+        description: g.purpose || 'Daily Stay'
       }))
     ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     const rentTotal = feePayments.reduce((sum, fp) => sum + parseFloat(fp.amount), 0);
     const otherTotal = incomes.reduce((sum, inc) => sum + parseFloat(inc.amount), 0);
-    const totalAmount = rentTotal + otherTotal;
+    const guestTotal = guests.reduce((sum, g) => sum + parseFloat(g.amount_paid), 0);
+    const totalAmount = rentTotal + otherTotal + guestTotal;
 
     // 4. Graph Data
     let graph: { label: string; value: number }[] = [];
@@ -565,6 +598,24 @@ export const getIncomeExport = async (req: AuthRequest, res: Response) => {
         })
     ]);
 
+    // Fetch Guest Payments
+    let guestQuery = db('guests as g')
+      .where('g.amount_paid', '>', 0);
+
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && hostelId) {
+      guestQuery = guestQuery.where('g.hostel_id', hostelId);
+    }
+    if (startDate && endDate) {
+      guestQuery = guestQuery.whereBetween('g.check_in_date', [startDate, endDate]);
+    }
+    
+    let guests: any[] = [];
+    try {
+        guests = await guestQuery.select('g.*');
+    } catch (e) {
+        guests = [];
+    }
+
     // Create workbook
     const workbook = new ExcelJS.Workbook();
 
@@ -600,6 +651,18 @@ export const getIncomeExport = async (req: AuthRequest, res: Response) => {
         details: `Rent Payment - Student ID: ${fp.student_id}`
       });
     });
+
+    guests.forEach(g => {
+      worksheet.addRow({
+        date: g.check_in_date,
+        title: g.full_name || 'Guest',
+        amount: parseFloat(g.amount_paid),
+        type: 'Guest',
+        mode: 'Cash',
+        details: g.purpose || 'Guest Stay'
+      });
+    });
+
     worksheet.getRow(1).font = { bold: true };
 
     // --- SHEET 2: EXPENSES ---
