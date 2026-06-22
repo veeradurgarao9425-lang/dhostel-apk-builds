@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
+import { sendNotificationToHostelOwner } from '../utils/notification.js';
 
 // Shared helper: derive bed capacity from room_type_name / description
 const getCapacityFromRoomTypeName = (roomTypeName: string, description: string | null): number => {
@@ -312,6 +313,16 @@ export const createRoom = async (req: AuthRequest, res: Response) => {
       message: 'Room created successfully',
       data: { room_id }
     });
+
+    // Trigger push and in-app notification to owner
+    sendNotificationToHostelOwner(
+      finalHostelId,
+      'System Alert',
+      'Room Created',
+      `Room ${room_number} has been created successfully.`,
+      'Low',
+      { id: room_id }
+    ).catch(err => console.error('Failed to send room creation notification:', err));
   } catch (error: any) {
     console.error('Create room error:', error);
     res.status(500).json({

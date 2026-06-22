@@ -193,15 +193,15 @@ export default function OverviewScreen() {
 
                     {/* ── Net Profit/Loss Hero Card ── */}
                     <LinearGradient
-                        colors={isProfit ? ['#10B981', '#059669'] : ['#EF4444', '#DC2626']}
-                        style={s.heroCard}
+                        colors={isProfit ? ['#E6F9F3', '#D1FAE5'] : ['#FFEBEE', '#FEE2E2']}
+                        style={[s.heroCard, { borderColor: isProfit ? '#A7F3D0' : '#FECACA' }]}
                     >
                         <View style={s.heroContentRow}>
                             <View style={s.heroTextWrap}>
-                                <Text style={s.heroLabel}>NET {isProfit ? 'PROFIT' : 'LOSS'}</Text>
-                                <Text style={s.heroValue}>{fmtFull(Math.abs(cm.netProfit || 0))}</Text>
+                                <Text style={[s.heroLabel, { color: isProfit ? '#047857' : '#B91C1C' }]}>NET {isProfit ? 'PROFIT' : 'LOSS'}</Text>
+                                <Text style={[s.heroValue, { color: isProfit ? '#065F46' : '#991B1B' }]}>{fmtFull(Math.abs(cm.netProfit || 0))}</Text>
                             </View>
-                            <View style={s.heroIconCircle}>
+                            <View style={[s.heroIconCircle, { shadowColor: isProfit ? '#059669' : '#DC2626' }]}>
                                 <Ionicons
                                     name={isProfit ? 'trending-up' : 'trending-down'}
                                     size={28}
@@ -210,8 +210,8 @@ export default function OverviewScreen() {
                             </View>
                         </View>
                         {cm.profitMargin !== 0 && (
-                            <View style={s.marginBadge}>
-                                <Text style={s.marginBadgeText}>Margin: {cm.profitMargin}%</Text>
+                            <View style={[s.marginBadge, { backgroundColor: isProfit ? 'rgba(4, 120, 87, 0.1)' : 'rgba(185, 28, 28, 0.1)' }]}>
+                                <Text style={[s.marginBadgeText, { color: isProfit ? '#047857' : '#B91C1C' }]}>Margin: {cm.profitMargin}%</Text>
                             </View>
                         )}
                     </LinearGradient>
@@ -221,7 +221,7 @@ export default function OverviewScreen() {
                         {/* Income Card */}
                         <View style={[s.summaryCard, s.incomeCard]}>
                             <View style={[s.summaryIconBox, { backgroundColor: '#D1FAE5' }]}>
-                                <Ionicons name="arrow-up-circle" size={20} color="#10B981" />
+                                <Ionicons name="arrow-up-circle" size={16} color="#10B981" />
                             </View>
                             <Text style={s.summaryLabel}>INCOME</Text>
                             <Text style={[s.summaryValue, { color: '#065F46' }]}>{fmt(cm.totalIncome || 0)}</Text>
@@ -236,7 +236,7 @@ export default function OverviewScreen() {
                         {/* Expenses Card */}
                         <View style={[s.summaryCard, s.expenseCard]}>
                             <View style={[s.summaryIconBox, { backgroundColor: '#FEE2E2' }]}>
-                                <Ionicons name="arrow-down-circle" size={20} color="#EF4444" />
+                                <Ionicons name="arrow-down-circle" size={16} color="#EF4444" />
                             </View>
                             <Text style={s.summaryLabel}>EXPENSES</Text>
                             <Text style={[s.summaryValue, { color: '#991B1B' }]}>{fmt(cm.totalExpenses || 0)}</Text>
@@ -495,11 +495,12 @@ const s = StyleSheet.create({
     heroCard: {
         borderRadius: 18,
         padding: 16,
-        elevation: 3,
+        elevation: 2,
         shadowColor: '#000',
-        shadowOpacity: 0.10,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.05,
+        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 2 },
+        borderWidth: 1,
     },
     heroContentRow: {
         flexDirection: 'row',
@@ -524,19 +525,16 @@ const s = StyleSheet.create({
     heroLabel: {
         fontSize: 10,
         fontWeight: '800',
-        color: 'rgba(255,255,255,0.78)',
         letterSpacing: 1.2,
         marginBottom: 3,
     },
     heroValue: {
         fontSize: 24,
         fontWeight: '900',
-        color: '#FFF',
         letterSpacing: -0.5,
     },
     marginBadge: {
         alignSelf: 'flex-start',
-        backgroundColor: 'rgba(255,255,255,0.22)',
         paddingHorizontal: 9,
         paddingVertical: 3,
         borderRadius: 7,
@@ -545,7 +543,6 @@ const s = StyleSheet.create({
     marginBadgeText: {
         fontSize: 10,
         fontWeight: '800',
-        color: '#FFF',
     },
 
     // Summary row
@@ -556,7 +553,7 @@ const s = StyleSheet.create({
     summaryCard: {
         flex: 1,
         borderRadius: 16,
-        padding: 13,
+        padding: 10,
         borderWidth: 1,
         elevation: 1,
         shadowColor: '#000',
@@ -573,12 +570,12 @@ const s = StyleSheet.create({
         borderColor: '#FECACA',
     },
     summaryIconBox: {
-        width: 32,
-        height: 32,
-        borderRadius: 10,
+        width: 26,
+        height: 26,
+        borderRadius: 8,
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 8,
+        marginBottom: 4,
     },
     summaryLabel: {
         fontSize: 9,
@@ -588,11 +585,11 @@ const s = StyleSheet.create({
         marginBottom: 2,
     },
     summaryValue: {
-        fontSize: 18,
+        fontSize: 15,
         fontWeight: '900',
     },
     summaryDetail: {
-        marginTop: 6,
+        marginTop: 3,
         gap: 1,
     },
     summaryDetailText: {

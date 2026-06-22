@@ -50,14 +50,14 @@ const getGreeting = () => {
 // ─── Quick Management Actions ─────────────────────────────────────────────────
 // ─── Quick Management Actions ─────────────────────────────────────────────────
 const QUICK_ACTIONS = [
-    { label: 'Add Tenant',  icon: 'person-add-outline',  color: '#7C3AED', bg: '#EDE9FE', route: 'AddStudent' },
-    { label: 'Pre-Book',    icon: 'calendar-outline',    color: '#F97316', bg: '#FFF7ED', route: 'PreBooking' },
-    { label: 'Add Receipt', icon: 'receipt-outline',     color: '#16A34A', bg: '#DCFCE7', route: 'DownloadReceipts' },
-    { label: 'Collected Rent', icon: 'wallet-outline',   color: '#0D9488', bg: '#CCFBF1', route: 'CollectedPayments' },
-    { label: 'Add Expense', icon: 'card-outline',        color: '#D97706', bg: '#FEF3C7', route: 'AddExpense' },
-    { label: 'Bills',       icon: 'document-text-outline', color: '#EA580C', bg: '#FFEDD5', route: 'BillReminders' },
-    { label: 'Staff',       icon: 'people-outline',      color: '#059669', bg: '#D1FAE5', route: 'AddStaff' },
-    { label: 'Reminders',   icon: 'notifications-outline', color: '#8B5CF6', bg: '#F5F3FF', route: 'Reminders' },
+    { label: 'Add Tenant', icon: 'person-add-outline', color: '#7C3AED', bg: '#EDE9FE', route: 'AddStudent' },
+    { label: 'Pre-Book', icon: 'calendar-outline', color: '#F97316', bg: '#FFF7ED', route: 'PreBooking' },
+    { label: 'Add Receipt', icon: 'receipt-outline', color: '#16A34A', bg: '#DCFCE7', route: 'DownloadReceipts' },
+    { label: 'Collected Rent', icon: 'wallet-outline', color: '#0D9488', bg: '#CCFBF1', route: 'CollectedPayments' },
+    { label: 'Add Expense', icon: 'card-outline', color: '#D97706', bg: '#FEF3C7', route: 'AddExpense' },
+    { label: 'Bills', icon: 'document-text-outline', color: '#EA580C', bg: '#FFEDD5', route: 'BillReminders' },
+    { label: 'Staff', icon: 'people-outline', color: '#059669', bg: '#D1FAE5', route: 'AddStaff' },
+    { label: 'Reminders', icon: 'notifications-outline', color: '#8B5CF6', bg: '#F5F3FF', route: 'Reminders' },
 ];
 
 // ─── Skeleton Block ───────────────────────────────────────────────────────────
@@ -112,7 +112,7 @@ export default function HomeScreen() {
             const [statsRes, summaryRes, hostelRes, noticeRes, overviewRes, studentsRes]: any = await Promise.all([
                 api.get('/reports/dashboard-stats').catch(() => ({ data: { success: false } })),
                 api.get('/monthly-fees/summary').catch(() => ({ data: { success: false } })),
-                user?.hostel_id 
+                user?.hostel_id
                     ? api.get(`/hostels/${user.hostel_id}`).catch(() => ({ data: { success: false } }))
                     : Promise.resolve({ data: { success: false } }),
                 api.get('/notices').catch(() => ({ data: { success: false } })),
@@ -127,10 +127,10 @@ export default function HomeScreen() {
 
             const d2 = statsRes.data.data || {};
             const monthCollected = (d2.monthlyRentCollected ?? d2.feeCollection ?? 0) as number;
-            const monthPending   = (d2.monthlyRentPending  ?? d2.pendingDuesAmount  ?? 0) as number;
-            const monthDue       = (d2.monthlyRentDue ?? (monthCollected + monthPending)) as number;
-            const occupied       = d2.occupiedBeds || 0;
-            const total          = d2.totalBeds || 0;
+            const monthPending = (d2.monthlyRentPending ?? d2.pendingDuesAmount ?? 0) as number;
+            const monthDue = (d2.monthlyRentDue ?? (monthCollected + monthPending)) as number;
+            const occupied = d2.occupiedBeds || 0;
+            const total = d2.totalBeds || 0;
 
             // Build top 3 defaulters list
             let topDefaulters: any[] = [];
@@ -161,8 +161,8 @@ export default function HomeScreen() {
                     });
             }
 
-            const activeNotice = noticeRes.data?.success && noticeRes.data.data?.length > 0 
-                ? noticeRes.data.data[0] 
+            const activeNotice = noticeRes.data?.success && noticeRes.data.data?.length > 0
+                ? noticeRes.data.data[0]
                 : null;
 
             const upcomingVacates = studentsRes.data?.success
@@ -186,27 +186,27 @@ export default function HomeScreen() {
                 : [];
 
             setData({
-                hostelName:      user?.hostel_name || d2.hostel_name || hostelRes?.data?.data?.hostel_name || 'My Hostel',
-                monthAmount:     monthCollected,
+                hostelName: user?.hostel_name || d2.hostel_name || hostelRes?.data?.data?.hostel_name || 'My Hostel',
+                monthAmount: monthCollected,
                 monthDue,
-                pendingAmount:   monthPending,
+                pendingAmount: monthPending,
                 totalDuesAmount: d2.pendingDuesAmount || 0,
-                occupiedBeds:    occupied,
-                totalBeds:       total,
-                availableBeds:   total - occupied,
-                todayAmount:     d2.todayRent || 0,
-                activeTenants:   occupied,
-                leftTenants:     d2.leftTenants || d2.vacatedStudents || 0,
-                unpaidStudents:  topDefaulters,
-                totalRooms:      d2.totalRooms || 0,
-                occupancyRate:   d2.occupancyRate || 0,
+                occupiedBeds: occupied,
+                totalBeds: total,
+                availableBeds: total - occupied,
+                todayAmount: d2.todayRent || 0,
+                activeTenants: occupied,
+                leftTenants: d2.leftTenants || d2.vacatedStudents || 0,
+                unpaidStudents: topDefaulters,
+                totalRooms: d2.totalRooms || 0,
+                occupancyRate: d2.occupancyRate || 0,
                 prebookingsCount: d2.prebookingsCount || 0,
-                noticesCount:    d2.noticesCount || 0,
+                noticesCount: d2.noticesCount || 0,
                 newAdmissionsCount: d2.newAdmissionsCount || 0,
-                monthlyExpenses:  d2.monthlyExpenses || 0,
-                staffCount:       d2.staffCount || 0,
-                latestNotice:    activeNotice,
-                revenueTrend:    overviewRes.data?.success && overviewRes.data.data?.trend ? overviewRes.data.data.trend : [],
+                monthlyExpenses: d2.monthlyExpenses || 0,
+                staffCount: d2.staffCount || 0,
+                latestNotice: activeNotice,
+                revenueTrend: overviewRes.data?.success && overviewRes.data.data?.trend ? overviewRes.data.data.trend : [],
                 upcomingVacates,
             });
             isFirstLoadRef.current = false;
@@ -250,10 +250,18 @@ export default function HomeScreen() {
     const maxRevenue = Math.max(...revenueData.map(r => r.amount), 1);
 
     // ─── Format currency compactly ───────────────────────────────────────────
-    const fmt = (n: number) =>
-        n >= 1000
-            ? `₹${(n / 1000).toFixed(1)}k`
-            : `₹${n.toLocaleString('en-IN')}`;
+    const fmt = (n: number) => {
+        if (n >= 10000000) { // 1 Crore
+            return `₹${(n / 10000000).toFixed(1)}Cr`;
+        }
+        if (n >= 100000) { // 1 Lakh
+            return `₹${(n / 100000).toFixed(1)}L`;
+        }
+        if (n >= 1000) {
+            return `₹${(n / 1000).toFixed(1)}k`;
+        }
+        return `₹${n.toLocaleString('en-IN')}`;
+    };
 
     // ─── Avatar initial ──────────────────────────────────────────────────────
     const avatarLetter = (name: string) => (name || 'T')[0].toUpperCase();
@@ -377,7 +385,7 @@ export default function HomeScreen() {
                             activeOpacity={0.8}
                         >
                             <View style={[s.topMetricIconCircle, { backgroundColor: '#E8F5E9' }]}>
-                                <Text style={{ color: '#2E7D32', fontSize: 16, fontWeight: '800' }}>₹</Text>
+                                <Text style={{ color: '#2E7D32', fontSize: 14, fontWeight: '800' }}>₹</Text>
                             </View>
                             <Text style={[s.topMetricLabel, { color: theme.textSecondary }]} numberOfLines={1}>Today</Text>
                             <Text style={[s.topMetricValue, { color: '#2E7D32' }]} numberOfLines={1}>{fmt(data.todayAmount)}</Text>
@@ -390,7 +398,7 @@ export default function HomeScreen() {
                             activeOpacity={0.8}
                         >
                             <View style={[s.topMetricIconCircle, { backgroundColor: '#FFE0B2' }]}>
-                                <Ionicons name="wallet-outline" size={18} color="#E65100" />
+                                <Ionicons name="wallet-outline" size={15} color="#E65100" />
                             </View>
                             <Text style={[s.topMetricLabel, { color: theme.textSecondary }]} numberOfLines={1}>Pending</Text>
                             <Text style={[s.topMetricValue, { color: '#E65100' }]} numberOfLines={1}>{fmt(data.totalDuesAmount)}</Text>
@@ -403,7 +411,7 @@ export default function HomeScreen() {
                             activeOpacity={0.8}
                         >
                             <View style={[s.topMetricIconCircle, { backgroundColor: '#E3F2FD' }]}>
-                                <Ionicons name="bar-chart-outline" size={18} color="#1565C0" />
+                                <Ionicons name="bar-chart-outline" size={15} color="#1565C0" />
                             </View>
                             <Text style={[s.topMetricLabel, { color: theme.textSecondary }]} numberOfLines={1}>Month</Text>
                             <Text style={[s.topMetricValue, { color: '#1565C0' }]} numberOfLines={1}>{fmt(data.monthAmount)}</Text>
@@ -416,7 +424,7 @@ export default function HomeScreen() {
                             activeOpacity={0.8}
                         >
                             <View style={[s.topMetricIconCircle, { backgroundColor: '#F3E5F5' }]}>
-                                <Ionicons name="person-add-outline" size={18} color="#4A148C" />
+                                <Ionicons name="person-add-outline" size={15} color="#4A148C" />
                             </View>
                             <Text style={[s.topMetricLabel, { color: theme.textSecondary }]} numberOfLines={1}>New</Text>
                             <Text style={[s.topMetricValue, { color: '#4A148C' }]} numberOfLines={1}>{(data as any).newAdmissionsCount ?? 0}</Text>
@@ -522,9 +530,9 @@ export default function HomeScreen() {
                                     <View style={s.quickIconWrap}>
                                         <View style={[s.quickIconCircle, { backgroundColor: isDark ? '#334155' : a.bg }]}>
                                             {a.icon === 'rupee' ? (
-                                                <Text style={{ color: isDark ? theme.primary : a.color, fontSize: 22, fontWeight: '800' }}>₹</Text>
+                                                <Text style={{ color: isDark ? theme.primary : a.color, fontSize: 18, fontWeight: '800' }}>₹</Text>
                                             ) : (
-                                                <Ionicons name={a.icon as any} size={28} color={isDark ? theme.primary : a.color} />
+                                                <Ionicons name={a.icon as any} size={22} color={isDark ? theme.primary : a.color} />
                                             )}
                                         </View>
                                         {a.route === 'PreBooking' && data.prebookingsCount > 0 && (
@@ -558,47 +566,47 @@ export default function HomeScreen() {
                                 activeOpacity={0.8}
                             >
                                 <View style={[s.statIconBox, { backgroundColor: '#EDE9FE' }]}>
-                                                    <Ionicons name="people" size={18} color="#7C3AED" />
-                                                </View>
-                                                <Text style={[s.statLabel, { color: theme.textSecondary }]} numberOfLines={1}>Tenants</Text>
-                                                <Text style={[s.statNum, { color: '#7C3AED' }]} numberOfLines={1}>{data.activeTenants}</Text>
-                                            </TouchableOpacity>
+                                    <Ionicons name="people" size={18} color="#7C3AED" />
+                                </View>
+                                <Text style={[s.statLabel, { color: theme.textSecondary }]} numberOfLines={1}>Tenants</Text>
+                                <Text style={[s.statNum, { color: '#7C3AED' }]} numberOfLines={1}>{data.activeTenants}</Text>
+                            </TouchableOpacity>
 
-                                            {/* Card 2: Reports */}
-                                            <TouchableOpacity
-                                                style={[s.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
-                                                onPress={() => navigation.navigate('Reports')}
-                                                activeOpacity={0.8}
-                                            >
-                                                <View style={[s.statIconBox, { backgroundColor: '#FFEDD5' }]}>
-                                                    <Ionicons name="bar-chart-outline" size={18} color="#EA580C" />
-                                                </View>
-                                                <Text style={[s.statLabel, { color: theme.textSecondary }]} numberOfLines={1}>Reports</Text>
-                                                <Text style={[s.statNum, { color: '#EA580C', fontSize: 12 }]} numberOfLines={1}>View</Text>
-                                            </TouchableOpacity>
+                            {/* Card 2: Reports */}
+                            <TouchableOpacity
+                                style={[s.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
+                                onPress={() => navigation.navigate('Reports')}
+                                activeOpacity={0.8}
+                            >
+                                <View style={[s.statIconBox, { backgroundColor: '#FFEDD5' }]}>
+                                    <Ionicons name="bar-chart-outline" size={18} color="#EA580C" />
+                                </View>
+                                <Text style={[s.statLabel, { color: theme.textSecondary }]} numberOfLines={1}>Reports</Text>
+                                <Text style={[s.statNum, { color: '#EA580C', fontSize: 12 }]} numberOfLines={1}>View</Text>
+                            </TouchableOpacity>
 
-                                            {/* Card 3: Expenses (This Month) */}
-                                            <TouchableOpacity
-                                                style={[s.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
-                                                onPress={() => navigation.navigate('Expenses')}
-                                                activeOpacity={0.8}
-                                            >
-                                                <View style={[s.statIconBox, { backgroundColor: '#E0F2FE' }]}>
-                                                    <Ionicons name="trending-down" size={18} color="#0284C7" />
-                                                </View>
-                                                <Text style={[s.statLabel, { color: theme.textSecondary }]} numberOfLines={1}>Expenses</Text>
-                                                <Text style={[s.statNum, { color: '#0284C7' }]} numberOfLines={1}>{fmt((data as any).monthlyExpenses || 0)}</Text>
-                                            </TouchableOpacity>
+                            {/* Card 3: Expenses (This Month) */}
+                            <TouchableOpacity
+                                style={[s.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
+                                onPress={() => navigation.navigate('Expenses')}
+                                activeOpacity={0.8}
+                            >
+                                <View style={[s.statIconBox, { backgroundColor: '#E0F2FE' }]}>
+                                    <Ionicons name="trending-down" size={18} color="#0284C7" />
+                                </View>
+                                <Text style={[s.statLabel, { color: theme.textSecondary }]} numberOfLines={1}>Expenses</Text>
+                                <Text style={[s.statNum, { color: '#0284C7' }]} numberOfLines={1}>{fmt((data as any).monthlyExpenses || 0)}</Text>
+                            </TouchableOpacity>
 
-                                            {/* Card 4: Staff */}
-                                            <TouchableOpacity
-                                                style={[s.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
-                                                onPress={() => navigation.navigate('Staff')}
-                                                activeOpacity={0.8}
-                                            >
-                                                <View style={[s.statIconBox, { backgroundColor: '#DCFCE7' }]}>
-                                                    <Ionicons name="person" size={18} color="#16A34A" />
-                                                </View>
+                            {/* Card 4: Staff */}
+                            <TouchableOpacity
+                                style={[s.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
+                                onPress={() => navigation.navigate('Staff')}
+                                activeOpacity={0.8}
+                            >
+                                <View style={[s.statIconBox, { backgroundColor: '#DCFCE7' }]}>
+                                    <Ionicons name="person" size={18} color="#16A34A" />
+                                </View>
                                 <Text style={[s.statLabel, { color: theme.textSecondary }]} numberOfLines={1}>Staff</Text>
                                 <Text style={[s.statNum, { color: '#16A34A' }]} numberOfLines={1}>{(data as any).staffCount ?? 0}</Text>
                             </TouchableOpacity>
@@ -607,7 +615,7 @@ export default function HomeScreen() {
 
                     {/* ─────────────────── IMPORTANT NOTICE BANNER ─────────────────── */}
                     {data.latestNotice ? (
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={[s.noticeBanner, { backgroundColor: isDark ? '#3D2A1C' : '#FFF9F2', borderColor: isDark ? '#5C3E26' : '#FFEFD6' }]}
                             onPress={() => navigation.navigate('Notices')}
                             activeOpacity={0.8}
@@ -617,7 +625,7 @@ export default function HomeScreen() {
                                     <Ionicons name="megaphone" size={18} color="#E65100" />
                                     <Text style={s.noticeBannerTitle}>Important Notice</Text>
                                 </View>
-                                <TouchableOpacity 
+                                <TouchableOpacity
                                     style={s.noticeViewAllBtn}
                                     onPress={() => navigation.navigate('Notices')}
                                 >
@@ -678,7 +686,7 @@ export default function HomeScreen() {
                     ) : null}
 
                     {/* ─────────────────── REVENUE OVERVIEW ─────────────────── */}
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={[s.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
                         onPress={() => navigation.navigate('IncomeDetails')}
                         activeOpacity={0.85}
@@ -915,9 +923,9 @@ const s = StyleSheet.create({
     quickItem: { width: '23%', alignItems: 'center', marginVertical: 4, paddingHorizontal: 1 },
     quickIconWrap: { position: 'relative', marginBottom: 4 },
     quickIconCircle: {
-        width: 56,
-        height: 56,
-        borderRadius: 16,
+        width: 48,
+        height: 48,
+        borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -1091,7 +1099,7 @@ const s = StyleSheet.create({
     topMetricCard: {
         flex: 1,
         borderRadius: 12,
-        paddingVertical: 12,
+        paddingVertical: 8,
         paddingHorizontal: 6,
         alignItems: 'center',
         justifyContent: 'center',
@@ -1102,24 +1110,24 @@ const s = StyleSheet.create({
         shadowRadius: 6,
     },
     topMetricIconCircle: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
+        width: 30,
+        height: 30,
+        borderRadius: 15,
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 4,
+        marginBottom: 2,
     },
     topMetricLabel: {
         fontSize: 11,
         fontWeight: '600',
         textAlign: 'center',
-        marginBottom: 2,
+        marginBottom: 1,
     },
     topMetricValue: {
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: '800',
         textAlign: 'center',
-        marginBottom: 2,
+        marginBottom: 0,
     },
     topMetricSubRow: {
         flexDirection: 'row',

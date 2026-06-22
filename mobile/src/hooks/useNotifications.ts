@@ -20,51 +20,50 @@ export const useNotifications = () => {
     const fetchNotifications = useCallback(async () => {
         try {
             setLoading(true);
-            const response = await api.get('/activity/recent?limit=20');
+            const response = await api.get('/notifications?limit=30');
 
             if (response.data.success) {
-                const activities = response.data.data;
-                const formattedNotifications: Notification[] = activities.map((item: any) => {
+                const dbNotifs = response.data.data;
+                const formattedNotifications: Notification[] = dbNotifs.map((item: any) => {
                     let type: Notification['type'] = 'info';
-                    let title = 'Notification';
-                    let body = '';
-
-                    // Map activity types to notification types/content
-                    if (item.type === 'payment') {
-                        type = 'success';
-                        title = 'Payment Received';
-                        body = `${item.student_name} paid ₹${item.amount}`;
-                    } else if (item.type === 'admission') {
-                        type = 'info';
-                        title = 'New Admission';
-                        body = `${item.student_name} joined Room ${item.room_number || 'N/A'}`;
-                    } else if (item.type === 'expense') {
+                    
+                    // Map backend notification_type to frontend type
+                    if (item.notification_type === 'Payment Due') {
                         type = 'warning';
-                        title = 'Expense Recorded';
-                        body = `${item.category_name}: ₹${item.amount} - ${item.description || ''}`;
-                    } else if (item.type === 'income') {
-                        type = 'success';
-                        title = 'Income Recorded';
-                        body = `${item.source}: ₹${item.amount}`;
+                    } else if (item.notification_type === 'New Admission') {
+                        type = 'info';
+                    } else if (item.notification_type === 'Expense Alert') {
+                        type = 'warning';
+                    } else if (item.notification_type === 'System Alert') {
+                        type = 'info';
+                    } else if (item.notification_type === 'General') {
+                        if (item.title.toLowerCase().includes('payment') || item.title.toLowerCase().includes('collect')) {
+                            type = 'success';
+                        } else {
+                            type = 'info';
+                        }
                     }
 
                     return {
-                        id: item.id || Math.random().toString(),
+                        id: item.notification_id,
                         type,
-                        title,
-                        body,
-                        time: new Date(item.created_at).toLocaleString(), // rough formatting
+                        title: item.title,
+                        body: item.message,
+                        time: new Date(item.created_at).toLocaleString(),
                         date: item.created_at,
-                        read: false, // Default to false for now, since we don't have persistence
+                        read: item.is_read === 1,
                         data: item
                     };
                 });
 
                 setNotifications(formattedNotifications);
-                setUnreadCount(formattedNotifications.length); // All considered unread on fresh load for now
+                
+                // Count unread
+                const unread = formattedNotifications.filter(n => !n.read).length;
+                setUnreadCount(unread);
             }
         } catch (error) {
-            console.error('Error fetching notifications:', error);
+            console.error('Error fetching notifications from API:', error);
         } finally {
             setLoading(false);
         }
@@ -74,14 +73,33 @@ export const useNotifications = () => {
         fetchNotifications();
     }, [fetchNotifications]);
 
-    const markAsRead = (id: string | number) => {
-        setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-        setUnreadCount(prev => Math.max(0, prev - 1));
+    const markAsRead = async (id: string | number) => {
+        try {
+            // Optimistic UI update
+            setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+            setUnreadCount(prev => Math.max(0, prev - 1));
+
+            // Sync with backend
+            await api.put(`/notifications/${id}/read`);
+        } catch (error) {
+            console.error(`Error marking notification ${id} as read:`, error);
+            // Revert changes on error by refetching
+            fetchNotifications();
+        }
     };
 
-    const markAllAsRead = () => {
-        setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-        setUnreadCount(0);
+    const markAllAsRead = async () => {
+      try {
+          // Optimistic UI update
+          setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+          setUnreadCount(0);
+
+          // Sync with backend
+          await api.put('/notifications/read-all');
+      } catch (error) {
+          console.error('Error marking all notifications as read:', error);
+          fetchNotifications();
+      }
     };
 
     return {

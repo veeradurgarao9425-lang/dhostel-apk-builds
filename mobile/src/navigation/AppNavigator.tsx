@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useAuth } from '../../contexts/AuthContext';
+import { notificationService } from '../services/notificationService';
 
 // ── Tab screens ───────────────────────────────────────────────────────────────
 import HomeScreen      from '../Pages/HomeScreen';
@@ -84,6 +85,22 @@ interface AppNavigatorProps {
 const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
     const { user } = useAuth();
     const navigationKey = `${user?.user_id || 'guest'}_${user?.hostel_id || 'none'}`;
+
+    useEffect(() => {
+        if (user) {
+            // Register for push notifications and send token to backend
+            notificationService.registerForPushNotificationsAsync();
+
+            // Setup listeners for foreground notifications and clicks
+            const unsubscribe = notificationService.setupNotificationListeners((screen, params) => {
+                navigationRef.current?.navigate(screen as any, params);
+            });
+
+            return () => {
+                unsubscribe();
+            };
+        }
+    }, [user]);
 
     return (
         <NavigationContainer

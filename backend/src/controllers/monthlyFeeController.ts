@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
+import { sendNotificationToHostelOwner } from '../utils/notification.js';
 
 // Version marker to verify the fix is deployed
 const FIX_VERSION = 'v2.0-carry-forward-fix-2026-01-04';
@@ -1170,6 +1171,16 @@ export const recordPayment = async (req: AuthRequest, res: Response) => {
       console.log('[recordPayment] Transaction committed successfully');
       console.log('[recordPayment] Payment ID:', paymentId);
       console.log('[recordPayment] Updated values - paid_amount:', newTotalPaid, 'balance:', newBalance, 'status:', newFeeStatus);
+
+      // Trigger push and in-app notification to owner
+      sendNotificationToHostelOwner(
+        hostel_id,
+        'General',
+        'Payment Collected',
+        `Payment of ₹${amount} received from ${student.first_name} ${student.last_name || ''}.`,
+        'Medium',
+        { payment_id: paymentId, student_id }
+      ).catch(err => console.error('Failed to send payment collection notification:', err));
 
       res.status(201).json({
         success: true,

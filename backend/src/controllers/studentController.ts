@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
+import { sendNotificationToHostelOwner } from '../utils/notification.js';
 
 // Helper function to convert ISO datetime string to date-only format (YYYY-MM-DD)
 const convertToDateOnly = (dateValue: any): string | null => {
@@ -357,6 +358,16 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
     // and admission fees don't have a corresponding monthly_fee record.
     // Admission fee tracking is handled separately on the student profile.
     console.log(`[createStudent] Student ${student_id} created. Admission fee: ${req.body.admission_fee}, Status: ${req.body.admission_status}`);
+
+    // Trigger push and in-app notification to owner
+    sendNotificationToHostelOwner(
+      hostel_id,
+      'New Admission',
+      'New Student Admission',
+      `Student ${first_name} ${last_name || ''} has been registered successfully.`,
+      'Medium',
+      { id: student_id }
+    ).catch(err => console.error('Failed to send student admission notification:', err));
 
     res.status(201).json({
       success: true,

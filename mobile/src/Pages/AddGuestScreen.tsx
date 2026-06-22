@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity,
-    KeyboardAvoidingView, Platform, Alert,
+    KeyboardAvoidingView, Platform, Alert, Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
@@ -31,6 +31,18 @@ export default function AddGuestScreen({ navigation }: any) {
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [loading, setLoading] = useState(false);
+
+    const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+    const scrollViewRef = useRef<ScrollView>(null);
+
+    useEffect(() => {
+        const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+        const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+        return () => {
+            keyboardDidShowListener.remove();
+            keyboardDidHideListener.remove();
+        };
+    }, []);
 
     const up = (k: string, v: string) => {
         setForm(p => ({ ...p, [k]: v }));
@@ -82,7 +94,12 @@ export default function AddGuestScreen({ navigation }: any) {
         >
             <AppHeader title="Add Guest" showBack />
 
-            <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            <ScrollView
+                ref={scrollViewRef}
+                contentContainerStyle={[styles.scroll, { paddingBottom: isKeyboardVisible ? 200 : 40 }]}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+            >
                 <Card style={[styles.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
                     <InputField
                         label="Guest Name *"
@@ -139,26 +156,53 @@ export default function AddGuestScreen({ navigation }: any) {
                         placeholder="e.g. 204 (optional)"
                         value={form.room_number}
                         onChangeText={(t) => up('room_number', t)}
+                        onFocus={() => {
+                            setTimeout(() => {
+                                scrollViewRef.current?.scrollToEnd({ animated: true });
+                            }, 200);
+                        }}
                     />
                     <InputField
                         label="Purpose / Notes"
                         placeholder="e.g. Relative of tenant, 1 night stay"
                         value={form.purpose}
                         onChangeText={(t) => up('purpose', t)}
+                        onFocus={() => {
+                            setTimeout(() => {
+                                scrollViewRef.current?.scrollToEnd({ animated: true });
+                            }, 200);
+                        }}
                     />
+
+                    {/* Inline scroll footer (only shown when keyboard is open) */}
+                    {isKeyboardVisible && (
+                        <View style={[styles.scrollFooter, { borderTopColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                            <TouchableOpacity
+                                style={[styles.saveBtn, { backgroundColor: theme.primary, width: '100%' }, loading && { opacity: 0.7 }]}
+                                onPress={handleSave}
+                                disabled={loading}
+                                activeOpacity={0.85}
+                            >
+                                <Text style={styles.saveText}>{loading ? 'Saving...' : 'Save Guest'}</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
                 </Card>
             </ScrollView>
 
-            <View style={[styles.footer, { backgroundColor: theme.cardBg, borderTopColor: isDark ? '#334155' : '#F1F5F9', paddingBottom: insets.bottom + 16 }]}>
-                <TouchableOpacity
-                    style={[styles.saveBtn, { backgroundColor: theme.primary }, loading && { opacity: 0.7 }]}
-                    onPress={handleSave}
-                    disabled={loading}
-                    activeOpacity={0.85}
-                >
-                    <Text style={styles.saveText}>{loading ? 'Saving...' : 'Save Guest'}</Text>
-                </TouchableOpacity>
-            </View>
+            {/* Sticky Footer (only shown when keyboard is hidden) */}
+            {!isKeyboardVisible && (
+                <View style={[styles.footer, { backgroundColor: theme.cardBg, borderTopColor: isDark ? '#334155' : '#F1F5F9', paddingBottom: insets.bottom + 16 }]}>
+                    <TouchableOpacity
+                        style={[styles.saveBtn, { backgroundColor: theme.primary }, loading && { opacity: 0.7 }]}
+                        onPress={handleSave}
+                        disabled={loading}
+                        activeOpacity={0.85}
+                    >
+                        <Text style={styles.saveText}>{loading ? 'Saving...' : 'Save Guest'}</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
 
             <DateTimePickerModal
                 isVisible={showDatePicker}
@@ -185,4 +229,11 @@ const styles = StyleSheet.create({
     footer: { paddingHorizontal: 16, paddingTop: 12, borderTopWidth: 1 },
     saveBtn: { height: 50, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
     saveText: { color: '#FFF', fontWeight: '800', fontSize: 16 },
+    scrollFooter: {
+        flexDirection: 'row',
+        gap: 12,
+        paddingTop: 16,
+        borderTopWidth: 1,
+        marginTop: 16,
+    },
 });

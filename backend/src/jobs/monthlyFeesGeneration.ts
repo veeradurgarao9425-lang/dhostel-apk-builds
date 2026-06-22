@@ -1,5 +1,6 @@
 import cron from 'node-cron';
 import db from '../config/database.js';
+import { sendNotificationToHostelOwner } from '../utils/notification.js';
 
 /**
  * Cron Job: Automatic Monthly Fees Generation (NEW)
@@ -253,6 +254,18 @@ const generateMonthlyFeesForHostel = async (hostel_id: number, fee_month: string
       with_carry_forward: totalCarryForward,
       total_records: feesData.length
     });
+
+    // Send a summary notification to the hostel owner
+    const totalDueSum = feesData.reduce((sum, f) => sum + (f.total_due || 0), 0);
+    if (totalFeesCreated > 0) {
+      sendNotificationToHostelOwner(
+        hostel_id,
+        'Payment Due',
+        'Monthly Fees Generated',
+        `Monthly fees generated for ${totalFeesCreated} students. Total due: ₹${totalDueSum}.`,
+        'High'
+      ).catch(err => console.error('Failed to send monthly fee generation notification:', err));
+    }
 
     return {
       success: true,

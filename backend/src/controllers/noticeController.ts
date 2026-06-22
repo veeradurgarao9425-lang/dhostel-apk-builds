@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
+import { sendNotificationToHostelOwner } from '../utils/notification.js';
 
 // Get all notices for a hostel
 export const getNotices = async (req: AuthRequest, res: Response) => {
@@ -76,6 +77,16 @@ export const createNotice = async (req: AuthRequest, res: Response) => {
       message: 'Notice created successfully',
       data: { notice_id }
     });
+
+    // Trigger push and in-app notification to owner
+    sendNotificationToHostelOwner(
+      user.hostel_id,
+      'General',
+      'New Notice Published',
+      `Notice: "${title}" has been published.`,
+      'Medium',
+      { id: notice_id }
+    ).catch(err => console.error('Failed to send notice notification:', err));
   } catch (error: any) {
     console.error('Create notice error:', error);
     res.status(500).json({

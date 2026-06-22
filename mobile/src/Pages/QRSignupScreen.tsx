@@ -12,6 +12,7 @@ import {
     TextInput,
     Animated,
     Pressable,
+    Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import QRCode from 'react-native-qrcode-svg';
@@ -27,6 +28,7 @@ type Mode = 'general' | 'room';
 
 // ─── Smooth bottom-sheet modal ────────────────────────────────────────────────
 const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: any) => {
+    const { theme } = useTheme();
     const [shouldRender, setShouldRender] = useState(visible);
     const translateY = useRef(new Animated.Value(600)).current;
     const opacity = useRef(new Animated.Value(0)).current;
@@ -59,7 +61,7 @@ const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: any) => {
                 </Animated.View>
                 <Animated.View style={[
                     s.modalSheet,
-                    { maxHeight, transform: [{ translateY }] }
+                    { backgroundColor: theme.cardBg, maxHeight, transform: [{ translateY }] }
                 ]}>
                     {children}
                 </Animated.View>
@@ -218,20 +220,24 @@ export default function QRSignupScreen({ navigation }: any) {
 
     // Load rooms when switching to room mode
     useFocusEffect(useCallback(() => {
-        if (rooms.length === 0) {
+        if (hostelId) {
             setRoomsLoading(true);
             api.get(`/rooms?hostelId=${hostelId}&limit=200`)
                 .then(res => { if (res.data.success) setRooms(res.data.data); })
                 .catch(() => {})
                 .finally(() => setRoomsLoading(false));
         }
-    }, [hostelId, rooms.length]));
+    }, [hostelId]));
 
     const fetchBeds = async (roomId: string, room: any) => {
         setBedsLoading(true);
         try {
             const res = await api.get(`/rooms/${roomId}/beds`);
-            if (res.data.success) { setBeds(res.data.data); return; }
+            if (res.data.success) {
+                setBeds(res.data.data);
+                setBedsLoading(false);
+                return;
+            }
         } catch {}
         // Fallback: generate beds
         const cap = room?.capacity ?? 1;
@@ -522,5 +528,3 @@ const s = StyleSheet.create({
     bedName: { fontSize: 16, fontWeight: '700', color: '#1E293B', marginBottom: 4 },
 });
 
-// Make Platform available
-import { Platform } from 'react-native';

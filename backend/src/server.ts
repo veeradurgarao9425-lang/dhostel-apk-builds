@@ -21,7 +21,9 @@ import staffRoutes from './routes/staffRoutes.js';
 import reminderRoutes from './routes/reminderRoutes.js';
 import noticeRoutes from './routes/noticeRoutes.js';
 import guestRoutes from './routes/guestRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
 import { startMonthlyFeesGenerationJob } from './jobs/monthlyFeesGeneration.js';
+import { sendNotificationToHostelOwner } from './utils/notification.js';
 
 // Load environment variables
 dotenv.config();
@@ -87,6 +89,7 @@ app.use('/api/staff', staffRoutes);
 app.use('/api/reminders', reminderRoutes);
 app.use('/api/notices', noticeRoutes);
 app.use('/api/guests', guestRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Public QR tenant signup (no auth) — supports optional roomId & bedId pre-fill
 app.get('/api/public/qr-signup', async (req, res) => {
@@ -240,7 +243,17 @@ app.post('/api/public/qr-signup', async (req, res) => {
       id_proof_status:  0,
     };
 
-    await db('students').insert(insertData);
+    const [newStudentId] = await db('students').insert(insertData);
+
+    // Notify the owner of the hostel
+    sendNotificationToHostelOwner(
+      numHostelId,
+      'New Admission',
+      'New Tenant Request (QR)',
+      `New QR signup registration submitted by ${first_name} ${last_name || ''}.`,
+      'High',
+      { id: newStudentId }
+    ).catch(err => console.error('Failed to send QR signup notification:', err));
 
     const backUrl = `/api/public/qr-signup?hostelId=${encodeURIComponent(hostelId)}${roomId ? `&roomId=${encodeURIComponent(roomId)}` : ''}${bedId ? `&bedId=${encodeURIComponent(bedId)}` : ''}${bedName ? `&bedName=${encodeURIComponent(bedName)}` : ''}`;
     res.status(200).send(`

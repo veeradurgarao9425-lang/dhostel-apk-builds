@@ -4,6 +4,7 @@ import {
     StatusBar, ActivityIndicator, RefreshControl, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Plus } from 'lucide-react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import api from '../services/api';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -154,7 +155,10 @@ export default function GuestsScreen() {
                     data={filtered}
                     keyExtractor={(item) => String(item.guest_id)}
                     renderItem={renderItem}
-                    contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
+                    contentContainerStyle={[
+                        { padding: 16, paddingBottom: 120 },
+                        filtered.length === 0 && { flex: 1 }
+                    ]}
                     showsVerticalScrollIndicator={false}
                     refreshControl={
                         <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchGuests(true); }} tintColor={theme.primary} />
@@ -180,7 +184,7 @@ export default function GuestsScreen() {
                 onPress={() => navigation.navigate('AddGuest')}
                 activeOpacity={0.85}
             >
-                <Ionicons name="add" size={30} color="#FFF" />
+                <Plus color="#FFF" size={26} strokeWidth={3.5} />
             </TouchableOpacity>
         </View>
     );
@@ -214,8 +218,8 @@ const s = StyleSheet.create({
     metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     metaText: { fontSize: 11, fontWeight: '600' },
     fab: {
-        position: 'absolute', bottom: 30, right: 20, width: 60, height: 60, borderRadius: 30,
-        justifyContent: 'center', alignItems: 'center', elevation: 8,
-        shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5,
+        position: 'absolute', bottom: 45, right: 24, width: 50, height: 50, borderRadius: 25,
+        justifyContent: 'center', alignItems: 'center', elevation: 5,
+        shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 3,
     },
 });

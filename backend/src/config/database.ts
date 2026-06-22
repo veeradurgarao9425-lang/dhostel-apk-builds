@@ -513,6 +513,29 @@ async function patchDatabaseSchema() {
       console.error('[schema-patch] Error relaxing students guardian columns:', e.message);
     }
 
+    // 13. Ensure user_push_tokens exists
+    try {
+      if (!tableNamesLower.includes('user_push_tokens')) {
+        console.log('[schema-patch] creating missing user_push_tokens table...');
+        await db.raw(`
+          CREATE TABLE user_push_tokens (
+            token_id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            push_token VARCHAR(255) NOT NULL UNIQUE,
+            device_name VARCHAR(100) NULL,
+            platform VARCHAR(50) NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        console.log('[schema-patch] creating indexes for user_push_tokens table...');
+        await db.raw("CREATE INDEX idx_user_push_tokens_user ON user_push_tokens(user_id)");
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error checking/creating user_push_tokens table:', e.message);
+    }
+
     console.log('[schema-patch] Schema check and patch complete.');
   } catch (err: any) {
     console.error('[schema-patch] Critical error during schema patching:', err.message);
