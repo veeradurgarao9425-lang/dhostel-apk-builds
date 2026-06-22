@@ -18,6 +18,7 @@ type AuthContextType = {
   user: User | null;
   loading: boolean;
   signIn: (identifier: string, password: string) => Promise<{ error: any; user?: User }>;
+  signUp: (payload: { full_name: string; email?: string; phone?: string; password: string; hostel_name?: string }) => Promise<{ error: any; user?: User }>;
   signOut: () => Promise<void>;
   updateTokenAndUser: (token: string | null | undefined, updatedFields: Partial<User>) => Promise<void>;
   hostels: any[];
@@ -29,6 +30,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   signIn: async () => ({ error: null }),
+  signUp: async () => ({ error: null }),
   signOut: async () => { },
   updateTokenAndUser: async () => { },
   hostels: [],
@@ -61,63 +63,58 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
-    // Initializing auth state from storage
+    // Initializing auth state from storage.
+    // Strategy: read storage in ONE call, unblock the splash immediately once we
+    // know if the user is logged in, then enrich (hostel name / hostels list) in
+    // the background. The UI never waits on the network here.
     const loadUser = async () => {
-      // Hard timeout — if backend is slow, never get stuck on splash
-      const timeout = setTimeout(() => {
-        console.warn('AuthContext: loadUser timed out after 8s, forcing loading=false');
-        setLoading(false);
-      }, 8000);
-
       try {
-        const storedUser = await AsyncStorage.getItem('user');
-        const storedToken = await AsyncStorage.getItem('token');
+        const [[, storedUser], [, storedToken]] = await AsyncStorage.multiGet(['user', 'token']);
 
         if (storedUser && storedToken) {
-          let parsedUser = JSON.parse(storedUser);
+          const parsedUser = JSON.parse(storedUser);
           api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
           setUser(parsedUser);
 
-          // Proactively fetch hostel name if missing — with per-request timeout
-          if (parsedUser.hostel_id && !parsedUser.hostel_name) {
-            try {
-              const res = await Promise.race([
-                api.get(`/hostels/${parsedUser.hostel_id}`),
-                new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 4000))
-              ]) as any;
-              if (res.data?.success && res.data?.data?.hostel_name) {
-                parsedUser = { ...parsedUser, hostel_name: res.data.data.hostel_name };
-                setUser(parsedUser);
-                await AsyncStorage.setItem('user', JSON.stringify(parsedUser));
-              }
-            } catch (e) {
-              console.warn('Failed to load hostel details in AuthContext:', e);
-            }
-          }
-
-          // Fetch all user hostels — with per-request timeout
-          try {
-            const res = await Promise.race([
-              api.get('/hostels'),
-              new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 4000))
-            ]) as any;
-            if (res.data?.success) {
-              setHostels(res.data.data || []);
-            }
-          } catch (e) {
-            console.warn('Failed to load hostels list in AuthContext loadUser:', e);
-          }
+          // Background enrichment — does not block the splash/navigation.
+          void enrichUserInBackground(parsedUser);
         }
       } catch (error) {
-        console.error('Failed to load user from storage', error);
+        if (__DEV__) console.error('Failed to load user from storage', error);
       } finally {
-        clearTimeout(timeout);
+        // Auth state is resolved the moment storage is read — unblock the app now.
         setLoading(false);
       }
     };
 
     loadUser();
   }, []);
+
+  // Fetch hostel name (if missing) and the full hostels list without blocking UI.
+  const enrichUserInBackground = async (parsedUser: User) => {
+    const withTimeout = (p: Promise<any>, ms = 4000) =>
+      Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+
+    if (parsedUser.hostel_id && !parsedUser.hostel_name) {
+      try {
+        const res: any = await withTimeout(api.get(`/hostels/${parsedUser.hostel_id}`));
+        if (res?.data?.success && res.data?.data?.hostel_name) {
+          const updated = { ...parsedUser, hostel_name: res.data.data.hostel_name };
+          setUser(updated);
+          await AsyncStorage.setItem('user', JSON.stringify(updated));
+        }
+      } catch (e) {
+        if (__DEV__) console.warn('Background hostel-detail fetch failed:', e);
+      }
+    }
+
+    try {
+      const res: any = await withTimeout(api.get('/hostels'));
+      if (res?.data?.success) setHostels(res.data.data || []);
+    } catch (e) {
+      if (__DEV__) console.warn('Background hostels-list fetch failed:', e);
+    }
+  };
 
 
   const signIn = async (identifier: string, password: string) => {
@@ -192,6 +189,47 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.error('Mobile - Request Failed:', error.message);
       const targetUrl = api.defaults.baseURL;
       const errorMessage = error.response?.data?.error || error.response?.data?.message || `Cannot reach server at ${targetUrl}. Check WiFi/Firewall.`;
+      return { error: errorMessage };
+    }
+  };
+
+  const signUp = async (payload: { full_name: string; email?: string; phone?: string; password: string; hostel_name?: string }) => {
+    try {
+      const response = await api.post('/auth/register', payload);
+      const body = response.data;
+      const token = body?.data?.token || body?.token;
+      const userData = body?.data?.user || body?.user;
+
+      if ((response.status === 201 || response.status === 200) && token && userData) {
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        setUser(userData);
+        await AsyncStorage.setItem('token', token);
+        await AsyncStorage.setItem('user', JSON.stringify(userData));
+
+        // Load hostels list (will be empty until they add one)
+        try {
+          const res = await api.get('/hostels');
+          if (res.data?.success) setHostels(res.data.data || []);
+        } catch { /* non-fatal */ }
+
+        // Register for push notifications (non-fatal)
+        try {
+          const pushToken = await notificationService.registerForPushNotificationsAsync();
+          if (pushToken) await notificationService.sendTokenToBackend(pushToken);
+        } catch (e) {
+          if (__DEV__) console.error('Notification setup failed:', e);
+        }
+
+        return { error: null, user: userData };
+      }
+
+      const errorMessage = body?.error || body?.message || 'Registration failed.';
+      return { error: errorMessage };
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        'Cannot reach server. Check your connection and try again.';
       return { error: errorMessage };
     }
   };
@@ -271,6 +309,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     user,
     loading,
     signIn,
+    signUp,
     signOut,
     updateTokenAndUser,
     hostels,

@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
-    ScrollView, StatusBar, RefreshControl, Modal, ActivityIndicator, Alert, Platform
+    ScrollView, StatusBar, RefreshControl
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -95,7 +95,7 @@ const RevenueBar = ({ amount, maxAmount, month, isCurrent }: any) => {
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function HomeScreen() {
     const navigation = useNavigation<any>();
-    const { user, updateTokenAndUser } = useAuth();
+    const { user } = useAuth();
     const { theme, isDark, fontSize } = useTheme();
     const [data, setData] = useState(INITIAL_STATE);
     const [loading, setLoading] = useState(true);
@@ -228,7 +228,11 @@ export default function HomeScreen() {
     // ── Revenue chart data (real trend data from backend) ──
     const currentMonthIdx = new Date().getMonth(); // 0-based
     const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const revenueData = data.revenueTrend && data.revenueTrend.length > 0
+    const hasRealTrend = data.revenueTrend && data.revenueTrend.length > 0;
+    // Only ever show REAL data. When the backend has no trend yet, plot real
+    // zeros for past months and the actual current-month figure — never invent
+    // numbers for a business owner to act on.
+    const revenueData = hasRealTrend
         ? data.revenueTrend.slice(-6).map((t: any) => ({
             month: t.monthLabel,
             amount: t.income || 0,
@@ -237,15 +241,9 @@ export default function HomeScreen() {
         : Array.from({ length: 6 }, (_, i) => {
             const mIdx = (currentMonthIdx - 5 + i + 12) % 12;
             const isCurrent = i === 5;
-            const baseAmount = data.monthAmount > 0 ? data.monthAmount : 45000;
-            let amount = isCurrent ? data.monthAmount : 0;
-            if (!isCurrent) {
-                const scales = [0.8, 0.88, 0.75, 0.92, 0.85];
-                amount = Math.round(baseAmount * scales[i]);
-            }
             return {
                 month: MONTH_NAMES[mIdx],
-                amount,
+                amount: isCurrent ? data.monthAmount : 0,
                 isCurrent,
             };
         });

@@ -13,6 +13,7 @@ import MoreScreen      from '../Pages/MoreScreen';
 // ── Stack screens ─────────────────────────────────────────────────────────────
 import SplashScreen          from '../Pages/SplashScreen';
 import LoginScreen           from '../Pages/LoginScreen';
+import RegisterScreen        from '../Pages/RegisterScreen';
 import NotificationScreen    from '../Pages/NotificationScreen';
 import StudentDetailsScreen  from '../Pages/StudentDetailsScreen';
 import AddStudentScreen      from '../Pages/AddStudentScreen';
@@ -101,6 +102,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                 {/* Auth */}
                 <Stack.Screen name="Splash" component={SplashScreen} />
                 <Stack.Screen name="Login"  component={LoginScreen}  />
+                <Stack.Screen name="Register" component={RegisterScreen} />
 
                 {/* Main tab container */}
                 <Stack.Screen name="Main" component={TabNavigator} />
