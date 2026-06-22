@@ -12,7 +12,8 @@ import {
 } from '../controllers/reportController.js';
 import {
   downloadPDFReport,
-  downloadExcelReport
+  downloadExcelReport,
+  emailExcelReport
 } from '../controllers/reportDownloadController.js';
 
 const router = express.Router();
@@ -33,5 +34,8 @@ router.get('/monthly-overview', getMonthlyOverview);
 // Download routes
 router.get('/download/pdf', downloadPDFReport);
 router.get('/download/excel', downloadExcelReport);
+
+// Email the Excel report to the logged-in user's own email address
+router.post('/email-excel', emailExcelReport);
 
 export default router;

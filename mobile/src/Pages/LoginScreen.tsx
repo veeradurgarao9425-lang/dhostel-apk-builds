@@ -54,12 +54,6 @@ export default function LoginScreen({ navigation }: any) {
         }
     };
 
-    const onPasswordFocus = () => {
-        setTimeout(() => {
-            scrollRef.current?.scrollToEnd({ animated: true });
-        }, 300);
-    };
-
     return (
         <KeyboardAvoidingView
             style={{ flex: 1 }}
@@ -117,7 +111,7 @@ export default function LoginScreen({ navigation }: any) {
                         <View style={styles.inputGroup}>
                             <Text style={styles.label}>Email or Phone</Text>
                             <View style={styles.inputContainer}>
-                                <Ionicons name="person-outline" size={18} color="#7C3AED" style={styles.inputIcon} />
+                                <Ionicons name="mail-outline" size={18} color="#7C3AED" style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.input}
                                     placeholder="Enter your email or phone"
@@ -150,7 +144,6 @@ export default function LoginScreen({ navigation }: any) {
                                     secureTextEntry={!showPassword}
                                     returnKeyType="done"
                                     onSubmitEditing={handleLogin}
-                                    onFocus={onPasswordFocus}
                                     onChangeText={(text) => {
                                         setPassword(text);
                                         if (errorMessage) setErrorMessage(null);
@@ -190,6 +183,14 @@ export default function LoginScreen({ navigation }: any) {
                                 )}
                             </LinearGradient>
                         </TouchableOpacity>
+
+                        {/* Create account */}
+                        <View style={styles.signupRow}>
+                            <Text style={styles.signupText}>Don't have an account? </Text>
+                            <TouchableOpacity onPress={() => navigation.navigate('Register')} activeOpacity={0.7}>
+                                <Text style={styles.signupLink}>Create Account</Text>
+                            </TouchableOpacity>
+                        </View>
 
                         {/* Bottom branding */}
                         <View style={styles.bottomBranding}>
@@ -363,6 +364,23 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         letterSpacing: 0.5,
     },
+    signupRow: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 2,
+        marginBottom: 16,
+    },
+    signupText: {
+        fontSize: 14,
+        color: '#64748B',
+        fontWeight: '500',
+    },
+    signupLink: {
+        fontSize: 14,
+        color: '#5F2EEA',
+        fontWeight: '800',
+    },
     bottomBranding: {
         alignItems: 'center',
         marginTop: 4,
@@ -373,6 +391,6 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     keyboardSpacer: {
-        height: 120,
+        height: 24,
     },
 });

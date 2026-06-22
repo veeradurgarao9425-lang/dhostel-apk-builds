@@ -11,6 +11,9 @@ export default function SplashScreen({ navigation }: any) {
   const { user, loading } = useAuth();
 
   useEffect(() => {
+    // Navigate as soon as auth state is known. Keep a short minimum brand
+    // display (600ms) so the logo doesn't flash, but never block on a fixed
+    // 2.5s timer — that delay used to stack on top of slow cold-start loads.
     if (loading) return;
 
     const timer = setTimeout(() => {
@@ -19,7 +22,7 @@ export default function SplashScreen({ navigation }: any) {
       } else {
         navigation.replace('Login');
       }
-    }, 2500);
+    }, 600);
 
     return () => clearTimeout(timer);
   }, [navigation, user, loading]);

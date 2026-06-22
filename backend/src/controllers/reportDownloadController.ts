@@ -1,9 +1,11 @@
 // @ts-nocheck
 import { Response } from 'express';
+import { Writable } from 'stream';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
 import PDFDocument from 'pdfkit';
 import ExcelJS from 'exceljs';
+import { sendEmail } from '../utils/email.js';
 
 // Helper function to format currency
 const formatCurrency = (amount: number): string => {
@@ -897,6 +899,89 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       error: 'Failed to generate Excel report'
+    });
+  }
+};
+
+// Generate the same Excel report and EMAIL it to the logged-in user's address.
+// Reuses downloadExcelReport by capturing its streamed output into a buffer via
+// a mock response — no duplication of the (large) workbook-building logic.
+export const emailExcelReport = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user;
+    const toEmail = user?.email;
+
+    // The app auto-generates placeholder emails (...@dhostel.com) for phone-only
+    // signups — those can't receive mail, so require a real address.
+    if (!toEmail || /@dhostel\.com$/i.test(toEmail)) {
+      return res.status(400).json({
+        success: false,
+        error: 'No valid email address is set on your account. Please add your email in Profile first.',
+      });
+    }
+
+    // Capture the .xlsx bytes that downloadExcelReport streams to `res`.
+    const chunks: Buffer[] = [];
+    let filename = 'Hostel_Financial_Report.xlsx';
+    let earlyError: { code: number; body: any } | null = null;
+
+    const mock: any = new Writable({
+      write(chunk: any, _enc: any, cb: any) {
+        chunks.push(Buffer.from(chunk));
+        cb();
+      },
+    });
+    mock.setHeader = (key: string, value: string) => {
+      if (String(key).toLowerCase() === 'content-disposition') {
+        const m = /filename="([^"]+)"/.exec(value);
+        if (m) filename = m[1];
+      }
+      return mock;
+    };
+    mock.status = (code: number) => ({
+      json: (body: any) => {
+        earlyError = { code, body };
+        return mock;
+      },
+    });
+
+    await downloadExcelReport(req, mock);
+
+    if (earlyError) {
+      return res.status(earlyError.code).json(earlyError.body);
+    }
+
+    const buffer = Buffer.concat(chunks);
+    if (!buffer.length) {
+      return res.status(500).json({ success: false, error: 'Failed to generate the report.' });
+    }
+
+    const reportTitle = filename.replace(/\.xlsx$/i, '').replace(/_/g, ' ');
+    await sendEmail({
+      to: toEmail,
+      subject: `Your Hostel Report — ${reportTitle}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; color: #1A1A2E;">
+          <h2 style="color: #5F2EEA; margin-bottom: 8px;">Your Hostel Report is ready</h2>
+          <p>Hello ${user?.full_name || 'Owner'},</p>
+          <p>Your hostel financial report (<strong>${reportTitle}</strong>) is attached to this email as an Excel spreadsheet.</p>
+          <p style="color: #6B6B8A; font-size: 13px; margin-top: 24px;">— Stivo Hostel Management</p>
+        </div>`,
+      attachments: [
+        {
+          filename,
+          content: buffer,
+          contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        },
+      ],
+    });
+
+    return res.json({ success: true, message: `Report emailed to ${toEmail}` });
+  } catch (error: any) {
+    console.error('Email Excel report error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to email the report. Please try again.',
     });
   }
 };

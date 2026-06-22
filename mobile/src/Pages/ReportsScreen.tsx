@@ -9,15 +9,21 @@ import {
     RefreshControl,
     ActivityIndicator,
     Alert,
+    Modal,
+    Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import * as Print from 'expo-print';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { AppHeader } from '../components/AppHeader';
 import { ProfileMenu } from '../components/ProfileMenu';
+import { buildReportHtml } from '../utils/reportHtml';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 const fmt = (n: number) => {
@@ -74,11 +80,13 @@ const DefaulterRow = ({ rank, name, amount, days, color }: any) => (
 export default function ReportsScreen() {
     const navigation = useNavigation<any>();
     const { theme, isDark } = useTheme();
+    const { user } = useAuth();
 
     const [activeTab, setActiveTab] = useState<TabType>('Summary');
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [exporting, setExporting] = useState(false);
+    const [exporting, setExporting] = useState<null | 'pdf' | 'excel' | 'email'>(null);
+    const [exportModal, setExportModal] = useState(false);
 
     const [stats, setStats] = useState<any>(null);
     const [monthlyFees, setMonthlyFees] = useState<any>(null);
@@ -135,22 +143,6 @@ export default function ReportsScreen() {
 
     useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
 
-    // ── Export handler ────────────────────────────────────────────────────────
-    const handleExport = async () => {
-        setExporting(true);
-        try {
-            const res = await api.get('/reports/export/csv', { responseType: 'blob' });
-            if (!res.data) throw new Error('Empty response');
-            const uri = FileSystem.documentDirectory + 'report.csv';
-            await FileSystem.writeAsStringAsync(uri, res.data, { encoding: FileSystem.EncodingType.UTF8 });
-            await Sharing.shareAsync(uri, { mimeType: 'text/csv', dialogTitle: 'Export Report' });
-        } catch (e: any) {
-            Alert.alert('Export Failed', e.response?.data?.error || 'Could not export report');
-        } finally {
-            setExporting(false);
-        }
-    };
-
     // ── Summary computed values ──────────────────────────────────────────────
     const totalRent = stats ? (stats.monthlyRentCollected || stats.feeCollection || 0) : 0;
     const pending = stats ? (stats.monthlyRentPending || stats.pendingDuesAmount || 0) : 0;
@@ -161,6 +153,101 @@ export default function ReportsScreen() {
     const occupiedBeds = stats?.occupiedBeds || 0;
     const totalExpenses = expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
     const netProfit = totalRent - totalExpenses;
+
+    const periodLabel = new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+    const _now = new Date();
+    const monthParam = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, '0')}`;
+
+    // ── Export: on-device PDF (instant, offline, professional) ────────────────
+    const handleExportPDF = async () => {
+        setExporting('pdf');
+        setExportModal(false);
+        try {
+            const html = buildReportHtml({
+                hostelName: user?.hostel_name || 'My Hostel',
+                ownerName: user?.full_name,
+                periodLabel,
+                totalRent, pending, totalExpenses, netProfit,
+                collectionRate, occupancyRate, occupiedBeds, totalBeds,
+                defaulters, expenses, trend,
+            });
+            const { uri } = await Print.printToFileAsync({ html });
+            const canShare = await Sharing.isAvailableAsync();
+            if (canShare) {
+                await Sharing.shareAsync(uri, {
+                    mimeType: 'application/pdf',
+                    dialogTitle: 'Share / Email Report',
+                    UTI: 'com.adobe.pdf',
+                });
+            } else {
+                Alert.alert('Saved', 'Report saved to:\n' + uri);
+            }
+        } catch (e: any) {
+            Alert.alert('Export Failed', e?.message || 'Could not generate the PDF report.');
+        } finally {
+            setExporting(null);
+        }
+    };
+
+    // ── Export: Excel from backend (full transaction spreadsheet) ─────────────
+    const handleExportExcel = async () => {
+        setExporting('excel');
+        setExportModal(false);
+        try {
+            const token = await AsyncStorage.getItem('token');
+            const base = api.defaults.baseURL?.replace(/\/$/, '') || '';
+            const target =
+                FileSystem.documentDirectory +
+                `Stivo-Report-${periodLabel.replace(/\s/g, '-')}.xlsx`;
+
+            const { uri, status } = await FileSystem.downloadAsync(
+                `${base}/reports/download/excel?month=${monthParam}`,
+                target,
+                { headers: token ? { Authorization: `Bearer ${token}` } : undefined },
+            );
+            if (status !== 200) throw new Error(`Server returned ${status}`);
+
+            const canShare = await Sharing.isAvailableAsync();
+            if (canShare) {
+                await Sharing.shareAsync(uri, {
+                    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    dialogTitle: 'Share / Email Excel Report',
+                });
+            } else {
+                Alert.alert('Saved', 'Excel report saved to:\n' + uri);
+            }
+        } catch (e: any) {
+            Alert.alert(
+                'Excel Export Failed',
+                e?.message?.includes('404')
+                    ? 'The Excel report service is unavailable. Please try the PDF option.'
+                    : (e?.message || 'Could not download the Excel report.'),
+            );
+        } finally {
+            setExporting(null);
+        }
+    };
+
+    // ── Email the Excel report to the logged-in user's own email ──────────────
+    const handleEmailExcel = async () => {
+        setExporting('email');
+        setExportModal(false);
+        try {
+            const res = await api.post(`/reports/email-excel?month=${monthParam}`);
+            if (res.data?.success) {
+                Alert.alert('Report Sent 📧', res.data.message || `The report has been emailed to ${user?.email}.`);
+            } else {
+                throw new Error(res.data?.error || 'Could not send the report.');
+            }
+        } catch (e: any) {
+            Alert.alert(
+                'Email Failed',
+                e?.response?.data?.error || e?.message || 'Could not email the report. Please try again.',
+            );
+        } finally {
+            setExporting(null);
+        }
+    };
 
     if (loading) {
         return (
@@ -179,14 +266,14 @@ export default function ReportsScreen() {
                 rightComponent={
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                         <TouchableOpacity
-                            style={[s.exportBtn, exporting && { opacity: 0.6 }]}
-                            onPress={handleExport}
-                            disabled={exporting}
+                            style={[s.exportBtn, !!exporting && { opacity: 0.6 }]}
+                            onPress={() => setExportModal(true)}
+                            disabled={!!exporting}
                             activeOpacity={0.8}
                         >
                             {exporting
-                                ? <ActivityIndicator color="#14B8A6" size="small" />
-                                : <Ionicons name="download-outline" size={18} color="#14B8A6" />
+                                ? <ActivityIndicator color={theme.primary} size="small" />
+                                : <Ionicons name="share-outline" size={18} color={theme.primary} />
                             }
                         </TouchableOpacity>
                         <ProfileMenu />
@@ -205,7 +292,7 @@ export default function ReportsScreen() {
                             onPress={() => setActiveTab(tab)}
                             activeOpacity={0.8}
                         >
-                            <Text style={[s.tabText, { color: active ? '#14B8A6' : (isDark ? '#94A3B8' : '#64748B') }]}>
+                            <Text style={[s.tabText, { color: active ? '#5F2EEA' : (isDark ? '#94A3B8' : '#64748B') }]}>
                                 {tab}
                             </Text>
                             {active && <View style={s.tabUnderline} />}
@@ -218,7 +305,7 @@ export default function ReportsScreen() {
                 style={{ flex: 1 }}
                 contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 14, paddingBottom: 110 }}
                 showsVerticalScrollIndicator={false}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadData(true); }} colors={['#14B8A6']} />}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadData(true); }} colors={['#5F2EEA']} />}
             >
 
                 {/* ══════════════════ SUMMARY TAB ══════════════════ */}
@@ -236,18 +323,18 @@ export default function ReportsScreen() {
                         {/* Progress section */}
                         <View style={[s.card, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
                             <View style={s.cardHeader}>
-                                <Ionicons name="analytics" size={15} color="#14B8A6" />
+                                <Ionicons name="analytics" size={15} color="#5F2EEA" />
                                 <Text style={[s.cardTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>Occupancy & Collection Rate</Text>
                             </View>
                             <ProgressRow label={`Occupancy  (${occupiedBeds}/${totalBeds} beds)`} value={occupiedBeds} total={totalBeds} color="#7C3AED" />
-                            <ProgressRow label={`Collection  (${fmt(totalRent)} / ${fmt(totalDue)})`} value={totalRent} total={totalDue} color="#14B8A6" />
+                            <ProgressRow label={`Collection  (${fmt(totalRent)} / ${fmt(totalDue)})`} value={totalRent} total={totalDue} color="#5F2EEA" />
                         </View>
 
                         {/* Revenue trend mini table */}
                         {trend.length > 0 && (
                             <View style={[s.card, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
                                 <View style={s.cardHeader}>
-                                    <Ionicons name="bar-chart-sharp" size={15} color="#14B8A6" />
+                                    <Ionicons name="bar-chart-sharp" size={15} color="#5F2EEA" />
                                     <Text style={[s.cardTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>Monthly Revenue Trend</Text>
                                 </View>
                                 <View style={s.trendTable}>
@@ -391,16 +478,16 @@ export default function ReportsScreen() {
 
                         {/* Export banner */}
                         <TouchableOpacity
-                            style={[s.exportBanner, { opacity: exporting ? 0.7 : 1 }]}
-                            onPress={handleExport}
-                            disabled={exporting}
+                            style={[s.exportBanner, { backgroundColor: theme.primary, shadowColor: theme.primary, opacity: exporting ? 0.7 : 1 }]}
+                            onPress={() => setExportModal(true)}
+                            disabled={!!exporting}
                             activeOpacity={0.85}
                         >
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                                 <Ionicons name="document-text-sharp" size={22} color="#FFFFFF" />
                                 <View>
                                     <Text style={s.exportBannerTitle}>Export Full Report</Text>
-                                    <Text style={s.exportBannerSub}>Download CSV for all transactions</Text>
+                                    <Text style={s.exportBannerSub}>Download as PDF or Excel · share via email</Text>
                                 </View>
                             </View>
                             {exporting
@@ -412,6 +499,89 @@ export default function ReportsScreen() {
                 )}
 
             </ScrollView>
+
+            {/* ── EXPORT OPTIONS SHEET ─────────────────────────────────────── */}
+            <Modal
+                visible={exportModal}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setExportModal(false)}
+            >
+                <TouchableOpacity
+                    style={s.sheetBackdrop}
+                    activeOpacity={1}
+                    onPress={() => setExportModal(false)}
+                >
+                    <TouchableOpacity activeOpacity={1} style={[s.sheet, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]}>
+                        <View style={s.sheetHandle} />
+                        <Text style={[s.sheetTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>Export Report</Text>
+                        <Text style={[s.sheetSub, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+                            {periodLabel} · {user?.hostel_name || 'My Hostel'}
+                        </Text>
+
+                        {/* PDF */}
+                        <TouchableOpacity
+                            style={[s.sheetOption, { borderColor: isDark ? '#334155' : '#ECECF5' }]}
+                            onPress={handleExportPDF}
+                            activeOpacity={0.8}
+                        >
+                            <View style={[s.sheetIcon, { backgroundColor: theme.primary + '18' }]}>
+                                <Ionicons name="document-text" size={22} color={theme.primary} />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[s.sheetOptTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>Download PDF</Text>
+                                <Text style={[s.sheetOptSub, { color: isDark ? '#94A3B8' : '#64748B' }]}>Formatted summary · instant · works offline</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={18} color={isDark ? '#475569' : '#CBD5E1'} />
+                        </TouchableOpacity>
+
+                        {/* Excel */}
+                        <TouchableOpacity
+                            style={[s.sheetOption, { borderColor: isDark ? '#334155' : '#ECECF5' }]}
+                            onPress={handleExportExcel}
+                            activeOpacity={0.8}
+                        >
+                            <View style={[s.sheetIcon, { backgroundColor: '#00875A18' }]}>
+                                <Ionicons name="grid" size={22} color="#00875A" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[s.sheetOptTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>Download Excel</Text>
+                                <Text style={[s.sheetOptSub, { color: isDark ? '#94A3B8' : '#64748B' }]}>Full transaction spreadsheet (.xlsx)</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={18} color={isDark ? '#475569' : '#CBD5E1'} />
+                        </TouchableOpacity>
+
+                        {/* Email to my account */}
+                        <TouchableOpacity
+                            style={[s.sheetOption, { borderColor: isDark ? '#334155' : '#ECECF5' }]}
+                            onPress={handleEmailExcel}
+                            activeOpacity={0.8}
+                        >
+                            <View style={[s.sheetIcon, { backgroundColor: theme.primary + '18' }]}>
+                                <Ionicons name="mail" size={22} color={theme.primary} />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[s.sheetOptTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>Email to my account</Text>
+                                <Text style={[s.sheetOptSub, { color: isDark ? '#94A3B8' : '#64748B' }]} numberOfLines={1}>
+                                    Send Excel to {user?.email || 'your email'}
+                                </Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={18} color={isDark ? '#475569' : '#CBD5E1'} />
+                        </TouchableOpacity>
+
+                        <View style={s.sheetNote}>
+                            <Ionicons name="information-circle-outline" size={14} color={isDark ? '#94A3B8' : '#64748B'} />
+                            <Text style={[s.sheetNoteText, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+                                Tip: after a download, tap “Mail” in the share sheet to send it to anyone. “Email to my account” sends it straight to your registered email.
+                            </Text>
+                        </View>
+
+                        <TouchableOpacity style={s.sheetCancel} onPress={() => setExportModal(false)} activeOpacity={0.7}>
+                            <Text style={[s.sheetCancelText, { color: theme.primary }]}>Cancel</Text>
+                        </TouchableOpacity>
+                    </TouchableOpacity>
+                </TouchableOpacity>
+            </Modal>
         </View>
     );
 }
@@ -441,7 +611,7 @@ const s = StyleSheet.create({
         bottom: 0,
         height: 3,
         width: '60%',
-        backgroundColor: '#14B8A6',
+        backgroundColor: '#5F2EEA',
         borderRadius: 2,
     },
     sectionLabel: {
@@ -588,7 +758,7 @@ const s = StyleSheet.create({
     },
     viewMoreText: {
         fontSize: 13,
-        color: '#14B8A6',
+        color: '#5F2EEA',
         fontWeight: '700',
     },
     // Export banner
@@ -596,12 +766,12 @@ const s = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        backgroundColor: '#14B8A6',
+        backgroundColor: '#5F2EEA',
         borderRadius: 16,
         padding: 18,
         marginTop: 6,
         elevation: 4,
-        shadowColor: '#14B8A6',
+        shadowColor: '#5F2EEA',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
@@ -628,6 +798,58 @@ const s = StyleSheet.create({
         fontSize: 15,
         fontWeight: '600',
     },
+    // ── Export bottom sheet ──────────────────────────────────────────────────
+    sheetBackdrop: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.45)',
+        justifyContent: 'flex-end',
+    },
+    sheet: {
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        paddingHorizontal: 20,
+        paddingTop: 10,
+        paddingBottom: 28,
+    },
+    sheetHandle: {
+        alignSelf: 'center',
+        width: 40,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: '#CBD5E1',
+        marginBottom: 16,
+    },
+    sheetTitle: { fontSize: 18, fontWeight: '800' },
+    sheetSub: { fontSize: 12.5, fontWeight: '600', marginTop: 3, marginBottom: 16 },
+    sheetOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        borderWidth: 1,
+        borderRadius: 14,
+        padding: 14,
+        marginBottom: 10,
+    },
+    sheetIcon: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    sheetOptTitle: { fontSize: 14.5, fontWeight: '800' },
+    sheetOptSub: { fontSize: 11.5, fontWeight: '500', marginTop: 2 },
+    sheetNote: {
+        flexDirection: 'row',
+        gap: 7,
+        alignItems: 'flex-start',
+        marginTop: 6,
+        marginBottom: 14,
+        paddingHorizontal: 4,
+    },
+    sheetNoteText: { flex: 1, fontSize: 11.5, fontWeight: '500', lineHeight: 16 },
+    sheetCancel: { alignItems: 'center', paddingVertical: 12 },
+    sheetCancelText: { fontSize: 15, fontWeight: '800' },
 });
 
 // ── Sub-component styles ─────────────────────────────────────────────────────

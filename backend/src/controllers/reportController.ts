@@ -11,8 +11,11 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
     // Determine hostel filtering based on user role
     let hostelIds: number[] = [];
 
-    if (user?.role_id !== 1 && user?.hostel_id) {
-      // Non-admins filter by their active hostel from JWT
+    if (user?.hostel_id) {
+      // Always scope the dashboard to the active hostel from the JWT.
+      // Previously role_id 1 (owner-admin) fell through here and the counts
+      // summed EVERY hostel in the database — so an empty hostel still showed
+      // numbers belonging to other hostels.
       hostelIds = [user.hostel_id];
     }
 
@@ -285,19 +288,16 @@ export const getIncomeReport = async (req: AuthRequest, res: Response) => {
       .groupBy('month', 'pm.payment_mode_name')
       .orderBy('month', 'desc');
 
-    // Owner filtering - use JWT hostel_id
-    if (user?.role_id === 2) {
-      if (!user.hostel_id) {
-        return res.status(403).json({
-          success: false,
-          error: 'Your account is not linked to any hostel.'
-        });
-      }
+    // Always scope to the active hostel from the JWT (fixes role 1 leaking
+    // global data). Admins with no active hostel may target one explicitly.
+    if (user?.hostel_id) {
       query = query.where('fp.hostel_id', user.hostel_id);
-    }
-
-    // Apply filters
-    if (hostelId && user?.role_id !== 2) {
+    } else if (user?.role_id === 2) {
+      return res.status(403).json({
+        success: false,
+        error: 'Your account is not linked to any hostel.'
+      });
+    } else if (hostelId) {
       query = query.where('fp.hostel_id', hostelId);
     }
 
@@ -347,19 +347,16 @@ export const getExpenseReport = async (req: AuthRequest, res: Response) => {
       .groupBy('month', 'ec.category_name')
       .orderBy('month', 'desc');
 
-    // Owner filtering - use JWT hostel_id
-    if (user?.role_id === 2) {
-      if (!user.hostel_id) {
-        return res.status(403).json({
-          success: false,
-          error: 'Your account is not linked to any hostel.'
-        });
-      }
+    // Always scope to the active hostel from the JWT (fixes role 1 leaking
+    // global data). Admins with no active hostel may target one explicitly.
+    if (user?.hostel_id) {
       query = query.where('e.hostel_id', user.hostel_id);
-    }
-
-    // Apply filters
-    if (hostelId && user?.role_id !== 2) {
+    } else if (user?.role_id === 2) {
+      return res.status(403).json({
+        success: false,
+        error: 'Your account is not linked to any hostel.'
+      });
+    } else if (hostelId) {
       query = query.where('e.hostel_id', hostelId);
     }
 
@@ -417,14 +414,17 @@ export const getProfitLoss = async (req: AuthRequest, res: Response) => {
 
     // Get hostel IDs for owner
     let hostelIds: number[] = [];
-    if (user?.role_id === 2) {
-      if (!user.hostel_id) {
-        return res.status(403).json({
-          success: false,
-          error: 'Your account is not linked to any hostel.'
-        });
-      }
+    if (user?.hostel_id) {
+      // Always scope to the active hostel from the JWT — works for owners
+      // (role 2) AND owner-admins (role 1) who have switched into a hostel.
+      // Previously role 1 fell through to GLOBAL data across all hostels.
       hostelIds = [user.hostel_id];
+    } else if (user?.role_id === 2) {
+      // Owner with no linked hostel — block rather than leak global data.
+      return res.status(403).json({
+        success: false,
+        error: 'Your account is not linked to any hostel.'
+      });
     }
 
     // Get income by month
@@ -529,14 +529,17 @@ export const getOccupancyTrends = async (req: AuthRequest, res: Response) => {
 
     // Get hostel IDs for owner
     let hostelIds: number[] = [];
-    if (user?.role_id === 2) {
-      if (!user.hostel_id) {
-        return res.status(403).json({
-          success: false,
-          error: 'Your account is not linked to any hostel.'
-        });
-      }
+    if (user?.hostel_id) {
+      // Always scope to the active hostel from the JWT — works for owners
+      // (role 2) AND owner-admins (role 1) who have switched into a hostel.
+      // Previously role 1 fell through to GLOBAL data across all hostels.
       hostelIds = [user.hostel_id];
+    } else if (user?.role_id === 2) {
+      // Owner with no linked hostel — block rather than leak global data.
+      return res.status(403).json({
+        success: false,
+        error: 'Your account is not linked to any hostel.'
+      });
     }
 
     // Get current occupancy by hostel
@@ -606,14 +609,17 @@ export const getPaymentCollectionReport = async (req: AuthRequest, res: Response
 
     // Get hostel IDs for owner
     let hostelIds: number[] = [];
-    if (user?.role_id === 2) {
-      if (!user.hostel_id) {
-        return res.status(403).json({
-          success: false,
-          error: 'Your account is not linked to any hostel.'
-        });
-      }
+    if (user?.hostel_id) {
+      // Always scope to the active hostel from the JWT — works for owners
+      // (role 2) AND owner-admins (role 1) who have switched into a hostel.
+      // Previously role 1 fell through to GLOBAL data across all hostels.
       hostelIds = [user.hostel_id];
+    } else if (user?.role_id === 2) {
+      // Owner with no linked hostel — block rather than leak global data.
+      return res.status(403).json({
+        success: false,
+        error: 'Your account is not linked to any hostel.'
+      });
     }
 
     // Determine date range
@@ -839,14 +845,17 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
 
     // Determine hostel filtering
     let hostelIds: number[] = [];
-    if (user?.role_id === 2) {
-      if (!user.hostel_id) {
-        return res.status(403).json({
-          success: false,
-          error: 'Your account is not linked to any hostel.'
-        });
-      }
+    if (user?.hostel_id) {
+      // Always scope to the active hostel from the JWT — works for owners
+      // (role 2) AND owner-admins (role 1) who have switched into a hostel.
+      // Previously role 1 fell through to GLOBAL data across all hostels.
       hostelIds = [user.hostel_id];
+    } else if (user?.role_id === 2) {
+      // Owner with no linked hostel — block rather than leak global data.
+      return res.status(403).json({
+        success: false,
+        error: 'Your account is not linked to any hostel.'
+      });
     }
 
     // Parse the requested month or default to current

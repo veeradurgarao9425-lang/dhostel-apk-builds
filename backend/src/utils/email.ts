@@ -21,10 +21,17 @@ transporter.verify((error, success) => {
   }
 });
 
+export interface EmailAttachment {
+  filename: string;
+  content: Buffer | string;
+  contentType?: string;
+}
+
 export interface EmailOptions {
   to: string;
   subject: string;
   html: string;
+  attachments?: EmailAttachment[];
 }
 
 export const sendEmail = async (options: EmailOptions): Promise<void> => {
@@ -34,6 +41,7 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
       to: options.to,
       subject: options.subject,
       html: options.html,
+      attachments: options.attachments,
     });
   } catch (error: any) {
     console.error('Send email error:', error.message);
