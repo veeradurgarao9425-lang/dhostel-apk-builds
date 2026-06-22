@@ -172,6 +172,105 @@ export const authController = {
     }
   },
 
+  // Public self-registration for new hostel owners (sign up from the app)
+  async register(req: Request, res: Response) {
+    try {
+      const { full_name, email, phone, password, hostel_name } = req.body;
+
+      // Validate required fields
+      if (!full_name || !password || (!email && !phone)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Full name, password, and an email or phone number are required.',
+        });
+      }
+      if (String(password).length < 6) {
+        return res.status(400).json({
+          success: false,
+          error: 'Password must be at least 6 characters.',
+        });
+      }
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res.status(400).json({ success: false, error: 'Invalid email format.' });
+      }
+      if (phone && !/^[0-9+\-\s]{7,15}$/.test(phone)) {
+        return res.status(400).json({ success: false, error: 'Invalid phone number.' });
+      }
+
+      const resolvedEmail = email || `${phone || Date.now()}@dhostel.com`;
+      const resolvedUsername = email || phone || `user_${Date.now()}`;
+
+      // Reject duplicates by email, phone or username
+      const existingUser = await db('users')
+        .where('email', resolvedEmail)
+        .orWhere('username', resolvedUsername)
+        .orWhere(function () {
+          if (phone) this.where('phone', phone);
+        })
+        .first();
+      if (existingUser) {
+        return res.status(409).json({
+          success: false,
+          error: 'An account with this email or phone number already exists.',
+        });
+      }
+
+      const password_hash = await hashPassword(password);
+
+      // Create the owner account (role 2 = Hostel Owner)
+      const [user_id] = await db('users').insert({
+        username: resolvedUsername,
+        email: resolvedEmail,
+        phone: phone || null,
+        full_name,
+        password_hash,
+        role_id: 2,
+        is_active: true,
+      });
+
+      // Optionally create their first hostel and set it as active
+      let hostel_id: number | null = null;
+      const trimmedHostel = (hostel_name || '').trim();
+      if (trimmedHostel.length >= 3) {
+        [hostel_id] = await db('hostel_master').insert({
+          hostel_name: trimmedHostel,
+          owner_id: user_id,
+          is_active: 1,
+          created_at: new Date(),
+        });
+        await db('users').where('user_id', user_id).update({ hostel_id });
+      }
+
+      // Issue a token so the app can log the user in immediately
+      const token = generateToken({
+        user_id,
+        email: resolvedEmail,
+        role_id: 2,
+        hostel_id,
+      });
+
+      return res.status(201).json({
+        success: true,
+        data: {
+          token,
+          user: {
+            user_id,
+            email: resolvedEmail,
+            full_name,
+            phone: phone || null,
+            role: 'Hostel Owner',
+            role_id: 2,
+            hostel_id,
+            hostel_name: trimmedHostel || null,
+          },
+        },
+      });
+    } catch (error: any) {
+      console.error('Register error:', error);
+      return res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+  },
+
   // Get current user
   async me(req: AuthRequest, res: Response) {
     try {
