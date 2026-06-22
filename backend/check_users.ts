@@ -1,15 +1,15 @@
-import pool from './src/config/database';
+import db from './src/config/database.js';
 
-async function checkUsers() {
+async function checkData() {
   try {
-    const [rows] = await pool.query('SELECT user_id, email, full_name, role_id FROM users');
-    console.log('Users in DB:');
-    console.log(rows);
+    const users = await db('users').select('*');
+    console.log('--- DB Users ---');
+    console.log(users);
   } catch (e) {
-    console.log('Error:', e);
+    console.error('Error:', e);
   } finally {
-    pool.end();
+    await db.destroy();
   }
 }
 
-checkUsers();
+checkData();

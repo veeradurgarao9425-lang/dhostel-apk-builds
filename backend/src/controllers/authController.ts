@@ -120,18 +120,26 @@ export const authController = {
         });
       }
 
-      // Check if user already exists (only if email is provided)
-      if (email) {
-        const existingUser = await db('users')
-          .where('email', email)
-          .first();
+      // Generate fallback fields to satisfy NOT NULL constraints
+      const resolvedEmail = email || `${phone || Date.now()}@dhostel.com`;
+      const resolvedUsername = email || phone || `user_${Date.now()}`;
 
-        if (existingUser) {
-          return res.status(400).json({
-            success: false,
-            error: 'User with this email already exists',
-          });
-        }
+      // Check if user already exists (by email, phone, or username)
+      const existingUser = await db('users')
+        .where('email', resolvedEmail)
+        .orWhere('username', resolvedUsername)
+        .orWhere(function() {
+          if (phone) {
+            this.where('phone', phone);
+          }
+        })
+        .first();
+
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          error: 'User with this email or phone number already exists',
+        });
       }
 
       // Hash password
@@ -139,8 +147,9 @@ export const authController = {
 
       // Insert user
       const [user_id] = await db('users').insert({
-        email: email || null,
-        phone,
+        username: resolvedUsername,
+        email: resolvedEmail,
+        phone: phone || null,
         full_name,
         password_hash,
         role_id: 2, // Hostel Owner role

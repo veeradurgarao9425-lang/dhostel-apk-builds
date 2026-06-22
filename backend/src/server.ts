@@ -35,10 +35,14 @@ const getAllowedOrigins = (): string[] => {
   if (process.env.ALLOWED_ORIGINS) {
     return process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim());
   }
-  // Development defaults
-  return NODE_ENV === 'production'
-    ? []
-    : ['http://localhost:3000', 'http://localhost:5173'];
+  // Allow localhost for frontend development even in production, and any specific production domains
+  return [
+    'http://localhost:3000', 
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:5175',
+    'https://dhostel-frontend.onrender.com' // Example production domain
+  ];
 };
 
 // Middleware

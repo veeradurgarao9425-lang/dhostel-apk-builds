@@ -6,6 +6,7 @@ import { Card } from '../components/ui/Card';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import { formatDistanceToNow } from 'date-fns';
+import clsx from 'clsx';
 
 interface DashboardStats {
   totalRooms: number;
@@ -123,7 +124,7 @@ export const OwnerDashboard: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600"></div>
       </div>
     );
   }
@@ -137,84 +138,127 @@ export const OwnerDashboard: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-bold text-gray-900">Hostel Dashboard</h1>
+    <div className="space-y-6 w-full animate-fade-in pb-8">
+      {/* Banner / Greeting block */}
+      <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-tr from-slate-900 via-slate-900 to-indigo-950 p-8 md:p-10 text-white shadow-2xl border border-slate-800/80">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(6,182,212,0.15),transparent)] pointer-events-none" />
+        <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[100%] rounded-full bg-gradient-to-tr from-cyan-550/10 to-teal-500/10 blur-[80px] pointer-events-none" />
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+          <div className="space-y-3">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-white/10 text-slate-350 border border-white/10 backdrop-blur-md">
+              🏢 Hostel Owner Portal
+            </span>
+            <h1 className="text-3xl md:text-4xl font-black tracking-tight leading-none">
+              Your Hostel at a <span className="bg-gradient-to-r from-cyan-400 to-teal-400 bg-clip-text text-transparent">Glance</span>
+            </h1>
+            <p className="text-slate-400 text-sm max-w-xl leading-relaxed">
+              Track check-ins, record rent payments, log business expenses, and monitor monthly financial health.
+            </p>
+          </div>
+          
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={() => navigate('/owner/students', { state: { openAddModal: true } })}
+              className="flex items-center gap-2 px-5.5 py-3 bg-white text-slate-950 rounded-xl hover:bg-slate-50 transition-all font-bold text-xs uppercase tracking-wider shadow-md hover:scale-102 active:scale-98"
+            >
+              <Users className="h-4 w-4" /> Add Student
+            </button>
+            <button
+              onClick={() => navigate('/owner/monthly-fees')}
+              className="flex items-center gap-2 px-5.5 py-3 bg-slate-800/60 hover:bg-slate-800/80 text-white rounded-xl transition-all font-bold text-xs uppercase tracking-wider border border-slate-700/50 backdrop-blur-sm hover:scale-102 active:scale-98"
+            >
+              <DollarSign className="h-4 w-4" /> Collect Rent
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <StatCard
-          title="Total Rooms"
-          value={stats.totalRooms}
-          icon={Building2}
-          color="blue"
-        />
-        <StatCard
-          title="Total Students"
-          value={stats.totalStudents}
-          icon={Users}
-          color="green"
-        />
-        <StatCard
-          title="Fee Collection"
-          value={formatCurrency(stats.feeCollection)}
-          icon={CreditCard}
-          color="yellow"
-        />
-        <StatCard
-          title="Monthly Income"
-          value={formatCurrency(stats.monthlyIncome)}
-          icon={DollarSign}
-          color="indigo"
-        />
-        <StatCard
-          title="Monthly Expenses"
-          value={formatCurrency(stats.monthlyExpenses)}
-          icon={FileText}
-          color="red"
-        />
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5">
+        <div onClick={() => navigate('/owner/rooms')} className="cursor-pointer">
+          <StatCard
+            title="Total Rooms"
+            value={stats.totalRooms}
+            icon={Building2}
+            color="blue"
+            statusText={`${stats.occupiedBeds}/${stats.totalBeds} Beds Occupied`}
+          />
+        </div>
+        <div onClick={() => navigate('/owner/students')} className="cursor-pointer">
+          <StatCard
+            title="Total Students"
+            value={stats.totalStudents}
+            icon={Users}
+            color="green"
+            statusText={`${stats.occupancyRate}% Occupancy Rate`}
+          />
+        </div>
+        <div onClick={() => navigate('/owner/collections')} className="cursor-pointer">
+          <StatCard
+            title="Fee Collection"
+            value={formatCurrency(stats.feeCollection)}
+            icon={CreditCard}
+            color="yellow"
+            statusText={`${stats.feeCollectionCount} Collections`}
+          />
+        </div>
+        <div onClick={() => navigate('/owner/income')} className="cursor-pointer">
+          <StatCard
+            title="Monthly Income"
+            value={formatCurrency(stats.monthlyIncome)}
+            icon={DollarSign}
+            color="cyan"
+            statusText={`Net Profit: ${formatCurrency(stats.netProfit)}`}
+          />
+        </div>
+        <div onClick={() => navigate('/owner/expenses')} className="cursor-pointer">
+          <StatCard
+            title="Monthly Expenses"
+            value={formatCurrency(stats.monthlyExpenses)}
+            icon={FileText}
+            color="red"
+            statusText="Operational Costs"
+          />
+        </div>
       </div>
-
-     
 
       {/* Alerts and Quick Actions */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Card>
+        <Card className="flex flex-col h-full">
           <Card.Header>
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">Pending Payments</h3>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">Pending Payments</h3>
               {stats.pendingDuesCount > 0 && (
-                <span className="px-2 py-1 text-xs font-medium text-yellow-800 bg-yellow-100 rounded-full">
+                <span className="px-2.5 py-1 text-xs font-semibold text-rose-800 bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400 rounded-full border border-rose-200 dark:border-rose-900/30">
                   {stats.pendingDuesCount} pending
                 </span>
               )}
             </div>
           </Card.Header>
-          <Card.Body>
+          <Card.Body className="flex-1 flex flex-col justify-center">
             {stats.pendingDuesCount > 0 ? (
               <div className="space-y-3">
-                <div className="flex items-center p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <AlertCircle className="h-5 w-5 text-yellow-600 mr-3" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">
+                <div className="flex items-center p-4 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-900/30 rounded-2xl">
+                  <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 mr-3 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
                       {stats.pendingDuesCount} student{stats.pendingDuesCount > 1 ? 's' : ''} have pending fees
                     </p>
-                    <p className="text-xs text-gray-600">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                       Total pending: {formatCurrency(stats.pendingDuesAmount)}
                     </p>
                   </div>
                   <button
-                    onClick={() => navigate('/fees')}
-                    className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                    onClick={() => navigate('/owner/monthly-fees')}
+                    className="text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm px-3.5 py-2 rounded-xl transition-all"
                   >
-                    View
+                    View Details
                   </button>
                 </div>
               </div>
             ) : (
               <div className="text-center py-6">
-                <p className="text-gray-500">All payments are up to date!</p>
+                <p className="text-slate-500 dark:text-slate-400">All payments are up to date! 🎉</p>
               </div>
             )}
           </Card.Body>
@@ -222,39 +266,38 @@ export const OwnerDashboard: React.FC = () => {
 
         <Card>
           <Card.Header>
-            <h3 className="text-lg font-semibold text-gray-900">Quick Actions</h3>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">Quick Actions</h3>
           </Card.Header>
           <Card.Body>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-4">
               <button
-                onClick={() => navigate('/rooms')}
-                className="p-4 text-center bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                onClick={() => navigate('/owner/rooms')}
+                className="p-4 text-center bg-blue-50/50 dark:bg-blue-950/20 hover:bg-blue-100/50 dark:hover:bg-blue-950/40 border border-blue-100/30 dark:border-blue-900/10 rounded-2xl transition-all group hover:scale-102"
               >
-                <Building2 className="h-6 w-6 text-blue-600 mx-auto mb-2" />
-                <span className="text-sm font-medium text-gray-900">Manage Rooms</span>
+                <Building2 className="h-6 w-6 text-blue-600 dark:text-blue-400 mx-auto mb-2 transition-transform group-hover:scale-110" />
+                <span className="text-xs font-bold text-slate-900 dark:text-white">Manage Rooms</span>
               </button>
               <button
-                onClick={() => navigate('/students')}
-                className="p-4 text-center bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors"
+                onClick={() => navigate('/owner/students')}
+                className="p-4 text-center bg-cyan-50/50 dark:bg-cyan-950/20 hover:bg-cyan-100/50 dark:hover:bg-cyan-950/40 border border-cyan-100/30 dark:border-cyan-900/10 rounded-2xl transition-all group hover:scale-102"
               >
-                <Users className="h-6 w-6 text-primary-600 mx-auto mb-2" />
-                <span className="text-sm font-medium text-gray-900">Add Student</span>
+                <Users className="h-6 w-6 text-cyan-600 dark:text-cyan-400 mx-auto mb-2 transition-transform group-hover:scale-110" />
+                <span className="text-xs font-bold text-slate-900 dark:text-white">Add Student</span>
               </button>
               <button
-                onClick={() => navigate('/fees')}
-                className="p-4 text-center bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+                onClick={() => navigate('/owner/monthly-fees')}
+                className="p-4 text-center bg-emerald-50/50 dark:bg-emerald-950/20 hover:bg-emerald-100/50 dark:hover:bg-emerald-950/40 border border-emerald-100/30 dark:border-emerald-900/10 rounded-2xl transition-all group hover:scale-102"
               >
-                <DollarSign className="h-6 w-6 text-green-600 mx-auto mb-2" />
-                <span className="text-sm font-medium text-gray-900">Record Payment</span>
+                <DollarSign className="h-6 w-6 text-emerald-600 dark:text-emerald-400 mx-auto mb-2 transition-transform group-hover:scale-110" />
+                <span className="text-xs font-bold text-slate-900 dark:text-white">Record Payment</span>
               </button>
               <button
-                onClick={() => navigate('/expenses')}
-                className="p-4 text-center bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                onClick={() => navigate('/owner/expenses')}
+                className="p-4 text-center bg-rose-50/50 dark:bg-rose-950/20 hover:bg-rose-100/50 dark:hover:bg-rose-950/40 border border-rose-100/30 dark:border-rose-900/10 rounded-2xl transition-all group hover:scale-102"
               >
-                <FileText className="h-6 w-6 text-red-600 mx-auto mb-2" />
-                <span className="text-sm font-medium text-gray-900">Add Expense</span>
+                <FileText className="h-6 w-6 text-rose-600 dark:text-rose-400 mx-auto mb-2 transition-transform group-hover:scale-110" />
+                <span className="text-xs font-bold text-slate-900 dark:text-white">Add Expense</span>
               </button>
-              
             </div>
           </Card.Body>
         </Card>
@@ -263,26 +306,34 @@ export const OwnerDashboard: React.FC = () => {
       {/* Recent Activity */}
       <Card>
         <Card.Header>
-          <h3 className="text-lg font-semibold text-gray-900">Recent Activity</h3>
+          <h3 className="text-base font-bold text-slate-900 dark:text-white">Recent Activity</h3>
         </Card.Header>
         <Card.Body>
           {activities.length === 0 ? (
             <div className="text-center py-6">
-              <p className="text-gray-500">No recent activity</p>
+              <p className="text-slate-500 dark:text-slate-400">No recent activity</p>
             </div>
           ) : (
             <div className="space-y-4">
               {activities.map((activity, index) => {
                 const { icon: Icon, bg, color } = getActivityIcon(activity.type);
+                // Adjusting standard background classes to premium
+                const premiumBg = bg.replace('bg-', 'bg-').replace('-100', '-50/50 dark:bg-').replace('-50/50 dark:bg-', '-950/40');
+                const premiumColor = color.replace('text-', 'text-');
+                
                 return (
                   <div key={`${activity.type}-${activity.id}-${index}`} className="flex items-start">
-                    <div className={`flex-shrink-0 h-10 w-10 rounded-full ${bg} flex items-center justify-center`}>
-                      <Icon className={`h-5 w-5 ${color}`} />
+                    <div className={clsx(
+                      "flex-shrink-0 h-10 w-10 rounded-xl flex items-center justify-center border border-slate-100 dark:border-slate-800 shadow-sm",
+                      premiumBg,
+                      premiumColor
+                    )}>
+                      <Icon className="h-5 w-5" />
                     </div>
                     <div className="ml-4 flex-1">
-                      <p className="text-sm font-medium text-gray-900">{getActivityTitle(activity)}</p>
-                      <p className="text-sm text-gray-600">{getActivityDescription(activity)}</p>
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-sm font-semibold text-slate-900 dark:text-white">{getActivityTitle(activity)}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{getActivityDescription(activity)}</p>
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
                         {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
                       </p>
                     </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Plus, Edit, Search, ChevronDown, ChevronUp, Eye, Users, X } from "lucide-react";
+import { Plus, Edit, Search, Users, X } from "lucide-react";
 import api from "../services/api";
 import toast from "react-hot-toast";
 
@@ -94,7 +94,6 @@ export const StudentsPage: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
-  const [expandedCardId, setExpandedCardId] = useState<number | null>(null);
   const [showStatsCard, setShowStatsCard] = useState(false);
   const [hostelStats, setHostelStats] = useState<{
     totalStudents: number;
@@ -102,9 +101,7 @@ export const StudentsPage: React.FC = () => {
     remaining: number;
   } | null>(null);
 
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const studentsPerPage = 10;
+
 
   // Format date to DD-MM-YYYY for display
   const formatDateDisplay = (dateStr: string) => {
@@ -167,8 +164,6 @@ export const StudentsPage: React.FC = () => {
   // Reapply filters when students data or filters change
   useEffect(() => {
     applyFilters(searchTerm, statusFilter);
-    // Reset to page 1 when filters change
-    setCurrentPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [students, statusFilter, searchTerm]);
 
@@ -257,43 +252,6 @@ export const StudentsPage: React.FC = () => {
     applyFilters(searchTerm, filterValue);
   };
 
-  // Pagination logic
-  const totalPages = Math.ceil(filteredStudents.length / studentsPerPage);
-  const indexOfLastStudent = currentPage * studentsPerPage;
-  const indexOfFirstStudent = indexOfLastStudent - studentsPerPage;
-  const currentStudents = filteredStudents.slice(indexOfFirstStudent, indexOfLastStudent);
-
-  // Smart pagination display - show 3 pages at a time
-  const getPaginationPages = () => {
-    const pages: (number | string)[] = [];
-    const maxVisible = 3;
-
-    if (totalPages <= maxVisible) {
-      // Show all pages if total is 3 or less
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i);
-      }
-    } else {
-      // Show 3 pages centered around current page
-      let start = Math.max(1, currentPage - 1);
-      let end = Math.min(totalPages, start + maxVisible - 1);
-
-      // Adjust start if we're near the end
-      if (end - start < maxVisible - 1) {
-        start = Math.max(1, end - maxVisible + 1);
-      }
-
-      for (let i = start; i <= end; i++) {
-        pages.push(i);
-      }
-    }
-
-    return pages;
-  };
-
-  const handlePageChange = (pageNumber: number) => {
-    setCurrentPage(pageNumber);
-  };
 
   const fetchRooms = async (includeFullRooms: boolean = false) => {
     try {
@@ -885,7 +843,7 @@ export const StudentsPage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600"></div>
       </div>
     );
   }
@@ -915,7 +873,7 @@ export const StudentsPage: React.FC = () => {
               placeholder="Search students..."
               value={searchTerm}
               onChange={(e) => handleSearch(e.target.value)}
-              className="block w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white shadow-sm"
+              className="block w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-white shadow-sm"
             />
           </div>
 
@@ -923,7 +881,7 @@ export const StudentsPage: React.FC = () => {
           <select
             value={statusFilter}
             onChange={(e) => handleStatusFilter(e.target.value as "Active" | "Inactive" | "All")}
-            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white shadow-sm whitespace-nowrap"
+            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-white shadow-sm whitespace-nowrap"
           >
             <option value="Active">Active</option>
             <option value="Inactive">Inactive</option>
@@ -951,7 +909,7 @@ export const StudentsPage: React.FC = () => {
               placeholder="Search students..."
               value={searchTerm}
               onChange={(e) => handleSearch(e.target.value)}
-              className="pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white shadow-sm w-48"
+              className="pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-white shadow-sm w-48"
             />
           </div>
 
@@ -959,7 +917,7 @@ export const StudentsPage: React.FC = () => {
           <select
             value={statusFilter}
             onChange={(e) => handleStatusFilter(e.target.value as "Active" | "Inactive" | "All")}
-            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white shadow-sm"
+            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-white shadow-sm"
           >
             <option value="Active">Active</option>
             <option value="Inactive">Inactive</option>
@@ -972,7 +930,7 @@ export const StudentsPage: React.FC = () => {
               fetchHostelAdmissionFee();
               setShowModal(true);
             }}
-            className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm whitespace-nowrap"
+            className="flex items-center px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors text-sm whitespace-nowrap"
           >
             <Plus className="h-5 w-5 mr-2" />
             Add Student
@@ -980,311 +938,111 @@ export const StudentsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Mobile Card View */}
-      <div className="block md:hidden space-y-3">
+      {/* Premium Responsive Card Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredStudents.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-500">
+          <div className="col-span-full text-center py-20 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800">
+            <Users className="h-12 w-12 text-slate-350 dark:text-slate-700 mx-auto mb-4" />
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               {searchTerm
                 ? "No students found matching your search."
                 : "No students found. Add your first student to get started."}
             </p>
           </div>
         ) : (
-          currentStudents.map((student) => {
-            const isExpanded = expandedCardId === student.student_id;
-            return (
-              <div
-                key={student.student_id}
-                className={`bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-all ${isExpanded ? 'shadow-lg' : ''}`}
-              >
-                <div className="p-4">
-                  {/* Collapsed View */}
-                  <div
-                    className="flex items-center justify-between cursor-pointer"
-                    onClick={() => setExpandedCardId(isExpanded ? null : student.student_id)}
-                  >
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className="flex-shrink-0">
-                        {isExpanded ? (
-                          <ChevronUp className="h-5 w-5 text-gray-400" />
-                        ) : (
-                          <ChevronDown className="h-5 w-5 text-gray-400" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-base font-semibold text-gray-900 truncate">
-                          {student.first_name} {student.last_name}
-                        </p>
-                        <p className="text-xs text-gray-500">{student.phone}</p>
-                      </div>
+          filteredStudents.map((student: Student) => (
+            <div
+              key={student.student_id}
+              className="premium-card bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 flex flex-col justify-between relative overflow-hidden group hover:scale-[1.01]"
+            >
+              <div>
+                {/* Header: Initial Circle, Student Name, Status badges */}
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-xl bg-cyan-50 dark:bg-cyan-950/40 flex items-center justify-center text-cyan-600 dark:text-cyan-400 font-bold transform transition-transform group-hover:scale-105">
+                      {student.first_name.charAt(0).toUpperCase()}
                     </div>
-                    <div className="flex-shrink-0 ml-2 text-right">
-                      {student.admission_status === 1 ? (
-                        <span className="px-2.5 py-1 text-xs font-medium text-green-800 bg-green-100 rounded-full">
-                          Paid
-                        </span>
-                      ) : (
-                        <span className="px-2.5 py-1 text-xs font-medium text-yellow-800 bg-yellow-100 rounded-full">
-                          Unpaid
-                        </span>
-                      )}
+                    <div>
+                      <h3 className="font-bold text-base text-slate-900 dark:text-white leading-tight">
+                        {student.first_name} {student.last_name || ""}
+                      </h3>
+                      <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                        ID: {student.student_id}
+                      </p>
                     </div>
                   </div>
+                  
+                  <div className="flex flex-col items-end gap-1">
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                      student.status === 1
+                        ? "bg-emerald-50 text-emerald-700 border border-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20"
+                        : "bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
+                    }`}>
+                      {student.status === 1 ? "Active" : "Inactive"}
+                    </span>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                      student.admission_status === 1
+                        ? "bg-cyan-50 text-cyan-700 border border-cyan-100 dark:bg-cyan-500/10 dark:text-cyan-400 dark:border-cyan-500/20"
+                        : "bg-amber-50 text-amber-700 border border-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20"
+                    }`}>
+                      {student.admission_status === 1 ? "Paid" : "Unpaid"}
+                    </span>
+                  </div>
+                </div>
 
-                  {/* Expanded View */}
-                  {isExpanded && (
-                    <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Room</p>
-                          <p className="text-sm font-medium text-gray-900">
-                            {student.room_number || "Not Allocated"}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Floor</p>
-                          <p className="text-sm font-medium text-gray-900">
-                            {student.floor_number || "-"}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Rent/Month</p>
-                          <p className="text-sm font-medium text-gray-900">
-                            {student.monthly_rent
-                              ? `₹${Math.floor(student.monthly_rent)}`
-                              : "-"}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Admission Fee</p>
-                          <p className="text-sm font-medium text-gray-900">
-                            {student.admission_fee
-                              ? `₹${Math.floor(student.admission_fee)}`
-                              : "-"}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Admitted Date</p>
-                          <p className="text-sm font-medium text-gray-900">
-                            {formatDateDisplay(student.admission_date)}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex items-center justify-end gap-3 pt-2 border-t border-gray-100">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setExpandedCardId(null);
-                            setViewingStudent(student);
-                          }}
-                          className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
-                          title="View Details"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setExpandedCardId(null);
-                            handleEdit(student);
-                          }}
-                          className="p-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors"
-                          title="Edit"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                      </div>
+                {/* Middle info list */}
+                <div className="space-y-2 mb-4 text-xs text-slate-600 dark:text-slate-350">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-slate-400 dark:text-slate-500 w-12">Room:</span>
+                    <span className="font-bold text-slate-900 dark:text-white">
+                      {student.room_number ? `Room ${student.room_number} (Floor ${student.floor_number})` : "Not Allocated"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-slate-400 dark:text-slate-500 w-12">Phone:</span>
+                    <span>{student.phone}</span>
+                  </div>
+                  {student.email && (
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-slate-400 dark:text-slate-500 w-12">Email:</span>
+                      <span className="truncate">{student.email}</span>
                     </div>
                   )}
                 </div>
-              </div>
-            );
-          })
-        )}
-      </div>
 
-      {/* Desktop Table View */}
-      <div className="hidden md:block bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-primary-600">
-              <tr>
-                <th className="px-3 py-2 text-left text-[10px] font-medium text-white uppercase tracking-wider">
-                  S.NO
-                </th>
-                <th className="px-3 py-2 text-left text-[10px] font-medium text-white uppercase tracking-wider">
-                  Student Name
-                </th>
-                <th className="px-3 py-2 text-left text-[10px] font-medium text-white uppercase tracking-wider">
-                  Phone
-                </th>
-                <th className="px-3 py-2 text-left text-[10px] font-medium text-white uppercase tracking-wider">
-                  Room
-                </th>
-                <th className="px-3 py-2 text-left text-[10px] font-medium text-white uppercase tracking-wider">
-                  Floor
-                </th>
-                <th className="px-3 py-2 text-left text-[10px] font-medium text-white uppercase tracking-wider">
-                  Rent/Month
-                </th>
-                <th className="px-3 py-2 text-left text-[10px] font-medium text-white uppercase tracking-wider">
-                  Admission Fee
-                </th>
-                <th className="px-3 py-2 text-left text-[10px] font-medium text-white uppercase tracking-wider">
-                  Admission Status
-                </th>
-                <th className="px-3 py-2 text-left text-[10px] font-medium text-white uppercase tracking-wider">
-                  Admitted Date
-                </th>
-                <th className="px-3 py-2 text-left text-[10px] font-medium text-white uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {currentStudents.map((student, index) => (
-                <tr
-                  key={student.student_id}
-                  className="hover:bg-gray-50 cursor-pointer"
+                {/* Monthly Rent price badge */}
+                <div className="inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 border border-amber-100/30 mb-6">
+                  ₹{Math.floor(student.monthly_rent || 0)}/month
+                </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800/60 mt-auto">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleEdit(student)}
+                    className="p-2 bg-slate-50 dark:bg-slate-800 text-slate-500 hover:text-cyan-600 dark:hover:text-cyan-400 rounded-xl border border-slate-200 dark:border-slate-700 transition-colors"
+                    title="Edit Student"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <button
                   onClick={() => setViewingStudent(student)}
+                  className="flex items-center gap-1 text-sm font-bold text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 hover:underline"
                 >
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
-                    {indexOfFirstStudent + index + 1}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
-                    {student.first_name} {student.last_name}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
-                    {student.phone}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
-                    {student.room_number || "-"}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
-                    {student.floor_number || "-"}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
-                    {student.monthly_rent
-                      ? `₹${Math.floor(student.monthly_rent)}`
-                      : "-"}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
-                    {student.admission_fee
-                      ? `₹${Math.floor(student.admission_fee)}`
-                      : "-"}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs">
-                    {student.admission_status === 1 ? (
-                      <span className="px-2 py-0.5 text-[10px] font-medium text-green-800 bg-green-100 rounded-full">
-                        Paid
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 text-[10px] font-medium text-yellow-800 bg-yellow-100 rounded-full">
-                        Unpaid
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">
-                    {formatDateDisplay(student.admission_date)}
-                  </td>
-                  <td
-                    className="px-3 py-2 whitespace-nowrap text-xs text-gray-500"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => handleEdit(student)}
-                        className="text-blue-600 hover:text-blue-900"
-                        title="Edit Student"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {filteredStudents.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-500">
-              {searchTerm
-                ? "No students found matching your search."
-                : "No students found. Add your first student to get started."}
-            </p>
-          </div>
-        )}
-
-        {/* Pagination - Web View Only */}
-        {filteredStudents.length > 0 && (
-          <div className="px-6 py-4 border-t border-gray-200">
-            <div className="flex items-center justify-between">
-              {/* Left: Total Students Info */}
-              <div className="text-sm text-gray-600">
-                Showing <span className="font-semibold text-gray-900">{indexOfFirstStudent + 1}</span> to <span className="font-semibold text-gray-900">{Math.min(indexOfLastStudent, filteredStudents.length)}</span> of <span className="font-semibold text-gray-900">{filteredStudents.length}</span> students
-              </div>
-
-              {/* Center: Pagination Controls */}
-              <div className="flex items-center space-x-1">
-                {/* Previous Button */}
-                {currentPage > 1 && (
-                  <button
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    className="px-3 py-2 rounded-md text-sm font-medium transition-colors bg-white text-blue-600 hover:bg-blue-50 border border-gray-300 hover:border-blue-600"
-                  >
-                    Previous
-                  </button>
-                )}
-
-                {/* Page Numbers */}
-                {getPaginationPages().map((pageNumber, index) => (
-                  <button
-                    key={index}
-                    onClick={() => typeof pageNumber === 'number' && handlePageChange(pageNumber)}
-                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                      currentPage === pageNumber
-                        ? "bg-primary-600 text-white border border-primary-600"
-                        : "bg-white text-gray-700 border border-gray-300 hover:border-primary-600 hover:text-primary-600"
-                    }`}
-                  >
-                    {pageNumber}
-                  </button>
-                ))}
-
-                {/* Next Button */}
-                {currentPage < totalPages && (
-                  <button
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    className="px-3 py-2 rounded-md text-sm font-medium transition-colors bg-white text-blue-600 hover:bg-blue-50 border border-gray-300 hover:border-blue-600"
-                  >
-                    Next
-                  </button>
-                )}
+                  View Details &gt;
+                </button>
               </div>
             </div>
-          </div>
+          ))
         )}
       </div>
 
-      {/* Mobile Summary */}
-      <div className="block md:hidden px-4 py-3 bg-gray-50 rounded-lg">
-        <p className="text-sm text-gray-700">
-          Showing{" "}
-          <span className="font-medium">{filteredStudents.length}</span> of{" "}
-          <span className="font-medium">
-            {statusFilter === 1
-              ? students.filter(s => s.status === 1).length
-              : statusFilter === 0
-              ? students.filter(s => s.status === 0).length
-              : students.length}
-          </span>{" "}
-          student{filteredStudents.length !== 1 ? "s" : ""}
-        </p>
+      {/* Hide old view layouts */}
+      <div className="hidden">
+        <div className="hidden"></div>
       </div>
 
       {/* View Details Modal */}
@@ -1636,7 +1394,7 @@ export const StudentsPage: React.FC = () => {
                         value={formData.first_name}
                         onChange={handleInputChange}
                         required
-                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                           formErrors.first_name ? 'border-red-500' : 'border-gray-300'
                         }`}
                       />
@@ -1654,7 +1412,7 @@ export const StudentsPage: React.FC = () => {
                         name="last_name"
                         value={formData.last_name}
                         onChange={handleInputChange}
-                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                           formErrors.last_name ? 'border-red-500' : 'border-gray-300'
                         }`}
                       />
@@ -1672,7 +1430,7 @@ export const StudentsPage: React.FC = () => {
                         name="date_of_birth"
                         value={formData.date_of_birth}
                         onChange={handleInputChange}
-                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                       />
                     </div>
 
@@ -1685,7 +1443,7 @@ export const StudentsPage: React.FC = () => {
                         value={formData.gender}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                       >
                         <option value="Male">Male</option>
                         <option value="Female">Female</option>
@@ -1704,7 +1462,7 @@ export const StudentsPage: React.FC = () => {
                         onChange={(e) => handlePhoneInput(e, "phone")}
                         maxLength={10}
                         placeholder="10-digit phone number"
-                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                           formErrors.phone ? 'border-red-500' : 'border-gray-300'
                         }`}
                       />
@@ -1725,7 +1483,7 @@ export const StudentsPage: React.FC = () => {
                         name="email"
                         value={formData.email}
                         onChange={handleInputChange}
-                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                       />
                     </div>
 
@@ -1739,7 +1497,7 @@ export const StudentsPage: React.FC = () => {
                         value={formData.admission_date}
                         onChange={handleInputChange}
                         required
-                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                           formErrors.admission_date ? 'border-red-500' : 'border-gray-300'
                         }`}
                       />
@@ -1760,7 +1518,7 @@ export const StudentsPage: React.FC = () => {
                         required
                         min="0"
                         step="100"
-                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                           formErrors.admission_fee ? 'border-red-500' : 'border-gray-300'
                         }`}
                       />
@@ -1778,7 +1536,7 @@ export const StudentsPage: React.FC = () => {
                         value={formData.admission_status}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                       >
                         <option value="Unpaid">Unpaid</option>
                         <option value="Paid">Paid</option>
@@ -1794,7 +1552,7 @@ export const StudentsPage: React.FC = () => {
                         value={formData.status}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                       >
                         <option value="Active">Active</option>
                         <option value="Inactive">Inactive</option>
@@ -1819,7 +1577,7 @@ export const StudentsPage: React.FC = () => {
                         value={formData.guardian_name}
                         onChange={handleInputChange}
                         required
-                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                           formErrors.guardian_name ? 'border-red-500' : 'border-gray-300'
                         }`}
                       />
@@ -1839,7 +1597,7 @@ export const StudentsPage: React.FC = () => {
                         onChange={(e) => handlePhoneInput(e, "guardian_phone")}
                         maxLength={10}
                         placeholder="10-digit phone number"
-                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                           formErrors.guardian_phone ? 'border-red-500' : 'border-gray-300'
                         }`}
                       />
@@ -1859,7 +1617,7 @@ export const StudentsPage: React.FC = () => {
                         name="guardian_relation"
                         value={formData.guardian_relation}
                         onChange={handleInputChange}
-                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                           formErrors.guardian_relation ? 'border-red-500' : 'border-gray-300'
                         }`}
                       >
@@ -1889,7 +1647,7 @@ export const StudentsPage: React.FC = () => {
                         value={formData.permanent_address}
                         onChange={handleInputChange}
                         rows={2}
-                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                           formErrors.permanent_address ? 'border-red-500' : 'border-gray-300'
                         }`}
                       />
@@ -1907,7 +1665,7 @@ export const StudentsPage: React.FC = () => {
                         value={formData.present_working_address}
                         onChange={handleInputChange}
                         rows={2}
-                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                           formErrors.present_working_address ? 'border-red-500' : 'border-gray-300'
                         }`}
                       />
@@ -1924,7 +1682,7 @@ export const StudentsPage: React.FC = () => {
                         name="id_proof_type"
                         value={formData.id_proof_type}
                         onChange={handleInputChange}
-                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                           formErrors.id_proof_type ? 'border-red-500' : 'border-gray-300'
                         }`}
                       >
@@ -1947,7 +1705,7 @@ export const StudentsPage: React.FC = () => {
                         value={formData.id_proof_number}
                         onChange={handleIdProofInput}
                         placeholder={getIdProofTypeRules()?.min_length && getIdProofTypeRules()?.max_length ? `${getIdProofTypeRules()?.min_length}-${getIdProofTypeRules()?.max_length} characters` : "Enter ID proof number"}
-                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                           formErrors.id_proof_number ? 'border-red-500' : 'border-gray-300'
                         }`}
                       />
@@ -1969,7 +1727,7 @@ export const StudentsPage: React.FC = () => {
                         name="id_proof_status"
                         value={formData.id_proof_status}
                         onChange={handleInputChange}
-                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                           formErrors.id_proof_status ? 'border-red-500' : 'border-gray-300'
                         }`}
                       >
@@ -1994,7 +1752,7 @@ export const StudentsPage: React.FC = () => {
                         name="room_id"
                         value={formData.room_id}
                         onChange={handleInputChange}
-                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                           formErrors.room_id ? 'border-red-500' : 'border-gray-300'
                         }`}
                       >
@@ -2038,7 +1796,7 @@ export const StudentsPage: React.FC = () => {
                         min="0"
                         step="100"
                         placeholder="Enter monthly rent"
-                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                       />
                     </div>
                   </div>
@@ -2055,7 +1813,7 @@ export const StudentsPage: React.FC = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                    className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
                   >
                     {editingStudent ? "Update Student" : "Register Student"}
                   </button>
@@ -2098,7 +1856,7 @@ export const StudentsPage: React.FC = () => {
                         value={formData.first_name}
                         onChange={handleInputChange}
                         required
-                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                           formErrors.first_name ? 'border-red-500' : 'border-gray-300'
                         }`}
                       />
@@ -2116,7 +1874,7 @@ export const StudentsPage: React.FC = () => {
                         name="last_name"
                         value={formData.last_name}
                         onChange={handleInputChange}
-                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                           formErrors.last_name ? 'border-red-500' : 'border-gray-300'
                         }`}
                       />
@@ -2134,7 +1892,7 @@ export const StudentsPage: React.FC = () => {
                         name="date_of_birth"
                         value={formData.date_of_birth}
                         onChange={handleInputChange}
-                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                       />
                     </div>
 
@@ -2147,7 +1905,7 @@ export const StudentsPage: React.FC = () => {
                         value={formData.gender}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                       >
                         <option value="Male">Male</option>
                         <option value="Female">Female</option>
@@ -2166,7 +1924,7 @@ export const StudentsPage: React.FC = () => {
                         onChange={(e) => handlePhoneInput(e, "phone")}
                         maxLength={10}
                         placeholder="10-digit phone number"
-                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                           formErrors.phone ? 'border-red-500' : 'border-gray-300'
                         }`}
                       />
@@ -2187,7 +1945,7 @@ export const StudentsPage: React.FC = () => {
                         name="email"
                         value={formData.email}
                         onChange={handleInputChange}
-                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                       />
                     </div>
 
@@ -2201,7 +1959,7 @@ export const StudentsPage: React.FC = () => {
                         value={formData.admission_date}
                         onChange={handleInputChange}
                         required
-                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                           formErrors.admission_date ? 'border-red-500' : 'border-gray-300'
                         }`}
                       />
@@ -2222,7 +1980,7 @@ export const StudentsPage: React.FC = () => {
                         required
                         min="0"
                         step="100"
-                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                           formErrors.admission_fee ? 'border-red-500' : 'border-gray-300'
                         }`}
                       />
@@ -2240,7 +1998,7 @@ export const StudentsPage: React.FC = () => {
                         value={formData.admission_status}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                       >
                         <option value="Unpaid">Unpaid</option>
                         <option value="Paid">Paid</option>
@@ -2256,7 +2014,7 @@ export const StudentsPage: React.FC = () => {
                         value={formData.status}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                       >
                         <option value="Active">Active</option>
                         <option value="Inactive">Inactive</option>
@@ -2281,7 +2039,7 @@ export const StudentsPage: React.FC = () => {
                         value={formData.guardian_name}
                         onChange={handleInputChange}
                         required
-                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                           formErrors.guardian_name ? 'border-red-500' : 'border-gray-300'
                         }`}
                       />
@@ -2301,7 +2059,7 @@ export const StudentsPage: React.FC = () => {
                         onChange={(e) => handlePhoneInput(e, "guardian_phone")}
                         maxLength={10}
                         placeholder="10-digit phone number"
-                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                           formErrors.guardian_phone ? 'border-red-500' : 'border-gray-300'
                         }`}
                       />
@@ -2321,7 +2079,7 @@ export const StudentsPage: React.FC = () => {
                         name="guardian_relation"
                         value={formData.guardian_relation}
                         onChange={handleInputChange}
-                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                           formErrors.guardian_relation ? 'border-red-500' : 'border-gray-300'
                         }`}
                       >
@@ -2351,7 +2109,7 @@ export const StudentsPage: React.FC = () => {
                         value={formData.permanent_address}
                         onChange={handleInputChange}
                         rows={2}
-                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                           formErrors.permanent_address ? 'border-red-500' : 'border-gray-300'
                         }`}
                       />
@@ -2369,7 +2127,7 @@ export const StudentsPage: React.FC = () => {
                         value={formData.present_working_address}
                         onChange={handleInputChange}
                         rows={2}
-                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                           formErrors.present_working_address ? 'border-red-500' : 'border-gray-300'
                         }`}
                       />
@@ -2386,7 +2144,7 @@ export const StudentsPage: React.FC = () => {
                         name="id_proof_type"
                         value={formData.id_proof_type}
                         onChange={handleInputChange}
-                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                           formErrors.id_proof_type ? 'border-red-500' : 'border-gray-300'
                         }`}
                       >
@@ -2409,7 +2167,7 @@ export const StudentsPage: React.FC = () => {
                         value={formData.id_proof_number}
                         onChange={handleIdProofInput}
                         placeholder={getIdProofTypeRules()?.min_length && getIdProofTypeRules()?.max_length ? `${getIdProofTypeRules()?.min_length}-${getIdProofTypeRules()?.max_length} characters` : "Enter ID proof number"}
-                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                           formErrors.id_proof_number ? 'border-red-500' : 'border-gray-300'
                         }`}
                       />
@@ -2431,7 +2189,7 @@ export const StudentsPage: React.FC = () => {
                         name="id_proof_status"
                         value={formData.id_proof_status}
                         onChange={handleInputChange}
-                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                           formErrors.id_proof_status ? 'border-red-500' : 'border-gray-300'
                         }`}
                       >
@@ -2456,7 +2214,7 @@ export const StudentsPage: React.FC = () => {
                         name="room_id"
                         value={formData.room_id}
                         onChange={handleInputChange}
-                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                        className={`w-full px-2 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                           formErrors.room_id ? 'border-red-500' : 'border-gray-300'
                         }`}
                       >
@@ -2500,7 +2258,7 @@ export const StudentsPage: React.FC = () => {
                         min="0"
                         step="100"
                         placeholder="Enter monthly rent"
-                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                       />
                     </div>
                   </div>
@@ -2517,7 +2275,7 @@ export const StudentsPage: React.FC = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                    className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
                   >
                     {editingStudent ? "Update Student" : "Register Student"}
                   </button>
@@ -2546,7 +2304,7 @@ export const StudentsPage: React.FC = () => {
               fetchHostelAdmissionFee();
               setShowModal(true);
             }}
-            className="fixed bottom-6 right-6 z-40 h-14 w-14 bg-primary-600 text-white rounded-full shadow-lg hover:bg-primary-700 transition-all hover:scale-110 active:scale-95 flex items-center justify-center md:hidden"
+            className="fixed bottom-6 right-6 z-40 h-14 w-14 bg-cyan-600 text-white rounded-full shadow-lg hover:bg-cyan-700 transition-all hover:scale-110 active:scale-95 flex items-center justify-center md:hidden"
             title="Add Student"
           >
             <Plus className="h-6 w-6" />

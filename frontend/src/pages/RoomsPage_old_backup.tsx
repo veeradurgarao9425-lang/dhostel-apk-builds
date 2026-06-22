@@ -301,7 +301,7 @@ export const RoomsPage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600"></div>
       </div>
     );
   }
@@ -316,7 +316,7 @@ export const RoomsPage: React.FC = () => {
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+          className="flex items-center px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
         >
           <Plus className="h-5 w-5 mr-2" />
           Add Room
@@ -333,7 +333,7 @@ export const RoomsPage: React.FC = () => {
             placeholder="Search by room number, type, hostel, floor..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
           />
         </div>
 
@@ -343,7 +343,7 @@ export const RoomsPage: React.FC = () => {
           <select
             value={selectedHostelId}
             onChange={(e) => setSelectedHostelId(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
           >
             <option value="all">All Hostels</option>
             {hostels.map((hostel) => (
@@ -359,7 +359,7 @@ export const RoomsPage: React.FC = () => {
             onChange={(e) =>
               setStatusFilter(e.target.value as "all" | "available" | "full")
             }
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
           >
             <option value="all">All Status</option>
             <option value="available">Available</option>
@@ -372,7 +372,7 @@ export const RoomsPage: React.FC = () => {
       <div className="bg-white rounded-lg shadow">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-primary-600">
+            <thead className="bg-cyan-600">
               <tr>
                 <th className="px-3 py-2 text-left text-xs font-medium text-white uppercase tracking-wider">
                   S.NO
@@ -573,7 +573,7 @@ export const RoomsPage: React.FC = () => {
                       value={formData.hostel_id}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                     >
                       <option value="">Select Hostel</option>
                       {hostels.map((hostel) => (
@@ -597,7 +597,7 @@ export const RoomsPage: React.FC = () => {
                       value={formData.room_number}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                       placeholder="101"
                     />
                   </div>
@@ -611,7 +611,7 @@ export const RoomsPage: React.FC = () => {
                       value={formData.room_type_id}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                     >
                       <option value="">Select type</option>
                       {roomTypes.map((type) => (
@@ -634,7 +634,7 @@ export const RoomsPage: React.FC = () => {
                       name="floor_number"
                       value={formData.floor_number}
                       onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                       placeholder="1"
                     />
                   </div>
@@ -650,7 +650,7 @@ export const RoomsPage: React.FC = () => {
                       onChange={handleInputChange}
                       required
                       min="1"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                       placeholder="2"
                     />
                   </div>
@@ -667,7 +667,7 @@ export const RoomsPage: React.FC = () => {
                       required
                       min="0"
                       max={formData.capacity || undefined}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                       placeholder="0"
                     />
                   </div>
@@ -701,7 +701,7 @@ export const RoomsPage: React.FC = () => {
                       required
                       min="0"
                       step="100"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                       placeholder="5000"
                     />
                   </div>
@@ -722,7 +722,7 @@ export const RoomsPage: React.FC = () => {
                           type="checkbox"
                           checked={formData.amenities.includes(amenity)}
                           onChange={() => toggleAmenity(amenity)}
-                          className="mr-2 h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                          className="mr-2 h-4 w-4 text-cyan-600 focus:ring-cyan-500 border-gray-300 rounded"
                         />
                         <span className="text-sm text-gray-700">{amenity}</span>
                       </label>
@@ -741,7 +741,7 @@ export const RoomsPage: React.FC = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                    className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
                   >
                     {editingRoom ? "Update Room" : "Create Room"}
                   </button>
@@ -786,7 +786,7 @@ export const RoomsPage: React.FC = () => {
                     </h3>
                     <div className="grid grid-cols-2 gap-6">
                       <div className="flex items-start space-x-3">
-                        <Home className="h-5 w-5 text-primary-600 mt-0.5" />
+                        <Home className="h-5 w-5 text-cyan-600 mt-0.5" />
                         <div>
                           <p className="text-sm font-medium text-gray-500">
                             Room Number
@@ -798,7 +798,7 @@ export const RoomsPage: React.FC = () => {
                       </div>
 
                       <div className="flex items-start space-x-3">
-                        <BedDouble className="h-5 w-5 text-primary-600 mt-0.5" />
+                        <BedDouble className="h-5 w-5 text-cyan-600 mt-0.5" />
                         <div>
                           <p className="text-sm font-medium text-gray-500">
                             Room Type
@@ -810,7 +810,7 @@ export const RoomsPage: React.FC = () => {
                       </div>
 
                       <div className="flex items-start space-x-3">
-                        <Layers className="h-5 w-5 text-primary-600 mt-0.5" />
+                        <Layers className="h-5 w-5 text-cyan-600 mt-0.5" />
                         <div>
                           <p className="text-sm font-medium text-gray-500">
                             Floor Number
@@ -822,7 +822,7 @@ export const RoomsPage: React.FC = () => {
                       </div>
 
                       <div className="flex items-start space-x-3">
-                        <Building2 className="h-5 w-5 text-primary-600 mt-0.5" />
+                        <Building2 className="h-5 w-5 text-cyan-600 mt-0.5" />
                         <div>
                           <p className="text-sm font-medium text-gray-500">
                             Hostel
@@ -920,13 +920,13 @@ export const RoomsPage: React.FC = () => {
                             className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium bg-white text-gray-700 border border-gray-300"
                           >
                             {amenity.toLowerCase().includes("wifi") && (
-                              <Wifi className="h-4 w-4 mr-1.5 text-primary-600" />
+                              <Wifi className="h-4 w-4 mr-1.5 text-cyan-600" />
                             )}
                             {amenity.toLowerCase().includes("ac") && (
-                              <Wind className="h-4 w-4 mr-1.5 text-primary-600" />
+                              <Wind className="h-4 w-4 mr-1.5 text-cyan-600" />
                             )}
                             {amenity.toLowerCase().includes("bathroom") && (
-                              <Bath className="h-4 w-4 mr-1.5 text-primary-600" />
+                              <Bath className="h-4 w-4 mr-1.5 text-cyan-600" />
                             )}
                             {amenity}
                           </span>
@@ -943,16 +943,16 @@ export const RoomsPage: React.FC = () => {
                 {/* Right Column - Pricing */}
                 <div className="space-y-6">
                   {/* Pricing Card */}
-                  <div className="bg-gradient-to-br from-primary-50 to-primary-100 rounded-lg p-6 border border-primary-200">
+                  <div className="bg-gradient-to-br from-cyan-50 to-cyan-100 rounded-lg p-6 border border-cyan-600-200">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">
                       Pricing
                     </h3>
                     <div className="text-center">
-                      <DollarSign className="h-8 w-8 text-primary-600 mx-auto mb-2" />
-                      <p className="text-3xl font-bold text-primary-900">
+                      <DollarSign className="h-8 w-8 text-cyan-600 mx-auto mb-2" />
+                      <p className="text-3xl font-bold text-cyan-600-900">
                         ₹{viewingRoom.rent_per_bed}
                       </p>
-                      <p className="text-sm text-primary-600 mt-1">
+                      <p className="text-sm text-cyan-600 mt-1">
                         Per Bed / Month
                       </p>
                     </div>

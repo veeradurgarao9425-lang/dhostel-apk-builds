@@ -330,7 +330,7 @@ export const ExpensesPage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64 p-4">
-        <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-primary-600"></div>
+        <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-cyan-600"></div>
       </div>
     );
   }
@@ -351,7 +351,7 @@ export const ExpensesPage: React.FC = () => {
               value={selectedMonth}
               max={maxMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="px-2 py-1.5 text-xs border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="px-2 py-1.5 text-xs border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
             />
           </div>
         </div>
@@ -373,7 +373,7 @@ export const ExpensesPage: React.FC = () => {
                 placeholder="Search expenses..."
                 value={searchQuery}
                 onChange={(e) => handleSearchChange(e.target.value)}
-                className="pl-10 pr-10 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent w-48"
+                className="pl-10 pr-10 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent w-48"
               />
               {searchQuery && (
                 <button
@@ -394,7 +394,7 @@ export const ExpensesPage: React.FC = () => {
                 value={selectedMonth}
                 max={maxMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
-                className="px-2 py-1.5 text-xs border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="px-2 py-1.5 text-xs border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
               />
             </div>
 
@@ -409,7 +409,7 @@ export const ExpensesPage: React.FC = () => {
             {/* Add Expense Button */}
             <button
               onClick={() => setShowModal(true)}
-              className="flex items-center justify-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm whitespace-nowrap"
+              className="flex items-center justify-center px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors text-sm whitespace-nowrap"
             >
               <Plus className="h-5 w-5 mr-2" />
               Add Expense
@@ -426,7 +426,7 @@ export const ExpensesPage: React.FC = () => {
               placeholder="Search by category, amount, date, payment mode, vendor, bill..."
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+              className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-sm"
             />
             {searchQuery && (
               <button
@@ -577,7 +577,7 @@ export const ExpensesPage: React.FC = () => {
                 <>
                   <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-primary-600">
+                      <thead className="bg-cyan-600">
                         <tr>
                           <th className="px-3 py-2 text-left text-[10px] font-medium text-white uppercase tracking-wider">
                             S.NO
@@ -689,8 +689,8 @@ export const ExpensesPage: React.FC = () => {
                               onClick={() => typeof pageNumber === 'number' && handlePageChange(pageNumber)}
                               className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                                 currentPage === pageNumber
-                                  ? "bg-primary-600 text-white border border-primary-600"
-                                  : "bg-white text-gray-700 border border-gray-300 hover:border-primary-600 hover:text-primary-600"
+                                  ? "bg-cyan-600 text-white border border-cyan-600"
+                                  : "bg-white text-gray-700 border border-gray-300 hover:border-cyan-600 hover:text-cyan-600"
                               }`}
                             >
                               {pageNumber}
@@ -785,7 +785,7 @@ export const ExpensesPage: React.FC = () => {
           {/* Right Side: Add Expense Button (Blue) */}
           <button
             onClick={() => setShowModal(true)}
-            className="fixed bottom-6 right-6 z-40 h-14 w-14 bg-primary-600 text-white rounded-full shadow-lg hover:bg-primary-700 transition-all hover:scale-110 active:scale-95 flex items-center justify-center md:hidden"
+            className="fixed bottom-6 right-6 z-40 h-14 w-14 bg-cyan-600 text-white rounded-full shadow-lg hover:bg-cyan-700 transition-all hover:scale-110 active:scale-95 flex items-center justify-center md:hidden"
             title="Add Expense"
           >
             <Plus className="h-6 w-6" />
@@ -836,7 +836,7 @@ export const ExpensesPage: React.FC = () => {
                       value={formData.category_id}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                     >
                       <option value="">Select category</option>
                       {categories.map(cat => (
@@ -858,7 +858,7 @@ export const ExpensesPage: React.FC = () => {
                       onChange={handleInputChange}
                       required
                       max={new Date().toISOString().split('T')[0]}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                     />
                   </div>
 
@@ -874,7 +874,7 @@ export const ExpensesPage: React.FC = () => {
                       required
                       min="0"
                       step="0.01"
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                     />
                   </div>
 
@@ -887,7 +887,7 @@ export const ExpensesPage: React.FC = () => {
                       value={formData.payment_mode_id}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                     >
                       <option value="">Select mode</option>
                       {paymentModes.map(mode => (
@@ -907,7 +907,7 @@ export const ExpensesPage: React.FC = () => {
                       name="vendor_name"
                       value={formData.vendor_name}
                       onChange={handleInputChange}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                       placeholder="e.g., ABC Electric Company"
                     />
                   </div>
@@ -921,7 +921,7 @@ export const ExpensesPage: React.FC = () => {
                       name="bill_number"
                       value={formData.bill_number}
                       onChange={handleInputChange}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                       placeholder="e.g., INV-2025-001"
                     />
                   </div>
@@ -935,7 +935,7 @@ export const ExpensesPage: React.FC = () => {
                       value={formData.description}
                       onChange={handleInputChange}
                       rows={3}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                       placeholder="Additional details about the expense..."
                     />
                   </div>
@@ -951,7 +951,7 @@ export const ExpensesPage: React.FC = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-3 py-1.5 text-xs bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                    className="px-3 py-1.5 text-xs bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
                   >
                     {editingExpense ? 'Update Expense' : 'Add Expense'}
                   </button>
@@ -978,7 +978,7 @@ export const ExpensesPage: React.FC = () => {
                       value={formData.category_id}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                     >
                       <option value="">Select category</option>
                       {categories.map(cat => (
@@ -1000,7 +1000,7 @@ export const ExpensesPage: React.FC = () => {
                       onChange={handleInputChange}
                       required
                       max={new Date().toISOString().split('T')[0]}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                     />
                   </div>
 
@@ -1016,7 +1016,7 @@ export const ExpensesPage: React.FC = () => {
                       required
                       min="0"
                       step="0.01"
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                     />
                   </div>
 
@@ -1029,7 +1029,7 @@ export const ExpensesPage: React.FC = () => {
                       value={formData.payment_mode_id}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                     >
                       <option value="">Select mode</option>
                       {paymentModes.map(mode => (
@@ -1049,7 +1049,7 @@ export const ExpensesPage: React.FC = () => {
                       name="vendor_name"
                       value={formData.vendor_name}
                       onChange={handleInputChange}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                       placeholder="e.g., ABC Electric Company"
                     />
                   </div>
@@ -1063,7 +1063,7 @@ export const ExpensesPage: React.FC = () => {
                       name="bill_number"
                       value={formData.bill_number}
                       onChange={handleInputChange}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                       placeholder="e.g., INV-2025-001"
                     />
                   </div>
@@ -1077,7 +1077,7 @@ export const ExpensesPage: React.FC = () => {
                       value={formData.description}
                       onChange={handleInputChange}
                       rows={3}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                       placeholder="Additional details about the expense..."
                     />
                   </div>
@@ -1093,7 +1093,7 @@ export const ExpensesPage: React.FC = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                    className="px-4 py-2 text-sm bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
                   >
                     {editingExpense ? 'Update Expense' : 'Add Expense'}
                   </button>

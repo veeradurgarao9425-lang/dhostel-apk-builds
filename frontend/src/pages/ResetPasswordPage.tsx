@@ -131,7 +131,7 @@ export const ResetPasswordPage: React.FC = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500 mx-auto mb-4"></div>
           <p className="text-white">Verifying reset token...</p>
         </div>
       </div>
@@ -153,7 +153,7 @@ export const ResetPasswordPage: React.FC = () => {
 
           <button
             onClick={() => navigate('/')}
-            className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
+            className="w-full px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors font-medium"
           >
             Go to Login
           </button>
@@ -177,7 +177,7 @@ export const ResetPasswordPage: React.FC = () => {
 
           <button
             onClick={() => navigate('/')}
-            className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
+            className="w-full px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors font-medium"
           >
             Go to Login
           </button>
@@ -214,7 +214,7 @@ export const ResetPasswordPage: React.FC = () => {
                   name="newPassword"
                   value={formData.newPassword}
                   onChange={handleChange}
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 pr-10 ${
+                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 pr-10 ${
                     errors.newPassword ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="Enter new password"
@@ -247,7 +247,7 @@ export const ResetPasswordPage: React.FC = () => {
                   name="confirmPassword"
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 pr-10 ${
+                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 pr-10 ${
                     errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="Confirm your password"
@@ -273,7 +273,7 @@ export const ResetPasswordPage: React.FC = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed mt-6"
+              className="w-full px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed mt-6"
             >
               {loading ? 'Resetting Password...' : 'Reset Password'}
             </button>
@@ -283,7 +283,7 @@ export const ResetPasswordPage: React.FC = () => {
             Remember your password?{' '}
             <button
               onClick={() => navigate('/')}
-              className="text-primary-600 hover:text-primary-700 font-medium"
+              className="text-cyan-600 hover:text-cyan-700 font-medium"
             >
               Back to Login
             </button>

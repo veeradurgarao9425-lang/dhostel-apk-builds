@@ -43,7 +43,7 @@ export const OwnerDashboard: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600"></div>
       </div>
     );
   }
@@ -108,19 +108,19 @@ export const OwnerDashboard: React.FC = () => {
           <Card.Body>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-4xl font-bold text-primary-600">
+                <p className="text-4xl font-bold text-cyan-600">
                   {stats.occupancyRate.toFixed(1)}%
                 </p>
                 <p className="mt-2 text-sm text-gray-600">
                   {stats.occupiedBeds} of {stats.totalBeds} beds occupied
                 </p>
               </div>
-              <TrendingUp className="h-16 w-16 text-primary-200" />
+              <TrendingUp className="h-16 w-16 text-cyan-600-200" />
             </div>
             <div className="mt-4">
               <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-primary-500 rounded-full"
+                  className="h-full bg-cyan-500 rounded-full"
                   style={{ width: `${stats.occupancyRate}%` }}
                 />
               </div>
@@ -188,7 +188,7 @@ export const OwnerDashboard: React.FC = () => {
                       Total pending: {formatCurrency(stats.pendingDuesAmount)}
                     </p>
                   </div>
-                  <button className="text-sm text-primary-600 hover:text-primary-700 font-medium">
+                  <button className="text-sm text-cyan-600 hover:text-cyan-700 font-medium">
                     View
                   </button>
                 </div>
@@ -209,9 +209,9 @@ export const OwnerDashboard: React.FC = () => {
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => navigate('/students')}
-                className="p-4 text-center bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors"
+                className="p-4 text-center bg-cyan-50 hover:bg-cyan-100 rounded-lg transition-colors"
               >
-                <Users className="h-6 w-6 text-primary-600 mx-auto mb-2" />
+                <Users className="h-6 w-6 text-cyan-600 mx-auto mb-2" />
                 <span className="text-sm font-medium text-gray-900">Add Student</span>
               </button>
               <button

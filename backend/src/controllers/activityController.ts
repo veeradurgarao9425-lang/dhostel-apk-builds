@@ -10,7 +10,8 @@ export const getRecentActivity = async (req: AuthRequest, res: Response) => {
 
     // Determine hostel filtering based on user role
     let hostelIds: number[] = [];
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
+    // Only filter by hostel for Hostel Owners (role_id = 2)
+    if (user?.role_id === 2) {
       if (!user.hostel_id) {
         return res.status(403).json({
           success: false,

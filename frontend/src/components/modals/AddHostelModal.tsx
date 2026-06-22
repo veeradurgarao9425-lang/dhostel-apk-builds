@@ -185,16 +185,16 @@ export const AddHostelModal: React.FC<AddHostelModalProps> = ({ isOpen, onClose,
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fade-in">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-slate-800">
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-gray-900">Add New Hostel</h2>
+        <div className="sticky top-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-6 py-5 flex items-center justify-between z-10">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Add New Hostel</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
           >
-            <X className="h-6 w-6" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
@@ -202,41 +202,41 @@ export const AddHostelModal: React.FC<AddHostelModalProps> = ({ isOpen, onClose,
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Hostel Name */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Hostel Name <span className="text-red-500">*</span>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+              Hostel Name <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
               name="hostel_name"
               value={formData.hostel_name}
               onChange={handleChange}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
-                errors.hostel_name ? 'border-red-500' : 'border-gray-300'
+              className={`w-full px-4 py-2.5 border rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all ${
+                errors.hostel_name ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'
               }`}
               placeholder="e.g., Sunrise Boys Hostel"
             />
             {errors.hostel_name && (
-              <p className="mt-1 text-sm text-red-600">{errors.hostel_name}</p>
+              <p className="mt-1 text-sm text-rose-500">{errors.hostel_name}</p>
             )}
           </div>
 
           {/* Address */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Address <span className="text-red-500">*</span>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+              Address <span className="text-rose-500">*</span>
             </label>
             <textarea
               name="address"
               value={formData.address}
               onChange={handleChange}
               rows={2}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
-                errors.address ? 'border-red-500' : 'border-gray-300'
+              className={`w-full px-4 py-2.5 border rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all ${
+                errors.address ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'
               }`}
               placeholder="Plot No., Street, Area"
             />
             {errors.address && (
-              <p className="mt-1 text-sm text-red-600">{errors.address}</p>
+              <p className="mt-1 text-sm text-rose-500">{errors.address}</p>
             )}
           </div>
 
@@ -405,19 +405,20 @@ export const AddHostelModal: React.FC<AddHostelModalProps> = ({ isOpen, onClose,
           </div>
 
           {/* Buttons */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+          <div className="flex items-center justify-end gap-3 pt-6 pb-2 border-t border-slate-200 dark:border-slate-800">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              className="px-5 py-2.5 text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors font-medium"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 shadow-sm shadow-primary-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium flex items-center gap-2"
             >
+              {loading && <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
               {loading ? 'Creating...' : 'Create Hostel'}
             </button>
           </div>

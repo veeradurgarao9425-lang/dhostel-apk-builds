@@ -124,7 +124,7 @@ export const ProfilePage: React.FC = () => {
           {loading ? (
             <Card>
               <div className="text-center py-8 sm:py-12">
-                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-600"></div>
                 <p className="mt-2 text-xs sm:text-sm text-gray-600">Loading hostel details...</p>
               </div>
             </Card>
@@ -144,8 +144,8 @@ export const ProfilePage: React.FC = () => {
                 {/* Hostel Header Section */}
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4 sm:mb-6 pb-4 sm:pb-6 border-b border-gray-200">
                   <div className="flex items-center gap-3 sm:gap-4">
-                    <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
-                      <Building2 className="h-6 w-6 sm:h-7 sm:w-7 text-primary-600" />
+                    <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-cyan-100 flex items-center justify-center flex-shrink-0">
+                      <Building2 className="h-6 w-6 sm:h-7 sm:w-7 text-cyan-600" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <h2 className="text-base sm:text-lg font-bold text-gray-900 truncate">{hostel.hostel_name}</h2>
@@ -163,7 +163,7 @@ export const ProfilePage: React.FC = () => {
                   <div className="flex items-center justify-end flex-shrink-0">
                     <button
                       onClick={() => setIsEditModalOpen(true)}
-                      className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-xs sm:text-sm whitespace-nowrap"
+                      className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors text-xs sm:text-sm whitespace-nowrap"
                     >
                       <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       <span className="hidden sm:inline">Edit Details</span>
@@ -271,7 +271,7 @@ export const ProfilePage: React.FC = () => {
                       {hostel.amenities.map((amenity, index) => (
                         <span
                           key={index}
-                          className="px-2.5 sm:px-3 py-1 sm:py-1.5 bg-primary-50 text-primary-700 text-[10px] sm:text-xs font-medium rounded-full"
+                          className="px-2.5 sm:px-3 py-1 sm:py-1.5 bg-cyan-50 text-cyan-700 text-[10px] sm:text-xs font-medium rounded-full"
                         >
                           {amenity}
                         </span>

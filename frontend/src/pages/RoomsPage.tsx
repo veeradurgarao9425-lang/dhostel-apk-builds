@@ -11,8 +11,6 @@ import {
   BedDouble,
   DollarSign,
   Wifi,
-  ChevronDown,
-  ChevronUp,
 } from "lucide-react";
 import api from "../services/api";
 import toast from "react-hot-toast";
@@ -87,7 +85,14 @@ export const RoomsPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<
     "all" | "available" | "full"
   >("all");
-  const [expandedCardId, setExpandedCardId] = useState<number | null>(null);
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      minimumFractionDigits: 0,
+    }).format(amount);
+  };
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -451,7 +456,7 @@ export const RoomsPage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600"></div>
       </div>
     );
   }
@@ -477,7 +482,7 @@ export const RoomsPage: React.FC = () => {
               placeholder="Search by room, type, floor, or rent..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
             />
           </div>
 
@@ -487,7 +492,7 @@ export const RoomsPage: React.FC = () => {
             onChange={(e) =>
               setStatusFilter(e.target.value as "all" | "available" | "full")
             }
-            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent whitespace-nowrap"
+            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent whitespace-nowrap"
           >
             <option value="all">All Status</option>
             <option value="available">Available</option>
@@ -513,7 +518,7 @@ export const RoomsPage: React.FC = () => {
               placeholder="Search by room, type, floor, or rent..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent w-48"
+              className="pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent w-48"
             />
           </div>
 
@@ -523,7 +528,7 @@ export const RoomsPage: React.FC = () => {
             onChange={(e) =>
               setStatusFilter(e.target.value as "all" | "available" | "full")
             }
-            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
           >
             <option value="all">All Status</option>
             <option value="available">Available</option>
@@ -533,7 +538,7 @@ export const RoomsPage: React.FC = () => {
           {/* Add Room Button */}
           <button
             onClick={() => setShowModal(true)}
-            className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm whitespace-nowrap"
+            className="flex items-center px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors text-sm whitespace-nowrap"
           >
             <Plus className="h-5 w-5 mr-2" />
             Add Room
@@ -541,242 +546,99 @@ export const RoomsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Mobile Card View - Expandable */}
-      <div className="block md:hidden space-y-3">
+      {/* Responsive Card Grid View */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {currentRooms.length === 0 ? (
-          <div className="text-center py-12">
-            <Home className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-sm text-gray-500">
+          <div className="col-span-full text-center py-20 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800">
+            <Home className="h-12 w-12 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               {searchQuery || statusFilter !== "all"
                 ? "No rooms found matching your search."
                 : "No rooms found. Add your first room to get started."}
             </p>
           </div>
         ) : (
-          currentRooms.map((room) => {
-            const isExpanded = expandedCardId === room.room_id;
-            
-            return (
-              <div
-                key={room.room_id}
-                className={`bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-all ${isExpanded ? 'shadow-lg' : ''}`}
-              >
-                <div className="p-4">
-                  {/* Collapsed View - Always Visible */}
-                  <div
-                    className="flex items-center justify-between cursor-pointer"
-                    onClick={() => setExpandedCardId(isExpanded ? null : room.room_id)}
-                  >
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className="flex-shrink-0">
-                        {isExpanded ? (
-                          <ChevronUp className="h-5 w-5 text-gray-400" />
-                        ) : (
-                          <ChevronDown className="h-5 w-5 text-gray-400" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-base font-semibold text-gray-900 truncate">{room.room_number}</p>
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <span
-                          className={`px-2.5 py-1 text-xs font-medium rounded-full ${
-                            room.available_beds > 0
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {room.available_beds > 0 ? "Available" : "Full"}
-                        </span>
-                        <span className="text-base font-bold text-gray-900">₹{Math.floor(room.rent_per_bed)}</span>
-                      </div>
+          currentRooms.map((room) => (
+            <div
+              key={room.room_id}
+              className="premium-card bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 flex flex-col justify-between relative overflow-hidden group hover:scale-[1.01]"
+            >
+              <div>
+                {/* Header: Icon, Room Title, Status Badge */}
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-xl bg-cyan-50 dark:bg-cyan-950/40 flex items-center justify-center text-cyan-600 dark:text-cyan-400 transform transition-transform group-hover:scale-105">
+                      <BedDouble className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-lg text-slate-900 dark:text-white leading-tight">
+                        {room.room_number}
+                      </h3>
+                      <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                        Floor {room.floor_number}
+                      </p>
                     </div>
                   </div>
+                  <span
+                    className={`px-3 py-1 text-xs font-bold rounded-full ${
+                      room.available_beds > 0
+                        ? "bg-emerald-50 text-emerald-700 border border-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20"
+                        : "bg-rose-50 text-rose-700 border border-rose-100 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20"
+                    }`}
+                  >
+                    {room.available_beds > 0 ? "• Available" : "• Full"}
+                  </span>
+                </div>
 
-                  {/* Expanded View - Conditional */}
-                  {isExpanded && (
-                    <div className="mt-4 pt-4 border-t border-gray-100 space-y-3 animate-in slide-in-from-top-2 duration-200">
-                      {/* Details Grid */}
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Floor</p>
-                          <p className="text-sm font-medium text-gray-900">{room.floor_number || "-"}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Room Type</p>
-                          <p className="text-sm font-medium text-gray-900">{room.room_type_name || `Type ${room.room_type_id}`}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Occupied</p>
-                          <p className="text-sm font-medium text-gray-900">{room.occupied_beds}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Available</p>
-                          <p className="text-sm font-medium text-gray-900">{room.available_beds}</p>
-                        </div>
-                      </div>
+                {/* Middle: Tags and Capacity info */}
+                <div className="flex flex-wrap gap-2 mb-4">
+                  <span className="px-2.5 py-1 bg-cyan-50/50 dark:bg-cyan-950/20 text-cyan-700 dark:text-cyan-400 text-xs rounded-lg font-bold border border-cyan-100/30">
+                    {room.room_type_name || `Type ${room.room_type_id}`}
+                  </span>
+                  <span className="px-2.5 py-1 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs rounded-lg font-semibold border border-slate-100 dark:border-slate-700">
+                    {room.occupied_beds} occupied / {room.available_beds + room.occupied_beds} capacity
+                  </span>
+                </div>
 
-                      {/* Amenities */}
-                      {room.amenities && room.amenities.length > 0 && (
-                        <div>
-                          <p className="text-xs text-gray-500 mb-2">Amenities</p>
-                          <div className="flex flex-wrap gap-2">
-                            {room.amenities.map((amenity, idx) => (
-                              <span
-                                key={idx}
-                                className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-full"
-                              >
-                                {amenity}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Actions */}
-                      <div className="flex items-center justify-end gap-3 pt-2 border-t border-gray-100">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEdit(room);
-                          }}
-                          className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
-                          title="Edit"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteClick(room.room_id, room.room_number);
-                          }}
-                          className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                {/* Rent Price Badge */}
+                <div className="inline-flex items-center px-3 py-1.5 rounded-xl text-sm font-bold bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 border border-amber-100/30 mb-6">
+                  {formatCurrency ? formatCurrency(room.rent_per_bed) : `₹${Math.floor(room.rent_per_bed)}`}/bed
                 </div>
               </div>
-            );
-          })
+
+              {/* Footer Actions */}
+              <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800/60 mt-auto">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleEdit(room)}
+                    className="p-2 bg-slate-50 dark:bg-slate-800 text-slate-500 hover:text-cyan-600 dark:hover:text-cyan-400 rounded-xl border border-slate-200 dark:border-slate-700 transition-colors"
+                    title="Edit Room"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteClick(room.room_id, room.room_number)}
+                    className="p-2 bg-slate-50 dark:bg-slate-800 text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 rounded-xl border border-slate-200 dark:border-slate-700 transition-colors"
+                    title="Delete Room"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => handleViewRoom(room)}
+                  className="flex items-center gap-1 text-sm font-bold text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 hover:underline"
+                >
+                  View Details &gt;
+                </button>
+              </div>
+            </div>
+          ))
         )}
       </div>
 
-      {/* Desktop Table View */}
-      <div className="hidden md:block bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-primary-600">
-              <tr>
-                <th className="px-3 py-2 text-left text-[10px] font-medium text-white uppercase tracking-wider">
-                  S.NO
-                </th>
-                <th className="px-3 py-2 text-left text-[10px] font-medium text-white uppercase tracking-wider">
-                  Room Number
-                </th>
-                <th className="px-3 py-2 text-left text-[10px] font-medium text-white uppercase tracking-wider">
-                  Floor
-                </th>
-                <th className="px-3 py-2 text-left text-[10px] font-medium text-white uppercase tracking-wider">
-                  Room Type
-                </th>
-                <th className="px-3 py-2 text-left text-[10px] font-medium text-white uppercase tracking-wider">
-                  Occupied
-                </th>
-                <th className="px-3 py-2 text-left text-[10px] font-medium text-white uppercase tracking-wider">
-                  Available
-                </th>
-                <th className="px-3 py-2 text-left text-[10px] font-medium text-white uppercase tracking-wider">
-                  Rent/Bed
-                </th>
-                <th className="px-3 py-2 text-left text-[10px] font-medium text-white uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-3 py-2 text-left text-[10px] font-medium text-white uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {currentRooms.map((room, index) => (
-                <tr
-                  key={room.room_id}
-                  className="hover:bg-gray-50 cursor-pointer"
-                  onClick={() => handleViewRoom(room)}
-                >
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
-                    {indexOfFirstRoom + index + 1}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
-                    {room.room_number}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
-                    {room.floor_number || "-"}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
-                    {room.room_type_name || `Type ${room.room_type_id}`}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
-                    {room.occupied_beds}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
-                    {room.available_beds}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
-                    ₹{Math.floor(room.rent_per_bed)}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs">
-                    <span
-                      className={`px-2 py-0.5 text-[10px] font-medium rounded-full ${
-                        room.available_beds > 0
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      {room.available_beds > 0 ? "Available" : "Full"}
-                    </span>
-                  </td>
-                  <td
-                    className="px-3 py-2 whitespace-nowrap text-xs text-gray-500"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => handleEdit(room)}
-                        className="text-blue-600 hover:text-blue-900"
-                        title="Edit"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteClick(room.room_id, room.room_number)}
-                        className="text-red-600 hover:text-red-900"
-                        title="Delete"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {filteredRooms.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-500">
-              {searchQuery || statusFilter !== "all"
-                ? "No rooms found matching your search."
-                : "No rooms found. Add your first room to get started."}
-            </p>
-          </div>
-        )}
-
-        {/* Pagination - Inside table container - Web View Only */}
+      {/* Remove old view wrappers */}
+      <div className="hidden">
         {filteredRooms.length > 0 && (
           <div className="hidden md:block px-6 py-4 border-t border-gray-200">
             <div className="flex items-center justify-between">
@@ -804,8 +666,8 @@ export const RoomsPage: React.FC = () => {
                     onClick={() => typeof pageNumber === 'number' && handlePageChange(pageNumber)}
                     className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                       currentPage === pageNumber
-                        ? "bg-primary-600 text-white border border-primary-600"
-                        : "bg-white text-gray-700 border border-gray-300 hover:border-primary-600 hover:text-primary-600"
+                        ? "bg-cyan-600 text-white border border-cyan-600"
+                        : "bg-white text-gray-700 border border-gray-300 hover:border-cyan-600 hover:text-cyan-600"
                     }`}
                   >
                     {pageNumber}
@@ -869,7 +731,7 @@ export const RoomsPage: React.FC = () => {
                       name="room_number"
                       value={formData.room_number}
                       onChange={handleInputChange}
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                         formErrors.room_number ? 'border-red-500' : 'border-gray-300'
                       }`}
                       placeholder="101"
@@ -887,7 +749,7 @@ export const RoomsPage: React.FC = () => {
                       name="room_type_id"
                       value={formData.room_type_id}
                       onChange={handleInputChange}
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                         formErrors.room_type_id ? 'border-red-500' : 'border-gray-300'
                       }`}
                     >
@@ -916,7 +778,7 @@ export const RoomsPage: React.FC = () => {
                           name="floor_number"
                           value={formData.floor_number}
                           onChange={handleInputChange}
-                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                             formErrors.floor_number ? 'border-red-500' : 'border-gray-300'
                           }`}
                         >
@@ -938,7 +800,7 @@ export const RoomsPage: React.FC = () => {
                           name="floor_number"
                           value={formData.floor_number}
                           onChange={handleInputChange}
-                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                             formErrors.floor_number ? 'border-red-500' : 'border-gray-300'
                           }`}
                           placeholder="1"
@@ -964,7 +826,7 @@ export const RoomsPage: React.FC = () => {
                       value={formData.occupied_beds}
                       onChange={handleInputChange}
                       min="0"
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                         formErrors.occupied_beds ? 'border-red-500' : 'border-gray-300'
                       }`}
                       placeholder="0"
@@ -985,7 +847,7 @@ export const RoomsPage: React.FC = () => {
                       onChange={handleInputChange}
                       min="0"
                       step="100"
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                         formErrors.rent_per_bed ? 'border-red-500' : 'border-gray-300'
                       }`}
                       placeholder="5000"
@@ -1011,7 +873,7 @@ export const RoomsPage: React.FC = () => {
                           type="checkbox"
                           checked={formData.amenities.includes(amenity)}
                           onChange={() => toggleAmenity(amenity)}
-                          className="mr-2 h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                          className="mr-2 h-4 w-4 text-cyan-600 focus:ring-cyan-500 border-gray-300 rounded"
                         />
                         <span className="text-sm text-gray-700">{amenity}</span>
                       </label>
@@ -1033,7 +895,7 @@ export const RoomsPage: React.FC = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                    className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
                   >
                     {editingRoom ? "Update Room" : "Create Room"}
                   </button>
@@ -1070,7 +932,7 @@ export const RoomsPage: React.FC = () => {
                       name="room_number"
                       value={formData.room_number}
                       onChange={handleInputChange}
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                         formErrors.room_number ? 'border-red-500' : 'border-gray-300'
                       }`}
                       placeholder="101"
@@ -1088,7 +950,7 @@ export const RoomsPage: React.FC = () => {
                       name="room_type_id"
                       value={formData.room_type_id}
                       onChange={handleInputChange}
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                         formErrors.room_type_id ? 'border-red-500' : 'border-gray-300'
                       }`}
                     >
@@ -1117,7 +979,7 @@ export const RoomsPage: React.FC = () => {
                           name="floor_number"
                           value={formData.floor_number}
                           onChange={handleInputChange}
-                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                             formErrors.floor_number ? 'border-red-500' : 'border-gray-300'
                           }`}
                         >
@@ -1139,7 +1001,7 @@ export const RoomsPage: React.FC = () => {
                           name="floor_number"
                           value={formData.floor_number}
                           onChange={handleInputChange}
-                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                             formErrors.floor_number ? 'border-red-500' : 'border-gray-300'
                           }`}
                           placeholder="1"
@@ -1165,7 +1027,7 @@ export const RoomsPage: React.FC = () => {
                       value={formData.occupied_beds}
                       onChange={handleInputChange}
                       min="0"
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                         formErrors.occupied_beds ? 'border-red-500' : 'border-gray-300'
                       }`}
                       placeholder="0"
@@ -1186,7 +1048,7 @@ export const RoomsPage: React.FC = () => {
                       onChange={handleInputChange}
                       min="0"
                       step="100"
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                         formErrors.rent_per_bed ? 'border-red-500' : 'border-gray-300'
                       }`}
                       placeholder="5000"
@@ -1212,7 +1074,7 @@ export const RoomsPage: React.FC = () => {
                           type="checkbox"
                           checked={formData.amenities.includes(amenity)}
                           onChange={() => toggleAmenity(amenity)}
-                          className="mr-2 h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                          className="mr-2 h-4 w-4 text-cyan-600 focus:ring-cyan-500 border-gray-300 rounded"
                         />
                         <span className="text-sm text-gray-700">{amenity}</span>
                       </label>
@@ -1234,7 +1096,7 @@ export const RoomsPage: React.FC = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                    className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
                   >
                     {editingRoom ? "Update Room" : "Create Room"}
                   </button>
@@ -1339,7 +1201,7 @@ export const RoomsPage: React.FC = () => {
           {/* Right Side: Add Room Button (Blue) */}
           <button
             onClick={() => setShowModal(true)}
-            className="fixed bottom-6 right-6 z-40 h-14 w-14 bg-primary-600 text-white rounded-full shadow-lg hover:bg-primary-700 transition-all hover:scale-110 active:scale-95 flex items-center justify-center md:hidden"
+            className="fixed bottom-6 right-6 z-40 h-14 w-14 bg-cyan-600 text-white rounded-full shadow-lg hover:bg-cyan-700 transition-all hover:scale-110 active:scale-95 flex items-center justify-center md:hidden"
             title="Add Room"
           >
             <Plus className="h-6 w-6" />

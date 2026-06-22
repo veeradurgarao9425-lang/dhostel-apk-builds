@@ -151,7 +151,7 @@ export const FinancialOverviewPage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64 p-4">
-        <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-primary-600"></div>
+        <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-cyan-600"></div>
       </div>
     );
   }
@@ -267,7 +267,7 @@ export const FinancialOverviewPage: React.FC = () => {
       {cm.rentDue > 0 && (
         <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
-            <Wallet className="h-5 w-5 text-primary-600" />
+            <Wallet className="h-5 w-5 text-cyan-600" />
             <h3 className="text-base font-bold text-gray-900">Rent Collection Status</h3>
           </div>
           <div className="grid grid-cols-3 gap-4">
@@ -308,7 +308,7 @@ export const FinancialOverviewPage: React.FC = () => {
         <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-2">
-              <PieChart className="h-5 w-5 text-primary-600" />
+              <PieChart className="h-5 w-5 text-cyan-600" />
               <h3 className="text-base font-bold text-gray-900">Expense Breakdown</h3>
             </div>
             <span className="text-sm font-semibold text-red-600">{formatCurrencyFull(cm.totalExpenses)}</span>
@@ -358,7 +358,7 @@ export const FinancialOverviewPage: React.FC = () => {
         <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-primary-600" />
+              <BarChart3 className="h-5 w-5 text-cyan-600" />
               <h3 className="text-base font-bold text-gray-900">12-Month Trend</h3>
             </div>
             <div className="flex items-center gap-4 text-xs">
@@ -404,7 +404,7 @@ export const FinancialOverviewPage: React.FC = () => {
                     ></div>
                   </div>
                   {/* Month label */}
-                  <span className={`text-[9px] mt-1.5 font-semibold ${isCurrentMonth ? 'text-primary-600' : 'text-gray-400'}`}>
+                  <span className={`text-[9px] mt-1.5 font-semibold ${isCurrentMonth ? 'text-cyan-600' : 'text-gray-400'}`}>
                     {t.monthLabel}
                   </span>
                 </div>
@@ -443,7 +443,7 @@ export const FinancialOverviewPage: React.FC = () => {
         <div className="hidden md:block bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100">
             <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
-              <DollarSign className="h-5 w-5 text-primary-600" />
+              <DollarSign className="h-5 w-5 text-cyan-600" />
               Expense Details — {formatMonthDisplay(selectedMonth)}
             </h3>
           </div>

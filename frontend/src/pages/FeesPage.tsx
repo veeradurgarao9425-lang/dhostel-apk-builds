@@ -255,7 +255,7 @@ export const FeesPage: React.FC = () => {
     console.log('[FeesPage] Rendering loading spinner');
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600"></div>
       </div>
     );
   }
@@ -275,7 +275,7 @@ export const FeesPage: React.FC = () => {
             onClick={() => setActiveTab('dues')}
             className={`py-4 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'dues'
-                ? 'border-primary-500 text-primary-600'
+                ? 'border-cyan-500 text-cyan-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
           >
@@ -286,7 +286,7 @@ export const FeesPage: React.FC = () => {
             onClick={() => setActiveTab('payments')}
             className={`py-4 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'payments'
-                ? 'border-primary-500 text-primary-600'
+                ? 'border-cyan-500 text-cyan-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
           >
@@ -375,7 +375,7 @@ export const FeesPage: React.FC = () => {
 
                       <button
                         onClick={() => handleCollectPayment(student)}
-                        className="w-full flex items-center justify-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                        className="w-full flex items-center justify-center px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
                       >
                         <DollarSign className="h-5 w-5 mr-2" />
                         Collect Payment
@@ -485,7 +485,7 @@ export const FeesPage: React.FC = () => {
                       required
                       min="0"
                       step="1"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                     />
                   </div>
 
@@ -498,7 +498,7 @@ export const FeesPage: React.FC = () => {
                       value={formData.payment_mode_id}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                     >
                       <option value="">Select mode</option>
                       {paymentModes.map(mode => (
@@ -520,7 +520,7 @@ export const FeesPage: React.FC = () => {
                       onChange={handleInputChange}
                       required
                       max={new Date().toISOString().split('T')[0]}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                     />
                   </div>
 
@@ -533,7 +533,7 @@ export const FeesPage: React.FC = () => {
                       name="payment_for_month"
                       value={formData.payment_for_month}
                       onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                     />
                   </div>
 
@@ -547,7 +547,7 @@ export const FeesPage: React.FC = () => {
                       value={formData.transaction_reference}
                       onChange={handleInputChange}
                       placeholder="UTR/Txn ID"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                     />
                   </div>
 
@@ -561,7 +561,7 @@ export const FeesPage: React.FC = () => {
                       onChange={handleInputChange}
                       rows={2}
                       placeholder="Any additional notes..."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                     />
                   </div>
                 </div>
@@ -576,7 +576,7 @@ export const FeesPage: React.FC = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                    className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
                   >
                     Record Payment
                   </button>

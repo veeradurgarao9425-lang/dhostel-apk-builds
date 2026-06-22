@@ -584,7 +584,7 @@ export const FeeDetailsPage: React.FC = () => {
             <div className="hidden md:block">
               <div className="overflow-x-auto bg-white rounded-lg border border-gray-200 shadow-sm">
                 <table className="w-full">
-                  <thead className="bg-primary-600">
+                  <thead className="bg-cyan-600">
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">S.NO</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">Date</th>
@@ -690,7 +690,7 @@ export const FeeDetailsPage: React.FC = () => {
                           onClick={() => setCurrentPage(page)}
                           className={`px-2.5 py-1 text-sm rounded-lg transition ${
                             currentPage === page
-                              ? "bg-primary-600 text-white font-medium"
+                              ? "bg-cyan-600 text-white font-medium"
                               : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-100"
                           }`}
                         >

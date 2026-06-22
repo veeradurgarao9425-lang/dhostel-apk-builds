@@ -11,6 +11,7 @@ import { MainLayout } from './components/layout/MainLayout';
 import { Dashboard } from './pages/Dashboard';
 import { OwnersPage } from './pages/OwnersPage';
 import { HostelsPage } from './pages/HostelsPage';
+import { HostelDetailsPage } from './pages/HostelDetailsPage';
 import { OwnerHostelsPage } from './pages/OwnerHostelsPage';
 import { RoomsPage } from './pages/RoomsPage';
 import { StudentsPage } from './pages/StudentsPage';
@@ -24,6 +25,7 @@ import { ReportsPage } from './pages/ReportsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { ActivityLogsPage } from './pages/ActivityLogsPage';
 
 // Create Query Client
 const queryClient = new QueryClient({
@@ -94,6 +96,7 @@ function App() {
             }
           >
             <Route index element={<HostelPageRouter />} />
+            <Route path=":hostelId" element={<HostelDetailsPage />} />
           </Route>
 
           <Route
@@ -105,6 +108,17 @@ function App() {
             }
           >
             <Route index element={<OwnersPage />} />
+          </Route>
+
+          <Route
+            path="/activity-logs"
+            element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<ActivityLogsPage />} />
           </Route>
 
           <Route

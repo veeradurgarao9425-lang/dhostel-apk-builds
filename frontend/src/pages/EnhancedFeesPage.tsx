@@ -422,7 +422,7 @@ export const EnhancedFeesPage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600"></div>
       </div>
     );
   }
@@ -448,7 +448,7 @@ export const EnhancedFeesPage: React.FC = () => {
           <select
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
           >
             {availableMonths.map((month) => (
               <option key={month} value={month}>
@@ -539,7 +539,7 @@ export const EnhancedFeesPage: React.FC = () => {
             onClick={() => setActiveTab('all')}
             className={`py-4 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'all'
-                ? 'border-primary-500 text-primary-600'
+                ? 'border-cyan-500 text-cyan-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
           >
@@ -550,7 +550,7 @@ export const EnhancedFeesPage: React.FC = () => {
             onClick={() => setActiveTab('pending')}
             className={`py-4 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'pending'
-                ? 'border-primary-500 text-primary-600'
+                ? 'border-cyan-500 text-cyan-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
           >
@@ -561,7 +561,7 @@ export const EnhancedFeesPage: React.FC = () => {
             onClick={() => setActiveTab('paid')}
             className={`py-4 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'paid'
-                ? 'border-primary-500 text-primary-600'
+                ? 'border-cyan-500 text-cyan-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
           >
@@ -572,7 +572,7 @@ export const EnhancedFeesPage: React.FC = () => {
             onClick={() => setActiveTab('payments')}
             className={`py-4 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'payments'
-                ? 'border-primary-500 text-primary-600'
+                ? 'border-cyan-500 text-cyan-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
           >
@@ -592,7 +592,7 @@ export const EnhancedFeesPage: React.FC = () => {
               placeholder="Search by name, phone, email, or room..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
             />
           </div>
         </div>
@@ -603,7 +603,7 @@ export const EnhancedFeesPage: React.FC = () => {
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-primary-600">
+              <thead className="bg-cyan-600">
                 <tr>
                   <th className="px-3 py-2 text-left text-[10px] font-medium text-white uppercase tracking-wider">
                     S.NO
@@ -680,7 +680,7 @@ export const EnhancedFeesPage: React.FC = () => {
                         {student.payment_status === 'Pending' ? (
                           <button
                             onClick={(e) => handleCollectPayment(student, e)}
-                            className="px-3 py-1 bg-primary-600 text-white text-[10px] rounded hover:bg-primary-700 transition-colors"
+                            className="px-3 py-1 bg-cyan-600 text-white text-[10px] rounded hover:bg-cyan-700 transition-colors"
                             title="Pay"
                           >
                             Pay
@@ -828,7 +828,7 @@ export const EnhancedFeesPage: React.FC = () => {
                             <p className="text-xs text-gray-500 font-medium">
                               {formatDateForDisplay(payment.payment_date)}
                             </p>
-                            <p className="text-xl font-bold text-primary-600 mt-1">
+                            <p className="text-xl font-bold text-cyan-600 mt-1">
                               {formatCurrency(payment.amount_paid)}
                             </p>
                           </div>
@@ -895,7 +895,7 @@ export const EnhancedFeesPage: React.FC = () => {
                       setShowHistoryModal(false);
                       handleCollectPayment(selectedStudent, e);
                     }}
-                    className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
+                    className="px-6 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors font-medium"
                   >
                     Record New Payment
                   </button>
@@ -968,7 +968,7 @@ export const EnhancedFeesPage: React.FC = () => {
                       step="1"
                       max={selectedStudent.total_dues}
                       placeholder="Enter amount"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                     />
                   </div>
 
@@ -982,7 +982,7 @@ export const EnhancedFeesPage: React.FC = () => {
                       value={formData.payment_mode_id}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                     >
                       <option value="">Select mode</option>
                       {paymentModes.map(mode => (
@@ -1005,7 +1005,7 @@ export const EnhancedFeesPage: React.FC = () => {
                       onChange={handleInputChange}
                       required
                       max={new Date().toISOString().split('T')[0]}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                     />
                   </div>
 
@@ -1019,7 +1019,7 @@ export const EnhancedFeesPage: React.FC = () => {
                       name="due_date"
                       value={formData.due_date}
                       onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                     />
                   </div>
 
@@ -1034,7 +1034,7 @@ export const EnhancedFeesPage: React.FC = () => {
                       value={formData.transaction_reference}
                       onChange={handleInputChange}
                       placeholder="UTR/Txn ID (optional)"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                     />
                   </div>
 
@@ -1049,7 +1049,7 @@ export const EnhancedFeesPage: React.FC = () => {
                       onChange={handleInputChange}
                       rows={2}
                       placeholder="Any additional notes... (optional)"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                     />
                   </div>
                 </div>
@@ -1064,7 +1064,7 @@ export const EnhancedFeesPage: React.FC = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                    className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
                   >
                     Record Payment
                   </button>
@@ -1103,7 +1103,7 @@ export const EnhancedFeesPage: React.FC = () => {
                   max="31"
                   value={dueDayInput}
                   onChange={(e) => setDueDayInput(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500"
                   placeholder="e.g., 5, 10, 15"
                   autoFocus
                 />
@@ -1124,7 +1124,7 @@ export const EnhancedFeesPage: React.FC = () => {
                 </button>
                 <button
                   onClick={handleSetDueDate}
-                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                  className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700"
                 >
                   Set Due Date
                 </button>

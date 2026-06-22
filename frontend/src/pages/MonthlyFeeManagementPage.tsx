@@ -438,7 +438,7 @@ export const MonthlyFeeManagementPage: React.FC = () => {
   if (loading && !summary) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600"></div>
       </div>
     );
   }
@@ -605,7 +605,7 @@ export const MonthlyFeeManagementPage: React.FC = () => {
               type="month"
               value={currentMonth}
               onChange={(e) => setCurrentMonth(e.target.value)}
-              className="px-2 md:px-3 py-1.5 md:py-2 text-xs md:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white shadow-sm"
+              className="px-2 md:px-3 py-1.5 md:py-2 text-xs md:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-white shadow-sm"
             />
           </div>
 
@@ -625,7 +625,7 @@ export const MonthlyFeeManagementPage: React.FC = () => {
                     | "PENDING"
                 )
               }
-              className="border border-gray-300 rounded-lg px-2 md:px-3 py-1.5 md:py-2 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
+              className="border border-gray-300 rounded-lg px-2 md:px-3 py-1.5 md:py-2 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 bg-white"
             >
               <option value="ALL">All</option>
               <option value="FULLY_PAID">Fully Paid</option>
@@ -644,7 +644,7 @@ export const MonthlyFeeManagementPage: React.FC = () => {
               placeholder="Search..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-8 pr-2 py-1.5 md:py-2 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-primary-500 focus:border-primary-500 bg-white"
+              className="w-full pl-8 pr-2 py-1.5 md:py-2 text-sm border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 bg-white"
             />
           </div>
         </div>
@@ -840,7 +840,7 @@ export const MonthlyFeeManagementPage: React.FC = () => {
       <div className="hidden md:block bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-primary-600">
+            <thead className="bg-cyan-600">
               <tr>
                 <th className="px-3 py-2 text-left text-[10px] font-medium text-white uppercase tracking-wider">
                   S.NO
@@ -1030,8 +1030,8 @@ export const MonthlyFeeManagementPage: React.FC = () => {
                     onClick={() => typeof pageNumber === 'number' && handlePageChange(pageNumber)}
                     className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                       currentPage === pageNumber
-                        ? "bg-primary-600 text-white border border-primary-600"
-                        : "bg-white text-gray-700 border border-gray-300 hover:border-primary-600 hover:text-primary-600"
+                        ? "bg-cyan-600 text-white border border-cyan-600"
+                        : "bg-white text-gray-700 border border-gray-300 hover:border-cyan-600 hover:text-cyan-600"
                     }`}
                   >
                     {pageNumber}
@@ -1123,7 +1123,7 @@ export const MonthlyFeeManagementPage: React.FC = () => {
                   setPaymentForm({ ...paymentForm, amount: e.target.value })
                 }
                 placeholder="Enter amount"
-                className="w-full px-4 md:px-3 py-2 md:py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-4 md:px-3 py-2 md:py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                 step="1"
               />
             </div>
@@ -1140,7 +1140,7 @@ export const MonthlyFeeManagementPage: React.FC = () => {
                     payment_date: e.target.value,
                   })
                 }
-                className="w-full px-4 md:px-3 py-2 md:py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-4 md:px-3 py-2 md:py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
               />
             </div>
             <div>
@@ -1156,7 +1156,7 @@ export const MonthlyFeeManagementPage: React.FC = () => {
                     due_date: e.target.value,
                   })
                 }
-                className="w-full px-4 md:px-3 py-2 md:py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-4 md:px-3 py-2 md:py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
               />
             </div>
             <div>
@@ -1171,7 +1171,7 @@ export const MonthlyFeeManagementPage: React.FC = () => {
                     payment_mode_id: e.target.value,
                   })
                 }
-                className="w-full px-4 md:px-3 py-2 md:py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-4 md:px-3 py-2 md:py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                 required
               >
                 <option value="">Select Mode</option>
@@ -1204,7 +1204,7 @@ export const MonthlyFeeManagementPage: React.FC = () => {
                   })
                 }
                 placeholder="RCP001"
-                className="w-full px-4 md:px-3 py-2 md:py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-4 md:px-3 py-2 md:py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
               />
             </div>
             <div>
@@ -1221,7 +1221,7 @@ export const MonthlyFeeManagementPage: React.FC = () => {
                   })
                 }
                 placeholder="TXN123456"
-                className="w-full px-4 md:px-3 py-2 md:py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-4 md:px-3 py-2 md:py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
               />
             </div>
             <div>
@@ -1235,7 +1235,7 @@ export const MonthlyFeeManagementPage: React.FC = () => {
                   setPaymentForm({ ...paymentForm, notes: e.target.value })
                 }
                 placeholder="Add any notes..."
-                className="w-full px-4 md:px-3 py-2 md:py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-4 md:px-3 py-2 md:py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
               />
             </div>
           </div>
@@ -1277,7 +1277,7 @@ export const MonthlyFeeManagementPage: React.FC = () => {
                   })
                 }
                 placeholder="Enter monthly rent"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                 step="0.01"
               />
             </div>
@@ -1295,7 +1295,7 @@ export const MonthlyFeeManagementPage: React.FC = () => {
                   })
                 }
                 placeholder="Enter carry forward amount"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                 step="0.01"
               />
             </div>
@@ -1311,7 +1311,7 @@ export const MonthlyFeeManagementPage: React.FC = () => {
               onChange={(e) =>
                 setEditFeeForm({ ...editFeeForm, due_date: e.target.value })
               }
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
             />
           </div>
 
@@ -1326,7 +1326,7 @@ export const MonthlyFeeManagementPage: React.FC = () => {
               }
               placeholder="Add any notes..."
               rows={2}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
             />
           </div>
         </div>
@@ -1412,7 +1412,7 @@ export const MonthlyFeeManagementPage: React.FC = () => {
                     transaction_type: e.target.value as "ADJUSTMENT" | "REFUND",
                   })
                 }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
               >
                 <option value="ADJUSTMENT">ADJUSTMENT (Correction)</option>
                 <option value="REFUND">REFUND (Money returned)</option>
@@ -1433,7 +1433,7 @@ export const MonthlyFeeManagementPage: React.FC = () => {
                     })
                   }
                   placeholder="e.g., -1800 or 500"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                 />
               </div>
               <p className="text-xs text-gray-500 mt-1">
@@ -1453,7 +1453,7 @@ export const MonthlyFeeManagementPage: React.FC = () => {
                 setAdjustmentForm({ ...adjustmentForm, reason: e.target.value })
               }
               placeholder="e.g., Correction for wrong amount entered"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
             />
           </div>
 
@@ -1471,7 +1471,7 @@ export const MonthlyFeeManagementPage: React.FC = () => {
                     payment_date: e.target.value,
                   })
                 }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
               />
             </div>
             <div>
@@ -1486,7 +1486,7 @@ export const MonthlyFeeManagementPage: React.FC = () => {
                     payment_mode_id: e.target.value,
                   })
                 }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
               >
                 <option value="">Select Payment Mode</option>
                 {paymentModes.map((mode) => (
@@ -1512,7 +1512,7 @@ export const MonthlyFeeManagementPage: React.FC = () => {
               }
               placeholder="Additional notes..."
               rows={2}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
             />
           </div>
 
@@ -1600,7 +1600,7 @@ export const MonthlyFeeManagementPage: React.FC = () => {
                     type="date"
                     value={dateFilterStartDate}
                     onChange={(e) => setDateFilterStartDate(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                   />
                 </div>
 
@@ -1612,7 +1612,7 @@ export const MonthlyFeeManagementPage: React.FC = () => {
                     type="date"
                     value={dateFilterEndDate}
                     onChange={(e) => setDateFilterEndDate(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                   />
                 </div>
 
@@ -1669,7 +1669,7 @@ export const MonthlyFeeManagementPage: React.FC = () => {
             {/* Right Side: Filter Button (Blue) */}
             <button
               onClick={() => setShowDateFilter(!showDateFilter)}
-              className="fixed bottom-6 right-6 z-40 h-14 w-14 bg-primary-600 text-white rounded-full shadow-lg hover:bg-primary-700 transition-all hover:scale-110 active:scale-95 flex items-center justify-center md:hidden"
+              className="fixed bottom-6 right-6 z-40 h-14 w-14 bg-cyan-600 text-white rounded-full shadow-lg hover:bg-cyan-700 transition-all hover:scale-110 active:scale-95 flex items-center justify-center md:hidden"
               title="Filter by Date"
             >
               <Filter className="h-6 w-6" />
@@ -1695,7 +1695,7 @@ export const MonthlyFeeManagementPage: React.FC = () => {
             {/* Filter Button (Blue) */}
             <button
               onClick={() => setShowDateFilter(true)}
-              className="h-14 w-14 bg-primary-600 text-white rounded-full shadow-lg hover:bg-primary-700 transition-all hover:scale-110 active:scale-95 flex items-center justify-center"
+              className="h-14 w-14 bg-cyan-600 text-white rounded-full shadow-lg hover:bg-cyan-700 transition-all hover:scale-110 active:scale-95 flex items-center justify-center"
               title="Filter by Date"
             >
               <Filter className="h-6 w-6" />
@@ -1735,7 +1735,7 @@ export const MonthlyFeeManagementPage: React.FC = () => {
                   type="date"
                   value={dateFilterStartDate}
                   onChange={(e) => setDateFilterStartDate(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                 />
               </div>
 
@@ -1747,7 +1747,7 @@ export const MonthlyFeeManagementPage: React.FC = () => {
                   type="date"
                   value={dateFilterEndDate}
                   onChange={(e) => setDateFilterEndDate(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                 />
               </div>
 
@@ -1772,7 +1772,7 @@ export const MonthlyFeeManagementPage: React.FC = () => {
                 </button>
                 <button
                   onClick={() => setShowDateFilter(false)}
-                  className="flex-1 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors"
+                  className="flex-1 px-4 py-2 text-sm font-medium text-white bg-cyan-600 rounded-lg hover:bg-cyan-700 transition-colors"
                 >
                   Apply Filter
                 </button>

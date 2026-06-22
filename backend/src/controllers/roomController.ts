@@ -44,8 +44,10 @@ export const getRooms = async (req: AuthRequest, res: Response) => {
         'h.hostel_name'
       );
 
+
+
     // If user is hostel owner (role_id = 2), filter by their hostel_id from JWT token
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
+    if (user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id && !hostelId)) {
       if (!user.hostel_id) {
         return res.status(403).json({
           success: false,
@@ -55,8 +57,6 @@ export const getRooms = async (req: AuthRequest, res: Response) => {
       // Filter by the single hostel_id from user's token
       query = query.where('r.hostel_id', user.hostel_id);
     }
-
-    // Filter by specific hostel if provided (admin use case)
     if (hostelId && user?.role_id === 1) {
       query = query.where('r.hostel_id', hostelId);
     }
