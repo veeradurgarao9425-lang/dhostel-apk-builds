@@ -4,7 +4,7 @@ import { hashPassword, comparePassword } from '../utils/bcrypt.js';
 import { generateToken } from '../utils/jwt.js';
 import { AuthRequest } from '../middleware/auth.js';
 import jwt from 'jsonwebtoken';
-import { sendPasswordResetEmail } from '../utils/email.js';
+import { sendPasswordResetEmail, sendOtpEmail } from '../utils/email.js';
 
 export const authController = {
   // Login
@@ -669,4 +669,116 @@ export const authController = {
       });
     }
   },
+
+  // Send OTP to email
+  async sendOtp(req: Request, res: Response) {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({
+          success: false,
+          error: 'Email is required',
+        });
+      }
+
+      // Check if email format is valid
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid email format',
+        });
+      }
+
+      // Check if user already exists
+      const existingUser = await db('users').where('email', email).first();
+      if (existingUser) {
+        return res.status(409).json({
+          success: false,
+          error: 'An account with this email already exists',
+        });
+      }
+
+      // Generate a 6-digit OTP
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+      // Expiry time (10 minutes from now)
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+      // Save to database
+      // Delete old OTPs for this email first
+      await db('otps').where('email', email).del();
+
+      await db('otps').insert({
+        email,
+        otp,
+        expires_at: expiresAt,
+      });
+
+      // Send email
+      await sendOtpEmail(email, otp);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Verification OTP sent to your email',
+      });
+    } catch (error: any) {
+      console.error('Send OTP error:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to send verification OTP',
+      });
+    }
+  },
+
+  // Verify OTP
+  async verifyOtp(req: Request, res: Response) {
+    try {
+      const { email, otp } = req.body;
+
+      if (!email || !otp) {
+        return res.status(400).json({
+          success: false,
+          error: 'Email and OTP are required',
+        });
+      }
+
+      // Find the latest active OTP for this email
+      const record = await db('otps')
+        .where('email', email)
+        .where('otp', otp)
+        .first();
+
+      if (!record) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid verification code',
+        });
+      }
+
+      // Check expiry
+      if (new Date(record.expires_at) < new Date()) {
+        return res.status(400).json({
+          success: false,
+          error: 'Verification code has expired',
+        });
+      }
+
+      // Delete the OTP record so it can't be reused
+      await db('otps').where('id', record.id).del();
+
+      return res.status(200).json({
+        success: true,
+        message: 'Email verified successfully',
+      });
+    } catch (error: any) {
+      console.error('Verify OTP error:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to verify OTP',
+      });
+    }
+  },
 };
+
