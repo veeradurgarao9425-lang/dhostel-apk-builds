@@ -229,6 +229,10 @@ async function patchDatabaseSchema() {
           console.log('[schema-patch] adding admission_fee to hostel_master...');
           await db.raw("ALTER TABLE hostel_master ADD COLUMN admission_fee DECIMAL(10, 2) DEFAULT 0");
         }
+        if (!columnNames.includes('updated_at')) {
+          console.log('[schema-patch] adding updated_at to hostel_master...');
+          await db.raw("ALTER TABLE hostel_master ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+        }
       }
     } catch (e: any) {
       console.error('[schema-patch] Error checking/updating hostel_master columns:', e.message);

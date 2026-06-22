@@ -377,7 +377,7 @@ export default function HomeScreen() {
                             activeOpacity={0.8}
                         >
                             <View style={[s.topMetricIconCircle, { backgroundColor: '#E8F5E9' }]}>
-                                <Text style={{ color: '#2E7D32', fontSize: 11, fontWeight: '800' }}>₹</Text>
+                                <Text style={{ color: '#2E7D32', fontSize: 16, fontWeight: '800' }}>₹</Text>
                             </View>
                             <Text style={[s.topMetricLabel, { color: theme.textSecondary }]} numberOfLines={1}>Today</Text>
                             <Text style={[s.topMetricValue, { color: '#2E7D32' }]} numberOfLines={1}>{fmt(data.todayAmount)}</Text>
@@ -390,7 +390,7 @@ export default function HomeScreen() {
                             activeOpacity={0.8}
                         >
                             <View style={[s.topMetricIconCircle, { backgroundColor: '#FFE0B2' }]}>
-                                <Ionicons name="wallet-outline" size={12} color="#E65100" />
+                                <Ionicons name="wallet-outline" size={18} color="#E65100" />
                             </View>
                             <Text style={[s.topMetricLabel, { color: theme.textSecondary }]} numberOfLines={1}>Pending</Text>
                             <Text style={[s.topMetricValue, { color: '#E65100' }]} numberOfLines={1}>{fmt(data.totalDuesAmount)}</Text>
@@ -403,7 +403,7 @@ export default function HomeScreen() {
                             activeOpacity={0.8}
                         >
                             <View style={[s.topMetricIconCircle, { backgroundColor: '#E3F2FD' }]}>
-                                <Ionicons name="bar-chart-outline" size={12} color="#1565C0" />
+                                <Ionicons name="bar-chart-outline" size={18} color="#1565C0" />
                             </View>
                             <Text style={[s.topMetricLabel, { color: theme.textSecondary }]} numberOfLines={1}>Month</Text>
                             <Text style={[s.topMetricValue, { color: '#1565C0' }]} numberOfLines={1}>{fmt(data.monthAmount)}</Text>
@@ -416,7 +416,7 @@ export default function HomeScreen() {
                             activeOpacity={0.8}
                         >
                             <View style={[s.topMetricIconCircle, { backgroundColor: '#F3E5F5' }]}>
-                                <Ionicons name="person-add-outline" size={12} color="#4A148C" />
+                                <Ionicons name="person-add-outline" size={18} color="#4A148C" />
                             </View>
                             <Text style={[s.topMetricLabel, { color: theme.textSecondary }]} numberOfLines={1}>New</Text>
                             <Text style={[s.topMetricValue, { color: '#4A148C' }]} numberOfLines={1}>{(data as any).newAdmissionsCount ?? 0}</Text>
@@ -463,7 +463,7 @@ export default function HomeScreen() {
                                 onPress={() => navigation.navigate('Rooms', { filter: 'Vacant' })}
                             >
                                 <View style={[s.bedIconNew, { backgroundColor: '#E8F5E9' }]}>
-                                    <Ionicons name="checkmark-circle-sharp" size={14} color="#2E7D32" />
+                                    <Ionicons name="checkmark-circle-sharp" size={20} color="#2E7D32" />
                                 </View>
                                 <View>
                                     <Text style={[s.bedNumNew, { fontSize: fontSize - 2, color: isDark ? theme.textPrimary : '#2E7D32' }]}>{data.availableBeds}</Text>
@@ -478,7 +478,7 @@ export default function HomeScreen() {
                                 onPress={() => navigation.navigate('Rooms', { filter: 'Full' })}
                             >
                                 <View style={[s.bedIconNew, { backgroundColor: '#FFEBEE' }]}>
-                                    <Ionicons name="people-sharp" size={14} color="#C62828" />
+                                    <Ionicons name="people-sharp" size={20} color="#C62828" />
                                 </View>
                                 <View>
                                     <Text style={[s.bedNumNew, { fontSize: fontSize - 2, color: isDark ? theme.textPrimary : '#C62828' }]}>{data.occupiedBeds}</Text>
@@ -493,7 +493,7 @@ export default function HomeScreen() {
                                 onPress={() => navigation.navigate('Notices')}
                             >
                                 <View style={[s.bedIconNew, { backgroundColor: '#FFF3E0' }]}>
-                                    <Ionicons name="megaphone-sharp" size={14} color="#EF6C00" />
+                                    <Ionicons name="megaphone-sharp" size={20} color="#EF6C00" />
                                 </View>
                                 <View>
                                     <Text style={[s.bedNumNew, { fontSize: fontSize - 2, color: isDark ? theme.textPrimary : '#EF6C00' }]}>{data.noticesCount}</Text>
@@ -522,9 +522,9 @@ export default function HomeScreen() {
                                     <View style={s.quickIconWrap}>
                                         <View style={[s.quickIconCircle, { backgroundColor: isDark ? '#334155' : a.bg }]}>
                                             {a.icon === 'rupee' ? (
-                                                <Text style={{ color: isDark ? theme.primary : a.color, fontSize: 16, fontWeight: '800' }}>₹</Text>
+                                                <Text style={{ color: isDark ? theme.primary : a.color, fontSize: 22, fontWeight: '800' }}>₹</Text>
                                             ) : (
-                                                <Ionicons name={a.icon as any} size={20} color={isDark ? theme.primary : a.color} />
+                                                <Ionicons name={a.icon as any} size={28} color={isDark ? theme.primary : a.color} />
                                             )}
                                         </View>
                                         {a.route === 'PreBooking' && data.prebookingsCount > 0 && (
@@ -558,47 +558,47 @@ export default function HomeScreen() {
                                 activeOpacity={0.8}
                             >
                                 <View style={[s.statIconBox, { backgroundColor: '#EDE9FE' }]}>
-                                    <Ionicons name="people" size={13} color="#7C3AED" />
-                                </View>
-                                <Text style={[s.statLabel, { color: theme.textSecondary }]} numberOfLines={1}>Tenants</Text>
-                                <Text style={[s.statNum, { color: '#7C3AED' }]} numberOfLines={1}>{data.activeTenants}</Text>
-                            </TouchableOpacity>
+                                                    <Ionicons name="people" size={18} color="#7C3AED" />
+                                                </View>
+                                                <Text style={[s.statLabel, { color: theme.textSecondary }]} numberOfLines={1}>Tenants</Text>
+                                                <Text style={[s.statNum, { color: '#7C3AED' }]} numberOfLines={1}>{data.activeTenants}</Text>
+                                            </TouchableOpacity>
 
-                            {/* Card 2: Reports */}
-                            <TouchableOpacity
-                                style={[s.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
-                                onPress={() => navigation.navigate('Reports')}
-                                activeOpacity={0.8}
-                            >
-                                <View style={[s.statIconBox, { backgroundColor: '#FFEDD5' }]}>
-                                    <Ionicons name="bar-chart-outline" size={13} color="#EA580C" />
-                                </View>
-                                <Text style={[s.statLabel, { color: theme.textSecondary }]} numberOfLines={1}>Reports</Text>
-                                <Text style={[s.statNum, { color: '#EA580C', fontSize: 12 }]} numberOfLines={1}>View</Text>
-                            </TouchableOpacity>
+                                            {/* Card 2: Reports */}
+                                            <TouchableOpacity
+                                                style={[s.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
+                                                onPress={() => navigation.navigate('Reports')}
+                                                activeOpacity={0.8}
+                                            >
+                                                <View style={[s.statIconBox, { backgroundColor: '#FFEDD5' }]}>
+                                                    <Ionicons name="bar-chart-outline" size={18} color="#EA580C" />
+                                                </View>
+                                                <Text style={[s.statLabel, { color: theme.textSecondary }]} numberOfLines={1}>Reports</Text>
+                                                <Text style={[s.statNum, { color: '#EA580C', fontSize: 12 }]} numberOfLines={1}>View</Text>
+                                            </TouchableOpacity>
 
-                            {/* Card 3: Expenses (This Month) */}
-                            <TouchableOpacity
-                                style={[s.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
-                                onPress={() => navigation.navigate('Expenses')}
-                                activeOpacity={0.8}
-                            >
-                                <View style={[s.statIconBox, { backgroundColor: '#E0F2FE' }]}>
-                                    <Ionicons name="trending-down" size={13} color="#0284C7" />
-                                </View>
-                                <Text style={[s.statLabel, { color: theme.textSecondary }]} numberOfLines={1}>Expenses</Text>
-                                <Text style={[s.statNum, { color: '#0284C7' }]} numberOfLines={1}>{fmt((data as any).monthlyExpenses || 0)}</Text>
-                            </TouchableOpacity>
+                                            {/* Card 3: Expenses (This Month) */}
+                                            <TouchableOpacity
+                                                style={[s.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
+                                                onPress={() => navigation.navigate('Expenses')}
+                                                activeOpacity={0.8}
+                                            >
+                                                <View style={[s.statIconBox, { backgroundColor: '#E0F2FE' }]}>
+                                                    <Ionicons name="trending-down" size={18} color="#0284C7" />
+                                                </View>
+                                                <Text style={[s.statLabel, { color: theme.textSecondary }]} numberOfLines={1}>Expenses</Text>
+                                                <Text style={[s.statNum, { color: '#0284C7' }]} numberOfLines={1}>{fmt((data as any).monthlyExpenses || 0)}</Text>
+                                            </TouchableOpacity>
 
-                            {/* Card 4: Staff */}
-                            <TouchableOpacity
-                                style={[s.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
-                                onPress={() => navigation.navigate('Staff')}
-                                activeOpacity={0.8}
-                            >
-                                <View style={[s.statIconBox, { backgroundColor: '#DCFCE7' }]}>
-                                    <Ionicons name="person" size={13} color="#16A34A" />
-                                </View>
+                                            {/* Card 4: Staff */}
+                                            <TouchableOpacity
+                                                style={[s.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
+                                                onPress={() => navigation.navigate('Staff')}
+                                                activeOpacity={0.8}
+                                            >
+                                                <View style={[s.statIconBox, { backgroundColor: '#DCFCE7' }]}>
+                                                    <Ionicons name="person" size={18} color="#16A34A" />
+                                                </View>
                                 <Text style={[s.statLabel, { color: theme.textSecondary }]} numberOfLines={1}>Staff</Text>
                                 <Text style={[s.statNum, { color: '#16A34A' }]} numberOfLines={1}>{(data as any).staffCount ?? 0}</Text>
                             </TouchableOpacity>
@@ -818,12 +818,12 @@ const s = StyleSheet.create({
     // ── Generic card ─────────────────────────────────────────────────────────
     card: {
         backgroundColor: '#FFF',
-        borderRadius: 20,
-        padding: 16,
-        elevation: 2,
+        borderRadius: 24,
+        padding: 22,
+        elevation: 3,
         shadowColor: '#7C3AED',
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
+        shadowOpacity: 0.08,
+        shadowRadius: 10,
         borderWidth: 1,
         borderColor: '#F1F5F9',
     },
@@ -831,11 +831,11 @@ const s = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: 14,
+        marginBottom: 18,
     },
-    cardHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-    cardTitle: { fontSize: 14, fontWeight: '800', color: '#1E293B' },
-    cardMeta: { fontSize: 11, color: '#94A3B8', fontWeight: '600' },
+    cardHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+    cardTitle: { fontSize: 16, fontWeight: '800', color: '#1E293B' },
+    cardMeta: { fontSize: 13, color: '#94A3B8', fontWeight: '600' },
 
     // ── Beds Overview ────────────────────────────────────────────────────────
     bedProgressContainer: {
@@ -873,36 +873,36 @@ const s = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        gap: 6,
+        gap: 8,
     },
     bedCardNew: {
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 6,
-        paddingHorizontal: 6,
-        borderRadius: 10,
+        paddingVertical: 10,
+        paddingHorizontal: 8,
+        borderRadius: 12,
         borderWidth: 1.5,
         backgroundColor: '#FFF',
-        gap: 4,
+        gap: 6,
     },
     bedIconNew: {
-        width: 28,
-        height: 28,
-        borderRadius: 6,
+        width: 38,
+        height: 38,
+        borderRadius: 8,
         alignItems: 'center',
         justifyContent: 'center',
     },
     bedNumNew: {
-        fontSize: 12,
+        fontSize: 16,
         fontWeight: '800',
-        lineHeight: 15,
+        lineHeight: 19,
     },
     bedLblNew: {
-        fontSize: 9,
+        fontSize: 11,
         color: '#64748B',
         fontWeight: '600',
-        marginTop: 0,
+        marginTop: 1,
     },
 
     // ── Quick Management ─────────────────────────────────────────────────────
@@ -915,9 +915,9 @@ const s = StyleSheet.create({
     quickItem: { width: '23%', alignItems: 'center', marginVertical: 4, paddingHorizontal: 1 },
     quickIconWrap: { position: 'relative', marginBottom: 4 },
     quickIconCircle: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
+        width: 56,
+        height: 56,
+        borderRadius: 16,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -935,11 +935,11 @@ const s = StyleSheet.create({
         borderColor: '#FFF',
     },
     quickLabel: {
-        fontSize: 9,
+        fontSize: 11,
         fontWeight: '700',
         color: '#374151',
         textAlign: 'center',
-        lineHeight: 12,
+        lineHeight: 14,
     },
 
     // ── Statistics ───────────────────────────────────────────────────────────
@@ -959,33 +959,33 @@ const s = StyleSheet.create({
     },
     statCard: {
         flex: 1,
-        borderRadius: 10,
-        paddingVertical: 6,
-        paddingHorizontal: 4,
+        borderRadius: 12,
+        paddingVertical: 12,
+        paddingHorizontal: 6,
         position: 'relative',
         borderWidth: 1,
-        elevation: 1,
+        elevation: 2,
         shadowColor: '#000',
-        shadowOpacity: 0.02,
-        shadowRadius: 4,
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
         alignItems: 'center',
         justifyContent: 'center',
     },
     statIconBox: {
-        width: 22,
-        height: 22,
-        borderRadius: 11,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 2,
+        marginBottom: 4,
     },
     statNum: {
-        fontSize: 11,
+        fontSize: 14,
         fontWeight: '800',
         textAlign: 'center',
         marginBottom: 2,
     },
-    statLbl: { fontSize: 8, color: '#64748B', fontWeight: '600' },
+    statLbl: { fontSize: 11, color: '#64748B', fontWeight: '600' },
     redDot: {
         position: 'absolute',
         top: 10,
@@ -1090,33 +1090,33 @@ const s = StyleSheet.create({
     },
     topMetricCard: {
         flex: 1,
-        borderRadius: 10,
-        paddingVertical: 6,
-        paddingHorizontal: 4,
+        borderRadius: 12,
+        paddingVertical: 12,
+        paddingHorizontal: 6,
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1,
-        elevation: 1,
+        elevation: 2,
         shadowColor: '#000',
-        shadowOpacity: 0.02,
-        shadowRadius: 4,
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
     },
     topMetricIconCircle: {
-        width: 22,
-        height: 22,
-        borderRadius: 11,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 2,
+        marginBottom: 4,
     },
     topMetricLabel: {
-        fontSize: 8,
+        fontSize: 11,
         fontWeight: '600',
         textAlign: 'center',
         marginBottom: 2,
     },
     topMetricValue: {
-        fontSize: 11,
+        fontSize: 14,
         fontWeight: '800',
         textAlign: 'center',
         marginBottom: 2,
@@ -1132,7 +1132,7 @@ const s = StyleSheet.create({
         textAlign: 'center',
     },
     statLabel: {
-        fontSize: 8,
+        fontSize: 11,
         fontWeight: '600',
         color: '#64748B',
         textAlign: 'center',

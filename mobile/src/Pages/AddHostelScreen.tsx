@@ -429,7 +429,11 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
                                     disabled={loading}
                                     activeOpacity={0.8}
                                 >
-                                    <Text style={styles.saveButtonText}>{isEdit ? 'Save Changes' : 'Create'}</Text>
+                                    {loading ? (
+                                        <ActivityIndicator color="#FFF" size="small" />
+                                    ) : (
+                                        <Text style={styles.saveButtonText}>{isEdit ? 'Save Changes' : 'Create'}</Text>
+                                    )}
                                 </TouchableOpacity>
                             </View>
                         )}
@@ -453,7 +457,11 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
                         disabled={loading}
                         activeOpacity={0.8}
                     >
-                        <Text style={styles.saveButtonText}>{isEdit ? 'Save Changes' : 'Create'}</Text>
+                        {loading ? (
+                            <ActivityIndicator color="#FFF" size="small" />
+                        ) : (
+                            <Text style={styles.saveButtonText}>{isEdit ? 'Save Changes' : 'Create'}</Text>
+                        )}
                     </TouchableOpacity>
                 </View>
             )}

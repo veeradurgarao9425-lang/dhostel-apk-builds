@@ -187,7 +187,7 @@ export default function RegisterScreen({ navigation }: any) {
                 </Field>
 
                 {/* Email + verify */}
-                <Field label="Email (optional)">
+                <Field label="Email">
                     <Ionicons name="mail-outline" size={18} color="#7C3AED" style={styles.icon} />
                     <TextInput
                         ref={emailRef}
