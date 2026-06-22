@@ -111,30 +111,30 @@ export const MainLayout: React.FC = () => {
       {/* Sidebar - Fixed on desktop, slide-in on mobile */}
       <aside
         className={clsx(
-          "fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:z-0 shadow-sm",
+          "fixed inset-y-0 left-0 z-50 w-64 bg-slate-950 text-slate-450 border-r border-slate-900 flex flex-col transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:z-0 shadow-2xl",
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         {/* Sidebar Header */}
-        <div className="flex items-center justify-between h-20 px-6 border-b border-slate-200 dark:border-slate-800 flex-shrink-0 relative">
+        <div className="flex items-center justify-between h-20 px-6 border-b border-slate-900 flex-shrink-0 relative">
           <div className="flex items-center gap-2.5">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center text-white shadow-md shadow-cyan-500/10">
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-cyan-500 to-indigo-650 flex items-center justify-center text-white shadow-md shadow-cyan-500/20">
               <Building2 className="h-5 w-5" />
             </div>
-            <span className="font-bold text-lg tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
-              HMS
+            <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-white to-slate-350 bg-clip-text text-transparent">
+              dHostel
             </span>
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden absolute right-4 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"
+            className="lg:hidden absolute right-4 text-slate-400 hover:text-white transition-colors"
           >
             <X className="h-6 w-6" />
           </button>
         </div>
 
         {/* Sidebar Navigation */}
-        <nav className="flex-1 overflow-y-auto py-6 space-y-1">
+        <nav className="flex-1 overflow-y-auto py-6 space-y-1.5">
           {navigation.map((item) => {
             const isActive = location.pathname === item.href;
             return (
@@ -143,15 +143,15 @@ export const MainLayout: React.FC = () => {
                 to={item.href}
                 onClick={() => setSidebarOpen(false)}
                 className={clsx(
-                  "flex items-center px-4 py-3 text-sm font-medium transition-all duration-200 group border-l-4",
+                  "flex items-center py-3 text-xs font-bold uppercase tracking-wider transition-all duration-200 group mx-3 px-4 rounded-xl",
                   isActive
-                    ? "bg-cyan-50/80 dark:bg-cyan-950/20 text-cyan-600 dark:text-cyan-400 border-cyan-500 rounded-r-xl"
-                    : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/30 hover:text-slate-800 dark:hover:text-slate-200 border-transparent"
+                    ? "bg-cyan-500/10 text-cyan-400 shadow-sm"
+                    : "text-slate-450 hover:bg-slate-900/50 hover:text-white"
                 )}
               >
                 <item.icon className={clsx(
-                  "h-5 w-5 mr-3 transition-colors duration-200",
-                  isActive ? "text-cyan-500" : "text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200"
+                  "h-4.5 w-4.5 mr-3 transition-colors duration-200",
+                  isActive ? "text-cyan-400" : "text-slate-500 group-hover:text-slate-200"
                 )} />
                 {item.name}
               </Link>
@@ -159,22 +159,33 @@ export const MainLayout: React.FC = () => {
           })}
         </nav>
 
-        {/* Bottom Actions - Logout */}
-        <div className="p-4 border-t border-slate-200 dark:border-slate-800">
-          <button
-            onClick={handleLogoutClick}
-            className="flex items-center w-full px-4 py-3 text-sm font-semibold rounded-xl text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 dark:text-rose-400 transition-all duration-200"
-          >
-            <LogOut className="h-5 w-5 mr-3" />
-            Logout
-          </button>
+        {/* Bottom Actions - User Info & Logout button */}
+        <div className="p-4 border-t border-slate-900 bg-slate-950/40">
+          <div className="flex items-center justify-between p-2.5 bg-slate-900/40 border border-slate-900 rounded-2xl gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-cyan-500 to-indigo-650 flex items-center justify-center text-white text-xs font-bold uppercase flex-shrink-0">
+                {user?.full_name?.charAt(0)}
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-white truncate leading-tight">{user?.full_name}</p>
+                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">{user?.role}</p>
+              </div>
+            </div>
+            <button
+              onClick={handleLogoutClick}
+              className="p-2 text-rose-500 hover:text-rose-455 hover:bg-rose-500/10 rounded-xl transition-all flex-shrink-0"
+              title="Logout"
+            >
+              <LogOut className="h-4.5 w-4.5" />
+            </button>
+          </div>
         </div>
       </aside>
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden relative">
         {/* Top bar - Header */}
-        <header className="h-20 flex-shrink-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 z-10">
+        <header className="h-20 flex-shrink-0 bg-slate-50/70 dark:bg-slate-950/70 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-900/50 z-10">
           <div className="h-full flex items-center justify-between px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-4">
               {/* Mobile menu button */}

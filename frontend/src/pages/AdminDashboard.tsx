@@ -127,16 +127,16 @@ export const AdminDashboard: React.FC = () => {
             </p>
           </div>
           
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
             <button
               onClick={() => navigate('/owners', { state: { openAddModal: true } })}
-              className="flex items-center gap-2 px-5.5 py-3 bg-white text-slate-950 rounded-xl hover:bg-slate-50 transition-all font-bold text-xs uppercase tracking-wider shadow-md hover:scale-102 active:scale-98"
+              className="flex items-center justify-center gap-2 px-5.5 py-3 bg-white text-slate-950 rounded-xl hover:bg-slate-50 transition-all font-bold text-xs uppercase tracking-wider shadow-md hover:scale-102 active:scale-98"
             >
               <UserPlus className="h-4 w-4" /> Add Owner
             </button>
             <button
               onClick={() => navigate('/reports')}
-              className="flex items-center gap-2 px-5.5 py-3 bg-slate-800/60 hover:bg-slate-800/80 text-white rounded-xl transition-all font-bold text-xs uppercase tracking-wider border border-slate-700/50 backdrop-blur-sm hover:scale-102 active:scale-98"
+              className="flex items-center justify-center gap-2 px-5.5 py-3 bg-slate-800/60 hover:bg-slate-800/80 text-white rounded-xl transition-all font-bold text-xs uppercase tracking-wider border border-slate-700/50 backdrop-blur-sm hover:scale-102 active:scale-98"
             >
               <FileText className="h-4 w-4" /> Run Reports
             </button>
