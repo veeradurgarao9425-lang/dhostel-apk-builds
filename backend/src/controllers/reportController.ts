@@ -286,7 +286,7 @@ export const getIncomeReport = async (req: AuthRequest, res: Response) => {
       .orderBy('month', 'desc');
 
     // Owner filtering - use JWT hostel_id
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
+    if (user?.role_id === 2) {
       if (!user.hostel_id) {
         return res.status(403).json({
           success: false,
@@ -348,7 +348,7 @@ export const getExpenseReport = async (req: AuthRequest, res: Response) => {
       .orderBy('month', 'desc');
 
     // Owner filtering - use JWT hostel_id
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
+    if (user?.role_id === 2) {
       if (!user.hostel_id) {
         return res.status(403).json({
           success: false,
@@ -417,7 +417,7 @@ export const getProfitLoss = async (req: AuthRequest, res: Response) => {
 
     // Get hostel IDs for owner
     let hostelIds: number[] = [];
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
+    if (user?.role_id === 2) {
       if (!user.hostel_id) {
         return res.status(403).json({
           success: false,
@@ -529,7 +529,7 @@ export const getOccupancyTrends = async (req: AuthRequest, res: Response) => {
 
     // Get hostel IDs for owner
     let hostelIds: number[] = [];
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
+    if (user?.role_id === 2) {
       if (!user.hostel_id) {
         return res.status(403).json({
           success: false,
@@ -606,7 +606,7 @@ export const getPaymentCollectionReport = async (req: AuthRequest, res: Response
 
     // Get hostel IDs for owner
     let hostelIds: number[] = [];
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
+    if (user?.role_id === 2) {
       if (!user.hostel_id) {
         return res.status(403).json({
           success: false,
@@ -839,7 +839,7 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
 
     // Determine hostel filtering
     let hostelIds: number[] = [];
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
+    if (user?.role_id === 2) {
       if (!user.hostel_id) {
         return res.status(403).json({
           success: false,
