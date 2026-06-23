@@ -1,8 +1,16 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, StatusBar, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../contexts/AuthContext';
 import { COLORS, FONT } from '../theme/index';
+import { ONBOARDING_KEY } from './OnboardingScreen';
+
+// While developing, always show the intro on a cold start so you don't have to
+// reinstall to see it. In production builds (__DEV__ === false) this has no
+// effect — the intro stays "once per device". Flip to false to test the
+// once-per-device behavior inside a dev build too.
+const ALWAYS_SHOW_INTRO_IN_DEV = true;
 
 
 
@@ -16,15 +24,34 @@ export default function SplashScreen({ navigation }: any) {
     // 2.5s timer — that delay used to stack on top of slow cold-start loads.
     if (loading) return;
 
-    const timer = setTimeout(() => {
+    let cancelled = false;
+
+    const timer = setTimeout(async () => {
       if (user) {
         navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
-      } else {
-        navigation.replace('Login');
+        return;
       }
+
+      // In dev, clear the "seen" flag every cold start so the intro always shows.
+      if (__DEV__ && ALWAYS_SHOW_INTRO_IN_DEV) {
+        try { await AsyncStorage.removeItem(ONBOARDING_KEY); } catch { /* ignore */ }
+      }
+
+      // Logged out: show the intro on first launch, otherwise go straight to Login.
+      let seenIntro = false;
+      try {
+        seenIntro = (await AsyncStorage.getItem(ONBOARDING_KEY)) === 'true';
+      } catch {
+        /* treat as not-seen on read failure */
+      }
+      if (cancelled) return;
+      navigation.replace(seenIntro ? 'Login' : 'Onboarding');
     }, 600);
 
-    return () => clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [navigation, user, loading]);
 
   return (

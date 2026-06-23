@@ -192,10 +192,7 @@ const ProfileScreen = ({ navigation }: any) => {
                     {[
                         { icon: 'settings-outline', label: t('profile.settings'), sub: t('profile.settingsSub'), color: '#7C3AED', bg: '#EDE9FE', onPress: () => navigation.navigate('Settings') },
                         { icon: 'business-outline', label: t('profile.manageHostels'), sub: t('profile.manageHostelsSub'), color: '#0284C7', bg: '#E0F2FE', onPress: () => navigation.navigate('Hostels') },
-                        { icon: 'help-circle-outline', label: t('profile.helpSupport'), sub: t('profile.helpSupportSub'), color: '#D97706', bg: '#FEF3C7', onPress: () => Alert.alert(t('profile.helpSupport'), '📧 support@dhostel.com
-📞 +91 98765 43210
-
-Available 24/7') },
+                        { icon: 'help-circle-outline', label: t('profile.helpSupport'), sub: t('profile.helpSupportSub'), color: '#D97706', bg: '#FEF3C7', onPress: () => Alert.alert(t('profile.helpSupport'), '📧 support@dhostel.com\n📞 +91 98765 43210\n\nAvailable 24/7') },
                     ].map((item, i, arr) => (
 
                         <View key={i}>
