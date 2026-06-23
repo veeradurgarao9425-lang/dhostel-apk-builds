@@ -29,6 +29,7 @@ import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useRefresh } from '../../contexts/RefreshContext';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { COLORS, FONT, SPACING } from '../theme/index';
@@ -341,6 +342,7 @@ const ProfilePhotoCapture = ({ uri, onCapture, onRemove }: any) => {
 export const AddStudentScreen = ({ navigation, route }: any) => {
     const { user } = useAuth();
     const { theme, isDark, fontSize } = useTheme();
+    const { triggerRefresh } = useRefresh();
     const { student, isEdit, roomId, bedId } = route.params || {};
     const { showSuccess, showError, showApiError } = useToast();
     const insets = useSafeAreaInsets();
@@ -511,6 +513,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
             const res = isEdit ? await api.put(`/students/${student.student_id}`, payload) : await api.post('/students', payload);
             if (res.data.success) {
                 showSuccess(`Tenant ${isEdit ? 'updated' : 'registered'} successfully!`);
+                triggerRefresh();
                 navigation.goBack();
             }
         } catch (error: any) {

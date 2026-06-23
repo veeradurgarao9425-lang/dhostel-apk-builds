@@ -7,6 +7,7 @@ import { Card } from '../components/Card';
 import api from '../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useRefresh } from '../../contexts/RefreshContext';
 import { Check, ChevronDown, Layers, LayoutGrid } from 'lucide-react-native';
 import { Modal, FlatList, Keyboard } from 'react-native';
 import { AppHeader } from '../components/AppHeader';
@@ -17,6 +18,7 @@ import { SPACING } from '../theme/index';
 export const AddRoomScreen = ({ navigation, route }: any) => {
     const { user } = useAuth();
     const { theme, isDark } = useTheme();
+    const { triggerRefresh } = useRefresh();
     const isEdit = route?.params?.isEdit || false;
     const roomToEdit = route?.params?.room || null;
     const [loading, setLoading] = useState(false);
@@ -169,6 +171,7 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
                     text1: 'Success',
                     text2: `Room ${isEdit ? 'updated' : 'added'} successfully!`,
                 });
+                triggerRefresh();
                 navigation.goBack();
             }
         } catch (error: any) {

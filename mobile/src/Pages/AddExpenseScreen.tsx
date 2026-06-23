@@ -27,6 +27,7 @@ import {
 import api from '../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useRefresh } from '../../contexts/RefreshContext';
 import { SPACING } from '../theme/index';
 import { AppHeader } from '../components/AppHeader';
 import { FullScreenLoader } from '../components/FullScreenLoader';
@@ -99,6 +100,7 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
     const { theme, isDark, fontSize } = useTheme();
     const { expense } = route.params || {};
     const { user } = useAuth();
+    const { triggerRefresh } = useRefresh();
     const scrollRef = useRef<ScrollView>(null);
     const [loading, setLoading] = useState(false);
     const [categories, setCategories] = useState<any[]>([]);
@@ -213,6 +215,7 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
                     text1: 'Success',
                     text2: expense ? 'Expense updated successfully!' : 'Expense recorded successfully!',
                 });
+                triggerRefresh();
                 navigation?.goBack();
             }
         } catch (error: any) {

@@ -15,6 +15,7 @@ import { ProfileMenu } from '../components/ProfileMenu';
 import { AppHeader } from '../components/AppHeader';
 import { HeaderNotification } from '../components/HeaderNotification';
 import { toLocalDateStr } from '../utils/dateUtils';
+import { useRefresh } from '../../contexts/RefreshContext';
 
 // ─── Initial state ────────────────────────────────────────────────────────────
 const INITIAL_STATE = {
@@ -249,6 +250,14 @@ export default function HomeScreen() {
     }, [user, user?.hostel_id]);
 
     useFocusEffect(useCallback(() => { load(); }, [load]));
+
+    // ── Also refresh when any mutation screen signals a data change ────────────
+    const { refreshCounter } = useRefresh();
+    useEffect(() => {
+        if (refreshCounter > 0) {
+            load();
+        }
+    }, [refreshCounter]);
 
     // ── Quick action press handler ────────────────────────────────────────────
     const handleQuickAction = (a: typeof QUICK_ACTIONS[0]) => {
