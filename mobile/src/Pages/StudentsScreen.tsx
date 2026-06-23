@@ -242,6 +242,7 @@ export default function StudentsScreen({ navigation, route }: any) {
     const [endDateFilter, setEndDateFilter] = useState<string | null>(null);
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
+    const [backgroundLoading, setBackgroundLoading] = useState(false);
     // Confirm dialog state
     const [confirmDialog, setConfirmDialog] = useState<{
         visible: boolean;
@@ -287,6 +288,8 @@ export default function StudentsScreen({ navigation, route }: any) {
                 if (!isSilent) {
                     setInitialLoading(true);
                     setAllStudents([]);
+                } else if (allStudents.length > 0) {
+                    setBackgroundLoading(true);
                 }
             } else {
                 setLoadingMore(true);
@@ -325,6 +328,7 @@ export default function StudentsScreen({ navigation, route }: any) {
             if (!controller.signal.aborted) {
                 setInitialLoading(false);
                 setLoadingMore(false);
+                setBackgroundLoading(false);
             }
         }
     }, [activeTab, debouncedSearch, dateFilter, startDateFilter, endDateFilter]);
@@ -470,6 +474,7 @@ export default function StudentsScreen({ navigation, route }: any) {
                 showBack={navigation.canGoBack()}
                 rightComponent={
                     <View style={styles.headerActions}>
+                        {backgroundLoading && <ActivityIndicator size="small" color="#FFF" style={{ marginRight: 2 }} />}
                         <HeaderNotification navigation={navigation} />
                         <ProfileMenu />
                     </View>

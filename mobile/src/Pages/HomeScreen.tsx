@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
-    ScrollView, StatusBar, RefreshControl, Animated
+    ScrollView, StatusBar, RefreshControl, Animated,
+    ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -104,6 +105,7 @@ export default function HomeScreen() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [hasError, setHasError] = useState(false);
+    const [backgroundLoading, setBackgroundLoading] = useState(false);
     const isFirstLoadRef = React.useRef(true);
 
     const pulseValue = useRef(new Animated.Value(1)).current;
@@ -128,7 +130,11 @@ export default function HomeScreen() {
     // ── Data loader ───────────────────────────────────────────────────────────
     const load = useCallback(async (isRefresh = false) => {
         try {
-            if (!isRefresh && isFirstLoadRef.current) setLoading(true);
+            if (!isRefresh && isFirstLoadRef.current) {
+                setLoading(true);
+            } else if (!isRefresh) {
+                setBackgroundLoading(true);
+            }
             setHasError(false);
 
             const [statsRes, summaryRes, hostelRes, noticeRes, overviewRes, studentsRes]: any = await Promise.all([
@@ -238,6 +244,7 @@ export default function HomeScreen() {
         } finally {
             setLoading(false);
             setRefreshing(false);
+            setBackgroundLoading(false);
         }
     }, [user, user?.hostel_id]);
 
@@ -366,6 +373,7 @@ export default function HomeScreen() {
                 alignLeft={true}
                 rightComponent={
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                        {backgroundLoading && <ActivityIndicator size="small" color="#FFF" style={{ marginRight: 2 }} />}
                         <HeaderNotification navigation={navigation} />
                         <ProfileMenu />
                     </View>

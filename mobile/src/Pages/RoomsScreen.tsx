@@ -13,6 +13,7 @@ import {
     RefreshControl,
     Dimensions,
     ScrollView,
+    ActivityIndicator,
 } from 'react-native';
 import { Plus, Search, X } from 'lucide-react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -43,6 +44,7 @@ export default function RoomsScreen({ navigation, route }: any) {
     const [rooms, setRooms] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [backgroundLoading, setBackgroundLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('All');
     const [selectedFloor, setSelectedFloor] = useState('All');
     const isMountedRef = useRef(true);
@@ -92,7 +94,11 @@ export default function RoomsScreen({ navigation, route }: any) {
     // ── Fetch rooms ──────────────────────────────────────────────────────────
     const fetchRooms = useCallback(async (isRefresh = false) => {
         try {
-            if (!isRefresh) setLoading(true);
+            if (!isRefresh) {
+                setLoading(true);
+            } else if (rooms.length > 0) {
+                setBackgroundLoading(true);
+            }
             const response = await api.get('/rooms?limit=200');
             if (isMountedRef.current && response.data.success) {
                 setRooms(response.data.data);
@@ -105,9 +111,10 @@ export default function RoomsScreen({ navigation, route }: any) {
             if (isMountedRef.current) {
                 setLoading(false);
                 setRefreshing(false);
+                setBackgroundLoading(false);
             }
         }
-    }, []);
+    }, [rooms]);
 
     useEffect(() => {
         isMountedRef.current = true;
@@ -115,7 +122,7 @@ export default function RoomsScreen({ navigation, route }: any) {
     }, []);
 
     useEffect(() => {
-        const unsubscribe = navigation.addListener('focus', () => fetchRooms());
+        const unsubscribe = navigation.addListener('focus', () => fetchRooms(true));
         return unsubscribe;
     }, [navigation, fetchRooms]);
 
@@ -275,6 +282,7 @@ export default function RoomsScreen({ navigation, route }: any) {
                 showBack={navigation.canGoBack()}
                 rightComponent={
                     <View style={styles.headerActions}>
+                        {backgroundLoading && <ActivityIndicator size="small" color="#FFF" style={{ marginRight: 2 }} />}
                         <HeaderNotification navigation={navigation} />
                         <ProfileMenu />
                     </View>

@@ -496,19 +496,16 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
 
     // 3. Fetch Student (Tenant) records
     const students = db('students as s')
-      .leftJoin('room_allocations as ra', function() {
-        this.on('s.student_id', '=', 'ra.student_id').andOn('ra.is_current', '=', db.raw('1'));
-      })
-      .leftJoin('rooms as r', 'ra.room_id', 'r.room_id')
+      .leftJoin('rooms as r', 's.room_id', 'r.room_id')
       .select(
         's.first_name',
         's.last_name',
         's.phone',
         's.email',
         's.admission_date',
-        's.is_active',
+        's.status as is_active',
         'r.room_number',
-        'ra.bed_number',
+        db.raw('NULL as bed_number'),
         's.guardian_name',
         's.guardian_phone',
         's.permanent_address'
@@ -519,29 +516,27 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
     const studentsData = await students;
 
     // 4. Fetch Fee Payments (Fee Collections)
-    const payments = db('student_fee_payments as sfp')
-      .join('students as s', 'sfp.student_id', 's.student_id')
-      .leftJoin('payment_modes as pm', 'sfp.payment_mode_id', 'pm.payment_mode_id')
-      .leftJoin('room_allocations as ra', function() {
-        this.on('s.student_id', '=', 'ra.student_id').andOn('ra.is_current', '=', db.raw('1'));
-      })
-      .leftJoin('rooms as r', 'ra.room_id', 'r.room_id')
+    const payments = db('fee_payments as fp')
+      .join('students as s', 'fp.student_id', 's.student_id')
+      .leftJoin('payment_modes as pm', 'fp.payment_mode_id', 'pm.payment_mode_id')
+      .leftJoin('monthly_fees as mf', 'fp.fee_id', 'mf.fee_id')
+      .leftJoin('rooms as r', 's.room_id', 'r.room_id')
       .select(
-        'sfp.payment_date',
+        'fp.payment_date',
         's.first_name',
         's.last_name',
         'r.room_number',
-        'sfp.amount_paid',
+        'fp.amount as amount_paid',
         'pm.payment_mode_name as payment_mode',
-        'sfp.payment_for_month',
-        'sfp.transaction_reference',
-        'sfp.receipt_number',
-        'sfp.remarks'
+        'mf.fee_month as payment_for_month',
+        'fp.transaction_id as transaction_reference',
+        'fp.receipt_number',
+        'fp.notes as remarks'
       )
-      .whereBetween('sfp.payment_date', [startDateStr, endDateStr])
-      .orderBy('sfp.payment_date', 'asc');
+      .whereBetween('fp.payment_date', [startDateStr, endDateStr])
+      .orderBy('fp.payment_date', 'asc');
 
-    if (hostelIds.length > 0) payments.whereIn('sfp.hostel_id', hostelIds);
+    if (hostelIds.length > 0) payments.whereIn('fp.hostel_id', hostelIds);
     const paymentsData = await payments;
 
     // 5. Fetch Rooms list

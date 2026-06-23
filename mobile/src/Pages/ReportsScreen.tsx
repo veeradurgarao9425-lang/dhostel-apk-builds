@@ -11,6 +11,7 @@ import {
     Alert,
     Modal,
     Platform,
+    Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -187,40 +188,14 @@ export default function ReportsScreen() {
 
     // ── Export: Excel from backend (full transaction spreadsheet) ─────────────
     const handleExportExcel = async () => {
-        setExporting('excel');
         setExportModal(false);
         try {
             const token = await AsyncStorage.getItem('token');
             const base = api.defaults.baseURL?.replace(/\/$/, '') || '';
-            const target =
-                FileSystem.documentDirectory +
-                `Stivo-Report-${periodLabel.replace(/\s/g, '-')}.xlsx`;
-
-            const { uri, status } = await FileSystem.downloadAsync(
-                `${base}/reports/download/excel?month=${monthParam}`,
-                target,
-                { headers: token ? { Authorization: `Bearer ${token}` } : undefined },
-            );
-            if (status !== 200) throw new Error(`Server returned ${status}`);
-
-            const canShare = await Sharing.isAvailableAsync();
-            if (canShare) {
-                await Sharing.shareAsync(uri, {
-                    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                    dialogTitle: 'Share / Email Excel Report',
-                });
-            } else {
-                Alert.alert('Saved', 'Excel report saved to:\n' + uri);
-            }
+            const exportUrl = `${base}/reports/download/excel?month=${monthParam}&token=${encodeURIComponent(token || '')}`;
+            await Linking.openURL(exportUrl);
         } catch (e: any) {
-            Alert.alert(
-                'Excel Export Failed',
-                e?.message?.includes('404')
-                    ? 'The Excel report service is unavailable. Please try the PDF option.'
-                    : (e?.message || 'Could not download the Excel report.'),
-            );
-        } finally {
-            setExporting(null);
+            Alert.alert('Excel Export Failed', e?.message || 'Could not initiate the Excel download.');
         }
     };
 
@@ -259,17 +234,19 @@ export default function ReportsScreen() {
             <StatusBar barStyle="light-content" />
             <AppHeader
                 title="Analytics & Reports"
+                alignLeft={true}
+                showBack={navigation.canGoBack()}
                 rightComponent={
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                         <TouchableOpacity
-                            style={[s.exportBtn, !!exporting && { opacity: 0.6 }]}
+                            style={[s.headerExportBtn, !!exporting && { opacity: 0.6 }]}
                             onPress={() => setExportModal(true)}
                             disabled={!!exporting}
                             activeOpacity={0.8}
                         >
                             {exporting
-                                ? <ActivityIndicator color={theme.primary} size="small" />
-                                : <Ionicons name="share-outline" size={18} color={theme.primary} />
+                                ? <ActivityIndicator color="#FFF" size="small" />
+                                : <Ionicons name="share-outline" size={18} color="#FFF" />
                             }
                         </TouchableOpacity>
                         <ProfileMenu />
@@ -472,25 +449,7 @@ export default function ReportsScreen() {
                             </View>
                         )}
 
-                        {/* Export banner */}
-                        <TouchableOpacity
-                            style={[s.exportBanner, { backgroundColor: theme.primary, shadowColor: theme.primary, opacity: exporting ? 0.7 : 1 }]}
-                            onPress={() => setExportModal(true)}
-                            disabled={!!exporting}
-                            activeOpacity={0.85}
-                        >
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                                <Ionicons name="document-text-sharp" size={22} color="#FFFFFF" />
-                                <View>
-                                    <Text style={s.exportBannerTitle}>Export Full Report</Text>
-                                    <Text style={s.exportBannerSub}>Download as PDF or Excel · share via email</Text>
-                                </View>
-                            </View>
-                            {exporting
-                                ? <ActivityIndicator color="#FFF" size="small" />
-                                : <Ionicons name="download-sharp" size={22} color="#FFFFFF" />
-                            }
-                        </TouchableOpacity>
+
                     </>
                 )}
 
@@ -515,21 +474,7 @@ export default function ReportsScreen() {
                             {periodLabel} · {user?.hostel_name || 'My Hostel'}
                         </Text>
 
-                        {/* PDF */}
-                        <TouchableOpacity
-                            style={[s.sheetOption, { borderColor: isDark ? '#334155' : '#ECECF5' }]}
-                            onPress={handleExportPDF}
-                            activeOpacity={0.8}
-                        >
-                            <View style={[s.sheetIcon, { backgroundColor: theme.primary + '18' }]}>
-                                <Ionicons name="document-text" size={22} color={theme.primary} />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={[s.sheetOptTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>Download PDF</Text>
-                                <Text style={[s.sheetOptSub, { color: isDark ? '#94A3B8' : '#64748B' }]}>Formatted summary · instant · works offline</Text>
-                            </View>
-                            <Ionicons name="chevron-forward" size={18} color={isDark ? '#475569' : '#CBD5E1'} />
-                        </TouchableOpacity>
+
 
                         {/* Excel */}
                         <TouchableOpacity
@@ -649,6 +594,14 @@ const s = StyleSheet.create({
         height: 38,
         borderRadius: 19,
         backgroundColor: 'rgba(20,184,166,0.15)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    headerExportBtn: {
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        backgroundColor: 'rgba(255,255,255,0.18)',
         alignItems: 'center',
         justifyContent: 'center',
     },

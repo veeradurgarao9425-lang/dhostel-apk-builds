@@ -1,5 +1,5 @@
 import express from 'express';
-import { authMiddleware } from '../middleware/auth.js';
+import { authMiddleware, queryTokenMiddleware } from '../middleware/auth.js';
 import {
   getDashboardStats,
   getIncomeReport,
@@ -18,7 +18,10 @@ import {
 
 const router = express.Router();
 
-// All routes require authentication
+// Allow public downloads verified via query parameter token (?token=...)
+router.get('/download/excel', queryTokenMiddleware, downloadExcelReport);
+
+// All other routes require authentication header
 router.use(authMiddleware);
 
 // Report routes
@@ -33,7 +36,6 @@ router.get('/monthly-overview', getMonthlyOverview);
 
 // Download routes
 router.get('/download/pdf', downloadPDFReport);
-router.get('/download/excel', downloadExcelReport);
 
 // Email the Excel report to the logged-in user's own email address
 router.post('/email-excel', emailExcelReport);

@@ -47,6 +47,7 @@ export const ExpenseScreen = ({ navigation }: any) => {
     const [refreshing, setRefreshing] = useState(false);
     const [currentDate, setCurrentDate] = useState<Date | null>(null);
     const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
+    const [backgroundLoading, setBackgroundLoading] = useState(false);
 
     const [page, setPage] = useState(1);
     const [loadingMore, setLoadingMore] = useState(false);
@@ -65,7 +66,11 @@ export const ExpenseScreen = ({ navigation }: any) => {
     const fetchExpenses = async (pageNum = 1, isSilent = false) => {
         try {
             if (pageNum === 1) {
-                if (!isSilent) setLoading(true);
+                if (!isSilent) {
+                    setLoading(true);
+                } else if (expenses.length > 0) {
+                    setBackgroundLoading(true);
+                }
             } else {
                 setLoadingMore(true);
             }
@@ -108,6 +113,7 @@ export const ExpenseScreen = ({ navigation }: any) => {
             setLoading(false);
             setRefreshing(false);
             setLoadingMore(false);
+            setBackgroundLoading(false);
         }
     };
 
@@ -200,6 +206,7 @@ export const ExpenseScreen = ({ navigation }: any) => {
                 title="Expenses"
                 rightComponent={
                     <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                        {backgroundLoading && <ActivityIndicator size="small" color="#FFF" style={{ marginRight: 2 }} />}
                         <HeaderNotification navigation={navigation} />
                         <ProfileMenu />
                     </View>

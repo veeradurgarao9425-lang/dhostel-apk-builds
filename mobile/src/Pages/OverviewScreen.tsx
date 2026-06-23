@@ -92,6 +92,7 @@ export default function OverviewScreen() {
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [backgroundLoading, setBackgroundLoading] = useState(false);
 
     // Default to current month
     const [targetDate, setTargetDate] = useState(new Date());
@@ -99,7 +100,11 @@ export default function OverviewScreen() {
 
     const fetchData = useCallback(async (isRefresh = false) => {
         try {
-            if (!isRefresh) setLoading(true);
+            if (!isRefresh) {
+                setLoading(true);
+            } else if (data !== null) {
+                setBackgroundLoading(true);
+            }
             const res = await api.get('/reports/monthly-overview', { params: { month: monthStr } });
             if (res.data.success) {
                 setData(res.data.data);
@@ -109,8 +114,9 @@ export default function OverviewScreen() {
         } finally {
             setLoading(false);
             setRefreshing(false);
+            setBackgroundLoading(false);
         }
-    }, [monthStr]);
+    }, [monthStr, data]);
 
     useFocusEffect(useCallback(() => { fetchData(true); }, [fetchData]));
 
@@ -187,6 +193,7 @@ export default function OverviewScreen() {
                 showBack={canGoBack}
                 rightComponent={
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                        {backgroundLoading && <ActivityIndicator size="small" color="#FFF" style={{ marginRight: 2 }} />}
                         <HeaderNotification navigation={navigation} />
                         <ProfileMenu />
                     </View>
