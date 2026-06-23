@@ -190,16 +190,16 @@ const styles = StyleSheet.create({
         shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, elevation: 2
     },
     avatarMini: {
-        width: 40, height: 40, borderRadius: 20,
+        width: 34, height: 34, borderRadius: 17,
         justifyContent: 'center', alignItems: 'center',
     },
     avatarImage: {
         width: '100%',
         height: '100%',
-        borderRadius: 20,
+        borderRadius: 17,
         resizeMode: 'cover',
     },
-    avatarText: { fontSize: 18, fontWeight: '800' }, // Increased font slightly
+    avatarText: { fontSize: 15, fontWeight: '800' },
     modalOverlay: {
         flex: 1, backgroundColor: 'transparent',
         justifyContent: 'flex-start', alignItems: 'flex-end',

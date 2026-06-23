@@ -337,6 +337,37 @@ export default function MoreScreen() {
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: 110, paddingTop: 16 }}
             >
+                {/* Active Hostel Selection Card */}
+                {!isListEmpty && !searchQuery && (
+                    <TouchableOpacity
+                        style={[
+                            s.activeHostelCard,
+                            {
+                                backgroundColor: theme.cardBg,
+                                borderColor: isDark ? '#334155' : '#E2E8F0',
+                            }
+                        ]}
+                        onPress={openHostelSelector}
+                        activeOpacity={0.8}
+                    >
+                        <View style={s.activeHostelLeft}>
+                            <View style={[s.activeHostelIconContainer, { backgroundColor: isDark ? 'rgba(124, 58, 237, 0.15)' : theme.primary + '12' }]}>
+                                <Ionicons name="business" size={20} color={theme.primary} />
+                            </View>
+                            <View style={s.activeHostelTextWrap}>
+                                <Text style={[s.activeHostelLabel, { color: theme.textSecondary, fontSize: fontSize - 4 }]}>Active Hostel</Text>
+                                <Text style={[s.activeHostelName, { color: theme.textPrimary, fontSize: fontSize - 1 }]} numberOfLines={1}>
+                                    {user?.hostel_name || 'No Active Hostel'}
+                                </Text>
+                            </View>
+                        </View>
+                        <View style={[s.activeHostelSwitchBtn, { backgroundColor: theme.primary }]}>
+                            <Text style={s.activeHostelSwitchText}>Switch</Text>
+                            <Ionicons name="swap-horizontal" size={12} color="#FFF" />
+                        </View>
+                    </TouchableOpacity>
+                )}
+
                 {/* Empty State */}
                 {isListEmpty && (
                     <View style={s.emptyState}>
@@ -767,5 +798,59 @@ const s = StyleSheet.create({
         fontSize: 12,
         fontWeight: '600',
         textAlign: 'center',
+    },
+    activeHostelCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginHorizontal: 16,
+        marginTop: 4,
+        marginBottom: 16,
+        padding: 14,
+        borderRadius: 20,
+        borderWidth: 1,
+        elevation: 2,
+        shadowColor: '#7C3AED',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+    },
+    activeHostelLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        flex: 1,
+    },
+    activeHostelIconContainer: {
+        width: 42,
+        height: 42,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    activeHostelTextWrap: {
+        flex: 1,
+    },
+    activeHostelLabel: {
+        fontWeight: '800',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    activeHostelName: {
+        fontWeight: '800',
+        marginTop: 2,
+    },
+    activeHostelSwitchBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingVertical: 7,
+        paddingHorizontal: 12,
+        borderRadius: 12,
+    },
+    activeHostelSwitchText: {
+        color: '#FFF',
+        fontSize: 11,
+        fontWeight: '800',
     },
 });

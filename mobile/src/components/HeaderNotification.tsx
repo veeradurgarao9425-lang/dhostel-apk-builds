@@ -61,7 +61,7 @@ export const HeaderNotification = ({ navigation }: { navigation?: any }) => {
                 onPress={() => setShowNotif(true)}
                 activeOpacity={0.8}
             >
-                <Ionicons name="notifications-outline" color="#FFFFFF" size={24} />
+                <Ionicons name="notifications-outline" color="#FFFFFF" size={20} />
                 {unreadCount > 0 && (
                     <View style={styles.badge}>
                         <Text style={styles.badgeText}>{unreadCount}</Text>
@@ -154,9 +154,11 @@ const styles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: 'rgba(255,255,255,0.2)',
+        backgroundColor: 'rgba(255,255,255,0.18)',
         alignItems: 'center',
         justifyContent: 'center',
+        borderWidth: 1.5,
+        borderColor: 'rgba(255,255,255,0.3)',
     },
     badge: {
         position: 'absolute',
