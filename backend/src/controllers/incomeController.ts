@@ -649,7 +649,7 @@ export const getIncomeExport = async (req: AuthRequest, res: Response) => {
         amount: parseFloat(fp.amount),
         type: 'Rent',
         mode: fp.payment_mode || 'Cash',
-        details: `Rent Payment - Student ID: ${fp.student_id}`
+        details: 'Rent Payment'
       });
     });
 

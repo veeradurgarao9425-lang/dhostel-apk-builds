@@ -325,7 +325,7 @@ export const HostelChatbot: React.FC = () => {
   const chatbotPosition = useMemo(() => {
     const listPagesWithFAB = [
       'Students', 'Rooms', 'Expenses', 'Staff', 'Guests',
-      'StaffPayments', 'Reminders', 'Income', 'Hostels'
+      'StaffPayments', 'Reminders', 'IncomeDetails', 'Hostels'
     ];
     if (currentRoute && listPagesWithFAB.includes(currentRoute)) {
       return { bottom: 110, right: 24 };

@@ -248,7 +248,7 @@ export default function OverviewScreen() {
                     {/* ── Income vs Expenses Row ── */}
                     <View style={s.summaryRow}>
                         {/* Income Card */}
-                        <TouchableOpacity style={[s.summaryCard, s.incomeCard]} onPress={() => navigation.navigate('Income')} activeOpacity={0.8}>
+                        <TouchableOpacity style={[s.summaryCard, s.incomeCard]} onPress={() => navigation.navigate('IncomeDetails')} activeOpacity={0.8}>
                             <View style={[s.summaryIconBox, { backgroundColor: '#D1FAE5' }]}>
                                 <Ionicons name="arrow-up-circle" size={16} color="#10B981" />
                             </View>

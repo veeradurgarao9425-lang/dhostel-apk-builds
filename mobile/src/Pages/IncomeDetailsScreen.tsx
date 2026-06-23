@@ -13,6 +13,8 @@ import { useTheme } from '../../contexts/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { toLocalDateStr as toLocalDateString } from '../utils/dateUtils';
 import { AppHeader } from '../components/AppHeader';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 
 const { width, height } = Dimensions.get('window');
 type Period = 'day' | 'week' | 'month';
@@ -179,13 +181,20 @@ export default function IncomeDetailsScreen() {
 
     const transactionsList = data?.transactions ?? [];
     
-    // Filter strictly on Rent collections
+    // Filter transactions into separate categories
     const rentTransactions = transactionsList.filter((t: any) => t.type === 'Rent');
-    const total = rentTransactions.reduce((sum: number, t: any) => sum + t.amount, 0);
-    const totalPaymentsCount = rentTransactions.length;
+    const guestTransactions = transactionsList.filter((t: any) => t.type === 'Guest');
+    const otherTransactions = transactionsList.filter((t: any) => t.type === 'Other');
+
+    const total = transactionsList.reduce((sum: number, t: any) => sum + t.amount, 0);
+    const rentTotal = rentTransactions.reduce((sum: number, t: any) => sum + t.amount, 0);
+    const guestTotal = guestTransactions.reduce((sum: number, t: any) => sum + t.amount, 0);
+    const otherTotal = otherTransactions.reduce((sum: number, t: any) => sum + t.amount, 0);
+
+    const totalPaymentsCount = transactionsList.length;
     const averagePayment = totalPaymentsCount > 0 ? Math.round(total / totalPaymentsCount) : 0;
 
-    // Calculate bar chart data dynamically based only on Rent Collections
+    // Calculate bar chart data dynamically based on All Collections
     const getWeekBars = () => {
         const graph = [];
         const refMonday = new Date(refDate);
@@ -198,7 +207,7 @@ export default function IncomeDetailsScreen() {
             const d = new Date(refMonday);
             d.setDate(refMonday.getDate() + i);
             const ds = toLocalDateString(d);
-            const val = rentTransactions
+            const val = transactionsList
                 .filter((t: any) => t.date === ds)
                 .reduce((s: number, t: any) => s + t.amount, 0);
             graph.push({ label: days[d.getDay()], value: val });
@@ -209,7 +218,7 @@ export default function IncomeDetailsScreen() {
     const getMonthBars = () => {
         const graph = [];
         for (let i = 0; i < 4; i++) {
-            const val = rentTransactions.filter((t: any) => {
+            const val = transactionsList.filter((t: any) => {
                 let dNum = 1;
                 if (typeof t.date === 'string' && t.date) {
                     dNum = parseInt(t.date.split('-')[2], 10);
@@ -483,41 +492,107 @@ export default function IncomeDetailsScreen() {
                     <View style={s.cardsWrapper}>
                         
                         {/* Rent Collections Card */}
-                        <View style={s.flatCard}>
-                            <View style={s.cardHeaderRow}>
-                                <Text style={s.cardHeaderTitle}>
-                                    {period === 'day' ? 'Daily Rent Collections' : period === 'week' ? 'Weekly Rent Collections' : 'Monthly Rent Collections'}
-                                </Text>
-                                <Text style={s.cardHeaderTotal}>₹{total.toLocaleString('en-IN')}</Text>
+                        {(rentTransactions.length > 0 || (guestTransactions.length === 0 && otherTransactions.length === 0)) && (
+                            <View style={s.flatCard}>
+                                <View style={s.cardHeaderRow}>
+                                    <Text style={s.cardHeaderTitle}>
+                                        {period === 'day' ? 'Daily Rent Collections' : period === 'week' ? 'Weekly Rent Collections' : 'Monthly Rent Collections'}
+                                    </Text>
+                                    <Text style={s.cardHeaderTotal}>₹{rentTotal.toLocaleString('en-IN')}</Text>
+                                </View>
+                                <View style={s.cardBody}>
+                                    {rentTransactions.length > 0 ? (
+                                        rentTransactions.map((tx: any, index: number) => (
+                                            <TouchableOpacity
+                                                key={tx.id ?? index}
+                                                style={[s.transactionRow, index === rentTransactions.length - 1 && { borderBottomWidth: 0 }]}
+                                                onPress={() => {
+                                                    if (tx.student_id) {
+                                                        navigation.navigate('TenantTransactions', { studentId: tx.student_id, studentName: tx.title });
+                                                    }
+                                                }}
+                                                activeOpacity={0.7}
+                                            >
+                                                <View style={s.avatarCircle}>
+                                                    <Text style={s.avatarText}>{(tx.title || 'S')[0]}</Text>
+                                                </View>
+                                                <View style={s.txDetails}>
+                                                    <Text style={s.txTitleText} numberOfLines={1}>{tx.title}</Text>
+                                                    <Text style={s.txSubText}>{new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · {tx.subtitle}</Text>
+                                                </View>
+                                                <Text style={s.txAmountText}>₹{tx.amount.toLocaleString('en-IN')}</Text>
+                                            </TouchableOpacity>
+                                        ))
+                                    ) : (
+                                        <Text style={s.emptyTransactionsText}>No rent collections recorded for this period</Text>
+                                    )}
+                                </View>
                             </View>
-                            <View style={s.cardBody}>
-                                {rentTransactions.length > 0 ? (
-                                    rentTransactions.map((tx: any, index: number) => (
+                        )}
+
+                        {/* Guest Collections Card */}
+                        {guestTransactions.length > 0 && (
+                            <View style={[s.flatCard, { marginTop: 16 }]}>
+                                <View style={s.cardHeaderRow}>
+                                    <Text style={s.cardHeaderTitle}>Guest Stay Collections</Text>
+                                    <Text style={s.cardHeaderTotal}>₹{guestTotal.toLocaleString('en-IN')}</Text>
+                                </View>
+                                <View style={s.cardBody}>
+                                    {guestTransactions.map((tx: any, index: number) => (
                                         <TouchableOpacity
                                             key={tx.id ?? index}
-                                            style={[s.transactionRow, index === rentTransactions.length - 1 && { borderBottomWidth: 0 }]}
+                                            style={[s.transactionRow, index === guestTransactions.length - 1 && { borderBottomWidth: 0 }]}
                                             onPress={() => {
-                                                if (tx.student_id) {
-                                                    navigation.navigate('TenantTransactions', { studentId: tx.student_id, studentName: tx.title });
-                                                }
+                                                navigation.navigate('Guests');
                                             }}
                                             activeOpacity={0.7}
                                         >
-                                            <View style={s.avatarCircle}>
-                                                <Text style={s.avatarText}>{(tx.title || 'S')[0]}</Text>
+                                            <View style={[s.avatarCircle, { backgroundColor: '#F3E5F5' }]}>
+                                                <Text style={[s.avatarText, { color: '#4A148C' }]}>{(tx.title || 'G')[0]}</Text>
                                             </View>
                                             <View style={s.txDetails}>
                                                 <Text style={s.txTitleText} numberOfLines={1}>{tx.title}</Text>
-                                                <Text style={s.txSubText}>{new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · {tx.subtitle}</Text>
+                                                <Text style={s.txSubText}>
+                                                    {new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · {tx.subtitle}
+                                                    {tx.description ? ` · ${tx.description}` : ''}
+                                                </Text>
                                             </View>
                                             <Text style={s.txAmountText}>₹{tx.amount.toLocaleString('en-IN')}</Text>
                                         </TouchableOpacity>
-                                    ))
-                                ) : (
-                                    <Text style={s.emptyTransactionsText}>No rent collections recorded for this period</Text>
-                                )}
+                                    ))}
+                                </View>
                             </View>
-                        </View>
+                        )}
+
+                        {/* Other / Indirect Income Card */}
+                        {otherTransactions.length > 0 && (
+                            <View style={[s.flatCard, { marginTop: 16 }]}>
+                                <View style={s.cardHeaderRow}>
+                                    <Text style={s.cardHeaderTitle}>Other / Indirect Income</Text>
+                                    <Text style={s.cardHeaderTotal}>₹{otherTotal.toLocaleString('en-IN')}</Text>
+                                </View>
+                                <View style={s.cardBody}>
+                                    {otherTransactions.map((tx: any, index: number) => (
+                                        <View
+                                            key={tx.id ?? index}
+                                            style={[s.transactionRow, index === otherTransactions.length - 1 && { borderBottomWidth: 0 }]}
+                                        >
+                                            <View style={[s.avatarCircle, { backgroundColor: '#E3F2FD' }]}>
+                                                <Text style={[s.avatarText, { color: '#1565C0' }]}>{(tx.title || 'O')[0]}</Text>
+                                            </View>
+                                            <View style={s.txDetails}>
+                                                <Text style={s.txTitleText} numberOfLines={1}>{tx.title}</Text>
+                                                <Text style={s.txSubText}>
+                                                    {new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · {tx.subtitle}
+                                                    {tx.description ? ` · ${tx.description}` : ''}
+                                                </Text>
+                                            </View>
+                                            <Text style={s.txAmountText}>₹{tx.amount.toLocaleString('en-IN')}</Text>
+                                        </View>
+                                    ))}
+                                </View>
+                            </View>
+                        )}
 
                     </View>
                 )}

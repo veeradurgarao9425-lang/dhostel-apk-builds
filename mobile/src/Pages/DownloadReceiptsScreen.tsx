@@ -14,6 +14,8 @@ import { useTheme } from '../../contexts/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { toLocalDateStr as toLocalDateString } from '../utils/dateUtils';
 import { AppHeader } from '../components/AppHeader';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 
 const { width } = Dimensions.get('window');
 
