@@ -109,7 +109,7 @@ export function buildReportHtml(d: ReportData): string {
 <body>
   <div class="header">
     <h1>${esc(d.hostelName) || 'Hostel'} — Monthly Report</h1>
-    <div class="sub">${esc(d.ownerName ? d.ownerName + ' • ' : '')}Stivo Hostel Management</div>
+    <div class="sub">${esc(d.ownerName ? d.ownerName + ' • ' : '')}Stivo PG Management</div>
     <div class="period">${esc(d.periodLabel)}</div>
   </div>
 

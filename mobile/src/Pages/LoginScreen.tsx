@@ -82,7 +82,7 @@ export default function LoginScreen({ navigation }: any) {
                                 resizeMode="contain"
                             />
                             <Text style={styles.appName}>Stivo</Text>
-                            <Text style={styles.tagline}>Smart Hostel Management</Text>
+                            <Text style={styles.tagline}>Smart PG Management</Text>
                         </View>
                     </LinearGradient>
 
@@ -97,7 +97,7 @@ export default function LoginScreen({ navigation }: any) {
                         scrollEnabled={true}
                     >
                         <Text style={styles.signInTitle}>Welcome back 👋</Text>
-                        <Text style={styles.signInSubtitle}>Sign in to continue managing your hostel</Text>
+                        <Text style={styles.signInSubtitle}>Sign in to continue managing your PG</Text>
 
                         {/* Error alert */}
                         {errorMessage && (
@@ -194,7 +194,7 @@ export default function LoginScreen({ navigation }: any) {
 
                         {/* Bottom branding */}
                         <View style={styles.bottomBranding}>
-                            <Text style={styles.bottomBrandingText}>Powered by Stivo • Hostel OS</Text>
+                            <Text style={styles.bottomBrandingText}>Powered by Stivo • PG OS</Text>
                         </View>
 
                         <View style={styles.keyboardSpacer} />

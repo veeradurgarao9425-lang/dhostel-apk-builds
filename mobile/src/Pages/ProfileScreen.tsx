@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next';
 import api from '../services/api';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useConfirmation } from '../../contexts/ConfirmationContext';
 
 
 const ProfileScreen = ({ navigation }: any) => {
@@ -23,6 +24,7 @@ const ProfileScreen = ({ navigation }: any) => {
     const { theme, isDark } = useTheme();
     const { t } = useTranslation();
     const insets = useSafeAreaInsets();
+    const confirm = useConfirmation();
     const [stats, setStats] = useState<any>(null);
     const [switching, setSwitching] = useState(false);
 
@@ -36,16 +38,18 @@ const ProfileScreen = ({ navigation }: any) => {
 
     useFocusEffect(React.useCallback(() => { fetchStats(); }, []));
 
-    const handleLogout = async () => {
-        Alert.alert(t('profile.signOutTitle'), t('profile.signOutMessage'), [
-            { text: t('profile.cancel'), style: 'cancel' },
-            {
-                text: t('profile.signOut'), style: 'destructive', onPress: async () => {
-                    await signOut();
-                    navigation.replace('Login');
-                }
+    const handleLogout = () => {
+        confirm({
+            title: t('profile.signOutTitle', 'Sign Out'),
+            message: t('profile.signOutMessage', 'Are you sure you want to sign out?'),
+            confirmText: t('profile.signOut', 'Sign Out'),
+            cancelText: t('profile.cancel', 'Cancel'),
+            variant: 'danger',
+            onConfirm: async () => {
+                await signOut();
+                navigation.replace('Login');
             }
-        ]);
+        });
     };
 
 

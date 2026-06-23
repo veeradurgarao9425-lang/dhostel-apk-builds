@@ -13,6 +13,7 @@ import {
     Alert
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { Plus, Search, Calendar, ChevronDown, Tag, X, Edit3, Trash2 } from 'lucide-react-native';
 import { AppHeader } from '../components/AppHeader';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -80,7 +81,7 @@ export const ExpenseScreen = ({ navigation }: any) => {
 
             const params: Record<string, any> = { page: pageNum, limit: 10 };
             if (debouncedSearch) params.search = debouncedSearch;
-            
+
             if (currentDate) {
                 const y = currentDate.getFullYear();
                 const m = currentDate.getMonth() + 1;
@@ -213,21 +214,33 @@ export const ExpenseScreen = ({ navigation }: any) => {
                         <ProfileMenu />
                     </View>
                 }
-            >
-                {/* Expense Stats */}
-                <View style={styles.statsRow}>
-                    <View style={[styles.statCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.2)' }]}>
-                        <Text style={styles.statLabel}>Total Expenses</Text>
-                        <Text style={styles.statValue}>₹{totalExpenses.toLocaleString('en-IN')}</Text>
-                    </View>
-                    <View style={[styles.statCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.2)' }]}>
-                        <Text style={styles.statLabel}>
-                            {currentDate ? getMonthLabel() : 'This Month'}
-                        </Text>
-                        <Text style={styles.statValue}>₹{monthExpensesTotal.toLocaleString('en-IN')}</Text>
-                    </View>
+            />
+
+            {/* Expense Stats */}
+            <View style={styles.statsRow}>
+                <View style={[
+                    styles.statCard, 
+                    { 
+                        backgroundColor: isDark ? '#1e1b4b' : '#EEF2FF', 
+                        borderColor: isDark ? '#312E81' : '#E0E7FF' 
+                    }
+                ]}>
+                    <Text style={[styles.statLabel, { color: isDark ? '#C7D2FE' : '#4F46E5' }]}>Total Expenses</Text>
+                    <Text style={[styles.statValue, { color: isDark ? '#E0E7FF' : '#312E81' }]}>₹{totalExpenses.toLocaleString('en-IN')}</Text>
                 </View>
-            </AppHeader>
+                <View style={[
+                    styles.statCard, 
+                    { 
+                        backgroundColor: isDark ? '#2D1919' : '#FFF1F1', 
+                        borderColor: isDark ? '#7F1D1D' : '#FEE2E2' 
+                    }
+                ]}>
+                    <Text style={[styles.statLabel, { color: isDark ? '#FCA5A5' : '#EF4444' }]}>
+                        {currentDate ? getMonthLabel() : 'This Month'}
+                    </Text>
+                    <Text style={[styles.statValue, { color: isDark ? '#FEE2E2' : '#991B1B' }]}>₹{monthExpensesTotal.toLocaleString('en-IN')}</Text>
+                </View>
+            </View>
 
             {/* Search Bar */}
             <View style={styles.searchSection}>
@@ -246,9 +259,9 @@ export const ExpenseScreen = ({ navigation }: any) => {
                         </TouchableOpacity>
                     )}
                 </View>
-                
+
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={[styles.monthPicker, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
                         onPress={() => setDatePickerVisibility(true)}
                     >
@@ -257,7 +270,7 @@ export const ExpenseScreen = ({ navigation }: any) => {
                         <ChevronDown color={isDark ? '#94A3B8' : "#666666"} size={16} />
                     </TouchableOpacity>
                     {currentDate && (
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={[styles.clearMonthButton, { backgroundColor: isDark ? '#3F2222' : '#FFF1F1', borderColor: isDark ? '#7F1D1D' : '#FEE2E2' }]}
                             onPress={() => setCurrentDate(null)}
                         >
@@ -319,28 +332,15 @@ export const ExpenseScreen = ({ navigation }: any) => {
                                         </Text>
                                     )}
 
-                                    <View style={[styles.columnsBlock, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC' }]}>
-                                        <View style={styles.colItem}>
-                                            <Text style={styles.colLabel}>Total</Text>
-                                            <Text style={[styles.colValue, { color: theme.textPrimary }]}>₹{parseFloat(expense.amount || 0).toLocaleString('en-IN')}</Text>
-                                        </View>
-                                        <View style={styles.colDivider} />
-                                        <View style={styles.colItem}>
-                                            <Text style={[styles.colLabel, { color: '#059669' }]}>Paid</Text>
-                                            <Text style={[styles.colValue, { color: '#059669' }]}>₹{parseFloat(expense.amount || 0).toLocaleString('en-IN')}</Text>
-                                        </View>
-                                        <View style={styles.colDivider} />
-                                        <View style={styles.colItem}>
-                                            <Text style={styles.colLabel}>Mode</Text>
-                                            <Text style={[styles.colValue, { color: theme.textPrimary }]}>{(expense.payment_mode || 'Cash').toUpperCase()}</Text>
-                                        </View>
-                                    </View>
-
                                     <View style={[styles.cardFooterRow, { borderTopColor: isDark ? '#334155' : '#F1F5F9' }]}>
                                         <View style={styles.footerLeftGroup}>
                                             <View style={styles.footerMetaItem}>
                                                 <Calendar size={13} color="#94A3B8" />
                                                 <Text style={styles.footerMetaText}>{formatDate(expense.expense_date)}</Text>
+                                            </View>
+                                            <View style={styles.footerMetaItem}>
+                                                <Ionicons name="wallet-outline" size={13} color="#94A3B8" />
+                                                <Text style={styles.footerMetaText}>{(expense.payment_mode || 'Cash').toUpperCase()}</Text>
                                             </View>
                                         </View>
                                         {expense.is_wage ? (
@@ -462,26 +462,30 @@ const styles = StyleSheet.create({
     statsRow: {
         flexDirection: 'row',
         gap: 12,
+        paddingHorizontal: 16,
+        paddingTop: 16,
     },
     statCard: {
         flex: 1,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        borderRadius: 12,
+        borderRadius: 14,
         padding: 14,
+        borderWidth: 1,
+        elevation: 1,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.02,
+        shadowRadius: 3,
     },
     statLabel: {
         fontSize: 11,
-        color: '#FFFFFF',
-        opacity: 0.9,
-        marginBottom: 6,
-        fontWeight: '600',
+        fontWeight: '700',
         textTransform: 'uppercase',
         letterSpacing: 0.5,
+        marginBottom: 4,
     },
     statValue: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#FFFFFF',
+        fontSize: 18,
+        fontWeight: '800',
     },
     searchSection: {
         flexDirection: 'row',
@@ -691,8 +695,8 @@ const styles = StyleSheet.create({
     },
     fab: {
         position: 'absolute',
-        bottom: 30,
-        right: 20,
+        bottom: 45,
+        right: 24,
         width: 50,
         height: 50,
         borderRadius: 25,

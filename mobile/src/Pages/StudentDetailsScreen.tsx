@@ -31,6 +31,8 @@ import { ProfileMenu } from '../components/ProfileMenu';
 import { HeaderNotification } from '../components/HeaderNotification';
 import { AppHeader } from '../components/AppHeader';
 import { useFocusEffect } from '@react-navigation/native';
+import { useConfirmation } from '../../contexts/ConfirmationContext';
+import { PaymentDrawer } from '../components/PaymentDrawer';
 
 // ─── Sub-component: a single detail row ──────────────────────────────────────
 // Extracted & memoized — only re-renders when its own props change.
@@ -91,6 +93,7 @@ const PaymentHistoryItem = React.memo(({ payment, student, onPress }: { payment:
 const StudentDetailsScreen = ({ route, navigation }: any) => {
     const { studentId } = route.params || {};
     const { theme, isDark } = useTheme();
+    const confirm = useConfirmation();
 
     // Core student data (loaded immediately)
     const [student, setStudent] = useState<any>(null);
@@ -126,10 +129,6 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
     const [payReason, setPayReason] = useState('');
     const [paymentModes, setPaymentModes] = useState<any[]>([]);
     const [payLoading, setPayLoading] = useState(false);
-
-    // Date picker visibility
-    const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
-    const [isDueDatePickerVisible, setDueDatePickerVisibility] = useState(false);
 
     // Guard against concurrent fetches
     const isFetching = useRef(false);
@@ -221,16 +220,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
         }, [fetchStudentDetails])
     );
 
-    // ── Date picker handlers ───────────────────────────────────────────────
-    const handleConfirmDate = useCallback((date: Date) => {
-        setPayDate(date.toISOString().split('T')[0]);
-        setDatePickerVisibility(false);
-    }, []);
 
-    const handleConfirmDueDate = useCallback((date: Date) => {
-        setPayDueDate(date.toISOString().split('T')[0]);
-        setDueDatePickerVisibility(false);
-    }, []);
 
     // Calculate total outstanding balance from pending dues.
     // Only count dues that are due now (current month or earlier). Future months are
@@ -292,39 +282,35 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
             confirmText = 'Yes, mark Active';
         }
 
-        Alert.alert(
+        confirm({
             title,
             message,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: confirmText,
-                    style: isDestructive ? 'destructive' : 'default',
-                    onPress: async () => {
-                        try {
-                            setStatusLoading(true);
-                            const res = await api.put(`/students/${student.student_id}`, {
-                                status: nextStatus
-                            });
-                            if (res.data.success) {
-                                setStudent((prev: any) => ({ ...prev, status: nextStatus }));
-                                Toast.show({
-                                    type: 'success',
-                                    text1: currentStatus === 2 ? 'Checked In Successfully!' : `Marked as ${nextStatus === 1 ? 'Active' : 'Inactive'}`,
-                                    text2: `${student.first_name} is now ${nextStatus === 1 ? 'active' : 'inactive'}.`
-                                });
-                                fetchStudentDetails(); // refresh details to sync billing fee histories
-                            }
-                        } catch (e: any) {
-                            Alert.alert('Error', e.response?.data?.error || 'Failed to update status');
-                        } finally {
-                            setStatusLoading(false);
-                        }
+            confirmText,
+            cancelText: 'Cancel',
+            variant: isDestructive ? 'danger' : 'info',
+            onConfirm: async () => {
+                try {
+                    setStatusLoading(true);
+                    const res = await api.put(`/students/${student.student_id}`, {
+                        status: nextStatus
+                    });
+                    if (res.data.success) {
+                        setStudent((prev: any) => ({ ...prev, status: nextStatus }));
+                        Toast.show({
+                            type: 'success',
+                            text1: currentStatus === 2 ? 'Checked In Successfully!' : `Marked as ${nextStatus === 1 ? 'Active' : 'Inactive'}`,
+                            text2: `${student.first_name} is now ${nextStatus === 1 ? 'active' : 'inactive'}.`
+                        });
+                        fetchStudentDetails(); // refresh details to sync billing fee histories
                     }
+                } catch (e: any) {
+                    Alert.alert('Error', e.response?.data?.error || 'Failed to update status');
+                } finally {
+                    setStatusLoading(false);
                 }
-            ]
-        );
-    }, [student, fetchStudentDetails]);
+            }
+        });
+    }, [student, fetchStudentDetails, confirm]);
 
     // ── Schedule Vacancy Notice ───────────────────────────────────────────
     const handleSetVacancyNotice = useCallback(async () => {
@@ -352,34 +338,31 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
 
     // ── Clear Vacancy Notice ──────────────────────────────────────────────
     const handleClearVacancyNotice = useCallback(async () => {
-        Alert.alert(
-            'Cancel Vacancy Notice?',
-            'Are you sure you want to clear the scheduled vacate date?',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Yes, Clear Notice',
-                    onPress: async () => {
-                        try {
-                            setLoading(true);
-                            const res = await api.put(`/students/${studentId}`, {
-                                vacate_notice_date: null,
-                                vacate_notice_reason: null
-                            });
-                            if (res.data.success) {
-                                Toast.show({ type: 'success', text1: 'Vacancy Notice Cancelled' });
-                                fetchStudentDetails();
-                            }
-                        } catch (e: any) {
-                            Alert.alert('Error', e.response?.data?.error || 'Failed to clear vacancy notice');
-                        } finally {
-                            setLoading(false);
-                        }
+        confirm({
+            title: 'Cancel Vacancy Notice?',
+            message: 'Are you sure you want to clear the scheduled vacate date?',
+            confirmText: 'Yes, Clear Notice',
+            cancelText: 'Cancel',
+            variant: 'warning',
+            onConfirm: async () => {
+                try {
+                    setLoading(true);
+                    const res = await api.put(`/students/${studentId}`, {
+                        vacate_notice_date: null,
+                        vacate_notice_reason: null
+                    });
+                    if (res.data.success) {
+                        Toast.show({ type: 'success', text1: 'Vacancy Notice Cancelled' });
+                        fetchStudentDetails();
                     }
+                } catch (e: any) {
+                    Alert.alert('Error', e.response?.data?.error || 'Failed to clear vacancy notice');
+                } finally {
+                    setLoading(false);
                 }
-            ]
-        );
-    }, [studentId, fetchStudentDetails]);
+            }
+        });
+    }, [studentId, fetchStudentDetails, confirm]);
 
     // ── Submit payment ─────────────────────────────────────────────────────
     const handleRecordPayment = useCallback(async () => {
@@ -745,7 +728,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                 <View style={[styles.premiumCardContainer, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
                                     <View style={styles.premiumCardHeader}>
                                         <Calendar size={16} color={theme.primary} />
-                                        <Text style={[styles.premiumCardHeaderTitle, { color: theme.textPrimary }]}>Hostel Registration</Text>
+                                        <Text style={[styles.premiumCardHeaderTitle, { color: theme.textPrimary }]}>PG Registration</Text>
                                     </View>
                                     <View style={styles.premiumGrid}>
                                         <View style={styles.premiumGridRow}>
@@ -825,142 +808,36 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                 )}
             </ScrollView>
 
-            {/* ── Payment Modal ─────────────────────────────────────────── */}
-            <Modal
+            {/* ── Payment Modal (shared PaymentDrawer component) ── */}
+            <PaymentDrawer
                 visible={payModalVisible}
-                animationType="slide"
-                transparent={true}
-                onRequestClose={() => setPayModalVisible(false)}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Record Payment</Text>
-                            <TouchableOpacity onPress={() => setPayModalVisible(false)}>
-                                <X size={24} color="#666" />
-                            </TouchableOpacity>
-                        </View>
-
-                        <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-                            <Text style={styles.inputLabel}>Amount to Pay (₹) *</Text>
-                            <TextInput
-                                style={styles.amountInput}
-                                value={payAmount}
-                                onChangeText={setPayAmount}
-                                keyboardType="numeric"
-                                placeholder="0.00"
-                            />
-
-                            <View style={styles.row}>
-                                <View style={{ flex: 1, marginRight: 8 }}>
-                                    <Text style={styles.inputLabel}>Payment Date *</Text>
-                                    <TouchableOpacity
-                                        style={styles.dateSelector}
-                                        onPress={() => setDatePickerVisibility(true)}
-                                    >
-                                        <Calendar size={18} color="#FF6B6B" />
-                                        <Text style={styles.dateText}>{payDate}</Text>
-                                    </TouchableOpacity>
-                                </View>
-                                <View style={{ flex: 1, marginLeft: 8 }}>
-                                    <Text style={styles.inputLabel}>Due Date *</Text>
-                                    <TouchableOpacity
-                                        style={styles.dateSelector}
-                                        onPress={() => setDueDatePickerVisibility(true)}
-                                    >
-                                        <Calendar size={18} color="#FF6B6B" />
-                                        <Text style={styles.dateText}>{payDueDate}</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-
-                            <DateTimePickerModal
-                                isVisible={isDatePickerVisible}
-                                mode="date"
-                                onConfirm={handleConfirmDate}
-                                onCancel={() => setDatePickerVisibility(false)}
-                                date={new Date(payDate)}
-                            />
-                            <DateTimePickerModal
-                                isVisible={isDueDatePickerVisible}
-                                mode="date"
-                                onConfirm={handleConfirmDueDate}
-                                onCancel={() => setDueDatePickerVisibility(false)}
-                                date={new Date(payDueDate)}
-                            />
-
-                            <Text style={[styles.inputLabel, { marginTop: 12 }]}>Payment Mode *</Text>
-                            <View style={styles.verticalModeContainer}>
-                                {paymentModes.map((mode) => {
-                                    const mId = mode.payment_mode_id || mode.id;
-                                    const mName = mode.payment_mode_name || mode.name || 'Unknown';
-                                    const isSelected = payModeId === mId.toString();
-                                    return (
-                                        <TouchableOpacity
-                                            key={mId}
-                                            style={[styles.modeListItem, isSelected && styles.modeListItemActive]}
-                                            onPress={() => setPayModeId(mId.toString())}
-                                        >
-                                            <Text style={[
-                                                styles.modeListItemText,
-                                                isSelected && styles.modeListItemTextActive
-                                            ]}>
-                                                {mName}
-                                            </Text>
-                                            {isSelected && <CheckCircle color="#FF6B6B" size={18} />}
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                            </View>
-
-                            <Text style={[styles.inputLabel, { marginTop: 12 }]}>Transaction ID (Optional)</Text>
-                            <TextInput
-                                style={styles.amountInput}
-                                value={payTransactionId}
-                                onChangeText={setPayTransactionId}
-                                placeholder="TXN123456"
-                            />
-
-                            <Text style={[styles.inputLabel, { marginTop: 12 }]}>Receipt Number (Optional)</Text>
-                            <TextInput
-                                style={styles.amountInput}
-                                value={payReceiptNumber}
-                                onChangeText={setPayReceiptNumber}
-                                placeholder="REC-789"
-                            />
-
-                            <Text style={[styles.inputLabel, { marginTop: 12 }]}>Reason (Optional)</Text>
-                            <TextInput
-                                style={styles.amountInput}
-                                value={payReason}
-                                onChangeText={setPayReason}
-                                placeholder="e.g. Monthly Fee, Security Deposit"
-                            />
-
-                            <Text style={[styles.inputLabel, { marginTop: 12 }]}>Notes</Text>
-                            <TextInput
-                                style={[styles.notesInput, { height: 80 }]}
-                                value={payNotes}
-                                onChangeText={setPayNotes}
-                                multiline={true}
-                                placeholder="Add optional notes..."
-                                textAlignVertical="top"
-                            />
-
-                            <TouchableOpacity
-                                style={[styles.submitButton, payLoading && styles.disabledButton]}
-                                onPress={handleRecordPayment}
-                                disabled={payLoading}
-                            >
-                                {payLoading
-                                    ? <ActivityIndicator color="#FFF" />
-                                    : <Text style={styles.submitButtonText}>Submit Payment</Text>
-                                }
-                            </TouchableOpacity>
-                        </ScrollView>
-                    </View>
-                </View>
-            </Modal>
+                onClose={() => setPayModalVisible(false)}
+                selectedFee={student ? {
+                    first_name: student.first_name,
+                    last_name: student.last_name,
+                    room_number: student.room_number || 'N/A'
+                } : null}
+                paymentModes={paymentModes}
+                payAmount={payAmount}
+                setPayAmount={setPayAmount}
+                payNotes={payNotes}
+                setPayNotes={setPayNotes}
+                payTransactionId={payTransactionId}
+                setPayTransactionId={setPayTransactionId}
+                payDate={payDate}
+                setPayDate={setPayDate}
+                payDueDate={payDueDate}
+                setPayDueDate={setPayDueDate}
+                payModeId={payModeId}
+                setPayModeId={setPayModeId}
+                payReceiptNumber={payReceiptNumber}
+                setPayReceiptNumber={setPayReceiptNumber}
+                payReason={payReason}
+                setPayReason={setPayReason}
+                payLoading={payLoading}
+                onConfirm={handleRecordPayment}
+                themeColor={theme.primary}
+            />
 
             {/* ── Vacancy Notice Modal ─────────────────────────────────────── */}
             <Modal

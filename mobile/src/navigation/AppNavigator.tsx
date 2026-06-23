@@ -32,6 +32,7 @@ import ExpenseDetailsScreen  from '../Pages/ExpenseDetailsScreen';
 import FeeCollectionScreen   from '../Pages/FeeCollectionScreen';
 import SettingsScreen        from '../Pages/SettingsScreen';
 import ReceiptScreen         from '../Pages/ReciptScreen';
+import PrivacyPolicyScreen   from '../Pages/PrivacyPolicyScreen';
 import IncomeScreen          from '../Pages/InComeScreen';
 import IncomeDetailsScreen   from '../Pages/IncomeDetailsScreen';
 import AddIncomeScreen       from '../Pages/AddIncomeScreen';
@@ -209,6 +210,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     {/* Account & Settings */}
                     <Stack.Screen name="Profile"  component={ProfileScreen}  />
                     <Stack.Screen name="Settings" component={SettingsScreen} />
+                    <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
                     <Stack.Screen
                         name="AddHostel"
                         component={AddHostelScreen}

@@ -19,6 +19,7 @@ import Toast from 'react-native-toast-message';
 import { AppHeader } from '../components/AppHeader';
 import { InputField } from '../components/InputField';
 import { Card } from '../components/Card';
+import { FullScreenLoader } from '../components/FullScreenLoader';
 import api from '../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -624,6 +625,7 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
                     </View>
                 </TouchableOpacity>
             </Modal>
+            <FullScreenLoader visible={loading} />
         </KeyboardAvoidingView>
     );
 };

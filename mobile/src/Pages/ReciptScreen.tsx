@@ -12,25 +12,11 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { AppHeader } from '../components/AppHeader';
-
-// Helper for number to words
-const numberToWords = (num: number) => {
-    if (num === 0) return 'ZERO ONLY';
-    const a = ['', 'ONE ', 'TWO ', 'THREE ', 'FOUR ', 'FIVE ', 'SIX ', 'SEVEN ', 'EIGHT ', 'NINE ', 'TEN ', 'ELEVEN ', 'TWELVE ', 'THIRTEEN ', 'FOURTEEN ', 'FIFTEEN ', 'SIXTEEN ', 'SEVENTEEN ', 'EIGHTEEN ', 'NINETEEN '];
-    const b = ['', '', 'TWENTY', 'THIRTY', 'FORTY', 'FIFTY', 'SIXTY', 'SEVENTY', 'EIGHTY', 'NINETY'];
-    const n = ('000000000' + num).slice(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
-    if (!n) return '';
-    let str = '';
-    str += (n[1] != '00') ? (a[Number(n[1])] || b[Number(n[1][0])] + ' ' + a[Number(n[1][1])]) + 'CRORE ' : '';
-    str += (n[2] != '00') ? (a[Number(n[2])] || b[Number(n[2][0])] + ' ' + a[Number(n[2][1])]) + 'LAKH ' : '';
-    str += (n[3] != '00') ? (a[Number(n[3])] || b[Number(n[3][0])] + ' ' + a[Number(n[3][1])]) + 'THOUSAND ' : '';
-    str += (n[4] != '0') ? (a[Number(n[4])] || b[Number(n[4][0])] + ' ' + a[Number(n[4][1])]) + 'HUNDRED ' : '';
-    str += (n[5] != '00') ? ((str != '') ? 'AND ' : '') + (a[Number(n[5])] || b[Number(n[5][0])] + ' ' + a[Number(n[5][1])]) : '';
-    return str.trim() + ' ONLY';
-};
+import { useAuth } from '../../contexts/AuthContext';
 
 export const ReceiptScreen = ({ navigation, route }: any) => {
     const { feeData } = route.params || {};
+    const { user } = useAuth();
 
     if (!feeData) {
         return (
@@ -40,22 +26,40 @@ export const ReceiptScreen = ({ navigation, route }: any) => {
         );
     }
 
-    const formatDate = (dateString: string) => {
+    const formatDateTime = (dateString: string) => {
         if (!dateString) return 'N/A';
         const date = new Date(dateString);
-        return date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-');
+        const hours = date.getHours();
+        const minutes = date.getMinutes();
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        const displayHours = hours % 12 || 12;
+        const displayMinutes = String(minutes).padStart(2, '0');
+        
+        const day = date.getDate();
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const month = months[date.getMonth()];
+        const year = date.getFullYear();
+        
+        return `${displayHours}:${displayMinutes} ${ampm} on ${day} ${month} ${year}`;
     };
 
-    const receiptData = {
-        receiptNo: feeData.fee_id ? `REC-${feeData.fee_id}-${Date.now().toString().slice(-4)}` : 'N/A',
-        student: `${feeData.first_name} ${feeData.last_name}`,
-        room: feeData.room_number || 'N/A',
-        amountPaid: feeData.paid_amount || 0,
-        paymentMode: 'CASH', // Defaulting to CASH as per design image
-        date: formatDate(new Date().toISOString()),
-        mobile: feeData.phone || 'N/A',
-        month: feeData.fee_month || 'N/A',
+    const getInitials = (name: string) => {
+        if (!name) return 'H';
+        return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
     };
+
+    const hostelName = user?.hostel_name || 'My Hostel';
+    const amountPaid = feeData.paid_amount || feeData.amount || 0;
+    const paymentMode = feeData.payment_mode_name || 'CASH';
+    const transactionId = feeData.transaction_id || 'N/A';
+    const receiptNo = feeData.receipt_number || (feeData.fee_id ? `REC-${feeData.fee_id}` : 'N/A');
+    const transactionTime = formatDateTime(feeData.payment_date || feeData.created_at || new Date().toISOString());
+    const studentName = `${feeData.first_name || ''} ${feeData.last_name || ''}`.trim();
+    const roomNo = feeData.room_number || 'N/A';
+    const mobileNo = feeData.phone || 'N/A';
+    const feeMonth = feeData.fee_month || 'N/A';
+    const avatarInitials = getInitials(hostelName);
+    const upiId = `${hostelName.toLowerCase().replace(/\s+/g, '')}@yesbank`;
 
     const generateHtml = () => {
         return `
@@ -63,68 +67,282 @@ export const ReceiptScreen = ({ navigation, route }: any) => {
               <head>
                 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
                 <style>
-                  body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 40px; color: #333; background-color: #f9f9f9; }
-                  .container { max-width: 800px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border: 1px solid #eee; }
-                  .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #333; padding-bottom: 20px; }
-                  .hostel-name { font-size: 28px; font-weight: bold; color: #333; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
-                  .receipt-title { font-size: 18px; color: #666; font-weight: 500; text-transform: uppercase; }
-                  .meta { display: flex; justify-content: space-between; margin-bottom: 30px; color: #666; font-size: 14px; }
-                  .details-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-                  .details-table th, .details-table td { text-align: left; padding: 12px 15px; border-bottom: 1px solid #eee; }
-                  .details-table th { color: #888; font-weight: 500; width: 40%; }
-                  .details-table td { color: #333; font-weight: 600; text-align: right; }
-                  .amount-row td { font-size: 18px; color: #2E7D32; border-top: 2px solid #eee; }
-                  .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #999; line-height: 1.6; }
-                  .signature { margin-top: 50px; text-align: right; padding-right: 20px; }
-                  .sign-line { border-top: 1px solid #ccc; display: inline-block; width: 200px; padding-top: 5px; font-weight: bold; color: #333; }
+                  body {
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                    background-color: #f5f6f8;
+                    margin: 0;
+                    padding: 24px;
+                    color: #1e293b;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    min-height: 100vh;
+                  }
+                  .receipt-container {
+                    width: 100%;
+                    max-width: 480px;
+                    background-color: #f5f6f8;
+                  }
+                  .status-header {
+                    display: flex;
+                    align-items: center;
+                    gap: 16px;
+                    margin-bottom: 20px;
+                    padding-left: 8px;
+                  }
+                  .status-icon-circle {
+                    width: 48px;
+                    height: 48px;
+                    border-radius: 50%;
+                    background-color: #5f259f;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    font-size: 24px;
+                    font-weight: bold;
+                  }
+                  .status-text-container {
+                    display: flex;
+                    flex-direction: column;
+                  }
+                  .status-title {
+                    font-size: 18px;
+                    font-weight: 700;
+                    color: #0f172a;
+                    margin: 0;
+                  }
+                  .status-time {
+                    font-size: 13px;
+                    color: #64748b;
+                    margin: 4px 0 0 0;
+                  }
+                  .receipt-card {
+                    background-color: #ffffff;
+                    border-radius: 16px;
+                    padding: 20px;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+                    border: 1px solid #e2e8f0;
+                  }
+                  .card-label {
+                    font-size: 12px;
+                    font-weight: 600;
+                    color: #64748b;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    margin: 0 0 12px 0;
+                  }
+                  .paid-to-row {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    margin-bottom: 16px;
+                  }
+                  .avatar-info {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                  }
+                  .avatar {
+                    width: 48px;
+                    height: 48px;
+                    border-radius: 50%;
+                    background-color: #00bcd4;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    font-size: 18px;
+                    font-weight: 700;
+                  }
+                  .info-text {
+                    display: flex;
+                    flex-direction: column;
+                  }
+                  .hostel-name {
+                    font-size: 15px;
+                    font-weight: 700;
+                    color: #0f172a;
+                    margin: 0;
+                    text-transform: uppercase;
+                  }
+                  .upi-id {
+                    font-size: 12px;
+                    color: #64748b;
+                    margin: 4px 0 0 0;
+                  }
+                  .amount {
+                    font-size: 20px;
+                    font-weight: 800;
+                    color: #0f172a;
+                  }
+                  .divider {
+                    height: 1px;
+                    background-color: #e2e8f0;
+                    margin: 16px 0;
+                  }
+                  .transfer-header {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    margin-bottom: 16px;
+                  }
+                  .transfer-title {
+                    font-size: 14px;
+                    font-weight: 700;
+                    color: #334155;
+                    margin: 0;
+                  }
+                  .chevron-icon {
+                    border: solid #64748b;
+                    border-width: 0 2px 2px 0;
+                    display: inline-block;
+                    padding: 3px;
+                    transform: rotate(-135deg);
+                  }
+                  .details-list {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                  }
+                  .detail-group {
+                    display: flex;
+                    flex-direction: column;
+                  }
+                  .detail-label {
+                    font-size: 11px;
+                    color: #94a3b8;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    margin-bottom: 4px;
+                  }
+                  .detail-value {
+                    font-size: 14px;
+                    font-weight: 600;
+                    color: #1e293b;
+                    margin: 0;
+                  }
+                  .debited-row {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                  }
+                  .debited-left {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                  }
+                  .bank-logo {
+                    width: 24px;
+                    height: 24px;
+                    border-radius: 50%;
+                    background-color: #5f259f;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    font-size: 10px;
+                    font-weight: bold;
+                  }
+                  .footer {
+                    text-align: center;
+                    margin-top: 30px;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    gap: 8px;
+                  }
+                  .powered-by {
+                    font-size: 12px;
+                    color: #94a3b8;
+                    margin: 0;
+                  }
+                  .logo-container {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                  }
+                  .logo-stivo {
+                    font-weight: 800;
+                    color: #5f259f;
+                    font-size: 14px;
+                    letter-spacing: 1px;
+                  }
+                  .logo-dot {
+                    color: #10b981;
+                  }
                 </style>
               </head>
               <body>
-                <div class="container">
-                  <div class="header">
-                    <div class="hostel-name">My Hostel</div>
-                    <div class="receipt-title">Payment Receipt</div>
+                <div class="receipt-container">
+                  <div class="status-header">
+                    <div class="status-icon-circle">
+                      <span style="font-size: 20px; line-height: 48px;">✓</span>
+                    </div>
+                    <div class="status-text-container">
+                      <h2 class="status-title">Transaction Successful</h2>
+                      <p class="status-time">${transactionTime}</p>
+                    </div>
                   </div>
-                  
-                  <div class="meta">
-                    <div><strong>Date:</strong> ${receiptData.date}</div>
-                    <div><strong>Receipt No:</strong> ${receiptData.receiptNo}</div>
-                  </div>
-                  
-                  <table class="details-table">
-                    <tr>
-                      <th>Student Name</th>
-                      <td>${receiptData.student}</td>
-                    </tr>
-                    <tr>
-                      <th>Room Number</th>
-                      <td>${receiptData.room}</td>
-                    </tr>
-                    <tr>
-                      <th>Mobile Number</th>
-                      <td>${receiptData.mobile}</td>
-                    </tr>
-                    <tr>
-                      <th>Fee Month</th>
-                      <td>${receiptData.month}</td>
-                    </tr>
-                    <tr>
-                      <th>Payment Mode</th>
-                      <td>${receiptData.paymentMode}</td>
-                    </tr>
-                    <tr class="amount-row">
-                      <th>Amount Paid</th>
-                      <td>₹${receiptData.amountPaid.toLocaleString('en-IN')}</td>
-                    </tr>
-                  </table>
-                  
-                  <div class="signature">
-                    <div class="sign-line">Authorized Signature</div>
+
+                  <div class="receipt-card">
+                    <h3 class="card-label">Paid to</h3>
+                    <div class="paid-to-row">
+                      <div class="avatar-info">
+                        <div class="avatar">${avatarInitials}</div>
+                        <div class="info-text">
+                          <h4 class="hostel-name">${hostelName}</h4>
+                          <p class="upi-id">${upiId}</p>
+                        </div>
+                      </div>
+                      <div class="amount">₹${amountPaid.toLocaleString('en-IN')}</div>
+                    </div>
+
+                    <div class="divider"></div>
+
+                    <div class="transfer-header">
+                      <h4 class="transfer-title">Transfer Details</h4>
+                      <span class="chevron-icon"></span>
+                    </div>
+
+                    <div class="details-list">
+                      <div class="detail-group">
+                        <span class="detail-label">Message / Fee Month</span>
+                        <span class="detail-value">Rent for ${feeMonth}</span>
+                      </div>
+
+                      <div class="detail-group">
+                        <span class="detail-label">Student Name / Room</span>
+                        <span class="detail-value">${studentName} (Room ${roomNo})</span>
+                      </div>
+
+                      <div class="detail-group">
+                        <span class="detail-label">Receipt / Invoice No</span>
+                        <span class="detail-value">${receiptNo}</span>
+                      </div>
+
+                      <div class="detail-group">
+                        <span class="detail-label">Debited from</span>
+                        <div class="debited-row">
+                          <div class="debited-left">
+                            <div class="bank-logo">${paymentMode[0].toUpperCase()}</div>
+                            <span class="detail-value" style="font-weight: 500;">${paymentMode}</span>
+                          </div>
+                          <span class="amount" style="font-size: 14px; font-weight: 600;">₹${amountPaid.toLocaleString('en-IN')}</span>
+                        </div>
+                        ${transactionId && transactionId !== 'N/A' ? `
+                        <span class="detail-label" style="margin-top: 6px;">UTR / Reference ID</span>
+                        <span class="detail-value" style="font-size: 13px; color: #475569;">${transactionId}</span>
+                        ` : ''}
+                      </div>
+                    </div>
                   </div>
 
                   <div class="footer">
-                    <p>Thank you for your payment!</p>
-                    <p>This is a computer generated receipt.</p>
+                    <p class="powered-by">Powered by</p>
+                    <div class="logo-container">
+                      <span class="logo-stivo">STIVO<span class="logo-dot">•</span>PG OS</span>
+                    </div>
                   </div>
                 </div>
               </body>
@@ -144,88 +362,99 @@ export const ReceiptScreen = ({ navigation, route }: any) => {
 
     return (
         <View style={styles.container}>
-            <StatusBar barStyle="light-content" backgroundColor="#1E9E49" />
+            <StatusBar barStyle="light-content" backgroundColor="#5f259f" />
 
             {/* Header */}
-            <AppHeader title="Payment Receipt" />
+            <AppHeader title="Transaction Details" />
 
             <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+                
+                {/* Status Header Block */}
+                <View style={styles.statusHeader}>
+                    <View style={styles.statusIconCircle}>
+                        <Ionicons name="checkmark-sharp" size={24} color="#FFF" />
+                    </View>
+                    <View style={styles.statusTextContainer}>
+                        <Text style={styles.statusTitle}>Transaction Successful</Text>
+                        <Text style={styles.statusTime}>{transactionTime}</Text>
+                    </View>
+                </View>
+
                 {/* Main Card */}
                 <View style={styles.card}>
-                    {/* Top Section */}
-                    <View style={styles.cardHeader}>
-                        <Text style={styles.studentName}>{receiptData.student.toUpperCase()}</Text>
-                        <View style={styles.receiptBadge}>
-                            <Text style={styles.receiptBadgeText}>RECEIPT</Text>
-                        </View>
-                    </View>
-                    <Text style={styles.addressText}>
-                        Hyderabad{'\n'}Ward 104 Kondapur, Ranga Reddy, Serilingampalle mandal
-                    </Text>
-
-                    {/* Details Box */}
-                    <View style={styles.detailsBox}>
-                        <Text style={styles.detailText}><Text style={styles.detailLabel}>Invoice No: </Text>{receiptData.receiptNo}</Text>
-                        <Text style={styles.detailText}><Text style={styles.detailLabel}>Invoice Month: </Text>{receiptData.month}</Text>
-                        <Text style={styles.detailText}><Text style={styles.detailLabel}>Paid at: </Text>{receiptData.date}</Text>
-                        
-                        <View style={styles.rowDetails}>
-                            <View>
-                                <Text style={styles.detailLabel}>Room No:</Text>
-                                <Text style={styles.detailValueLarge}>{receiptData.room}</Text>
+                    {/* Paid To Section */}
+                    <Text style={styles.cardLabel}>Paid to</Text>
+                    <View style={styles.paidToRow}>
+                        <View style={styles.avatarInfo}>
+                            <View style={styles.avatar}>
+                                <Text style={styles.avatarText}>{avatarInitials}</Text>
                             </View>
-                            <View style={{ marginRight: 20 }}>
-                                <Text style={styles.detailLabel}>Mobile:</Text>
-                                <Text style={styles.detailValueLarge}>{receiptData.mobile}</Text>
+                            <View style={styles.infoText}>
+                                <Text style={styles.hostelName}>{hostelName}</Text>
+                                <Text style={styles.upiId}>{upiId}</Text>
                             </View>
                         </View>
+                        <Text style={styles.amount}>₹{amountPaid.toLocaleString('en-IN')}</Text>
+                    </View>
 
-                        {/* Table */}
-                        <View style={styles.table}>
-                            <View style={styles.tableHeader}>
-                                <Text style={[styles.th, { flex: 2 }]}>Description</Text>
-                                <Text style={[styles.th, { flex: 1, textAlign: 'center' }]}>Rent</Text>
-                                <Text style={[styles.th, { flex: 1, textAlign: 'center' }]}>Deposit</Text>
-                                <Text style={[styles.th, { flex: 1, textAlign: 'right' }]}>Total</Text>
-                            </View>
-                            <View style={styles.tableRow}>
-                                <Text style={[styles.td, { flex: 2, fontWeight: 'bold' }]}>Monthly Rent</Text>
-                                <Text style={[styles.td, { flex: 1, textAlign: 'center' }]}>₹ {receiptData.amountPaid}</Text>
-                                <Text style={[styles.td, { flex: 1, textAlign: 'center' }]}>₹ 0</Text>
-                                <Text style={[styles.td, { flex: 1, textAlign: 'right' }]}>₹ {receiptData.amountPaid}</Text>
-                            </View>
-                            <View style={styles.wordsRow}>
-                                <Text style={styles.wordsText}>Amount in Words: <Text style={styles.wordsHighlight}>{numberToWords(receiptData.amountPaid)}</Text></Text>
-                            </View>
+                    {/* Thin Divider */}
+                    <View style={styles.divider} />
+
+                    {/* Transfer Details Header */}
+                    <View style={styles.transferHeader}>
+                        <Text style={styles.transferTitle}>Transfer Details</Text>
+                        <Ionicons name="chevron-up" size={20} color="#64748B" />
+                    </View>
+
+                    {/* Details List */}
+                    <View style={styles.detailsList}>
+                        <View style={styles.detailGroup}>
+                            <Text style={styles.detailLabel}>Message / Fee Month</Text>
+                            <Text style={styles.detailValue}>Rent for {feeMonth}</Text>
                         </View>
-                    </View>
 
-                    {/* Notice */}
-                    <View style={styles.noticeBox}>
-                        <Text style={styles.noticeText}>Notice: Once Advance / Rent paid is non-refundable on any excuse.</Text>
-                    </View>
+                        <View style={styles.detailGroup}>
+                            <Text style={styles.detailLabel}>Student Name / Room</Text>
+                            <Text style={styles.detailValue}>{studentName} (Room {roomNo})</Text>
+                        </View>
 
-                    {/* Signature */}
-                    <View style={styles.signatureSection}>
-                        <Text style={styles.signatureTitle}>Incharge Sign</Text>
-                        <Text style={styles.signatureNote}>This is a computer generated receipt and does not require physical signature.</Text>
-                    </View>
+                        <View style={styles.detailGroup}>
+                            <Text style={styles.detailLabel}>Receipt / Invoice No</Text>
+                            <Text style={styles.detailValue}>{receiptNo}</Text>
+                        </View>
 
-                    {/* Payment Mode */}
-                    <View style={styles.paymentSection}>
-                        <Text style={styles.paymentModeText}>Payment Mode: <Text style={styles.paymentModeValue}>{receiptData.paymentMode}</Text></Text>
-                        <View style={styles.paidBadge}>
-                            <Ionicons name="checkmark-circle" size={16} color="#059669" />
-                            <Text style={styles.paidText}>PAID</Text>
+                        <View style={styles.detailGroup}>
+                            <Text style={styles.detailLabel}>Debited from</Text>
+                            <View style={styles.debitedRow}>
+                                <View style={styles.debitedLeft}>
+                                    <View style={styles.bankLogo}>
+                                        <Text style={styles.bankLogoText}>{paymentMode[0].toUpperCase()}</Text>
+                                    </View>
+                                    <Text style={[styles.detailValue, { fontWeight: '500' }]}>{paymentMode}</Text>
+                                </View>
+                                <Text style={[styles.amount, { fontSize: 15, fontWeight: '700' }]}>₹{amountPaid.toLocaleString('en-IN')}</Text>
+                            </View>
+                            {transactionId && transactionId !== 'N/A' && (
+                                <View style={{ marginTop: 8 }}>
+                                    <Text style={styles.detailLabel}>UTR / Reference ID</Text>
+                                    <Text style={[styles.detailValue, { fontSize: 13, color: '#475569' }]}>{transactionId}</Text>
+                                </View>
+                            )}
                         </View>
                     </View>
                 </View>
 
                 {/* Share Button */}
                 <TouchableOpacity style={styles.shareButton} onPress={sharePdf}>
-                    <Ionicons name="share-social-outline" size={20} color="#FFF" />
-                    <Text style={styles.shareText}>Share Receipt</Text>
+                    <Ionicons name="logo-whatsapp" size={20} color="#FFF" style={{ marginRight: 8 }} />
+                    <Text style={styles.shareText}>Share to WhatsApp</Text>
                 </TouchableOpacity>
+
+                {/* Stivo Branding Footer */}
+                <View style={styles.brandingFooter}>
+                    <Text style={styles.poweredBy}>Powered by</Text>
+                    <Text style={styles.brandingText}>STIVO<Text style={styles.brandingDot}>•</Text>PG OS</Text>
+                </View>
 
             </ScrollView>
         </View>
@@ -235,224 +464,215 @@ export const ReceiptScreen = ({ navigation, route }: any) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F5F8FA',
-    },
-    header: {
-        backgroundColor: '#1E9E49',
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingTop: 50,
-        paddingBottom: 20,
-        paddingHorizontal: 16,
-        borderBottomLeftRadius: 20,
-        borderBottomRightRadius: 20,
-    },
-    backButton: {
-        backgroundColor: '#FFF',
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 15,
-    },
-    headerTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#FFF',
+        backgroundColor: '#F5F6F8',
     },
     content: {
         flex: 1,
         padding: 16,
     },
-    card: {
-        backgroundColor: '#FFF',
-        borderRadius: 16,
-        padding: 0, // padding applied inside sections
+    statusHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 16,
+        marginBottom: 20,
+        marginTop: 10,
+        paddingHorizontal: 8,
+    },
+    statusIconCircle: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: '#5f259f',
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 2,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 4,
-        marginBottom: 20,
-        overflow: 'hidden',
+        shadowRadius: 4,
     },
-    cardHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 16,
-        paddingBottom: 4,
-    },
-    studentName: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#1A365D',
+    statusTextContainer: {
+        flexDirection: 'column',
         flex: 1,
     },
-    receiptBadge: {
-        backgroundColor: '#1E3A8A',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 6,
+    statusTitle: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: '#0F172A',
     },
-    receiptBadgeText: {
-        color: '#FFF',
-        fontSize: 12,
-        fontWeight: 'bold',
-    },
-    addressText: {
-        fontSize: 12,
-        color: '#718096',
-        paddingHorizontal: 16,
-        paddingBottom: 16,
-        lineHeight: 18,
-    },
-    detailsBox: {
-        backgroundColor: '#F4F7FB',
-        marginHorizontal: 16,
-        marginBottom: 16,
-        padding: 16,
-        borderRadius: 8,
-    },
-    detailText: {
+    statusTime: {
         fontSize: 13,
-        color: '#1A365D',
-        marginBottom: 4,
-    },
-    detailLabel: {
-        fontWeight: 'bold',
-        color: '#1A365D',
-    },
-    rowDetails: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginTop: 12,
-        marginBottom: 16,
-    },
-    detailValueLarge: {
-        fontSize: 15,
-        fontWeight: 'bold',
-        color: '#1A365D',
+        color: '#64748B',
         marginTop: 4,
-    },
-    table: {
-        backgroundColor: '#FFF',
-        borderRadius: 8,
-        overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
-    },
-    tableHeader: {
-        flexDirection: 'row',
-        backgroundColor: '#EBF4FF',
-        padding: 10,
-        borderBottomWidth: 1,
-        borderColor: '#E2E8F0',
-    },
-    th: {
-        fontSize: 13,
-        fontWeight: 'bold',
-        color: '#1A365D',
-    },
-    tableRow: {
-        flexDirection: 'row',
-        padding: 10,
-        borderBottomWidth: 1,
-        borderColor: '#E2E8F0',
-    },
-    td: {
-        fontSize: 13,
-        color: '#2D3748',
-    },
-    wordsRow: {
-        padding: 12,
-        backgroundColor: '#FFF',
-    },
-    wordsText: {
-        fontSize: 12,
-        color: '#1A365D',
-        fontWeight: 'bold',
-    },
-    wordsHighlight: {
-        color: '#1A365D',
-    },
-    noticeBox: {
-        backgroundColor: '#FFFBEB',
-        padding: 12,
-        borderTopWidth: 1,
-        borderBottomWidth: 1,
-        borderColor: '#FEF3C7',
-    },
-    noticeText: {
-        color: '#B45309',
-        fontSize: 12,
-        textAlign: 'center',
         fontWeight: '500',
     },
-    signatureSection: {
-        padding: 16,
-        alignItems: 'flex-end',
-        borderBottomWidth: 1,
+    card: {
+        backgroundColor: '#FFF',
+        borderRadius: 16,
+        padding: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
+        marginBottom: 24,
+        borderWidth: 1,
         borderColor: '#E2E8F0',
     },
-    signatureTitle: {
-        fontSize: 14,
-        fontWeight: 'bold',
-        color: '#4A5568',
-        marginBottom: 4,
+    cardLabel: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#64748B',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginBottom: 14,
     },
-    signatureNote: {
-        fontSize: 10,
-        color: '#A0AEC0',
-        textAlign: 'right',
-    },
-    paymentSection: {
+    paidToRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 16,
-        backgroundColor: '#F0FDF4',
+        marginBottom: 16,
     },
-    paymentModeText: {
-        fontSize: 14,
-        fontWeight: 'bold',
-        color: '#1A202C',
-    },
-    paymentModeValue: {
-        color: '#1A202C',
-    },
-    paidBadge: {
+    avatarInfo: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#D1FAE5',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 20,
-        borderWidth: 1,
-        borderColor: '#34D399',
+        gap: 12,
+        flex: 1,
     },
-    paidText: {
-        color: '#059669',
-        fontWeight: 'bold',
-        marginLeft: 4,
+    avatar: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: '#00bcd4',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    avatarText: {
+        color: '#FFF',
+        fontSize: 18,
+        fontWeight: '800',
+    },
+    infoText: {
+        flexDirection: 'column',
+        flex: 1,
+    },
+    hostelName: {
+        fontSize: 15,
+        fontWeight: '800',
+        color: '#0F172A',
+        textTransform: 'uppercase',
+    },
+    upiId: {
         fontSize: 12,
+        color: '#64748B',
+        marginTop: 4,
+        fontWeight: '500',
+    },
+    amount: {
+        fontSize: 20,
+        fontWeight: '900',
+        color: '#0F172A',
+    },
+    divider: {
+        height: 1,
+        backgroundColor: '#E2E8F0',
+        marginVertical: 16,
+    },
+    transferHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    transferTitle: {
+        fontSize: 14,
+        fontWeight: '800',
+        color: '#334155',
+    },
+    detailsList: {
+        flexDirection: 'column',
+        gap: 14,
+    },
+    detailGroup: {
+        flexDirection: 'column',
+    },
+    detailLabel: {
+        fontSize: 11,
+        color: '#94A3B8',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginBottom: 4,
+        fontWeight: '600',
+    },
+    detailValue: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#1E293B',
+    },
+    debitedRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    debitedLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    bankLogo: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: '#5f259f',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    bankLogoText: {
+        color: '#FFF',
+        fontSize: 10,
+        fontWeight: '800',
     },
     shareButton: {
-        backgroundColor: '#3B82F6',
+        backgroundColor: '#25D366',
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 16,
-        borderRadius: 12,
+        paddingVertical: 16,
+        borderRadius: 14,
         alignSelf: 'center',
-        width: '60%',
+        width: '100%',
+        elevation: 3,
+        shadowColor: '#25D366',
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 4 },
+        marginBottom: 24,
     },
     shareText: {
         color: '#FFF',
         fontSize: 15,
-        fontWeight: 'bold',
-        marginLeft: 8,
+        fontWeight: '900',
+        letterSpacing: 0.5,
+    },
+    brandingFooter: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 10,
+        gap: 6,
+    },
+    poweredBy: {
+        fontSize: 12,
+        color: '#94A3B8',
+        fontWeight: '500',
+    },
+    brandingText: {
+        fontWeight: '900',
+        color: '#5f259f',
+        fontSize: 14,
+        letterSpacing: 1,
+    },
+    brandingDot: {
+        color: '#10B981',
     },
 });
 

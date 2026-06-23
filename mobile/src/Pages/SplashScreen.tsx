@@ -76,7 +76,7 @@ export default function SplashScreen({ navigation }: any) {
 
           {/* App name */}
           <Text style={styles.appName}>Stivo</Text>
-          <Text style={styles.tagline}>Smart Hostel Management</Text>
+          <Text style={styles.tagline}>Smart PG Management</Text>
 
           {/* Animated dots */}
           <View style={styles.dotsContainer}>

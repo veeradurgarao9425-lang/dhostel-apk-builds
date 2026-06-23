@@ -11,6 +11,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import api from '../services/api';
 import { useTranslation } from 'react-i18next';
+import { useConfirmation } from '../../contexts/ConfirmationContext';
 
 // ─── Menu item definition ─────────────────────────────────────────────────────
 interface MenuItem {
@@ -28,6 +29,7 @@ interface MenuItem {
 export default function MoreScreen() {
     const navigation = useNavigation<any>();
     const { user, signOut, updateTokenAndUser } = useAuth();
+    const confirm = useConfirmation();
     const { theme, isDark, fontSize } = useTheme();
     const { t } = useTranslation();
 
@@ -234,24 +236,20 @@ export default function MoreScreen() {
     };
 
     const handleLogout = () => {
-        Alert.alert(
-            t('more.confirmLogOut'),
-            t('more.logOutConfirmMsg'),
-            [
-                { text: t('overview.cancel'), style: 'cancel' },
-                {
-                    text: t('more.logOut'),
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            await signOut();
-                        } catch (e) {
-                            console.error('Logout failed:', e);
-                        }
-                    }
+        confirm({
+            title: t('more.confirmLogOut', 'Confirm Log Out'),
+            message: t('more.logOutConfirmMsg', 'Are you sure you want to log out from the application?'),
+            confirmText: t('more.logOut', 'Log Out'),
+            cancelText: t('overview.cancel', 'Cancel'),
+            variant: 'danger',
+            onConfirm: async () => {
+                try {
+                    await signOut();
+                } catch (e) {
+                    console.error('Logout failed:', e);
                 }
-            ]
-        );
+            }
+        });
     };
 
     // Filter topTools

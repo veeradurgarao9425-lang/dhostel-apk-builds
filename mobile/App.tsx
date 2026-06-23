@@ -14,6 +14,7 @@ import './src/i18n';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { RefreshProvider } from './contexts/RefreshContext';
+import { ConfirmationProvider } from './contexts/ConfirmationContext';
 
 export default function App() {
   const [currentRoute, setCurrentRoute] = useState<string | undefined>(undefined);
@@ -32,6 +33,7 @@ export default function App() {
         <AuthProvider>
           <RefreshProvider>
           <ThemeProvider>
+            <ConfirmationProvider>
             <ToastProvider>
               <SafeAreaProvider style={styles.container}>
                 <OfflineFallback>
@@ -43,6 +45,7 @@ export default function App() {
                 <Toast />
               </SafeAreaProvider>
             </ToastProvider>
+            </ConfirmationProvider>
           </ThemeProvider>
           </RefreshProvider>
         </AuthProvider>

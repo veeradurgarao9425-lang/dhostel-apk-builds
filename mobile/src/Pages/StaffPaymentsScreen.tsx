@@ -11,6 +11,7 @@ import api from '../services/api';
 import { useTheme } from '../../contexts/ThemeContext';
 import { AppHeader } from '../components/AppHeader';
 import { EmptyState } from '../components/ui/EmptyState';
+import { useConfirmation } from '../../contexts/ConfirmationContext';
 
 const todayStr = () => new Date().toISOString().split('T')[0];
 const fmtDate = (d?: string) => {
@@ -21,6 +22,7 @@ const fmtDate = (d?: string) => {
 
 export default function StaffPaymentsScreen({ navigation, route }: any) {
     const { theme, isDark } = useTheme();
+    const confirm = useConfirmation();
     const staffId = route.params?.staffId;
     const staffName = route.params?.staffName || 'Staff';
 
@@ -88,15 +90,21 @@ export default function StaffPaymentsScreen({ navigation, route }: any) {
     };
 
     const handleDelete = (p: any) => {
-        Alert.alert('Delete Payment', `Remove this ₹${Number(p.amount).toLocaleString('en-IN')} payment?`, [
-            { text: 'Cancel', style: 'cancel' },
-            {
-                text: 'Delete', style: 'destructive', onPress: async () => {
-                    try { await api.delete(`/staff/payments/${p.payment_id}`); fetchPayments(true); }
-                    catch { Alert.alert('Error', 'Failed to delete payment.'); }
-                },
-            },
-        ]);
+        confirm({
+            title: 'Delete Payment',
+            message: `Remove this ₹${Number(p.amount).toLocaleString('en-IN')} payment?`,
+            confirmText: 'Delete',
+            cancelText: 'Cancel',
+            variant: 'danger',
+            onConfirm: async () => {
+                try {
+                    await api.delete(`/staff/payments/${p.payment_id}`);
+                    fetchPayments(true);
+                } catch {
+                    Alert.alert('Error', 'Failed to delete payment.');
+                }
+            }
+        });
     };
 
     const renderItem = ({ item }: any) => (

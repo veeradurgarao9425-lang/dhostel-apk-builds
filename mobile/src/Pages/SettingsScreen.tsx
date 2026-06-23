@@ -2,32 +2,31 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { AppHeader } from '../components/AppHeader';
 import { Card } from '../components/Card';
-import { Bell, Shield, Moon, Globe, ChevronRight, Type, User, Mail, Building, Lock, Palette } from 'lucide-react-native';
-import { useTheme, themes, ThemeId } from '../../contexts/ThemeContext';
-import { useAuth } from '../../contexts/AuthContext';
+import { Bell, Shield, ChevronRight, ChevronDown, Lock, Eye, EyeOff } from 'lucide-react-native';
+import { useTheme } from '../../contexts/ThemeContext';
 import { useTranslation } from 'react-i18next';
 import api from '../services/api';
-import { LanguageSelector } from '../components/LanguageSelector';
 
 export const SettingsScreen = ({ navigation }: any) => {
-    const { theme, themeId, setThemeId, isDark, toggleTheme, fontSize, setFontSize } = useTheme();
-    const { user } = useAuth();
-    const { t, i18n } = useTranslation();
+    const { theme, isDark, fontSize } = useTheme();
+    const { t } = useTranslation();
 
     // Local state for toggles
     const [notifications, setNotifications] = useState(true);
 
-    // Profile Details state
-    const [name, setName] = useState(user?.full_name || '');
-    const [email, setEmail] = useState(user?.email || '');
-    const [hostelName, setHostelName] = useState(user?.hostel_name || '');
-    const [profileSaving, setProfileSaving] = useState(false);
+    // Change Password visibility toggle (instead of modal)
+    const [showPasswordFields, setShowPasswordFields] = useState(false);
 
     // Change Password state
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [passwordLoading, setPasswordLoading] = useState(false);
+
+    // Show/hide password states
+    const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     const SettingRow = ({ icon, label, value, type = 'chevron', onPress, rightElement }: any) => (
         <TouchableOpacity
@@ -61,37 +60,17 @@ export const SettingsScreen = ({ navigation }: any) => {
         </TouchableOpacity>
     );
 
-    const handleSaveProfile = async () => {
-        try {
-            setProfileSaving(true);
-            const response = await api.put('/users/profile', {
-                full_name: name,
-            });
-            if (response.data.success) {
-                Alert.alert(t('common.success'), t('settings.successSave'));
-            } else {
-                Alert.alert(t('common.error'), response.data.error || t('common.error'));
-            }
-        } catch (error: any) {
-            console.error('Update profile error:', error);
-            Alert.alert(t('common.error'), error.response?.data?.error || t('common.error'));
-        } finally {
-            setProfileSaving(false);
-        }
-    };
-
-
     const handleChangePassword = async () => {
         if (!currentPassword || !newPassword || !confirmPassword) {
-            Alert.alert(t('common.error'), t('settings.passwordRequired'));
+            Alert.alert(t('common.error', 'Error'), t('settings.passwordRequired', 'Please fill in all fields'));
             return;
         }
         if (newPassword !== confirmPassword) {
-            Alert.alert(t('common.error'), t('settings.passwordMismatch'));
+            Alert.alert(t('common.error', 'Error'), t('settings.passwordMismatch', 'Passwords do not match'));
             return;
         }
         if (newPassword.length < 6) {
-            Alert.alert(t('common.error'), t('settings.passwordTooShort'));
+            Alert.alert(t('common.error', 'Error'), t('settings.passwordTooShort', 'Password must be at least 6 characters'));
             return;
         }
         try {
@@ -101,231 +80,138 @@ export const SettingsScreen = ({ navigation }: any) => {
                 newPassword,
             });
             if (response.data.success) {
-                Alert.alert(t('common.success'), t('settings.passwordChanged'));
+                Alert.alert(t('common.success', 'Success'), t('settings.passwordChanged', 'Password updated successfully'));
                 setCurrentPassword('');
                 setNewPassword('');
                 setConfirmPassword('');
+                setShowPasswordFields(false);
             } else {
-                Alert.alert(t('common.error'), response.data.error || t('common.error'));
+                Alert.alert(t('common.error', 'Error'), response.data.error || t('common.error', 'Error'));
             }
         } catch (error: any) {
             console.error('Change password error:', error);
-            Alert.alert(t('common.error'), error.response?.data?.error || t('common.error'));
+            Alert.alert(t('common.error', 'Error'), error.response?.data?.error || t('common.error', 'Error'));
         } finally {
             setPasswordLoading(false);
         }
     };
 
-
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <AppHeader title={t('settings.title')} />
+            <AppHeader title={t('settings.title', 'Settings')} />
 
             <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
 
-                {/* ── PROFILE DETAILS SECTION ── */}
-                <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>{t('settings.profileDetails')}</Text>
-
-                <Card style={[styles.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
-                    <View style={styles.inputRow}>
-                        <View style={styles.inputIcon}>
-                            <User size={18} color={isDark ? '#94A3B8' : '#64748B'} />
-                        </View>
-                        <TextInput
-                            style={[styles.input, { fontSize, color: theme.textPrimary }]}
-                            value={name}
-                            onChangeText={setName}
-                            placeholder={t('settings.fullName')}
-                            placeholderTextColor={isDark ? '#64748B' : '#A0AEC0'}
-                        />
-
-                    </View>
-                    <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
-                    <View style={styles.inputRow}>
-                        <View style={styles.inputIcon}>
-                            <Mail size={18} color={isDark ? '#94A3B8' : '#64748B'} />
-                        </View>
-                        <TextInput
-                            style={[styles.input, { fontSize, color: isDark ? '#64748B' : '#94A3B8' }]}
-                            value={email}
-                            onChangeText={setEmail}
-                            placeholder={t('settings.emailAddress')}
-                            placeholderTextColor={isDark ? '#64748B' : '#A0AEC0'}
-                            editable={false}
-                        />
-
-                    </View>
-                    <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
-                    <View style={styles.inputRow}>
-                        <View style={styles.inputIcon}>
-                            <Building size={18} color={isDark ? '#94A3B8' : '#64748B'} />
-                        </View>
-                        <TextInput
-                            style={[styles.input, { fontSize, color: isDark ? '#64748B' : '#94A3B8' }]}
-                            value={hostelName}
-                            onChangeText={setHostelName}
-                            placeholder={t('settings.hostelName')}
-                            placeholderTextColor={isDark ? '#64748B' : '#A0AEC0'}
-                            editable={false}
-                        />
-
-                    </View>
-                    <TouchableOpacity
-                        style={[styles.saveBtn, { backgroundColor: theme.primary }]}
-                        onPress={handleSaveProfile}
-                        disabled={profileSaving}
-                    >
-                        {profileSaving ? (
-                            <ActivityIndicator size="small" color="#FFF" />
-                        ) : (
-                            <Text style={styles.saveBtnText}>{t('settings.saveChanges')}</Text>
-                        )}
-
-                    </TouchableOpacity>
-                </Card>
-
-                {/* ── SECURITY / PASSWORD SECTION ── */}
-                <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>{t('settings.security')}</Text>
-
-                <Card style={[styles.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
-                    <View style={styles.inputRow}>
-                        <View style={styles.inputIcon}>
-                            <Lock size={18} color={isDark ? '#94A3B8' : '#64748B'} />
-                        </View>
-                        <TextInput
-                            style={[styles.input, { fontSize, color: theme.textPrimary }]}
-                            value={currentPassword}
-                            onChangeText={setCurrentPassword}
-                            placeholder={t('settings.currentPassword')}
-                            secureTextEntry
-                            placeholderTextColor={isDark ? '#64748B' : '#A0AEC0'}
-                        />
-
-                    </View>
-                    <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
-                    <View style={styles.inputRow}>
-                        <View style={styles.inputIcon}>
-                            <Lock size={18} color={isDark ? '#94A3B8' : '#64748B'} />
-                        </View>
-                        <TextInput
-                            style={[styles.input, { fontSize, color: theme.textPrimary }]}
-                            value={newPassword}
-                            onChangeText={setNewPassword}
-                            placeholder={t('settings.newPassword')}
-                            secureTextEntry
-                            placeholderTextColor={isDark ? '#64748B' : '#A0AEC0'}
-                        />
-
-                    </View>
-                    <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
-                    <View style={styles.inputRow}>
-                        <View style={styles.inputIcon}>
-                            <Lock size={18} color={isDark ? '#94A3B8' : '#64748B'} />
-                        </View>
-                        <TextInput
-                            style={[styles.input, { fontSize, color: theme.textPrimary }]}
-                            value={confirmPassword}
-                            onChangeText={setConfirmPassword}
-                            placeholder={t('settings.confirmNewPassword')}
-                            secureTextEntry
-                            placeholderTextColor={isDark ? '#64748B' : '#A0AEC0'}
-                        />
-
-                    </View>
-                    <TouchableOpacity
-                        style={[styles.saveBtn, { backgroundColor: theme.primary }]}
-                        onPress={handleChangePassword}
-                        disabled={passwordLoading}
-                    >
-                        {passwordLoading ? (
-                            <ActivityIndicator size="small" color="#FFF" />
-                        ) : (
-                            <Text style={styles.saveBtnText}>{t('settings.updatePassword')}</Text>
-                        )}
-
-                    </TouchableOpacity>
-                </Card>
-
-                {/* ── APPEARANCE SECTION ── */}
-                <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>{t('settings.appearance')}</Text>
-
+                {/* ── SECURITY SECTION ── */}
+                <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>{t('settings.security', 'Security')}</Text>
+                
                 <Card style={[styles.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
                     <SettingRow
-                        icon={<Palette size={20} color={theme.primary} />}
-                        label={t('settings.themeColor')}
-
+                        icon={<Lock size={20} color={theme.primary} />}
+                        label={t('settings.changePasswordTitle', 'Change Password')}
                         type="custom"
                         rightElement={
-                            <View style={styles.themeGrid}>
-                                {Object.values(themes).map((tItem: any) => (
-                                    <TouchableOpacity
-                                        key={tItem.id}
-                                        style={[
-                                            styles.themeCircle,
-                                            { backgroundColor: tItem.primary },
-                                            themeId === tItem.id && { borderWidth: 2, borderColor: isDark ? '#FFF' : '#1E293B' }
-                                        ]}
-                                        onPress={() => setThemeId(tItem.id)}
-                                        activeOpacity={0.7}
-                                    />
-                                ))}
-                            </View>
+                            showPasswordFields ? (
+                                <ChevronDown size={20} color={isDark ? '#475569' : '#CBD5E1'} />
+                            ) : (
+                                <ChevronRight size={20} color={isDark ? '#475569' : '#CBD5E1'} />
+                            )
                         }
+                        onPress={() => setShowPasswordFields(!showPasswordFields)}
                     />
-                    <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
-                    <SettingRow
-                        icon={<Type size={20} color={theme.primary} />}
-                        label={t('settings.fontSize')}
 
-                        type="custom"
-                        rightElement={
-                            <View style={[styles.fontControls, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                                <TouchableOpacity
-                                    style={styles.fontBtn}
-                                    onPress={() => setFontSize(Math.max(10, fontSize - 1))}
-                                >
-                                    <Text style={[styles.fontBtnText, { color: theme.textSecondary }]}>A-</Text>
-                                </TouchableOpacity>
-                                <Text style={[styles.fontValue, { color: theme.textPrimary }]}>{fontSize}</Text>
-                                <TouchableOpacity
-                                    style={styles.fontBtn}
-                                    onPress={() => setFontSize(Math.min(24, fontSize + 1))}
-                                >
-                                    <Text style={[styles.fontBtnText, { color: theme.textSecondary }]}>A+</Text>
+                    {showPasswordFields && (
+                        <View style={[styles.passwordForm, { borderTopWidth: 1, borderTopColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                            <View style={styles.inputRow}>
+                                <View style={styles.inputIcon}>
+                                    <Lock size={18} color={isDark ? '#94A3B8' : '#64748B'} />
+                                </View>
+                                <TextInput
+                                    style={[styles.input, { fontSize, color: theme.textPrimary }]}
+                                    value={currentPassword}
+                                    onChangeText={setCurrentPassword}
+                                    placeholder={t('settings.currentPassword', 'Current Password')}
+                                    secureTextEntry={!showCurrentPassword}
+                                    placeholderTextColor={isDark ? '#64748B' : '#A0AEC0'}
+                                    editable={!passwordLoading}
+                                />
+                                <TouchableOpacity onPress={() => setShowCurrentPassword(!showCurrentPassword)} style={{ padding: 4 }}>
+                                    {showCurrentPassword ? (
+                                        <EyeOff size={18} color={isDark ? '#94A3B8' : '#64748B'} />
+                                    ) : (
+                                        <Eye size={18} color={isDark ? '#94A3B8' : '#64748B'} />
+                                    )}
                                 </TouchableOpacity>
                             </View>
-                        }
-                    />
-                    <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
-                    <SettingRow
-                        icon={<Moon size={20} color={theme.primary} />}
-                        label={t('settings.darkMode')}
+                            <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
 
-                        type="switch"
-                        value={isDark}
-                        onPress={toggleTheme}
-                    />
-                    <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
-                    <LanguageSelector
-                        trigger={(open) => (
-                            <SettingRow
-                                icon={<Globe size={20} color={theme.primary} />}
-                                label={t('profile.language')}
-                                value={i18n.language?.toUpperCase() || 'EN'}
-                                onPress={open}
-                            />
-                        )}
-                    />
+                            <View style={styles.inputRow}>
+                                <View style={styles.inputIcon}>
+                                    <Lock size={18} color={isDark ? '#94A3B8' : '#64748B'} />
+                                </View>
+                                <TextInput
+                                    style={[styles.input, { fontSize, color: theme.textPrimary }]}
+                                    value={newPassword}
+                                    onChangeText={setNewPassword}
+                                    placeholder={t('settings.newPassword', 'New Password')}
+                                    secureTextEntry={!showNewPassword}
+                                    placeholderTextColor={isDark ? '#64748B' : '#A0AEC0'}
+                                    editable={!passwordLoading}
+                                />
+                                <TouchableOpacity onPress={() => setShowNewPassword(!showNewPassword)} style={{ padding: 4 }}>
+                                    {showNewPassword ? (
+                                        <EyeOff size={18} color={isDark ? '#94A3B8' : '#64748B'} />
+                                    ) : (
+                                        <Eye size={18} color={isDark ? '#94A3B8' : '#64748B'} />
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+                            <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
+
+                            <View style={styles.inputRow}>
+                                <View style={styles.inputIcon}>
+                                    <Lock size={18} color={isDark ? '#94A3B8' : '#64748B'} />
+                                </View>
+                                <TextInput
+                                    style={[styles.input, { fontSize, color: theme.textPrimary }]}
+                                    value={confirmPassword}
+                                    onChangeText={setConfirmPassword}
+                                    placeholder={t('settings.confirmNewPassword', 'Confirm New Password')}
+                                    secureTextEntry={!showConfirmPassword}
+                                    placeholderTextColor={isDark ? '#64748B' : '#A0AEC0'}
+                                    editable={!passwordLoading}
+                                />
+                                <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={{ padding: 4 }}>
+                                    {showConfirmPassword ? (
+                                        <EyeOff size={18} color={isDark ? '#94A3B8' : '#64748B'} />
+                                    ) : (
+                                        <Eye size={18} color={isDark ? '#94A3B8' : '#64748B'} />
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+
+                            <TouchableOpacity
+                                style={[styles.saveBtn, { backgroundColor: theme.primary }]}
+                                onPress={handleChangePassword}
+                                disabled={passwordLoading}
+                            >
+                                {passwordLoading ? (
+                                    <ActivityIndicator size="small" color="#FFF" />
+                                ) : (
+                                    <Text style={styles.saveBtnText}>{t('settings.updatePassword', 'Update Password')}</Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    )}
                 </Card>
 
                 {/* ── PREFERENCES SECTION ── */}
-                <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>{t('settings.appPreferences')}</Text>
+                <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>{t('settings.appPreferences', 'Preferences')}</Text>
 
                 <Card style={[styles.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
                     <SettingRow
                         icon={<Bell size={20} color={theme.primary} />}
-                        label={t('settings.pushNotifications')}
-
+                        label={t('settings.pushNotifications', 'Push Notifications')}
                         type="switch"
                         value={notifications}
                         onPress={() => setNotifications(!notifications)}
@@ -333,21 +219,20 @@ export const SettingsScreen = ({ navigation }: any) => {
                 </Card>
 
                 {/* ── SECURITY & UPDATES SECTION ── */}
-                <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>{t('settings.securityUpdates')}</Text>
+                <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>{t('settings.securityUpdates', 'Security & Info')}</Text>
 
                 <Card style={[styles.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
                     <SettingRow
                         icon={<Shield size={20} color={theme.primary} />}
-                        label={t('settings.privacyPolicy')}
-
+                        label={t('settings.privacyPolicy', 'Privacy Policy')}
+                        onPress={() => navigation.navigate('PrivacyPolicy')}
                     />
                     <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
                     <TouchableOpacity style={styles.row}>
                         <View style={[styles.iconContainer, { backgroundColor: isDark ? '#334155' : theme.lightBg }]}>
                             <Bell size={20} color={theme.primary} />
                         </View>
-                        <Text style={[styles.label, { fontSize: fontSize, color: theme.textPrimary }]}>{t('settings.checkUpdates')}</Text>
-
+                        <Text style={[styles.label, { fontSize: fontSize, color: theme.textPrimary }]}>{t('settings.checkUpdates', 'Check for Updates')}</Text>
                         <Text style={[styles.version, { color: theme.textSecondary }]}>v1.0.0</Text>
                     </TouchableOpacity>
                 </Card>
@@ -372,22 +257,15 @@ const styles = StyleSheet.create({
     divider: { height: 1, marginLeft: 64 },
     bottomSpacing: { height: 40 },
 
-    // Font Controls
-    fontControls: { flexDirection: 'row', alignItems: 'center', borderRadius: 8, padding: 2 },
-    fontBtn: { paddingHorizontal: 10, paddingVertical: 4 },
-    fontBtnText: { fontWeight: '700' },
-    fontValue: { paddingHorizontal: 8, fontWeight: '600' },
-
-    // Input Styles
+    // Password Form styling
+    passwordForm: {
+        paddingVertical: 12,
+    },
     inputRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 },
     inputIcon: { width: 30, alignItems: 'center' },
     input: { flex: 1, marginLeft: 10, fontWeight: '500' },
     saveBtn: { margin: 16, padding: 12, borderRadius: 12, alignItems: 'center' },
     saveBtnText: { color: '#FFF', fontWeight: '700' },
-
-    // Theme Color Picker Grid
-    themeGrid: { flexDirection: 'row', gap: 6, alignItems: 'center' },
-    themeCircle: { width: 22, height: 22, borderRadius: 11 },
 });
 
 export default SettingsScreen;

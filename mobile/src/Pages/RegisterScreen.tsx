@@ -154,7 +154,7 @@ export default function RegisterScreen({ navigation }: any) {
                     <Ionicons name="arrow-back" size={22} color="#FFF" />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Create Account</Text>
-                <Text style={styles.headerSubtitle}>Start managing your hostel in minutes</Text>
+                <Text style={styles.headerSubtitle}>Start managing your PG in minutes</Text>
             </LinearGradient>
 
             <ScrollView
@@ -274,13 +274,13 @@ export default function RegisterScreen({ navigation }: any) {
                     />
                 </Field>
 
-                {/* Hostel name */}
-                <Field label="Hostel Name">
+                {/* PG name */}
+                <Field label="PG Name">
                     <Ionicons name="business-outline" size={18} color="#7C3AED" style={styles.icon} />
                     <TextInput
                         ref={hostelRef}
                         style={styles.input}
-                        placeholder="Your hostel's name"
+                        placeholder="Your PG's name"
                         placeholderTextColor="#B8B8B8"
                         value={hostelName}
                         returnKeyType="next"

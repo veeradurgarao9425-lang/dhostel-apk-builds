@@ -41,6 +41,12 @@ export interface PaymentDrawerProps {
     payModeId: string;
     setPayModeId: (v: string) => void;
 
+    // Optional receipt number and reason fields for student details
+    payReceiptNumber?: string;
+    setPayReceiptNumber?: (v: string) => void;
+    payReason?: string;
+    setPayReason?: (v: string) => void;
+
     payLoading: boolean;
     onConfirm: () => void;
     themeColor?: string;
@@ -54,6 +60,8 @@ export function PaymentDrawer({
     payDate, setPayDate,
     payDueDate, setPayDueDate,
     payModeId, setPayModeId,
+    payReceiptNumber, setPayReceiptNumber,
+    payReason, setPayReason,
     payLoading, onConfirm,
     themeColor = '#7C3AED',
 }: PaymentDrawerProps) {
@@ -188,6 +196,34 @@ export function PaymentDrawer({
                                 placeholder="e.g. UPI-123456"
                                 placeholderTextColor="#CBD5E1"
                             />
+
+                            {/* Receipt Number */}
+                            {setPayReceiptNumber !== undefined && (
+                                <>
+                                    <Text style={S.label}>Receipt Number (Optional)</Text>
+                                    <TextInput
+                                        style={S.inputField}
+                                        value={payReceiptNumber}
+                                        onChangeText={setPayReceiptNumber}
+                                        placeholder="e.g. REC-789"
+                                        placeholderTextColor="#CBD5E1"
+                                    />
+                                </>
+                            )}
+
+                            {/* Reason */}
+                            {setPayReason !== undefined && (
+                                <>
+                                    <Text style={S.label}>Reason (Optional)</Text>
+                                    <TextInput
+                                        style={S.inputField}
+                                        value={payReason}
+                                        onChangeText={setPayReason}
+                                        placeholder="e.g. Monthly Rent, Security Deposit"
+                                        placeholderTextColor="#CBD5E1"
+                                    />
+                                </>
+                            )}
 
                             {/* Notes */}
                             <Text style={S.label}>Notes</Text>

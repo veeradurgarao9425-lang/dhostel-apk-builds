@@ -15,6 +15,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { HeaderNotification } from '../components/HeaderNotification';
 import { ProfileMenu } from '../components/ProfileMenu';
 import { AppHeader } from '../components/AppHeader';
+import { useConfirmation } from '../../contexts/ConfirmationContext';
 import { FullScreenLoader } from '../components/FullScreenLoader';
 import { EmptyState } from '../components/ui/EmptyState';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -99,6 +100,7 @@ export default function StaffScreen() {
     const navigation = useNavigation<any>();
     const { theme } = useTheme();
     const { user } = useAuth();
+    const confirm = useConfirmation();
 
     const [staffList, setStaffList] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -174,28 +176,25 @@ export default function StaffScreen() {
 
     const handleToggleStatus = useCallback(async (item: any) => {
         const nextStatus = item.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-        Alert.alert(
-            `Update Status`,
-            `Change ${item.full_name}'s status to ${nextStatus}?`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Confirm',
-                    onPress: async () => {
-                        try {
-                            const res = await api.put(`/staff/${item.staff_id}`, { status: nextStatus });
-                            if (res.data.success) {
-                                fetchStaff(true);
-                                Toast.show({ type: 'success', text1: 'Status Updated successfully' });
-                            }
-                        } catch (e) {
-                            Alert.alert('Error', 'Failed to update status');
-                        }
+        confirm({
+            title: 'Update Status',
+            message: `Change ${item.full_name}'s status to ${nextStatus}?`,
+            confirmText: 'Confirm',
+            cancelText: 'Cancel',
+            variant: 'warning',
+            onConfirm: async () => {
+                try {
+                    const res = await api.put(`/staff/${item.staff_id}`, { status: nextStatus });
+                    if (res.data.success) {
+                        fetchStaff(true);
+                        Toast.show({ type: 'success', text1: 'Status Updated successfully' });
                     }
+                } catch (e) {
+                    Alert.alert('Error', 'Failed to update status');
                 }
-            ]
-        );
-    }, []);
+            }
+        });
+    }, [confirm]);
 
 
 
