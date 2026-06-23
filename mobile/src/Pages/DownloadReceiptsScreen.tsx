@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
-    FlatList, StatusBar, ActivityIndicator, Dimensions, Linking, Modal, Alert, TextInput, RefreshControl
+    FlatList, StatusBar, ActivityIndicator, Dimensions, Linking, Modal, Alert, TextInput, RefreshControl, Platform
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,6 +16,7 @@ import { toLocalDateStr as toLocalDateString } from '../utils/dateUtils';
 import { AppHeader } from '../components/AppHeader';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import { SuccessModal } from '../components/SuccessModal';
 
 const { width } = Dimensions.get('window');
 
@@ -47,6 +48,8 @@ export default function DownloadReceiptsScreen() {
     const [isStartDatePickerVisible, setStartDatePickerVisible] = useState(false);
     const [isEndDatePickerVisible, setEndDatePickerVisible] = useState(false);
     const [isDatePickerVisible, setDatePickerVisible] = useState(false);
+    const [successModalVisible, setSuccessModalVisible] = useState(false);
+    const [downloadedFileUri, setDownloadedFileUri] = useState<string | null>(null);
 
     const searchTimeout = useRef<NodeJS.Timeout | null>(null);
 
@@ -149,20 +152,8 @@ export default function DownloadReceiptsScreen() {
             setShowExportModal(false);
 
             if (downloadResult.status === 200) {
-                Alert.alert(
-                    'Download Completed',
-                    'The report has been downloaded successfully.',
-                    [
-                        {
-                            text: 'Share / Open',
-                            onPress: () => Sharing.shareAsync(downloadResult.uri)
-                        },
-                        {
-                            text: 'OK',
-                            style: 'cancel'
-                        }
-                    ]
-                );
+                setDownloadedFileUri(downloadResult.uri);
+                setSuccessModalVisible(true);
             } else {
                 Alert.alert('Error', `Server returned status code ${downloadResult.status}`);
             }
@@ -481,6 +472,27 @@ export default function DownloadReceiptsScreen() {
                     setDatePickerVisible(false);
                 }}
                 onCancel={() => setDatePickerVisible(false)}
+            />
+
+            <SuccessModal
+                visible={successModalVisible}
+                title="Excel Report Ready"
+                message="Your receipts report has been successfully generated and saved to your device cache."
+                buttonText="Share / Save Excel"
+                onButtonPress={async () => {
+                    setSuccessModalVisible(false);
+                    if (downloadedFileUri) {
+                        setTimeout(async () => {
+                            await Sharing.shareAsync(downloadedFileUri, {
+                                mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                                dialogTitle: 'Share / Save Excel Report',
+                                UTI: 'com.microsoft.excel.xls'
+                            });
+                        }, 300);
+                    }
+                }}
+                onClose={() => setSuccessModalVisible(false)}
+                autoCloseDuration={0}
             />
         </View>
     );

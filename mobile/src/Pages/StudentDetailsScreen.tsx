@@ -53,41 +53,44 @@ const DetailItem = React.memo(({ icon, label, value, onPress }: any) => (
 ));
 
 // ─── Sub-component: a single payment history row ──────────────────────────────
-const PaymentHistoryItem = React.memo(({ payment, student, onPress }: { payment: any; student: any; onPress: (p: any) => void }) => (
-    <TouchableOpacity activeOpacity={0.8} onPress={() => onPress(payment)}>
-        <Card style={styles.historyCard}>
-            <View style={styles.historyRow}>
-                <View style={styles.historyLeft}>
-                    <View style={styles.historyIcon}>
-                        <IndianRupee size={18} color="#4CAF50" />
+const PaymentHistoryItem = React.memo(({ payment, student, onPress }: { payment: any; student: any; onPress: (p: any) => void }) => {
+    const { theme, isDark } = useTheme();
+    return (
+        <TouchableOpacity activeOpacity={0.8} onPress={() => onPress(payment)}>
+            <Card style={[styles.historyCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9', borderWidth: isDark ? 1 : 0 }]}>
+                <View style={styles.historyRow}>
+                    <View style={styles.historyLeft}>
+                        <View style={[styles.historyIcon, { backgroundColor: theme.success + '15' }]}>
+                            <IndianRupee size={18} color={theme.success} />
+                        </View>
+                        <View>
+                            <Text style={[styles.historyTitle, { color: theme.textPrimary }]}>{payment.fee_month || 'Payment'}</Text>
+                            <Text style={[styles.historyDate, { color: theme.textSecondary }]}>
+                                {new Date(payment.payment_date).toLocaleDateString()}
+                            </Text>
+                            <View style={styles.historyMetaRow}>
+                                <Text style={[styles.historySubText, { color: theme.textSecondary }]}>
+                                    {payment.payment_mode_name || 'Mode: N/A'}
+                                </Text>
+                                <View style={[styles.dot, { backgroundColor: isDark ? '#475569' : '#CBD5E1' }]} />
+                                <Text style={[styles.historySubText, { color: theme.textSecondary }]}>
+                                    {payment.receipt_number ? `RCP: ${payment.receipt_number}` : 'No Receipt'}
+                                </Text>
+                            </View>
+                        </View>
                     </View>
-                    <View>
-                        <Text style={styles.historyTitle}>{payment.fee_month || 'Payment'}</Text>
-                        <Text style={styles.historyDate}>
-                            {new Date(payment.payment_date).toLocaleDateString()}
-                        </Text>
-                        <View style={styles.historyMetaRow}>
-                            <Text style={styles.historySubText}>
-                                {payment.payment_mode_name || 'Mode: N/A'}
-                            </Text>
-                            <View style={styles.dot} />
-                            <Text style={styles.historySubText}>
-                                {payment.receipt_number ? `RCP: ${payment.receipt_number}` : 'No Receipt'}
-                            </Text>
+                    <View style={styles.historyRight}>
+                        <Text style={[styles.historyAmount, { color: theme.textPrimary }]}>₹{payment.amount}</Text>
+                        <View style={[styles.receiptAction, { backgroundColor: theme.primary + '15' }]}>
+                            <Receipt size={14} color={theme.primary} />
+                            <Text style={[styles.receiptActionText, { color: theme.primary }]}>Receipt</Text>
                         </View>
                     </View>
                 </View>
-                <View style={styles.historyRight}>
-                    <Text style={styles.historyAmount}>₹{payment.amount}</Text>
-                    <View style={styles.receiptAction}>
-                        <Receipt size={14} color="#FF6B6B" />
-                        <Text style={styles.receiptActionText}>Receipt</Text>
-                    </View>
-                </View>
-            </View>
-        </Card>
-    </TouchableOpacity>
-));
+            </Card>
+        </TouchableOpacity>
+    );
+});
 
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 const StudentDetailsScreen = ({ route, navigation }: any) => {
@@ -98,6 +101,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
     // Core student data (loaded immediately)
     const [student, setStudent] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [avatarError, setAvatarError] = useState(false);
     const [activeTab, setActiveTab] = useState<'info' | 'payments'>('info');
 
     const getInitials = (first: string, last: string) => {
@@ -457,8 +461,12 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                         {/* ── Profile Hero Header ─────────────────────────────────────── */}
                         <Card style={[styles.profileCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
                             <View style={styles.profileSection}>
-                                {student.photo ? (
-                                    <Image source={{ uri: student.photo }} style={styles.avatar} />
+                                {student.photo && !avatarError ? (
+                                    <Image 
+                                        source={{ uri: student.photo }} 
+                                        style={styles.avatar} 
+                                        onError={() => setAvatarError(true)}
+                                    />
                                 ) : (
                                     <View style={[styles.avatarPlaceholder, { backgroundColor: theme.primary + '15', borderColor: theme.primary + '30' }]}>
                                         <Text style={{ fontSize: 28, fontWeight: '700', color: theme.primary }}>
@@ -757,16 +765,16 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                         ) : (
                             <>
                                 {/* ── Balance & Quick Pay ───────────────────────────────── */}
-                                <Card style={styles.rentCard}>
+                                <Card style={[styles.rentCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9', borderWidth: isDark ? 1 : 0 }]}>
                                     <View style={styles.rentHeader}>
                                         <View>
-                                            <Text style={styles.rentLabel}>Total Outstanding Balance</Text>
-                                            <Text style={[styles.rentValue, { color: outstandingBalance > 0 ? '#EF4444' : '#10B981' }]}>
+                                            <Text style={[styles.rentLabel, { color: theme.textSecondary }]}>Total Outstanding Balance</Text>
+                                            <Text style={[styles.rentValue, { color: outstandingBalance > 0 ? theme.error : theme.success }]}>
                                                 ₹{outstandingBalance}
                                             </Text>
                                         </View>
                                         {outstandingBalance > 0 && (
-                                            <TouchableOpacity style={styles.payButton} onPress={openPayModal}>
+                                            <TouchableOpacity style={[styles.payButton, { backgroundColor: theme.primary }]} onPress={openPayModal}>
                                                 <Text style={styles.payButtonText}>Pay Now</Text>
                                             </TouchableOpacity>
                                         )}
@@ -861,7 +869,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                 style={styles.dateSelector}
                                 onPress={() => setNoticeDatePickerVisible(true)}
                             >
-                                <Calendar size={18} color="#FF6B6B" />
+                                <Calendar size={18} color={theme.primary} />
                                 <Text style={styles.dateText}>{noticeDate}</Text>
                             </TouchableOpacity>
 

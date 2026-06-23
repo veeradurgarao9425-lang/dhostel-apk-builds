@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
-    ScrollView, StatusBar, ActivityIndicator, Dimensions, Linking, Modal, Alert
+    ScrollView, StatusBar, ActivityIndicator, Dimensions, Linking, Modal, Alert, Platform
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,6 +15,7 @@ import { toLocalDateStr as toLocalDateString } from '../utils/dateUtils';
 import { AppHeader } from '../components/AppHeader';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import { SuccessModal } from '../components/SuccessModal';
 
 const { width, height } = Dimensions.get('window');
 type Period = 'day' | 'week' | 'month';
@@ -79,6 +80,8 @@ export default function IncomeDetailsScreen() {
     
     // Bottom Sheet Select Modal state
     const [showSelectorModal, setShowSelectorModal] = useState(false);
+    const [successModalVisible, setSuccessModalVisible] = useState(false);
+    const [downloadedFileUri, setDownloadedFileUri] = useState<string | null>(null);
 
     const { theme } = useTheme();
 
@@ -110,20 +113,8 @@ export default function IncomeDetailsScreen() {
             setShowExportModal(false);
 
             if (downloadResult.status === 200) {
-                Alert.alert(
-                    'Download Completed',
-                    'The report has been downloaded successfully.',
-                    [
-                        {
-                            text: 'Share / Open',
-                            onPress: () => Sharing.shareAsync(downloadResult.uri)
-                        },
-                        {
-                            text: 'OK',
-                            style: 'cancel'
-                        }
-                    ]
-                );
+                setDownloadedFileUri(downloadResult.uri);
+                setSuccessModalVisible(true);
             } else {
                 Alert.alert('Error', `Server returned status code ${downloadResult.status}`);
             }
@@ -812,6 +803,27 @@ export default function IncomeDetailsScreen() {
                     setDatePickerVisible(false);
                 }}
                 onCancel={() => setDatePickerVisible(false)}
+            />
+
+            <SuccessModal
+                visible={successModalVisible}
+                title="Excel Report Ready"
+                message="Your income report has been successfully generated and saved to your device cache."
+                buttonText="Share / Save Excel"
+                onButtonPress={async () => {
+                    setSuccessModalVisible(false);
+                    if (downloadedFileUri) {
+                        setTimeout(async () => {
+                            await Sharing.shareAsync(downloadedFileUri, {
+                                mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                                dialogTitle: 'Share / Save Excel Report',
+                                UTI: 'com.microsoft.excel.xls'
+                            });
+                        }, 300);
+                    }
+                }}
+                onClose={() => setSuccessModalVisible(false)}
+                autoCloseDuration={0}
             />
         </View>
     );

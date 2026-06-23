@@ -30,8 +30,7 @@ export const HostelsScreen = () => {
     const [refreshing, setRefreshing] = useState(false);
     const [switchingId, setSwitchingId] = useState<number | null>(null);
 
-    const [selectedHostelDetails, setSelectedHostelDetails] = useState<any>(null);
-    const [detailsModalVisible, setDetailsModalVisible] = useState(false);
+    // Hostel details are handled via navigated screen now
 
     const fetchHostels = async () => {
         try {
@@ -139,13 +138,7 @@ export const HostelsScreen = () => {
     };
 
     const handleViewDetails = (hostel: any) => {
-        setSelectedHostelDetails(hostel);
-        setDetailsModalVisible(true);
-    };
-
-    const handleSwitchFromDetails = async (hostelId: number) => {
-        setDetailsModalVisible(false);
-        await handleSwitchHostel(hostelId);
+        navigation.navigate('HostelDetails', { hostelId: hostel.hostel_id, hostel });
     };
 
     return (
@@ -275,173 +268,6 @@ export const HostelsScreen = () => {
             >
                 <Plus color="#FFF" size={24} strokeWidth={3} />
             </TouchableOpacity>
-
-            {/* Hostel Details Bottom Sheet Drawer Modal */}
-            <Modal
-                animationType="fade"
-                transparent={true}
-                visible={detailsModalVisible}
-                onRequestClose={() => setDetailsModalVisible(false)}
-            >
-                <View style={styles.modalOverlay}>
-                    {/* Absolute Backdrop overlay */}
-                    <TouchableOpacity
-                        style={StyleSheet.absoluteFillObject}
-                        activeOpacity={1}
-                        onPress={() => setDetailsModalVisible(false)}
-                    />
-
-                    {/* Sheet Content */}
-                    <TouchableWithoutFeedback>
-                        <View style={[styles.modalSheet, { backgroundColor: theme.cardBg }]}>
-                            <View style={styles.modalHeader}>
-                                <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>Hostel Information</Text>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-                                    <TouchableOpacity
-                                        onPress={() => {
-                                            setDetailsModalVisible(false);
-                                            navigation.navigate('AddHostel', { hostel: selectedHostelDetails, isEdit: true });
-                                        }}
-                                        activeOpacity={0.7}
-                                        style={{ padding: 4 }}
-                                    >
-                                        <Ionicons name="create-outline" size={22} color={theme.primary} />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={styles.modalCloseBtn}
-                                        onPress={() => setDetailsModalVisible(false)}
-                                    >
-                                        <Ionicons name="close" size={24} color={theme.textPrimary} />
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-
-                            {selectedHostelDetails && (
-                                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
-
-                                    {/* Header Summary block */}
-                                    <View style={styles.modalSummaryBlock}>
-                                        <View style={[styles.avatarBoxLarge, { backgroundColor: selectedHostelDetails.hostel_type?.toLowerCase().includes('girl') ? '#FCE7F3' : '#DBEAFE' }]}>
-                                            <Text style={[styles.avatarTextInitialsLarge, { color: selectedHostelDetails.hostel_type?.toLowerCase().includes('girl') ? '#DB2777' : '#2563EB' }]}>
-                                                {getInitials(selectedHostelDetails.hostel_name)}
-                                            </Text>
-                                        </View>
-                                        <View style={{ flex: 1, marginLeft: 14 }}>
-                                            <Text style={[styles.modalHostelName, { color: theme.textPrimary }]} numberOfLines={1}>
-                                                {selectedHostelDetails.hostel_name}
-                                            </Text>
-                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                                                <View style={[styles.typeBadge, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
-                                                    <Text style={[styles.typeBadgeText, { color: isDark ? theme.primary : '#475569' }]}>
-                                                        {selectedHostelDetails.hostel_type || 'Co-Living'}
-                                                    </Text>
-                                                </View>
-                                                <View style={[styles.statusBadgeInline, { backgroundColor: (selectedHostelDetails.hostel_id === user?.hostel_id) ? theme.success + '15' : 'rgba(148, 163, 184, 0.15)' }]}>
-                                                    <Text style={[styles.statusBadgeTextInline, { color: (selectedHostelDetails.hostel_id === user?.hostel_id) ? theme.success : theme.textSecondary }]}>
-                                                        {(selectedHostelDetails.hostel_id === user?.hostel_id) ? 'Active' : 'Inactive'}
-                                                    </Text>
-                                                </View>
-                                            </View>
-                                        </View>
-                                    </View>
-
-                                    <View style={[styles.modalDivider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
-
-                                    {/* Premium Card: Hostel General & Location Info */}
-                                    <View style={[styles.premiumCardContainer, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                                        <View style={styles.premiumCardHeader}>
-                                            <Ionicons name="business" size={16} color={theme.primary} />
-                                            <Text style={[styles.premiumCardHeaderTitle, { color: theme.textPrimary }]}>Hostel Information</Text>
-                                        </View>
-                                        <View style={styles.premiumGrid}>
-                                            <View style={styles.premiumGridRow}>
-                                                <View style={[styles.premiumGridItem, { flex: 1, backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                                                    <Text style={styles.premiumLabel}>Admission Fee</Text>
-                                                    <Text style={[styles.premiumValue, { color: theme.textPrimary }]}>₹{selectedHostelDetails.admission_fee || '0'}</Text>
-                                                </View>
-                                                <View style={[styles.premiumGridItem, { flex: 1, backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                                                    <Text style={styles.premiumLabel}>Total Floors</Text>
-                                                    <Text style={[styles.premiumValue, { color: theme.textPrimary }]}>{selectedHostelDetails.total_floors || 'N/A'}</Text>
-                                                </View>
-                                            </View>
-                                            <View style={[styles.premiumGridItem, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                                                <Text style={styles.premiumLabel}>Hostel Address</Text>
-                                                <Text style={[styles.premiumValue, { color: theme.textPrimary, lineHeight: 18 }]}>
-                                                    {selectedHostelDetails.address}, {selectedHostelDetails.city}, {selectedHostelDetails.state} - {selectedHostelDetails.pincode || 'N/A'}
-                                                </Text>
-                                            </View>
-                                        </View>
-                                    </View>
-
-                                    {/* Premium Card: Owner & Contact Details */}
-                                    <View style={[styles.premiumCardContainer, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                                        <View style={styles.premiumCardHeader}>
-                                            <Ionicons name="person" size={16} color={theme.primary} />
-                                            <Text style={[styles.premiumCardHeaderTitle, { color: theme.textPrimary }]}>Owner & Contact Details</Text>
-                                        </View>
-                                        <View style={styles.premiumGrid}>
-                                            <View style={[styles.premiumGridItem, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                                                <Text style={styles.premiumLabel}>Owner Name</Text>
-                                                <Text style={[styles.premiumValue, { color: theme.textPrimary }]}>{selectedHostelDetails.owner_name || 'N/A'}</Text>
-                                            </View>
-                                            <View style={styles.premiumGridRow}>
-                                                <View style={[styles.premiumGridItem, { flex: 1, backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                                                    <Text style={styles.premiumLabel}>Phone Number</Text>
-                                                    <Text style={[styles.premiumValue, { color: theme.textPrimary }]}>{selectedHostelDetails.contact_number || 'N/A'}</Text>
-                                                </View>
-                                                <View style={[styles.premiumGridItem, { flex: 1, backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                                                    <Text style={styles.premiumLabel}>Email Address</Text>
-                                                    <Text style={[styles.premiumValue, { color: theme.textPrimary }]} numberOfLines={1}>{selectedHostelDetails.email || 'N/A'}</Text>
-                                                </View>
-                                            </View>
-                                        </View>
-                                    </View>
-
-                                    {/* Premium Card: Amenities */}
-                                    {selectedHostelDetails.amenities && selectedHostelDetails.amenities.length > 0 && (
-                                        <View style={[styles.premiumCardContainer, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                                            <View style={styles.premiumCardHeader}>
-                                                <Ionicons name="checkmark-done-circle" size={16} color={theme.primary} />
-                                                <Text style={[styles.premiumCardHeaderTitle, { color: theme.textPrimary }]}>Facilities & Amenities</Text>
-                                            </View>
-                                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                                                {selectedHostelDetails.amenities.map((am: string, index: number) => (
-                                                    <View key={index} style={[styles.amenityBadge, { backgroundColor: isDark ? '#1E293B' : '#ECFDF5', borderColor: isDark ? '#334155' : '#A7F3D0', borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
-                                                        <Ionicons name="checkmark-circle" size={14} color="#059669" />
-                                                        <Text style={[styles.amenityBadgeText, { color: '#059669' }]}>{am}</Text>
-                                                    </View>
-                                                ))}
-                                            </View>
-                                        </View>
-                                    )}
-
-                                    <View style={{ height: 24 }} />
-
-                                    {switchingId === selectedHostelDetails.hostel_id ? (
-                                        <ActivityIndicator size="small" color={theme.primary} />
-                                    ) : (
-                                        <TouchableOpacity
-                                            style={[
-                                                styles.activateHostelBtn,
-                                                {
-                                                    backgroundColor: (selectedHostelDetails.hostel_id === user?.hostel_id) ? theme.success : theme.primary,
-                                                    opacity: (selectedHostelDetails.hostel_id === user?.hostel_id) ? 0.8 : 1
-                                                }
-                                            ]}
-                                            disabled={selectedHostelDetails.hostel_id === user?.hostel_id}
-                                            onPress={() => handleSwitchFromDetails(selectedHostelDetails.hostel_id)}
-                                        >
-                                            <Text style={styles.activateHostelBtnText}>
-                                                {(selectedHostelDetails.hostel_id === user?.hostel_id) ? '✓ Current Active Hostel' : 'Switch & Activate Hostel'}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    )}
-                                </ScrollView>
-                            )}
-                        </View>
-                    </TouchableWithoutFeedback>
-                </View>
-            </Modal>
         </View>
     );
 };
@@ -576,6 +402,13 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: 'rgba(15, 23, 42, 0.4)',
         justifyContent: 'flex-end',
+    },
+    modalOverlayFull: {
+        flex: 1,
+    },
+    modalScrollContent: {
+        padding: 20,
+        paddingBottom: 40,
     },
     modalSheet: {
         borderTopLeftRadius: 28,

@@ -30,6 +30,9 @@ const CAT_COLORS: Record<string, string> = {
     'cleaning': '#EF4444',
     'water': '#0EA5E9',
     'lift': '#6366F1',
+    'other': '#64748B',
+    'others': '#64748B',
+    'misc': '#64748B',
 };
 
 const CAT_ICONS: Record<string, string> = {
@@ -46,6 +49,9 @@ const CAT_ICONS: Record<string, string> = {
     'cleaning': 'brush-sharp',
     'water': 'water-sharp',
     'lift': 'swap-vertical-sharp',
+    'other': 'receipt-sharp',
+    'others': 'receipt-sharp',
+    'misc': 'receipt-sharp',
 };
 
 const getColor = (name: string) => {

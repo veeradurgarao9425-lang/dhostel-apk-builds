@@ -46,7 +46,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                     !alignLeft && <View style={styles.placeholder} />
                 )}
                 
-                <View style={[styles.titleContainer, alignLeft && { alignItems: 'flex-start', paddingHorizontal: 0 }]}>
+                <View style={[styles.titleContainer, alignLeft && { alignItems: 'flex-start', paddingHorizontal: 0, marginLeft: showBack ? 18 : 0 }]}>
                     <Text style={styles.headerTitle}>{title}</Text>
                     {subtitle && <Text style={styles.headerSubtitle}>{subtitle}</Text>}
                 </View>

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Image, StyleSheet, Text, Dimensions, TouchableOpacity } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { COLORS } from '../theme/index';
+import { Ionicons } from '@expo/vector-icons';
 
 const { width, height } = Dimensions.get('window');
 
@@ -29,11 +30,12 @@ export const OfflineFallback = ({ children }: { children: React.ReactNode }) => 
     if (isConnected === false) {
         return (
             <View style={styles.container}>
-                <Image 
-                    source={require('../../assets/signalfallbackimage.png')} 
-                    style={styles.image} 
-                    resizeMode="contain" 
-                />
+                <View style={[styles.iconContainer, { backgroundColor: (COLORS.error || '#E53935') + '15' }]}>
+                    <Ionicons name="wifi-outline" size={72} color={COLORS.error || '#E53935'} />
+                    <View style={styles.badgeContainer}>
+                        <Ionicons name="close-circle" size={32} color={COLORS.error || '#E53935'} />
+                    </View>
+                </View>
                 <Text style={styles.title}>No Internet Connection</Text>
                 <Text style={styles.subtitle}>Please check your network settings and try again.</Text>
                 <TouchableOpacity 
@@ -58,10 +60,21 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         padding: 20,
     },
-    image: {
-        width: width * 0.8,
-        height: width * 0.8,
+    iconContainer: {
+        width: 140,
+        height: 140,
+        borderRadius: 70,
+        justifyContent: 'center',
+        alignItems: 'center',
         marginBottom: 30,
+        position: 'relative',
+    },
+    badgeContainer: {
+        position: 'absolute',
+        bottom: 8,
+        right: 8,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
     },
     title: {
         fontSize: 22,

@@ -25,6 +25,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { AppHeader } from '../components/AppHeader';
 import { ProfileMenu } from '../components/ProfileMenu';
 import { buildReportHtml } from '../utils/reportHtml';
+import { SuccessModal } from '../components/SuccessModal';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`;
@@ -84,6 +85,8 @@ export default function ReportsScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [exporting, setExporting] = useState<null | 'pdf' | 'excel' | 'email'>(null);
     const [exportModal, setExportModal] = useState(false);
+    const [successModalVisible, setSuccessModalVisible] = useState(false);
+    const [downloadedFileUri, setDownloadedFileUri] = useState<string | null>(null);
 
     const [stats, setStats] = useState<any>(null);
     const [monthlyFees, setMonthlyFees] = useState<any>(null);
@@ -200,20 +203,8 @@ export default function ReportsScreen() {
             const downloadResult = await FileSystem.downloadAsync(exportUrl, fileUri);
 
             if (downloadResult.status === 200) {
-                Alert.alert(
-                    'Download Completed',
-                    'The report has been downloaded successfully.',
-                    [
-                        {
-                            text: 'Share / Open',
-                            onPress: () => Sharing.shareAsync(downloadResult.uri)
-                        },
-                        {
-                            text: 'OK',
-                            style: 'cancel'
-                        }
-                    ]
-                );
+                setDownloadedFileUri(downloadResult.uri);
+                setSuccessModalVisible(true);
             } else {
                 Alert.alert('Error', `Server returned status code ${downloadResult.status}`);
             }
@@ -278,23 +269,42 @@ export default function ReportsScreen() {
             />
 
             {/* ── TAB SWITCHER ────────────────────────────────────────────── */}
-            <View style={[s.tabBar, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderBottomColor: isDark ? '#334155' : '#E2E8F0' }]}>
-                {TABS.map((tab) => {
-                    const active = activeTab === tab;
-                    return (
-                        <TouchableOpacity
-                            key={tab}
-                            style={[s.tabBtn, active && s.tabBtnActive]}
-                            onPress={() => setActiveTab(tab)}
-                            activeOpacity={0.8}
-                        >
-                            <Text style={[s.tabText, { color: active ? '#5F2EEA' : (isDark ? '#94A3B8' : '#64748B') }]}>
-                                {tab}
-                            </Text>
-                            {active && <View style={s.tabUnderline} />}
-                        </TouchableOpacity>
-                    );
-                })}
+            <View style={s.tabBarContainer}>
+                <View style={[s.tabBarInner, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderWidth: 1, borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                    {TABS.map((tab) => {
+                        const active = activeTab === tab;
+                        return (
+                            <TouchableOpacity
+                                key={tab}
+                                style={[
+                                    s.tabSegment,
+                                    active && {
+                                        backgroundColor: isDark ? '#334155' : '#F1F5F9',
+                                        shadowColor: '#000',
+                                        shadowOffset: { width: 0, height: 1 },
+                                        shadowOpacity: 0.08,
+                                        shadowRadius: 2,
+                                        elevation: 1.5,
+                                    }
+                                ]}
+                                onPress={() => setActiveTab(tab)}
+                                activeOpacity={0.9}
+                            >
+                                <Text style={[
+                                    s.tabSegmentText,
+                                    {
+                                        color: active 
+                                            ? (isDark ? '#F1F5F9' : '#5F2EEA') 
+                                            : (isDark ? '#94A3B8' : '#64748B'),
+                                        fontWeight: active ? '800' : '600'
+                                    }
+                                ]}>
+                                    {tab}
+                                </Text>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </View>
             </View>
 
             <ScrollView
@@ -546,6 +556,27 @@ export default function ReportsScreen() {
                     </TouchableOpacity>
                 </TouchableOpacity>
             </Modal>
+
+            <SuccessModal
+                visible={successModalVisible}
+                title="Excel Report Ready"
+                message="Your reports has been successfully generated and saved to your device cache."
+                buttonText="Share / Save Excel"
+                onButtonPress={async () => {
+                    setSuccessModalVisible(false);
+                    if (downloadedFileUri) {
+                        setTimeout(async () => {
+                            await Sharing.shareAsync(downloadedFileUri, {
+                                mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                                dialogTitle: 'Share / Save Excel Report',
+                                UTI: 'com.microsoft.excel.xls'
+                            });
+                        }, 300);
+                    }
+                }}
+                onClose={() => setSuccessModalVisible(false)}
+                autoCloseDuration={0}
+            />
         </View>
     );
 }
@@ -553,30 +584,26 @@ export default function ReportsScreen() {
 // ── Styles ────────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
     root: { flex: 1 },
-    tabBar: {
-        flexDirection: 'row',
-        borderBottomWidth: 1,
+    tabBarContainer: {
         paddingHorizontal: 16,
+        paddingTop: 16,
+        paddingBottom: 4,
     },
-    tabBtn: {
+    tabBarInner: {
+        flexDirection: 'row',
+        borderRadius: 14,
+        padding: 4,
+    },
+    tabSegment: {
         flex: 1,
         alignItems: 'center',
-        paddingVertical: 12,
-        position: 'relative',
+        justifyContent: 'center',
+        paddingVertical: 10,
+        borderRadius: 10,
     },
-    tabBtnActive: {},
-    tabText: {
+    tabSegmentText: {
         fontSize: 13,
-        fontWeight: '700',
-        letterSpacing: 0.3,
-    },
-    tabUnderline: {
-        position: 'absolute',
-        bottom: 0,
-        height: 3,
-        width: '60%',
-        backgroundColor: '#5F2EEA',
-        borderRadius: 2,
+        letterSpacing: 0.2,
     },
     sectionLabel: {
         fontSize: 10,

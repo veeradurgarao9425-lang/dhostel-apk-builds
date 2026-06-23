@@ -43,36 +43,66 @@ export const RoomDetailsScreen = ({ route }: any) => {
         return (f + l).trim() || '?';
     };
 
-    const renderOccupant = ({ item }: { item: any }) => (
-        <TouchableOpacity
-            style={[styles.occupantCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
-            onPress={() => navigation.navigate('StudentDetails', { studentId: item.student_id })}
-            activeOpacity={0.8}
-        >
-            <View style={styles.occupantHeader}>
-                {item.photo ? (
-                    <Image source={{ uri: item.photo }} style={styles.occupantAvatar} />
-                ) : (
-                    <View style={[styles.occupantAvatarPlaceholder, { backgroundColor: theme.primary + '15' }]}>
-                        <Text style={[styles.avatarInitials, { color: theme.primary }]}>
-                            {getInitials(item.first_name, item.last_name)}
-                        </Text>
-                    </View>
-                )}
-                <View style={styles.occupantInfo}>
-                    <Text style={[styles.occupantName, { color: theme.textPrimary }]}>{item.first_name} {item.last_name || ''}</Text>
-                    <Text style={[styles.occupantPhone, { color: theme.textSecondary }]}>{item.phone || 'No phone'}</Text>
-                </View>
-            </View>
+    const OccupantCard = React.memo(({ item, onPress, onCall, theme, isDark, getInitials }: {
+        item: any;
+        onPress: () => void;
+        onCall: () => void;
+        theme: any;
+        isDark: boolean;
+        getInitials: (first: string, last: string) => string;
+    }) => {
+        const [imageError, setImageError] = useState(false);
+
+        useEffect(() => {
+            setImageError(false);
+        }, [item.photo]);
+
+        return (
             <TouchableOpacity
-                style={[styles.occupantCallBtn, { backgroundColor: theme.success + '15' }]}
-                onPress={() => item.phone && Linking.openURL(`tel:${item.phone}`)}
-                activeOpacity={0.7}
+                style={[styles.occupantCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
+                onPress={onPress}
+                activeOpacity={0.8}
             >
-                <Phone size={13} color={theme.success} />
-                <Text style={[styles.callText, { color: theme.success }]}>Call Tenant</Text>
+                <View style={styles.occupantHeader}>
+                    {item.photo && !imageError ? (
+                        <Image 
+                            source={{ uri: item.photo }} 
+                            style={styles.occupantAvatar} 
+                            onError={() => setImageError(true)}
+                        />
+                    ) : (
+                        <View style={[styles.occupantAvatarPlaceholder, { backgroundColor: theme.primary + '15' }]}>
+                            <Text style={[styles.avatarInitials, { color: theme.primary }]}>
+                                {getInitials(item.first_name, item.last_name)}
+                            </Text>
+                        </View>
+                    )}
+                    <View style={styles.occupantInfo}>
+                        <Text style={[styles.occupantName, { color: theme.textPrimary }]}>{item.first_name} {item.last_name || ''}</Text>
+                        <Text style={[styles.occupantPhone, { color: theme.textSecondary }]}>{item.phone || 'No phone'}</Text>
+                    </View>
+                </View>
+                <TouchableOpacity
+                    style={[styles.occupantCallBtn, { backgroundColor: theme.success + '15' }]}
+                    onPress={onCall}
+                    activeOpacity={0.7}
+                >
+                    <Phone size={13} color={theme.success} />
+                    <Text style={[styles.callText, { color: theme.success }]}>Call Tenant</Text>
+                </TouchableOpacity>
             </TouchableOpacity>
-        </TouchableOpacity>
+        );
+    });
+
+    const renderOccupant = ({ item }: { item: any }) => (
+        <OccupantCard
+            item={item}
+            onPress={() => navigation.navigate('StudentDetails', { studentId: item.student_id })}
+            onCall={() => item.phone && Linking.openURL(`tel:${item.phone}`)}
+            theme={theme}
+            isDark={isDark}
+            getInitials={getInitials}
+        />
     );
 
     const renderBedsVisualizer = () => {

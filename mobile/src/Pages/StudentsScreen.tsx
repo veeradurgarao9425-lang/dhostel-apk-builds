@@ -68,6 +68,11 @@ const StudentCard = React.memo(({ student, onPress, onWhatsApp, onCall, onToggle
     const isActive = student.status === 1;
     const isPreBooked = student.status === 2;
     const isQRSignup = student.status === 3;
+    const [imageError, setImageError] = useState(false);
+
+    useEffect(() => {
+        setImageError(false);
+    }, [student.photo]);
 
     const getInitials = (first: string, last: string) => {
         const f = first ? first.charAt(0).toUpperCase() : '';
@@ -104,8 +109,13 @@ const StudentCard = React.memo(({ student, onPress, onWhatsApp, onCall, onToggle
         >
             <View style={styles.cardHeader}>
                 <View style={[styles.avatarBox, { backgroundColor: avatarBg }]}>
-                    {student.photo ? (
-                        <Image source={{ uri: student.photo }} style={styles.avatarImg} fadeDuration={0} />
+                    {student.photo && !imageError ? (
+                        <Image 
+                            source={{ uri: student.photo }} 
+                            style={styles.avatarImg} 
+                            fadeDuration={0} 
+                            onError={() => setImageError(true)}
+                        />
                     ) : (
                         <Text style={[styles.avatarTextInitials, { color: avatarTextColor }]}>
                             {getInitials(student.first_name, student.last_name)}

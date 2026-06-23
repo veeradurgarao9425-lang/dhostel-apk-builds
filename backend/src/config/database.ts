@@ -583,19 +583,25 @@ async function patchDatabaseSchema() {
         const categories = await db('expense_categories').select('category_name');
         const categoryNames = categories.map((c: any) => c.category_name.toLowerCase());
         
-        if (!categoryNames.includes('water bill')) {
-          console.log('[schema-patch] Adding "Water Bill" category...');
-          await db('expense_categories').insert({
-            category_name: 'Water Bill',
-            description: 'Monthly water charges'
-          });
-        }
-        if (!categoryNames.includes('lift bill')) {
-          console.log('[schema-patch] Adding "Lift Bill" category...');
-          await db('expense_categories').insert({
-            category_name: 'Lift Bill',
-            description: 'Lift maintenance and electricity charges'
-          });
+        const defaultCats = [
+          { name: 'Water Bill', desc: 'Monthly water charges' },
+          { name: 'Others', desc: 'Miscellaneous other expenses' },
+          { name: 'Electricity Bill', desc: 'Monthly electricity charges' },
+          { name: 'Groceries', desc: 'Food and provisions' },
+          { name: 'Salary', desc: 'Staff salaries' },
+          { name: 'Maintenance', desc: 'Repairs and maintenance' },
+          { name: 'Internet Bill', desc: 'Internet and WiFi charges' },
+          { name: 'Lift Bill', desc: 'Lift maintenance and electricity charges' }
+        ];
+
+        for (const cat of defaultCats) {
+          if (!categoryNames.includes(cat.name.toLowerCase())) {
+            console.log(`[schema-patch] Adding "${cat.name}" category...`);
+            await db('expense_categories').insert({
+              category_name: cat.name,
+              description: cat.desc
+            });
+          }
         }
       }
     } catch (e: any) {

@@ -27,6 +27,7 @@ import ProfileScreen         from '../Pages/ProfileScreen';
 import ExpenseScreen         from '../Pages/ExpenseScreen';
 import AddHostelScreen       from '../Pages/AddHostelScreen';
 import HostelsScreen         from '../Pages/HostelsScreen';
+import HostelDetailsScreen   from '../Pages/HostelDetailsScreen';
 import AddExpenseScreen      from '../Pages/AddExpenseScreen';
 import ExpenseDetailsScreen  from '../Pages/ExpenseDetailsScreen';
 import FeeCollectionScreen   from '../Pages/FeeCollectionScreen';
@@ -217,6 +218,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                         options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
                     />
                     <Stack.Screen name="Hostels" component={HostelsScreen} />
+                    <Stack.Screen name="HostelDetails" component={HostelDetailsScreen} />
 
                     {/* Tools */}
                     <Stack.Screen name="QRSignup"    component={QRSignupScreen}    />

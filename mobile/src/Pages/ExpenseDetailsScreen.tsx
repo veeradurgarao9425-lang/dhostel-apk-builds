@@ -20,8 +20,12 @@ const CAT_COLORS: Record<string, string> = {
     'Salary': '#10B981',
     'Groceries': '#F97316',
     'Internet': '#06B6D4',
+    'Internet Bill': '#06B6D4',
     'Cleaning': '#EC4899',
     'Other': '#64748B',
+    'Others': '#64748B',
+    'Others Bill': '#64748B',
+    'Miscellaneous': '#64748B',
 };
 
 const getCatColor = (name: string) => CAT_COLORS[name] || '#64748B';

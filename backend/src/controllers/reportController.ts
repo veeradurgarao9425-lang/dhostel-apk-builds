@@ -198,21 +198,48 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
     const staffData = await staffQuery.first();
     const staffCount = Number(staffData?.count || 0);
 
-    // Get today's rent collection (from fee_payments table)
+    // Get today's rent, other income, and guest collection
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     let todayRentQuery = db('fee_payments')
-      .where('payment_date', today)
+      .whereRaw('DATE(payment_date) = ?', [today])
       .sum('amount as total')
       .count('* as count');
     if (hostelIds.length > 0) {
       todayRentQuery = todayRentQuery.whereIn('hostel_id', hostelIds);
     }
     const todayRent = await todayRentQuery.first();
+    const todayRentAmount = Number(todayRent?.total || 0);
+
+    let todayOtherQuery = db('income')
+      .whereRaw('DATE(income_date) = ?', [today])
+      .sum('amount as total');
+    if (hostelIds.length > 0) {
+      todayOtherQuery = todayOtherQuery.whereIn('hostel_id', hostelIds);
+    }
+    const todayOther = await todayOtherQuery.first();
+    const todayOtherAmount = Number(todayOther?.total || 0);
+
+    let todayGuestAmount = 0;
+    try {
+      let todayGuestQuery = db('guests')
+        .where('amount_paid', '>', 0)
+        .whereRaw('DATE(check_in_date) = ?', [today])
+        .sum('amount_paid as total');
+      if (hostelIds.length > 0) {
+        todayGuestQuery = todayGuestQuery.whereIn('hostel_id', hostelIds);
+      }
+      const todayGuest = await todayGuestQuery.first();
+      todayGuestAmount = Number(todayGuest?.total || 0);
+    } catch (e) {
+      // guests table may not exist
+    }
+
+    const totalTodayAmount = todayRentAmount + todayOtherAmount + todayGuestAmount;
 
     // Get today's split by payment mode
     let todaySplitQuery = db('fee_payments as fp')
       .leftJoin('payment_modes as pm', 'fp.payment_mode_id', 'pm.payment_mode_id')
-      .where('fp.payment_date', today)
+      .whereRaw('DATE(fp.payment_date) = ?', [today])
       .select('pm.payment_mode_name as mode', db.raw('SUM(fp.amount) as total'))
       .groupBy('pm.payment_mode_name');
     if (hostelIds.length > 0) {
@@ -270,7 +297,7 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
         monthlyRentDue,
         monthlyRentPending,
         monthlyRentCollected,
-        todayRent: Number(todayRent?.total || 0),
+        todayRent: Number(totalTodayAmount),
         todayCount: Number(todayRent?.count || 0),
         todaySplit: todaySplit.map(s => ({ mode: s.mode, total: Number(s.total) })),
         newAdmissionsCount
@@ -796,14 +823,41 @@ export const getOwnerStats = async (req: AuthRequest, res: Response) => {
     if (user?.role_id !== 2 || hostelIds.length > 0) {
       const now = new Date();
       const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      
       let todayRentQuery = db('fee_payments')
-        .where('payment_date', today)
+        .whereRaw('DATE(payment_date) = ?', [today])
         .sum('amount as total');
       if (user?.role_id === 2) {
         todayRentQuery = todayRentQuery.whereIn('hostel_id', hostelIds);
       }
       const todayRent = await todayRentQuery.first();
-      todayCollected = Number(todayRent?.total || 0);
+      const todayRentAmt = Number(todayRent?.total || 0);
+
+      let todayOtherQuery = db('income')
+        .whereRaw('DATE(income_date) = ?', [today])
+        .sum('amount as total');
+      if (user?.role_id === 2) {
+        todayOtherQuery = todayOtherQuery.whereIn('hostel_id', hostelIds);
+      }
+      const todayOther = await todayOtherQuery.first();
+      const todayOtherAmt = Number(todayOther?.total || 0);
+
+      let todayGuestAmt = 0;
+      try {
+        let todayGuestQuery = db('guests')
+          .where('amount_paid', '>', 0)
+          .whereRaw('DATE(check_in_date) = ?', [today])
+          .sum('amount_paid as total');
+        if (user?.role_id === 2) {
+          todayGuestQuery = todayGuestQuery.whereIn('hostel_id', hostelIds);
+        }
+        const todayGuest = await todayGuestQuery.first();
+        todayGuestAmt = Number(todayGuest?.total || 0);
+      } catch (e) {
+        // guests table may not exist
+      }
+
+      todayCollected = todayRentAmt + todayOtherAmt + todayGuestAmt;
     }
 
     // 4. Rooms count
