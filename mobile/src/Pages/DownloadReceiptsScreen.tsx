@@ -141,12 +141,30 @@ export default function DownloadReceiptsScreen() {
             const baseURL = (api.defaults.baseURL || 'https://dhostel-backend.onrender.com/api').replace(/\/$/, '');
             const exportUrl = `${baseURL}/income/export?startDate=${startStr}&endDate=${endStr}&token=${encodeURIComponent(token)}&all=true`;
 
-            const supported = await Linking.canOpenURL(exportUrl);
-            if (supported) {
-                await Linking.openURL(exportUrl);
-                setShowExportModal(false);
+            const filename = `receipts_report_${startStr}_to_${endStr}.xlsx`;
+            const fileUri = `${FileSystem.documentDirectory}${filename}`;
+
+            const downloadResult = await FileSystem.downloadAsync(exportUrl, fileUri);
+
+            setShowExportModal(false);
+
+            if (downloadResult.status === 200) {
+                Alert.alert(
+                    'Download Completed',
+                    'The report has been downloaded successfully.',
+                    [
+                        {
+                            text: 'Share / Open',
+                            onPress: () => Sharing.shareAsync(downloadResult.uri)
+                        },
+                        {
+                            text: 'OK',
+                            style: 'cancel'
+                        }
+                    ]
+                );
             } else {
-                Alert.alert('Error', 'Cannot open export link');
+                Alert.alert('Error', `Server returned status code ${downloadResult.status}`);
             }
         } catch (error) {
             console.error(error);

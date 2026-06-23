@@ -193,7 +193,30 @@ export default function ReportsScreen() {
             const token = await AsyncStorage.getItem('token');
             const base = api.defaults.baseURL?.replace(/\/$/, '') || '';
             const exportUrl = `${base}/reports/download/excel?month=${monthParam}&token=${encodeURIComponent(token || '')}`;
-            await Linking.openURL(exportUrl);
+            
+            const filename = `reports_excel_${monthParam}.xlsx`;
+            const fileUri = `${FileSystem.documentDirectory}${filename}`;
+
+            const downloadResult = await FileSystem.downloadAsync(exportUrl, fileUri);
+
+            if (downloadResult.status === 200) {
+                Alert.alert(
+                    'Download Completed',
+                    'The report has been downloaded successfully.',
+                    [
+                        {
+                            text: 'Share / Open',
+                            onPress: () => Sharing.shareAsync(downloadResult.uri)
+                        },
+                        {
+                            text: 'OK',
+                            style: 'cancel'
+                        }
+                    ]
+                );
+            } else {
+                Alert.alert('Error', `Server returned status code ${downloadResult.status}`);
+            }
         } catch (e: any) {
             Alert.alert('Excel Export Failed', e?.message || 'Could not initiate the Excel download.');
         }

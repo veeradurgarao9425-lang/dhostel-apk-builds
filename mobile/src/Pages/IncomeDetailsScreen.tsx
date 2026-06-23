@@ -102,12 +102,30 @@ export default function IncomeDetailsScreen() {
             const baseURL = (api.defaults.baseURL || 'https://dhostel-backend.onrender.com/api').replace(/\/$/, '');
             const exportUrl = `${baseURL}/income/export?startDate=${startStr}&endDate=${endStr}&token=${encodeURIComponent(token)}&all=true`;
 
-            const supported = await Linking.canOpenURL(exportUrl);
-            if (supported) {
-                await Linking.openURL(exportUrl);
-                setShowExportModal(false);
+            const filename = `income_report_${startStr}_to_${endStr}.xlsx`;
+            const fileUri = `${FileSystem.documentDirectory}${filename}`;
+
+            const downloadResult = await FileSystem.downloadAsync(exportUrl, fileUri);
+            
+            setShowExportModal(false);
+
+            if (downloadResult.status === 200) {
+                Alert.alert(
+                    'Download Completed',
+                    'The report has been downloaded successfully.',
+                    [
+                        {
+                            text: 'Share / Open',
+                            onPress: () => Sharing.shareAsync(downloadResult.uri)
+                        },
+                        {
+                            text: 'OK',
+                            style: 'cancel'
+                        }
+                    ]
+                );
             } else {
-                Alert.alert('Error', 'Cannot open export link');
+                Alert.alert('Error', `Server returned status code ${downloadResult.status}`);
             }
         } catch (error) {
             console.error(error);
@@ -399,6 +417,21 @@ export default function IncomeDetailsScreen() {
             {/* ── HEADER (MATCHING APP GRADIENT) ────────────────────────── */}
             <AppHeader
                 title="Earnings"
+                rightComponent={
+                    <TouchableOpacity 
+                        onPress={() => setShowExportModal(true)} 
+                        style={{
+                            width: 40,
+                            height: 40,
+                            borderRadius: 20,
+                            backgroundColor: 'rgba(255, 255, 255, 0.18)',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                        }}
+                    >
+                        <Download size={20} color="#FFF" />
+                    </TouchableOpacity>
+                }
             >
                 {/* Outlined Period tab selectors */}
                 <View style={s.tabBarContainer}>
@@ -597,13 +630,7 @@ export default function IncomeDetailsScreen() {
                     </View>
                 )}
 
-                {/* EXPORT REPORT BUTTON */}
-                <TouchableOpacity onPress={() => setShowExportModal(true)} style={[s.exportButton, { backgroundColor: theme.primary }]}>
-                    <Download size={18} color="#FFF" />
-                    <Text style={s.exportButtonText}>Export Report</Text>
-                </TouchableOpacity>
-
-                <View style={{ height: 120 }} />
+                <View style={{ height: 60 }} />
             </ScrollView>
 
             {/* BOTTOM SHEET SELECT DROPDOWN MODAL */}
