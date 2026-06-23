@@ -320,6 +320,7 @@ const CollectModal = ({
     paymentModes,
     onClose,
     onConfirm,
+    loading,
 }: any) => {
     const [amount, setAmount] = useState('');
     const [modeId, setModeId] = useState('');
@@ -340,9 +341,27 @@ const CollectModal = ({
     if (!fee) return null;
 
     return (
-        <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-            <TouchableOpacity style={modal.overlay} activeOpacity={1} onPress={onClose}>
+        <Modal visible={visible} transparent animationType="slide" onRequestClose={() => { if (!loading) onClose(); }}>
+            <TouchableOpacity style={modal.overlay} activeOpacity={1} onPress={() => { if (!loading) onClose(); }}>
                 <TouchableOpacity style={modal.sheet} activeOpacity={1}>
+                    {loading && (
+                        <View style={[
+                            StyleSheet.absoluteFillObject,
+                            {
+                                backgroundColor: 'rgba(255, 255, 255, 0.85)',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                zIndex: 999,
+                                borderTopLeftRadius: 24,
+                                borderTopRightRadius: 24,
+                            }
+                        ]}>
+                            <ActivityIndicator size="large" color="#10B981" />
+                            <Text style={{ marginTop: 12, fontSize: 15, fontWeight: '700', color: '#0F172A' }}>
+                                Processing Payment...
+                            </Text>
+                        </View>
+                    )}
                     {/* Handle */}
                     <View style={modal.handle} />
 
@@ -352,7 +371,7 @@ const CollectModal = ({
                             <Text style={modal.title}>Collect Fee</Text>
                             <Text style={modal.sub}>{fee.first_name} {fee.last_name} • Room {fee.room_number}</Text>
                         </View>
-                        <TouchableOpacity style={modal.closeBtn} onPress={onClose}>
+                        <TouchableOpacity style={[modal.closeBtn, loading && { opacity: 0.5 }]} onPress={onClose} disabled={loading}>
                             <X color="#64748B" size={18} />
                         </TouchableOpacity>
                     </View>
@@ -377,6 +396,7 @@ const CollectModal = ({
                             keyboardType="numeric"
                             placeholder="Enter amount"
                             placeholderTextColor="#CBD5E1"
+                            editable={!loading}
                         />
 
                         {/* Payment Mode */}
@@ -387,8 +407,9 @@ const CollectModal = ({
                                 return (
                                     <TouchableOpacity
                                         key={m.payment_mode_id}
-                                        style={[modal.modeChip, active && modal.modeChipActive]}
+                                        style={[modal.modeChip, active && modal.modeChipActive, loading && { opacity: 0.6 }]}
                                         onPress={() => setModeId(m.payment_mode_id.toString())}
+                                        disabled={loading}
                                     >
                                         <Text style={[modal.modeText, active && modal.modeTextActive]}>
                                             {m.payment_mode_name}
@@ -419,6 +440,7 @@ const CollectModal = ({
                             onChangeText={setTxnId}
                             placeholder="e.g. UPI Ref No."
                             placeholderTextColor="#CBD5E1"
+                            editable={!loading}
                         />
 
                         {/* Notes */}
@@ -432,13 +454,15 @@ const CollectModal = ({
                             multiline
                             numberOfLines={2}
                             textAlignVertical="top"
+                            editable={!loading}
                         />
 
                         {/* Confirm button */}
                         <TouchableOpacity
-                            style={modal.confirmBtn}
+                            style={[modal.confirmBtn, loading && { opacity: 0.7 }]}
                             onPress={() => onConfirm({ amount, modeId, txnId, notes })}
                             activeOpacity={0.85}
+                            disabled={loading}
                         >
                             <IndianRupee color="#FFFFFF" size={16} />
                             <Text style={modal.confirmText}>Confirm Payment</Text>
@@ -749,6 +773,7 @@ export default function FeeCollectionScreen({ navigation, route }: any) {
                 paymentModes={paymentModes}
                 onClose={() => setPayModalVisible(false)}
                 onConfirm={handleConfirmPayment}
+                loading={payLoading}
             />
 
             <CustomLoader visible={payLoading} message="Processing Payment..." />

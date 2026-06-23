@@ -12,8 +12,11 @@ import {
     Modal,
     Platform,
     Linking,
+    Animated,
+    Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Svg, { Circle } from 'react-native-svg';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
@@ -33,6 +36,9 @@ const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 const TABS = ['Summary', 'Tenants', 'Finance'] as const;
 type TabType = typeof TABS[number];
 
+const { width: screenWidth } = Dimensions.get('window');
+const tabWidth = (screenWidth - 40) / 3;
+
 // ── Mini Stat Cell ────────────────────────────────────────────────────────────
 const StatCell = ({ icon, label, value, iconBg, iconColor, dark }: any) => (
     <View style={[sc.cell, { backgroundColor: dark ? '#1E293B' : '#F8FAFC', borderColor: dark ? '#334155' : '#F1F5F9' }]}>
@@ -44,21 +50,88 @@ const StatCell = ({ icon, label, value, iconBg, iconColor, dark }: any) => (
     </View>
 );
 
-// ── Progress Row ─────────────────────────────────────────────────────────────
-const ProgressRow = ({ label, value, total, color }: any) => {
+// ── Circular Progress Component ─────────────────────────────────────────────
+const CircularProgress = ({ value, total, color, label, subLabel, isDark }: any) => {
     const pct = total > 0 ? Math.min(100, Math.round((value / total) * 100)) : 0;
+    const size = 96;
+    const strokeWidth = 8;
+    const radius = (size - strokeWidth) / 2;
+    const circumference = radius * 2 * Math.PI;
+    const strokeDashoffset = circumference - (pct / 100) * circumference;
+
     return (
-        <View style={pr.row}>
-            <View style={pr.top}>
-                <Text style={pr.label}>{label}</Text>
-                <Text style={[pr.val, { color }]}>{pct}%</Text>
+        <View style={cp.container}>
+            <View style={cp.chartWrap}>
+                <Svg width={size} height={size}>
+                    {/* Background track */}
+                    <Circle
+                        cx={size / 2}
+                        cy={size / 2}
+                        r={radius}
+                        stroke={isDark ? '#334155' : '#E2E8F0'}
+                        strokeWidth={strokeWidth}
+                        fill="transparent"
+                    />
+                    {/* Foreground progress */}
+                    <Circle
+                        cx={size / 2}
+                        cy={size / 2}
+                        r={radius}
+                        stroke={color}
+                        strokeWidth={strokeWidth}
+                        strokeDasharray={circumference}
+                        strokeDashoffset={strokeDashoffset}
+                        strokeLinecap="round"
+                        fill="transparent"
+                        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+                    />
+                </Svg>
+                <View style={cp.centerTextWrap}>
+                    <Text style={[cp.percentText, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>{pct}%</Text>
+                </View>
             </View>
-            <View style={pr.track}>
-                <View style={[pr.fill, { width: `${pct}%`, backgroundColor: color }]} />
-            </View>
+            <Text style={[cp.label, { color: isDark ? '#E2E8F0' : '#0F172A' }]}>{label}</Text>
+            <Text style={[cp.subLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>{subLabel}</Text>
         </View>
     );
 };
+
+const cp = StyleSheet.create({
+    container: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 10,
+    },
+    chartWrap: {
+        position: 'relative',
+        width: 96,
+        height: 96,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    centerTextWrap: {
+        position: 'absolute',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    percentText: {
+        fontSize: 16,
+        fontWeight: '900',
+    },
+    label: {
+        fontSize: 13,
+        fontWeight: '800',
+        textAlign: 'center',
+        marginBottom: 2,
+    },
+    subLabel: {
+        fontSize: 11,
+        fontWeight: '600',
+        textAlign: 'center',
+    },
+});
 
 // ── Defaulter Row ─────────────────────────────────────────────────────────────
 const DefaulterRow = ({ rank, name, amount, days, color }: any) => (
@@ -81,6 +154,16 @@ export default function ReportsScreen() {
     const { user } = useAuth();
 
     const [activeTab, setActiveTab] = useState<TabType>('Summary');
+    const animatedX = React.useRef(new Animated.Value(0)).current;
+
+    React.useEffect(() => {
+        const tabIndex = TABS.indexOf(activeTab);
+        Animated.timing(animatedX, {
+            toValue: tabIndex * tabWidth,
+            duration: 250,
+            useNativeDriver: true,
+        }).start();
+    }, [activeTab]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [exporting, setExporting] = useState<null | 'pdf' | 'excel' | 'email'>(null);
@@ -271,22 +354,22 @@ export default function ReportsScreen() {
             {/* ── TAB SWITCHER ────────────────────────────────────────────── */}
             <View style={s.tabBarContainer}>
                 <View style={[s.tabBarInner, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderWidth: 1, borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                    <Animated.View
+                        style={[
+                            s.tabIndicator,
+                            {
+                                width: tabWidth,
+                                backgroundColor: theme.primary,
+                                transform: [{ translateX: animatedX }],
+                            }
+                        ]}
+                    />
                     {TABS.map((tab) => {
                         const active = activeTab === tab;
                         return (
                             <TouchableOpacity
                                 key={tab}
-                                style={[
-                                    s.tabSegment,
-                                    active && {
-                                        backgroundColor: isDark ? '#334155' : '#F1F5F9',
-                                        shadowColor: '#000',
-                                        shadowOffset: { width: 0, height: 1 },
-                                        shadowOpacity: 0.08,
-                                        shadowRadius: 2,
-                                        elevation: 1.5,
-                                    }
-                                ]}
+                                style={s.tabSegment}
                                 onPress={() => setActiveTab(tab)}
                                 activeOpacity={0.9}
                             >
@@ -294,9 +377,9 @@ export default function ReportsScreen() {
                                     s.tabSegmentText,
                                     {
                                         color: active 
-                                            ? (isDark ? '#F1F5F9' : '#5F2EEA') 
+                                            ? '#FFFFFF' 
                                             : (isDark ? '#94A3B8' : '#64748B'),
-                                        fontWeight: active ? '800' : '600'
+                                        fontWeight: active ? '900' : '600'
                                     }
                                 ]}>
                                     {tab}
@@ -332,8 +415,24 @@ export default function ReportsScreen() {
                                 <Ionicons name="analytics" size={15} color="#5F2EEA" />
                                 <Text style={[s.cardTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>Occupancy & Collection Rate</Text>
                             </View>
-                            <ProgressRow label={`Occupancy  (${occupiedBeds}/${totalBeds} beds)`} value={occupiedBeds} total={totalBeds} color="#7C3AED" />
-                            <ProgressRow label={`Collection  (${fmt(totalRent)} / ${fmt(totalDue)})`} value={totalRent} total={totalDue} color="#5F2EEA" />
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginTop: 10 }}>
+                                <CircularProgress
+                                    label="Occupancy"
+                                    subLabel={`${occupiedBeds} / ${totalBeds} beds`}
+                                    value={occupiedBeds}
+                                    total={totalBeds}
+                                    color="#7C3AED"
+                                    isDark={isDark}
+                                />
+                                <CircularProgress
+                                    label="Collection"
+                                    subLabel={`${fmt(totalRent)} / ${fmt(totalDue)}`}
+                                    value={totalRent}
+                                    total={totalDue}
+                                    color="#5F2EEA"
+                                    isDark={isDark}
+                                />
+                            </View>
                         </View>
 
                         {/* Revenue trend mini table */}
@@ -593,6 +692,18 @@ const s = StyleSheet.create({
         flexDirection: 'row',
         borderRadius: 14,
         padding: 4,
+    },
+    tabIndicator: {
+        position: 'absolute',
+        top: 4,
+        bottom: 4,
+        left: 4,
+        borderRadius: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.08,
+        shadowRadius: 2,
+        elevation: 1.5,
     },
     tabSegment: {
         flex: 1,
@@ -879,14 +990,6 @@ const sc = StyleSheet.create({
     },
 });
 
-const pr = StyleSheet.create({
-    row: { marginBottom: 14 },
-    top: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-    label: { fontSize: 12, fontWeight: '600', color: '#64748B' },
-    val: { fontSize: 12, fontWeight: '800' },
-    track: { height: 7, backgroundColor: '#F1F5F9', borderRadius: 4, overflow: 'hidden' },
-    fill: { height: '100%', borderRadius: 4 },
-});
 
 const dr = StyleSheet.create({
     row: {
