@@ -7,11 +7,12 @@ import { useTheme, themes, ThemeId } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import api from '../services/api';
+import { LanguageSelector } from '../components/LanguageSelector';
 
 export const SettingsScreen = ({ navigation }: any) => {
     const { theme, themeId, setThemeId, isDark, toggleTheme, fontSize, setFontSize } = useTheme();
     const { user } = useAuth();
-    const { i18n } = useTranslation();
+    const { t, i18n } = useTranslation();
 
     // Local state for toggles
     const [notifications, setNotifications] = useState(true);
@@ -67,29 +68,30 @@ export const SettingsScreen = ({ navigation }: any) => {
                 full_name: name,
             });
             if (response.data.success) {
-                Alert.alert('Success', 'Profile details updated successfully!');
+                Alert.alert(t('common.success'), t('settings.successSave'));
             } else {
-                Alert.alert('Error', response.data.error || 'Failed to update profile');
+                Alert.alert(t('common.error'), response.data.error || t('common.error'));
             }
         } catch (error: any) {
             console.error('Update profile error:', error);
-            Alert.alert('Error', error.response?.data?.error || 'Failed to update profile');
+            Alert.alert(t('common.error'), error.response?.data?.error || t('common.error'));
         } finally {
             setProfileSaving(false);
         }
     };
 
+
     const handleChangePassword = async () => {
         if (!currentPassword || !newPassword || !confirmPassword) {
-            Alert.alert('Error', 'All password fields are required.');
+            Alert.alert(t('common.error'), t('settings.passwordRequired'));
             return;
         }
         if (newPassword !== confirmPassword) {
-            Alert.alert('Error', 'New password and confirmation do not match.');
+            Alert.alert(t('common.error'), t('settings.passwordMismatch'));
             return;
         }
         if (newPassword.length < 6) {
-            Alert.alert('Error', 'Password must be at least 6 characters long.');
+            Alert.alert(t('common.error'), t('settings.passwordTooShort'));
             return;
         }
         try {
@@ -99,28 +101,31 @@ export const SettingsScreen = ({ navigation }: any) => {
                 newPassword,
             });
             if (response.data.success) {
-                Alert.alert('Success', 'Password changed successfully!');
+                Alert.alert(t('common.success'), t('settings.passwordChanged'));
                 setCurrentPassword('');
                 setNewPassword('');
                 setConfirmPassword('');
             } else {
-                Alert.alert('Error', response.data.error || 'Failed to change password');
+                Alert.alert(t('common.error'), response.data.error || t('common.error'));
             }
         } catch (error: any) {
             console.error('Change password error:', error);
-            Alert.alert('Error', error.response?.data?.error || 'Failed to change password');
+            Alert.alert(t('common.error'), error.response?.data?.error || t('common.error'));
         } finally {
             setPasswordLoading(false);
         }
     };
 
+
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <AppHeader title="Settings" />
+            <AppHeader title={t('settings.title')} />
+
             <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
 
                 {/* ── PROFILE DETAILS SECTION ── */}
-                <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>Profile Details</Text>
+                <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>{t('settings.profileDetails')}</Text>
+
                 <Card style={[styles.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
                     <View style={styles.inputRow}>
                         <View style={styles.inputIcon}>
@@ -130,9 +135,10 @@ export const SettingsScreen = ({ navigation }: any) => {
                             style={[styles.input, { fontSize, color: theme.textPrimary }]}
                             value={name}
                             onChangeText={setName}
-                            placeholder="Full Name"
+                            placeholder={t('settings.fullName')}
                             placeholderTextColor={isDark ? '#64748B' : '#A0AEC0'}
                         />
+
                     </View>
                     <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
                     <View style={styles.inputRow}>
@@ -143,10 +149,11 @@ export const SettingsScreen = ({ navigation }: any) => {
                             style={[styles.input, { fontSize, color: isDark ? '#64748B' : '#94A3B8' }]}
                             value={email}
                             onChangeText={setEmail}
-                            placeholder="Email Address"
+                            placeholder={t('settings.emailAddress')}
                             placeholderTextColor={isDark ? '#64748B' : '#A0AEC0'}
                             editable={false}
                         />
+
                     </View>
                     <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
                     <View style={styles.inputRow}>
@@ -157,10 +164,11 @@ export const SettingsScreen = ({ navigation }: any) => {
                             style={[styles.input, { fontSize, color: isDark ? '#64748B' : '#94A3B8' }]}
                             value={hostelName}
                             onChangeText={setHostelName}
-                            placeholder="Hostel Name"
+                            placeholder={t('settings.hostelName')}
                             placeholderTextColor={isDark ? '#64748B' : '#A0AEC0'}
                             editable={false}
                         />
+
                     </View>
                     <TouchableOpacity
                         style={[styles.saveBtn, { backgroundColor: theme.primary }]}
@@ -170,13 +178,15 @@ export const SettingsScreen = ({ navigation }: any) => {
                         {profileSaving ? (
                             <ActivityIndicator size="small" color="#FFF" />
                         ) : (
-                            <Text style={styles.saveBtnText}>Save Changes</Text>
+                            <Text style={styles.saveBtnText}>{t('settings.saveChanges')}</Text>
                         )}
+
                     </TouchableOpacity>
                 </Card>
 
                 {/* ── SECURITY / PASSWORD SECTION ── */}
-                <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>Security</Text>
+                <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>{t('settings.security')}</Text>
+
                 <Card style={[styles.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
                     <View style={styles.inputRow}>
                         <View style={styles.inputIcon}>
@@ -186,10 +196,11 @@ export const SettingsScreen = ({ navigation }: any) => {
                             style={[styles.input, { fontSize, color: theme.textPrimary }]}
                             value={currentPassword}
                             onChangeText={setCurrentPassword}
-                            placeholder="Current Password"
+                            placeholder={t('settings.currentPassword')}
                             secureTextEntry
                             placeholderTextColor={isDark ? '#64748B' : '#A0AEC0'}
                         />
+
                     </View>
                     <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
                     <View style={styles.inputRow}>
@@ -200,10 +211,11 @@ export const SettingsScreen = ({ navigation }: any) => {
                             style={[styles.input, { fontSize, color: theme.textPrimary }]}
                             value={newPassword}
                             onChangeText={setNewPassword}
-                            placeholder="New Password"
+                            placeholder={t('settings.newPassword')}
                             secureTextEntry
                             placeholderTextColor={isDark ? '#64748B' : '#A0AEC0'}
                         />
+
                     </View>
                     <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
                     <View style={styles.inputRow}>
@@ -214,10 +226,11 @@ export const SettingsScreen = ({ navigation }: any) => {
                             style={[styles.input, { fontSize, color: theme.textPrimary }]}
                             value={confirmPassword}
                             onChangeText={setConfirmPassword}
-                            placeholder="Confirm New Password"
+                            placeholder={t('settings.confirmNewPassword')}
                             secureTextEntry
                             placeholderTextColor={isDark ? '#64748B' : '#A0AEC0'}
                         />
+
                     </View>
                     <TouchableOpacity
                         style={[styles.saveBtn, { backgroundColor: theme.primary }]}
@@ -227,17 +240,20 @@ export const SettingsScreen = ({ navigation }: any) => {
                         {passwordLoading ? (
                             <ActivityIndicator size="small" color="#FFF" />
                         ) : (
-                            <Text style={styles.saveBtnText}>Update Password</Text>
+                            <Text style={styles.saveBtnText}>{t('settings.updatePassword')}</Text>
                         )}
+
                     </TouchableOpacity>
                 </Card>
 
                 {/* ── APPEARANCE SECTION ── */}
-                <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>Appearance</Text>
+                <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>{t('settings.appearance')}</Text>
+
                 <Card style={[styles.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
                     <SettingRow
                         icon={<Palette size={20} color={theme.primary} />}
-                        label="Theme Color"
+                        label={t('settings.themeColor')}
+
                         type="custom"
                         rightElement={
                             <View style={styles.themeGrid}>
@@ -259,7 +275,8 @@ export const SettingsScreen = ({ navigation }: any) => {
                     <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
                     <SettingRow
                         icon={<Type size={20} color={theme.primary} />}
-                        label="Font Size"
+                        label={t('settings.fontSize')}
+
                         type="custom"
                         rightElement={
                             <View style={[styles.fontControls, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
@@ -282,28 +299,33 @@ export const SettingsScreen = ({ navigation }: any) => {
                     <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
                     <SettingRow
                         icon={<Moon size={20} color={theme.primary} />}
-                        label="Dark Mode"
+                        label={t('settings.darkMode')}
+
                         type="switch"
                         value={isDark}
                         onPress={toggleTheme}
                     />
                     <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
-                    <SettingRow
-                        icon={<Globe size={20} color={theme.primary} />}
-                        label="Language"
-                        value={i18n.language?.toUpperCase() || 'EN'}
-                        onPress={() => {
-                            Alert.alert('Language', 'Language changes are currently on hold.');
-                        }}
+                    <LanguageSelector
+                        trigger={(open) => (
+                            <SettingRow
+                                icon={<Globe size={20} color={theme.primary} />}
+                                label={t('profile.language')}
+                                value={i18n.language?.toUpperCase() || 'EN'}
+                                onPress={open}
+                            />
+                        )}
                     />
                 </Card>
 
                 {/* ── PREFERENCES SECTION ── */}
-                <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>App Preferences</Text>
+                <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>{t('settings.appPreferences')}</Text>
+
                 <Card style={[styles.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
                     <SettingRow
                         icon={<Bell size={20} color={theme.primary} />}
-                        label="Push Notifications"
+                        label={t('settings.pushNotifications')}
+
                         type="switch"
                         value={notifications}
                         onPress={() => setNotifications(!notifications)}
@@ -311,18 +333,21 @@ export const SettingsScreen = ({ navigation }: any) => {
                 </Card>
 
                 {/* ── SECURITY & UPDATES SECTION ── */}
-                <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>Security & Updates</Text>
+                <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>{t('settings.securityUpdates')}</Text>
+
                 <Card style={[styles.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
                     <SettingRow
                         icon={<Shield size={20} color={theme.primary} />}
-                        label="Privacy Policy"
+                        label={t('settings.privacyPolicy')}
+
                     />
                     <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
                     <TouchableOpacity style={styles.row}>
                         <View style={[styles.iconContainer, { backgroundColor: isDark ? '#334155' : theme.lightBg }]}>
                             <Bell size={20} color={theme.primary} />
                         </View>
-                        <Text style={[styles.label, { fontSize: fontSize, color: theme.textPrimary }]}>Check for Updates</Text>
+                        <Text style={[styles.label, { fontSize: fontSize, color: theme.textPrimary }]}>{t('settings.checkUpdates')}</Text>
+
                         <Text style={[styles.version, { color: theme.textSecondary }]}>v1.0.0</Text>
                     </TouchableOpacity>
                 </Card>

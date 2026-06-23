@@ -12,16 +12,20 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useTranslation } from 'react-i18next';
 import api from '../services/api';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+
 const ProfileScreen = ({ navigation }: any) => {
     const { signOut, user, hostels, cycleHostels } = useAuth();
     const { theme, isDark } = useTheme();
+    const { t } = useTranslation();
     const insets = useSafeAreaInsets();
     const [stats, setStats] = useState<any>(null);
     const [switching, setSwitching] = useState(false);
+
 
     const fetchStats = async () => {
         try {
@@ -33,10 +37,10 @@ const ProfileScreen = ({ navigation }: any) => {
     useFocusEffect(React.useCallback(() => { fetchStats(); }, []));
 
     const handleLogout = async () => {
-        Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-            { text: 'Cancel', style: 'cancel' },
+        Alert.alert(t('profile.signOutTitle'), t('profile.signOutMessage'), [
+            { text: t('profile.cancel'), style: 'cancel' },
             {
-                text: 'Sign Out', style: 'destructive', onPress: async () => {
+                text: t('profile.signOut'), style: 'destructive', onPress: async () => {
                     await signOut();
                     navigation.replace('Login');
                 }
@@ -44,23 +48,25 @@ const ProfileScreen = ({ navigation }: any) => {
         ]);
     };
 
+
     const handleSwitchHostel = async () => {
         if (!hostels || hostels.length < 2) {
-            Alert.alert('Single Hostel', 'You only have one hostel registered.');
+            Alert.alert(t('profile.singleHostel'), t('profile.singleHostelMsg'));
             return;
         }
         setSwitching(true);
         try {
             const newName = await cycleHostels();
             if (newName) {
-                Alert.alert('✓ Hostel Switched', `Now viewing: ${newName}`);
+                Alert.alert(t('profile.hostelSwitched'), t('profile.hostelSwitchedMsg', { name: newName }));
             }
         } catch {
-            Alert.alert('Error', 'Could not switch hostel. Please try again.');
+            Alert.alert(t('common.error'), t('profile.switchError'));
         } finally {
             setSwitching(false);
         }
     };
+
 
     const initials = (user?.full_name || user?.email || 'U')
         .split(' ')
@@ -69,7 +75,8 @@ const ProfileScreen = ({ navigation }: any) => {
         .toUpperCase()
         .slice(0, 2);
 
-    const roleLabel = user?.role_id === 1 ? 'Administrator' : 'Hostel Owner';
+    const roleLabel = user?.role_id === 1 ? t('profile.administrator') : t('profile.hostelOwner');
+
 
     return (
         <View style={[styles.root, { backgroundColor: isDark ? '#0F172A' : '#F0F4FF' }]}>
@@ -96,12 +103,13 @@ const ProfileScreen = ({ navigation }: any) => {
                     </LinearGradient>
                 </View>
 
-                <Text style={styles.heroName}>{user?.full_name || 'Hostel Owner'}</Text>
+                <Text style={styles.heroName}>{user?.full_name || t('profile.hostelOwner')}</Text>
                 <View style={styles.rolePill}>
                     <Ionicons name={user?.role_id === 1 ? 'shield-checkmark' : 'business'} size={12} color="#7C3AED" />
                     <Text style={styles.roleText}>{roleLabel}</Text>
                 </View>
-                <Text style={styles.heroHostel}>{user?.hostel_name || 'No Active Hostel'}</Text>
+                <Text style={styles.heroHostel}>{user?.hostel_name || t('profile.noActiveHostel')}</Text>
+
             </LinearGradient>
 
             <ScrollView
@@ -112,10 +120,11 @@ const ProfileScreen = ({ navigation }: any) => {
                 {/* ── STATS ROW ── */}
                 <View style={styles.statsRow}>
                     {[
-                        { icon: 'business-outline', label: 'Hostels', value: hostels?.length ?? 0, color: '#7C3AED', bg: '#EDE9FE' },
-                        { icon: 'bed-outline', label: 'Occupied', value: stats?.occupiedBeds ?? 0, color: '#059669', bg: '#DCFCE7' },
-                        { icon: 'people-outline', label: 'Tenants', value: stats?.tenantsCount ?? stats?.occupiedBeds ?? 0, color: '#0284C7', bg: '#E0F2FE' },
+                        { icon: 'business-outline', label: t('profile.hostels'), value: hostels?.length ?? 0, color: '#7C3AED', bg: '#EDE9FE' },
+                        { icon: 'bed-outline', label: t('profile.occupied'), value: stats?.occupiedBeds ?? 0, color: '#059669', bg: '#DCFCE7' },
+                        { icon: 'people-outline', label: t('profile.tenants'), value: stats?.tenantsCount ?? stats?.occupiedBeds ?? 0, color: '#0284C7', bg: '#E0F2FE' },
                     ].map((s, i) => (
+
                         <View key={i} style={[styles.statCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]}>
                             <View style={[styles.statIconBox, { backgroundColor: s.bg }]}>
                                 <Ionicons name={s.icon as any} size={18} color={s.color} />
@@ -127,14 +136,16 @@ const ProfileScreen = ({ navigation }: any) => {
                 </View>
 
                 {/* ── ACCOUNT INFO ── */}
-                <Text style={[styles.sectionLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>ACCOUNT DETAILS</Text>
+                <Text style={[styles.sectionLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>{t('profile.accountDetails')}</Text>
                 <View style={[styles.infoCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]}>
                     {[
-                        { icon: 'person-outline', label: 'Full Name', value: user?.full_name || 'Not set', color: '#7C3AED', bg: '#EDE9FE' },
-                        { icon: 'mail-outline', label: 'Email', value: user?.email || 'Not set', color: '#0284C7', bg: '#E0F2FE' },
-                        { icon: 'call-outline', label: 'Phone', value: user?.phone || 'Not provided', color: '#059669', bg: '#DCFCE7' },
-                        { icon: 'home-outline', label: 'Active Hostel', value: user?.hostel_name || 'None', color: '#D97706', bg: '#FEF3C7' },
+                        { icon: 'person-outline', label: t('profile.fullName'), value: user?.full_name || t('profile.notSet'), color: '#7C3AED', bg: '#EDE9FE' },
+                        { icon: 'mail-outline', label: t('profile.email'), value: user?.email || t('profile.notSet'), color: '#0284C7', bg: '#E0F2FE' },
+                        { icon: 'call-outline', label: t('profile.phone'), value: user?.phone || t('profile.notProvided'), color: '#059669', bg: '#DCFCE7' },
+                        { icon: 'home-outline', label: t('profile.activeHostel'), value: user?.hostel_name || t('profile.none'), color: '#D97706', bg: '#FEF3C7' },
                     ].map((item, i, arr) => (
+
+
                         <View key={i}>
                             <View style={styles.infoRow}>
                                 <View style={[styles.infoIcon, { backgroundColor: item.bg }]}>
@@ -153,7 +164,7 @@ const ProfileScreen = ({ navigation }: any) => {
                 {/* ── HOSTEL SWITCH (only if multiple) ── */}
                 {hostels && hostels.length > 1 && (
                     <>
-                        <Text style={[styles.sectionLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>HOSTEL</Text>
+                        <Text style={[styles.sectionLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>{t('profile.hostelSection')}</Text>
                         <TouchableOpacity
                             style={[styles.switchCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]}
                             onPress={handleSwitchHostel}
@@ -164,9 +175,9 @@ const ProfileScreen = ({ navigation }: any) => {
                                 <Ionicons name="swap-horizontal-outline" size={18} color="#059669" />
                             </View>
                             <View style={{ flex: 1 }}>
-                                <Text style={[styles.switchTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>Switch Active Hostel</Text>
+                                <Text style={[styles.switchTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>{t('profile.switchActiveHostel')}</Text>
                                 <Text style={[styles.switchSub, { color: isDark ? '#94A3B8' : '#64748B' }]}>
-                                    {switching ? 'Switching...' : `${hostels.length} hostels available — tap to switch`}
+                                    {switching ? t('profile.switching') : t('profile.hostelsAvailable', { count: hostels.length })}
                                 </Text>
                             </View>
                             <Ionicons name="chevron-forward" size={18} color={isDark ? '#475569' : '#CBD5E1'} />
@@ -174,14 +185,19 @@ const ProfileScreen = ({ navigation }: any) => {
                     </>
                 )}
 
+
                 {/* ── MENU ── */}
-                <Text style={[styles.sectionLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>SETTINGS & SUPPORT</Text>
+                <Text style={[styles.sectionLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>{t('profile.settingsSupport')}</Text>
                 <View style={[styles.menuCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]}>
                     {[
-                        { icon: 'settings-outline', label: 'Settings', sub: 'Password, font size, dark mode', color: '#7C3AED', bg: '#EDE9FE', onPress: () => navigation.navigate('Settings') },
-                        { icon: 'business-outline', label: 'Manage Hostels', sub: 'View and edit your hostels', color: '#0284C7', bg: '#E0F2FE', onPress: () => navigation.navigate('Hostels') },
-                        { icon: 'help-circle-outline', label: 'Help & Support', sub: 'Contact support, FAQs', color: '#D97706', bg: '#FEF3C7', onPress: () => Alert.alert('Help & Support', '📧 support@dhostel.com\n📞 +91 98765 43210\n\nAvailable 24/7') },
+                        { icon: 'settings-outline', label: t('profile.settings'), sub: t('profile.settingsSub'), color: '#7C3AED', bg: '#EDE9FE', onPress: () => navigation.navigate('Settings') },
+                        { icon: 'business-outline', label: t('profile.manageHostels'), sub: t('profile.manageHostelsSub'), color: '#0284C7', bg: '#E0F2FE', onPress: () => navigation.navigate('Hostels') },
+                        { icon: 'help-circle-outline', label: t('profile.helpSupport'), sub: t('profile.helpSupportSub'), color: '#D97706', bg: '#FEF3C7', onPress: () => Alert.alert(t('profile.helpSupport'), '📧 support@dhostel.com
+📞 +91 98765 43210
+
+Available 24/7') },
                     ].map((item, i, arr) => (
+
                         <View key={i}>
                             <TouchableOpacity style={styles.menuRow} onPress={item.onPress} activeOpacity={0.7}>
                                 <View style={[styles.menuIcon, { backgroundColor: item.bg }]}>
@@ -203,10 +219,11 @@ const ProfileScreen = ({ navigation }: any) => {
                     <View style={styles.logoutIconBox}>
                         <Ionicons name="log-out-outline" size={20} color="#EF4444" />
                     </View>
-                    <Text style={styles.logoutText}>Sign Out</Text>
+                    <Text style={styles.logoutText}>{t('profile.signOut')}</Text>
                 </TouchableOpacity>
 
-                <Text style={[styles.version, { color: isDark ? '#334155' : '#CBD5E1' }]}>Stivo v1.0.0 · Smart Hostel Management</Text>
+                <Text style={[styles.version, { color: isDark ? '#334155' : '#CBD5E1' }]}>{t('profile.version')}</Text>
+
             </ScrollView>
         </View>
     );

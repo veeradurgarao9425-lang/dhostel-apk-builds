@@ -23,10 +23,12 @@ import { HeaderNotification } from '../components/HeaderNotification';
 import { ProfileMenu } from '../components/ProfileMenu';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useToast } from '../context/ToastContext';
+import { useTranslation } from 'react-i18next';
 import { EmptyState } from '../components/ui/EmptyState';
 import { SkeletonList } from '../components/ui/SkeletonCard';
 import { COLORS, FONT, RADIUS, SPACING, SHADOW } from '../theme/index';
 import { AppHeader } from '../components/AppHeader';
+
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -40,7 +42,9 @@ export default function RoomsScreen({ navigation, route }: any) {
     const { user } = useAuth();
     const { theme, isDark } = useTheme();
     const { showApiError } = useToast();
+    const { t } = useTranslation();
     const [search, setSearch] = useState('');
+
     const [rooms, setRooms] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -75,12 +79,13 @@ export default function RoomsScreen({ navigation, route }: any) {
         });
 
         return [
-            { key: 'All', label: `All Floors (${totalCount})` },
+            { key: 'All', label: t('rooms.allFloors', { count: totalCount }) },
             ...sortedFloors.map(floor => ({
                 key: floor,
                 label: `${floor} (${floorsMap.get(floor)})`
             }))
         ];
+
     };
 
     const uniqueFloors = getUniqueFloors();
@@ -216,9 +221,10 @@ export default function RoomsScreen({ navigation, route }: any) {
                             <>
                                 <Ionicons name="person-add" size={10} color={statusColor} />
                                 <Text style={[styles.capacityText, { color: statusColor, fontSize: 8 }]}>
-                                    ADD TENANT
+                                    {t('rooms.addTenant')}
                                 </Text>
                             </>
+
                         ) : (
                             <>
                                 <Text style={[styles.capacityText, { color: statusColor }]}>
@@ -256,9 +262,10 @@ export default function RoomsScreen({ navigation, route }: any) {
             >
                 <View style={[styles.statusTag, { backgroundColor: statusColor }]}>
                     <Text style={styles.statusTagText}>
-                        {isFull ? 'FULL' : `${room.available_beds} FREE`}
+                        {isFull ? t('rooms.full').toUpperCase() : `${room.available_beds} ${t('rooms.free')}`}
                     </Text>
                 </View>
+
                 <Text style={[styles.roomLabel, { color: theme.textSecondary }]} numberOfLines={1}>
                     {getShortRoomType(room.room_type_name)}
                 </Text>
@@ -277,8 +284,8 @@ export default function RoomsScreen({ navigation, route }: any) {
         <View style={[styles.container, { backgroundColor: isDark ? theme.background : '#F8FAFC' }]}>
             <StatusBar barStyle="light-content" />
             <AppHeader
-                title="Room Status"
-                subtitle={`${rooms.length} Total Units`}
+                title={t('rooms.title')}
+                subtitle={t('rooms.totalUnits', { count: rooms.length })}
                 showBack={navigation.canGoBack()}
                 rightComponent={
                     <View style={styles.headerActions}>
@@ -291,11 +298,12 @@ export default function RoomsScreen({ navigation, route }: any) {
                     <Search color="rgba(255,255,255,0.7)" size={18} />
                     <TextInput
                         style={styles.searchInput}
-                        placeholder="Search room number..."
+                        placeholder={t('rooms.searchPlaceholder')}
                         placeholderTextColor="rgba(255,255,255,0.5)"
                         value={search}
                         onChangeText={setSearch}
                     />
+
                     {search.length > 0 && (
                         <TouchableOpacity onPress={() => setSearch('')}>
                             <X size={16} color="rgba(255,255,255,0.7)" />
@@ -305,9 +313,9 @@ export default function RoomsScreen({ navigation, route }: any) {
 
                 <View style={styles.tabBar}>
                     {[
-                        { key: 'All', count: rooms.length },
-                        { key: 'Vacant', count: rooms.filter(r => r.available_beds > 0).length },
-                        { key: 'Full', count: rooms.filter(r => r.available_beds === 0).length }
+                        { key: 'All', label: t('rooms.all'), count: rooms.length },
+                        { key: 'Vacant', label: t('rooms.vacant'), count: rooms.filter(r => r.available_beds > 0).length },
+                        { key: 'Full', label: t('rooms.full'), count: rooms.filter(r => r.available_beds === 0).length }
                     ].map(tab => (
                         <TouchableOpacity
                             key={tab.key}
@@ -324,11 +332,12 @@ export default function RoomsScreen({ navigation, route }: any) {
                                 styles.tabLabelText,
                                 activeTab === tab.key ? { color: COLORS.primary } : { color: '#FFF' }
                             ]}>
-                                {tab.key} ({tab.count})
+                                {tab.label} ({tab.count})
                             </Text>
                         </TouchableOpacity>
                     ))}
                 </View>
+
             </AppHeader>
 
             {!loading && uniqueFloors.length > 1 && (
@@ -369,15 +378,16 @@ export default function RoomsScreen({ navigation, route }: any) {
             ) : showEmpty ? (
                 <EmptyState
                     variant={search ? 'noResults' : 'noRooms'}
-                    title={search ? 'No Results' : 'No Rooms Yet'}
+                    title={search ? t('rooms.noResults') : t('rooms.noRooms')}
                     subtitle={
                         search
-                            ? `No rooms match "${search}"`
-                            : 'Add your first room to start managing occupancy'
+                            ? t('rooms.noResultsSubtitle', { search })
+                            : t('rooms.noRoomsSubtitle')
                     }
-                    actionLabel={search ? undefined : 'Add Room'}
+                    actionLabel={search ? undefined : t('rooms.addRoom')}
                     onAction={search ? undefined : () => navigation.navigate('AddRoom')}
                 />
+
             ) : (
                 <SectionList
                     sections={groupedData}
@@ -398,11 +408,12 @@ export default function RoomsScreen({ navigation, route }: any) {
                         <View style={styles.floorHeaderRow}>
                             <View style={[styles.floorHeaderLine, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]} />
                             <Text style={[styles.floorHeader, { color: theme.textPrimary }]}>
-                                {section.title} ({section.data[0]?.length || 0} Rooms)
+                                {section.title} {t('rooms.roomsCount', { count: section.data[0]?.length || 0 })}
                             </Text>
                             <View style={[styles.floorHeaderLine, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]} />
                         </View>
                     )}
+
                     renderItem={({ item }) => (
                         <View style={styles.gridRow}>
                             {item.map((room: any) => renderRoomItem(room))}

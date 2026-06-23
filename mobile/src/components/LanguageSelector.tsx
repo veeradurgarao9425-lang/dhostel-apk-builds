@@ -11,7 +11,7 @@ import { X, Check, Globe } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { availableLanguages, changeLanguage, getCurrentLanguage } from '../i18n';
 
-export const LanguageSelector = () => {
+export const LanguageSelector = ({ trigger }: { trigger?: (open: () => void) => React.ReactNode }) => {
     const { t } = useTranslation();
     const [modalVisible, setModalVisible] = useState(false);
     const [currentLang, setCurrentLang] = useState(getCurrentLanguage());
@@ -29,13 +29,17 @@ export const LanguageSelector = () => {
 
     return (
         <>
-            <TouchableOpacity
-                style={styles.languageButton}
-                onPress={() => setModalVisible(true)}
-            >
-                <Globe color="#667eea" size={20} />
-                <Text style={styles.languageButtonText}>{getCurrentLanguageName()}</Text>
-            </TouchableOpacity>
+            {trigger ? (
+                trigger(() => setModalVisible(true))
+            ) : (
+                <TouchableOpacity
+                    style={styles.languageButton}
+                    onPress={() => setModalVisible(true)}
+                >
+                    <Globe color="#667eea" size={20} />
+                    <Text style={styles.languageButtonText}>{getCurrentLanguageName()}</Text>
+                </TouchableOpacity>
+            )}
 
             <Modal
                 visible={modalVisible}

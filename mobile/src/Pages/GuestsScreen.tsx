@@ -73,6 +73,23 @@ export default function GuestsScreen() {
         fetchGuests(false);
     }, [dateFilter, fetchGuests]);
 
+    const handleCheckout = (guest: any) => {
+        Alert.alert('Check Out Guest', `Mark ${guest.full_name} as checked out?`, [
+            { text: 'Cancel', style: 'cancel' },
+            {
+                text: 'Check Out',
+                onPress: async () => {
+                    try {
+                        await api.post(`/guests/${guest.guest_id}/checkout`);
+                        fetchGuests(true);
+                    } catch {
+                        Alert.alert('Error', 'Failed to check out guest.');
+                    }
+                },
+            },
+        ]);
+    };
+
     const handleDelete = (guest: any) => {
         Alert.alert('Delete Guest', `Remove ${guest.full_name}'s record?`, [
             { text: 'Cancel', style: 'cancel' },
@@ -107,7 +124,19 @@ export default function GuestsScreen() {
                     </Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                    <Text style={[s.name, { color: theme.textPrimary }]} numberOfLines={1}>{item.full_name}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <Text style={[s.name, { color: theme.textPrimary }]} numberOfLines={1}>{item.full_name}</Text>
+                        {item.is_overstay && (
+                            <View style={s.overstayBadge}>
+                                <Text style={s.overstayText}>OVERSTAY</Text>
+                            </View>
+                        )}
+                        {item.status === 'checked_out' && (
+                            <View style={s.checkedOutBadge}>
+                                <Text style={s.checkedOutText}>CHECKED OUT</Text>
+                            </View>
+                        )}
+                    </View>
                     {!!item.phone && <Text style={[s.sub, { color: theme.textSecondary }]}>{item.phone}</Text>}
                 </View>
                 <View style={s.amountBadge}>
@@ -135,7 +164,13 @@ export default function GuestsScreen() {
                     </Text>
                 </View>
                 <View style={{ flex: 1 }} />
-                <TouchableOpacity onPress={() => handleDelete(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                {item.status === 'staying' && (
+                    <TouchableOpacity onPress={() => handleCheckout(item)} style={s.checkoutBtn} activeOpacity={0.8}>
+                        <Ionicons name="log-out-outline" size={13} color="#FFF" />
+                        <Text style={s.checkoutBtnText}>Check Out</Text>
+                    </TouchableOpacity>
+                )}
+                <TouchableOpacity onPress={() => handleDelete(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ marginLeft: 12 }}>
                     <Ionicons name="trash-outline" size={16} color="#DC2626" />
                 </TouchableOpacity>
             </View>
@@ -262,6 +297,12 @@ const s = StyleSheet.create({
     metaRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 12, paddingTop: 10, borderTopWidth: 1 },
     metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     metaText: { fontSize: 11, fontWeight: '600' },
+    overstayBadge: { backgroundColor: '#FEE2E2', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+    overstayText: { color: '#DC2626', fontSize: 9, fontWeight: '900', letterSpacing: 0.3 },
+    checkedOutBadge: { backgroundColor: '#F1F5F9', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+    checkedOutText: { color: '#64748B', fontSize: 9, fontWeight: '900', letterSpacing: 0.3 },
+    checkoutBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#16A34A', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
+    checkoutBtnText: { color: '#FFF', fontSize: 11, fontWeight: '700' },
     fab: {
         position: 'absolute', bottom: 45, right: 24, width: 50, height: 50, borderRadius: 25,
         justifyContent: 'center', alignItems: 'center', elevation: 5,

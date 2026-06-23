@@ -23,6 +23,7 @@ import noticeRoutes from './routes/noticeRoutes.js';
 import guestRoutes from './routes/guestRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import { startMonthlyFeesGenerationJob } from './jobs/monthlyFeesGeneration.js';
+import { startGuestOverstayJob } from './jobs/guestOverstay.js';
 import { sendNotificationToHostelOwner } from './utils/notification.js';
 
 // Load environment variables
@@ -347,6 +348,7 @@ app.listen(PORT, HOST, () => {
 
   // Start cron jobs
   startMonthlyFeesGenerationJob();
+  startGuestOverstayJob();
   console.log(`⏰ Cron jobs initialized`);
 });
 

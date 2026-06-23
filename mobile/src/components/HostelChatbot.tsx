@@ -14,281 +14,26 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 import * as RootNavigation from '../navigation/navigationRef';
 import { useAuth } from '../../contexts/AuthContext';
 import { COLORS } from '../theme/index';
+import { FAQItem, FAQ_DATA_EN, FAQ_DATA_TE } from '../constants/faqData';
 
-interface FAQItem {
-  id: string;
-  category: 'home' | 'pending' | 'overview' | 'more';
-  question: string;
-  answer: string;
-  steps?: string[];
-  keywords: string[];
-  routePath?: string;
-  routeLabel?: string;
-}
-
-const FAQ_DATA: FAQItem[] = [
-  // ==================== 🏠 HOME SCREEN FEATURES ====================
-  {
-    id: 'home-header',
-    category: 'home',
-    question: '👋 What is on the Home Screen Header?',
-    answer: 'The Home page top header contains these details:\n\n• Greeting: Says Good Morning, Good Afternoon, or Good Evening depending on the current time.\n\n• Owner Name: Displays your full name.\n\n• Hostel Name: Displays the name of your active hostel (e.g. My Hostel).\n\n• Notifications Bell (Alerts): Located at the top right. It shows a yellow warning dot if students have pending dues. Tap it to see late rent alerts.\n\n• Profile Icon: Located on the top right. Tap it to see your profile details or log out of the application.',
-    keywords: ['greeting', 'owner name', 'hostel name', 'bell', 'alert dot', 'notification', 'profile icon', 'header', 'logout'],
-    routePath: 'Main',
-    routeLabel: 'Go to Home Screen'
-  },
-  {
-    id: 'home-beds-overview',
-    category: 'home',
-    question: '🛏️ What is Beds & Occupancy Overview?',
-    answer: 'This section at the top of the Home page shows your bed space status:\n\n• Total Beds (Shown on top right): The total number of beds across all your rooms.\n\n• Occupancy Rate (Progress Bar): A purple progress bar showing the percentage of filled beds (e.g., 75% occupied).\n\n• Available (Green Card): The count of empty beds that are free. Tap it to view a list of vacant rooms to easily place new students.\n\n• Occupied (Red Card): The count of filled beds with students inside. Tap it to view a list of fully occupied rooms.\n\n• Notices (Orange Card): The count of active notice board messages. Tap it to write announcements for students.',
-    keywords: ['beds', 'occupancy rate', 'available beds', 'occupied beds', 'notices', 'total beds', 'empty beds', 'filled beds'],
-    routePath: 'Rooms',
-    routeLabel: 'Check Room Beds'
-  },
-  {
-    id: 'home-add-tenant',
-    category: 'home',
-    question: '👤 What is Add Tenant?',
-    answer: 'Use this button in the Quick Management block to register a new student or employee:\n\n1. Name & Contact: Fill in the student\'s name, phone, and parent\'s phone number.\n\n2. Select Room: Choose a room from the list. It only shows rooms with available beds.\n\n3. Dates: Select their joining date and monthly rent cycle.\n\n4. ID Proof: Choose their ID card type (like Aadhaar, PAN, Voter ID), upload a photo of the card, and tap Save.',
-    keywords: ['add tenant', 'add student', 'register student', 'new student', 'join student', 'id proof'],
-    routePath: 'AddStudent',
-    routeLabel: 'Register New Student'
-  },
-  {
-    id: 'home-add-room',
-    category: 'home',
-    question: '🚪 What is Add Room (Home Icon)?',
-    answer: 'This button has a Home icon in Quick Management. Use it to add new rooms to your hostel:\n\n1. Room Details: Type the Room Number and select the Floor (Ground, 1st Floor, etc.).\n\n2. Sharing Capacity: Select how many beds are in this room (Single, 2-Sharing, 3-Sharing, or 4-Sharing).\n\n3. Bed Rent: Set the monthly rent price for a single bed in this room.\n\n4. Amenities: Select available features (AC, Wi-Fi, Food, attached bathroom) and tap Save.',
-    keywords: ['add room', 'add home', 'new room', 'create room', 'sharing capacity', 'rent price', 'amenities'],
-    routePath: 'AddRoom',
-    routeLabel: 'Add Room Screen'
-  },
-  {
-    id: 'home-pre-book',
-    category: 'home',
-    question: '📅 What is Pre-Book?',
-    answer: 'Pre-Booking is for booking a bed in advance before the student actually moves in:\n\n• Goal: Block a bed so no other student can rent it.\n\n• Advance Money: The student pays a booking advance to secure the bed.\n\n• Reservation: The app flags the bed as reserved.\n\n• Check In: When the student arrives, open the Pre-Booking page and tap "Check In" to make them an active tenant.',
-    keywords: ['pre-booking', 'prebook', 'book advance', 'reserve room', 'advance money', 'check in'],
-    routePath: 'PreBooking',
-    routeLabel: 'Go to Pre-Booking'
-  },
-  {
-    id: 'home-bills',
-    category: 'home',
-    question: '💡 What is Bills in Quick Management?',
-    answer: 'Bills helps you record utility expenses for your hostel:\n\n• Type of Bills: Log electricity (current bill), water supplier bills, internet packages, or cleaner salaries.\n\n• Tracking: Record whether the bill is Paid or Pending to keep track of monthly operating costs.',
-    keywords: ['bills', 'utility bills', 'current bill', 'electricity', 'water bill', 'internet bill', 'cleaner wages'],
-    routePath: 'BillReminders',
-    routeLabel: 'Manage Utility Bills'
-  },
-  {
-    id: 'home-reminder',
-    category: 'home',
-    question: '🔔 What is Reminder in Quick Management?',
-    answer: 'Use this feature to send fee reminders to students:\n\n• Due List: View all students who have pending dues.\n\n• Send Alerts: Tap the WhatsApp or Message icon next to a student\'s name to send a direct notification alert to their mobile phone.',
-    keywords: ['reminder', 'fee alert', 'send message', 'notify student', 'unpaid alert', 'due date alerts'],
-    routePath: 'Reminders',
-    routeLabel: 'Send Dues Reminders'
-  },
-  {
-    id: 'home-staff',
-    category: 'home',
-    question: '👥 What is Staff in Quick Management?',
-    answer: 'Use this screen to register and manage your hostel workers:\n\n• Manage Roles: Add wardens, security guards, cleaners, cooks, or supervisors.\n\n• Save Details: Save their contact numbers, duty timings, and monthly salary details.',
-    keywords: ['staff', 'employee', 'worker', 'cleaner', 'warden', 'security guard', 'cook'],
-    routePath: 'Staff',
-    routeLabel: 'Manage Hostel Staff'
-  },
-  {
-    id: 'home-stats-left',
-    category: 'home',
-    question: '👤 What is Left Tenants under Statistics?',
-    answer: 'This box counts the total number of students who vacated (left) your hostel:\n\n• Logs: Shows inactive history of past tenants.\n\n• Click Action: Tapping this card takes you to the Vacated Students list under the Tenants screen to check their history.',
-    keywords: ['left tenants', 'vacated students', 'inactive students', 'statistics left', 'left student'],
-    routePath: 'Students',
-    routeLabel: 'View Left Tenants'
-  },
-  {
-    id: 'home-stats-pending',
-    category: 'home',
-    question: '⚠️ What is Pending Dues under Statistics?',
-    answer: 'This shows the total unpaid rent amount for the current month:\n\n• Dues Calculation: Automatically sums up what students still owe you.\n\n• Click Action: Tapping this card takes you directly to the Pending tab list so you can see who has not paid.',
-    keywords: ['pending dues stats', 'unpaid rent amount', 'due money', 'statistics dues'],
-    routePath: 'PendingPayments',
-    routeLabel: 'Check Pending Dues'
-  },
-  {
-    id: 'home-stats-collected',
-    category: 'home',
-    question: '💵 What is Collected under Statistics?',
-    answer: 'This shows the total rent money you successfully collected this month:\n\n• Payment Logs: Sums up all payments made via UPI, Cash, or Cards.\n\n• Click Action: Tapping this card opens the Collected Payments page (Receipts History) to view detailed collection logs.',
-    keywords: ['collected stats', 'collected amount', 'collected money', 'rent collected'],
-    routePath: 'CollectedPayments',
-    routeLabel: 'Check Collected Payments'
-  },
-  {
-    id: 'home-financial-hub',
-    category: 'home',
-    question: '💼 What is the Financial Hub?',
-    answer: 'The Financial Hub is a quick access dashboard for your money reports:\n\n• Due Report Card: Lists all students who owe rent, showing their room number, due date, and amount. Tap to collect or send alerts.\n\n• Receipts & History Card: Lists all payment logs. Tap to see when and how a student paid rent.',
-    keywords: ['financial hub', 'due report', 'receipts history', 'money reports', 'collections report'],
-    routePath: 'Main',
-    routeLabel: 'Go to Home Screen'
-  },
-  {
-    id: 'home-receipts-history',
-    category: 'home',
-    question: '🧾 What is the Receipts History Use Case?',
-    answer: 'Receipts History lists all payments collected this month:\n\n• Use Case: When a student claims they already paid rent, search their name here to verify the exact payment date, amount, and mode (Cash, UPI/GPay, Bank Transfer).',
-    keywords: ['receipts history use case', 'payment history', 'verify payments', 'collected payments'],
-    routePath: 'CollectedPayments',
-    routeLabel: 'Check Receipts History'
-  },
-  {
-    id: 'home-due-report',
-    category: 'home',
-    question: '📊 What is the Due Report Use Case?',
-    answer: 'Due Report lists all pending unpaid rents:\n\n• Use Case: Open this report at the end of the month to check how much rent money is missing, who the defaulters are, and how many days late they are, so you can call them or share the list with your accountant.',
-    keywords: ['due report use case', 'unpaid report', 'defaulters report', 'dues report'],
-    routePath: 'PendingPayments',
-    routeLabel: 'Check Due Report'
-  },
-  {
-    id: 'home-revenue-overview',
-    category: 'home',
-    question: '📈 What is Revenue Overview?',
-    answer: 'This is a monthly collection bar chart at the bottom of the Home page:\n\n• Comparison: It displays monthly earnings comparison for the last 6 months.\n\n• Accumulation: As you record payments month after month, the chart bars grow automatically to show your business growth.',
-    keywords: ['revenue overview', 'revenue chart', 'collection chart', 'monthly earnings'],
-    routePath: 'Main',
-    routeLabel: 'Go to Home Screen'
-  },
-
-  // ==================== 📋 PENDING PAYMENTS FEATURES ====================
-  {
-    id: 'pending-top-cards',
-    category: 'pending',
-    question: '💳 What do the Pending Tab Top Cards show?',
-    answer: 'At the top of the Pending Tab (Second Tab), we show two summary cards:\n\n• Card 1: Total Dues - Sums up all unpaid room rents for the current month.\n\n• Card 2: Defaulters / Unpaid Students - The count of active students who have not cleared their dues.',
-    keywords: ['pending tab top cards', 'total dues amount', 'defaulters', 'unpaid students count'],
-    routePath: 'PendingPayments',
-    routeLabel: 'Go to Pending Tab'
-  },
-  {
-    id: 'pending-list-below',
-    category: 'pending',
-    question: '📋 What is shown in the list below the cards in the Pending Tab?',
-    answer: 'Below the counts, the tab lists every student who owes rent. For each student, it shows:\n\n• Name & Room Number\n\n• Outstanding Rent Balance\n\n• Phone Number\n\n• Quick buttons: Collect and Remind.',
-    keywords: ['pending list below', 'unpaid list', 'defaulters list', 'due list details'],
-    routePath: 'PendingPayments',
-    routeLabel: 'Go to Pending Tab'
-  },
-  {
-    id: 'pending-collect-remind',
-    category: 'pending',
-    question: '💰 How do Collect and Remind work in the Pending Tab?',
-    answer: 'Inside the Pending list, every student card has action buttons:\n\n• Collect (Pay Button): Click this when a student pays you. A modal opens. Verify the rent amount, select payment mode (Cash, UPI, GPay, Card, Net Banking), and click Save to mark them as Paid. This updates your Statistics and moves them to Receipts History.\n\n• Remind (Notification Button): Click this to send a quick warning message directly to the student\'s phone reminding them to pay their rent.',
-    keywords: ['collect and remind', 'pay button', 'whatsapp reminder', 'collect rent', 'alert button'],
-    routePath: 'PendingPayments',
-    routeLabel: 'Go to Pending Tab'
-  },
-
-  // ==================== 📈 FINANCE OVERVIEW FEATURES ====================
-  {
-    id: 'overview-top-cards',
-    category: 'overview',
-    question: '💵 What do the Finance Overview Top Cards show?',
-    answer: 'At the top of the Finance Overview page (Third Tab), we show three cards:\n\n• Total Income: Sum of all room rents collected + extra income sources.\n\n• Total Expenses: Sum of all utility bills and staff wages paid.\n\n• Net Profit / Loss: Money left in your hand after paying all expenses (Income minus Expenses).',
-    keywords: ['finance overview top cards', 'total income', 'total expenses', 'net profit', 'net loss'],
-    routePath: 'Overview',
-    routeLabel: 'Go to Overview Screen'
-  },
-  {
-    id: 'overview-progress-bar',
-    category: 'overview',
-    question: '📊 What is Rent Collection Progress?',
-    answer: 'This is a filled meter showing your rent collection progress:\n\n• It displays what percentage of your monthly rent target you have collected so far. For example, if your total due is ₹1,00,000 and you collected ₹80,000, the bar fills up to 80%.',
-    keywords: ['rent collection progress', 'collection progress bar', 'rent meter'],
-    routePath: 'Overview',
-    routeLabel: 'Go to Overview Screen'
-  },
-  {
-    id: 'overview-expense-breakdown',
-    category: 'overview',
-    question: '🧾 What is Expense Breakdown?',
-    answer: 'This section lists your expenses grouped by category:\n\n• It shows what percentage of your total expenses is spent on electricity, water, internet, cleaning, maintenance, or staff salaries, helping you see where you spend the most money.',
-    keywords: ['expense breakdown', 'expense categories', 'spent details', 'finance breakdown'],
-    routePath: 'Overview',
-    routeLabel: 'Go to Overview Screen'
-  },
-
-  // ==================== ⚙️ MORE OPTIONS SCREEN ====================
-  {
-    id: 'more-qr-signup',
-    category: 'more',
-    question: '📲 What is QR Signup in the More Screen?',
-    answer: 'QR Signup saves your typing time!\n\n1. Show QR Code: Open the QR Signup screen on your phone.\n\n2. Student Scan: The student scans the QR code using their mobile phone.\n\n3. Fill Form: They type their name, phone, parent details, and date of birth on their own phone and submit.\n\n4. Approval: You receive their application in the app. Just select a room and click Approve to check them in!',
-    keywords: ['qr signup', 'scan qr', 'self register', 'registration form', 'approve tenant'],
-    routePath: 'QRSignup',
-    routeLabel: 'Generate QR Code'
-  },
-  {
-    id: 'more-expenses',
-    category: 'more',
-    question: '💳 What is Expenses in the More Screen?',
-    answer: 'Use this tool to track daily hostel spendings:\n\n• Log Daily Spending: Enter groceries cost, cleaner wages, repairs cost, or fuel bills.\n\n• Save Details: Type the amount, select category, select date, and tap Save.',
-    keywords: ['expenses', 'track expenses', 'log spending', 'expense list'],
-    routePath: 'Expenses',
-    routeLabel: 'Manage Expenses'
-  },
-  {
-    id: 'more-tenants-rooms',
-    category: 'more',
-    question: '👥 What are Tenants & Rooms under More Screen?',
-    answer: 'These options give you quick management lists:\n\n• Tenants: Opens a list of all active students staying in your hostel.\n\n• Rooms: Opens a room roster where you can check room status, capacities, and sharing details.',
-    keywords: ['tenants option', 'rooms option', 'manage students list', 'rooms roster'],
-    routePath: 'Students',
-    routeLabel: 'View All Tenants'
-  },
-  {
-    id: 'more-vacate-notices',
-    category: 'more',
-    question: '📢 What are Vacate Notices under More Screen?',
-    answer: 'When a student wants to leave the hostel, they register a vacate date:\n\n• Scheduled Vacates: View a list of students scheduled to leave, helping you prepare room cleaning and book new students in advance.',
-    keywords: ['vacate notices', 'vacating students', 'planned vacates', 'move out list'],
-    routePath: 'Notices',
-    routeLabel: 'Check Vacate Notices'
-  },
-  {
-    id: 'more-reports',
-    category: 'more',
-    question: '📊 What is Reports & Analytics under More Screen?',
-    answer: 'This is where you download Excel sheets of your hostel data:\n\n• Export Sheets: Export lists of unpaid dues, collection records, and expense sheets directly to your phone.\n\n• Use Case: Excel files are useful to share with your accountant or store for annual financial records.',
-    keywords: ['reports analytics', 'excel sheet download', 'export data', 'excel reports'],
-    routePath: 'Reports',
-    routeLabel: 'Download Excel Reports'
-  },
-  {
-    id: 'more-profile-settings',
-    category: 'more',
-    question: '⚙️ What are Profile & Settings under More Screen?',
-    answer: 'These options let you configure your account:\n\n• Profile: Edit your name, phone number, and hostel name.\n\n• Settings: Adjust preferences and select dark or light theme colors for the application.',
-    keywords: ['profile options', 'settings options', 'change theme', 'edit profile'],
-    routePath: 'Profile',
-    routeLabel: 'Go to Profile Screen'
-  }
-];
 
 export const HostelChatbot: React.FC = () => {
+  const { t, i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [activeFaq, setActiveFaq] = useState<FAQItem | null>(null);
   const [currentRoute, setCurrentRoute] = useState<string | null>(null);
   const { user } = useAuth();
+
+  const faqList = useMemo(() => {
+    return i18n.language === 'te' ? FAQ_DATA_TE : FAQ_DATA_EN;
+  }, [i18n.language]);
+
 
   useEffect(() => {
     const updateRouteName = () => {
@@ -333,21 +78,27 @@ export const HostelChatbot: React.FC = () => {
     return { bottom: 140, right: 24 };
   }, [currentRoute]);
 
-  const [chatMessages, setChatMessages] = useState<Array<{ sender: 'bot' | 'user'; text: string; link?: { path: string; label: string }; steps?: string[] }>>([
-    { sender: 'bot', text: 'Hi! My name is Durgarao. How can I help you today? You can ask me any question about managing your hostels, rooms, students, fees, or utility expenses!' }
-  ]);
+  const [chatMessages, setChatMessages] = useState<Array<{ sender: 'bot' | 'user'; text: string; link?: { path: string; label: string }; steps?: string[] }>>([]);
 
-  const categories = [
-    { id: 'all', label: 'History' },
-    { id: 'home', label: 'Home Page' },
-    { id: 'pending', label: 'Pending Tab' },
-    { id: 'overview', label: 'Overview Page' },
-    { id: 'more', label: 'More Options' }
-  ];
+  useEffect(() => {
+    setChatMessages([
+      { sender: 'bot', text: t('chatbot.welcome') }
+    ]);
+  }, [i18n.language]);
+
+  const categories = useMemo(() => [
+    { id: 'all', label: t('chatbot.history') },
+    { id: 'home', label: t('chatbot.homePage') },
+    { id: 'pending', label: t('chatbot.pendingTab') },
+    { id: 'overview', label: t('chatbot.overviewPage') },
+    { id: 'more', label: t('chatbot.moreOptions') }
+  ], [t]);
+
 
   // Perform search / category filtration
   const filteredFAQs = useMemo(() => {
-    let result = FAQ_DATA;
+    let result = faqList;
+
 
     if (selectedCategory !== 'all') {
       result = result.filter(item => item.category === selectedCategory);
@@ -394,7 +145,7 @@ export const HostelChatbot: React.FC = () => {
     let bestMatch: FAQItem | null = null;
     let maxMatchCount = 0;
 
-    FAQ_DATA.forEach(faq => {
+    faqList.forEach(faq => {
       let score = 0;
       if (faq.question.toLowerCase().includes(query)) score += 10;
       faq.keywords.forEach(kw => {
@@ -425,11 +176,12 @@ export const HostelChatbot: React.FC = () => {
           ...prev,
           {
             sender: 'bot',
-            text: `I couldn't find an exact answer for "${userText}". Try searching using simple terms like 'beds', 'room', 'rent', 'prebook', 'bill', or 'unpaid'.`
+            text: t('chatbot.notFound', { query: userText })
           }
         ]);
       }
     }, 400);
+
   };
 
   const handleLinkClick = (path: string) => {
@@ -442,9 +194,10 @@ export const HostelChatbot: React.FC = () => {
     setSelectedCategory('all');
     setActiveFaq(null);
     setChatMessages([
-      { sender: 'bot', text: 'Hi! My name is Durgarao. How can I help you today? You can ask me any question about managing your hostels, rooms, students, fees, or utility expenses!' }
+      { sender: 'bot', text: t('chatbot.welcome') }
     ]);
   };
+
 
   if (!user) return null;
 
@@ -484,10 +237,10 @@ export const HostelChatbot: React.FC = () => {
                 </View>
                 <View>
                   <View style={titleRowStyle().titleRow}>
-                    <Text style={s.headerTitle}>Durgarao</Text>
+                    <Text style={s.headerTitle}>{t('chatbot.title')}</Text>
                     <Ionicons name="sparkles" size={14} color="#FDE047" style={{ marginLeft: 4 }} />
                   </View>
-                  <Text style={s.headerSubtitle}>Hostel Support Bot • Active</Text>
+                  <Text style={s.headerSubtitle}>{t('chatbot.subtitle')}</Text>
                 </View>
               </View>
 
@@ -510,7 +263,8 @@ export const HostelChatbot: React.FC = () => {
                   value={searchQuery}
                   onChangeText={setSearchQuery}
                   onSubmitEditing={handleCustomQuestionSubmit}
-                  placeholder="Type word (e.g. room, student, rent, bill)..."
+                  placeholder={t('chatbot.placeholder')}
+
                   placeholderTextColor="#94A3B8"
                   returnKeyType="search"
                 />
@@ -567,8 +321,9 @@ export const HostelChatbot: React.FC = () => {
                     style={s.backBtn}
                   >
                     <Ionicons name="arrow-back" size={16} color="#4F46E5" />
-                    <Text style={s.backBtnText}>Back to topics</Text>
+                    <Text style={s.backBtnText}>{t('chatbot.backToTopics')}</Text>
                   </TouchableOpacity>
+
 
                   <View style={s.faqCard}>
                     <Text style={s.faqQuestion}>{activeFaq.question}</Text>
@@ -606,7 +361,7 @@ export const HostelChatbot: React.FC = () => {
                     // Filtered FAQ lists (Matched topics list)
                     <View style={{ gap: 10 }}>
                       <Text style={s.sectionHeader}>
-                        Tap to choose what you want to know ({filteredFAQs.length})
+                        {t('chatbot.chooseTopic', { count: filteredFAQs.length })}
                       </Text>
                       {filteredFAQs.length > 0 ? (
                         filteredFAQs.map(faq => (
@@ -625,16 +380,17 @@ export const HostelChatbot: React.FC = () => {
                       ) : (
                         <View style={s.emptyState}>
                           <Ionicons name="help-circle-outline" size={40} color="#CBD5E1" />
-                          <Text style={s.emptyStateTitle}>No results found</Text>
+                          <Text style={s.emptyStateTitle}>{t('chatbot.noResults')}</Text>
                           <Text style={s.emptyStateText}>
-                            Try searching for 'beds', 'room', 'student', 'rent', or 'bill'.
+                            {t('chatbot.trySearching')}
                           </Text>
                           <TouchableOpacity onPress={handleReset} style={s.resetBtn}>
-                            <Text style={s.resetBtnText}>Show All FAQs</Text>
+                            <Text style={s.resetBtnText}>{t('chatbot.showAll')}</Text>
                           </TouchableOpacity>
                         </View>
                       )}
                     </View>
+
                   ) : (
                     // Default view: Welcome message + Grouped FAQs in a single tab-less page
                     <View style={{ gap: 16 }}>
@@ -698,8 +454,9 @@ export const HostelChatbot: React.FC = () => {
 
             {/* Footer */}
             <View style={s.footer}>
-              <Text style={s.footerText}>Stivo Helper • 100% Free & Secure</Text>
+              <Text style={s.footerText}>{t('chatbot.footer')}</Text>
             </View>
+
           </KeyboardAvoidingView>
         </SafeAreaView>
       </Modal>

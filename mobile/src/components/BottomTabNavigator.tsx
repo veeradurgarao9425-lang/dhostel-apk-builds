@@ -3,6 +3,7 @@ import { View, TouchableOpacity, Text, StyleSheet, Animated } from 'react-native
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, FONT, SHADOW } from '../theme/index';
+import { useTranslation } from 'react-i18next';
 
 // ─── Tab Config ───────────────────────────────────────────────────────────────
 const TABS = [
@@ -37,6 +38,7 @@ const TAB_BAR_HEIGHT = 60;
 // ─── Component ────────────────────────────────────────────────────────────────
 const BottomTabNavigator = ({ state, descriptors, navigation }: any) => {
     const insets = useSafeAreaInsets();
+    const { t } = useTranslation();
 
     return (
         <View style={[
@@ -92,7 +94,7 @@ const BottomTabNavigator = ({ state, descriptors, navigation }: any) => {
                             { color: isActive ? COLORS.primary : COLORS.textSecondary },
                             isActive && styles.labelActive,
                         ]}>
-                            {tabConfig.label}
+                            {t(`tabs.${tabConfig.label.toLowerCase()}`)}
                         </Text>
                     </TouchableOpacity>
                 );

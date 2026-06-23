@@ -16,6 +16,7 @@ import { AppHeader } from '../components/AppHeader';
 import { HeaderNotification } from '../components/HeaderNotification';
 import { toLocalDateStr } from '../utils/dateUtils';
 import { useRefresh } from '../../contexts/RefreshContext';
+import { useTranslation } from 'react-i18next';
 
 // ─── Initial state ────────────────────────────────────────────────────────────
 const INITIAL_STATE = {
@@ -45,14 +46,13 @@ const INITIAL_STATE = {
 };
 
 // ─── Greeting helper ──────────────────────────────────────────────────────────
-const getGreeting = () => {
+const getGreetingKey = () => {
     const h = new Date().getHours();
-    if (h < 12) return 'Good Morning';
-    if (h < 17) return 'Good Afternoon';
-    return 'Good Evening';
+    if (h < 12) return 'dashboard.greetingMorning';
+    if (h < 17) return 'dashboard.greetingAfternoon';
+    return 'dashboard.greetingEvening';
 };
 
-// ─── Quick Management Actions ─────────────────────────────────────────────────
 // ─── Quick Management Actions ─────────────────────────────────────────────────
 const QUICK_ACTIONS = [
     { label: 'Add Tenant', icon: 'person-add-outline', color: '#7C3AED', bg: '#EDE9FE', route: 'AddStudent' },
@@ -64,6 +64,18 @@ const QUICK_ACTIONS = [
     { label: 'Staff', icon: 'people-outline', color: '#059669', bg: '#D1FAE5', route: 'AddStaff' },
     { label: 'Reminders', icon: 'notifications-outline', color: '#8B5CF6', bg: '#F5F3FF', route: 'Reminders' },
 ];
+
+const getQuickActionLabelKey = (label: string) => {
+    if (label === 'Add Tenant') return 'dashboard.addTenant';
+    if (label === 'Pre-Book') return 'dashboard.preBook';
+    if (label === 'Add Receipt') return 'dashboard.addReceipt';
+    if (label === 'Collected Rent') return 'dashboard.collectedRent';
+    if (label === 'Add Expense') return 'dashboard.addExpense';
+    if (label === 'Bills') return 'dashboard.bills';
+    if (label === 'Staff') return 'dashboard.staff';
+    if (label === 'Reminders') return 'dashboard.reminders';
+    return label;
+};
 
 // ─── Skeleton Block ───────────────────────────────────────────────────────────
 const Skeleton = ({ style }: { style?: any }) => (
@@ -102,6 +114,7 @@ export default function HomeScreen() {
     const navigation = useNavigation<any>();
     const { user } = useAuth();
     const { theme, isDark, fontSize } = useTheme();
+    const { t } = useTranslation();
     const [data, setData] = useState(INITIAL_STATE);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -341,7 +354,7 @@ export default function HomeScreen() {
             <View style={[s.root, { backgroundColor: theme.background }]}>
                 <StatusBar barStyle="light-content" />
                 <AppHeader
-                    title={`${getGreeting()},`}
+                    title={`${t(getGreetingKey())},`}
                     subtitle={(user?.full_name || 'Owner').split(' ')[0]}
                     showBack={navigation.canGoBack()}
                     rightComponent={
@@ -350,10 +363,9 @@ export default function HomeScreen() {
                 />
                 <View style={s.errorCenter}>
                     <Text style={{ fontSize: 48, marginBottom: 12 }}>📡</Text>
-                    <Text style={[s.errorTitle, { color: theme.textPrimary }]}>Server Waking Up…</Text>
+                    <Text style={[s.errorTitle, { color: theme.textPrimary }]}>{t('dashboard.serverWaking')}</Text>
                     <Text style={[s.errorSub, { color: theme.textSecondary }]}>
-                        The server may be starting up after inactivity.{'\n'}
-                        Please wait a moment and tap Retry.
+                        {t('dashboard.serverStarting')}
                     </Text>
                     <TouchableOpacity
                         style={s.retryBtn}
@@ -361,7 +373,7 @@ export default function HomeScreen() {
                         activeOpacity={0.85}
                     >
                         <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={s.retryGrad}>
-                            <Text style={s.retryText}>↺  Retry</Text>
+                            <Text style={s.retryText}>↺  {t('dashboard.retry')}</Text>
                         </LinearGradient>
                     </TouchableOpacity>
                 </View>
@@ -376,7 +388,7 @@ export default function HomeScreen() {
 
             {/* ─────────────────── FIXED HEADER ─────────────────── */}
             <AppHeader
-                title={`${getGreeting()}`}
+                title={`${t(getGreetingKey())}`}
                 subtitle={user?.full_name || 'Admin'}
                 showBack={false}
                 alignLeft={true}
@@ -417,7 +429,7 @@ export default function HomeScreen() {
                             <View style={[s.topMetricIconCircle, { backgroundColor: '#E8F5E9' }]}>
                                 <Text style={{ color: '#2E7D32', fontSize: 14, fontWeight: '800' }}>₹</Text>
                             </View>
-                            <Text style={[s.topMetricLabel, { color: theme.textSecondary }]} numberOfLines={1}>Today</Text>
+                            <Text style={[s.topMetricLabel, { color: theme.textSecondary }]} numberOfLines={1}>{t('dashboard.today')}</Text>
                             <Text style={[s.topMetricValue, { color: '#2E7D32' }]} numberOfLines={1}>{fmt(data.todayAmount)}</Text>
                         </TouchableOpacity>
 
@@ -430,7 +442,7 @@ export default function HomeScreen() {
                             <View style={[s.topMetricIconCircle, { backgroundColor: '#FFE0B2' }]}>
                                 <Ionicons name="wallet-outline" size={15} color="#E65100" />
                             </View>
-                            <Text style={[s.topMetricLabel, { color: theme.textSecondary }]} numberOfLines={1}>Pending</Text>
+                            <Text style={[s.topMetricLabel, { color: theme.textSecondary }]} numberOfLines={1}>{t('dashboard.pending')}</Text>
                             <Text style={[s.topMetricValue, { color: '#E65100' }]} numberOfLines={1}>{fmt(data.totalDuesAmount)}</Text>
                         </TouchableOpacity>
 
@@ -443,7 +455,7 @@ export default function HomeScreen() {
                             <View style={[s.topMetricIconCircle, { backgroundColor: '#E3F2FD' }]}>
                                 <Ionicons name="bar-chart-outline" size={15} color="#1565C0" />
                             </View>
-                            <Text style={[s.topMetricLabel, { color: theme.textSecondary }]} numberOfLines={1}>Month</Text>
+                            <Text style={[s.topMetricLabel, { color: theme.textSecondary }]} numberOfLines={1}>{t('dashboard.month')}</Text>
                             <Text style={[s.topMetricValue, { color: '#1565C0' }]} numberOfLines={1}>{fmt(data.monthAmount)}</Text>
                         </TouchableOpacity>
 
@@ -464,7 +476,7 @@ export default function HomeScreen() {
                             <View style={[s.topMetricIconCircle, { backgroundColor: '#F3E5F5' }]}>
                                 <Ionicons name="person-add-outline" size={15} color="#4A148C" />
                             </View>
-                            <Text style={[s.topMetricLabel, { color: theme.textSecondary }]} numberOfLines={1}>New</Text>
+                            <Text style={[s.topMetricLabel, { color: theme.textSecondary }]} numberOfLines={1}>{t('dashboard.new')}</Text>
                             <Text style={[s.topMetricValue, { color: '#4A148C' }]} numberOfLines={1}>{(data as any).newAdmissionsCount ?? 0}</Text>
                         </TouchableOpacity>
                     </View>
@@ -504,10 +516,10 @@ export default function HomeScreen() {
                             </Animated.View>
                             <View style={{ flex: 1 }}>
                                 <Text style={{ fontSize: 14, fontWeight: '800', color: theme.textPrimary, marginBottom: 2 }}>
-                                    Register Rooms
+                                    {t('dashboard.registerRooms')}
                                 </Text>
                                 <Text style={{ fontSize: 11.5, color: theme.textSecondary, fontWeight: '600', lineHeight: 15 }}>
-                                    Add your first room to manage student occupancy and beds.
+                                    {t('dashboard.addFirstRoom')}
                                 </Text>
                             </View>
                             <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
@@ -521,12 +533,12 @@ export default function HomeScreen() {
                                     onPress={() => navigation.navigate('Rooms', { filter: 'All' })}
                                 >
                                     <Ionicons name="apps" size={15} color={theme.primary} />
-                                    <Text style={[s.cardTitle, { fontSize: fontSize - 1, color: theme.textPrimary }]}>Beds & Occupancy Overview</Text>
+                                    <Text style={[s.cardTitle, { fontSize: fontSize - 1, color: theme.textPrimary }]}>{t('dashboard.bedsOccupancyOverview')}</Text>
                                     <Ionicons name="chevron-forward" size={12} color={theme.textSecondary} style={{ marginLeft: 2 }} />
                                 </TouchableOpacity>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                                     <Text style={[s.cardMeta, { fontSize: Math.max(9, fontSize - 4), color: theme.textSecondary, fontWeight: '700' }]}>
-                                        Rooms: {data.totalRooms} ({data.availableRooms} Avail)
+                                        {t('dashboard.roomsCount')}: {data.totalRooms} ({data.availableRooms} {t('dashboard.avail')})
                                     </Text>
                                     <Animated.View style={{ transform: [{ scale: pulseValue }] }}>
                                         <TouchableOpacity
@@ -559,7 +571,7 @@ export default function HomeScreen() {
                                 </View>
                                 <View style={s.progressTextRow}>
                                     <Text style={[s.progressTextLabel, { fontSize: Math.max(9, fontSize - 4), color: theme.textSecondary }]}>
-                                        {data.occupiedBeds} / {data.totalBeds} Beds Occupied
+                                        {data.occupiedBeds} / {data.totalBeds} {t('dashboard.bedsOccupied')}
                                     </Text>
                                     <Text style={[s.progressTextVal, { fontSize: fontSize - 3, color: '#7C3AED', fontWeight: '800' }]}>
                                         {data.occupancyRate}%
@@ -579,7 +591,7 @@ export default function HomeScreen() {
                                     </View>
                                     <View>
                                         <Text style={[s.bedNumNew, { fontSize: fontSize - 2, color: isDark ? theme.textPrimary : '#2E7D32' }]}>{data.availableBeds}</Text>
-                                        <Text style={[s.bedLblNew, { fontSize: Math.max(9, fontSize - 5), color: theme.textSecondary }]}>Available</Text>
+                                        <Text style={[s.bedLblNew, { fontSize: Math.max(9, fontSize - 5), color: theme.textSecondary }]}>{t('dashboard.available')}</Text>
                                     </View>
                                 </TouchableOpacity>
 
@@ -594,7 +606,7 @@ export default function HomeScreen() {
                                     </View>
                                     <View>
                                         <Text style={[s.bedNumNew, { fontSize: fontSize - 2, color: isDark ? theme.textPrimary : '#C62828' }]}>{data.occupiedBeds}</Text>
-                                        <Text style={[s.bedLblNew, { fontSize: Math.max(9, fontSize - 5), color: theme.textSecondary }]}>Occupied</Text>
+                                        <Text style={[s.bedLblNew, { fontSize: Math.max(9, fontSize - 5), color: theme.textSecondary }]}>{t('dashboard.occupied')}</Text>
                                     </View>
                                 </TouchableOpacity>
 
@@ -609,7 +621,7 @@ export default function HomeScreen() {
                                     </View>
                                     <View>
                                         <Text style={[s.bedNumNew, { fontSize: fontSize - 2, color: isDark ? theme.textPrimary : '#EF6C00' }]}>{data.noticesCount}</Text>
-                                        <Text style={[s.bedLblNew, { fontSize: Math.max(9, fontSize - 5), color: theme.textSecondary }]}>Notices</Text>
+                                        <Text style={[s.bedLblNew, { fontSize: Math.max(9, fontSize - 5), color: theme.textSecondary }]}>{t('dashboard.notices')}</Text>
                                     </View>
                                 </TouchableOpacity>
                             </View>
@@ -621,7 +633,7 @@ export default function HomeScreen() {
                         <View style={s.cardHeader}>
                             <View style={s.cardHeaderLeft}>
                                 <Ionicons name="flash-outline" size={15} color={theme.primary} />
-                                <Text style={[s.cardTitle, { fontSize: fontSize - 1, color: theme.textPrimary }]}>Quick Actions</Text>
+                                <Text style={[s.cardTitle, { fontSize: fontSize - 1, color: theme.textPrimary }]}>{t('dashboard.quickActions')}</Text>
                             </View>
                         </View>
                         <View style={s.quickRow}>
@@ -653,7 +665,7 @@ export default function HomeScreen() {
                                         ]}
                                         numberOfLines={2}
                                     >
-                                        {a.label}
+                                        {t(getQuickActionLabelKey(a.label))}
                                     </Text>
                                 </TouchableOpacity>
                             ))}
@@ -662,7 +674,7 @@ export default function HomeScreen() {
 
                     {/* ─────────────────── STATISTICS ─────────────────── */}
                     <View style={s.sectionBlock}>
-                        <Text style={[s.sectionTitle, { fontSize: fontSize, color: theme.textPrimary }]}>📊 Statistics</Text>
+                        <Text style={[s.sectionTitle, { fontSize: fontSize, color: theme.textPrimary }]}>📊 {t('dashboard.statistics')}</Text>
                         <View style={s.statisticsRow}>
                             {/* Card 1: Total Tenants */}
                             <TouchableOpacity
@@ -673,7 +685,7 @@ export default function HomeScreen() {
                                 <View style={[s.statIconBox, { backgroundColor: '#EDE9FE' }]}>
                                     <Ionicons name="people" size={18} color="#7C3AED" />
                                 </View>
-                                <Text style={[s.statLabel, { color: theme.textSecondary }]} numberOfLines={1}>Tenants</Text>
+                                <Text style={[s.statLabel, { color: theme.textSecondary }]} numberOfLines={1}>{t('dashboard.tenants')}</Text>
                                 <Text style={[s.statNum, { color: '#7C3AED' }]} numberOfLines={1}>{data.activeTenants}</Text>
                             </TouchableOpacity>
 
@@ -686,8 +698,8 @@ export default function HomeScreen() {
                                 <View style={[s.statIconBox, { backgroundColor: '#FFEDD5' }]}>
                                     <Ionicons name="bar-chart-outline" size={18} color="#EA580C" />
                                 </View>
-                                <Text style={[s.statLabel, { color: theme.textSecondary }]} numberOfLines={1}>Reports</Text>
-                                <Text style={[s.statNum, { color: '#EA580C', fontSize: 12 }]} numberOfLines={1}>View</Text>
+                                <Text style={[s.statLabel, { color: theme.textSecondary }]} numberOfLines={1}>{t('dashboard.reports')}</Text>
+                                <Text style={[s.statNum, { color: '#EA580C', fontSize: 12 }]} numberOfLines={1}>{t('dashboard.view')}</Text>
                             </TouchableOpacity>
 
                             {/* Card 3: Expenses (This Month) */}
@@ -699,7 +711,7 @@ export default function HomeScreen() {
                                 <View style={[s.statIconBox, { backgroundColor: '#E0F2FE' }]}>
                                     <Ionicons name="trending-down" size={18} color="#0284C7" />
                                 </View>
-                                <Text style={[s.statLabel, { color: theme.textSecondary }]} numberOfLines={1}>Expenses</Text>
+                                <Text style={[s.statLabel, { color: theme.textSecondary }]} numberOfLines={1}>{t('dashboard.expenses')}</Text>
                                 <Text style={[s.statNum, { color: '#0284C7' }]} numberOfLines={1}>{fmt((data as any).monthlyExpenses || 0)}</Text>
                             </TouchableOpacity>
 
@@ -712,7 +724,7 @@ export default function HomeScreen() {
                                 <View style={[s.statIconBox, { backgroundColor: '#DCFCE7' }]}>
                                     <Ionicons name="person" size={18} color="#16A34A" />
                                 </View>
-                                <Text style={[s.statLabel, { color: theme.textSecondary }]} numberOfLines={1}>Staff</Text>
+                                <Text style={[s.statLabel, { color: theme.textSecondary }]} numberOfLines={1}>{t('dashboard.staff')}</Text>
                                 <Text style={[s.statNum, { color: '#16A34A' }]} numberOfLines={1}>{(data as any).staffCount ?? 0}</Text>
                             </TouchableOpacity>
                         </View>
@@ -728,13 +740,13 @@ export default function HomeScreen() {
                             <View style={s.noticeHeaderRow}>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                                     <Ionicons name="megaphone" size={18} color="#E65100" />
-                                    <Text style={s.noticeBannerTitle}>Important Notice</Text>
+                                    <Text style={s.noticeBannerTitle}>{t('dashboard.importantNotice')}</Text>
                                 </View>
                                 <TouchableOpacity
                                     style={s.noticeViewAllBtn}
                                     onPress={() => navigation.navigate('Notices')}
                                 >
-                                    <Text style={s.noticeViewAllText}>View All  ➔</Text>
+                                    <Text style={s.noticeViewAllText}>{t('dashboard.viewAll')}  ➔</Text>
                                 </TouchableOpacity>
                             </View>
                             <Text style={[s.noticeBannerContent, { color: theme.textPrimary }]} numberOfLines={2}>
@@ -758,7 +770,7 @@ export default function HomeScreen() {
                             <View style={s.cardHeader}>
                                 <View style={s.cardHeaderLeft}>
                                     <Ionicons name="calendar-outline" size={15} color="#EF4444" />
-                                    <Text style={[s.cardTitle, { fontSize: fontSize - 1, color: theme.textPrimary }]}>Upcoming Checkouts</Text>
+                                    <Text style={[s.cardTitle, { fontSize: fontSize - 1, color: theme.textPrimary }]}>{t('dashboard.upcomingCheckoutSchedules')}</Text>
                                 </View>
                             </View>
                             <View style={{ gap: 10 }}>
@@ -786,7 +798,7 @@ export default function HomeScreen() {
                                                 s.checkoutBadgeText,
                                                 { color: item.daysLeft <= 3 ? '#EF4444' : '#D97706' }
                                             ]}>
-                                                {item.daysLeft <= 0 ? 'Today' : `${item.daysLeft}d left`}
+                                                {item.daysLeft <= 0 ? t('dashboard.today') : `${item.daysLeft} ${t('dashboard.daysLeft')}`}
                                             </Text>
                                         </View>
                                     </TouchableOpacity>
@@ -804,10 +816,10 @@ export default function HomeScreen() {
                         <View style={s.cardHeader}>
                             <View style={s.cardHeaderLeft}>
                                 <Ionicons name="bar-chart" size={15} color={theme.primary} />
-                                <Text style={[s.cardTitle, { fontSize: fontSize - 1, color: theme.textPrimary }]}>Revenue Overview (Last 6 Months)</Text>
+                                <Text style={[s.cardTitle, { fontSize: fontSize - 1, color: theme.textPrimary }]}>{t('dashboard.revenueOverview')}</Text>
                             </View>
                             <Text style={[s.cardMeta, { fontSize: Math.max(9, fontSize - 4), color: theme.textSecondary }]}>
-                                Current Month: {fmt(data.monthAmount)}
+                                {t('dashboard.currentMonth')}: {fmt(data.monthAmount)}
                             </Text>
                         </View>
                         <View style={s.chartWrap}>
@@ -821,7 +833,7 @@ export default function HomeScreen() {
                                 />
                             ))}
                         </View>
-                        <Text style={s.chartNote}>* Shows collection trends. Max amount: {fmt(maxRevenue)}</Text>
+                        <Text style={s.chartNote}>{t('dashboard.revenueOverviewNote', { max: fmt(maxRevenue) })}</Text>
                     </TouchableOpacity>
 
                 </View>

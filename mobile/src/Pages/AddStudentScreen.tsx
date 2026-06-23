@@ -512,9 +512,31 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
             };
             const res = isEdit ? await api.put(`/students/${student.student_id}`, payload) : await api.post('/students', payload);
             if (res.data.success) {
-                showSuccess(`Tenant ${isEdit ? 'updated' : 'registered'} successfully!`);
                 triggerRefresh();
-                navigation.goBack();
+
+                // If a NEW tenant was added without a room, prompt to allocate now.
+                // Billing only starts once a room is allocated, so this keeps the rent roll clean.
+                if (!isEdit && !payload.room_id) {
+                    const newId = res.data.data?.student_id;
+                    Alert.alert(
+                        'Tenant added — no room yet',
+                        'Billing starts only after you allocate a room. Would you like to allocate one now?',
+                        [
+                            { text: 'Later', style: 'cancel', onPress: () => navigation.goBack() },
+                            {
+                                text: 'Allocate Now',
+                                onPress: () => navigation.replace('AddStudent', {
+                                    student: { ...payload, student_id: newId, photo: profilePhoto },
+                                    isEdit: true,
+                                }),
+                            },
+                        ],
+                        { cancelable: false }
+                    );
+                } else {
+                    showSuccess(`Tenant ${isEdit ? 'updated' : 'registered'} successfully!`);
+                    navigation.goBack();
+                }
             }
         } catch (error: any) {
             showApiError(error, 'Failed to save tenant');

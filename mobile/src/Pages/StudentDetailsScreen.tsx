@@ -133,6 +133,13 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
 
     // Guard against concurrent fetches
     const isFetching = useRef(false);
+    // Ensure the "allocate a room" popup shows only once per screen visit
+    const roomPromptShownRef = useRef(false);
+
+    // ── Navigate to edit/allocate a room for this tenant ──────────────────
+    const goAllocateRoom = useCallback(() => {
+        navigation.navigate('AddStudent', { student, isEdit: true });
+    }, [navigation, student]);
 
     // ── Fetch core student info only (fast) ───────────────────────────────
     const fetchStudentDetails = useCallback(async () => {
@@ -152,6 +159,20 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                 // Separate payment history from core data so it can be rendered later
                 const { payment_history, ...coreData } = data;
                 setStudent(coreData);
+
+                // If this tenant has no room, prompt to allocate one (billing only starts
+                // after allocation). Show it once per visit so it isn't nagging.
+                if (!coreData.room_id && !roomPromptShownRef.current) {
+                    roomPromptShownRef.current = true;
+                    Alert.alert(
+                        'No room allocated',
+                        `${coreData.first_name || 'This tenant'} has no room yet. Allocate a room to start billing.`,
+                        [
+                            { text: 'Later', style: 'cancel' },
+                            { text: 'Allocate Room', onPress: () => navigation.navigate('AddStudent', { student: coreData, isEdit: true }) },
+                        ]
+                    );
+                }
 
                 // Defer payment history rendering until after the screen is interactive.
                 // This makes the profile card appear instantly.
@@ -211,10 +232,17 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
         setDueDatePickerVisibility(false);
     }, []);
 
-    // Calculate total outstanding balance from pending dues
+    // Calculate total outstanding balance from pending dues.
+    // Only count dues that are due now (current month or earlier). Future months are
+    // auto-created by the backend after a full payment, and counting them here would
+    // keep "Pay Now" visible even though the tenant is up to date.
     const outstandingBalance = useMemo(() => {
         if (!student?.pending_dues?.length) return 0;
-        return student.pending_dues.reduce((sum: number, due: any) => sum + (parseFloat(due.balance) || 0), 0);
+        const now = new Date();
+        const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        return student.pending_dues
+            .filter((due: any) => !due.fee_month || due.fee_month <= currentMonth)
+            .reduce((sum: number, due: any) => sum + (parseFloat(due.balance) || 0), 0);
     }, [student]);
 
     // ── Open payment modal ─────────────────────────────────────────────────
@@ -551,6 +579,23 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                 </View>
                             )}
                         </Card>
+
+                        {/* ── No Room Allocated Banner ── */}
+                        {!student.room_id && (
+                            <Card style={styles.noRoomCard}>
+                                <View style={styles.noticeHeader}>
+                                    <View style={styles.noticeInfo}>
+                                        <Text style={styles.noRoomTitle}>🚪 No Room Allocated</Text>
+                                        <Text style={styles.noRoomText}>
+                                            Billing starts only after a room is allocated. Allocate one to put this tenant on the rent roll.
+                                        </Text>
+                                    </View>
+                                    <TouchableOpacity style={styles.noRoomBtn} onPress={goAllocateRoom} activeOpacity={0.85}>
+                                        <Text style={styles.noRoomBtnText}>Allocate Room</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </Card>
+                        )}
 
                         {/* ── Vacancy Notice Banner ── */}
                         {student.vacate_notice_date && (
@@ -1073,6 +1118,11 @@ const styles = StyleSheet.create({
     noticeCancelBtn: { backgroundColor: '#FFF', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#F59E0B' },
     noticeCancelText: { color: '#D97706', fontWeight: '700', fontSize: 12 },
     noticeRowTitle: { fontSize: 14, fontWeight: '700', color: '#1E293B', marginBottom: 2 },
+    noRoomCard: { marginBottom: 20, backgroundColor: '#FEF2F2', borderColor: '#FECACA', borderWidth: 1, padding: 16 },
+    noRoomTitle: { fontSize: 15, fontWeight: '700', color: '#DC2626', marginBottom: 4 },
+    noRoomText: { fontSize: 12, color: '#B91C1C', fontWeight: '500', lineHeight: 17 },
+    noRoomBtn: { backgroundColor: '#DC2626', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10 },
+    noRoomBtnText: { color: '#FFF', fontWeight: '700', fontSize: 12 },
     tabContainer: {
         flexDirection: 'row',
         backgroundColor: '#F1F5F9',

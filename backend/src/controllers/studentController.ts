@@ -306,57 +306,65 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
       created_at: new Date()
     });
 
-    // If room allocation provided, handle room occupancy and fee generation
-    if (room_id && roomDetails) {
-      const studentStatus = typeof status === 'number' ? status : (status === 'Active' ? 1 : 0);
-      const monthlyRent = roomDetails.rent_per_bed;
+    const studentStatus = typeof status === 'number' ? status : (status === 'Active' ? 1 : 0);
+    const monthlyRent = roomDetails ? Number(roomDetails.rent_per_bed) : Number(monthly_rent || 0);
 
-      // Update room occupied beds ONLY if student is Active (status = 1)
-      if (studentStatus === 1) {
-        await db('rooms')
-          .where({ room_id })
-          .increment('occupied_beds', 1);
-      }
+    // Update room occupied beds ONLY if a room is allocated and the student is Active.
+    if (room_id && roomDetails && studentStatus === 1) {
+      await db('rooms')
+        .where({ room_id })
+        .increment('occupied_beds', 1);
+    }
 
-      // Auto-create monthly fee for current month if student is Active (status = 1) and has room
-      if (studentStatus === 1 && monthlyRent) {
-        try {
-          const now = new Date();
-          const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    // BILLING RULE: a tenant goes on the rent roll ONLY when a room is allocated.
+    // Room allocation is the trigger. Active + room + rent > 0 → create the current
+    // month's fee so they appear in Pending Dues with a proper due date. Students
+    // without a room are intentionally NOT billed and won't show in Pending Dues.
+    if (room_id && roomDetails && studentStatus === 1 && monthlyRent > 0) {
+      try {
+        const now = new Date();
+        const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-          // Check if fee already exists for this month
-          const existingFee = await db('monthly_fees')
-            .where({
-              student_id,
-              fee_month: currentMonth
-            })
-            .first();
+        // Check if fee already exists for this month
+        const existingFee = await db('monthly_fees')
+          .where({
+            student_id,
+            fee_month: currentMonth
+          })
+          .first();
 
-          if (!existingFee) {
-            // Create monthly fee record (due_date left NULL for owner to set manually)
-            await db('monthly_fees').insert({
-              student_id,
-              hostel_id,
-              fee_month: currentMonth,
-              fee_date: now.getMonth() + 1,
-              monthly_rent: monthlyRent,
-              carry_forward: 0.00,
-              total_due: monthlyRent,
-              paid_amount: 0.00,
-              balance: monthlyRent,
-              fee_status: 'Pending',
-              due_date: null,
-              notes: 'Auto-created on student registration',
-              created_at: new Date(),
-              updated_at: new Date()
-            });
-
-            console.log(`[createStudent] Auto-created monthly fee for student ${student_id}, month: ${currentMonth}`);
+        if (!existingFee) {
+          // Due date follows the hostel's preferred day-of-month (default 15th),
+          // mirroring the monthly cron so registration and cron stay consistent.
+          const hostel = await db('hostel_master').where('hostel_id', hostel_id).first();
+          const dueDateDay = hostel?.due_date_day || 15;
+          let dueDate = new Date(now.getFullYear(), now.getMonth(), dueDateDay);
+          if (dueDate.getDate() !== dueDateDay) {
+            dueDate = new Date(now.getFullYear(), now.getMonth() + 1, 0); // last day of short month
           }
-        } catch (feeError) {
-          // Log error but don't fail student creation
-          console.error('[createStudent] Error auto-creating monthly fee:', feeError);
+
+          await db('monthly_fees').insert({
+            student_id,
+            hostel_id,
+            fee_month: currentMonth,
+            fee_date: now.getMonth() + 1,
+            monthly_rent: monthlyRent,
+            carry_forward: 0.00,
+            total_due: monthlyRent,
+            paid_amount: 0.00,
+            balance: monthlyRent,
+            fee_status: 'Pending',
+            due_date: dueDate,
+            notes: 'Auto-created on student registration',
+            created_at: new Date(),
+            updated_at: new Date()
+          });
+
+          console.log(`[createStudent] Auto-created monthly fee for student ${student_id}, month: ${currentMonth}, due: ${dueDate.toISOString().split('T')[0]}`);
         }
+      } catch (feeError) {
+        // Log error but don't fail student creation
+        console.error('[createStudent] Error auto-creating monthly fee:', feeError);
       }
     }
 

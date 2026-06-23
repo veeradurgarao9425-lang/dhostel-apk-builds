@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import api from '../services/api';
+import { useTranslation } from 'react-i18next';
 
 // ─── Menu item definition ─────────────────────────────────────────────────────
 interface MenuItem {
@@ -24,157 +25,158 @@ interface MenuItem {
     danger?: boolean;
 }
 
-const TOP_TOOLS: MenuItem[] = [
-    {
-        label: 'QR Signup',
-        subtitle: 'Self registration QR',
-        icon: 'qr-code',
-        iconColor: '#7C3AED',
-        iconBg: '#EDE9FE',
-        route: 'QRSignup',
-    },
-    {
-        label: 'Expenses',
-        subtitle: 'Track hostel expenses',
-        icon: 'card',
-        iconColor: '#2563EB',
-        iconBg: '#DBEAFE',
-        route: 'Expenses',
-    },
-    {
-        label: 'Guests',
-        subtitle: 'Short-stay & daily guests',
-        icon: 'walk',
-        iconColor: '#0891B2',
-        iconBg: '#CFFAFE',
-        route: 'Guests',
-    },
-];
-
-const MENU_GROUPS: { groupTitle: string; items: MenuItem[] }[] = [
-    {
-        groupTitle: 'Management',
-        items: [
-            {
-                label: 'Hostels',
-                subtitle: 'View & manage all hostels',
-                icon: 'business',
-                iconColor: '#16A34A',
-                iconBg: '#DCFCE7',
-                route: 'Hostels',
-            },
-            {
-                label: 'Tenants',
-                subtitle: 'View & manage all tenants',
-                icon: 'people',
-                iconColor: '#7C3AED',
-                iconBg: '#EDE9FE',
-                route: 'Students',
-            },
-            {
-                label: 'Rooms',
-                subtitle: 'View & manage all rooms',
-                icon: 'bed',
-                iconColor: '#2563EB',
-                iconBg: '#DBEAFE',
-                route: 'Rooms',
-            },
-            {
-                label: 'Vacate Notices',
-                subtitle: 'Scheduled vacate list',
-                icon: 'megaphone',
-                iconColor: '#EA580C',
-                iconBg: '#FFEDD5',
-                route: 'Notices',
-            },
-            {
-                label: 'Pending Payments',
-                subtitle: 'Track pending dues',
-                icon: 'alert-circle',
-                iconColor: '#DC2626',
-                iconBg: '#FEE2E2',
-                route: 'PendingTab',
-            },
-            {
-                label: 'Staff Management',
-                subtitle: 'Add & manage staff',
-                icon: 'person-circle',
-                iconColor: '#0891B2',
-                iconBg: '#CFFAFE',
-                route: 'Staff',
-            },
-        ],
-    },
-    {
-        groupTitle: 'Finance',
-        items: [
-            {
-                label: 'Income Report',
-                subtitle: 'View monthly income',
-                icon: 'trending-up',
-                iconColor: '#16A34A',
-                iconBg: '#DCFCE7',
-                route: 'IncomeDetails',
-                routeParams: { period: 'month' },
-            },
-            {
-                label: 'Bulk Delete',
-                subtitle: 'Manage bulk removals',
-                icon: 'trash-outline',
-                iconColor: '#DC2626',
-                iconBg: '#FEE2E2',
-                route: 'BulkDelete',
-            },
-        ],
-    },
-    {
-        groupTitle: 'Tools',
-        items: [
-            {
-                label: 'Reminders',
-                subtitle: 'Due date alerts',
-                icon: 'notifications',
-                iconColor: '#0891B2',
-                iconBg: '#CFFAFE',
-                route: 'Reminders',
-            },
-            {
-                label: 'Reports & Analytics',
-                subtitle: 'Detailed analytics',
-                icon: 'bar-chart',
-                iconColor: '#059669',
-                iconBg: '#D1FAE5',
-                route: 'Reports',
-            },
-        ],
-    },
-    {
-        groupTitle: 'Account',
-        items: [
-            {
-                label: 'Profile',
-                subtitle: 'Your account info',
-                icon: 'person',
-                iconColor: '#6B7280',
-                iconBg: '#F3F4F6',
-                route: 'Profile',
-            },
-            {
-                label: 'Settings',
-                subtitle: 'Preferences & themes',
-                icon: 'settings',
-                iconColor: '#374151',
-                iconBg: '#F9FAFB',
-                route: 'Settings',
-            },
-        ],
-    },
-];
-
 export default function MoreScreen() {
     const navigation = useNavigation<any>();
     const { user, signOut, updateTokenAndUser } = useAuth();
     const { theme, isDark, fontSize } = useTheme();
+    const { t } = useTranslation();
+
+    const topTools = useMemo<MenuItem[]>(() => [
+        {
+            label: t('more.qrSignup'),
+            subtitle: t('more.qrSignupSub'),
+            icon: 'qr-code',
+            iconColor: '#7C3AED',
+            iconBg: '#EDE9FE',
+            route: 'QRSignup',
+        },
+        {
+            label: t('more.expenses'),
+            subtitle: t('more.expensesSub'),
+            icon: 'card',
+            iconColor: '#2563EB',
+            iconBg: '#DBEAFE',
+            route: 'Expenses',
+        },
+        {
+            label: t('more.guests'),
+            subtitle: t('more.guestsSub'),
+            icon: 'walk',
+            iconColor: '#0891B2',
+            iconBg: '#CFFAFE',
+            route: 'Guests',
+        },
+    ], [t]);
+
+    const menuGroups = useMemo<{ groupTitle: string; items: MenuItem[] }[]>(() => [
+        {
+            groupTitle: t('more.management'),
+            items: [
+                {
+                    label: t('more.hostels'),
+                    subtitle: t('more.hostelsSub'),
+                    icon: 'business',
+                    iconColor: '#16A34A',
+                    iconBg: '#DCFCE7',
+                    route: 'Hostels',
+                },
+                {
+                    label: t('more.tenants'),
+                    subtitle: t('more.tenantsSub'),
+                    icon: 'people',
+                    iconColor: '#7C3AED',
+                    iconBg: '#EDE9FE',
+                    route: 'Students',
+                },
+                {
+                    label: t('more.rooms'),
+                    subtitle: t('more.roomsSub'),
+                    icon: 'bed',
+                    iconColor: '#2563EB',
+                    iconBg: '#DBEAFE',
+                    route: 'Rooms',
+                },
+                {
+                    label: t('more.vacateNotices'),
+                    subtitle: t('more.vacateNoticesSub'),
+                    icon: 'megaphone',
+                    iconColor: '#EA580C',
+                    iconBg: '#FFEDD5',
+                    route: 'Notices',
+                },
+                {
+                    label: t('more.pendingPayments'),
+                    subtitle: t('more.pendingPaymentsSub'),
+                    icon: 'alert-circle',
+                    iconColor: '#DC2626',
+                    iconBg: '#FEE2E2',
+                    route: 'PendingTab',
+                },
+                {
+                    label: t('more.staffManagement'),
+                    subtitle: t('more.staffManagementSub'),
+                    icon: 'person-circle',
+                    iconColor: '#0891B2',
+                    iconBg: '#CFFAFE',
+                    route: 'Staff',
+                },
+            ],
+        },
+        {
+            groupTitle: t('more.finance'),
+            items: [
+                {
+                    label: t('more.incomeReport'),
+                    subtitle: t('more.incomeReportSub'),
+                    icon: 'trending-up',
+                    iconColor: '#16A34A',
+                    iconBg: '#DCFCE7',
+                    route: 'IncomeDetails',
+                    routeParams: { period: 'month' },
+                },
+                {
+                    label: t('more.bulkDelete'),
+                    subtitle: t('more.bulkDeleteSub'),
+                    icon: 'trash-outline',
+                    iconColor: '#DC2626',
+                    iconBg: '#FEE2E2',
+                    route: 'BulkDelete',
+                },
+            ],
+        },
+        {
+            groupTitle: t('more.tools'),
+            items: [
+                {
+                    label: t('more.reminders'),
+                    subtitle: t('more.remindersSub'),
+                    icon: 'notifications',
+                    iconColor: '#0891B2',
+                    iconBg: '#CFFAFE',
+                    route: 'Reminders',
+                },
+                {
+                    label: t('more.reportsAnalytics'),
+                    subtitle: t('more.reportsAnalyticsSub'),
+                    icon: 'bar-chart',
+                    iconColor: '#059669',
+                    iconBg: '#D1FAE5',
+                    route: 'Reports',
+                },
+            ],
+        },
+        {
+            groupTitle: t('more.account'),
+            items: [
+                {
+                    label: t('more.profile'),
+                    subtitle: t('more.profileSub'),
+                    icon: 'person',
+                    iconColor: '#6B7280',
+                    iconBg: '#F3F4F6',
+                    route: 'Profile',
+                },
+                {
+                    label: t('more.settings'),
+                    subtitle: t('more.settingsSub'),
+                    icon: 'settings',
+                    iconColor: '#374151',
+                    iconBg: '#F9FAFB',
+                    route: 'Settings',
+                },
+            ],
+        },
+    ], [t]);
 
     const [showSearch, setShowSearch] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -211,11 +213,11 @@ export default function MoreScreen() {
                 await updateTokenAndUser(token, { hostel_id: hostelId, hostel_name });
                 setSelectorVisible(false);
             } else {
-                Alert.alert('Error', res.data?.error || 'Failed to switch active hostel');
+                Alert.alert(t('common.error'), res.data?.error || 'Failed to switch active hostel');
             }
         } catch (err: any) {
             console.error('Switch active hostel error:', err);
-            Alert.alert('Error', err.response?.data?.error || 'An error occurred while switching hostels.');
+            Alert.alert(t('common.error'), err.response?.data?.error || 'An error occurred while switching hostels.');
         } finally {
             setSwitching(false);
         }
@@ -233,12 +235,12 @@ export default function MoreScreen() {
 
     const handleLogout = () => {
         Alert.alert(
-            'Confirm Log Out',
-            'Are you sure you want to log out from the application?',
+            t('more.confirmLogOut'),
+            t('more.logOutConfirmMsg'),
             [
-                { text: 'Cancel', style: 'cancel' },
+                { text: t('overview.cancel'), style: 'cancel' },
                 {
-                    text: 'Log Out',
+                    text: t('more.logOut'),
                     style: 'destructive',
                     onPress: async () => {
                         try {
@@ -252,25 +254,25 @@ export default function MoreScreen() {
         );
     };
 
-    // Filter TOP_TOOLS
+    // Filter topTools
     const filteredTopTools = useMemo(() => {
-        if (!searchQuery) return TOP_TOOLS;
+        if (!searchQuery) return topTools;
         const q = searchQuery.toLowerCase();
-        return TOP_TOOLS.filter(t => t.label.toLowerCase().includes(q) || t.subtitle.toLowerCase().includes(q));
-    }, [searchQuery]);
+        return topTools.filter(tVal => tVal.label.toLowerCase().includes(q) || tVal.subtitle.toLowerCase().includes(q));
+    }, [searchQuery, topTools]);
 
-    // Filter MENU_GROUPS
+    // Filter menuGroups
     const filteredMenuGroups = useMemo(() => {
-        if (!searchQuery) return MENU_GROUPS;
+        if (!searchQuery) return menuGroups;
         const q = searchQuery.toLowerCase();
-        return MENU_GROUPS.map(group => {
+        return menuGroups.map(group => {
             const items = group.items.filter(item =>
                 item.label.toLowerCase().includes(q) ||
                 item.subtitle.toLowerCase().includes(q)
             );
             return { ...group, items };
         }).filter(group => group.items.length > 0);
-    }, [searchQuery]);
+    }, [searchQuery, menuGroups]);
 
     const isListEmpty = filteredTopTools.length === 0 && filteredMenuGroups.length === 0;
 
@@ -312,7 +314,7 @@ export default function MoreScreen() {
                         <Ionicons name="search" size={18} color="#94A3B8" style={{ marginRight: 8 }} />
                         <TextInput
                             style={[s.headerSearchInput, { fontSize: fontSize }]}
-                            placeholder="Search menu tools..."
+                            placeholder={t('more.searchPlaceholder')}
                             placeholderTextColor="#94A3B8"
                             value={searchQuery}
                             onChangeText={setSearchQuery}
@@ -351,14 +353,14 @@ export default function MoreScreen() {
                                 <Ionicons name="business" size={20} color={theme.primary} />
                             </View>
                             <View style={s.activeHostelTextWrap}>
-                                <Text style={[s.activeHostelLabel, { color: theme.textSecondary, fontSize: fontSize - 4 }]}>Active Hostel</Text>
+                                <Text style={[s.activeHostelLabel, { color: theme.textSecondary, fontSize: fontSize - 4 }]}>{t('more.activeHostel')}</Text>
                                 <Text style={[s.activeHostelName, { color: theme.textPrimary, fontSize: fontSize - 1 }]} numberOfLines={1}>
-                                    {user?.hostel_name || 'No Active Hostel'}
+                                    {user?.hostel_name || t('more.noActiveHostel')}
                                 </Text>
                             </View>
                         </View>
                         <View style={[s.activeHostelSwitchBtn, { backgroundColor: theme.primary }]}>
-                            <Text style={s.activeHostelSwitchText}>Switch</Text>
+                            <Text style={s.activeHostelSwitchText}>{t('more.switch')}</Text>
                             <Ionicons name="swap-horizontal" size={12} color="#FFF" />
                         </View>
                     </TouchableOpacity>
@@ -368,15 +370,15 @@ export default function MoreScreen() {
                 {isListEmpty && (
                     <View style={s.emptyState}>
                         <Text style={{ fontSize: 40, marginBottom: 12 }}>🔍</Text>
-                        <Text style={[s.emptyText, { color: theme.textPrimary, fontSize: fontSize + 1, fontWeight: '700' }]}>No matching tools found</Text>
-                        <Text style={{ color: theme.textSecondary, fontSize: fontSize - 2, marginTop: 4 }}>Try searching for a different keyword</Text>
+                        <Text style={[s.emptyText, { color: theme.textPrimary, fontSize: fontSize + 1, fontWeight: '700' }]}>{t('more.noMatchingTools')}</Text>
+                        <Text style={{ color: theme.textSecondary, fontSize: fontSize - 2, marginTop: 4 }}>{t('more.trySearchingDifferent')}</Text>
                     </View>
                 )}
 
                 {/* Quick Access Tools */}
                 {!isListEmpty && filteredTopTools.length > 0 && (
                     <View style={s.topToolsGroup}>
-                        <Text style={[s.groupTitle, { color: theme.textSecondary, fontSize: fontSize - 2 }]}>Quick Tools</Text>
+                        <Text style={[s.groupTitle, { color: theme.textSecondary, fontSize: fontSize - 2 }]}>{t('more.quickTools')}</Text>
                         <View style={s.topToolsRow}>
                             {filteredTopTools.map((tool, index) => (
                                 <TouchableOpacity
@@ -431,7 +433,7 @@ export default function MoreScreen() {
                     activeOpacity={0.8}
                 >
                     <Ionicons name="log-out-outline" size={20} color="#DC2626" />
-                    <Text style={[s.logoutText, { color: '#DC2626', fontSize: fontSize }]}>Log Out</Text>
+                    <Text style={[s.logoutText, { color: '#DC2626', fontSize: fontSize }]}>{t('more.logOut')}</Text>
                 </TouchableOpacity>
 
                 {/* App version */}
@@ -453,7 +455,7 @@ export default function MoreScreen() {
                     />
                     <View style={[s.modalSheet, { backgroundColor: theme.cardBg }]}>
                         <View style={s.modalHeader}>
-                            <Text style={[s.modalTitle, { color: theme.textPrimary }]}>Switch Hostel</Text>
+                            <Text style={[s.modalTitle, { color: theme.textPrimary }]}>{t('more.switchHostel')}</Text>
                             <TouchableOpacity
                                 style={s.modalCloseBtn}
                                 onPress={() => setSelectorVisible(false)}
@@ -466,7 +468,7 @@ export default function MoreScreen() {
                             <View style={{ paddingVertical: 40, alignItems: 'center' }}>
                                 <ActivityIndicator size="large" color={theme.primary} />
                                 <Text style={{ marginTop: 12, color: theme.textSecondary, fontWeight: '600' }}>
-                                    {switching ? 'Switching active hostel...' : 'Loading hostels...'}
+                                    {switching ? t('more.switchingHostel') : t('more.loadingHostels')}
                                 </Text>
                             </View>
                         ) : (
@@ -504,12 +506,12 @@ export default function MoreScreen() {
                                         activeOpacity={0.8}
                                     >
                                         <Ionicons name="add" size={20} color="#FFF" />
-                                        <Text style={s.addHostelText}>Add New Hostel</Text>
+                                        <Text style={s.addHostelText}>{t('more.addNewHostel')}</Text>
                                     </TouchableOpacity>
                                 ) : (
                                     <View style={[s.limitNoteContainer, isDark && { backgroundColor: 'rgba(249, 115, 22, 0.15)', borderColor: 'rgba(249, 115, 22, 0.3)' }]}>
                                         <Text style={s.limitNoteText}>
-                                            ℹ️ Note: Every owner is limited to a maximum of 2 active hostels.
+                                            {t('more.limitNote')}
                                         </Text>
                                     </View>
                                 )}

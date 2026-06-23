@@ -27,6 +27,7 @@ import { ProfileMenu } from '../components/ProfileMenu';
 import { HeaderNotification } from '../components/HeaderNotification';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useToast } from '../context/ToastContext';
+import { useTranslation } from 'react-i18next';
 import { EmptyState } from '../components/ui/EmptyState';
 import { AppHeader } from '../components/AppHeader';
 import { LoadMoreFooter } from '../components/ui/LoadMoreFooter';
@@ -34,6 +35,7 @@ import { SkeletonList } from '../components/ui/SkeletonCard';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { COLORS } from '../theme/index';
 import { toLocalDateStr } from '../utils/dateUtils';
+
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -57,10 +59,12 @@ interface StudentCardProps {
     onWhatsApp: (phone: string) => void;
     onCall: (phone: string) => void;
     onToggle: (student: any) => void;
+    onAllocateRoom: (student: any) => void;
 }
 
-const StudentCard = React.memo(({ student, onPress, onWhatsApp, onCall, onToggle }: StudentCardProps) => {
+const StudentCard = React.memo(({ student, onPress, onWhatsApp, onCall, onToggle, onAllocateRoom }: StudentCardProps) => {
     const { theme, isDark } = useTheme();
+    const { t } = useTranslation();
     const isActive = student.status === 1;
     const isPreBooked = student.status === 2;
     const isQRSignup = student.status === 3;
@@ -73,18 +77,19 @@ const StudentCard = React.memo(({ student, onPress, onWhatsApp, onCall, onToggle
 
     // Determine colors based on status dynamically from theme
     let statusColor = theme.error;
-    let statusLabel = 'Inactive';
+    let statusLabel = t('students.inactive');
 
     if (isActive) {
         statusColor = theme.success;
-        statusLabel = 'Active';
+        statusLabel = t('students.active');
     } else if (isPreBooked) {
         statusColor = theme.warning;
-        statusLabel = 'Pre-Booked';
+        statusLabel = t('students.prebooked');
     } else if (isQRSignup) {
         statusColor = theme.primary;
-        statusLabel = 'QR Signup';
+        statusLabel = t('students.qrSignup');
     }
+
 
     const badgeBg = statusColor + '15';
     const badgeText = statusColor;
@@ -112,8 +117,18 @@ const StudentCard = React.memo(({ student, onPress, onWhatsApp, onCall, onToggle
                         {student.first_name} {student.last_name || ''}
                     </Text>
                     <Text style={[styles.subDetailText, { color: theme.textSecondary }]}>
-                        Room {student.room_number || 'N/A'} • {student.phone || 'No phone'}
+                        {t('students.room')} {student.room_number || 'N/A'} • {student.phone || t('students.noPhone')}
                     </Text>
+
+                    {isActive && !student.room_id && (
+                        <TouchableOpacity
+                            style={styles.allocateChip}
+                            onPress={() => onAllocateRoom(student)}
+                            activeOpacity={0.8}
+                        >
+                            <Text style={styles.allocateChipText}>⚠ {t('students.allocateRoom', 'Allocate Room')}</Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
                 <View style={[styles.statusBadge, { backgroundColor: badgeBg }]}>
                     <Text style={[styles.statusBadgeText, { color: badgeText }]}>
@@ -131,14 +146,14 @@ const StudentCard = React.memo(({ student, onPress, onWhatsApp, onCall, onToggle
                         style={[styles.actionBtnIcon, { backgroundColor: isDark ? '#334155' : '#F8FAFC', borderColor: isDark ? '#475569' : '#E2E8F0' }]}
                     >
                         <MessageCircle size={14} color="#25D366" />
-                        <Text style={[styles.actionBtnIconText, { color: theme.textSecondary }]}>WhatsApp</Text>
+                        <Text style={[styles.actionBtnIconText, { color: theme.textSecondary }]}>{t('students.whatsapp')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         onPress={() => onCall(student.phone)}
                         style={[styles.actionBtnIcon, { backgroundColor: isDark ? '#334155' : '#F8FAFC', borderColor: isDark ? '#475569' : '#E2E8F0' }]}
                     >
                         <Phone size={14} color="#0EA5E9" />
-                        <Text style={[styles.actionBtnIconText, { color: theme.textSecondary }]}>Call</Text>
+                        <Text style={[styles.actionBtnIconText, { color: theme.textSecondary }]}>{t('students.call')}</Text>
                     </TouchableOpacity>
                 </View>
                 <TouchableOpacity
@@ -153,14 +168,15 @@ const StudentCard = React.memo(({ student, onPress, onWhatsApp, onCall, onToggle
                     ]}
                 >
                     {isQRSignup ? (
-                        <Text style={[styles.statusToggleTextNew, { color: theme.primary }]}>Check In</Text>
+                        <Text style={[styles.statusToggleTextNew, { color: theme.primary }]}>{t('students.checkIn')}</Text>
                     ) : isPreBooked ? (
-                        <Text style={[styles.statusToggleTextNew, { color: theme.warning }]}>Check In</Text>
+                        <Text style={[styles.statusToggleTextNew, { color: theme.warning }]}>{t('students.checkIn')}</Text>
                     ) : (
                         <Text style={[styles.statusToggleTextNew, { color: isActive ? theme.error : theme.success }]}>
-                            {isActive ? 'Deactivate' : 'Activate'}
+                            {isActive ? t('students.deactivate') : t('students.activate')}
                         </Text>
                     )}
+
                 </TouchableOpacity>
             </View>
         </TouchableOpacity>
@@ -174,6 +190,7 @@ const ListFooter = React.memo(({ loading, hasMore, total }: {
     hasMore: boolean;
     total: number;
 }) => {
+    const { t } = useTranslation();
     if (loading) {
         return <ActivityIndicator size="small" color="#94A3B8" style={{ marginVertical: 20 }} />;
     }
@@ -183,7 +200,7 @@ const ListFooter = React.memo(({ loading, hasMore, total }: {
                 <View style={footerStyles.line} />
                 <View style={footerStyles.pill}>
                     <Users size={12} color="#94A3B8" />
-                    <Text style={footerStyles.text}>All {total} students loaded</Text>
+                    <Text style={footerStyles.text}>{t('students.allLoaded', { count: total })}</Text>
                 </View>
                 <View style={footerStyles.line} />
             </View>
@@ -191,6 +208,7 @@ const ListFooter = React.memo(({ loading, hasMore, total }: {
     }
     return null;
 });
+
 
 const footerStyles = StyleSheet.create({
     container: {
@@ -227,6 +245,8 @@ export default function StudentsScreen({ navigation, route }: any) {
     const { user } = useAuth();
     const { theme, isDark } = useTheme();
     const { showApiError, showSuccess } = useToast();
+    const { t } = useTranslation();
+
 
     const [allStudents, setAllStudents] = useState<any[]>([]);
     const [page, setPage] = useState(1);
@@ -423,22 +443,23 @@ export default function StudentsScreen({ navigation, route }: any) {
         let targetStatus = 1;
 
         if (isQRSignup) {
-            title = 'Confirm Check-In?';
-            msg = `Confirm check-in for QR-registered tenant ${student.first_name}? This will activate their residency.`;
+            title = t('students.confirmCheckIn');
+            msg = t('students.confirmCheckInMsg', { name: student.first_name });
             targetStatus = 1;
         } else if (isPreBooked) {
-            title = 'Confirm Check-In?';
-            msg = `Confirm check-in for pre-booked tenant ${student.first_name}? This will activate their residency.`;
+            title = t('students.confirmCheckIn');
+            msg = t('students.confirmCheckInMsg', { name: student.first_name });
             targetStatus = 1;
         } else if (isCurrentlyActive) {
-            title = 'Mark as Inactive?';
-            msg = `Mark ${student.first_name} as inactive? They will lose access to the room.`;
+            title = t('students.markInactive');
+            msg = t('students.markInactiveMsg', { name: student.first_name });
             targetStatus = 0;
         } else {
-            title = 'Mark as Active?';
-            msg = `Mark ${student.first_name} as active again?`;
+            title = t('students.markActive');
+            msg = t('students.markActiveMsg', { name: student.first_name });
             targetStatus = 1;
         }
+
 
         setConfirmDialog({ visible: true, student, targetStatus, title, message: msg });
     }, []);
@@ -447,6 +468,10 @@ export default function StudentsScreen({ navigation, route }: any) {
         Linking.openURL(`tel:${phone}`);
     }, []);
 
+    const handleAllocateRoom = useCallback((student: any) => {
+        navigation.navigate('AddStudent', { student, isEdit: true });
+    }, [navigation]);
+
     const renderItem = useCallback(({ item }: { item: any }) => (
         <StudentCard
             student={item}
@@ -454,25 +479,50 @@ export default function StudentsScreen({ navigation, route }: any) {
             onWhatsApp={handleWhatsApp}
             onCall={handleCall}
             onToggle={handleToggleStatus}
+            onAllocateRoom={handleAllocateRoom}
         />
-    ), [handleNavigate, handleWhatsApp, handleCall, handleToggleStatus]);
+    ), [handleNavigate, handleWhatsApp, handleCall, handleToggleStatus, handleAllocateRoom]);
 
     const keyExtractor = useCallback((item: any) => item.student_id.toString(), []);
 
     const subtitleText = useMemo(() => {
-        const label = activeTab === 'All' ? 'Total' : activeTab;
-        return `${allStudents.length}${hasMore ? '+' : ''} ${label} Residents`;
-    }, [allStudents.length, hasMore, activeTab]);
+        const label = activeTab === 'All' ? t('students.total') : activeTab;
+        return `${allStudents.length}${hasMore ? '+' : ''} ${label} ${t('students.residents')}`;
+    }, [allStudents.length, hasMore, activeTab, t]);
+
+    // Active tenants in the loaded list who have no room → not yet on the rent roll.
+    const unallocatedCount = useMemo(
+        () => allStudents.filter((s: any) => s.status === 1 && !s.room_id).length,
+        [allStudents]
+    );
+
+    const listHeader = useMemo(() => {
+        if (unallocatedCount === 0) return null;
+        return (
+            <TouchableOpacity
+                style={styles.allocateBanner}
+                activeOpacity={0.85}
+                onPress={() => { if (activeTab !== 'Active') setActiveTab('Active'); }}
+            >
+                <Text style={styles.allocateBannerText}>
+                    ⚠ {t('students.needRoom', { count: unallocatedCount, defaultValue: `${unallocatedCount} tenant(s) need a room` })}
+                </Text>
+                <Text style={styles.allocateBannerHint}>{t('students.allocateToBill', 'Allocate to start billing →')}</Text>
+            </TouchableOpacity>
+        );
+    }, [unallocatedCount, activeTab, t]);
+
 
     return (
         <View style={[styles.container, { backgroundColor: isDark ? theme.background : '#F8FAFC' }]}>
             <StatusBar barStyle="light-content" />
 
             <AppHeader
-                title="Student Directory"
+                title={t('students.directory')}
                 subtitle={subtitleText}
                 showBack={navigation.canGoBack()}
                 rightComponent={
+
                     <View style={styles.headerActions}>
                         <HeaderNotification navigation={navigation} />
                         <ProfileMenu />
@@ -483,13 +533,14 @@ export default function StudentsScreen({ navigation, route }: any) {
                     <Search color="rgba(255,255,255,0.7)" size={18} />
                     <TextInput
                         style={styles.input}
-                        placeholder="Search by name, room, or phone..."
+                        placeholder={t('students.searchPlaceholder')}
                         value={search}
                         onChangeText={setSearch}
                         placeholderTextColor="rgba(255,255,255,0.6)"
                         autoCorrect={false}
                         autoCapitalize="none"
                     />
+
                     {search.length > 0 && (
                         <TouchableOpacity onPress={() => setSearch('')}>
                             <X size={18} color="rgba(255,255,255,0.7)" />
@@ -529,12 +580,13 @@ export default function StudentsScreen({ navigation, route }: any) {
                     contentContainerStyle={styles.tabScrollContent}
                 >
                     {[
-                        { key: 'Active', label: 'Active', count: counts.active },
-                        { key: 'PreBooked', label: 'Pre-Booked', count: counts.prebooked },
-                        { key: 'QRRegister', label: 'QR Signups', count: counts.qrRegister },
-                        { key: 'Inactive', label: 'Inactive', count: counts.inactive },
-                        { key: 'All', label: 'Total', count: counts.total }
+                        { key: 'Active', label: t('students.active'), count: counts.active },
+                        { key: 'PreBooked', label: t('students.prebooked'), count: counts.prebooked },
+                        { key: 'QRRegister', label: t('students.qrSignups'), count: counts.qrRegister },
+                        { key: 'Inactive', label: t('students.inactive'), count: counts.inactive },
+                        { key: 'All', label: t('students.total'), count: counts.total }
                     ].map((tab: any) => (
+
                         <TouchableOpacity
                             key={tab.key}
                             style={[
@@ -571,6 +623,7 @@ export default function StudentsScreen({ navigation, route }: any) {
                             allStudents.length === 0 && { flex: 1 },
                         ]}
                         showsVerticalScrollIndicator={false}
+                        ListHeaderComponent={listHeader}
                         refreshControl={
                             <RefreshControl
                                 refreshing={refreshing}
@@ -584,16 +637,17 @@ export default function StudentsScreen({ navigation, route }: any) {
                         ListEmptyComponent={
                             <EmptyState
                                 variant={debouncedSearch ? 'noResults' : 'noStudents'}
-                                title={debouncedSearch ? 'No Results' : 'No Students Yet'}
+                                title={debouncedSearch ? t('students.noResults') : t('students.noStudents')}
                                 subtitle={
                                     debouncedSearch
-                                        ? `No students match "${debouncedSearch}"`
-                                        : 'Tap the + button to add your first tenant'
+                                        ? t('students.noMatch', { query: debouncedSearch })
+                                        : t('students.addFirst')
                                 }
-                                actionLabel={debouncedSearch ? undefined : 'Add Student'}
+                                actionLabel={debouncedSearch ? undefined : t('students.addStudent')}
                                 onAction={debouncedSearch ? undefined : () => navigation.navigate('AddStudent')}
                             />
                         }
+
                         onEndReached={handleEndReached}
                         onEndReachedThreshold={0.2}
                         ListFooterComponent={
@@ -626,7 +680,8 @@ export default function StudentsScreen({ navigation, route }: any) {
                 visible={confirmDialog.visible}
                 title={confirmDialog.title}
                 message={confirmDialog.message}
-                confirmLabel="Yes, proceed"
+                confirmLabel={t('students.yesProceed')}
+
                 onConfirm={async () => {
                     const { student, targetStatus } = confirmDialog;
                     setConfirmDialog(p => ({ ...p, visible: false }));
@@ -759,6 +814,31 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         marginTop: 4,
     },
+    allocateChip: {
+        alignSelf: 'flex-start',
+        marginTop: 6,
+        backgroundColor: '#FEF2F2',
+        borderColor: '#FECACA',
+        borderWidth: 1,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 8,
+    },
+    allocateChipText: { fontSize: 10, fontWeight: '700', color: '#DC2626' },
+    allocateBanner: {
+        backgroundColor: '#FEF2F2',
+        borderColor: '#FECACA',
+        borderWidth: 1,
+        borderRadius: 12,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        marginBottom: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    allocateBannerText: { fontSize: 13, fontWeight: '800', color: '#DC2626', flexShrink: 1 },
+    allocateBannerHint: { fontSize: 11, fontWeight: '700', color: '#B91C1C', marginLeft: 8 },
     statusBadge: {
         paddingHorizontal: 8,
         paddingVertical: 4,

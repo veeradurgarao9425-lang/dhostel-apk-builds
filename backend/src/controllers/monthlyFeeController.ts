@@ -442,6 +442,7 @@ export const getMonthlyFeesSummary = async (req: AuthRequest, res: Response) => 
         's.phone',
         's.email',
         's.monthly_rent as student_monthly_rent',
+        's.room_id',
         'r.room_number',
         's.floor_number',
         's.admission_date',
@@ -509,8 +510,16 @@ export const getMonthlyFeesSummary = async (req: AuthRequest, res: Response) => 
     });
 
     console.log('[getMonthlyFeesSummary] Executing query...');
-    const results = await query.orderBy('s.first_name', 'asc');
-    console.log(`[getMonthlyFeesSummary] Query completed. Found ${results.length} active students`);
+    const rawResults = await query.orderBy('s.first_name', 'asc');
+    console.log(`[getMonthlyFeesSummary] Query completed. Found ${rawResults.length} active students`);
+
+    // BILLING RULE: a tenant is on the rent roll only once a room is allocated.
+    // So we only include a student if they already have a fee record for this month
+    // (they were billed when they had a room) OR they currently have a room allocated.
+    // Students with no room AND no fee record are NOT billable and are excluded from
+    // Pending Dues and from all the summary totals below.
+    const results = rawResults.filter((row: any) => row.fee_id !== null || row.room_id != null);
+    console.log(`[getMonthlyFeesSummary] ${results.length} billable (room-allocated or already-billed) students`);
 
     // NOTE: Auto-generation disabled (Option 2)
     // Fee records are ONLY created when:
@@ -1106,57 +1115,67 @@ export const recordPayment = async (req: AuthRequest, res: Response) => {
         console.warn('[recordPayment] fee_history insert skipped (table may not exist):', historyErr?.message);
       }
 
-      // If FULLY PAID, create next month's fee record with due_date (same day, next month)
+      // Carry an OVERPAYMENT credit forward to next month, if any.
+      // NOTE: We deliberately do NOT pre-create next month's plain Pending fee on a
+      // normal full payment. Doing so used to make a tenant who just cleared their dues
+      // immediately look "Pending" again (and kept "Pay Now" visible). Routine next-month
+      // generation is owned by the monthly cron job (and lazily by recordPayment when a
+      // payment is recorded for a month that has no record yet). We only create the row
+      // eagerly when there is a credit to preserve, which the lazy/cron path would drop.
       if (newFeeStatus === 'Fully Paid') {
-        const nextMonthDate = new Date(parseInt(year), parseInt(month), 1); // Next month
-        const nextFeeMonth = `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, '0')}`;
+        const overpayment = Math.max(0, newTotalPaid - totalDue);
 
-        // Check if next month's fee already exists
-        const existingNextMonthFee = await trx('monthly_fees')
-          .where({
-            student_id,
-            fee_month: nextFeeMonth
-          })
-          .first();
+        if (overpayment > 0) {
+          const nextMonthDate = new Date(parseInt(year), parseInt(month), 1); // Next month
+          const nextFeeMonth = `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, '0')}`;
 
-        if (!existingNextMonthFee) {
-          // Calculate next month's due date (same day as user-entered due_date)
-          const dueDateDay = userDueDate.getDate();
-          const nextMonthYear = nextMonthDate.getFullYear();
-          const nextMonthNum = nextMonthDate.getMonth();
+          // Check if next month's fee already exists
+          const existingNextMonthFee = await trx('monthly_fees')
+            .where({
+              student_id,
+              fee_month: nextFeeMonth
+            })
+            .first();
 
-          // Handle edge case: if due_date day doesn't exist in next month (e.g., 31 in Feb)
-          let nextDueDate = new Date(nextMonthYear, nextMonthNum, dueDateDay);
-          if (nextDueDate.getDate() !== dueDateDay) {
-            // Day doesn't exist in this month, use last day of month
-            nextDueDate = new Date(nextMonthYear, nextMonthNum + 1, 0);
+          if (!existingNextMonthFee) {
+            // Calculate next month's due date (same day as user-entered due_date)
+            const dueDateDay = userDueDate.getDate();
+            const nextMonthYear = nextMonthDate.getFullYear();
+            const nextMonthNum = nextMonthDate.getMonth();
+
+            // Handle edge case: if due_date day doesn't exist in next month (e.g., 31 in Feb)
+            let nextDueDate = new Date(nextMonthYear, nextMonthNum, dueDateDay);
+            if (nextDueDate.getDate() !== dueDateDay) {
+              // Day doesn't exist in this month, use last day of month
+              nextDueDate = new Date(nextMonthYear, nextMonthNum + 1, 0);
+            }
+
+            const nextMonthlyRent = parseFloat(student.monthly_rent || 0);
+            const nextCarryForward = -overpayment; // negative carry = credit
+            const nextTotalDue = Math.max(0, nextMonthlyRent + nextCarryForward);
+
+            // If the credit fully covers next month, it's already settled; otherwise Pending.
+            const nextFeeStatus = nextTotalDue <= 0 ? 'Fully Paid' : 'Pending';
+
+            await trx('monthly_fees').insert({
+              student_id,
+              hostel_id,
+              fee_month: nextFeeMonth,
+              fee_date: nextMonthNum + 1,
+              monthly_rent: nextMonthlyRent,
+              carry_forward: nextCarryForward,
+              total_due: nextTotalDue,
+              paid_amount: 0.00,
+              balance: nextTotalDue,
+              fee_status: nextFeeStatus,
+              due_date: nextDueDate,
+              notes: 'Auto-created to carry overpayment credit forward',
+              created_at: new Date(),
+              updated_at: new Date()
+            });
+
+            console.log(`[recordPayment] Carried overpayment credit of ${overpayment} into ${nextFeeMonth}`);
           }
-
-          const nextMonthlyRent = parseFloat(student.monthly_rent || 0);
-
-          // Calculate overpayment credit (if student paid more than total_due)
-          const overpayment = Math.max(0, newTotalPaid - totalDue);
-          const nextCarryForward = overpayment > 0 ? -overpayment : 0;
-          const nextTotalDue = Math.max(0, nextMonthlyRent + nextCarryForward);
-
-          await trx('monthly_fees').insert({
-            student_id,
-            hostel_id,
-            fee_month: nextFeeMonth,
-            fee_date: nextMonthNum + 1,
-            monthly_rent: nextMonthlyRent,
-            carry_forward: nextCarryForward,
-            total_due: nextTotalDue,
-            paid_amount: 0.00,
-            balance: nextTotalDue,
-            fee_status: 'Pending',
-            due_date: nextDueDate,
-            notes: 'Auto-created after full payment',
-            created_at: new Date(),
-            updated_at: new Date()
-          });
-
-          console.log(`[recordPayment] Created next month fee record for ${nextFeeMonth} with due_date: ${nextDueDate}`);
         }
       }
 

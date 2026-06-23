@@ -16,6 +16,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useToast } from '../context/ToastContext';
 import { AppHeader } from '../components/AppHeader';
 import { toLocalDateStr } from '../utils/dateUtils';
+import { useTranslation } from 'react-i18next';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface DueTenant {
@@ -53,19 +54,24 @@ const RemindModal = ({ visible, tenant, onClose }: {
     onClose: () => void;
 }) => {
     const { showError } = useToast();
+    const { t } = useTranslation();
 
     if (!tenant) return null;
 
     const callTenant = () => {
         onClose();
-        if (!tenant.phone) { showError('No phone number available'); return; }
+        if (!tenant.phone) { showError(t('pendingDues.noPhoneAvailable', 'No phone number available')); return; }
         Linking.openURL(`tel:${tenant.phone}`);
     };
 
     const whatsappRemind = () => {
         onClose();
-        if (!tenant.phone) { showError('No phone number available'); return; }
-        const msg = `Hi ${tenant.name.split(' ')[0]}, this is a friendly reminder that your rent of ₹${tenant.dueAmount.toLocaleString('en-IN')} is pending for ${tenant.feeMonth}. Please clear it at the earliest. Thank you! 🏠`;
+        if (!tenant.phone) { showError(t('pendingDues.noPhoneAvailable', 'No phone number available')); return; }
+        const msg = t('pendingDues.verificationMsg', {
+            name: tenant.name.split(' ')[0],
+            amount: tenant.dueAmount.toLocaleString('en-IN'),
+            month: tenant.feeMonth
+        });
         Linking.openURL(`whatsapp://send?phone=91${tenant.phone}&text=${encodeURIComponent(msg)}`);
     };
 
@@ -83,14 +89,14 @@ const RemindModal = ({ visible, tenant, onClose }: {
                     </View>
                     <View style={{ flex: 1 }}>
                         <Text style={rm.tenantName}>{tenant.name}</Text>
-                        <Text style={rm.tenantRoom}>Room {tenant.room} · ₹{tenant.dueAmount.toLocaleString('en-IN')} due</Text>
+                        <Text style={rm.tenantRoom}>{t('rooms.room')} {tenant.room} · ₹{tenant.dueAmount.toLocaleString('en-IN')} {t('fees.pending').toLowerCase()}</Text>
                     </View>
                     <TouchableOpacity onPress={onClose} style={rm.closeBtn}>
                         <Ionicons name="close" size={18} color="#64748B" />
                     </TouchableOpacity>
                 </View>
 
-                <Text style={rm.subtitle}>Send a reminder to this tenant:</Text>
+                <Text style={rm.subtitle}>{t('pendingDues.remindTenant')}</Text>
 
                 {/* Options */}
                 <TouchableOpacity style={rm.option} onPress={callTenant} activeOpacity={0.8}>
@@ -98,8 +104,8 @@ const RemindModal = ({ visible, tenant, onClose }: {
                         <Ionicons name="call" size={22} color="#16A34A" />
                     </View>
                     <View style={{ flex: 1 }}>
-                        <Text style={rm.optionLabel}>Call Tenant</Text>
-                        <Text style={rm.optionSub}>Directly dial {tenant.phone || 'their number'}</Text>
+                        <Text style={rm.optionLabel}>{t('pendingDues.callTenant')}</Text>
+                        <Text style={rm.optionSub}>{t('pendingDues.directlyDial', { phone: tenant.phone || '' })}</Text>
                     </View>
                     <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
                 </TouchableOpacity>
@@ -109,8 +115,8 @@ const RemindModal = ({ visible, tenant, onClose }: {
                         <Ionicons name="logo-whatsapp" size={22} color="#22C55E" />
                     </View>
                     <View style={{ flex: 1 }}>
-                        <Text style={rm.optionLabel}>WhatsApp Reminder</Text>
-                        <Text style={rm.optionSub}>Send a payment reminder message</Text>
+                        <Text style={rm.optionLabel}>{t('pendingDues.whatsappReminder')}</Text>
+                        <Text style={rm.optionSub}>{t('pendingDues.sendPaymentReminder')}</Text>
                     </View>
                     <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
                 </TouchableOpacity>
@@ -134,11 +140,12 @@ const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect }: {
     onCollect: (t: DueTenant) => void;
 }) => {
     const { theme, fontSize, isDark } = useTheme();
+    const { t } = useTranslation();
     const accentColor = item.isOverdue ? '#DC2626' : '#D97706';
     const accentBg    = item.isOverdue ? '#FEE2E2' : '#FEF3C7';
     const tagLabel    = item.isOverdue
-        ? `${item.daysOverdue}d overdue`
-        : `Due: ${item.dueDate}`;
+        ? `${item.daysOverdue}d ${t('fees.overdue').toLowerCase()}`
+        : `${t('overview.due')}: ${item.dueDate}`;
 
     return (
         <View style={[tc.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#EDE9FE', borderWidth: isDark ? 1 : 0 }]}>
@@ -154,7 +161,7 @@ const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect }: {
                     
                     <View style={tc.infoCol}>
                         <Text style={[tc.name, { fontSize: fontSize, color: theme.textPrimary }]}>{item.name}</Text>
-                        <Text style={[tc.roomText, { fontSize: fontSize - 2, color: theme.textSecondary }]}>Room {item.room} · {item.feeMonth}</Text>
+                        <Text style={[tc.roomText, { fontSize: fontSize - 2, color: theme.textSecondary }]}>{t('rooms.room')} {item.room} · {item.feeMonth}</Text>
                         
                         <View style={[tc.statusBadge, { backgroundColor: accentBg }]}>
                             <Ionicons name="time-outline" size={11} color={accentColor} />
@@ -163,7 +170,7 @@ const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect }: {
                     </View>
 
                     <View style={tc.amountCol}>
-                        <Text style={[tc.amountLabel, { fontSize: fontSize - 5, color: theme.textSecondary }]}>Pending</Text>
+                        <Text style={[tc.amountLabel, { fontSize: fontSize - 5, color: theme.textSecondary }]}>{t('fees.pending')}</Text>
                         <Text style={[tc.amountVal, { color: accentColor, fontSize: fontSize + 4 }]}>
                             ₹{item.dueAmount.toLocaleString('en-IN')}
                         </Text>
@@ -173,17 +180,17 @@ const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect }: {
                 {/* Columns Block */}
                 <View style={[tc.columnsBlock, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC' }]}>
                     <View style={tc.colItem}>
-                        <Text style={[tc.colLabel, { fontSize: fontSize - 6 }]}>Total</Text>
+                        <Text style={[tc.colLabel, { fontSize: fontSize - 6 }]}>{t('common.total')}</Text>
                         <Text style={[tc.colValue, { color: theme.textPrimary, fontSize: fontSize - 2 }]}>₹{item.totalAmount.toLocaleString('en-IN')}</Text>
                     </View>
                     <View style={[tc.colDivider, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]} />
                     <View style={tc.colItem}>
-                        <Text style={[tc.colLabel, { color: '#059669', fontSize: fontSize - 6 }]}>Paid</Text>
+                        <Text style={[tc.colLabel, { color: '#059669', fontSize: fontSize - 6 }]}>{t('fees.paid')}</Text>
                         <Text style={[tc.colValue, { color: '#059669', fontSize: fontSize - 2 }]}>₹{item.paidAmount.toLocaleString('en-IN')}</Text>
                     </View>
                     <View style={[tc.colDivider, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]} />
                     <View style={tc.colItem}>
-                        <Text style={[tc.colLabel, { color: accentColor, fontSize: fontSize - 6 }]}>Pending</Text>
+                        <Text style={[tc.colLabel, { color: accentColor, fontSize: fontSize - 6 }]}>{t('fees.pending')}</Text>
                         <Text style={[tc.colValue, { color: accentColor, fontSize: fontSize - 2 }]}>₹{item.dueAmount.toLocaleString('en-IN')}</Text>
                     </View>
                 </View>
@@ -199,7 +206,7 @@ const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect }: {
                         activeOpacity={0.8}
                     >
                         <Ionicons name="notifications-outline" size={15} color={isDark ? '#94A3B8' : '#475569'} />
-                        <Text style={[tc.remindText, { fontSize: fontSize - 2, color: theme.textPrimary }]}>Remind</Text>
+                        <Text style={[tc.remindText, { fontSize: fontSize - 2, color: theme.textPrimary }]}>{t('pendingDues.remind')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[tc.collectBtn, { backgroundColor: themeColor }]}
@@ -207,7 +214,7 @@ const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect }: {
                         activeOpacity={0.85}
                     >
                         <Ionicons name="checkmark-circle-outline" size={15} color="#FFF" />
-                        <Text style={[tc.collectText, { fontSize: fontSize - 2, color: '#FFF' }]}>Collect</Text>
+                        <Text style={[tc.collectText, { fontSize: fontSize - 2, color: '#FFF' }]}>{t('pendingDues.collect')}</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -219,6 +226,7 @@ const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect }: {
 export default function PendingPaymentsScreen() {
     const navigation = useNavigation<any>();
     const { theme, fontSize, isDark } = useTheme();
+    const { t } = useTranslation();
     const { showSuccess, showError } = useToast();
 
     const [tenants, setTenants]     = useState<DueTenant[]>([]);
@@ -273,14 +281,16 @@ export default function PendingPaymentsScreen() {
                 }
             }
 
+            // Let request failures propagate to the catch block so the user sees an
+            // error toast instead of a silent (and misleading) "All clear" empty state.
             const res: any = await api.get('/monthly-fees/summary', {
                 params: {
                     onlyPending: 'true',
                     page: pageNum,
                     limit: 10
                 }
-            }).catch(() => ({ data: { success: false } }));
-            if (!res.data.success) return;
+            });
+            if (!res.data.success) throw new Error(res.data?.error || 'Failed to load dues');
 
             const fees: any[] = res.data.data?.fees || [];
             const now = new Date(); now.setHours(0, 0, 0, 0);
@@ -335,7 +345,7 @@ export default function PendingPaymentsScreen() {
                 setTotalDefaulters(summaryObj.pending || 0);
             }
         } catch {
-            Toast.show({ type: 'error', text1: 'Failed to load pending dues' });
+            Toast.show({ type: 'error', text1: t('pendingDues.failedLoadDues') });
         } finally {
             isFirstLoadRef.current = false;
             setLoading(false);
@@ -414,8 +424,8 @@ export default function PendingPaymentsScreen() {
             <View style={s.root}>
                 <StatusBar barStyle="light-content" />
                 <AppHeader
-                    title="Pending Dues"
-                    subtitle="Loading dues..."
+                    title={t('pendingDues.title')}
+                    subtitle={t('pendingDues.loadingDues')}
                     showBack={navigation.canGoBack()}
                     rightComponent={
                         <View style={s.headerActions}>
@@ -453,8 +463,8 @@ export default function PendingPaymentsScreen() {
 
             {/* ── Header ── */}
             <AppHeader
-                title="Pending Dues"
-                subtitle="Overview of pending collections"
+                title={t('pendingDues.title')}
+                subtitle={t('pendingDues.subtitle')}
                 showBack={navigation.canGoBack()}
                 rightComponent={
                     <View style={s.headerActions}>
@@ -477,9 +487,9 @@ export default function PendingPaymentsScreen() {
                                 <Ionicons name="refresh" size={14} color="#94A3B8" />
                             </TouchableOpacity>
                         </View>
-                        <Text style={[s.cardLabel, { fontSize: fontSize - 3, color: theme.textSecondary }]}>Outstanding Dues</Text>
+                        <Text style={[s.cardLabel, { fontSize: fontSize - 3, color: theme.textSecondary }]}>{t('pendingDues.outstandingDues')}</Text>
                         <Text style={[s.cardValue, { color: '#DC2626', fontSize: fontSize + 2 }]}>₹{totalPending.toLocaleString('en-IN')}</Text>
-                        <Text style={[s.cardSubText, { fontSize: fontSize - 4, color: theme.textSecondary }]}>{totalDefaulters} defaulters</Text>
+                        <Text style={[s.cardSubText, { fontSize: fontSize - 4, color: theme.textSecondary }]}>{totalDefaulters} {t('pendingDues.defaulters')}</Text>
                     </View>
 
                     {/* Card 2: Partial Paid */}
@@ -489,9 +499,9 @@ export default function PendingPaymentsScreen() {
                                 <Ionicons name="hourglass" size={18} color="#D97706" />
                             </View>
                         </View>
-                        <Text style={[s.cardLabel, { fontSize: fontSize - 3, color: theme.textSecondary }]}>Partial Paid</Text>
+                        <Text style={[s.cardLabel, { fontSize: fontSize - 3, color: theme.textSecondary }]}>{t('pendingDues.partialPaid')}</Text>
                         <Text style={[s.cardValue, { color: '#D97706', fontSize: fontSize + 2 }]}>₹{partialPaid.toLocaleString('en-IN')}</Text>
-                        <Text style={[s.cardSubText, { fontSize: fontSize - 4, color: theme.textSecondary }]}>Dues collected partially</Text>
+                        <Text style={[s.cardSubText, { fontSize: fontSize - 4, color: theme.textSecondary }]}>{t('pendingDues.duesCollectedPartially')}</Text>
                     </View>
                 </View>
             </View>
@@ -500,8 +510,8 @@ export default function PendingPaymentsScreen() {
             {sortedTenants.length === 0 ? (
                 <View style={s.emptyWrap}>
                     <Text style={{ fontSize: 52, marginBottom: 12 }}>🎉</Text>
-                    <Text style={[s.emptyTitle, { fontSize: fontSize + 6, color: theme.textPrimary }]}>All Clear!</Text>
-                    <Text style={[s.emptySub, { fontSize: fontSize - 1, color: theme.textSecondary }]}>No pending payments found</Text>
+                    <Text style={[s.emptyTitle, { fontSize: fontSize + 6, color: theme.textPrimary }]}>{t('pendingDues.allClear')}</Text>
+                    <Text style={[s.emptySub, { fontSize: fontSize - 1, color: theme.textSecondary }]}>{t('pendingDues.noPendingPayments')}</Text>
                 </View>
             ) : (
                 <FlatList
@@ -531,7 +541,7 @@ export default function PendingPaymentsScreen() {
                             <ActivityIndicator size="small" color="#7C3AED" style={{ marginVertical: 20 }} />
                         ) : !hasMore && sortedTenants.length > 0 ? (
                             <View style={{ alignItems: 'center', marginVertical: 20 }}>
-                                <Text style={{ color: '#94A3B8', fontSize: 12, fontWeight: '600' }}>All dues loaded</Text>
+                                <Text style={{ color: '#94A3B8', fontSize: 12, fontWeight: '600' }}>{t('pendingDues.allDuesLoaded')}</Text>
                             </View>
                         ) : null
                     }

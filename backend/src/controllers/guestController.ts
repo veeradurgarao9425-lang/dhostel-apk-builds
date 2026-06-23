@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
+import { isOverstaying, expectedLastDay } from '../jobs/guestOverstay.js';
 
 // Resolve the hostel the request is scoped to (owner = JWT hostel, admin = body/query)
 function resolveHostelId(req: AuthRequest): number | null {
@@ -36,14 +37,34 @@ export const getGuests = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const guests = await query.orderBy('created_at', 'desc').orderBy('guest_id', 'desc');
+    const rows = await query.orderBy('created_at', 'desc').orderBy('guest_id', 'desc');
+
+    // Decorate each guest with derived status info (computed, never stale).
+    const guests = rows.map((g: any) => {
+      const status = g.status || 'staying';
+      const last = expectedLastDay(g);
+      return {
+        ...g,
+        status,
+        expected_last_day: last ? last.toISOString().split('T')[0] : null,
+        is_overstay: status === 'staying' && isOverstaying(g),
+      };
+    });
 
     const totalCollected = guests.reduce((sum: number, g: any) => sum + Number(g.amount_paid || 0), 0);
+    const staying = guests.filter((g: any) => g.status === 'staying').length;
+    const overstay = guests.filter((g: any) => g.is_overstay).length;
 
     res.json({
       success: true,
       data: guests,
-      summary: { count: guests.length, totalCollected },
+      summary: {
+        count: guests.length,
+        totalCollected,
+        staying,
+        checkedOut: guests.length - staying,
+        overstay,
+      },
     });
   } catch (error: any) {
     console.error('Get guests error:', error);
@@ -110,10 +131,15 @@ export const updateGuest = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ success: false, error: 'Access denied.' });
     }
 
-    const allowed = ['full_name', 'phone', 'check_in_date', 'check_out_date', 'days', 'amount_paid', 'purpose', 'room_number', 'notes'];
+    const allowed = ['full_name', 'phone', 'check_in_date', 'check_out_date', 'days', 'amount_paid', 'purpose', 'room_number', 'notes', 'status', 'checked_out_at'];
     const updateData: any = { updated_at: new Date() };
     for (const key of allowed) {
       if (req.body[key] !== undefined) updateData[key] = req.body[key];
+    }
+
+    // If the booking dates/length changed, allow the overstay alert to fire again.
+    if (req.body.check_in_date !== undefined || req.body.check_out_date !== undefined || req.body.days !== undefined) {
+      updateData.overstay_notified = 0;
     }
 
     await db('guests').where('guest_id', guestId).update(updateData);
@@ -121,6 +147,34 @@ export const updateGuest = async (req: AuthRequest, res: Response) => {
   } catch (error: any) {
     console.error('Update guest error:', error);
     res.status(500).json({ success: false, error: error?.sqlMessage || error?.message || 'Failed to update guest' });
+  }
+};
+
+// POST /api/guests/:guestId/checkout — mark a guest as vacated (keeps the income record)
+export const checkoutGuest = async (req: AuthRequest, res: Response) => {
+  try {
+    const hostelId = resolveHostelId(req);
+    const { guestId } = req.params;
+
+    const existing = await db('guests').where('guest_id', guestId).first();
+    if (!existing) {
+      return res.status(404).json({ success: false, error: 'Guest not found' });
+    }
+    if (hostelId && existing.hostel_id !== hostelId) {
+      return res.status(403).json({ success: false, error: 'Access denied.' });
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    await db('guests').where('guest_id', guestId).update({
+      status: 'checked_out',
+      checked_out_at: req.body?.checked_out_at || today,
+      updated_at: new Date(),
+    });
+
+    res.json({ success: true, message: 'Guest checked out successfully' });
+  } catch (error: any) {
+    console.error('Checkout guest error:', error);
+    res.status(500).json({ success: false, error: error?.sqlMessage || error?.message || 'Failed to check out guest' });
   }
 };
 
