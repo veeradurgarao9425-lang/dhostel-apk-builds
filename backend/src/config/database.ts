@@ -576,6 +576,32 @@ async function patchDatabaseSchema() {
       console.error('[schema-patch] Error checking/updating notifications columns:', e.message);
     }
 
+    // 15. Ensure default categories exist in expense_categories
+    try {
+      if (tableNamesLower.includes('expense_categories')) {
+        console.log('[schema-patch] Ensuring default expense categories exist...');
+        const categories = await db('expense_categories').select('category_name');
+        const categoryNames = categories.map((c: any) => c.category_name.toLowerCase());
+        
+        if (!categoryNames.includes('water bill')) {
+          console.log('[schema-patch] Adding "Water Bill" category...');
+          await db('expense_categories').insert({
+            category_name: 'Water Bill',
+            description: 'Monthly water charges'
+          });
+        }
+        if (!categoryNames.includes('lift bill')) {
+          console.log('[schema-patch] Adding "Lift Bill" category...');
+          await db('expense_categories').insert({
+            category_name: 'Lift Bill',
+            description: 'Lift maintenance and electricity charges'
+          });
+        }
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error seeding default expense categories:', e.message);
+    }
+
     console.log('[schema-patch] Schema check and patch complete.');
   } catch (err: any) {
     console.error('[schema-patch] Critical error during schema patching:', err.message);

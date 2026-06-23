@@ -34,7 +34,10 @@ import { FullScreenLoader } from '../components/FullScreenLoader';
 
 const CAT_COLORS: Record<string, string> = {
     'Electricity': '#F59E0B',
+    'Electricity Bill': '#F59E0B',
     'Water': '#0EA5E9',
+    'Water Bill': '#0EA5E9',
+    'Lift Bill': '#6366F1',
     'Maintenance': '#8B5CF6',
     'Salary': '#10B981',
     'Groceries': '#F97316',
@@ -186,6 +189,10 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
         }
         if (!formData.amount || isNaN(Number(formData.amount)) || Number(formData.amount) <= 0) {
             Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Amount must be greater than 0' });
+            return;
+        }
+        if (!formData.description || !formData.description.trim()) {
+            Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Description is mandatory' });
             return;
         }
 
@@ -343,7 +350,7 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
                     />
 
                     <FormInput
-                        label="Description"
+                        label="Description *"
                         icon={FileText}
                         placeholder="Add details about the expense..."
                         value={formData.description}

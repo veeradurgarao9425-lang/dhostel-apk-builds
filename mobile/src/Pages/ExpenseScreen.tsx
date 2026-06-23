@@ -26,7 +26,10 @@ import DateTimePickerModal from "react-native-modal-datetime-picker";
 
 const CAT_COLORS: Record<string, string> = {
     'Electricity': '#F59E0B',
+    'Electricity Bill': '#F59E0B',
     'Water': '#0EA5E9',
+    'Water Bill': '#0EA5E9',
+    'Lift Bill': '#6366F1',
     'Maintenance': '#8B5CF6',
     'Salary': '#10B981',
     'Groceries': '#F97316',
@@ -412,7 +415,7 @@ export const ExpenseScreen = ({ navigation }: any) => {
                 onPress={() => navigation.navigate('AddExpense')}
                 activeOpacity={0.9}
             >
-                <Plus color="#FFFFFF" size={28} />
+                <Plus color="#FFFFFF" size={22} strokeWidth={3.2} />
             </TouchableOpacity>
 
             <DateTimePickerModal
@@ -690,13 +693,13 @@ const styles = StyleSheet.create({
         position: 'absolute',
         bottom: 30,
         right: 20,
-        width: 60,
-        height: 60,
-        borderRadius: 30,
+        width: 50,
+        height: 50,
+        borderRadius: 25,
         backgroundColor: '#FF6B6B',
         alignItems: 'center',
         justifyContent: 'center',
-        elevation: 8,
+        elevation: 5,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,

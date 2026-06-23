@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useAuth } from '../../contexts/AuthContext';
 import { notificationService } from '../services/notificationService';
+import { FullScreenLoader } from '../components/FullScreenLoader';
 
 // ── Tab screens ───────────────────────────────────────────────────────────────
 import HomeScreen      from '../Pages/HomeScreen';
@@ -84,7 +85,7 @@ interface AppNavigatorProps {
 
 // ── Root Stack Navigator ──────────────────────────────────────────────────────
 const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
-    const { user } = useAuth();
+    const { user, logoutLoading } = useAuth();
     const navigationKey = `${user?.user_id || 'guest'}_${user?.hostel_id || 'none'}`;
 
     useEffect(() => {
@@ -104,138 +105,141 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
     }, [user]);
 
     return (
-        <NavigationContainer
-            key={navigationKey}
-            ref={navigationRef}
-            onStateChange={() => {
-                const route = navigationRef.current?.getCurrentRoute();
-                if (route?.name && onRouteChange) {
-                    onRouteChange(route.name);
-                }
-            }}
-        >
-            <Stack.Navigator
-                screenOptions={{ headerShown: false }}
-                initialRouteName="Splash"
+        <>
+            <NavigationContainer
+                key={navigationKey}
+                ref={navigationRef}
+                onStateChange={() => {
+                    const route = navigationRef.current?.getCurrentRoute();
+                    if (route?.name && onRouteChange) {
+                        onRouteChange(route.name);
+                    }
+                }}
             >
-                {/* Auth */}
-                <Stack.Screen name="Splash" component={SplashScreen} />
-                <Stack.Screen
-                    name="Onboarding"
-                    component={OnboardingScreen}
-                    options={{ animation: 'fade' }}
-                />
-                <Stack.Screen name="Login"  component={LoginScreen}  />
-                <Stack.Screen name="Register" component={RegisterScreen} />
+                <Stack.Navigator
+                    screenOptions={{ headerShown: false }}
+                    initialRouteName="Splash"
+                >
+                    {/* Auth */}
+                    <Stack.Screen name="Splash" component={SplashScreen} />
+                    <Stack.Screen
+                        name="Onboarding"
+                        component={OnboardingScreen}
+                        options={{ animation: 'fade' }}
+                    />
+                    <Stack.Screen name="Login"  component={LoginScreen}  />
+                    <Stack.Screen name="Register" component={RegisterScreen} />
 
-                {/* Main tab container */}
-                <Stack.Screen name="Main" component={TabNavigator} />
+                    {/* Main tab container */}
+                    <Stack.Screen name="Main" component={TabNavigator} />
 
-                {/* Notifications */}
-                <Stack.Screen name="Notifications" component={NotificationScreen} />
+                    {/* Notifications */}
+                    <Stack.Screen name="Notifications" component={NotificationScreen} />
 
-                {/* Students */}
-                <Stack.Screen name="Students"       component={StudentsScreen}       />
-                <Stack.Screen name="StudentDetails" component={StudentDetailsScreen} />
-                <Stack.Screen
-                    name="AddStudent"
-                    component={AddStudentScreen}
-                    options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
-                />
+                    {/* Students */}
+                    <Stack.Screen name="Students"       component={StudentsScreen}       />
+                    <Stack.Screen name="StudentDetails" component={StudentDetailsScreen} />
+                    <Stack.Screen
+                        name="AddStudent"
+                        component={AddStudentScreen}
+                        options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+                    />
 
-                {/* Rooms */}
-                <Stack.Screen name="RoomDetails" component={RoomDetailsScreen} />
-                <Stack.Screen
-                    name="AddRoom"
-                    component={AddRoomScreen}
-                    options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
-                />
-                <Stack.Screen name="BulkDelete"     component={BulkDeleteScreen}    />
-                <Stack.Screen name="Rooms"          component={RoomsScreen}         />
+                    {/* Rooms */}
+                    <Stack.Screen name="RoomDetails" component={RoomDetailsScreen} />
+                    <Stack.Screen
+                        name="AddRoom"
+                        component={AddRoomScreen}
+                        options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+                    />
+                    <Stack.Screen name="BulkDelete"     component={BulkDeleteScreen}    />
+                    <Stack.Screen name="Rooms"          component={RoomsScreen}         />
 
-                {/* Staff */}
-                <Stack.Screen name="Staff"           component={StaffScreen}           />
-                <Stack.Screen
-                    name="AddStaff"
-                    component={AddStaffScreen}
-                    options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
-                />
-                <Stack.Screen name="StaffPayments" component={StaffPaymentsScreen} />
+                    {/* Staff */}
+                    <Stack.Screen name="Staff"           component={StaffScreen}           />
+                    <Stack.Screen
+                        name="AddStaff"
+                        component={AddStaffScreen}
+                        options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+                    />
+                    <Stack.Screen name="StaffPayments" component={StaffPaymentsScreen} />
 
-                {/* Guests (short-stay) */}
-                <Stack.Screen name="Guests" component={GuestsScreen} />
-                <Stack.Screen
-                    name="AddGuest"
-                    component={AddGuestScreen}
-                    options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
-                />
+                    {/* Guests (short-stay) */}
+                    <Stack.Screen name="Guests" component={GuestsScreen} />
+                    <Stack.Screen
+                        name="AddGuest"
+                        component={AddGuestScreen}
+                        options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+                    />
 
-                {/* Reminders & Transactions */}
-                <Stack.Screen name="Reminders"          component={RemindersScreen}       />
-                <Stack.Screen name="TenantTransactions" component={TenantTransactionsScreen} />
+                    {/* Reminders & Transactions */}
+                    <Stack.Screen name="Reminders"          component={RemindersScreen}       />
+                    <Stack.Screen name="TenantTransactions" component={TenantTransactionsScreen} />
 
-                {/* Finance & Fees */}
-                <Stack.Screen name="FinanceTab"      component={FinanceScreen}         />
-                <Stack.Screen name="PendingPayments" component={PendingPaymentsScreen} />
-                <Stack.Screen name="PendingTab"      component={PendingPaymentsScreen} />
-                <Stack.Screen name="OverviewTab"     component={OverviewScreen}        />
-                <Stack.Screen name="BillReminders"   component={BillRemindersScreen}   />
-                <Stack.Screen name="PaymentDetails"  component={PaymentDetailsScreen}  />
-                <Stack.Screen name="FeeManagement"   component={FeeCollectionScreen}   />
-                <Stack.Screen name="Receipt"        component={ReceiptScreen}        />
-                <Stack.Screen name="Income"         component={IncomeScreen}         />
-                <Stack.Screen name="IncomeDetails"  component={IncomeDetailsScreen}  />
-                <Stack.Screen name="CollectedPayments" component={CollectedPaymentsScreen} />
-                <Stack.Screen name="DownloadReceipts" component={DownloadReceiptsScreen} />
-                <Stack.Screen
-                    name="AddIncome"
-                    component={AddIncomeScreen}
-                    options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
-                />
-                <Stack.Screen name="Overview"       component={OverviewScreen}       />
+                    {/* Finance & Fees */}
+                    <Stack.Screen name="FinanceTab"      component={FinanceScreen}         />
+                    <Stack.Screen name="PendingPayments" component={PendingPaymentsScreen} />
+                    <Stack.Screen name="PendingTab"      component={PendingPaymentsScreen} />
+                    <Stack.Screen name="OverviewTab"     component={OverviewScreen}        />
+                    <Stack.Screen name="BillReminders"   component={BillRemindersScreen}   />
+                    <Stack.Screen name="PaymentDetails"  component={PaymentDetailsScreen}  />
+                    <Stack.Screen name="FeeManagement"   component={FeeCollectionScreen}   />
+                    <Stack.Screen name="Receipt"        component={ReceiptScreen}        />
+                    <Stack.Screen name="Income"         component={IncomeScreen}         />
+                    <Stack.Screen name="IncomeDetails"  component={IncomeDetailsScreen}  />
+                    <Stack.Screen name="CollectedPayments" component={CollectedPaymentsScreen} />
+                    <Stack.Screen name="DownloadReceipts" component={DownloadReceiptsScreen} />
+                    <Stack.Screen
+                        name="AddIncome"
+                        component={AddIncomeScreen}
+                        options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+                    />
+                    <Stack.Screen name="Overview"       component={OverviewScreen}       />
 
-                {/* Expenses */}
-                <Stack.Screen name="Expenses"        component={ExpenseScreen}        />
-                <Stack.Screen
-                    name="AddExpense"
-                    component={AddExpenseScreen}
-                    options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
-                />
-                <Stack.Screen name="ExpenseDetails"  component={ExpenseDetailsScreen} />
-                {/* Consolidated into BulkDelete screen */}
+                    {/* Expenses */}
+                    <Stack.Screen name="Expenses"        component={ExpenseScreen}        />
+                    <Stack.Screen
+                        name="AddExpense"
+                        component={AddExpenseScreen}
+                        options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+                    />
+                    <Stack.Screen name="ExpenseDetails"  component={ExpenseDetailsScreen} />
+                    {/* Consolidated into BulkDelete screen */}
 
-                {/* Account & Settings */}
-                <Stack.Screen name="Profile"  component={ProfileScreen}  />
-                <Stack.Screen name="Settings" component={SettingsScreen} />
-                <Stack.Screen
-                    name="AddHostel"
-                    component={AddHostelScreen}
-                    options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
-                />
-                <Stack.Screen name="Hostels" component={HostelsScreen} />
+                    {/* Account & Settings */}
+                    <Stack.Screen name="Profile"  component={ProfileScreen}  />
+                    <Stack.Screen name="Settings" component={SettingsScreen} />
+                    <Stack.Screen
+                        name="AddHostel"
+                        component={AddHostelScreen}
+                        options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+                    />
+                    <Stack.Screen name="Hostels" component={HostelsScreen} />
 
-                {/* Tools */}
-                <Stack.Screen name="QRSignup"    component={QRSignupScreen}    />
-                <Stack.Screen name="PreBooking"  component={PreBookingScreen}  />
-                <Stack.Screen name="Notices"     component={NoticesScreen}     />
+                    {/* Tools */}
+                    <Stack.Screen name="QRSignup"    component={QRSignupScreen}    />
+                    <Stack.Screen name="PreBooking"  component={PreBookingScreen}  />
+                    <Stack.Screen name="Notices"     component={NoticesScreen}     />
 
-                {/* Reports */}
-                <Stack.Screen name="Reports" component={ReportsScreen} />
-                <Stack.Screen
-                    name="PersonalInfo"
-                    component={PlaceholderScreen}
-                    initialParams={{ title: 'Personal Information' }}
-                />
-                <Stack.Screen
-                    name="Themes"
-                    component={PlaceholderScreen}
-                    initialParams={{ title: 'Theme Settings' }}
-                />
+                    {/* Reports */}
+                    <Stack.Screen name="Reports" component={ReportsScreen} />
+                    <Stack.Screen
+                        name="PersonalInfo"
+                        component={PlaceholderScreen}
+                        initialParams={{ title: 'Personal Information' }}
+                    />
+                    <Stack.Screen
+                        name="Themes"
+                        component={PlaceholderScreen}
+                        initialParams={{ title: 'Theme Settings' }}
+                    />
 
-                {/* Coming Soon */}
-                <Stack.Screen name="ComingSoon" component={ComingSoonScreen} />
-            </Stack.Navigator>
-        </NavigationContainer>
+                    {/* Coming Soon */}
+                    <Stack.Screen name="ComingSoon" component={ComingSoonScreen} />
+                </Stack.Navigator>
+            </NavigationContainer>
+            <FullScreenLoader visible={logoutLoading} />
+        </>
     );
 };
 

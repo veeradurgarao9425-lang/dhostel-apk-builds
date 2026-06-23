@@ -29,6 +29,7 @@ const CAT_COLORS: Record<string, string> = {
     'internet': '#14B8A6',
     'cleaning': '#EF4444',
     'water': '#0EA5E9',
+    'lift': '#6366F1',
 };
 
 const CAT_ICONS: Record<string, string> = {
@@ -44,6 +45,7 @@ const CAT_ICONS: Record<string, string> = {
     'internet': 'wifi-sharp',
     'cleaning': 'brush-sharp',
     'water': 'water-sharp',
+    'lift': 'swap-vertical-sharp',
 };
 
 const getColor = (name: string) => {

@@ -1,87 +1,96 @@
 import React, { useState } from 'react';
 import {
     View, Text, StyleSheet, ScrollView,
-    TouchableOpacity, StatusBar, Dimensions, Alert, ActivityIndicator
+    TouchableOpacity, StatusBar, ActivityIndicator, Alert
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { AppHeader } from '../components/AppHeader';
-import {
-    Calendar, Tag, FileText,
-    Hash, Receipt, TrendingDown, Trash2, Edit3
-} from 'lucide-react-native';
+import { Calendar, Tag, FileText, Hash, Receipt, Trash2, Edit3 } from 'lucide-react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import api from '../services/api';
 import Toast from 'react-native-toast-message';
 
-const { width } = Dimensions.get('window');
+const CAT_COLORS: Record<string, string> = {
+    'Electricity': '#F59E0B',
+    'Electricity Bill': '#F59E0B',
+    'Water': '#0EA5E9',
+    'Water Bill': '#0EA5E9',
+    'Lift Bill': '#6366F1',
+    'Maintenance': '#8B5CF6',
+    'Salary': '#10B981',
+    'Groceries': '#F97316',
+    'Internet': '#06B6D4',
+    'Cleaning': '#EC4899',
+    'Other': '#64748B',
+};
+
+const getCatColor = (name: string) => CAT_COLORS[name] || '#64748B';
 
 // ─── Single detail row ────────────────────────────────────────────────────────
-const DetailRow = React.memo(({ icon, label, value, accent }: {
+const DetailRow = React.memo(({ icon, label, value, accent, isDark, theme }: {
     icon: React.ReactNode;
     label: string;
     value: string;
     accent?: string;
+    isDark: boolean;
+    theme: any;
 }) => (
-    <View style={rowStyles.row}>
-        <View style={rowStyles.iconWrap}>{icon}</View>
-        <View style={rowStyles.textWrap}>
-            <Text style={rowStyles.label}>{label}</Text>
-            <Text style={[rowStyles.value, accent ? { color: accent } : null]}>{value || '—'}</Text>
+    <View style={[rowStyles.row, { borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={[rowStyles.iconWrap, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                {icon}
+            </View>
+            <Text style={[rowStyles.label, { color: isDark ? '#94A3B8' : '#64748B' }]}>{label}</Text>
         </View>
+        <Text style={[rowStyles.value, { color: accent || theme.textPrimary }]} numberOfLines={1}>
+            {value || '—'}
+        </Text>
     </View>
 ));
 
 const rowStyles = StyleSheet.create({
     row: {
         flexDirection: 'row',
-        alignItems: 'flex-start',
-        paddingVertical: 16,
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 12,
         borderBottomWidth: 1,
-        borderBottomColor: '#F1F5F9',
     },
     iconWrap: {
-        width: 38,
-        height: 38,
-        borderRadius: 11,
-        backgroundColor: '#F8FAFC',
+        width: 32,
+        height: 32,
+        borderRadius: 8,
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 14,
+        marginRight: 12,
         borderWidth: 1,
-        borderColor: '#F1F5F9',
     },
-    textWrap: { flex: 1, justifyContent: 'center' },
     label: {
-        fontSize: 11,
-        fontWeight: '700',
-        color: '#94A3B8',
-        textTransform: 'uppercase',
-        letterSpacing: 0.6,
-        marginBottom: 3,
+        fontSize: 14,
+        fontWeight: '600',
     },
     value: {
-        fontSize: 15,
-        fontWeight: '600',
-        color: '#1E293B',
-        lineHeight: 22,
+        fontSize: 14,
+        fontWeight: '700',
+        textAlign: 'right',
+        maxWidth: '60%',
     },
 });
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
-const ExpenseDetailsScreen = ({ route }: any) => {
-    const { theme } = useTheme();
+export const ExpenseDetailsScreen = ({ route }: any) => {
+    const { theme, isDark } = useTheme();
     const navigation = useNavigation<any>();
     const { expense } = route.params || {};
     const [deleteLoading, setDeleteLoading] = useState(false);
 
     if (!expense) {
         return (
-            <View style={styles.errorContainer}>
-                <StatusBar barStyle="dark-content" />
-                <Text style={styles.errorText}>No expense details found.</Text>
+            <View style={[styles.errorContainer, { backgroundColor: theme.background }]}>
+                <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+                <Text style={[styles.errorText, { color: theme.textSecondary }]}>No expense details found.</Text>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.goBackBtn}>
-                    <Text style={styles.goBackText}>Go Back</Text>
+                    <Text style={[styles.goBackText, { color: theme.textPrimary }]}>Go Back</Text>
                 </TouchableOpacity>
             </View>
         );
@@ -89,11 +98,12 @@ const ExpenseDetailsScreen = ({ route }: any) => {
 
     const formattedDate = expense.expense_date
         ? new Date(expense.expense_date).toLocaleDateString('en-IN', {
-            day: 'numeric', month: 'long', year: 'numeric'
+            day: 'numeric', month: 'short', year: 'numeric'
         })
         : '—';
 
     const amount = parseFloat(expense.amount || 0);
+    const catColor = getCatColor(expense.category_name);
 
     const handleDelete = () => {
         Alert.alert(
@@ -126,7 +136,7 @@ const ExpenseDetailsScreen = ({ route }: any) => {
                             console.error('Error deleting expense:', error);
                             Toast.show({
                                 type: 'error',
-                                text1: 'Error',
+                                  text1: 'Error',
                                 text2: 'Failed to delete expense',
                             });
                         } finally {
@@ -139,10 +149,10 @@ const ExpenseDetailsScreen = ({ route }: any) => {
     };
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: theme.background }]}>
             <StatusBar barStyle="light-content" />
 
-            {/* ── HEADER ─────────────────────────────────────────────── */}
+            {/* ── Compact Header ── */}
             <AppHeader
                 title="Expense Details"
                 rightComponent={
@@ -150,209 +160,175 @@ const ExpenseDetailsScreen = ({ route }: any) => {
                         onPress={() => navigation.navigate('AddExpense', { expense })} 
                         style={styles.editBtn}
                     >
-                        <Edit3 color="#FFF" size={22} />
+                        <Edit3 color="#FFF" size={20} />
                     </TouchableOpacity>
                 }
-            >
-                {/* Category chip */}
-                <View style={styles.categoryChip}>
-                    <Tag size={11} color="rgba(255,255,255,0.8)" />
-                    <Text style={styles.categoryText}>
-                        {expense.category_name || 'Expense'}
-                    </Text>
-                </View>
+            />
 
-                {/* Big amount */}
-                <Text style={styles.amountLabel}>AMOUNT SPENT</Text>
-                <Text style={styles.amountValue}>
-                    ₹{amount.toLocaleString('en-IN')}
-                </Text>
-
-                {/* Title/Description below amount */}
-                <Text style={styles.expenseTitle} numberOfLines={2}>
-                    {expense.description || expense.category_name}
-                </Text>
-                <View style={{ height: 16 }} />
-            </AppHeader>
-
-            {/* ── DETAILS CARD (overlaps header) ─────────────────────── */}
             <ScrollView
                 style={styles.scroll}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
-                <View style={styles.card}>
-                    {/* Visual accent bar at top of card */}
-                    <View style={[styles.cardAccent, { backgroundColor: theme.gradientStart }]} />
+                {/* ── Compact Summary Card ── */}
+                <View style={[styles.summaryCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                    <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Amount Spent</Text>
+                    <Text style={styles.summaryAmount}>
+                        -₹{amount.toLocaleString('en-IN')}
+                    </Text>
+                    
+                    <View style={[styles.categoryBadge, { backgroundColor: catColor + '15', borderColor: catColor + '30' }]}>
+                        <Tag size={12} color={catColor} style={{ marginRight: 6 }} />
+                        <Text style={[styles.categoryBadgeText, { color: catColor }]}>
+                            {expense.category_name}
+                        </Text>
+                    </View>
+                </View>
 
+                {/* ── Details List Card ── */}
+                <View style={[styles.detailsCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
                     <DetailRow
-                        icon={<Tag size={17} color="#64748B" />}
-                        label="Category"
-                        value={expense.category_name}
-                    />
-                    <DetailRow
-                        icon={<TrendingDown size={17} color="#EF4444" />}
-                        label="Amount"
-                        value={`₹${amount.toLocaleString('en-IN')}`}
-                        accent="#EF4444"
-                    />
-                    <DetailRow
-                        icon={<Calendar size={17} color="#64748B" />}
+                        icon={<Calendar size={16} color={isDark ? '#94A3B8' : '#64748B'} />}
                         label="Date"
                         value={formattedDate}
+                        isDark={isDark}
+                        theme={theme}
                     />
                     <DetailRow
-                        icon={<Receipt size={17} color="#64748B" />}
+                        icon={<Receipt size={16} color={isDark ? '#94A3B8' : '#64748B'} />}
                         label="Payment Mode"
                         value={expense.payment_mode || 'Cash'}
+                        isDark={isDark}
+                        theme={theme}
                     />
                     <DetailRow
-                        icon={<FileText size={17} color="#64748B" />}
-                        label="Vendor Name"
-                        value={expense.vendor_name || 'Generic Vendor'}
+                        icon={<FileText size={16} color={isDark ? '#94A3B8' : '#64748B'} />}
+                        label="Vendor"
+                        value={expense.vendor_name || '—'}
+                        isDark={isDark}
+                        theme={theme}
                     />
                     <DetailRow
-                        icon={<Hash size={17} color="#64748B" />}
+                        icon={<Hash size={16} color={isDark ? '#94A3B8' : '#64748B'} />}
                         label="Bill Number"
                         value={expense.bill_number || '—'}
+                        isDark={isDark}
+                        theme={theme}
                     />
-
-                    {/* Description */}
-                    <View style={[rowStyles.row, { borderBottomWidth: 0 }]}>
-                        <View style={rowStyles.iconWrap}>
-                            <FileText size={17} color="#64748B" />
-                        </View>
-                        <View style={rowStyles.textWrap}>
-                            <Text style={rowStyles.label}>Description</Text>
-                            <Text style={rowStyles.value}>
-                                {expense.description || 'No additional details provided.'}
-                            </Text>
-                        </View>
-                    </View>
-
-                    {/* Delete Expense Button */}
-                    <TouchableOpacity
-                        style={[styles.deleteButton, deleteLoading && styles.disabledButton]}
-                        onPress={handleDelete}
-                        disabled={deleteLoading}
-                    >
-                        {deleteLoading ? (
-                            <ActivityIndicator color="#EF4444" size="small" />
-                        ) : (
-                            <>
-                                <Trash2 size={18} color="#EF4444" style={{ marginRight: 8 }} />
-                                <Text style={styles.deleteButtonText}>Delete Expense</Text>
-                            </>
-                        )}
-                    </TouchableOpacity>
                 </View>
+
+                {/* ── Description Card ── */}
+                <View style={[styles.detailsCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#E2E8F0', marginTop: 12 }]}>
+                    <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Description</Text>
+                    <Text style={[styles.descriptionText, { color: theme.textSecondary }]}>
+                        {expense.description || 'No additional details provided.'}
+                    </Text>
+                </View>
+
+                {/* ── Delete Button ── */}
+                <TouchableOpacity
+                    style={[styles.deleteButton, deleteLoading && styles.disabledButton]}
+                    onPress={handleDelete}
+                    disabled={deleteLoading}
+                >
+                    {deleteLoading ? (
+                        <ActivityIndicator color="#EF4444" size="small" />
+                    ) : (
+                        <>
+                            <Trash2 size={16} color="#EF4444" style={{ marginRight: 8 }} />
+                            <Text style={styles.deleteButtonText}>Delete Expense</Text>
+                        </>
+                    )}
+                </TouchableOpacity>
             </ScrollView>
         </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F1F5F9' },
-
-    // ── Error state ───────────────────────────────────────────────────────
-    errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
-    errorText: { fontSize: 16, color: '#64748B', marginBottom: 20 },
+    container: { flex: 1 },
+    errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    errorText: { fontSize: 16, marginBottom: 20 },
     goBackBtn: { paddingVertical: 10, paddingHorizontal: 20, backgroundColor: '#E2E8F0', borderRadius: 10 },
-    goBackText: { fontSize: 14, fontWeight: '600', color: '#475569' },
-
-    // ── Header ────────────────────────────────────────────────────────────
-    header: {
-        paddingTop: 60,
-        paddingBottom: 50,         // extra padding so card overlap looks good
-        paddingHorizontal: 24,
-        borderBottomLeftRadius: 36,
-        borderBottomRightRadius: 36,
-    },
-    headerTop: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-    backBtn: {
-        width: 38,
-        height: 38,
-        borderRadius: 12,
-        backgroundColor: 'rgba(255,255,255,0.2)',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
+    goBackText: { fontSize: 14, fontWeight: '600' },
     editBtn: {
-        width: 38,
-        height: 38,
-        borderRadius: 12,
-        backgroundColor: 'rgba(255,255,255,0.2)',
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
         alignItems: 'center',
         justifyContent: 'center',
     },
-    categoryChip: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        alignSelf: 'flex-start',
-        backgroundColor: 'rgba(255,255,255,0.15)',
-        borderRadius: 20,
-        paddingHorizontal: 12,
-        paddingVertical: 5,
-        marginBottom: 18,
+    scroll: { flex: 1 },
+    scrollContent: { padding: 16, paddingBottom: 40 },
+    
+    // Summary Card
+    summaryCard: {
+        borderRadius: 18,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.25)',
+        padding: 20,
+        alignItems: 'center',
+        marginBottom: 12,
+        elevation: 1,
+        shadowColor: '#000',
+        shadowOpacity: 0.02,
+        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 2 },
     },
-    categoryText: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: 'rgba(255,255,255,0.9)',
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-    },
-    amountLabel: {
+    summaryLabel: {
         fontSize: 10,
         fontWeight: '800',
-        color: 'rgba(255,255,255,0.6)',
-        letterSpacing: 1.5,
-        marginBottom: 4,
+        textTransform: 'uppercase',
+        letterSpacing: 0.8,
+        marginBottom: 6,
     },
-    amountValue: {
-        fontSize: 48,
-        fontWeight: '900',
-        color: '#FFF',
-        marginBottom: 8,
-        letterSpacing: -1,
+    summaryAmount: {
+        fontSize: 32,
+        fontWeight: '800',
+        color: '#EF4444',
+        marginBottom: 12,
+        letterSpacing: -0.5,
     },
-    expenseTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: 'rgba(255,255,255,0.8)',
-        lineHeight: 22,
+    categoryBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 5,
+        borderRadius: 20,
+        borderWidth: 1,
+    },
+    categoryBadgeText: {
+        fontSize: 12,
+        fontWeight: '700',
     },
 
-    // ── Scroll + card ─────────────────────────────────────────────────────
-    scroll: { flex: 1, marginTop: -28 },   // pull card up over header
-    scrollContent: { paddingHorizontal: 20, paddingBottom: 60 },
-    card: {
-        backgroundColor: '#FFF',
-        borderRadius: 24,
-        paddingHorizontal: 20,
-        paddingTop: 0,
-        paddingBottom: 20,
-        elevation: 4,
+    // Details list card
+    detailsCard: {
+        borderRadius: 18,
+        borderWidth: 1,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        elevation: 1,
         shadowColor: '#000',
-        shadowOpacity: 0.08,
-        shadowRadius: 16,
-        shadowOffset: { width: 0, height: 6 },
-        overflow: 'hidden',
+        shadowOpacity: 0.02,
+        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 2 },
     },
-    cardAccent: {
-        height: 4,
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
+    sectionTitle: {
+        fontSize: 13,
+        fontWeight: '800',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginTop: 6,
         marginBottom: 8,
     },
+    descriptionText: {
+        fontSize: 14,
+        lineHeight: 20,
+        marginBottom: 6,
+    },
+
+    // Delete Button
     deleteButton: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -363,7 +339,6 @@ const styles = StyleSheet.create({
         borderRadius: 14,
         paddingVertical: 14,
         marginTop: 20,
-        marginBottom: 10,
     },
     deleteButtonText: {
         fontSize: 15,

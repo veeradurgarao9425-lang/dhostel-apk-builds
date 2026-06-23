@@ -218,7 +218,7 @@ export const HostelsScreen = () => {
                                     <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
 
                                     <View style={styles.cardActions}>
-                                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                                        <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
                                             <TouchableOpacity
                                                 onPress={(e) => {
                                                     e.stopPropagation();
@@ -530,6 +530,8 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+        flexWrap: 'wrap',
+        rowGap: 8,
     },
     actionBtnIcon: {
         flexDirection: 'row',

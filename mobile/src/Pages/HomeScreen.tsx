@@ -88,7 +88,7 @@ const RevenueBar = ({ amount, maxAmount, month, isCurrent }: any) => {
     return (
         <View style={bc.column}>
             <Text style={[bc.topLabel, isCurrent && { color: '#EA580C' }]}>
-                {amount > 0 ? `₹${(amount / 1000).toFixed(0)}k` : ''}
+                {amount > 0 ? (amount >= 1000 ? `₹${(amount / 1000).toFixed(0)}k` : `₹${amount}`) : ''}
             </Text>
             <View style={bc.barWrap}>
                 <View

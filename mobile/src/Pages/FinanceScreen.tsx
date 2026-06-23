@@ -76,7 +76,10 @@ const PARTIAL_STATUSES = new Set([
 
 const CAT_COLORS: Record<string, string> = {
     'Electricity': '#F59E0B',
+    'Electricity Bill': '#F59E0B',
     'Water': '#0EA5E9',
+    'Water Bill': '#0EA5E9',
+    'Lift Bill': '#6366F1',
     'Maintenance': '#8B5CF6',
     'Salary': '#10B981',
     'Groceries': '#F97316',

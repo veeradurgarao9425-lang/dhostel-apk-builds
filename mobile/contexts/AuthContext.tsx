@@ -24,6 +24,7 @@ type AuthContextType = {
   hostels: any[];
   loadHostels: () => Promise<void>;
   cycleHostels: () => Promise<string | undefined>;
+  logoutLoading: boolean;
 };
 
 const AuthContext = createContext<AuthContextType>({
@@ -36,6 +37,7 @@ const AuthContext = createContext<AuthContextType>({
   hostels: [],
   loadHostels: async () => { },
   cycleHostels: async () => undefined,
+  logoutLoading: false,
 });
 
 export const useAuth = () => {
@@ -49,6 +51,7 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [logoutLoading, setLogoutLoading] = useState(false);
   const [hostels, setHostels] = useState<any[]>([]);
 
   const loadHostels = async () => {
@@ -235,6 +238,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signOut = async () => {
+    setLogoutLoading(true);
     try {
       const pushToken = await notificationService.registerForPushNotificationsAsync();
       if (pushToken) {
@@ -247,6 +251,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       await AsyncStorage.multiRemove(['token', 'user']);
     } catch (e) {
       console.error('Error signing out', e);
+    } finally {
+      setLogoutLoading(false);
     }
   };
 
@@ -308,6 +314,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const value = {
     user,
     loading,
+    logoutLoading,
     signIn,
     signUp,
     signOut,

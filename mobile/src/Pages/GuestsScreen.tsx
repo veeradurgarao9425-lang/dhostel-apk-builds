@@ -139,8 +139,13 @@ export default function GuestsScreen() {
                     </View>
                     {!!item.phone && <Text style={[s.sub, { color: theme.textSecondary }]}>{item.phone}</Text>}
                 </View>
-                <View style={s.amountBadge}>
-                    <Text style={s.amountText}>₹{Number(item.amount_paid || 0).toLocaleString('en-IN')}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <View style={s.amountBadge}>
+                        <Text style={s.amountText}>₹{Number(item.amount_paid || 0).toLocaleString('en-IN')}</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => handleDelete(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <Ionicons name="trash-outline" size={18} color="#DC2626" />
+                    </TouchableOpacity>
                 </View>
             </View>
 
@@ -170,9 +175,6 @@ export default function GuestsScreen() {
                         <Text style={s.checkoutBtnText}>Check Out</Text>
                     </TouchableOpacity>
                 )}
-                <TouchableOpacity onPress={() => handleDelete(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ marginLeft: 12 }}>
-                    <Ionicons name="trash-outline" size={16} color="#DC2626" />
-                </TouchableOpacity>
             </View>
         </View>
     );
@@ -294,7 +296,7 @@ const s = StyleSheet.create({
     amountBadge: { backgroundColor: '#DCFCE7', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
     amountText: { color: '#16A34A', fontWeight: '800', fontSize: 14 },
     purpose: { fontSize: 13, marginTop: 10, fontWeight: '500' },
-    metaRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 12, paddingTop: 10, borderTopWidth: 1 },
+    metaRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 12, paddingTop: 10, borderTopWidth: 1, flexWrap: 'wrap' },
     metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     metaText: { fontSize: 11, fontWeight: '600' },
     overstayBadge: { backgroundColor: '#FEE2E2', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
