@@ -474,7 +474,6 @@ export default function StudentsScreen({ navigation, route }: any) {
                 showBack={navigation.canGoBack()}
                 rightComponent={
                     <View style={styles.headerActions}>
-                        {backgroundLoading && <ActivityIndicator size="small" color="#FFF" style={{ marginRight: 2 }} />}
                         <HeaderNotification navigation={navigation} />
                         <ProfileMenu />
                     </View>

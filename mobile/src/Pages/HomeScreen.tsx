@@ -373,7 +373,6 @@ export default function HomeScreen() {
                 alignLeft={true}
                 rightComponent={
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                        {backgroundLoading && <ActivityIndicator size="small" color="#FFF" style={{ marginRight: 2 }} />}
                         <HeaderNotification navigation={navigation} />
                         <ProfileMenu />
                     </View>

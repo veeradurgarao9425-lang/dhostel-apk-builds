@@ -206,7 +206,6 @@ export const ExpenseScreen = ({ navigation }: any) => {
                 title="Expenses"
                 rightComponent={
                     <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-                        {backgroundLoading && <ActivityIndicator size="small" color="#FFF" style={{ marginRight: 2 }} />}
                         <HeaderNotification navigation={navigation} />
                         <ProfileMenu />
                     </View>
