@@ -701,10 +701,6 @@ const styles = StyleSheet.create({
         padding: 16,
         paddingBottom: 180,
     },
-    listContentContainer: {
-        padding: 16,
-        paddingBottom: 180,
-    },
 });
 
 export default ExpenseScreen;

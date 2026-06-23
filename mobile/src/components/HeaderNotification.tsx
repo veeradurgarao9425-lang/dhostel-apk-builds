@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator, Modal, Platform } from 'react-native';
-import { Bell, CheckCircle, AlertCircle, Info, X, ChevronRight } from 'lucide-react-native';
+import { CheckCircle, AlertCircle, Info, X, ChevronRight } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useNotifications, Notification } from '../hooks/useNotifications';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -60,7 +61,7 @@ export const HeaderNotification = ({ navigation }: { navigation?: any }) => {
                 onPress={() => setShowNotif(true)}
                 activeOpacity={0.8}
             >
-                <Bell color="#FFFFFF" size={24} />
+                <Ionicons name="notifications-outline" color="#FFFFFF" size={24} />
                 {unreadCount > 0 && (
                     <View style={styles.badge}>
                         <Text style={styles.badgeText}>{unreadCount}</Text>
@@ -111,7 +112,7 @@ export const HeaderNotification = ({ navigation }: { navigation?: any }) => {
                                 </View>
                             ) : notifications.length === 0 ? (
                                 <View style={styles.emptyContainer}>
-                                    <Bell color="#E0E0E0" size={32} />
+                                    <Ionicons name="notifications-outline" color="#E0E0E0" size={32} />
                                     <Text style={styles.emptyText}>No new notifications</Text>
                                 </View>
                             ) : (

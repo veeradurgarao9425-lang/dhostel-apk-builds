@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, FONT, SHADOW } from '../theme/index';
@@ -35,7 +35,7 @@ const TABS = [
 const TAB_BAR_HEIGHT = 60;
 
 // ─── Component ────────────────────────────────────────────────────────────────
-const BottomTabNavigator = ({ state, navigation }: any) => {
+const BottomTabNavigator = ({ state, descriptors, navigation }: any) => {
     const insets = useSafeAreaInsets();
 
     return (
@@ -43,29 +43,32 @@ const BottomTabNavigator = ({ state, navigation }: any) => {
             styles.container,
             { paddingBottom: Math.max(insets.bottom, 8) },
         ]}>
-            {TABS.map((tab, index) => {
-                const isActive = state.routes[state.index]?.name === tab.route;
-                const iconName = isActive ? tab.activeIcon : tab.inactiveIcon;
+            {state.routes.map((route: any, index: number) => {
+                const tabConfig = TABS.find(t => t.route === route.name);
+                if (!tabConfig) return null;
+
+                const isActive = state.index === index;
+                const iconName = isActive ? tabConfig.activeIcon : tabConfig.inactiveIcon;
 
                 const handlePress = () => {
                     const event = navigation.emit({
                         type: 'tabPress',
-                        target: tab.route,
+                        target: route.key,
                         canPreventDefault: true,
                     });
                     if (!isActive && !event.defaultPrevented) {
-                        navigation.navigate(tab.route);
+                        navigation.navigate(route.name);
                     }
                 };
 
                 return (
                     <TouchableOpacity
-                        key={index}
+                        key={route.key}
                         style={styles.tabItem}
                         onPress={handlePress}
                         activeOpacity={0.75}
                         accessibilityRole="button"
-                        accessibilityLabel={tab.label}
+                        accessibilityLabel={tabConfig.label}
                     >
                         {/* Active indicator pill at top */}
                         {isActive && (
@@ -80,16 +83,16 @@ const BottomTabNavigator = ({ state, navigation }: any) => {
                             <Ionicons
                                 name={iconName}
                                 size={22}
-                                color={isActive ? COLORS.primary : COLORS.textMuted}
+                                color={isActive ? COLORS.primary : COLORS.textSecondary}
                             />
                         </View>
 
                         <Text style={[
                             styles.label,
-                            { color: isActive ? COLORS.primary : COLORS.textMuted },
+                            { color: isActive ? COLORS.primary : COLORS.textSecondary },
                             isActive && styles.labelActive,
                         ]}>
-                            {tab.label}
+                            {tabConfig.label}
                         </Text>
                     </TouchableOpacity>
                 );

@@ -1,11 +1,13 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity,
     StatusBar, ActivityIndicator, RefreshControl, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Plus } from 'lucide-react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
+import DateTimePickerModal from 'react-native-modal-datetime-picker';
+import { toLocalDateStr } from '../utils/dateUtils';
 import api from '../services/api';
 import { useTheme } from '../../contexts/ThemeContext';
 import { AppHeader } from '../components/AppHeader';
@@ -29,11 +31,19 @@ export default function GuestsScreen() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [search, setSearch] = useState('');
+    const [dateFilter, setDateFilter] = useState<Date | null>(null);
+    const [showDatePicker, setShowDatePicker] = useState(false);
+
+    const isMounted = useRef(false);
 
     const fetchGuests = useCallback(async (silent = false) => {
         try {
             if (!silent) setLoading(true);
-            const res = await api.get('/guests');
+            const params: Record<string, any> = {};
+            if (dateFilter) {
+                params.date = toLocalDateStr(dateFilter);
+            }
+            const res = await api.get('/guests', { params });
             if (res.data?.success) {
                 setGuests(res.data.data || []);
                 setSummary(res.data.summary || { count: 0, totalCollected: 0 });
@@ -44,9 +54,24 @@ export default function GuestsScreen() {
             setLoading(false);
             setRefreshing(false);
         }
-    }, []);
+    }, [dateFilter]);
 
-    useFocusEffect(useCallback(() => { fetchGuests(true); }, [fetchGuests]));
+    // Focus listener for screen returns (e.g. after adding a guest)
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('focus', () => {
+            if (!isMounted.current) {
+                isMounted.current = true;
+                return;
+            }
+            fetchGuests(true);
+        });
+        return unsubscribe;
+    }, [navigation, fetchGuests]);
+
+    // Fetch when dateFilter changes (and on initial mount)
+    useEffect(() => {
+        fetchGuests(false);
+    }, [dateFilter, fetchGuests]);
 
     const handleDelete = (guest: any) => {
         Alert.alert('Delete Guest', `Remove ${guest.full_name}'s record?`, [
@@ -97,16 +122,19 @@ export default function GuestsScreen() {
                     <Ionicons name="log-in-outline" size={13} color="#16A34A" />
                     <Text style={[s.metaText, { color: theme.textSecondary }]}>{fmtDate(item.check_in_date)}</Text>
                 </View>
-                <View style={s.metaItem}>
-                    <Ionicons name="moon-outline" size={13} color={theme.primary} />
-                    <Text style={[s.metaText, { color: theme.textSecondary }]}>{item.days || 1} day(s)</Text>
-                </View>
                 {!!item.room_number && (
                     <View style={s.metaItem}>
                         <Ionicons name="bed-outline" size={13} color="#2563EB" />
                         <Text style={[s.metaText, { color: theme.textSecondary }]}>Room {item.room_number}</Text>
                     </View>
                 )}
+                <View style={s.metaItem}>
+                    <Ionicons name="moon-outline" size={13} color={theme.primary} />
+                    <Text style={[s.metaText, { color: theme.textSecondary }]}>
+                        {Number(item.days || 1) === 1 ? '1 day' : `${item.days || 1} days`}
+                    </Text>
+                </View>
+                <View style={{ flex: 1 }} />
                 <TouchableOpacity onPress={() => handleDelete(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                     <Ionicons name="trash-outline" size={16} color="#DC2626" />
                 </TouchableOpacity>
@@ -128,8 +156,17 @@ export default function GuestsScreen() {
                         onChangeText={setSearch}
                     />
                     {search.length > 0 && (
-                        <TouchableOpacity onPress={() => setSearch('')}>
+                        <TouchableOpacity onPress={() => setSearch('')} style={{ marginRight: 4 }}>
                             <Ionicons name="close-circle" size={18} color="#94A3B8" />
+                        </TouchableOpacity>
+                    )}
+                    <View style={{ width: 1, height: 20, backgroundColor: '#E2E8F0', marginHorizontal: 6 }} />
+                    <TouchableOpacity onPress={() => setShowDatePicker(true)} activeOpacity={0.7} style={{ padding: 4 }}>
+                        <Ionicons name="calendar" size={18} color={dateFilter ? theme.primary : '#94A3B8'} />
+                    </TouchableOpacity>
+                    {dateFilter && (
+                        <TouchableOpacity onPress={() => setDateFilter(null)} style={{ marginLeft: 4, padding: 4 }}>
+                            <Ionicons name="close-circle" size={18} color="#DC2626" />
                         </TouchableOpacity>
                     )}
                 </View>
@@ -186,6 +223,14 @@ export default function GuestsScreen() {
             >
                 <Plus color="#FFF" size={26} strokeWidth={3.5} />
             </TouchableOpacity>
+
+            <DateTimePickerModal
+                isVisible={showDatePicker}
+                mode="date"
+                date={dateFilter || new Date()}
+                onConfirm={(d) => { setDateFilter(d); setShowDatePicker(false); }}
+                onCancel={() => setShowDatePicker(false)}
+            />
         </View>
     );
 }
@@ -205,14 +250,14 @@ const s = StyleSheet.create({
     summaryDivider: { width: 1, height: 28 },
     summaryVal: { fontSize: 18, fontWeight: '900' },
     summaryLbl: { fontSize: 11, fontWeight: '600', marginTop: 2 },
-    card: { borderRadius: 18, padding: 14, marginBottom: 12, borderWidth: 1 },
+    card: { borderRadius: 20, padding: 16, marginBottom: 12, borderWidth: 1 },
     cardTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    avatar: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-    avatarText: { fontSize: 18, fontWeight: '800' },
-    name: { fontSize: 15, fontWeight: '800' },
-    sub: { fontSize: 12, fontWeight: '600', marginTop: 2 },
-    amountBadge: { backgroundColor: '#DCFCE7', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
-    amountText: { color: '#16A34A', fontWeight: '800', fontSize: 13 },
+    avatar: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+    avatarText: { fontSize: 20, fontWeight: '800' },
+    name: { fontSize: 16, fontWeight: '800' },
+    sub: { fontSize: 13, fontWeight: '600', marginTop: 2 },
+    amountBadge: { backgroundColor: '#DCFCE7', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+    amountText: { color: '#16A34A', fontWeight: '800', fontSize: 14 },
     purpose: { fontSize: 13, marginTop: 10, fontWeight: '500' },
     metaRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 12, paddingTop: 10, borderTopWidth: 1 },
     metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },

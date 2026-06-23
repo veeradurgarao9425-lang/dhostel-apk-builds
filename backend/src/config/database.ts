@@ -238,6 +238,26 @@ async function patchDatabaseSchema() {
       console.error('[schema-patch] Error checking/updating hostel_master columns:', e.message);
     }
 
+    // Ensure rooms columns exist
+    try {
+      if (tableNamesLower.includes('rooms')) {
+        console.log('[schema-patch] Checking rooms columns...');
+        const [columns] = await db.raw("SHOW COLUMNS FROM rooms");
+        const columnNames = (columns as any[]).map(col => col.Field.toLowerCase());
+        
+        if (!columnNames.includes('created_at')) {
+          console.log('[schema-patch] adding created_at to rooms...');
+          await db.raw("ALTER TABLE rooms ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+        }
+        if (!columnNames.includes('updated_at')) {
+          console.log('[schema-patch] adding updated_at to rooms...');
+          await db.raw("ALTER TABLE rooms ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+        }
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error checking/updating rooms columns:', e.message);
+    }
+
     // 3. Ensure income table exists
     try {
       if (!tableNamesLower.includes('income')) {

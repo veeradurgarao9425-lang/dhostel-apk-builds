@@ -1,13 +1,14 @@
 import React, { useState, useCallback } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity,
-    StatusBar, RefreshControl, Dimensions,
+    StatusBar, RefreshControl, Dimensions, Modal, ActivityIndicator
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import api from '../services/api';
 import { ProfileMenu } from '../components/ProfileMenu';
+import { HeaderNotification } from '../components/HeaderNotification';
 import { useTheme } from '../../contexts/ThemeContext';
 import { AppHeader } from '../components/AppHeader';
 
@@ -113,9 +114,31 @@ export default function OverviewScreen() {
 
     useFocusEffect(useCallback(() => { fetchData(true); }, [fetchData]));
 
+    const [showPicker, setShowPicker] = useState(false);
+    const [pickerYear, setPickerYear] = useState(targetDate.getFullYear());
+
+    const openPicker = () => {
+        setPickerYear(targetDate.getFullYear());
+        setShowPicker(true);
+    };
+
+    const selectMonth = (monthIndex: number) => {
+        const now = new Date();
+        if (pickerYear === now.getFullYear() && monthIndex > now.getMonth()) return;
+        const d = new Date(pickerYear, monthIndex, 1);
+        setLoading(true);
+        setTargetDate(d);
+        setShowPicker(false);
+    };
+
     const shiftMonth = (delta: number) => {
         const d = new Date(targetDate);
         d.setMonth(d.getMonth() + delta);
+        const now = new Date();
+        if (d.getFullYear() > now.getFullYear() || (d.getFullYear() === now.getFullYear() && d.getMonth() > now.getMonth())) {
+            return; // Restrict future months
+        }
+        setLoading(true);
         setTargetDate(d);
     };
 
@@ -130,7 +153,12 @@ export default function OverviewScreen() {
                 <AppHeader
                     title="Financial Overview"
                     showBack={canGoBack}
-                    rightComponent={<ProfileMenu />}
+                    rightComponent={
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                            <HeaderNotification navigation={navigation} />
+                            <ProfileMenu />
+                        </View>
+                    }
                 />
                 <View style={{ padding: 16, gap: 14 }}>
                     <Skeleton style={{ height: 120, borderRadius: 24 }} />
@@ -157,17 +185,22 @@ export default function OverviewScreen() {
             <AppHeader
                 title="Financial Overview"
                 showBack={canGoBack}
-                rightComponent={<ProfileMenu />}
+                rightComponent={
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                        <HeaderNotification navigation={navigation} />
+                        <ProfileMenu />
+                    </View>
+                }
             >
                 {/* Month Navigation */}
                 <View style={s.monthNav}>
                     <TouchableOpacity onPress={() => shiftMonth(-1)} style={s.monthArrow}>
                         <Ionicons name="chevron-back" size={18} color="#FFF" />
                     </TouchableOpacity>
-                    <View style={s.monthLabelBox}>
+                    <TouchableOpacity onPress={openPicker} style={s.monthLabelBox}>
                         <Ionicons name="calendar-outline" size={14} color="rgba(255,255,255,0.7)" />
                         <Text style={s.monthLabel}>{monthLabel}</Text>
-                    </View>
+                    </TouchableOpacity>
                     <TouchableOpacity onPress={() => shiftMonth(1)} style={s.monthArrow}>
                         <Ionicons name="chevron-forward" size={18} color="#FFF" />
                     </TouchableOpacity>
@@ -215,7 +248,7 @@ export default function OverviewScreen() {
                     {/* ── Income vs Expenses Row ── */}
                     <View style={s.summaryRow}>
                         {/* Income Card */}
-                        <View style={[s.summaryCard, s.incomeCard]}>
+                        <TouchableOpacity style={[s.summaryCard, s.incomeCard]} onPress={() => navigation.navigate('Income')} activeOpacity={0.8}>
                             <View style={[s.summaryIconBox, { backgroundColor: '#D1FAE5' }]}>
                                 <Ionicons name="arrow-up-circle" size={16} color="#10B981" />
                             </View>
@@ -227,10 +260,10 @@ export default function OverviewScreen() {
                                     <Text style={s.summaryDetailText}>Other: {fmt(cm.otherIncome)}</Text>
                                 )}
                             </View>
-                        </View>
+                        </TouchableOpacity>
 
                         {/* Expenses Card */}
-                        <View style={[s.summaryCard, s.expenseCard]}>
+                        <TouchableOpacity style={[s.summaryCard, s.expenseCard]} onPress={() => navigation.navigate('Expenses')} activeOpacity={0.8}>
                             <View style={[s.summaryIconBox, { backgroundColor: '#FEE2E2' }]}>
                                 <Ionicons name="arrow-down-circle" size={16} color="#EF4444" />
                             </View>
@@ -241,7 +274,7 @@ export default function OverviewScreen() {
                                     {(cm.expenseBreakdown || []).length} categories
                                 </Text>
                             </View>
-                        </View>
+                        </TouchableOpacity>
                     </View>
 
                     {/* ── Rent Collection Status ── */}
@@ -406,6 +439,56 @@ export default function OverviewScreen() {
 
                 </View>
             </ScrollView>
+
+            {/* ── Month/Year Picker Modal ── */}
+            <Modal visible={showPicker} transparent animationType="fade" onRequestClose={() => setShowPicker(false)}>
+                <View style={s.modalOverlay}>
+                    <View style={s.pickerCard}>
+                        <View style={s.pickerHeader}>
+                            <TouchableOpacity onPress={() => setPickerYear(y => y - 1)} style={s.yearArrow}>
+                                <Ionicons name="chevron-back" size={20} color="#334155" />
+                            </TouchableOpacity>
+                            <Text style={s.pickerYearText}>{pickerYear}</Text>
+                            <TouchableOpacity 
+                                onPress={() => setPickerYear(y => y + 1)} 
+                                style={[s.yearArrow, pickerYear >= new Date().getFullYear() && { opacity: 0.3 }]}
+                                disabled={pickerYear >= new Date().getFullYear()}
+                            >
+                                <Ionicons name="chevron-forward" size={20} color="#334155" />
+                            </TouchableOpacity>
+                        </View>
+                        
+                        <View style={s.monthGrid}>
+                            {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((m, i) => {
+                                const now = new Date();
+                                const isFuture = pickerYear > now.getFullYear() || (pickerYear === now.getFullYear() && i > now.getMonth());
+                                const isSelected = pickerYear === targetDate.getFullYear() && i === targetDate.getMonth();
+                                return (
+                                    <TouchableOpacity 
+                                        key={m} 
+                                        style={[s.monthCell, isSelected && s.monthCellSelected, isFuture && s.monthCellDisabled]}
+                                        disabled={isFuture}
+                                        onPress={() => selectMonth(i)}
+                                    >
+                                        <Text style={[s.monthCellText, isSelected && s.monthCellTextSelected, isFuture && s.monthCellTextDisabled]}>{m}</Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                        <TouchableOpacity style={s.pickerCloseBtn} onPress={() => setShowPicker(false)}>
+                            <Text style={s.pickerCloseText}>Cancel</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Translucent loading overlay */}
+            {loading && data && (
+                <View style={s.loadingOverlay}>
+                    <ActivityIndicator size="large" color="#7C3AED" />
+                    <Text style={s.loadingText}>Fetching overview...</Text>
+                </View>
+            )}
         </View>
     );
 }
@@ -742,4 +825,35 @@ const s = StyleSheet.create({
     avgDivider: { width: 1, backgroundColor: '#F1F5F9', height: 28, alignSelf: 'center' },
     avgLabel: { fontSize: 9, color: '#94A3B8', fontWeight: '600', marginBottom: 4, textTransform: 'uppercase' },
     avgValue: { fontSize: 14, fontWeight: '800' },
+
+    // Modal
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+    pickerCard: { backgroundColor: '#FFF', borderRadius: 24, padding: 20, width: '100%', maxWidth: 340, elevation: 10, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 15, shadowOffset: { width: 0, height: 5 } },
+    pickerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, paddingHorizontal: 10 },
+    yearArrow: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
+    pickerYearText: { fontSize: 20, fontWeight: '900', color: '#1E293B' },
+    monthGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginTop: 10 },
+    monthCell: { width: '30%', height: 48, marginVertical: 6, borderRadius: 12, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
+    monthCellSelected: { backgroundColor: '#7C3AED', borderColor: '#7C3AED' },
+    monthCellDisabled: { opacity: 0.4, backgroundColor: '#F1F5F9' },
+    monthCellText: { fontSize: 14, fontWeight: '700', color: '#475569' },
+    monthCellTextSelected: { color: '#FFF' },
+    monthCellTextDisabled: { color: '#94A3B8' },
+    pickerCloseBtn: { marginTop: 20, paddingVertical: 14, alignItems: 'center', borderRadius: 14, backgroundColor: '#F1F5F9' },
+    pickerCloseText: { fontSize: 15, fontWeight: '700', color: '#64748B' },
+
+    // Loading Overlay
+    loadingOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(255, 255, 255, 0.75)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 999,
+    },
+    loadingText: {
+        marginTop: 10,
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#7C3AED',
+    },
 });

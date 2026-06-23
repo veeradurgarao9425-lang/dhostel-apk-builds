@@ -27,6 +27,15 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
     }
     const totalRooms = await roomsQuery.first();
 
+    // Get total available rooms (rooms where occupied_beds < capacity)
+    let availableRoomsQuery = db('rooms')
+      .whereRaw('occupied_beds < capacity')
+      .count('* as count');
+    if (hostelIds.length > 0) {
+      availableRoomsQuery = availableRoomsQuery.whereIn('hostel_id', hostelIds);
+    }
+    const availableRooms = await availableRoomsQuery.first();
+
     // Get total students (active)
     let studentsQuery = db('students')
       .where('status', 1)
@@ -214,10 +223,15 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
     console.log('[DEBUG] Dashboard Stats Request for user:', user?.user_id, 'Role:', user?.role_id);
     console.log('[DEBUG] totalRooms:', totalRooms?.count);
     console.log('[DEBUG] totalStudents:', totalStudents?.count);
-    // Get new admissions count this month (using admission_date)
+    // Get new admissions count this week (using admission_date in the last 7 days)
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    const oneWeekAgoStr = `${oneWeekAgo.getFullYear()}-${String(oneWeekAgo.getMonth() + 1).padStart(2, '0')}-${String(oneWeekAgo.getDate()).padStart(2, '0')}`;
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
     let newAdmissionsQuery = db('students')
       .where('status', 1)
-      .whereBetween('admission_date', [monthStart, monthEnd])
+      .whereBetween('admission_date', [oneWeekAgoStr, todayStr])
       .count('* as count');
     if (hostelIds.length > 0) {
       newAdmissionsQuery = newAdmissionsQuery.whereIn('hostel_id', hostelIds);
@@ -237,6 +251,7 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
       success: true,
       data: {
         totalRooms: Number(totalRooms?.count || 0),
+        availableRooms: Number(availableRooms?.count || 0),
         totalStudents: Number(totalStudents?.count || 0),
         occupancyRate: Number(occupancyRate),
         totalBeds: Number(totalBeds),

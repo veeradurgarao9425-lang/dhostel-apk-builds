@@ -17,8 +17,13 @@ import { AuthProvider } from './contexts/AuthContext';
 export default function App() {
   const [currentRoute, setCurrentRoute] = useState<string | undefined>(undefined);
 
-  // Show chatbot on all authenticated screens; hide only on Splash & Login
-  const showChatbot = !!currentRoute && currentRoute !== 'Splash' && currentRoute !== 'Login';
+  // Show chatbot on all authenticated screens; hide on Splash, Login, Register, QRSignup and any Add form screens
+  const showChatbot = !!currentRoute && 
+    currentRoute !== 'Splash' && 
+    currentRoute !== 'Login' && 
+    currentRoute !== 'Register' &&
+    currentRoute !== 'QRSignup' &&
+    !currentRoute.startsWith('Add');
 
   return (
     <ErrorBoundary>

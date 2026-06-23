@@ -12,6 +12,7 @@ import {
     SectionList,
     RefreshControl,
     Dimensions,
+    ScrollView,
 } from 'react-native';
 import { Plus, Search, X } from 'lucide-react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,7 +33,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 const { width } = Dimensions.get('window');
 const COLUMN_COUNT = 3;
-const ITEM_WIDTH = (width - 32 - 24) / COLUMN_COUNT;
+const ITEM_WIDTH = Math.floor((width - 32 - 24) / COLUMN_COUNT) - 3;
 
 export default function RoomsScreen({ navigation, route }: any) {
     const { user } = useAuth();
@@ -43,7 +44,50 @@ export default function RoomsScreen({ navigation, route }: any) {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [activeTab, setActiveTab] = useState('All');
+    const [selectedFloor, setSelectedFloor] = useState('All');
     const isMountedRef = useRef(true);
+
+    const getUniqueFloors = () => {
+        const floorsMap = new Map<string, number>();
+        let totalCount = 0;
+        
+        rooms.forEach(room => {
+            const matchesSearch = room.room_number?.toString().includes(search) ||
+                room.room_type_name?.toLowerCase().includes(search.toLowerCase());
+            
+            let matchesTab = true;
+            if (activeTab === 'Vacant') matchesTab = room.available_beds > 0;
+            if (activeTab === 'Full') matchesTab = room.available_beds === 0;
+
+            if (matchesSearch && matchesTab) {
+                const floorStr = `Floor ${room.floor_number || 'N/A'}`;
+                floorsMap.set(floorStr, (floorsMap.get(floorStr) || 0) + 1);
+                totalCount++;
+            }
+        });
+
+        const sortedFloors = Array.from(floorsMap.keys()).sort((a, b) => {
+            const numA = parseInt(a.replace(/\D/g, '')) || 0;
+            const numB = parseInt(b.replace(/\D/g, '')) || 0;
+            return numA - numB;
+        });
+
+        return [
+            { key: 'All', label: `All Floors (${totalCount})` },
+            ...sortedFloors.map(floor => ({
+                key: floor,
+                label: `${floor} (${floorsMap.get(floor)})`
+            }))
+        ];
+    };
+
+    const uniqueFloors = getUniqueFloors();
+
+    useEffect(() => {
+        if (!uniqueFloors.some(f => f.key === selectedFloor)) {
+            setSelectedFloor('All');
+        }
+    }, [search, activeTab, rooms]);
 
     // ── Fetch rooms ──────────────────────────────────────────────────────────
     const fetchRooms = useCallback(async (isRefresh = false) => {
@@ -88,9 +132,15 @@ export default function RoomsScreen({ navigation, route }: any) {
         const filtered = rooms.filter(room => {
             const matchesSearch = room.room_number?.toString().includes(search) ||
                 room.room_type_name?.toLowerCase().includes(search.toLowerCase());
-            if (activeTab === 'Vacant') return matchesSearch && room.available_beds > 0;
-            if (activeTab === 'Full') return matchesSearch && room.available_beds === 0;
-            return matchesSearch;
+            
+            let matchesTab = true;
+            if (activeTab === 'Vacant') matchesTab = room.available_beds > 0;
+            if (activeTab === 'Full') matchesTab = room.available_beds === 0;
+
+            const floorStr = `Floor ${room.floor_number || 'N/A'}`;
+            const matchesFloor = selectedFloor === 'All' || floorStr === selectedFloor;
+
+            return matchesSearch && matchesTab && matchesFloor;
         });
 
         const groups: any = {};
@@ -118,36 +168,69 @@ export default function RoomsScreen({ navigation, route }: any) {
             statusColor = theme.success;
         }
 
-        const total = room.total_capacity || 0;
-        const occupied = room.occupied_beds || 0;
-        const maxDots = 5;
-        const dotsToShow = Math.min(total, maxDots);
-        const bedDots = [];
-
-        for (let i = 0; i < dotsToShow; i++) {
-            const isBedOccupied = i < occupied;
-            bedDots.push(
-                <View
-                    key={i}
-                    style={[
-                        styles.bedDot,
-                        {
-                            backgroundColor: isBedOccupied ? statusColor : 'transparent',
-                            borderColor: isBedOccupied ? 'transparent' : (isDark ? '#475569' : '#CBD5E1'),
-                            borderWidth: isBedOccupied ? 0 : 1,
-                        }
-                    ]}
-                />
-            );
-        }
-
         const getShortRoomType = (typeName?: string) => {
             if (!typeName) return 'ROOM';
-            let clean = typeName.replace(/sharing/gi, 'Share').replace(/bed/gi, 'B').trim();
-            if (clean.length > 9) {
-                clean = clean.substring(0, 9);
+            let clean = typeName
+                .replace(/sharing/gi, '')
+                .replace(/share/gi, '')
+                .replace(/\bsh\b/gi, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+            if (clean.length > 10) {
+                clean = clean.substring(0, 10);
             }
             return clean.toUpperCase();
+        };
+
+        const renderCapacityPill = () => {
+            const hasVacantBeds = room.available_beds > 0;
+            const isRoomEmpty = room.occupied_beds === 0;
+
+            if (hasVacantBeds) {
+                return (
+                    <TouchableOpacity
+                        style={[
+                            styles.capacityBar,
+                            { 
+                                backgroundColor: statusColor + '20', 
+                                flexDirection: 'row', 
+                                alignItems: 'center', 
+                                gap: isRoomEmpty ? 4 : 3,
+                                paddingHorizontal: isRoomEmpty ? 6 : 8,
+                            }
+                        ]}
+                        onPress={(e) => {
+                            e.stopPropagation();
+                            navigation.navigate('AddStudent', { roomId: room.room_id });
+                        }}
+                        activeOpacity={0.7}
+                    >
+                        {isRoomEmpty ? (
+                            <>
+                                <Ionicons name="person-add" size={10} color={statusColor} />
+                                <Text style={[styles.capacityText, { color: statusColor, fontSize: 8 }]}>
+                                    ADD TENANT
+                                </Text>
+                            </>
+                        ) : (
+                            <>
+                                <Text style={[styles.capacityText, { color: statusColor }]}>
+                                    {room.occupied_beds}/{room.total_capacity}
+                                </Text>
+                                <Ionicons name="add" size={10} color={statusColor} />
+                            </>
+                        )}
+                    </TouchableOpacity>
+                );
+            }
+
+            return (
+                <View style={[styles.capacityBar, { backgroundColor: statusColor + '20' }]}>
+                    <Text style={[styles.capacityText, { color: statusColor }]}>
+                        {room.occupied_beds}/{room.total_capacity}
+                    </Text>
+                </View>
+            );
         };
 
         return (
@@ -157,42 +240,25 @@ export default function RoomsScreen({ navigation, route }: any) {
                     styles.roomCard,
                     {
                         backgroundColor: theme.cardBg,
-                        borderColor: isDark ? '#334155' : '#E2E8F0',
-                        borderWidth: isDark ? 1 : 1.2,
+                        borderColor: statusColor + '55',
+                        borderWidth: 1.5,
                     }
                 ]}
                 onPress={() => navigation.navigate('RoomDetails', { roomId: room.room_id })}
                 activeOpacity={0.85}
             >
-                {/* Header row: Room type on left, status dot on right */}
-                <View style={styles.cardHeader}>
-                    <Text style={[styles.roomLabel, { color: theme.textSecondary }]} numberOfLines={1}>
-                        {getShortRoomType(room.room_type_name)}
-                    </Text>
-                    <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-                </View>
-
-                {/* Center: Room Number */}
-                <View style={styles.roomNumContainer}>
-                    <Text style={[styles.roomNum, { color: theme.textPrimary }]}>
-                        {room.room_number}
+                <View style={[styles.statusTag, { backgroundColor: statusColor }]}>
+                    <Text style={styles.statusTagText}>
+                        {isFull ? 'FULL' : `${room.available_beds} FREE`}
                     </Text>
                 </View>
-
-                {/* Footer: Bed occupancy dots + text */}
-                <View style={styles.cardFooter}>
-                    <View style={styles.bedDotsContainer}>
-                        {bedDots}
-                        {total > maxDots && (
-                            <Text style={[styles.extraBedsText, { color: theme.textSecondary }]}>
-                                +{total - maxDots}
-                            </Text>
-                        )}
-                    </View>
-                    <Text style={[styles.capacityText, { color: theme.textSecondary }]}>
-                        {occupied}/{total} Beds
-                    </Text>
-                </View>
+                <Text style={[styles.roomLabel, { color: theme.textSecondary }]} numberOfLines={1}>
+                    {getShortRoomType(room.room_type_name)}
+                </Text>
+                <Text style={[styles.roomNum, { color: theme.textPrimary }]}>
+                    {room.room_number}
+                </Text>
+                {renderCapacityPill()}
             </TouchableOpacity>
         );
     };
@@ -257,6 +323,39 @@ export default function RoomsScreen({ navigation, route }: any) {
                     ))}
                 </View>
             </AppHeader>
+
+            {!loading && uniqueFloors.length > 1 && (
+                <View style={[styles.floorFilterContainer, { backgroundColor: isDark ? theme.background : '#F8FAFC', borderBottomColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.floorFilterScroll}
+                    >
+                        {uniqueFloors.map(floor => (
+                            <TouchableOpacity
+                                key={floor.key}
+                                onPress={() => {
+                                    LayoutAnimation.easeInEaseOut();
+                                    setSelectedFloor(floor.key);
+                                }}
+                                style={[
+                                    styles.floorFilterTab,
+                                    { backgroundColor: isDark ? '#1E293B' : '#FFF', borderColor: isDark ? '#334155' : '#E2E8F0' },
+                                    selectedFloor === floor.key && { backgroundColor: COLORS.primary, borderColor: COLORS.primary }
+                                ]}
+                            >
+                                <Text style={[
+                                    styles.floorFilterText,
+                                    { color: theme.textSecondary },
+                                    selectedFloor === floor.key && { color: '#FFF', fontWeight: 'bold' }
+                                ]}>
+                                    {floor.label}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+                </View>
+            )}
 
             {loading ? (
                 <SkeletonList count={6} />
@@ -349,6 +448,25 @@ const styles = StyleSheet.create({
         borderRadius: RADIUS.sm + 2,
     },
     tabLabelText: { fontSize: FONT.sm, fontWeight: FONT.bold },
+    floorFilterContainer: {
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        borderBottomWidth: 1,
+    },
+    floorFilterScroll: {
+        gap: 8,
+        alignItems: 'center',
+    },
+    floorFilterTab: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        borderWidth: 1,
+    },
+    floorFilterText: {
+        fontSize: 12,
+        fontWeight: '700',
+    },
 
     listContent: { padding: 16, paddingBottom: 120 },
     floorHeaderRow: {
@@ -377,12 +495,11 @@ const styles = StyleSheet.create({
     gridRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 12 },
     roomCard: {
         width: ITEM_WIDTH,
-        height: 120,
-        borderRadius: 16,
-        borderWidth: 1,
-        paddingVertical: 10,
-        paddingHorizontal: 8,
-        justifyContent: 'space-between',
+        height: 102,
+        borderRadius: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingTop: 12,
         position: 'relative',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
@@ -390,59 +507,41 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 1,
     },
-    cardHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+    statusTag: {
+        position: 'absolute',
+        top: -1,
+        left: -1,
+        right: -1,
+        borderTopLeftRadius: 12.5,
+        borderTopRightRadius: 12.5,
+        paddingVertical: 2.5,
         alignItems: 'center',
-        width: '100%',
-        paddingHorizontal: 4,
     },
-    statusDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
+    statusTagText: {
+        fontSize: 8,
+        fontWeight: '900',
+        color: '#FFF',
     },
     roomLabel: {
-        fontSize: 9,
+        fontSize: 8.5,
         fontWeight: '700',
-        letterSpacing: 0.5,
-        maxWidth: '75%',
-    },
-    roomNumContainer: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        flex: 1,
-        marginTop: 2,
+        marginTop: 4,
+        textAlign: 'center',
+        maxWidth: '90%',
     },
     roomNum: {
-        fontSize: 22,
-        fontWeight: '800',
+        fontSize: 20,
+        fontWeight: '900',
     },
-    cardFooter: {
-        alignItems: 'center',
-        width: '100%',
-    },
-    bedDotsContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 4,
-        marginBottom: 4,
-    },
-    bedDot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-    },
-    extraBedsText: {
-        fontSize: 8,
-        fontWeight: '700',
-        marginLeft: 2,
+    capacityBar: {
+        marginTop: 5,
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 10,
     },
     capacityText: {
-        fontSize: 9,
-        fontWeight: '600',
-        textAlign: 'center',
+        fontSize: 9.5,
+        fontWeight: '800',
     },
     fab: {
         position: 'absolute',

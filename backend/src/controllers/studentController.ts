@@ -16,7 +16,7 @@ const convertToDateOnly = (dateValue: any): string | null => {
 // Get all students (Owner sees only their hostel students)
 export const getStudents = async (req: AuthRequest, res: Response) => {
   try {
-    const { hostelId, status, search, page, limit } = req.query;
+    const { hostelId, status, search, page, limit, date, startDate, endDate } = req.query;
     const user = req.user;
 
     let query = db('students as s')
@@ -60,6 +60,13 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
           .orWhere('s.phone', 'like', searchTerm)
           .orWhere('r.room_number', 'like', searchTerm);
       });
+    }
+
+    // Filter by specific date or range
+    if (date) {
+      query = query.where('s.admission_date', date);
+    } else if (startDate && endDate) {
+      query = query.whereBetween('s.admission_date', [startDate, endDate]);
     }
 
     // Pagination

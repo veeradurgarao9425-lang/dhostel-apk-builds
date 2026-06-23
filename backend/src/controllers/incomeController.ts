@@ -80,9 +80,10 @@ export const getAllIncome = async (req: AuthRequest, res: Response) => {
       guestRows = []; // guests table may not exist on older databases
     }
 
-    const merged = [...incomes, ...guestRows].sort((a, b) =>
-      String(b.income_date).localeCompare(String(a.income_date))
-    );
+    const merged = [...incomes, ...guestRows].map(inc => ({
+      ...inc,
+      income_date: safeGetDateString(inc.income_date)
+    })).sort((a, b) => String(b.income_date).localeCompare(String(a.income_date)));
 
     res.json({
       success: true,
@@ -321,7 +322,7 @@ export const getIncomeSummary = async (req: AuthRequest, res: Response) => {
 };
 
 // Helper to format date safely in JS
-const safeGetDateString = (d: any): string => {
+export const safeGetDateString = (d: any): string => {
   if (!d) return '';
   try {
     const date = new Date(d);

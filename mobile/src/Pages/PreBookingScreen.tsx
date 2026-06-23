@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     View,
     Text,
@@ -12,13 +12,16 @@ import {
     ActivityIndicator,
     Alert,
     Keyboard,
+    Pressable,
+    Animated,
+    Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
     User, Phone, Home, Calendar,
-    ChevronDown, Check, BedDouble, Plus,
+    ChevronDown, Check, BedDouble, Plus, Search,
 } from 'lucide-react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { useAuth } from '../../contexts/AuthContext';
@@ -68,24 +71,72 @@ const SelectField = ({ label, value, placeholder, icon: Icon, onPress, error }: 
 
 const Selector = ({ label, options, selected, onSelect }: any) => {
     const { theme, isDark, fontSize } = useTheme();
+    const selectedIndex = options.indexOf(selected);
+    const anim = useRef(new Animated.Value(selectedIndex >= 0 ? selectedIndex : 0)).current;
+
+    useEffect(() => {
+        if (selectedIndex >= 0) {
+            Animated.spring(anim, {
+                toValue: selectedIndex,
+                useNativeDriver: false,
+                tension: 80,
+                friction: 12,
+            }).start();
+        }
+    }, [selectedIndex]);
+
+    const [containerWidth, setContainerWidth] = useState(0);
+    const numOptions = options.length;
+    const itemWidth = containerWidth ? (containerWidth - 8) / numOptions : 0;
+
+    const translateX = anim.interpolate({
+        inputRange: [0, numOptions - 1],
+        outputRange: [0, (numOptions - 1) * itemWidth],
+    });
+
     return (
         <View style={styles.inputGroup}>
             <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }]}>{label}</Text>
-            <View style={styles.selectorRow}>
+            <View 
+                style={[
+                    styles.selectorContainer, 
+                    { 
+                        backgroundColor: isDark ? '#1E293B' : '#F1F5F9', 
+                        borderColor: isDark ? '#334155' : '#E2E8F0' 
+                    }
+                ]}
+                onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
+            >
+                {itemWidth > 0 && (
+                    <Animated.View 
+                        style={[
+                            styles.selectorPill, 
+                            { 
+                                width: itemWidth, 
+                                backgroundColor: theme.primary,
+                                transform: [{ translateX }] 
+                            }
+                        ]}
+                    />
+                )}
                 {options.map((opt: string) => {
                     const isAct = selected === opt;
                     return (
                         <TouchableOpacity
                             key={opt}
-                            style={[
-                                styles.selectorItem,
-                                { borderColor: isDark ? '#334155' : '#E2E8F0', backgroundColor: isDark ? '#1E293B' : '#F8FAFC' },
-                                isAct && { borderColor: theme.primary, backgroundColor: isDark ? theme.primary + '30' : theme.lightBg }
-                            ]}
+                            style={styles.selectorTab}
                             onPress={() => onSelect(opt)}
-                            activeOpacity={0.7}
+                            activeOpacity={0.8}
                         >
-                            <Text style={[styles.selectorText, { fontSize: fontSize }, isAct && { color: theme.primary, fontWeight: '700' }]}>{opt}</Text>
+                            <Text 
+                                style={[
+                                    styles.selectorTabText, 
+                                    { fontSize: fontSize, color: isAct ? '#FFF' : theme.textSecondary },
+                                    isAct && { fontWeight: '800' }
+                                ]}
+                            >
+                                {opt}
+                            </Text>
                         </TouchableOpacity>
                     );
                 })}
@@ -94,18 +145,52 @@ const Selector = ({ label, options, selected, onSelect }: any) => {
     );
 };
 
-// ─── Inline Room Picker Drawer ───────────────────────────────────────────────
-import { Modal } from 'react-native';
-
+// ─── Smooth bottom-sheet modal ────────────────────────────────────────────────
 const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: any) => {
+    const { theme } = useTheme();
+    const anim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        if (visible) {
+            Animated.timing(anim, {
+                toValue: 1,
+                duration: 250,
+                useNativeDriver: true,
+            }).start();
+        } else {
+            Animated.timing(anim, {
+                toValue: 0,
+                duration: 200,
+                useNativeDriver: true,
+            }).start();
+        }
+    }, [visible]);
+
     if (!visible) return null;
+
+    const backdropOpacity = anim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, 0.5],
+    });
+
+    const sheetTranslateY = anim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [600, 0],
+    });
+
     return (
-        <Modal transparent visible={visible} animationType="slide" statusBarTranslucent onRequestClose={onClose}>
-            <View style={styles.modalOverlay}>
-                <View style={[styles.sheet, { maxHeight }]}>
+        <Modal transparent visible={visible} animationType="none" statusBarTranslucent onRequestClose={onClose}>
+            <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+                <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#000', opacity: backdropOpacity }]}>
+                    <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} />
+                </Animated.View>
+                <Animated.View style={[
+                    styles.sheet,
+                    { maxHeight, backgroundColor: theme.cardBg || '#FFF', transform: [{ translateY: sheetTranslateY }] }
+                ]}>
                     <View style={styles.sheetHandle} />
                     {children}
-                </View>
+                </Animated.View>
             </View>
         </Modal>
     );
@@ -114,12 +199,34 @@ const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: any) => {
 const RoomPickerDrawer = ({ visible, rooms, selectedRoomId, onSelectRoom, onClose }: any) => {
     const { theme, isDark, fontSize } = useTheme();
     const [search, setSearch] = useState('');
+    const [selectedFloor, setSelectedFloor] = useState('All');
+
+    const uniqueFloors = React.useMemo(() => {
+        const floorsSet = new Set<number>();
+        rooms.forEach((r: any) => {
+            if (r.floor_number !== undefined && r.floor_number !== null) {
+                floorsSet.add(r.floor_number);
+            }
+        });
+        const sorted = Array.from(floorsSet).sort((a, b) => a - b);
+        return ['All', ...sorted.map(f => f.toString())];
+    }, [rooms]);
+
+    useEffect(() => {
+        if (!uniqueFloors.includes(selectedFloor)) {
+            setSelectedFloor('All');
+        }
+    }, [rooms, uniqueFloors]);
+
     const grouped = React.useMemo(() => {
-        const f = search ? rooms.filter((r: any) => r.room_number?.toString().includes(search)) : rooms;
+        let f = search ? rooms.filter((r: any) => r.room_number?.toString().includes(search)) : rooms;
+        if (selectedFloor !== 'All') {
+            f = f.filter((r: any) => (r.floor_number?.toString() || '0') === selectedFloor);
+        }
         const map: Record<number, any[]> = {};
         f.forEach((r: any) => { const fl = r.floor_number ?? 0; if (!map[fl]) map[fl] = []; map[fl].push(r); });
         return Object.keys(map).sort((a, b) => Number(a) - Number(b)).map(fl => ({ floor: Number(fl), rooms: map[Number(fl)] }));
-    }, [rooms, search]);
+    }, [rooms, search, selectedFloor]);
 
     const statusColor = (r: any) => r.status === 'MAINTENANCE' ? '#F97316' : (r.available_beds ?? 0) > 0 ? '#16A34A' : '#DC2626';
 
@@ -129,39 +236,86 @@ const RoomPickerDrawer = ({ visible, rooms, selectedRoomId, onSelectRoom, onClos
                 <Text style={[styles.sheetTitle, { color: theme.textPrimary }]}>Select Room</Text>
                 <TouchableOpacity onPress={onClose} style={[styles.doneBtn, { backgroundColor: isDark ? theme.primary + '20' : '#FFEFE6' }]}><Text style={[styles.doneBtnText, { color: theme.primary }]}>Close</Text></TouchableOpacity>
             </View>
-            <View style={{ paddingHorizontal: 16, marginBottom: 8 }}>
+            <View style={{ paddingHorizontal: 16, marginBottom: 8, marginTop: 8 }}>
                 <View style={[styles.searchBarWrap, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                    <Text style={{ color: theme.textSecondary, marginRight: 8, fontSize: 16 }}>🔍</Text>
+                    <Search color={isDark ? '#94A3B8' : '#64748B'} size={18} style={{ marginRight: 8 }} />
                     <TextInput style={{ flex: 1, fontSize: 15, color: theme.textPrimary }} placeholder="Search room..." placeholderTextColor={isDark ? '#64748B' : '#94A3B8'} value={search} onChangeText={setSearch} />
                 </View>
             </View>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 16 }}>
+            {uniqueFloors.length > 1 && (
+                <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                        {uniqueFloors.map((floor) => {
+                            const isSel = selectedFloor === floor;
+                            const label = floor === 'All' ? 'All Floors' : `Floor ${floor}`;
+                            return (
+                                <TouchableOpacity
+                                    key={floor}
+                                    onPress={() => setSelectedFloor(floor)}
+                                    style={{
+                                        paddingHorizontal: 12,
+                                        paddingVertical: 6,
+                                        borderRadius: 16,
+                                        borderWidth: 1,
+                                        borderColor: isSel ? theme.primary : (isDark ? '#334155' : '#E2E8F0'),
+                                        backgroundColor: isSel ? theme.primary : (isDark ? '#1E293B' : '#FFF'),
+                                    }}
+                                    activeOpacity={0.75}
+                                >
+                                    <Text style={{
+                                        fontSize: 12,
+                                        fontWeight: '700',
+                                        color: isSel ? '#FFF' : theme.textSecondary,
+                                    }}>{label}</Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </ScrollView>
+                </View>
+            )}
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 150, paddingHorizontal: 16 }}>
                 {grouped.length === 0 && <View style={{ padding: 40, alignItems: 'center' }}><Text style={{ color: theme.textSecondary }}>No rooms found</Text></View>}
                 {grouped.map(({ floor, rooms: fr }) => (
                     <View key={floor}>
                         <View style={[styles.floorChip, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}><Text style={[styles.floorChipText, { color: theme.textSecondary }]}>FLOOR {floor}</Text></View>
-                        {fr.map((room: any) => {
-                            const isSel = selectedRoomId === room.room_id?.toString();
-                            const avail = room.available_beds ?? 0;
-                            return (
-                                <TouchableOpacity key={room.room_id}
-                                    style={[styles.roomCard, { backgroundColor: isDark ? '#1E293B' : '#FFF8F4', borderColor: isDark ? '#334155' : '#FFE4D6' }, isSel && { borderColor: theme.primary, backgroundColor: isDark ? theme.primary + '20' : '#FFEFE6' }, avail <= 0 && { opacity: 0.55 }]}
-                                    onPress={() => { onSelectRoom(room); setSearch(''); onClose(); }} activeOpacity={0.75}>
-                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <Text style={[styles.roomNum, { fontSize: fontSize + 4, color: theme.textPrimary }, isSel && { color: theme.primary }]}>{room.room_number}</Text>
-                                        {!isSel && <Text style={[styles.roomCap, { fontSize: fontSize - 1, color: theme.textSecondary }]}>Cap: {room.capacity ?? '—'}</Text>}
-                                    </View>
-                                    <Text style={[styles.roomAvail, { fontSize: fontSize - 1, color: statusColor(room) }]}>Available: {avail}</Text>
-                                    <Text style={[styles.roomRent, { fontSize: fontSize - 1, color: theme.textSecondary }]}>Rent: ₹{room.rent_per_bed ?? room.base_rent ?? '—'}</Text>
-                                    {isSel && (
-                                        <View style={[styles.selectedBadge, { backgroundColor: isDark ? theme.primary + '20' : '#FFEFE6' }]}>
-                                            <Check size={11} color={theme.primary} />
-                                            <Text style={[styles.selectedBadgeText, { color: theme.primary }]}>Selected</Text>
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'space-between' }}>
+                            {fr.map((room: any) => {
+                                const isSel = selectedRoomId === room.room_id?.toString();
+                                const avail = room.available_beds ?? 0;
+                                return (
+                                    <TouchableOpacity key={room.room_id}
+                                        style={[
+                                            styles.roomCard, 
+                                            { 
+                                                backgroundColor: isDark ? '#1E293B' : (isSel ? theme.primary + '10' : '#FFF'), 
+                                                borderColor: isSel ? theme.primary : (isDark ? '#334155' : '#E2E8F0'),
+                                                width: '48.5%',
+                                                padding: 14,
+                                                marginBottom: 10,
+                                                borderWidth: 1.5,
+                                                borderRadius: 14,
+                                                elevation: 1,
+                                                shadowColor: '#000',
+                                                shadowOpacity: 0.02,
+                                                shadowRadius: 3,
+                                                shadowOffset: { width: 0, height: 1 },
+                                            },
+                                            avail <= 0 && { opacity: 0.55 }
+                                        ]}
+                                        onPress={() => { onSelectRoom(room); setSearch(''); onClose(); }} activeOpacity={0.75}>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                                            <Text style={{ fontSize: fontSize + 2, fontWeight: '800', color: isSel ? theme.primary : theme.textPrimary }}>Room {room.room_number}</Text>
+                                            {isSel && <Check size={14} color={theme.primary} />}
                                         </View>
-                                    )}
-                                </TouchableOpacity>
-                            );
-                        })}
+                                        <View style={{ gap: 4 }}>
+                                            <Text style={{ fontSize: fontSize - 2, color: theme.textSecondary }} numberOfLines={1}>Type: {room.room_type_name ? room.room_type_name.replace(/share|sharing|sh/gi, '').trim() : 'Standard'}</Text>
+                                            <Text style={{ fontSize: fontSize - 2, color: statusColor(room), fontWeight: '700' }}>Avail: {avail} / {room.capacity ?? '—'}</Text>
+                                            <Text style={{ fontSize: fontSize - 2, color: theme.textPrimary, fontWeight: '700', marginTop: 2 }}>₹{room.rent_per_bed ?? room.base_rent ?? '—'}/bed</Text>
+                                        </View>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
                     </View>
                 ))}
             </ScrollView>
@@ -182,7 +336,7 @@ const BedPickerDrawer = ({ visible, room, beds, selectedBedId, onSelectBed, onCl
             {loading ? (
                 <ActivityIndicator color={theme.primary} size="large" style={{ marginVertical: 40 }} />
             ) : (
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}>
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 150 }}>
                     {beds.length === 0 && <View style={{ padding: 40, alignItems: 'center' }}><Text style={{ color: theme.textSecondary }}>No beds in this room</Text></View>}
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
                         {beds.map((bed: any) => {
@@ -192,8 +346,8 @@ const BedPickerDrawer = ({ visible, room, beds, selectedBedId, onSelectBed, onCl
                                 <TouchableOpacity key={bed.bed_id}
                                     style={[
                                         styles.bedCard,
-                                        { backgroundColor: isDark ? '#1E293B' : '#FFF8F4', borderColor: isDark ? '#334155' : '#FFE4D6' },
-                                        isSel && { borderColor: theme.primary, backgroundColor: isDark ? theme.primary + '20' : '#FFEFE6' },
+                                        { backgroundColor: isDark ? '#1E293B' : COLORS.primaryLight, borderColor: isDark ? '#334155' : COLORS.border },
+                                        isSel && { borderColor: theme.primary },
                                         !isAvail && { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#1E293B' : '#E2E8F0', opacity: 0.65 }
                                     ]}
                                     onPress={() => { if (!isAvail) return; onSelectBed(bed); onClose(); }} activeOpacity={0.75}>
@@ -433,7 +587,7 @@ const styles = StyleSheet.create({
     },
     submitButtonText: { color: '#FFF', fontWeight: '700', fontSize: 15 },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-    sheet: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 8 },
+    sheet: { position: 'absolute', bottom: 0, left: 0, right: 0, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 8 },
     sheetHandle: { width: 40, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, alignSelf: 'center', marginBottom: 12 },
     sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
     sheetTitle: { fontSize: 17, fontWeight: '700' },
@@ -456,4 +610,30 @@ const styles = StyleSheet.create({
     bedName: { fontWeight: '700' },
     saveBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
     disabledBtn: { opacity: 0.7 },
+    selectorContainer: {
+        flexDirection: 'row',
+        position: 'relative',
+        borderRadius: 14,
+        padding: 4,
+        borderWidth: 1,
+        height: 48,
+        alignItems: 'center',
+    },
+    selectorPill: {
+        position: 'absolute',
+        top: 4,
+        bottom: 4,
+        left: 4,
+        borderRadius: 10,
+    },
+    selectorTab: {
+        flex: 1,
+        height: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 2,
+    },
+    selectorTabText: {
+        fontWeight: '600',
+    },
 });

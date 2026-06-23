@@ -371,31 +371,11 @@ export default function CollectedPaymentsScreen() {
                                     onChangeText={setSearchQuery}
                                     placeholderTextColor="#94A3B8"
                                 />
-                                <TouchableOpacity onPress={() => setDatePickerVisible(true)}>
+                                <TouchableOpacity onPress={() => setDatePickerVisible(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                                     <Ionicons name="calendar-outline" size={18} color="#059669" />
-                                </TouchableOpacity>
-                            </View>
-
-                            {/* Monthly Collections Selector Row */}
-                            <View style={s.collectionsHeaderRow}>
-                                <View>
-                                    <Text style={s.collectionsTitle}>Monthly Collections</Text>
-                                    <Text style={s.collectionsSubtitle}>Analytics & revenue overview</Text>
-                                </View>
-                            </View>
-
-                            <View style={s.filterOptionsRow}>
-                                <TouchableOpacity style={s.allFilterBtn} activeOpacity={0.8}>
-                                    <Ionicons name="grid-outline" size={18} color="#059669" />
-                                    <Text style={s.allFilterText}>All</Text>
-                                </TouchableOpacity>
-                                
-                                <TouchableOpacity style={s.monthDropdown} onPress={() => setDatePickerVisible(true)} activeOpacity={0.8}>
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={s.dropdownLabel}>Collection Month & Year</Text>
-                                        <Text style={s.dropdownValue}>{getMonthLabel(refDate)}</Text>
-                                    </View>
-                                    <Ionicons name="chevron-down" size={18} color="#1E293B" />
+                                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#059669', marginRight: 2 }}>
+                                        {refDate.toLocaleDateString('en-IN', { month: 'short', year: '2-digit' })}
+                                    </Text>
                                 </TouchableOpacity>
                             </View>
                         </View>

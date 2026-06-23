@@ -20,8 +20,12 @@ export const getGuests = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ success: false, error: 'Your account is not linked to any hostel.' });
     }
 
-    const { search } = req.query;
+    const { search, date } = req.query;
     let query = db('guests').where('hostel_id', hostelId);
+
+    if (date) {
+      query = query.where('check_in_date', date);
+    }
 
     if (search) {
       const term = `%${search}%`;
@@ -32,7 +36,7 @@ export const getGuests = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const guests = await query.orderBy('check_in_date', 'desc').orderBy('guest_id', 'desc');
+    const guests = await query.orderBy('created_at', 'desc').orderBy('guest_id', 'desc');
 
     const totalCollected = guests.reduce((sum: number, g: any) => sum + Number(g.amount_paid || 0), 0);
 

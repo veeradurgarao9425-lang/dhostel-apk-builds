@@ -1,7 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
-    ScrollView, StatusBar, RefreshControl
+    ScrollView, StatusBar, RefreshControl, Animated
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -12,6 +12,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { ProfileMenu } from '../components/ProfileMenu';
 import { AppHeader } from '../components/AppHeader';
+import { HeaderNotification } from '../components/HeaderNotification';
+import { toLocalDateStr } from '../utils/dateUtils';
 
 // ─── Initial state ────────────────────────────────────────────────────────────
 const INITIAL_STATE = {
@@ -28,6 +30,7 @@ const INITIAL_STATE = {
     leftTenants: 0,
     unpaidStudents: [] as any[],
     totalRooms: 0,
+    availableRooms: 0,
     occupancyRate: 0,
     prebookingsCount: 0,
     noticesCount: 0,
@@ -102,6 +105,25 @@ export default function HomeScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [hasError, setHasError] = useState(false);
     const isFirstLoadRef = React.useRef(true);
+
+    const pulseValue = useRef(new Animated.Value(1)).current;
+
+    useEffect(() => {
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(pulseValue, {
+                    toValue: 1.12,
+                    duration: 800,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(pulseValue, {
+                    toValue: 1.0,
+                    duration: 800,
+                    useNativeDriver: true,
+                }),
+            ])
+        ).start();
+    }, []);
 
     // ── Data loader ───────────────────────────────────────────────────────────
     const load = useCallback(async (isRefresh = false) => {
@@ -199,6 +221,7 @@ export default function HomeScreen() {
                 leftTenants: d2.leftTenants || d2.vacatedStudents || 0,
                 unpaidStudents: topDefaulters,
                 totalRooms: d2.totalRooms || 0,
+                availableRooms: d2.availableRooms || 0,
                 occupancyRate: d2.occupancyRate || 0,
                 prebookingsCount: d2.prebookingsCount || 0,
                 noticesCount: d2.noticesCount || 0,
@@ -306,9 +329,7 @@ export default function HomeScreen() {
                     subtitle={(user?.full_name || 'Owner').split(' ')[0]}
                     showBack={navigation.canGoBack()}
                     rightComponent={
-                        <TouchableOpacity style={s.bellBtn}>
-                            <Ionicons name="notifications-outline" size={22} color="#FFF" />
-                        </TouchableOpacity>
+                        <HeaderNotification navigation={navigation} />
                     }
                 />
                 <View style={s.errorCenter}>
@@ -345,14 +366,7 @@ export default function HomeScreen() {
                 alignLeft={true}
                 rightComponent={
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                        <TouchableOpacity
-                            style={s.bellBtn}
-                            onPress={() => navigation.navigate('Notifications')}
-                            activeOpacity={0.8}
-                        >
-                            <Ionicons name="notifications-outline" size={22} color="#FFF" />
-                            {data.totalDuesAmount > 0 && <View style={s.bellDot} />}
-                        </TouchableOpacity>
+                        <HeaderNotification navigation={navigation} />
                         <ProfileMenu />
                     </View>
                 }
@@ -420,7 +434,15 @@ export default function HomeScreen() {
                         {/* Card 4: New Admissions */}
                         <TouchableOpacity
                             style={[s.topMetricCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
-                            onPress={() => navigation.navigate('Students')}
+                            onPress={() => {
+                                const today = new Date();
+                                const lastWeek = new Date();
+                                lastWeek.setDate(today.getDate() - 7);
+                                navigation.navigate('Students', {
+                                    startDate: toLocalDateStr(lastWeek),
+                                    endDate: toLocalDateStr(today)
+                                });
+                            }}
                             activeOpacity={0.8}
                         >
                             <View style={[s.topMetricIconCircle, { backgroundColor: '#F3E5F5' }]}>
@@ -432,84 +454,151 @@ export default function HomeScreen() {
                     </View>
 
                     {/* ─────────────────── BEDS OVERVIEW ─────────────────── */}
-                    <View style={[s.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                    {data.totalBeds === 0 ? (
                         <TouchableOpacity
-                            style={s.cardHeader}
-                            activeOpacity={0.7}
-                            onPress={() => navigation.navigate('Rooms', { filter: 'All' })}
+                            style={[
+                                s.card, 
+                                { 
+                                    backgroundColor: theme.cardBg, 
+                                    borderColor: isDark ? '#334155' : '#F1F5F9',
+                                    flexDirection: 'row', 
+                                    alignItems: 'center', 
+                                    padding: 16,
+                                    gap: 14
+                                }
+                            ]}
+                            onPress={() => navigation.navigate('AddRoom')}
+                            activeOpacity={0.8}
                         >
-                            <View style={s.cardHeaderLeft}>
-                                <Ionicons name="apps" size={15} color={theme.primary} />
-                                <Text style={[s.cardTitle, { fontSize: fontSize - 1, color: theme.textPrimary }]}>Beds & Occupancy Overview</Text>
-                                <Ionicons name="chevron-forward" size={12} color={theme.textSecondary} style={{ marginLeft: 2 }} />
+                            <Animated.View style={{ 
+                                transform: [{ scale: pulseValue }],
+                                width: 44, 
+                                height: 44, 
+                                borderRadius: 22, 
+                                backgroundColor: theme.primary, 
+                                justifyContent: 'center', 
+                                alignItems: 'center',
+                                shadowColor: theme.primary,
+                                shadowOffset: { width: 0, height: 3 },
+                                shadowOpacity: 0.2,
+                                shadowRadius: 4,
+                                elevation: 3,
+                            }}>
+                                <Ionicons name="add" size={26} color="#FFF" />
+                            </Animated.View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontSize: 14, fontWeight: '800', color: theme.textPrimary, marginBottom: 2 }}>
+                                    Register Rooms
+                                </Text>
+                                <Text style={{ fontSize: 11.5, color: theme.textSecondary, fontWeight: '600', lineHeight: 15 }}>
+                                    Add your first room to manage student occupancy and beds.
+                                </Text>
                             </View>
-                            <Text style={[s.cardMeta, { fontSize: Math.max(9, fontSize - 4), color: theme.textSecondary }]}>
-                                Total: {data.totalBeds} beds
-                            </Text>
+                            <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
                         </TouchableOpacity>
-
-                        {/* Progress Bar Visual */}
-                        <View style={s.bedProgressContainer}>
-                            <View style={[s.progressBarBackground, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                                <View style={[s.progressBarFill, { width: `${data.occupancyRate}%`, backgroundColor: '#7C3AED' }]} />
+                    ) : (
+                        <View style={[s.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                            <View style={[s.cardHeader, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
+                                <TouchableOpacity
+                                    style={s.cardHeaderLeft}
+                                    activeOpacity={0.7}
+                                    onPress={() => navigation.navigate('Rooms', { filter: 'All' })}
+                                >
+                                    <Ionicons name="apps" size={15} color={theme.primary} />
+                                    <Text style={[s.cardTitle, { fontSize: fontSize - 1, color: theme.textPrimary }]}>Beds & Occupancy Overview</Text>
+                                    <Ionicons name="chevron-forward" size={12} color={theme.textSecondary} style={{ marginLeft: 2 }} />
+                                </TouchableOpacity>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                    <Text style={[s.cardMeta, { fontSize: Math.max(9, fontSize - 4), color: theme.textSecondary, fontWeight: '700' }]}>
+                                        Rooms: {data.totalRooms} ({data.availableRooms} Avail)
+                                    </Text>
+                                    <Animated.View style={{ transform: [{ scale: pulseValue }] }}>
+                                        <TouchableOpacity
+                                            onPress={() => navigation.navigate('AddRoom')}
+                                            style={{
+                                                width: 22,
+                                                height: 22,
+                                                borderRadius: 11,
+                                                backgroundColor: theme.primary,
+                                                justifyContent: 'center',
+                                                alignItems: 'center',
+                                                shadowColor: theme.primary,
+                                                shadowOffset: { width: 0, height: 2 },
+                                                shadowOpacity: 0.2,
+                                                shadowRadius: 3,
+                                                elevation: 2,
+                                            }}
+                                            activeOpacity={0.7}
+                                        >
+                                            <Ionicons name="add" size={14} color="#FFF" style={{ fontWeight: '900' }} />
+                                        </TouchableOpacity>
+                                    </Animated.View>
+                                </View>
                             </View>
-                            <View style={s.progressTextRow}>
-                                <Text style={[s.progressTextLabel, { fontSize: Math.max(9, fontSize - 4), color: theme.textSecondary }]}>
-                                    {data.occupiedBeds} / {data.totalBeds} Beds Occupied
-                                </Text>
-                                <Text style={[s.progressTextVal, { fontSize: fontSize - 3, color: '#7C3AED', fontWeight: '800' }]}>
-                                    {data.occupancyRate}%
-                                </Text>
+
+                            {/* Progress Bar Visual */}
+                            <View style={s.bedProgressContainer}>
+                                <View style={[s.progressBarBackground, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                    <View style={[s.progressBarFill, { width: `${data.occupancyRate}%`, backgroundColor: '#7C3AED' }]} />
+                                </View>
+                                <View style={s.progressTextRow}>
+                                    <Text style={[s.progressTextLabel, { fontSize: Math.max(9, fontSize - 4), color: theme.textSecondary }]}>
+                                        {data.occupiedBeds} / {data.totalBeds} Beds Occupied
+                                    </Text>
+                                    <Text style={[s.progressTextVal, { fontSize: fontSize - 3, color: '#7C3AED', fontWeight: '800' }]}>
+                                        {data.occupancyRate}%
+                                    </Text>
+                                </View>
+                            </View>
+
+                            <View style={s.bedsRowNew}>
+                                {/* Available */}
+                                <TouchableOpacity
+                                    style={[s.bedCardNew, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#E8F5E9' }]}
+                                    activeOpacity={0.7}
+                                    onPress={() => navigation.navigate('Rooms', { filter: 'Vacant' })}
+                                >
+                                    <View style={[s.bedIconNew, { backgroundColor: '#E8F5E9' }]}>
+                                        <Ionicons name="checkmark-circle-sharp" size={20} color="#2E7D32" />
+                                    </View>
+                                    <View>
+                                        <Text style={[s.bedNumNew, { fontSize: fontSize - 2, color: isDark ? theme.textPrimary : '#2E7D32' }]}>{data.availableBeds}</Text>
+                                        <Text style={[s.bedLblNew, { fontSize: Math.max(9, fontSize - 5), color: theme.textSecondary }]}>Available</Text>
+                                    </View>
+                                </TouchableOpacity>
+
+                                {/* Occupied */}
+                                <TouchableOpacity
+                                    style={[s.bedCardNew, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#FFEBEE' }]}
+                                    activeOpacity={0.7}
+                                    onPress={() => navigation.navigate('Rooms', { filter: 'Full' })}
+                                >
+                                    <View style={[s.bedIconNew, { backgroundColor: '#FFEBEE' }]}>
+                                        <Ionicons name="people-sharp" size={20} color="#C62828" />
+                                    </View>
+                                    <View>
+                                        <Text style={[s.bedNumNew, { fontSize: fontSize - 2, color: isDark ? theme.textPrimary : '#C62828' }]}>{data.occupiedBeds}</Text>
+                                        <Text style={[s.bedLblNew, { fontSize: Math.max(9, fontSize - 5), color: theme.textSecondary }]}>Occupied</Text>
+                                    </View>
+                                </TouchableOpacity>
+
+                                {/* Notices board */}
+                                <TouchableOpacity
+                                    style={[s.bedCardNew, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#FFF3E0' }]}
+                                    activeOpacity={0.7}
+                                    onPress={() => navigation.navigate('Notices')}
+                                >
+                                    <View style={[s.bedIconNew, { backgroundColor: '#FFF3E0' }]}>
+                                        <Ionicons name="megaphone-sharp" size={20} color="#EF6C00" />
+                                    </View>
+                                    <View>
+                                        <Text style={[s.bedNumNew, { fontSize: fontSize - 2, color: isDark ? theme.textPrimary : '#EF6C00' }]}>{data.noticesCount}</Text>
+                                        <Text style={[s.bedLblNew, { fontSize: Math.max(9, fontSize - 5), color: theme.textSecondary }]}>Notices</Text>
+                                    </View>
+                                </TouchableOpacity>
                             </View>
                         </View>
-
-                        <View style={s.bedsRowNew}>
-                            {/* Available */}
-                            <TouchableOpacity
-                                style={[s.bedCardNew, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#E8F5E9' }]}
-                                activeOpacity={0.7}
-                                onPress={() => navigation.navigate('Rooms', { filter: 'Vacant' })}
-                            >
-                                <View style={[s.bedIconNew, { backgroundColor: '#E8F5E9' }]}>
-                                    <Ionicons name="checkmark-circle-sharp" size={20} color="#2E7D32" />
-                                </View>
-                                <View>
-                                    <Text style={[s.bedNumNew, { fontSize: fontSize - 2, color: isDark ? theme.textPrimary : '#2E7D32' }]}>{data.availableBeds}</Text>
-                                    <Text style={[s.bedLblNew, { fontSize: Math.max(9, fontSize - 5), color: theme.textSecondary }]}>Available</Text>
-                                </View>
-                            </TouchableOpacity>
-
-                            {/* Occupied */}
-                            <TouchableOpacity
-                                style={[s.bedCardNew, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#FFEBEE' }]}
-                                activeOpacity={0.7}
-                                onPress={() => navigation.navigate('Rooms', { filter: 'Full' })}
-                            >
-                                <View style={[s.bedIconNew, { backgroundColor: '#FFEBEE' }]}>
-                                    <Ionicons name="people-sharp" size={20} color="#C62828" />
-                                </View>
-                                <View>
-                                    <Text style={[s.bedNumNew, { fontSize: fontSize - 2, color: isDark ? theme.textPrimary : '#C62828' }]}>{data.occupiedBeds}</Text>
-                                    <Text style={[s.bedLblNew, { fontSize: Math.max(9, fontSize - 5), color: theme.textSecondary }]}>Occupied</Text>
-                                </View>
-                            </TouchableOpacity>
-
-                            {/* Notices board */}
-                            <TouchableOpacity
-                                style={[s.bedCardNew, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#FFF3E0' }]}
-                                activeOpacity={0.7}
-                                onPress={() => navigation.navigate('Notices')}
-                            >
-                                <View style={[s.bedIconNew, { backgroundColor: '#FFF3E0' }]}>
-                                    <Ionicons name="megaphone-sharp" size={20} color="#EF6C00" />
-                                </View>
-                                <View>
-                                    <Text style={[s.bedNumNew, { fontSize: fontSize - 2, color: isDark ? theme.textPrimary : '#EF6C00' }]}>{data.noticesCount}</Text>
-                                    <Text style={[s.bedLblNew, { fontSize: Math.max(9, fontSize - 5), color: theme.textSecondary }]}>Notices</Text>
-                                </View>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
+                    )}
 
                     {/* ─────────────────── QUICK ACTIONS ─────────────────── */}
                     <View style={[s.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
@@ -658,7 +747,12 @@ export default function HomeScreen() {
                             </View>
                             <View style={{ gap: 10 }}>
                                 {data.upcomingVacates.map((item, idx) => (
-                                    <View key={idx} style={[s.checkoutItem, { borderColor: isDark ? '#475569' : '#E2E8F0' }]}>
+                                    <TouchableOpacity
+                                        key={idx}
+                                        style={[s.checkoutItem, { borderColor: isDark ? '#475569' : '#E2E8F0' }]}
+                                        onPress={() => navigation.navigate('StudentDetails', { studentId: item.student_id })}
+                                        activeOpacity={0.7}
+                                    >
                                         <View style={[s.checkoutAvatar, { backgroundColor: theme.primary + '15' }]}>
                                             <Text style={[s.checkoutAvatarText, { color: theme.primary }]}>
                                                 {avatarLetter(item.name)}
@@ -679,7 +773,7 @@ export default function HomeScreen() {
                                                 {item.daysLeft <= 0 ? 'Today' : `${item.daysLeft}d left`}
                                             </Text>
                                         </View>
-                                    </View>
+                                    </TouchableOpacity>
                                 ))}
                             </View>
                         </View>

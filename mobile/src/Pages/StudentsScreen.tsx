@@ -33,6 +33,7 @@ import { LoadMoreFooter } from '../components/ui/LoadMoreFooter';
 import { SkeletonList } from '../components/ui/SkeletonCard';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { COLORS } from '../theme/index';
+import { toLocalDateStr } from '../utils/dateUtils';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -237,6 +238,8 @@ export default function StudentsScreen({ navigation, route }: any) {
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [counts, setCounts] = useState({ active: 0, inactive: 0, prebooked: 0, qrRegister: 0, total: 0 });
     const [dateFilter, setDateFilter] = useState<Date | null>(null);
+    const [startDateFilter, setStartDateFilter] = useState<string | null>(null);
+    const [endDateFilter, setEndDateFilter] = useState<string | null>(null);
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     // Confirm dialog state
@@ -253,6 +256,13 @@ export default function StudentsScreen({ navigation, route }: any) {
         if (route?.params?.filter) {
             setActiveTab(route.params.filter);
             navigation.setParams({ filter: undefined });
+        }
+        if (route?.params?.startDate && route?.params?.endDate) {
+            setStartDateFilter(route.params.startDate);
+            setEndDateFilter(route.params.endDate);
+            setDateFilter(null);
+            setActiveTab('Active');
+            navigation.setParams({ startDate: undefined, endDate: undefined });
         }
     }, [route?.params]);
 
@@ -286,7 +296,12 @@ export default function StudentsScreen({ navigation, route }: any) {
             const params: Record<string, any> = { page: pageNum, limit: PAGE_SIZE };
             if (debouncedSearch) params.search = debouncedSearch;
             if (statusParam !== undefined) params.status = statusParam;
-            if (dateFilter) params.date = dateFilter.toISOString().split('T')[0];
+            if (dateFilter) {
+                params.date = toLocalDateStr(dateFilter);
+            } else if (startDateFilter && endDateFilter) {
+                params.startDate = startDateFilter;
+                params.endDate = endDateFilter;
+            }
 
             const response = await api.get('/students', { params, signal: controller.signal });
             if (controller.signal.aborted) return;
@@ -312,7 +327,7 @@ export default function StudentsScreen({ navigation, route }: any) {
                 setLoadingMore(false);
             }
         }
-    }, [activeTab, debouncedSearch]);
+    }, [activeTab, debouncedSearch, dateFilter, startDateFilter, endDateFilter]);
 
     // ── Reset when tab or search changes ─────────────────────────────────
     useEffect(() => {
@@ -320,19 +335,23 @@ export default function StudentsScreen({ navigation, route }: any) {
         setHasMore(true);
         fetchPage(1, false);
         return () => { abortRef.current?.abort(); };
-    }, [activeTab, debouncedSearch, dateFilter]);
+    }, [activeTab, debouncedSearch, dateFilter, startDateFilter, endDateFilter]);
 
     // ── Reload on focus, skip the very first mount ────────────────────────
     const isMounted = useRef(false);
     useEffect(() => {
         const unsubscribe = navigation.addListener('focus', () => {
             if (!isMounted.current) { isMounted.current = true; return; }
+            // Skip focus reload if we have incoming route parameters (they will trigger their own fetch)
+            if (route?.params?.startDate || route?.params?.endDate || route?.params?.filter) {
+                return;
+            }
             setPage(1);
             setHasMore(true);
             fetchPage(1, true);
         });
         return unsubscribe;
-    }, [navigation, fetchPage]);
+    }, [navigation, fetchPage, route?.params]);
 
     // ── Fetch Counts ──────────────────────────────────────────────────────
     const fetchCounts = async () => {
@@ -474,10 +493,14 @@ export default function StudentsScreen({ navigation, route }: any) {
                     )}
                     <View style={{ width: 1, height: 20, backgroundColor: 'rgba(255,255,255,0.2)', marginHorizontal: 8 }} />
                     <TouchableOpacity onPress={() => setShowDatePicker(true)}>
-                        <Calendar size={18} color={dateFilter ? '#FFF' : 'rgba(255,255,255,0.6)'} />
+                        <Calendar size={18} color={(dateFilter || startDateFilter) ? '#FFF' : 'rgba(255,255,255,0.6)'} />
                     </TouchableOpacity>
-                    {dateFilter && (
-                        <TouchableOpacity onPress={() => setDateFilter(null)} style={{ marginLeft: 6 }}>
+                    {(dateFilter || startDateFilter) && (
+                        <TouchableOpacity onPress={() => {
+                            setDateFilter(null);
+                            setStartDateFilter(null);
+                            setEndDateFilter(null);
+                        }} style={{ marginLeft: 6 }}>
                             <X size={18} color="#FFF" />
                         </TouchableOpacity>
                     )}
@@ -488,6 +511,8 @@ export default function StudentsScreen({ navigation, route }: any) {
                     mode="date"
                     onConfirm={(date) => {
                         setDateFilter(date);
+                        setStartDateFilter(null);
+                        setEndDateFilter(null);
                         setShowDatePicker(false);
                     }}
                     onCancel={() => setShowDatePicker(false)}

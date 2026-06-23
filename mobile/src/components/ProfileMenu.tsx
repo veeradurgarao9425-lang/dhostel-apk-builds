@@ -72,17 +72,21 @@ export const ProfileMenu = () => {
         setThemeId(id);
     };
 
+    const getInitial = () => {
+        if (user?.full_name) return user.full_name.charAt(0).toUpperCase();
+        return 'U';
+    };
+
     return (
         <>
             <View
                 {...panResponder.panHandlers}
                 style={[styles.profileButton, { cursor: 'pointer' }]}
             >
-                <View style={[styles.avatarMini, { backgroundColor: '#EDE9FE', overflow: 'hidden' }]}>
-                    <Image
-                        source={{ uri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=80&h=80&q=80' }}
-                        style={styles.avatarImage}
-                    />
+                <View style={[styles.avatarMini, { backgroundColor: theme.primary, overflow: 'hidden' }]}>
+                    <Text style={[styles.avatarText, { color: '#FFF' }]}>
+                        {getInitial()}
+                    </Text>
                 </View>
             </View>
 

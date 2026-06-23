@@ -187,77 +187,80 @@ export const HostelsScreen = () => {
                         return (
                             <TouchableOpacity
                                 key={h.hostel_id}
-                                style={[styles.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
+                                style={[styles.premiumCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}
                                 onPress={() => handleViewDetails(h)}
-                                activeOpacity={0.8}
+                                activeOpacity={0.9}
                                 disabled={isSwitching}
                             >
-                                <View style={styles.cardHeader}>
-                                    <View style={[styles.avatarBox, { backgroundColor: avatarBg }]}>
-                                        <Text style={[styles.avatarTextInitials, { color: avatarTextColor }]}>
-                                            {getInitials(h.hostel_name)}
-                                        </Text>
-                                    </View>
-                                    <View style={styles.infoContainer}>
-                                        <Text style={[styles.nameText, { color: theme.textPrimary }]} numberOfLines={1}>
-                                            {h.hostel_name}
-                                        </Text>
-                                        <Text style={[styles.subDetailText, { color: theme.textSecondary }]} numberOfLines={1}>
-                                            {h.address}, {h.city} • {h.hostel_type || 'Co-Living'}
-                                        </Text>
-                                    </View>
-                                    <View style={[styles.statusBadge, { backgroundColor: isActive ? theme.success + '15' : 'rgba(148, 163, 184, 0.15)' }]}>
-                                        <Text style={[styles.statusBadgeText, { color: isActive ? theme.success : theme.textSecondary }]}>
-                                            {isActive ? 'Active' : 'Inactive'}
-                                        </Text>
-                                    </View>
-                                </View>
-
-                                <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
-
-                                <View style={styles.cardActions}>
-                                    <View style={{ flexDirection: 'row', gap: 8 }}>
-                                        <TouchableOpacity
-                                            onPress={(e) => {
-                                                e.stopPropagation();
-                                                navigation.navigate('AddHostel', { hostel: h, isEdit: true });
-                                            }}
-                                            style={[styles.actionBtnIcon, { backgroundColor: isDark ? '#334155' : '#F8FAFC', borderColor: isDark ? '#475569' : '#E2E8F0' }]}
-                                        >
-                                            <Ionicons name="create-outline" size={14} color={theme.primary} />
-                                            <Text style={[styles.actionBtnIconText, { color: theme.textSecondary }]}>Edit</Text>
-                                        </TouchableOpacity>
-                                        <TouchableOpacity
-                                            onPress={(e) => {
-                                                e.stopPropagation();
-                                                handleQuickReports(h.hostel_id, h.hostel_name);
-                                            }}
-                                            style={[styles.actionBtnIcon, { backgroundColor: isDark ? '#334155' : '#F8FAFC', borderColor: isDark ? '#475569' : '#E2E8F0' }]}
-                                        >
-                                            <Ionicons name="bar-chart" size={14} color="#2563EB" />
-                                            <Text style={[styles.actionBtnIconText, { color: theme.textSecondary }]}>Reports</Text>
-                                        </TouchableOpacity>
-                                    </View>
-
-                                    {isSwitching ? (
-                                        <ActivityIndicator size="small" color={theme.primary} style={{ marginRight: 10 }} />
-                                    ) : (
-                                        <TouchableOpacity
-                                            onPress={() => handleViewDetails(h)}
-                                            style={[
-                                                styles.statusToggleBtnNew,
-                                                {
-                                                    backgroundColor: isActive ? theme.success + '15' : theme.primary + '15',
-                                                    borderColor: isActive ? theme.success + '30' : theme.primary + '30',
-                                                    borderWidth: 1
-                                                }
-                                            ]}
-                                        >
-                                            <Text style={[styles.statusToggleTextNew, { color: isActive ? theme.success : theme.primary }]}>
-                                                View Details
+                                <View style={[styles.cardAccentLine, { backgroundColor: statusColor }]} />
+                                <View style={styles.cardInner}>
+                                    <View style={styles.cardHeader}>
+                                        <View style={[styles.avatarBox, { backgroundColor: avatarBg }]}>
+                                            <Text style={[styles.avatarTextInitials, { color: avatarTextColor }]}>
+                                                {getInitials(h.hostel_name)}
                                             </Text>
-                                        </TouchableOpacity>
-                                    )}
+                                        </View>
+                                        <View style={styles.infoContainer}>
+                                            <Text style={[styles.nameText, { color: theme.textPrimary }]} numberOfLines={1}>
+                                                {h.hostel_name}
+                                            </Text>
+                                            <Text style={[styles.subDetailText, { color: theme.textSecondary }]} numberOfLines={1}>
+                                                {h.address}, {h.city} • {h.hostel_type || 'Co-Living'}
+                                            </Text>
+                                        </View>
+                                        <View style={[styles.statusBadge, { backgroundColor: isActive ? theme.success + '15' : 'rgba(148, 163, 184, 0.15)' }]}>
+                                            <Text style={[styles.statusBadgeText, { color: isActive ? theme.success : theme.textSecondary }]}>
+                                                {isActive ? 'Active' : 'Inactive'}
+                                            </Text>
+                                        </View>
+                                    </View>
+
+                                    <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
+
+                                    <View style={styles.cardActions}>
+                                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                                            <TouchableOpacity
+                                                onPress={(e) => {
+                                                    e.stopPropagation();
+                                                    navigation.navigate('AddHostel', { hostel: h, isEdit: true });
+                                                }}
+                                                style={[styles.actionBtnIcon, { backgroundColor: isDark ? '#334155' : '#F8FAFC', borderColor: isDark ? '#475569' : '#E2E8F0' }]}
+                                            >
+                                                <Ionicons name="create-outline" size={14} color={theme.primary} />
+                                                <Text style={[styles.actionBtnIconText, { color: theme.textSecondary }]}>Edit</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                onPress={(e) => {
+                                                    e.stopPropagation();
+                                                    handleQuickReports(h.hostel_id, h.hostel_name);
+                                                }}
+                                                style={[styles.actionBtnIcon, { backgroundColor: isDark ? '#334155' : '#F8FAFC', borderColor: isDark ? '#475569' : '#E2E8F0' }]}
+                                            >
+                                                <Ionicons name="bar-chart" size={14} color="#2563EB" />
+                                                <Text style={[styles.actionBtnIconText, { color: theme.textSecondary }]}>Reports</Text>
+                                            </TouchableOpacity>
+                                        </View>
+
+                                        {isSwitching ? (
+                                            <ActivityIndicator size="small" color={theme.primary} style={{ marginRight: 10 }} />
+                                        ) : (
+                                            <TouchableOpacity
+                                                onPress={() => handleViewDetails(h)}
+                                                style={[
+                                                    styles.statusToggleBtnNew,
+                                                    {
+                                                        backgroundColor: isActive ? theme.success + '15' : theme.primary + '15',
+                                                        borderColor: isActive ? theme.success + '30' : theme.primary + '30',
+                                                        borderWidth: 1
+                                                    }
+                                                ]}
+                                            >
+                                                <Text style={[styles.statusToggleTextNew, { color: isActive ? theme.success : theme.primary }]}>
+                                                    View Details
+                                                </Text>
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
                                 </View>
                             </TouchableOpacity>
                         );
@@ -462,11 +465,24 @@ const styles = StyleSheet.create({
     emptyText: {
         fontSize: 16,
     },
-    card: {
-        borderRadius: 16,
-        padding: 12,
+    premiumCard: {
+        borderRadius: 20,
         marginBottom: 12,
-        borderWidth: 1,
+        flexDirection: 'row',
+        overflow: 'hidden',
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 2 },
+    },
+    cardAccentLine: {
+        width: 5,
+    },
+    cardInner: {
+        flex: 1,
+        padding: 14,
+        gap: 12,
     },
     cardHeader: {
         flexDirection: 'row',

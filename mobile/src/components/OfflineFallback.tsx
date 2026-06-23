@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Image, StyleSheet, Text, Dimensions } from 'react-native';
+import { View, Image, StyleSheet, Text, Dimensions, TouchableOpacity } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { COLORS } from '../theme/index';
 
@@ -8,10 +8,18 @@ const { width, height } = Dimensions.get('window');
 export const OfflineFallback = ({ children }: { children: React.ReactNode }) => {
     const [isConnected, setIsConnected] = useState<boolean | null>(true);
 
+    const checkConnection = () => {
+        NetInfo.fetch().then(state => {
+            setIsConnected(state.isConnected && state.isInternetReachable !== false);
+        });
+    };
+
     useEffect(() => {
         const unsubscribe = NetInfo.addEventListener(state => {
-            setIsConnected(state.isConnected);
+            setIsConnected(state.isConnected && state.isInternetReachable !== false);
         });
+
+        checkConnection();
 
         return () => {
             unsubscribe();
@@ -28,6 +36,13 @@ export const OfflineFallback = ({ children }: { children: React.ReactNode }) => 
                 />
                 <Text style={styles.title}>No Internet Connection</Text>
                 <Text style={styles.subtitle}>Please check your network settings and try again.</Text>
+                <TouchableOpacity 
+                    style={[styles.retryBtn, { backgroundColor: COLORS.primary || '#7C3AED' }]} 
+                    onPress={checkConnection}
+                    activeOpacity={0.8}
+                >
+                    <Text style={styles.retryBtnText}>Retry Connection</Text>
+                </TouchableOpacity>
             </View>
         );
     }
@@ -60,5 +75,21 @@ const styles = StyleSheet.create({
         color: COLORS.textSecondary || '#6B6B8A',
         textAlign: 'center',
         paddingHorizontal: 20,
-    }
+    },
+    retryBtn: {
+        marginTop: 24,
+        paddingHorizontal: 28,
+        paddingVertical: 12,
+        borderRadius: 12,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 2 },
+    },
+    retryBtnText: {
+        color: '#FFFFFF',
+        fontSize: 15,
+        fontWeight: 'bold',
+    },
 });
