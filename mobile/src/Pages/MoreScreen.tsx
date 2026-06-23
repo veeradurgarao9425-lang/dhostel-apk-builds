@@ -283,21 +283,15 @@ export default function MoreScreen() {
                 <View style={s.headerContent}>
                     <TouchableOpacity onPress={() => navigation.navigate('Profile')} activeOpacity={0.9} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
                         <View style={s.avatarCircle}>
-                            <Text style={s.avatarText}>
-                                {(user?.full_name || 'O')[0].toUpperCase()}
-                            </Text>
+                            <Ionicons name="person" size={20} color="#FFF" />
                         </View>
                         <View style={{ flex: 1 }}>
-                            <Text style={[s.headerName, { fontSize: fontSize + 4 }]}>{user?.full_name || 'Owner'}</Text>
-                            <TouchableOpacity
-                                style={[s.hostelHeaderBtn, { marginTop: 4, alignSelf: 'flex-start' }]}
-                                onPress={openHostelSelector}
-                                activeOpacity={0.8}
-                            >
-                                <Ionicons name="business" size={12} color="#FFF" style={{ marginRight: 4 }} />
-                                <Text style={s.hostelHeaderBtnText} numberOfLines={1}>{user?.hostel_name || 'My Hostel'}</Text>
-                                <Ionicons name="chevron-down" size={9} color="#FFF" style={{ marginLeft: 2 }} />
-                            </TouchableOpacity>
+                            <Text style={[s.headerName, { fontSize: fontSize + 3 }]} numberOfLines={1}>
+                                {user?.role_id === 1 ? 'Hostel Administrator' : 'Hostel Owner'}
+                            </Text>
+                            <Text style={{ fontSize: fontSize - 2, color: 'rgba(255, 255, 255, 0.75)', fontWeight: '600', marginTop: 2 }} numberOfLines={1}>
+                                {user?.phone || user?.email || ''}
+                            </Text>
                         </View>
                     </TouchableOpacity>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -306,7 +300,7 @@ export default function MoreScreen() {
                             style={s.searchIconBtn}
                             activeOpacity={0.7}
                         >
-                            <Ionicons name={showSearch ? "close" : "search-outline"} size={22} color="#FFF" />
+                            <Ionicons name={showSearch ? "close" : "search"} size={22} color="#FFF" />
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -573,14 +567,15 @@ const s = StyleSheet.create({
         gap: 14,
     },
     avatarCircle: {
-        width: 52,
-        height: 52,
-        borderRadius: 26,
-        backgroundColor: 'rgba(255,255,255,0.25)',
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255,255,255,0.18)',
         alignItems: 'center',
         justifyContent: 'center',
+        borderWidth: 1.5,
+        borderColor: 'rgba(255,255,255,0.3)',
     },
-    avatarText: { fontSize: 22, fontWeight: '900', color: '#FFF' },
     headerName: { fontSize: 18, fontWeight: '800', color: '#FFF', marginBottom: 2 },
     headerSub: { fontSize: 12, color: 'rgba(255,255,255,0.75)', fontWeight: '600' },
 

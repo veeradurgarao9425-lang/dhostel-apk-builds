@@ -83,11 +83,7 @@ export const ProfileMenu = () => {
                 {...panResponder.panHandlers}
                 style={[styles.profileButton, { cursor: 'pointer' }]}
             >
-                <View style={[styles.avatarMini, { backgroundColor: theme.primary, overflow: 'hidden' }]}>
-                    <Text style={[styles.avatarText, { color: '#FFF' }]}>
-                        {getInitial()}
-                    </Text>
-                </View>
+                <User size={20} color="#FFFFFF" />
             </View>
 
             {/* Modal commented out as we navigate directly to Profile
@@ -184,22 +180,15 @@ export const ProfileMenu = () => {
 
 const styles = StyleSheet.create({
     profileButton: {
-        width: 40, height: 40, borderRadius: 20,
-        backgroundColor: '#FFFFFF',
-        justifyContent: 'center', alignItems: 'center',
-        shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, elevation: 2
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255,255,255,0.18)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1.5,
+        borderColor: 'rgba(255,255,255,0.3)',
     },
-    avatarMini: {
-        width: 34, height: 34, borderRadius: 17,
-        justifyContent: 'center', alignItems: 'center',
-    },
-    avatarImage: {
-        width: '100%',
-        height: '100%',
-        borderRadius: 17,
-        resizeMode: 'cover',
-    },
-    avatarText: { fontSize: 15, fontWeight: '800' },
     modalOverlay: {
         flex: 1, backgroundColor: 'transparent',
         justifyContent: 'flex-start', alignItems: 'flex-end',
