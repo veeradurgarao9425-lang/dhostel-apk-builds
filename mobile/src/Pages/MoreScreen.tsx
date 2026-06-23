@@ -283,7 +283,9 @@ export default function MoreScreen() {
                 <View style={s.headerContent}>
                     <TouchableOpacity onPress={() => navigation.navigate('Profile')} activeOpacity={0.9} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
                         <View style={s.avatarCircle}>
-                            <Ionicons name="person" size={20} color="#FFF" />
+                            <Text style={s.avatarText}>
+                                {(user?.full_name || 'O')[0].toUpperCase()}
+                            </Text>
                         </View>
                         <View style={{ flex: 1 }}>
                             <Text style={[s.headerName, { fontSize: fontSize + 3 }]} numberOfLines={1}>
@@ -576,6 +578,7 @@ const s = StyleSheet.create({
         borderWidth: 1.5,
         borderColor: 'rgba(255,255,255,0.3)',
     },
+    avatarText: { fontSize: 16, fontWeight: '900', color: '#FFF' },
     headerName: { fontSize: 18, fontWeight: '800', color: '#FFF', marginBottom: 2 },
     headerSub: { fontSize: 12, color: 'rgba(255,255,255,0.75)', fontWeight: '600' },
 

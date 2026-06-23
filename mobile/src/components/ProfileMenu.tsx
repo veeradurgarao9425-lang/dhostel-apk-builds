@@ -83,7 +83,9 @@ export const ProfileMenu = () => {
                 {...panResponder.panHandlers}
                 style={[styles.profileButton, { cursor: 'pointer' }]}
             >
-                <User size={20} color="#FFFFFF" />
+                <Text style={styles.profileText}>
+                    {getInitial()}
+                </Text>
             </View>
 
             {/* Modal commented out as we navigate directly to Profile
@@ -188,6 +190,11 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         borderWidth: 1.5,
         borderColor: 'rgba(255,255,255,0.3)',
+    },
+    profileText: {
+        fontSize: 14,
+        fontWeight: '800',
+        color: '#FFFFFF',
     },
     modalOverlay: {
         flex: 1, backgroundColor: 'transparent',
