@@ -414,10 +414,29 @@ export default function StudentsScreen({ navigation, route }: any) {
     // ── Fetch Counts ──────────────────────────────────────────────────────
     const fetchCounts = async () => {
         try {
-            const res = await api.get('/students/stats');
-            if (res.data.success) {
+            // Check if /students/stats works (for when backend is deployed)
+            const res = await api.get('/students/stats').catch(() => null);
+            if (res?.data?.success && res.data.data) {
                 setCounts(res.data.data);
+                return;
             }
+
+            // Fallback for older backend without /stats endpoint
+            const fetchTotal = async (params: any) => {
+                const response = await api.get('/students', { params: { ...params, page: 1, limit: 1 } }).catch(() => null);
+                return response?.data?.total || 0;
+            };
+
+            const [active, inactive, prebooked, qrRegister, unallocated, total] = await Promise.all([
+                fetchTotal({ status: 1 }),
+                fetchTotal({ status: 0 }),
+                fetchTotal({ status: 2 }),
+                fetchTotal({ status: 3 }),
+                fetchTotal({ status: 1, unallocated: 'true' }),
+                fetchTotal({})
+            ]);
+
+            setCounts({ active, inactive, prebooked, qrRegister, unallocated, total });
         } catch (e) {
             console.log('Error fetching counts', e);
         }
@@ -614,7 +633,7 @@ export default function StudentsScreen({ navigation, route }: any) {
                 >
                     {[
                         { key: 'Active', label: t('students.active'), count: counts.active },
-                        { key: 'Unallocated', label: t('students.unallocatedTab', 'No Room'), count: counts.unallocated, isWarning: counts.unallocated > 0 },
+                        { key: 'Unallocated', label: t('students.unallocatedTab', 'No Room'), count: counts.unallocated },
                         { key: 'PreBooked', label: t('students.prebooked'), count: counts.prebooked },
                         { key: 'QRRegister', label: t('students.qrSignups'), count: counts.qrRegister },
                         { key: 'Inactive', label: t('students.inactive'), count: counts.inactive },
@@ -625,9 +644,7 @@ export default function StudentsScreen({ navigation, route }: any) {
                             key={tab.key}
                             style={[
                                 styles.pillBtn,
-                                activeTab === tab.key 
-                                    ? (tab.isWarning ? styles.warningActivePillBtn : styles.activePillBtn) 
-                                    : (tab.isWarning ? styles.warningInactivePillBtn : styles.inactivePillBtn)
+                                activeTab === tab.key ? styles.activePillBtn : styles.inactivePillBtn
                             ]}
                             onPress={() => {
                                 if (activeTab === tab.key) return;
@@ -637,9 +654,7 @@ export default function StudentsScreen({ navigation, route }: any) {
                         >
                             <Text style={[
                                 styles.pillLabel,
-                                activeTab === tab.key 
-                                    ? (tab.isWarning ? { color: '#FFF' } : { color: COLORS.primary }) 
-                                    : (tab.isWarning ? { color: '#EF4444' } : { color: '#FFF' })
+                                activeTab === tab.key ? { color: COLORS.primary } : { color: '#FFF' }
                             ]}>
                                 {tab.label} ({tab.count})
                             </Text>
