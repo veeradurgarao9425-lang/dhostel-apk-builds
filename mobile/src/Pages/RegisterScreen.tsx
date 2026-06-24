@@ -33,6 +33,11 @@ export default function RegisterScreen({ navigation }: any) {
     const [isLoading, setIsLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+    // New validation states
+    const [touched, setTouched] = useState<Record<string, boolean>>({});
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+    const [submitError, setSubmitError] = useState<string | null>(null);
+
     // Email verification (OTP) state
     const [otpSent, setOtpSent] = useState(false);
     const [otp, setOtp] = useState('');
@@ -46,30 +51,102 @@ export default function RegisterScreen({ navigation }: any) {
     const passwordRef = useRef<TextInput>(null);
     const otpRef = useRef<TextInput>(null);
 
+    const validateField = (name: string, value: string) => {
+        let err = '';
+        if (name === 'fullName') {
+            if (!value.trim()) err = 'Full name is required';
+        } else if (name === 'email') {
+            if (!value.trim()) err = 'Email is required';
+            else if (!EMAIL_REGEX.test(value.trim())) err = 'Enter a valid email address';
+        } else if (name === 'phone') {
+            if (!value.trim()) err = 'Mobile number is required';
+            else if (!/^[6-9]/.test(value.trim())) err = 'Must start with 6, 7, 8, or 9';
+            else if (value.trim().length !== 10) err = 'Must be exactly 10 digits';
+        } else if (name === 'hostelName') {
+            if (!value.trim()) err = 'PG Name is required';
+            else if (value.trim().length < 3) err = 'Must be at least 3 characters';
+        } else if (name === 'password') {
+            if (!value) err = 'Password is required';
+            else if (value.length < 6) err = 'Must be at least 6 characters';
+        } else if (name === 'otp') {
+            if (!value.trim()) err = 'Verification code is required';
+            else if (value.trim().length !== 6) err = 'Must be a 6-digit code';
+        }
+        setFieldErrors(prev => ({ ...prev, [name]: err }));
+        return err;
+    };
+
+    const checkPhoneDatabase = async (number: string) => {
+        if (!/^[6-9]\d{9}$/.test(number)) return;
+        try {
+            const { data } = await api.post('/auth/check-phone', { phone: number });
+            if (data?.exists) {
+                setFieldErrors(prev => ({ ...prev, phone: 'This mobile number is already registered' }));
+            } else {
+                setFieldErrors(prev => ({ ...prev, phone: '' }));
+            }
+        } catch (err: any) {
+            console.warn('Live phone check failed:', err);
+        }
+    };
+
+    const getFieldError = (name: string, value: string) => {
+        const err = fieldErrors[name];
+        if (!err) return '';
+        // For phone, show if any text is typed OR if touched.
+        if (name === 'phone') {
+            if (value.length > 0 || touched[name]) return err;
+        }
+        // For other fields, show if touched.
+        if (touched[name]) return err;
+        return '';
+    };
+
+    const markTouched = (name: string) => {
+        setTouched(prev => ({ ...prev, [name]: true }));
+        // Run validation to update errors on touch/blur
+        if (name === 'fullName') validateField('fullName', fullName);
+        if (name === 'email') validateField('email', email);
+        if (name === 'phone') validateField('phone', phone);
+        if (name === 'hostelName') validateField('hostelName', hostelName);
+        if (name === 'password') validateField('password', password);
+        if (name === 'otp') validateField('otp', otp);
+    };
+
     const handleSendOtp = async () => {
         Keyboard.dismiss();
         const trimmed = email.trim();
-        if (!EMAIL_REGEX.test(trimmed)) return setErrorMessage('Enter a valid email to verify');
+        if (!EMAIL_REGEX.test(trimmed)) {
+            setFieldErrors(prev => ({ ...prev, email: 'Enter a valid email to verify' }));
+            setTouched(prev => ({ ...prev, email: true }));
+            return;
+        }
 
         setSendingOtp(true);
-        setErrorMessage(null);
+        setSubmitError(null);
         try {
             const { data } = await api.post('/auth/send-otp', { email: trimmed });
             if (data?.success) {
                 setOtpSent(true);
                 setOtp('');
+                setFieldErrors(prev => ({ ...prev, otp: '', email: '' }));
                 // Dev mode: backend returns the OTP directly — auto-fill for testing
                 if (data?.dev_otp) {
                     setOtp(data.dev_otp);
-                    setErrorMessage(`[Dev] OTP auto-filled: ${data.dev_otp}`);
+                    setSubmitError(`[Dev] OTP auto-filled: ${data.dev_otp}`);
                 }
                 setTimeout(() => otpRef.current?.focus(), 100);
             } else {
-                setErrorMessage(data?.error || data?.message || 'Could not send verification code.');
+                setFieldErrors(prev => ({ ...prev, email: data?.error || data?.message || 'Could not send verification code.' }));
             }
         } catch (err: any) {
             const serverMsg = err.response?.data?.error || err.response?.data?.message;
-            setErrorMessage(serverMsg || 'Could not send OTP. Check your internet connection and try again.');
+            if (serverMsg) {
+                setFieldErrors(prev => ({ ...prev, email: serverMsg }));
+                setTouched(prev => ({ ...prev, email: true }));
+            } else {
+                setSubmitError('Could not send OTP. Check your internet connection and try again.');
+            }
         } finally {
             setSendingOtp(false);
         }
@@ -78,20 +155,25 @@ export default function RegisterScreen({ navigation }: any) {
 
     const handleVerifyOtp = async () => {
         Keyboard.dismiss();
-        if (otp.trim().length !== 6) return setErrorMessage('Enter the 6-digit code sent to your email');
+        if (otp.trim().length !== 6) {
+            setFieldErrors(prev => ({ ...prev, otp: 'Enter the 6-digit code sent to your email' }));
+            setTouched(prev => ({ ...prev, otp: true }));
+            return;
+        }
 
         setVerifyingOtp(true);
-        setErrorMessage(null);
+        setSubmitError(null);
         try {
             const { data } = await api.post('/auth/verify-otp', { email: email.trim(), otp: otp.trim() });
             if (data?.success) {
                 setEmailVerified(true);
                 setOtpSent(false);
+                setFieldErrors(prev => ({ ...prev, otp: '', email: '' }));
             } else {
-                setErrorMessage(data?.error || data?.message || 'Invalid or expired code.');
+                setFieldErrors(prev => ({ ...prev, otp: data?.error || data?.message || 'Invalid or expired code.' }));
             }
         } catch (err: any) {
-            setErrorMessage(err.response?.data?.error || err.response?.data?.message || 'Invalid or expired code.');
+            setFieldErrors(prev => ({ ...prev, otp: err.response?.data?.error || err.response?.data?.message || 'Invalid or expired code.' }));
         } finally {
             setVerifyingOtp(false);
         }
@@ -120,30 +202,43 @@ export default function RegisterScreen({ navigation }: any) {
         const trimmedPhone = phone.trim();
         const trimmedHostel = hostelName.trim();
 
-        if (!trimmedName) return setErrorMessage('Please enter your full name');
-        
-        if (!trimmedEmail) return setErrorMessage('Please enter your email');
-        if (!EMAIL_REGEX.test(trimmedEmail)) return setErrorMessage('Please enter a valid email address');
-        if (!emailVerified) return setErrorMessage('Please verify your email to receive OTP and continue');
+        // Mark all fields as touched
+        const allTouched = {
+            fullName: true,
+            email: true,
+            phone: true,
+            hostelName: true,
+            password: true,
+        };
+        setTouched(allTouched);
 
-        if (!trimmedPhone) return setErrorMessage('Please enter your mobile number');
-        if (!/^[6-9]\d{9}$/.test(trimmedPhone)) {
-            return setErrorMessage('Please enter a valid 10-digit Indian mobile number (must start with 6, 7, 8, or 9)');
+        // Run validation for all fields
+        const e1 = validateField('fullName', trimmedName);
+        const e2 = validateField('email', trimmedEmail);
+        const e3 = validateField('phone', trimmedPhone);
+        const e4 = validateField('hostelName', trimmedHostel);
+        const e5 = validateField('password', password);
+
+        // Additional email verification check
+        let emailVerifyError = '';
+        if (trimmedEmail && !emailVerified) {
+            emailVerifyError = 'Please verify your email to receive OTP and continue';
+            setFieldErrors(prev => ({ ...prev, email: emailVerifyError }));
         }
 
-        if (!trimmedHostel) return setErrorMessage("Please enter your PG's name");
-        if (trimmedHostel.length < 3) return setErrorMessage("PG Name must be at least 3 characters");
-
-        if (password.length < 6) return setErrorMessage('Password must be at least 6 characters');
+        if (e1 || e2 || e3 || e4 || e5 || emailVerifyError) {
+            return; // Stop if there are local validation errors
+        }
 
         setIsLoading(true);
-        setErrorMessage(null);
+        setSubmitError(null);
         try {
             // First check if phone exists in DB
             const { data: phoneCheck } = await api.post('/auth/check-phone', { phone: trimmedPhone });
             if (phoneCheck?.exists) {
                 setIsLoading(false);
-                return setErrorMessage('This mobile number is already registered');
+                setFieldErrors(prev => ({ ...prev, phone: 'This mobile number is already registered' }));
+                return;
             }
 
             const { error } = await signUp({
@@ -156,17 +251,34 @@ export default function RegisterScreen({ navigation }: any) {
             if (!error) {
                 navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
             } else {
-                setErrorMessage(typeof error === 'string' ? error : 'Registration failed. Please try again.');
+                const errMsg = typeof error === 'string' ? error : 'Registration failed. Please try again.';
+                // Distribute error
+                if (errMsg.toLowerCase().includes('email')) {
+                    setFieldErrors(prev => ({ ...prev, email: errMsg }));
+                } else if (errMsg.toLowerCase().includes('mobile') || errMsg.toLowerCase().includes('phone')) {
+                    setFieldErrors(prev => ({ ...prev, phone: errMsg }));
+                } else {
+                    setSubmitError(errMsg);
+                }
             }
         } catch (err: any) {
-            const checkMsg = err.response?.data?.error || err.response?.data?.message;
-            setErrorMessage(checkMsg || 'An unexpected error occurred. Please try again.');
+            const checkMsg = err.response?.data?.error || err.response?.data?.message || 'An unexpected error occurred. Please try again.';
+            if (checkMsg.toLowerCase().includes('email')) {
+                setFieldErrors(prev => ({ ...prev, email: checkMsg }));
+            } else if (checkMsg.toLowerCase().includes('mobile') || checkMsg.toLowerCase().includes('phone')) {
+                setFieldErrors(prev => ({ ...prev, phone: checkMsg }));
+            } else {
+                setSubmitError(checkMsg);
+            }
         } finally {
             setIsLoading(false);
         }
     };
 
-    const clearErr = () => errorMessage && setErrorMessage(null);
+    const clearErr = () => {
+        errorMessage && setErrorMessage(null);
+        submitError && setSubmitError(null);
+    };
 
     return (
         <KeyboardAvoidingView
@@ -200,15 +312,8 @@ export default function RegisterScreen({ navigation }: any) {
                 keyboardShouldPersistTaps="handled"
                 bounces={false}
             >
-                {errorMessage && (
-                    <View style={styles.alertBox}>
-                        <Ionicons name="warning" size={16} color="#5F2EEA" />
-                        <Text style={styles.alertText}>{errorMessage}</Text>
-                    </View>
-                )}
-
                 {/* Full name */}
-                <Field label="Full Name">
+                <Field label="Full Name" error={getFieldError('fullName', fullName)}>
                     <Ionicons name="person-outline" size={18} color="#7C3AED" style={styles.icon} />
                     <TextInput
                         style={styles.input}
@@ -218,13 +323,14 @@ export default function RegisterScreen({ navigation }: any) {
                         returnKeyType="next"
                         onSubmitEditing={() => emailRef.current?.focus()}
                         blurOnSubmit={false}
-                        onChangeText={(t) => { setFullName(t); clearErr(); }}
+                        onBlur={() => markTouched('fullName')}
+                        onChangeText={(t) => { setFullName(t); validateField('fullName', t); clearErr(); }}
                     />
                 </Field>
 
                 {/* Email + verify */}
                 <View>
-                    <Field label="Email">
+                    <Field label="Email" error={getFieldError('email', email)}>
                         <Ionicons name="mail-outline" size={18} color="#7C3AED" style={styles.icon} />
                         <TextInput
                             ref={emailRef}
@@ -238,10 +344,12 @@ export default function RegisterScreen({ navigation }: any) {
                             returnKeyType="next"
                             onSubmitEditing={() => phoneRef.current?.focus()}
                             blurOnSubmit={false}
+                            onBlur={() => markTouched('email')}
                             onChangeText={(t) => {
                                 setEmail(t);
                                 if (emailVerified) setEmailVerified(false);
                                 if (otpSent) setOtpSent(false);
+                                validateField('email', t);
                                 clearErr();
                             }}
                         />
@@ -294,7 +402,7 @@ export default function RegisterScreen({ navigation }: any) {
 
                 {/* OTP entry — shown only after a code has been sent and not yet verified */}
                 {otpSent && !emailVerified && (
-                    <Field label="Enter Verification Code">
+                    <Field label="Enter Verification Code" error={getFieldError('otp', otp)}>
                         <Ionicons name="key-outline" size={18} color="#7C3AED" style={styles.icon} />
                         <TextInput
                             ref={otpRef}
@@ -306,7 +414,13 @@ export default function RegisterScreen({ navigation }: any) {
                             value={otp}
                             returnKeyType="done"
                             onSubmitEditing={handleVerifyOtp}
-                            onChangeText={(t) => { setOtp(t.replace(/[^0-9]/g, '')); clearErr(); }}
+                            onBlur={() => markTouched('otp')}
+                            onChangeText={(t) => {
+                                const clean = t.replace(/[^0-9]/g, '');
+                                setOtp(clean);
+                                validateField('otp', clean);
+                                clearErr();
+                            }}
                         />
                         <TouchableOpacity
                             style={[styles.verifyBtn, (verifyingOtp || otp.length !== 6) && { opacity: 0.6 }]}
@@ -322,7 +436,7 @@ export default function RegisterScreen({ navigation }: any) {
                 )}
 
                 {/* Phone */}
-                <Field label="Mobile Number">
+                <Field label="Mobile Number" error={getFieldError('phone', phone)}>
                     <Ionicons name="call-outline" size={18} color="#7C3AED" style={styles.icon} />
                     <TextInput
                         ref={phoneRef}
@@ -335,12 +449,24 @@ export default function RegisterScreen({ navigation }: any) {
                         returnKeyType="next"
                         onSubmitEditing={() => hostelRef.current?.focus()}
                         blurOnSubmit={false}
-                        onChangeText={(t) => { setPhone(t.replace(/[^0-9]/g, '')); clearErr(); }}
+                        onBlur={() => {
+                            markTouched('phone');
+                            checkPhoneDatabase(phone);
+                        }}
+                        onChangeText={(t) => {
+                            const clean = t.replace(/[^0-9]/g, '');
+                            setPhone(clean);
+                            validateField('phone', clean);
+                            if (clean.length === 10) {
+                                checkPhoneDatabase(clean);
+                            }
+                            clearErr();
+                        }}
                     />
                 </Field>
 
                 {/* PG name */}
-                <Field label="PG Name">
+                <Field label="PG Name" error={getFieldError('hostelName', hostelName)}>
                     <Ionicons name="business-outline" size={18} color="#7C3AED" style={styles.icon} />
                     <TextInput
                         ref={hostelRef}
@@ -351,13 +477,14 @@ export default function RegisterScreen({ navigation }: any) {
                         returnKeyType="next"
                         onSubmitEditing={() => passwordRef.current?.focus()}
                         blurOnSubmit={false}
-                        onChangeText={(t) => { setHostelName(t); clearErr(); }}
+                        onBlur={() => markTouched('hostelName')}
+                        onChangeText={(t) => { setHostelName(t); validateField('hostelName', t); clearErr(); }}
                     />
                 </Field>
 
                 {/* Password */}
                 <View>
-                    <Field label="Password">
+                    <Field label="Password" error={getFieldError('password', password)}>
                         <Ionicons name="lock-closed-outline" size={18} color="#7C3AED" style={styles.icon} />
                         <TextInput
                             ref={passwordRef}
@@ -368,7 +495,8 @@ export default function RegisterScreen({ navigation }: any) {
                             value={password}
                             returnKeyType="done"
                             onSubmitEditing={handleRegister}
-                            onChangeText={(t) => { setPassword(t); clearErr(); }}
+                            onBlur={() => markTouched('password')}
+                            onChangeText={(t) => { setPassword(t); validateField('password', t); clearErr(); }}
                         />
                         <TouchableOpacity
                             onPress={() => setShowPassword(!showPassword)}
@@ -392,6 +520,13 @@ export default function RegisterScreen({ navigation }: any) {
                         🔐 Passwords are encrypted at the storage level using strong bcrypt hashing to ensure your account security.
                     </Text>
                 </View>
+
+                {submitError && (
+                    <View style={styles.alertBox}>
+                        <Ionicons name="warning" size={16} color="#EF4444" />
+                        <Text style={[styles.alertText, { color: '#EF4444' }]}>{submitError}</Text>
+                    </View>
+                )}
 
                 <TouchableOpacity
                     style={[styles.submitBtn, isLoading && { opacity: 0.8 }]}
@@ -425,10 +560,15 @@ export default function RegisterScreen({ navigation }: any) {
 }
 
 // Small labelled input wrapper to keep the form consistent
-const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
+const Field = ({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) => (
     <View style={styles.inputGroup}>
         <Text style={styles.label}>{label} <Text style={{ color: '#EF4444' }}>*</Text></Text>
-        <View style={styles.inputContainer}>{children}</View>
+        <View style={[styles.inputContainer, error ? { borderColor: '#EF4444' } : null]}>
+            {children}
+        </View>
+        {error ? (
+            <Text style={styles.fieldErrorText}>{error}</Text>
+        ) : null}
     </View>
 );
 
@@ -591,5 +731,12 @@ const styles = StyleSheet.create({
         marginLeft: 2,
         lineHeight: 15,
         fontWeight: '500',
+    },
+    fieldErrorText: {
+        fontSize: 12,
+        color: '#EF4444',
+        marginTop: 4,
+        marginLeft: 4,
+        fontWeight: '600',
     },
 });
