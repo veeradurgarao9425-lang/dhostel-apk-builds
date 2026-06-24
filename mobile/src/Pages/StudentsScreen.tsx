@@ -38,9 +38,9 @@ import { toLocalDateStr } from '../utils/dateUtils';
 import { useRefresh } from '../../contexts/RefreshContext';
 
 
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-    UIManager.setLayoutAnimationEnabledExperimental(true);
-}
+// if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+//     UIManager.setLayoutAnimationEnabledExperimental(true);
+// }
 
 const PAGE_SIZE = 10;
 type TabType = 'Active' | 'Unallocated' | 'Inactive' | 'PreBooked' | 'QRRegister' | 'All';
@@ -418,23 +418,9 @@ export default function StudentsScreen({ navigation, route }: any) {
             const res = await api.get('/students/stats').catch(() => null);
             if (res?.data?.success && res.data.data) {
                 setCounts(res.data.data);
-                return;
             }
-
-            // Fallback for older backend without /stats endpoint
-            const fetchTotal = async (params: any) => {
-                const response = await api.get('/students', { params: { ...params, page: 1, limit: 1 } }).catch(() => null);
-                return response?.data?.total || 0;
-            };
-
-            const active = await fetchTotal({ status: 1 });
-            const inactive = await fetchTotal({ status: 0 });
-            const prebooked = await fetchTotal({ status: 2 });
-            const qrRegister = await fetchTotal({ status: 3 });
-            const unallocated = await fetchTotal({ status: 1, unallocated: 'true' });
-            const total = await fetchTotal({});
-
-            setCounts({ active, inactive, prebooked, qrRegister, unallocated, total });
+            // Fallback removed because running 6 simultaneous DB queries 
+            // crashes the Render free tier backend connection pool.
         } catch (e) {
             console.log('Error fetching counts', e);
         }
