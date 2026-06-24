@@ -468,6 +468,9 @@ export default function PreBookingScreen({ navigation, route }: any) {
                 admission_date: formData.expected_join_date,
                 room_id: parseInt(formData.room_id),
                 bed_id: formData.bed_id || null,
+                status: 2,
+                admission_fee: 0,
+                admission_status: 0,
             };
             await api.post('/students', payload);
             navigation.goBack();
@@ -484,7 +487,12 @@ export default function PreBookingScreen({ navigation, route }: any) {
             <AppHeader title="Pre-Book Room" />
             <FullScreenLoader visible={loading} />
 
-            <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+            <ScrollView 
+                style={styles.content} 
+                showsVerticalScrollIndicator={false} 
+                contentContainerStyle={[styles.scrollContent, { paddingBottom: (isKeyboardVisible ? 200 : 100) + insets.bottom }]}
+                keyboardShouldPersistTaps="handled"
+            >
                 <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
                     <Text style={[styles.sectionTitle, { fontSize: fontSize + 1, color: theme.textPrimary }]}>👤 Tenant Information</Text>
                     <FormInput label="First Name *" icon={User} placeholder="e.g. Rahul" value={formData.first_name} error={errors.first_name} onChangeText={(t: string) => up('first_name', t)} />

@@ -47,8 +47,8 @@ const createTransporter = () => {
 const parseSender = (): { email: string; name: string } => {
   const raw = process.env.EMAIL_FROM || process.env.EMAIL_USER || '';
   const match = raw.match(/^\s*"?([^"<]*)"?\s*<([^>]+)>\s*$/);
-  if (match) return { name: match[1].trim() || 'Stivo Hostel', email: match[2].trim() };
-  return { name: 'Stivo Hostel', email: raw.trim() };
+  if (match) return { name: match[1].trim() || 'Hosix Hostel', email: match[2].trim() };
+  return { name: 'Hosix Hostel', email: raw.trim() };
 };
 
 // ─── Send via Brevo HTTP API (port 443) — works on hosts that block SMTP ────────
@@ -90,7 +90,7 @@ const sendViaBrevo = async (options: EmailOptions): Promise<void> => {
 
 // ─── Send via SMTP (nodemailer) — local-dev fallback when no Brevo key is set ────
 const sendViaSmtp = async (options: EmailOptions): Promise<void> => {
-  const from = process.env.EMAIL_FROM || `"Stivo Hostel" <${process.env.EMAIL_USER}>`;
+  const from = process.env.EMAIL_FROM || `"Hosix Hostel" <${process.env.EMAIL_USER}>`;
 
   console.log(`📧 Sending email via SMTP to: ${options.to}  |  Subject: ${options.subject}`);
   console.log(`   EMAIL_USER=${process.env.EMAIL_USER || '(not set)'}`);
@@ -150,7 +150,7 @@ export const sendPasswordResetEmail = async (
         <p style="color: #999; font-size: 12px; margin-top: 30px;">
           This link will expire in 1 hour. If you didn't request a password reset, please ignore this email.
         </p>
-        <p style="color: #999; font-size: 12px;">Stivo System</p>
+        <p style="color: #999; font-size: 12px;">Hosix System</p>
       </div>
     </div>
   `;
@@ -164,7 +164,7 @@ export const sendPasswordResetEmail = async (
     console.log('='.repeat(80) + '\n');
   }
 
-  await sendEmail({ to: email, subject: 'Password Reset Request - Stivo', html });
+  await sendEmail({ to: email, subject: 'Password Reset Request - Hosix', html });
 };
 
 // ─── OTP verification email ────────────────────────────────────────────────────
@@ -188,10 +188,10 @@ export const sendOtpEmail = async (
         <p style="color: #999; font-size: 13px; margin-top: 30px; text-align: center;">
           ⏱ This OTP is valid for <strong>10 minutes</strong>. Do not share this code with anyone.
         </p>
-        <p style="color: #999; font-size: 12px; text-align: center;">Stivo System</p>
+        <p style="color: #999; font-size: 12px; text-align: center;">Hosix System</p>
       </div>
     </div>
   `;
 
-  await sendEmail({ to: email, subject: 'Your Verification Code - Stivo', html });
+  await sendEmail({ to: email, subject: 'Your Verification Code - Hosix', html });
 };

@@ -297,19 +297,30 @@ export default function RemindersScreen() {
                 title="Hostel Reminders" 
                 subtitle="Manage alerts & scheduled events"
                 onBack={() => navigation.goBack()}
-            >
-                {/* Stat cards in header */}
-                <View style={s.statsRow}>
-                    <View style={s.statCard}>
-                        <Text style={s.statVal}>{stats.upcoming}</Text>
-                        <Text style={s.statLbl}>Upcoming</Text>
+            />
+
+            {/* Stats Row Outside */}
+            <View style={s.statsRowOutside}>
+                <View style={[s.statCardOutside, { backgroundColor: '#F3E8FF' }]}>
+                    <View style={[s.statIconCircle, { backgroundColor: 'rgba(124, 58, 237, 0.1)' }]}>
+                        <Ionicons name="time" size={20} color="#7C3AED" />
                     </View>
-                    <View style={s.statCard}>
-                        <Text style={[s.statVal, { color: '#10B981' }]}>{stats.completed}</Text>
-                        <Text style={s.statLbl}>Completed</Text>
+                    <View style={s.statTextContainer}>
+                        <Text style={[s.statValOutside, { color: '#7C3AED' }]}>{stats.upcoming}</Text>
+                        <Text style={[s.statLblOutside, { color: '#7C3AED' }]}>Upcoming</Text>
                     </View>
                 </View>
-            </AppHeader>
+
+                <View style={[s.statCardOutside, { backgroundColor: '#DCFCE7' }]}>
+                    <View style={[s.statIconCircle, { backgroundColor: 'rgba(22, 163, 74, 0.1)' }]}>
+                        <Ionicons name="checkmark-done-circle" size={20} color="#16A34A" />
+                    </View>
+                    <View style={s.statTextContainer}>
+                        <Text style={[s.statValOutside, { color: '#16A34A' }]}>{stats.completed}</Text>
+                        <Text style={[s.statLblOutside, { color: '#16A34A' }]}>Completed</Text>
+                    </View>
+                </View>
+            </View>
 
             {/* List */}
             {loading ? (
@@ -339,8 +350,8 @@ export default function RemindersScreen() {
             )}
 
             {/* Add FAB */}
-            <TouchableOpacity style={s.fab} onPress={handleOpenCreate} activeOpacity={0.85}>
-                <Ionicons name="add" size={28} color="#FFF" />
+            <TouchableOpacity style={[s.fab, { backgroundColor: theme.primary }]} onPress={handleOpenCreate} activeOpacity={0.85}>
+                <Ionicons name="add" size={26} color="#FFF" />
             </TouchableOpacity>
 
             <Modal visible={isModalVisible} animationType="slide" onRequestClose={() => setIsModalVisible(false)}>
@@ -444,10 +455,46 @@ export default function RemindersScreen() {
 const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8FAFC' },
 
-    statsRow: { flexDirection: 'row', gap: 12 },
-    statCard: { flex: 1, backgroundColor: 'rgba(255,255,255,0.14)', borderRadius: 16, padding: 12, alignItems: 'center' },
-    statVal: { fontSize: 18, fontWeight: '900', color: '#FFF' },
-    statLbl: { fontSize: 10, color: 'rgba(255,255,255,0.8)', fontWeight: '700', marginTop: 2 },
+    statsRowOutside: {
+        flexDirection: 'row',
+        gap: 12,
+        paddingHorizontal: 16,
+        marginTop: 16,
+        marginBottom: 8,
+    },
+    statCardOutside: {
+        flex: 1,
+        borderRadius: 16,
+        padding: 14,
+        flexDirection: 'row',
+        alignItems: 'center',
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 6,
+    },
+    statIconCircle: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 10,
+    },
+    statTextContainer: {
+        flex: 1,
+        justifyContent: 'center',
+    },
+    statValOutside: {
+        fontSize: 20,
+        fontWeight: '900',
+    },
+    statLblOutside: {
+        fontSize: 11,
+        fontWeight: '700',
+        marginTop: 1,
+    },
 
     listContent: { padding: 16, paddingBottom: 120 },
 
@@ -500,7 +547,21 @@ const s = StyleSheet.create({
     emptyText: { fontSize: 16, color: '#1E293B', fontWeight: '800', marginTop: 12 },
     emptySub: { fontSize: 12, color: '#94A3B8', fontWeight: '500', textAlign: 'center', marginTop: 4 },
 
-    fab: { position: 'absolute', bottom: 80, right: 20, width: 60, height: 60, borderRadius: 30, backgroundColor: '#7C3AED', justifyContent: 'center', alignItems: 'center', elevation: 8, shadowColor: '#7C3AED', shadowOpacity: 0.3, shadowRadius: 8 },
+    fab: {
+        position: 'absolute',
+        bottom: 45,
+        right: 24,
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 3,
+    },
 
     formLabel: { fontSize: 12, fontWeight: '800', color: '#475569', marginBottom: 6, marginTop: 12 },
     formInput: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 10, fontSize: 14, color: '#1E293B', fontWeight: '600' },

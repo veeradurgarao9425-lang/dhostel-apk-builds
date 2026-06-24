@@ -313,7 +313,7 @@ app.get('/api/health-db', async (req, res) => {
 app.get('/', (req, res) => {
   res.json({
     success: true,
-    message: 'Stivo API',
+    message: 'Hosix API',
     version: '1.0.0',
   });
 });

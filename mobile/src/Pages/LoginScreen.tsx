@@ -77,11 +77,11 @@ export default function LoginScreen({ navigation }: any) {
 
                         <View style={styles.logoContainer}>
                             <Image
-                                source={require('../../assets/stivologo.png')}
+                                source={require('../../assets/Hosix.png')}
                                 style={styles.logoImage}
                                 resizeMode="contain"
                             />
-                            <Text style={styles.appName}>Stivo</Text>
+                            <Text style={styles.appName}>Hosix</Text>
                             <Text style={styles.tagline}>Smart PG Management</Text>
                         </View>
                     </LinearGradient>
@@ -194,7 +194,7 @@ export default function LoginScreen({ navigation }: any) {
 
                         {/* Bottom branding */}
                         <View style={styles.bottomBranding}>
-                            <Text style={styles.bottomBrandingText}>Powered by Stivo • PG OS</Text>
+                            <Text style={styles.bottomBrandingText}>Powered by Hosix • PG OS</Text>
                         </View>
 
                         <View style={styles.keyboardSpacer} />

@@ -147,7 +147,7 @@
         "signOutTitle": "Sign Out",
         "signOutMessage": "Are you sure you want to sign out?",
         "cancel": "Cancel",
-        "version": "Stivo v1.0.0 · Smart PG Management",
+        "version": "Hosix v1.0.0 · Smart PG Management",
         "singleHostel": "Single PG",
         "singleHostelMsg": "You only have one PG registered.",
         "hostelSwitched": "✓ PG Switched",
@@ -422,7 +422,7 @@
         "noResults": "No results found",
         "trySearching": "Try searching for 'beds', 'room', 'student', 'rent', or 'bill'.",
         "showAll": "Show All FAQs",
-        "footer": "Stivo Helper • 100% Free & Secure",
+        "footer": "Hosix Helper • 100% Free & Secure",
         "backToTopics": "Back to topics",
         "faqHeader": "Common Questions"
     }

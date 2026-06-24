@@ -30,15 +30,15 @@ export const PrivacyPolicyScreen = () => {
                 
                 <View style={styles.introBlock}>
                     <Shield size={44} color={theme.primary} style={styles.introIcon} />
-                    <Text style={[styles.introTitle, { color: theme.textPrimary }]}>Stivo Privacy Disclosures</Text>
+                    <Text style={[styles.introTitle, { color: theme.textPrimary }]}>Hosix Privacy Disclosures</Text>
                     <Text style={[styles.introSubtitle, { color: theme.textSecondary }]}>
-                        Last Updated: June 23, 2026. This policy outlines how Stivo collects, manages, and secures data on your device and servers.
+                        Last Updated: June 23, 2026. This policy outlines how Hosix collects, manages, and secures data on your device and servers.
                     </Text>
                 </View>
 
                 <Section title="1. Information We Collect" icon={Info}>
                     <Text style={[styles.text, { color: theme.textSecondary }]}>
-                        Stivo collects operational information necessary to run and organize your hostel business. This includes:
+                        Hosix collects operational information necessary to run and organize your hostel business. This includes:
                     </Text>
                     <View style={styles.bullets}>
                         <Text style={[styles.bullet, { color: theme.textSecondary }]}>• <Text style={{ fontWeight: 'bold', color: theme.textPrimary }}>Manager/Owner profile details:</Text> Name and email address registered on registration.</Text>
@@ -74,7 +74,7 @@ export const PrivacyPolicyScreen = () => {
 
                 <Section title="4. Revisions and Control" icon={RefreshCw}>
                     <Text style={[styles.text, { color: theme.textSecondary }]}>
-                        We may update this policy occasionally to support new app features. Since Stivo provides instant edit and delete functionality, owners and managers can delete tenant records, guest registers, and logged expenses instantly to maintain control over their data footprint.
+                        We may update this policy occasionally to support new app features. Since Hosix provides instant edit and delete functionality, owners and managers can delete tenant records, guest registers, and logged expenses instantly to maintain control over their data footprint.
                     </Text>
                 </Section>
 

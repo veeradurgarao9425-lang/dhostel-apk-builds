@@ -25,7 +25,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../contexts/ThemeContext';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
-import stivoLogo from '../../assets/stivologo.png';
+import hosixLogo from '../../assets/Hosix.png';
 
 export const MainLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -167,9 +167,9 @@ export const MainLayout: React.FC = () => {
         {/* Sidebar Header */}
         <div className="flex items-center justify-between h-24 px-6 border-b border-slate-100 dark:border-slate-900 flex-shrink-0 relative">
           <div className="flex items-center gap-3">
-            <img src={stivoLogo} alt="Stivo Logo" className="h-14 w-auto object-contain" />
+            <img src={hosixLogo} alt="Hosix Logo" className="h-14 w-auto object-contain" />
             <div className="flex flex-col">
-              <span className="text-lg font-black text-slate-950 dark:text-white tracking-tight leading-none">Stivo</span>
+              <span className="text-lg font-black text-slate-950 dark:text-white tracking-tight leading-none">Hosix</span>
               <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-0.5">System</span>
             </div>
           </div>
@@ -255,7 +255,7 @@ export const MainLayout: React.FC = () => {
               {/* Application Brand / Title in Header */}
               <div className="flex items-center gap-3">
                 <h1 className="text-sm sm:text-base font-extrabold text-slate-905 dark:text-white tracking-tight flex items-center gap-2">
-                  <span className="text-cyan-600 dark:text-cyan-400 font-black text-sm uppercase tracking-wider">Stivo</span>
+                  <span className="text-cyan-600 dark:text-cyan-400 font-black text-sm uppercase tracking-wider">Hosix</span>
                   <span className="text-slate-300 dark:text-slate-750 font-normal">|</span>
                   <span className="text-slate-500 dark:text-slate-400 font-bold text-xs">
                     {getPageTitle()}

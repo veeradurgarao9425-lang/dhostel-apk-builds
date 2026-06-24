@@ -1030,7 +1030,7 @@ export const emailExcelReport = async (req: AuthRequest, res: Response) => {
           <h2 style="color: #5F2EEA; margin-bottom: 8px;">Your Hostel Report is ready</h2>
           <p>Hello ${user?.full_name || 'Owner'},</p>
           <p>Your hostel financial report (<strong>${reportTitle}</strong>) is attached to this email as an Excel spreadsheet.</p>
-          <p style="color: #6B6B8A; font-size: 13px; margin-top: 24px;">— Stivo Hostel Management</p>
+          <p style="color: #6B6B8A; font-size: 13px; margin-top: 24px;">— Hosix Hostel Management</p>
         </div>`,
       attachments: [
         {

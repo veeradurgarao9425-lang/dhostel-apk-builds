@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Stivo",
-    "slug": "stivo-mobile",
-    "scheme": "stivo",
+    "name": "Hosix",
+    "slug": "hosix-mobile",
+    "scheme": "hosix",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -20,7 +20,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.durgarao2.stivomobile"
+      "package": "com.durgarao2.hosixmobile"
     },
     "web": {
       "favicon": "./assets/favicon.png"

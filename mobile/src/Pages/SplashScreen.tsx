@@ -68,14 +68,14 @@ export default function SplashScreen({ navigation }: any) {
           {/* Logo */}
           <View style={styles.logoContainer}>
             <Image 
-                source={require('../../assets/stivologo.png')}
+                source={require('../../assets/Hosix.png')}
                 style={{ width: '100%', height: '100%', borderRadius: 28 }}
                 resizeMode="cover"
             />
           </View>
 
           {/* App name */}
-          <Text style={styles.appName}>Stivo</Text>
+          <Text style={styles.appName}>Hosix</Text>
           <Text style={styles.tagline}>Smart PG Management</Text>
 
           {/* Animated dots */}
@@ -91,7 +91,7 @@ export default function SplashScreen({ navigation }: any) {
         </View>
 
         {/* Footer */}
-        <Text style={styles.footer}>Powered by Stivo</Text>
+        <Text style={styles.footer}>Powered by Hosix</Text>
       </LinearGradient>
     </View>
   );

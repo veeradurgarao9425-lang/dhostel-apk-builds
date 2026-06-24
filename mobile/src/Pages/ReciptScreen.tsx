@@ -262,7 +262,7 @@ export const ReceiptScreen = ({ navigation, route }: any) => {
                     align-items: center;
                     gap: 6px;
                   }
-                  .logo-stivo {
+                  .logo-hosix {
                     font-weight: 800;
                     color: #5f259f;
                     font-size: 14px;
@@ -341,7 +341,7 @@ export const ReceiptScreen = ({ navigation, route }: any) => {
                   <div class="footer">
                     <p class="powered-by">Powered by</p>
                     <div class="logo-container">
-                      <span class="logo-stivo">STIVO<span class="logo-dot">•</span>PG OS</span>
+                      <span class="logo-hosix">HOSIX<span class="logo-dot">•</span>PG OS</span>
                     </div>
                   </div>
                 </div>
@@ -450,10 +450,10 @@ export const ReceiptScreen = ({ navigation, route }: any) => {
                     <Text style={styles.shareText}>Share to WhatsApp</Text>
                 </TouchableOpacity>
 
-                {/* Stivo Branding Footer */}
+                {/* Hosix Branding Footer */}
                 <View style={styles.brandingFooter}>
                     <Text style={styles.poweredBy}>Powered by</Text>
-                    <Text style={styles.brandingText}>STIVO<Text style={styles.brandingDot}>•</Text>PG OS</Text>
+                    <Text style={styles.brandingText}>HOSIX<Text style={styles.brandingDot}>•</Text>PG OS</Text>
                 </View>
 
             </ScrollView>
