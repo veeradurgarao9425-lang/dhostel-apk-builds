@@ -43,7 +43,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 }
 
 const PAGE_SIZE = 10;
-type TabType = 'Active' | 'Inactive' | 'PreBooked' | 'QRRegister' | 'All';
+type TabType = 'Active' | 'Unallocated' | 'Inactive' | 'PreBooked' | 'QRRegister' | 'All';
 
 const TABS: { key: TabType; label: string }[] = [
     { key: 'Active', label: 'Active' },
@@ -276,7 +276,6 @@ export default function StudentsScreen({ navigation, route }: any) {
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [backgroundLoading, setBackgroundLoading] = useState(false);
-    const [showUnallocatedOnly, setShowUnallocatedOnly] = useState(false);
     // Confirm dialog state
     const [confirmDialog, setConfirmDialog] = useState<{
         visible: boolean;
@@ -289,8 +288,7 @@ export default function StudentsScreen({ navigation, route }: any) {
     // Update activeTab if passed via params
     useEffect(() => {
         if (route?.params?.filterUnallocated) {
-            setShowUnallocatedOnly(true);
-            setActiveTab('Active');
+            setActiveTab('Unallocated');
             navigation.setParams({ filterUnallocated: undefined });
         }
         if (route?.params?.filter) {
@@ -338,7 +336,10 @@ export default function StudentsScreen({ navigation, route }: any) {
             const params: Record<string, any> = { page: pageNum, limit: PAGE_SIZE };
             if (debouncedSearch) params.search = debouncedSearch;
             if (statusParam !== undefined) params.status = statusParam;
-            if (showUnallocatedOnly) params.unallocated = 'true';
+            if (activeTab === 'Unallocated') {
+                params.status = 1;
+                params.unallocated = 'true';
+            }
             if (dateFilter) {
                 params.date = toLocalDateStr(dateFilter);
             } else if (startDateFilter && endDateFilter) {
@@ -375,7 +376,7 @@ export default function StudentsScreen({ navigation, route }: any) {
                 setBackgroundLoading(false);
             }
         }
-    }, [activeTab, debouncedSearch, dateFilter, startDateFilter, endDateFilter, showUnallocatedOnly]);
+    }, [activeTab, debouncedSearch, dateFilter, startDateFilter, endDateFilter]);
 
     // ── Reset when tab or search changes ─────────────────────────────────
     useEffect(() => {
@@ -383,7 +384,7 @@ export default function StudentsScreen({ navigation, route }: any) {
         setHasMore(true);
         fetchPage(1, false);
         return () => { abortRef.current?.abort(); };
-    }, [activeTab, debouncedSearch, dateFilter, startDateFilter, endDateFilter, showUnallocatedOnly]);
+    }, [activeTab, debouncedSearch, dateFilter, startDateFilter, endDateFilter]);
 
     // ── Reload on focus, skip the very first mount ────────────────────────
     const isMounted = useRef(false);
@@ -501,7 +502,7 @@ export default function StudentsScreen({ navigation, route }: any) {
         if (debouncedSearch) {
             return `${totalMatching} matching result${totalMatching !== 1 ? 's' : ''}`;
         }
-        if (showUnallocatedOnly) {
+        if (activeTab === 'Unallocated') {
             return `${counts.unallocated} Unallocated ${t('students.residents')}`;
         }
         const label = activeTab === 'All' ? t('students.total') : activeTab;
@@ -510,13 +511,7 @@ export default function StudentsScreen({ navigation, route }: any) {
                            activeTab === 'PreBooked' ? counts.prebooked :
                            activeTab === 'QRRegister' ? counts.qrRegister : counts.total;
         return `${totalCount} ${label} ${t('students.residents')}`;
-    }, [counts, activeTab, showUnallocatedOnly, debouncedSearch, totalMatching, t]);
-
-    // Active tenants in the loaded list who have no room → not yet on the rent roll.
-    const unallocatedCount = useMemo(
-        () => allStudents.filter((s: any) => s.status === 1 && !s.room_id).length,
-        [allStudents]
-    );
+    }, [counts, activeTab, debouncedSearch, totalMatching, t]);
 
     const listHeader = useMemo(() => {
         const countText = debouncedSearch
@@ -531,47 +526,9 @@ export default function StudentsScreen({ navigation, route }: any) {
                         {countText}
                     </Text>
                 </View>
-
-                {showUnallocatedOnly ? (
-                    <View style={{
-                        backgroundColor: '#FEF3C7',
-                        borderColor: '#FDE68A',
-                        borderWidth: 1,
-                        padding: 12,
-                        borderRadius: 12,
-                        marginTop: 8,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'space-between'
-                    }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                            <Ionicons name="alert-circle-outline" size={18} color="#D97706" />
-                            <Text style={{ fontSize: 13, color: '#92400E', fontWeight: '700' }}>
-                                Showing Unallocated Tenants Only
-                            </Text>
-                        </View>
-                        <TouchableOpacity onPress={() => setShowUnallocatedOnly(false)}>
-                            <Text style={{ fontSize: 12, color: '#B45309', fontWeight: '800' }}>Clear</Text>
-                        </TouchableOpacity>
-                    </View>
-                ) : unallocatedCount > 0 ? (
-                    <TouchableOpacity
-                        style={[styles.allocateBanner, { marginTop: 8 }]}
-                        activeOpacity={0.85}
-                        onPress={() => {
-                            setShowUnallocatedOnly(true);
-                            if (activeTab !== 'Active') setActiveTab('Active');
-                        }}
-                    >
-                        <Text style={styles.allocateBannerText}>
-                            ⚠ {t('students.needRoom', { count: unallocatedCount, defaultValue: `${unallocatedCount} tenant(s) need a room` })}
-                        </Text>
-                        <Text style={styles.allocateBannerHint}>{t('students.allocateToBill', 'Allocate to start billing →')}</Text>
-                    </TouchableOpacity>
-                ) : null}
             </View>
         );
-    }, [unallocatedCount, activeTab, t, showUnallocatedOnly, totalMatching, allStudents.length, debouncedSearch, isDark]);
+    }, [totalMatching, allStudents.length, debouncedSearch, isDark]);
 
 
     return (
@@ -642,6 +599,7 @@ export default function StudentsScreen({ navigation, route }: any) {
                 >
                     {[
                         { key: 'Active', label: t('students.active'), count: counts.active },
+                        ...(counts.unallocated > 0 ? [{ key: 'Unallocated', label: t('students.unallocatedTab', 'No Room'), count: counts.unallocated, isWarning: true }] : []),
                         { key: 'PreBooked', label: t('students.prebooked'), count: counts.prebooked },
                         { key: 'QRRegister', label: t('students.qrSignups'), count: counts.qrRegister },
                         { key: 'Inactive', label: t('students.inactive'), count: counts.inactive },
@@ -652,7 +610,9 @@ export default function StudentsScreen({ navigation, route }: any) {
                             key={tab.key}
                             style={[
                                 styles.pillBtn,
-                                activeTab === tab.key ? styles.activePillBtn : styles.inactivePillBtn
+                                activeTab === tab.key 
+                                    ? (tab.isWarning ? styles.warningActivePillBtn : styles.activePillBtn) 
+                                    : (tab.isWarning ? styles.warningInactivePillBtn : styles.inactivePillBtn)
                             ]}
                             onPress={() => {
                                 if (activeTab === tab.key) return;
@@ -662,7 +622,9 @@ export default function StudentsScreen({ navigation, route }: any) {
                         >
                             <Text style={[
                                 styles.pillLabel,
-                                activeTab === tab.key ? { color: COLORS.primary } : { color: '#FFF' }
+                                activeTab === tab.key 
+                                    ? (tab.isWarning ? { color: '#FFF' } : { color: COLORS.primary }) 
+                                    : (tab.isWarning ? { color: '#EF4444' } : { color: '#FFF' })
                             ]}>
                                 {tab.label} ({tab.count})
                             </Text>
@@ -963,5 +925,15 @@ const styles = StyleSheet.create({
     countRowText: {
         fontSize: 12,
         fontWeight: '600',
+    },
+    warningActivePillBtn: {
+        backgroundColor: '#EF4444',
+        borderWidth: 1,
+        borderColor: '#EF4444',
+    },
+    warningInactivePillBtn: {
+        backgroundColor: 'rgba(239, 68, 68, 0.15)',
+        borderWidth: 1,
+        borderColor: 'rgba(239, 68, 68, 0.3)',
     },
 });
