@@ -427,14 +427,12 @@ export default function StudentsScreen({ navigation, route }: any) {
                 return response?.data?.total || 0;
             };
 
-            const [active, inactive, prebooked, qrRegister, unallocated, total] = await Promise.all([
-                fetchTotal({ status: 1 }),
-                fetchTotal({ status: 0 }),
-                fetchTotal({ status: 2 }),
-                fetchTotal({ status: 3 }),
-                fetchTotal({ status: 1, unallocated: 'true' }),
-                fetchTotal({})
-            ]);
+            const active = await fetchTotal({ status: 1 });
+            const inactive = await fetchTotal({ status: 0 });
+            const prebooked = await fetchTotal({ status: 2 });
+            const qrRegister = await fetchTotal({ status: 3 });
+            const unallocated = await fetchTotal({ status: 1, unallocated: 'true' });
+            const total = await fetchTotal({});
 
             setCounts({ active, inactive, prebooked, qrRegister, unallocated, total });
         } catch (e) {
@@ -632,13 +630,13 @@ export default function StudentsScreen({ navigation, route }: any) {
                     contentContainerStyle={styles.tabScrollContent}
                 >
                     {[
-                        { key: 'Active', label: t('students.active'), count: counts.active },
-                        { key: 'Unallocated', label: t('students.unallocatedTab', 'No Room'), count: counts.unallocated },
-                        { key: 'PreBooked', label: t('students.prebooked'), count: counts.prebooked },
-                        { key: 'QRRegister', label: t('students.qrSignups'), count: counts.qrRegister },
-                        { key: 'Inactive', label: t('students.inactive'), count: counts.inactive },
-                        { key: 'All', label: t('students.total'), count: counts.total }
-                    ].map((tab: any) => (
+                        { key: 'Active', label: t('students.active'), count: counts.active, show: true },
+                        { key: 'Unallocated', label: t('students.unallocatedTab', 'No Room'), count: counts.unallocated, show: true },
+                        { key: 'PreBooked', label: t('students.prebooked'), count: counts.prebooked, show: counts.prebooked > 0 },
+                        { key: 'QRRegister', label: t('students.qrSignups'), count: counts.qrRegister, show: counts.qrRegister > 0 },
+                        { key: 'Inactive', label: t('students.inactive'), count: counts.inactive, show: true },
+                        { key: 'All', label: t('students.total'), count: counts.total, show: true }
+                    ].filter(tab => tab.show).map((tab: any) => (
 
                         <TouchableOpacity
                             key={tab.key}
