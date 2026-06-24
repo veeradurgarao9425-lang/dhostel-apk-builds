@@ -8,13 +8,8 @@ import { useAuthStore } from '../store/authStore';
 
 const loginSchema = Yup.object({
   identifier: Yup.string()
-    .required('Email or mobile number is required')
-    .test('identifier', 'Invalid email or mobile number', (value) => {
-      if (!value) return false;
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      const mobileRegex = /^[0-9]{10}$/;
-      return emailRegex.test(value) || mobileRegex.test(value);
-    }),
+    .required('Email is required')
+    .email('Invalid email address'),
   password: Yup.string()
     .required('Password is required')
     .min(6, 'Password must be at least 6 characters'),
@@ -93,7 +88,7 @@ export const Login: React.FC = () => {
             {/* Email/Phone Input */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email or Phone
+                Email
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -102,7 +97,7 @@ export const Login: React.FC = () => {
                 <input
                   name="identifier"
                   type="text"
-                  placeholder="Enter email or phone"
+                  placeholder="Enter your email"
                   value={formik.values.identifier}
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
@@ -266,7 +261,7 @@ export const Login: React.FC = () => {
             {/* Email/Phone Input */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email or Phone
+                Email
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -275,7 +270,7 @@ export const Login: React.FC = () => {
                 <input
                   name="identifier"
                   type="text"
-                  placeholder="Enter email or phone number"
+                  placeholder="Enter your email"
                   value={formik.values.identifier}
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}

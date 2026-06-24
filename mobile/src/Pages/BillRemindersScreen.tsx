@@ -221,7 +221,7 @@ export default function BillRemindersScreen() {
                     }
                     ListFooterComponent={
                         <View style={s.footer}>
-                            <Text style={s.footerText}>Powered by Hosix • Durgarao</Text>
+                            <Text style={s.footerText}>Powered by Hostix • Durgarao</Text>
                             <Text style={s.footerTextCopy}>© 2026 All Rights Reserved.</Text>
                         </View>
                     }

@@ -15,15 +15,11 @@ export const authController = {
       if (!identifier || !password) {
         return res.status(400).json({
           success: false,
-          error: 'Email/mobile and password are required',
+          error: 'Email and password are required',
         });
       }
 
-      // Check if identifier is email or mobile
-      const isEmail = identifier.includes('@');
-      const field = isEmail ? 'email' : 'phone';
-
-      // Find user
+      // Find user by email only
       const user = await db('users')
         .select(
           'users.user_id',
@@ -37,14 +33,14 @@ export const authController = {
           'user_roles.role_name'
         )
         .join('user_roles', 'users.role_id', 'user_roles.role_id')
-        .where(`users.${field}`, identifier)
+        .where('users.email', identifier)
         .where('users.is_active', true)
         .first();
 
       if (!user) {
         return res.status(401).json({
           success: false,
-          error: 'Invalid credentials',
+          error: 'Email is not registered.',
         });
       }
 
@@ -54,7 +50,7 @@ export const authController = {
       if (!isValidPassword) {
         return res.status(401).json({
           success: false,
-          error: 'Invalid credentials',
+          error: 'Incorrect password.',
         });
       }
 

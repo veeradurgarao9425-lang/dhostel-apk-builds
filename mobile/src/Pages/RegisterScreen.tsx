@@ -11,6 +11,7 @@ import {
     ScrollView,
     ActivityIndicator,
     Keyboard,
+    Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -294,13 +295,23 @@ export default function RegisterScreen({ navigation }: any) {
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
             >
-                <TouchableOpacity
-                    style={styles.backBtn}
-                    onPress={() => navigation.goBack()}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                    <Ionicons name="arrow-back" size={22} color="#FFF" />
-                </TouchableOpacity>
+                <View style={styles.headerTopRow}>
+                    <TouchableOpacity
+                        style={styles.backBtn}
+                        onPress={() => navigation.goBack()}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                        <Ionicons name="arrow-back" size={22} color="#FFF" />
+                    </TouchableOpacity>
+
+                    <View style={styles.headerLogoContainer}>
+                        <Image
+                            source={require('../../assets/Hostix.png')}
+                            style={styles.headerLogo}
+                            resizeMode="cover"
+                        />
+                    </View>
+                </View>
                 <Text style={styles.headerTitle}>Create Account</Text>
                 <Text style={styles.headerSubtitle}>Start managing your PG in minutes</Text>
             </LinearGradient>
@@ -579,6 +590,12 @@ const styles = StyleSheet.create({
         borderBottomLeftRadius: 28,
         borderBottomRightRadius: 28,
     },
+    headerTopRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 14,
+    },
     backBtn: {
         width: 40,
         height: 40,
@@ -586,7 +603,21 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255,255,255,0.18)',
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 14,
+    },
+    headerLogoContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: 14,
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.25)',
+    },
+    headerLogo: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 14,
     },
     headerTitle: { fontSize: 26, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.3 },
     headerSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.85)', fontWeight: '500', marginTop: 4 },

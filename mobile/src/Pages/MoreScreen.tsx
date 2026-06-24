@@ -435,7 +435,7 @@ export default function MoreScreen() {
                 </TouchableOpacity>
 
                 {/* App version */}
-                <Text style={[s.version, { fontSize: fontSize - 3, color: theme.textSecondary }]}>Hosix v1.0.0</Text>
+                <Text style={[s.version, { fontSize: fontSize - 3, color: theme.textSecondary }]}>Hostix v1.0.0</Text>
             </ScrollView>
 
             {/* ─────────────────── HOSTEL SWITCHER MODAL ─────────────────── */}

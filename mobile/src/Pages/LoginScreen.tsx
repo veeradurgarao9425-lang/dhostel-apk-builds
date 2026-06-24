@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
     View,
     Text,
@@ -18,37 +18,102 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { height } = Dimensions.get('window');
 
 export default function LoginScreen({ navigation }: any) {
     const { signIn } = useAuth();
+    const insets = useSafeAreaInsets();
     const [identifier, setIdentifier] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+    // Dynamic field validation states
+    const [touched, setTouched] = useState<Record<string, boolean>>({});
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+    const [submitError, setSubmitError] = useState<string | null>(null);
+
     const scrollRef = useRef<ScrollView>(null);
     const passwordRef = useRef<TextInput>(null);
 
+    const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+    useEffect(() => {
+        const showSubscription = Keyboard.addListener(
+            Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+            (e) => setKeyboardHeight(e.endCoordinates.height)
+        );
+        const hideSubscription = Keyboard.addListener(
+            Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+            () => setKeyboardHeight(0)
+        );
+
+        return () => {
+            showSubscription.remove();
+            hideSubscription.remove();
+        };
+    }, []);
+
+    const validateField = (name: string, value: string) => {
+        let err = '';
+        if (name === 'identifier') {
+            if (!value.trim()) {
+                err = 'Email is required';
+            } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
+                err = 'Please enter a valid email address';
+            }
+        } else if (name === 'password') {
+            if (!value) err = 'Password is required';
+        }
+        setFieldErrors(prev => ({ ...prev, [name]: err }));
+        return err;
+    };
+
+    const getFieldError = (name: string) => {
+        if (touched[name]) return fieldErrors[name];
+        return '';
+    };
+
+    const markTouched = (name: string) => {
+        setTouched(prev => ({ ...prev, [name]: true }));
+        if (name === 'identifier') validateField('identifier', identifier);
+        if (name === 'password') validateField('password', password);
+    };
+
     const handleLogin = async () => {
         Keyboard.dismiss();
-        if (!identifier || !password) {
-            setErrorMessage('Please enter both Email/Phone and Password');
-            return;
-        }
+
+        // Mark fields touched
+        setTouched({ identifier: true, password: true });
+
+        const e1 = validateField('identifier', identifier);
+        const e2 = validateField('password', password);
+
+        if (e1 || e2) return;
+
         setIsLoading(true);
+        setSubmitError(null);
         setErrorMessage(null);
         try {
-            const { error, user } = await signIn(identifier, password);
+            const { error, user } = await signIn(identifier.trim(), password);
             if (!error && user) {
                 navigation.navigate('Main');
             } else {
-                setErrorMessage(error || 'Invalid credentials');
+                const errMsg = error || 'Invalid credentials';
+                // Direct the error to the correct field
+                if (errMsg.toLowerCase().includes('password')) {
+                    setFieldErrors(prev => ({ ...prev, password: errMsg }));
+                } else if (errMsg.toLowerCase().includes('email') || errMsg.toLowerCase().includes('mobile') || errMsg.toLowerCase().includes('phone') || errMsg.toLowerCase().includes('not registered')) {
+                    setFieldErrors(prev => ({ ...prev, identifier: errMsg }));
+                } else {
+                    setSubmitError(errMsg);
+                }
             }
         } catch (err: any) {
-            setErrorMessage('An unexpected error occurred. Please try again.');
+            setSubmitError('An unexpected error occurred. Please try again.');
         } finally {
             setIsLoading(false);
         }
@@ -56,151 +121,157 @@ export default function LoginScreen({ navigation }: any) {
 
     return (
         <KeyboardAvoidingView
-            style={{ flex: 1 }}
+            style={{ flex: 1, backgroundColor: '#FFFFFF' }}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            keyboardVerticalOffset={0}
         >
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-                <View style={styles.container}>
-                    <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+            <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-                    {/* ── Purple gradient header ── */}
+            {/* ── Purple gradient header ── */}
+            <View style={[styles.topSection, { height: height * 0.36 + (insets.top > 0 ? insets.top : 0) }]}>
+                <LinearGradient
+                    colors={['#7C3AED', '#5F2EEA']}
+                    style={[StyleSheet.absoluteFillObject, styles.topSectionContent, { paddingTop: insets.top > 0 ? insets.top + 10 : 28 }]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                >
+                    {/* Decorative background circles */}
+                    <View style={styles.decorCircle1} />
+                    <View style={styles.decorCircle2} />
+
+                    <View style={styles.logoWrapper}>
+                        <View style={styles.logoImageContainer}>
+                            <Image
+                                source={require('../../assets/Hostix.png')}
+                                style={styles.logoImage}
+                                resizeMode="cover"
+                            />
+                        </View>
+                        <Text style={styles.appName}>Host<Text style={{ color: '#FCD34D' }}>ix</Text></Text>
+                        <Text style={styles.tagline}>Smart PG Management</Text>
+                    </View>
+                </LinearGradient>
+            </View>
+
+            {/* ── Scrollable Form section ── */}
+            <ScrollView
+                ref={scrollRef}
+                style={styles.formSection}
+                contentContainerStyle={[styles.formContent, { paddingBottom: keyboardHeight > 0 ? 5 : 20 }]}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                bounces={false}
+            >
+                <Text style={styles.signInTitle}>Welcome back 👋</Text>
+                <Text style={styles.signInSubtitle}>Sign in to continue managing your PG</Text>
+
+                {/* Email */}
+                <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Email</Text>
+                    <View style={[styles.inputContainer, getFieldError('identifier') ? { borderColor: '#EF4444' } : null]}>
+                        <Ionicons name="mail-outline" size={18} color="#7C3AED" style={styles.inputIcon} />
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Enter your email"
+                            placeholderTextColor="#B8B8B8"
+                            autoCapitalize="none"
+                            keyboardType="email-address"
+                            value={identifier}
+                            returnKeyType="next"
+                            onSubmitEditing={() => passwordRef.current?.focus()}
+                            blurOnSubmit={false}
+                            onBlur={() => markTouched('identifier')}
+                            onChangeText={(text) => {
+                                setIdentifier(text);
+                                validateField('identifier', text);
+                                setSubmitError(null);
+                            }}
+                        />
+                    </View>
+                    {getFieldError('identifier') ? (
+                        <Text style={styles.fieldErrorText}>{getFieldError('identifier')}</Text>
+                    ) : null}
+                </View>
+
+                {/* Password */}
+                <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Password</Text>
+                    <View style={[styles.inputContainer, getFieldError('password') ? { borderColor: '#EF4444' } : null]}>
+                        <Ionicons name="lock-closed-outline" size={18} color="#7C3AED" style={styles.inputIcon} />
+                        <TextInput
+                            ref={passwordRef}
+                            style={styles.input}
+                            placeholder="Enter your password"
+                            placeholderTextColor="#B8B8B8"
+                            value={password}
+                            secureTextEntry={!showPassword}
+                            returnKeyType="done"
+                            onSubmitEditing={handleLogin}
+                            onBlur={() => markTouched('password')}
+                            onChangeText={(text) => {
+                                setPassword(text);
+                                validateField('password', text);
+                                setSubmitError(null);
+                            }}
+                        />
+                        <TouchableOpacity
+                            onPress={() => setShowPassword(!showPassword)}
+                            style={styles.eyeButton}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        >
+                            <Ionicons
+                                name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                                size={20}
+                                color="#94A3B8"
+                            />
+                        </TouchableOpacity>
+                    </View>
+                    {getFieldError('password') ? (
+                        <Text style={styles.fieldErrorText}>{getFieldError('password')}</Text>
+                    ) : null}
+                </View>
+
+                {/* Submit level error alert */}
+                {submitError && (
+                    <View style={styles.alertBox}>
+                        <Ionicons name="warning" size={16} color="#EF4444" />
+                        <Text style={[styles.alertText, { color: '#EF4444' }]}>{submitError}</Text>
+                    </View>
+                )}
+
+                {/* Login button */}
+                <TouchableOpacity
+                    style={[styles.loginButton, isLoading && { opacity: 0.8 }]}
+                    onPress={handleLogin}
+                    disabled={isLoading}
+                    activeOpacity={0.85}
+                >
                     <LinearGradient
                         colors={['#7C3AED', '#5F2EEA']}
-                        style={styles.topSection}
+                        style={styles.loginGradient}
                         start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
+                        end={{ x: 1, y: 0 }}
                     >
-                        {/* Decorative background circles */}
-                        <View style={styles.decorCircle1} />
-                        <View style={styles.decorCircle2} />
-
-                        <View style={styles.logoContainer}>
-                            <Image
-                                source={require('../../assets/Hosix.png')}
-                                style={styles.logoImage}
-                                resizeMode="contain"
-                            />
-                            <Text style={styles.appName}>Hosix</Text>
-                            <Text style={styles.tagline}>Smart PG Management</Text>
-                        </View>
-                    </LinearGradient>
-
-                    {/* ── Form section ── */}
-                    <ScrollView
-                        ref={scrollRef}
-                        style={styles.formSection}
-                        contentContainerStyle={styles.formContent}
-                        showsVerticalScrollIndicator={false}
-                        keyboardShouldPersistTaps="handled"
-                        bounces={false}
-                        scrollEnabled={true}
-                    >
-                        <Text style={styles.signInTitle}>Welcome back 👋</Text>
-                        <Text style={styles.signInSubtitle}>Sign in to continue managing your PG</Text>
-
-                        {/* Error alert */}
-                        {errorMessage && (
-                            <View style={styles.alertBox}>
-                                <Ionicons name="warning" size={16} color="#7C3AED" />
-                                <Text style={styles.alertText}>{errorMessage}</Text>
-                            </View>
+                        {isLoading ? (
+                            <ActivityIndicator color="#FFFFFF" size="small" />
+                        ) : (
+                            <Text style={styles.loginButtonText}>Sign In</Text>
                         )}
+                    </LinearGradient>
+                </TouchableOpacity>
 
-                        {/* Email / Phone */}
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.label}>Email or Phone</Text>
-                            <View style={styles.inputContainer}>
-                                <Ionicons name="mail-outline" size={18} color="#7C3AED" style={styles.inputIcon} />
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Enter your email or phone"
-                                    placeholderTextColor="#B8B8B8"
-                                    autoCapitalize="none"
-                                    keyboardType="email-address"
-                                    value={identifier}
-                                    returnKeyType="next"
-                                    onSubmitEditing={() => passwordRef.current?.focus()}
-                                    blurOnSubmit={false}
-                                    onChangeText={(text) => {
-                                        setIdentifier(text);
-                                        if (errorMessage) setErrorMessage(null);
-                                    }}
-                                />
-                            </View>
-                        </View>
-
-                        {/* Password */}
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.label}>Password</Text>
-                            <View style={styles.inputContainer}>
-                                <Ionicons name="lock-closed-outline" size={18} color="#7C3AED" style={styles.inputIcon} />
-                                <TextInput
-                                    ref={passwordRef}
-                                    style={styles.input}
-                                    placeholder="Enter your password"
-                                    placeholderTextColor="#B8B8B8"
-                                    value={password}
-                                    secureTextEntry={!showPassword}
-                                    returnKeyType="done"
-                                    onSubmitEditing={handleLogin}
-                                    onChangeText={(text) => {
-                                        setPassword(text);
-                                        if (errorMessage) setErrorMessage(null);
-                                    }}
-                                />
-                                <TouchableOpacity
-                                    onPress={() => setShowPassword(!showPassword)}
-                                    style={styles.eyeButton}
-                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                >
-                                    <Ionicons
-                                        name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                                        size={20}
-                                        color="#94A3B8"
-                                    />
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-
-                        {/* Login button */}
-                        <TouchableOpacity
-                            style={[styles.loginButton, isLoading && { opacity: 0.8 }]}
-                            onPress={handleLogin}
-                            disabled={isLoading}
-                            activeOpacity={0.85}
-                        >
-                            <LinearGradient
-                                colors={['#7C3AED', '#5F2EEA']}
-                                style={styles.loginGradient}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                            >
-                                {isLoading ? (
-                                    <ActivityIndicator color="#FFFFFF" size="small" />
-                                ) : (
-                                    <Text style={styles.loginButtonText}>Sign In</Text>
-                                )}
-                            </LinearGradient>
-                        </TouchableOpacity>
-
-                        {/* Create account */}
-                        <View style={styles.signupRow}>
-                            <Text style={styles.signupText}>Don't have an account? </Text>
-                            <TouchableOpacity onPress={() => navigation.navigate('Register')} activeOpacity={0.7}>
-                                <Text style={styles.signupLink}>Create Account</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        {/* Bottom branding */}
-                        <View style={styles.bottomBranding}>
-                            <Text style={styles.bottomBrandingText}>Powered by Hosix • PG OS</Text>
-                        </View>
-
-                        <View style={styles.keyboardSpacer} />
-                    </ScrollView>
+                {/* Create account */}
+                <View style={styles.signupRow}>
+                    <Text style={styles.signupText}>Don't have an account? </Text>
+                    <TouchableOpacity onPress={() => navigation.navigate('Register')} activeOpacity={0.7}>
+                        <Text style={styles.signupLink}>Create Account</Text>
+                    </TouchableOpacity>
                 </View>
-            </TouchableWithoutFeedback>
+
+                {/* Bottom branding */}
+                <View style={styles.bottomBranding}>
+                    <Text style={styles.bottomBrandingText}>Powered by Hostix • PG OS</Text>
+                </View>
+            </ScrollView>
         </KeyboardAvoidingView>
     );
 }
@@ -211,13 +282,15 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
     },
     topSection: {
-        height: height * 0.36,
         borderBottomLeftRadius: 40,
         borderBottomRightRadius: 40,
+        overflow: 'hidden',
+        backgroundColor: '#7C3AED',
+    },
+    topSectionContent: {
+        flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingTop: 28,
-        overflow: 'hidden',
     },
     decorCircle1: {
         position: 'absolute',
@@ -237,16 +310,24 @@ const styles = StyleSheet.create({
         bottom: -40,
         left: -30,
     },
-    logoContainer: {
+    logoWrapper: {
         alignItems: 'center',
     },
-    logoImage: {
+    logoImageContainer: {
         width: 90,
         height: 90,
-        marginBottom: 14,
         borderRadius: 22,
-        borderWidth: 3,
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 14,
+        borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.25)',
+    },
+    logoImage: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 22,
     },
     appName: {
         fontSize: 34,
@@ -263,11 +344,12 @@ const styles = StyleSheet.create({
     },
     formSection: {
         flex: 1,
+        backgroundColor: '#FFFFFF',
     },
     formContent: {
         paddingHorizontal: 28,
         paddingTop: 30,
-        paddingBottom: 20,
+        paddingBottom: 200,
         flexGrow: 1,
     },
     signInTitle: {
@@ -390,7 +472,11 @@ const styles = StyleSheet.create({
         color: '#94A3B8',
         fontWeight: '500',
     },
-    keyboardSpacer: {
-        height: 24,
+    fieldErrorText: {
+        fontSize: 12,
+        color: '#EF4444',
+        marginTop: 4,
+        marginLeft: 4,
+        fontWeight: '600',
     },
 });
