@@ -321,7 +321,11 @@ export const updateHostel = async (req: AuthRequest, res: Response) => {
     } = req.body;
 
     // Validate required fields
-    if (!hostel_name || !address || !city) {
+    const finalHostelName = hostel_name || existingHostel.hostel_name;
+    const finalAddress = address !== undefined ? address : existingHostel.address;
+    const finalCity = city !== undefined ? city : existingHostel.city;
+
+    if (!finalHostelName || !finalAddress || !finalCity) {
       return res.status(400).json({
         success: false,
         error: 'Required fields: hostel_name, address, city'
@@ -353,7 +357,7 @@ export const updateHostel = async (req: AuthRequest, res: Response) => {
 
     // Check for duplicate hostel name (excluding current hostel)
     const duplicateName = await db('hostel_master')
-      .where({ hostel_name })
+      .where({ hostel_name: finalHostelName })
       .whereNot({ hostel_id: hostelId })
       .first();
 
@@ -400,12 +404,12 @@ export const updateHostel = async (req: AuthRequest, res: Response) => {
 
     // Prepare update data
     const updateData: any = {
-      hostel_name,
-      address,
-      city,
-      state,
-      pincode,
-      hostel_type,
+      hostel_name: finalHostelName,
+      address: finalAddress,
+      city: finalCity,
+      state: state !== undefined ? state : existingHostel.state,
+      pincode: pincode !== undefined ? pincode : existingHostel.pincode,
+      hostel_type: hostel_type !== undefined ? hostel_type : existingHostel.hostel_type,
       owner_id: finalOwnerId,
       updated_at: new Date()
     };

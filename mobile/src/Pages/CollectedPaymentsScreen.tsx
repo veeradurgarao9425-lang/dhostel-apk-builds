@@ -16,6 +16,7 @@ import { toLocalDateStr as toLocalDateString } from '../utils/dateUtils';
 import { AppHeader } from '../components/AppHeader';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import { downloadAndSaveFile } from '../utils/fileDownloader';
 
 const { width } = Dimensions.get('window');
 
@@ -163,19 +164,11 @@ export default function CollectedPaymentsScreen() {
             setShowExportModal(false);
 
             if (downloadResult.status === 200) {
-                Alert.alert(
-                    'Download Completed',
-                    'The report has been downloaded successfully.',
-                    [
-                        {
-                            text: 'Share / Open',
-                            onPress: () => Sharing.shareAsync(downloadResult.uri)
-                        },
-                        {
-                            text: 'OK',
-                            style: 'cancel'
-                        }
-                    ]
+                await downloadAndSaveFile(
+                    downloadResult.uri,
+                    filename,
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    true
                 );
             } else {
                 Alert.alert('Error', `Server returned status code ${downloadResult.status}`);

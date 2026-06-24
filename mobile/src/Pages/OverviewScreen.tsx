@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity,
     StatusBar, RefreshControl, Dimensions, Modal, ActivityIndicator
@@ -12,6 +12,7 @@ import { HeaderNotification } from '../components/HeaderNotification';
 import { useTheme } from '../../contexts/ThemeContext';
 import { AppHeader } from '../components/AppHeader';
 import { useTranslation } from 'react-i18next';
+import { MonthFilter } from '../components/MonthFilter';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -126,40 +127,14 @@ export default function OverviewScreen() {
             setRefreshing(false);
             setBackgroundLoading(false);
         }
-    }, [monthStr, data]);
+    }, [monthStr]);
 
     useFocusEffect(useCallback(() => { fetchData(true); }, [fetchData]));
 
-    const [showPicker, setShowPicker] = useState(false);
-    const [pickerYear, setPickerYear] = useState(targetDate.getFullYear());
+    useEffect(() => {
+        fetchData(false);
+    }, [monthStr, fetchData]);
 
-    const openPicker = () => {
-        setPickerYear(targetDate.getFullYear());
-        setShowPicker(true);
-    };
-
-    const selectMonth = (monthIndex: number) => {
-        const now = new Date();
-        if (pickerYear === now.getFullYear() && monthIndex > now.getMonth()) return;
-        const d = new Date(pickerYear, monthIndex, 1);
-        setLoading(true);
-        setTargetDate(d);
-        setShowPicker(false);
-    };
-
-    const shiftMonth = (delta: number) => {
-        const d = new Date(targetDate);
-        d.setMonth(d.getMonth() + delta);
-        const now = new Date();
-        if (d.getFullYear() > now.getFullYear() || (d.getFullYear() === now.getFullYear() && d.getMonth() > now.getMonth())) {
-            return; // Restrict future months
-        }
-        setLoading(true);
-        setTargetDate(d);
-    };
-
-    const monthKeys = ['janFull', 'febFull', 'marFull', 'aprFull', 'mayFull', 'junFull', 'julFull', 'augFull', 'sepFull', 'octFull', 'novFull', 'decFull'];
-    const monthLabel = `${t('overview.' + monthKeys[targetDate.getMonth()])} ${targetDate.getFullYear()}`;
     const canGoBack = navigation.canGoBack();
 
     // ── Loading ──
@@ -210,20 +185,32 @@ export default function OverviewScreen() {
                     </View>
                 }
             >
-                {/* Month Navigation */}
-                <View style={s.monthNav}>
-                    <TouchableOpacity onPress={() => shiftMonth(-1)} style={s.monthArrow}>
-                        <Ionicons name="chevron-back" size={18} color="#FFF" />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={openPicker} style={s.monthLabelBox}>
-                        <Ionicons name="calendar-outline" size={14} color="rgba(255,255,255,0.7)" />
-                        <Text style={s.monthLabel}>{monthLabel}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => shiftMonth(1)} style={s.monthArrow}>
-                        <Ionicons name="chevron-forward" size={18} color="#FFF" />
-                    </TouchableOpacity>
+                <View style={{ marginTop: 12 }}>
+                    <MonthFilter value={targetDate} onChange={setTargetDate} />
                 </View>
+                {/* Quick shortcut to daily income view */}
+                <TouchableOpacity
+                    onPress={() => navigation.navigate('IncomeDetails', { period: 'day' })}
+                    style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginTop: 10,
+                        backgroundColor: 'rgba(255,255,255,0.15)',
+                        borderRadius: 10,
+                        paddingVertical: 7,
+                        paddingHorizontal: 14,
+                        alignSelf: 'center',
+                        gap: 6,
+                    }}
+                    activeOpacity={0.8}
+                >
+                    <Ionicons name="today-outline" size={14} color="#FFF" />
+                    <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>View Daily Collection</Text>
+                    <Ionicons name="chevron-forward" size={13} color="rgba(255,255,255,0.8)" />
+                </TouchableOpacity>
             </AppHeader>
+
 
             <ScrollView
                 showsVerticalScrollIndicator={false}
@@ -458,49 +445,7 @@ export default function OverviewScreen() {
                 </View>
             </ScrollView>
 
-            {/* ── Month/Year Picker Modal ── */}
-            <Modal visible={showPicker} transparent animationType="fade" onRequestClose={() => setShowPicker(false)}>
-                <View style={s.modalOverlay}>
-                    <View style={s.pickerCard}>
-                        <View style={s.pickerHeader}>
-                            <TouchableOpacity onPress={() => setPickerYear(y => y - 1)} style={s.yearArrow}>
-                                <Ionicons name="chevron-back" size={20} color="#334155" />
-                            </TouchableOpacity>
-                            <Text style={s.pickerYearText}>{pickerYear}</Text>
-                            <TouchableOpacity 
-                                onPress={() => setPickerYear(y => y + 1)} 
-                                style={[s.yearArrow, pickerYear >= new Date().getFullYear() && { opacity: 0.3 }]}
-                                disabled={pickerYear >= new Date().getFullYear()}
-                            >
-                                <Ionicons name="chevron-forward" size={20} color="#334155" />
-                            </TouchableOpacity>
-                        </View>
-                        
-                        <View style={s.monthGrid}>
-                            {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((m, i) => {
-                                const now = new Date();
-                                const isFuture = pickerYear > now.getFullYear() || (pickerYear === now.getFullYear() && i > now.getMonth());
-                                const isSelected = pickerYear === targetDate.getFullYear() && i === targetDate.getMonth();
-                                return (
-                                    <TouchableOpacity 
-                                        key={m} 
-                                        style={[s.monthCell, isSelected && s.monthCellSelected, isFuture && s.monthCellDisabled]}
-                                        disabled={isFuture}
-                                        onPress={() => selectMonth(i)}
-                                    >
-                                        <Text style={[s.monthCellText, isSelected && s.monthCellTextSelected, isFuture && s.monthCellTextDisabled]}>
-                                            {t('overview.' + shortMonths[i])}
-                                        </Text>
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </View>
-                        <TouchableOpacity style={s.pickerCloseBtn} onPress={() => setShowPicker(false)}>
-                            <Text style={s.pickerCloseText}>{t('overview.cancel')}</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
+
 
             {/* Translucent loading overlay */}
             {loading && data && (

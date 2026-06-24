@@ -380,23 +380,44 @@ export const downloadPDFReport = async (req: AuthRequest, res: Response) => {
 // Generate Excel Report
 export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
   try {
-    const { month } = req.query; // Format: YYYY-MM (e.g., 2026-01)
+    const { month, startDate, endDate } = req.query;
     const user = req.user;
 
-    if (!month || typeof month !== 'string') {
+    let startDateStr: string;
+    let endDateStr: string;
+    let monthName: string;
+    let year: number;
+    let monthNum: number;
+
+    if (startDate && endDate && typeof startDate === 'string' && typeof endDate === 'string') {
+      // Custom date range mode
+      startDateStr = startDate;
+      endDateStr = endDate;
+      const sd = new Date(startDate);
+      const ed = new Date(endDate);
+      year = sd.getFullYear();
+      monthNum = sd.getMonth() + 1;
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'];
+      monthName = `${sd.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} – ${ed.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+    } else if (month && typeof month === 'string') {
+      // Month mode (YYYY-MM)
+      const [yr, mn] = month.split('-').map(Number);
+      year = yr;
+      monthNum = mn;
+      const startD = new Date(year, monthNum - 1, 1);
+      const endD = new Date(year, monthNum, 0);
+      startDateStr = startD.toISOString().split('T')[0];
+      endDateStr = endD.toISOString().split('T')[0];
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'];
+      monthName = monthNames[monthNum - 1];
+    } else {
       return res.status(400).json({
         success: false,
-        error: 'Month parameter is required (format: YYYY-MM)'
+        error: 'Provide either month (YYYY-MM) or startDate & endDate (YYYY-MM-DD)'
       });
     }
-
-    // Parse month
-    const [year, monthNum] = month.split('-').map(Number);
-    const startDate = new Date(year, monthNum - 1, 1);
-    const endDate = new Date(year, monthNum, 0); // Last day of the month
-
-    const startDateStr = startDate.toISOString().split('T')[0];
-    const endDateStr = endDate.toISOString().split('T')[0];
 
     // Get hostel info
     let hostelIds: number[] = [];
@@ -570,12 +591,9 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
     const availableBeds = totalCapacity - occupiedBeds;
     const occupancyRate = totalCapacity > 0 ? ((occupiedBeds / totalCapacity) * 100).toFixed(1) : '0';
 
-    // Month name
-    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'];
-    const monthName = monthNames[monthNum - 1];
 
     // Create Excel workbook
+
     const workbook = new ExcelJS.Workbook();
 
     // -------------------------------------------------------------
@@ -596,7 +614,7 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
 
       sheet.mergeCells('A2:G2');
       const subtitleCell = sheet.getCell('A2');
-      subtitleCell.value = `${title} - ${monthName} ${year}`;
+      subtitleCell.value = `${title} - ${startDate && endDate ? monthName : monthName + ' ' + year}`;
       subtitleCell.font = { size: 13, bold: true, color: { argb: 'FF1F2937' } };
       subtitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
       subtitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
@@ -902,7 +920,7 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
     });
 
     let exrIdx = 5;
-    expenses.forEach((e, idx) => {
+    expensesData.forEach((e, idx) => {
       expenseSheet.getRow(exrIdx).height = 20;
       expenseSheet.getCell(`A${exrIdx}`).value = idx + 1;
       
@@ -953,7 +971,7 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
     expenseSheet.getColumn('H').width = 25;
 
     // Set response headers
-    const filename = `Hostel_Financial_Report_${monthName}_${year}.xlsx`;
+    const filename = `Hostel_Financial_Report_${startDate && endDate ? `${startDateStr}_to_${endDateStr}` : `${monthName}_${year}`}.xlsx`;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 

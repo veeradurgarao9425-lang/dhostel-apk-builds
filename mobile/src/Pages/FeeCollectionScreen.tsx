@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     View,
     Text,
@@ -11,8 +11,11 @@ import {
     Modal,
     Alert,
     Dimensions,
+    FlatList,
+    RefreshControl,
 } from 'react-native';
 import api from '../services/api';
+import { MonthFilter } from '../components/MonthFilter';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
     Search,
@@ -537,15 +540,111 @@ export default function FeeCollectionScreen({ navigation, route }: any) {
     const { user } = useAuth();
     const { theme } = useTheme();
     const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [activeTab, setActiveTab] = useState<TabType>('All');
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [summary, setSummary] = useState<any>(null);
     const [fees, setFees] = useState<any[]>([]);
+
+    const [targetDate, setTargetDate] = useState(new Date());
+    const [page, setPage] = useState(1);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState(true);
 
     const [payModalVisible, setPayModalVisible] = useState(false);
     const [selectedFee, setSelectedFee] = useState<any>(null);
     const [payLoading, setPayLoading] = useState(false);
     const [paymentModes, setPaymentModes] = useState<any[]>([]);
+
+    const searchTimeout = useRef<NodeJS.Timeout | null>(null);
+
+    // Debounce search input
+    useEffect(() => {
+        if (searchTimeout.current) clearTimeout(searchTimeout.current);
+        searchTimeout.current = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 400);
+        return () => { if (searchTimeout.current) clearTimeout(searchTimeout.current); };
+    }, [search]);
+
+    const fetchSummary = useCallback(async (pageNum = 1, showLoader = true) => {
+        try {
+            if (pageNum === 1) {
+                if (showLoader) setLoading(true);
+            } else {
+                setLoadingMore(true);
+            }
+
+            const monthStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
+            
+            let statusParam = undefined;
+            if (activeTab === 'Paid') statusParam = 'Paid';
+            else if (activeTab === 'Unpaid') statusParam = 'Unpaid';
+            else if (activeTab === 'Partial') statusParam = 'Partial';
+
+            const params: any = {
+                fee_month: monthStr,
+                page: pageNum,
+                limit: 15,
+            };
+            if (statusParam) params.status = statusParam;
+            if (debouncedSearch.trim() !== '') params.search = debouncedSearch.trim();
+
+            const res = await api.get('/monthly-fees/summary', { params });
+            if (res.data.success) {
+                const { summary: newSummary, fees: newFees, hasMore: newHasMore } = res.data.data;
+                setSummary(newSummary);
+                setHasMore(newHasMore);
+                setPage(pageNum);
+
+                setFees(prev => {
+                    if (pageNum === 1) return newFees || [];
+                    const existingIds = new Set(prev.map(f => `${f.student_id}-${f.fee_month}`));
+                    const filteredNew = (newFees || []).filter((f: any) => !existingIds.has(`${f.student_id}-${f.fee_month}`));
+                    return [...prev, ...filteredNew];
+                });
+            }
+        } catch (e) { 
+            console.error(e); 
+        } finally { 
+            setLoading(false); 
+            setLoadingMore(false);
+        }
+    }, [targetDate, activeTab, debouncedSearch]);
+
+    const fetchPaymentModes = async () => {
+        try {
+            const res = await api.get('/monthly-fees/payment-modes');
+            if (res.data.success) setPaymentModes(res.data.data);
+        } catch (e) { console.error(e); }
+    };
+
+    // Initial fetch on mount & targetDate/activeTab/debouncedSearch changes
+    useEffect(() => {
+        fetchPaymentModes();
+    }, []);
+
+    useEffect(() => {
+        setPage(1);
+        setHasMore(true);
+        fetchSummary(1, true);
+    }, [fetchSummary]);
+
+    // Handle Pull to Refresh
+    const handleRefresh = async () => {
+        setRefreshing(true);
+        setPage(1);
+        setHasMore(true);
+        await fetchSummary(1, false);
+        setRefreshing(false);
+    };
+
+    // Handle Infinite Scroll Load More
+    const handleLoadMore = () => {
+        if (loading || loadingMore || !hasMore) return;
+        fetchSummary(page + 1, false);
+    };
 
     useEffect(() => {
         if (route.params?.initialTab) {
@@ -556,46 +655,14 @@ export default function FeeCollectionScreen({ navigation, route }: any) {
         }
     }, [route.params?.initialTab]);
 
-    const fetchSummary = async (showLoader = true) => {
-        try {
-            if (showLoader) setLoading(true);
-            const res = await api.get('/monthly-fees/summary');
-            if (res.data.success) {
-                setSummary(res.data.data.summary);
-                setFees(res.data.data.fees);
-            }
-        } catch (e) { console.error(e); }
-        finally { if (showLoader) setLoading(false); }
-    };
-
-    const fetchPaymentModes = async () => {
-        try {
-            const res = await api.get('/monthly-fees/payment-modes');
-            if (res.data.success) setPaymentModes(res.data.data);
-        } catch (e) { console.error(e); }
-    };
-
-    useEffect(() => { fetchSummary(); fetchPaymentModes(); }, []);
-
-    // Counts
-    const paidCount = fees.filter(f => f.fee_status === 'Fully Paid').length;
-    const unpaidCount = fees.filter(f => f.fee_status === 'Pending' || f.fee_status === 'Overdue').length;
-    const partialCount = fees.filter(f => f.fee_status === 'Partially Paid').length;
+    // Counts from global summary stats
     const totalAmt = (summary?.total_paid || 0) + (summary?.total_pending || 0);
-
     const counts: Record<TabType, number> = {
-        All: fees.length, Unpaid: unpaidCount, Partial: partialCount, Paid: paidCount,
+        All: summary?.total_students || 0,
+        Unpaid: summary?.pending || 0,
+        Partial: summary?.partially_paid || 0,
+        Paid: summary?.fully_paid || 0,
     };
-
-    // Filter
-    const filteredFees = fees.filter(f => {
-        const fullName = `${f.first_name || ''} ${f.last_name || ''}`.toLowerCase();
-        const matchSearch = fullName.includes(search.toLowerCase());
-        if (activeTab === 'Paid') return matchSearch && f.fee_status === 'Fully Paid';
-        if (activeTab === 'Unpaid') return matchSearch && (f.fee_status === 'Pending' || f.fee_status === 'Overdue');
-        if (activeTab === 'Partial') return matchSearch && f.fee_status === 'Partially Paid';
-        return matchSearch;
-    });
 
     const openCollect = (fee: any) => { setSelectedFee(fee); setPayModalVisible(true); };
 
@@ -624,8 +691,8 @@ export default function FeeCollectionScreen({ navigation, route }: any) {
             };
             const res = await api.post('/monthly-fees/record-payment', payload);
             if (res.data.success) {
-                // Keep loader visible while fetching updated summary
-                await fetchSummary(false); // Silent refresh
+                // Silent refresh
+                await fetchSummary(1, false);
                 Toast.show({ type: 'success', text1: 'Payment recorded successfully!' });
                 setPayModalVisible(false);
             }
@@ -648,8 +715,8 @@ export default function FeeCollectionScreen({ navigation, route }: any) {
                 style={[styles.header, { borderBottomLeftRadius: theme.headerRounded, borderBottomRightRadius: theme.headerRounded }]}
             >
                 <View style={styles.headerTop}>
-                    {/* Back button added as requested */}
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                    {/* Back button */}
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
                         <ChevronLeft color="#FFFFFF" size={26} />
                     </TouchableOpacity>
                     <View style={styles.headerActions}>
@@ -660,84 +727,109 @@ export default function FeeCollectionScreen({ navigation, route }: any) {
                 <View style={styles.headerContent}>
                     <Text style={styles.greeting}>Fee Collection</Text>
                 </View>
+                {/* Reusable Month Filter component */}
+                <View style={{ marginTop: 12 }}>
+                    <MonthFilter value={targetDate} onChange={setTargetDate} />
+                </View>
             </LinearGradient>
 
-            {/* ── Body ── */}
-            <ScrollView
+            {/* main FlatList */}
+            <FlatList
                 style={styles.body}
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.bodyContent}
-                stickyHeaderIndices={[1]}
-            >
-                {/* Summary strip */}
-                <SummaryStrip summary={summary} total={totalAmt} />
+                contentContainerStyle={[styles.bodyContent, { paddingBottom: 120 }]}
+                data={fees}
+                keyExtractor={(item) => `${item.student_id}-${item.fee_month}`}
+                onEndReached={handleLoadMore}
+                onEndReachedThreshold={0.3}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={handleRefresh}
+                        colors={[theme.primary]}
+                    />
+                }
+                ListHeaderComponent={
+                    <View style={{ gap: 10 }}>
+                        {/* Summary strip */}
+                        <SummaryStrip summary={summary} total={totalAmt} />
 
-                {/* Sticky: Tabs + Search */}
-                <View style={styles.stickyBlock}>
-                    {/* Tabs */}
-                    <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={styles.tabsRow}
-                    >
-                        {TABS.map(t => {
-                            const active = activeTab === t.key;
-                            return (
-                                <TouchableOpacity
-                                    key={t.key}
-                                    style={[styles.tab, active && { backgroundColor: t.color, borderColor: t.color }]}
-                                    onPress={() => setActiveTab(t.key)}
-                                    activeOpacity={0.8}
-                                >
-                                    <Text style={[styles.tabText, active && styles.tabTextActive]}>
-                                        {t.label}
-                                    </Text>
-                                    <View style={[styles.tabCount, active && { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
-                                        <Text style={[styles.tabCountText, active && { color: '#FFFFFF' }]}>
-                                            {counts[t.key]}
-                                        </Text>
-                                    </View>
-                                </TouchableOpacity>
-                            );
-                        })}
-                    </ScrollView>
+                        {/* Tabs & Search */}
+                        <View style={styles.stickyBlock}>
+                            {/* Tabs */}
+                            <ScrollView
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={styles.tabsRow}
+                            >
+                                {TABS.map(t => {
+                                    const active = activeTab === t.key;
+                                    return (
+                                        <TouchableOpacity
+                                            key={t.key}
+                                            style={[styles.tab, active && { backgroundColor: t.color, borderColor: t.color }]}
+                                            onPress={() => setActiveTab(t.key)}
+                                            activeOpacity={0.8}
+                                        >
+                                            <Text style={[styles.tabText, active && styles.tabTextActive]}>
+                                                {t.label}
+                                            </Text>
+                                            <View style={[styles.tabCount, active && { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
+                                                <Text style={[styles.tabCountText, active && { color: '#FFFFFF' }]}>
+                                                    {counts[t.key]}
+                                                </Text>
+                                            </View>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </ScrollView>
 
-                    {/* Search */}
-                    <View style={styles.searchWrap}>
-                        <View style={styles.searchBox}>
-                            <Search color="#94A3B8" size={16} />
-                            <TextInput
-                                style={styles.searchInput}
-                                placeholder="Search student name..."
-                                placeholderTextColor="#CBD5E1"
-                                value={search}
-                                onChangeText={setSearch}
-                            />
-                            {search.length > 0 && (
-                                <TouchableOpacity onPress={() => setSearch('')}>
-                                    <X color="#CBD5E1" size={16} />
-                                </TouchableOpacity>
-                            )}
+                            {/* Search */}
+                            <View style={styles.searchWrap}>
+                                <View style={styles.searchBox}>
+                                    <Search color="#94A3B8" size={16} />
+                                    <TextInput
+                                        style={styles.searchInput}
+                                        placeholder="Search student name or room..."
+                                        placeholderTextColor="#CBD5E1"
+                                        value={search}
+                                        onChangeText={setSearch}
+                                    />
+                                    {search.length > 0 && (
+                                        <TouchableOpacity onPress={() => setSearch('')}>
+                                            <X color="#CBD5E1" size={16} />
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+                            </View>
+                        </View>
+
+                        {/* List Header Label */}
+                        <View style={{ paddingHorizontal: 16, marginTop: 10 }}>
+                            <Text style={styles.listLabel}>
+                                {counts[activeTab]} {activeTab === 'All' ? 'students' : activeTab.toLowerCase()} records total
+                            </Text>
                         </View>
                     </View>
-                </View>
-
-                {/* List */}
-                <View style={styles.list}>
-                    <View style={styles.listHeader}>
-                        <Text style={styles.listLabel}>
-                            {filteredFees.length} {activeTab === 'All' ? 'students' : activeTab.toLowerCase()} records
-                        </Text>
+                }
+                renderItem={({ item }) => (
+                    <View style={{ paddingHorizontal: 16 }}>
+                        <FeeCard
+                            fee={item}
+                            onCollect={openCollect}
+                            onReceipt={(f: any) => navigation.navigate('Receipt', { feeData: f })}
+                            onPress={() => navigation.navigate('TenantTransactions', { studentId: item.student_id, studentName: `${item.first_name} ${item.last_name}` })}
+                        />
                     </View>
-
-                    {loading ? (
+                )}
+                ListEmptyComponent={
+                    loading ? (
                         <View style={styles.centered}>
-                            <ActivityIndicator size="large" color="#10B981" />
+                            <ActivityIndicator size="large" color={theme.primary} />
                             <Text style={[styles.emptyTitle, { marginTop: 12, color: '#94A3B8' }]}>
                                 Loading fee records…
                             </Text>
                         </View>
-                    ) : filteredFees.length === 0 ? (
+                    ) : (
                         <View style={styles.centered}>
                             <View style={styles.emptyCircle}>
                                 <CheckCircle color="#CBD5E1" size={28} />
@@ -749,23 +841,19 @@ export default function FeeCollectionScreen({ navigation, route }: any) {
                                  'No fee records found'}
                             </Text>
                             <Text style={{ fontSize: 12, color: '#CBD5E1', marginTop: 4 }}>
-                                {activeTab === 'Unpaid' ? 'Great job! Everyone has paid.' : 'Try a different tab or search.'}
+                                {activeTab === 'Unpaid' ? 'Great job! Everyone has paid.' : 'Try a different tab, month or search.'}
                             </Text>
                         </View>
-                    ) : (
-                        filteredFees.map(fee => (
-                            <FeeCard
-                                key={`${fee.student_id}-${fee.fee_month}`}
-                                fee={fee}
-                                onCollect={openCollect}
-                                onReceipt={(f: any) => navigation.navigate('Receipt', { feeData: f })}
-                                onPress={() => navigation.navigate('TenantTransactions', { studentId: fee.student_id, studentName: `${fee.first_name} ${fee.last_name}` })}
-                            />
-                        ))
-                    )}
-                    <View style={{ height: 100 }} />
-                </View>
-            </ScrollView>
+                    )
+                }
+                ListFooterComponent={
+                    loadingMore ? (
+                        <View style={{ paddingVertical: 20 }}>
+                            <ActivityIndicator size="small" color={theme.primary} />
+                        </View>
+                    ) : null
+                }
+            />
 
             <CollectModal
                 visible={payModalVisible}
@@ -785,13 +873,13 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8FAFC' },
     // Header Styles
     header: {
-        paddingTop: 55,
-        paddingBottom: 30,
+        paddingTop: 50,
+        paddingBottom: 20,
         paddingHorizontal: 20,
         borderBottomLeftRadius: 30,
         borderBottomRightRadius: 30
     },
-    headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+    headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
     headerActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     backBtn: {
         width: 40, height: 40, borderRadius: 20,

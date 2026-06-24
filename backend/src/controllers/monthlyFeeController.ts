@@ -401,7 +401,7 @@ export const getMonthlyFeesSummary = async (req: AuthRequest, res: Response) => 
   console.log('[getMonthlyFeesSummary] User:', req.user);
 
   try {
-    const { hostelId, fee_month, page, limit, onlyPending } = req.query;
+    const { hostelId, fee_month, page, limit, onlyPending, status, search } = req.query;
     const user = req.user;
 
     // Get current month if not specified
@@ -678,6 +678,23 @@ export const getMonthlyFeesSummary = async (req: AuthRequest, res: Response) => 
     let filteredFees = fees;
     if (onlyPending === 'true') {
       filteredFees = fees.filter((f: any) => f.fee_status !== 'Fully Paid');
+    } else if (status) {
+      const statusStr = status as string;
+      if (statusStr === 'Paid') {
+        filteredFees = fees.filter((f: any) => f.fee_status === 'Fully Paid');
+      } else if (statusStr === 'Unpaid') {
+        filteredFees = fees.filter((f: any) => f.fee_status === 'Pending' || f.fee_status === 'Overdue');
+      } else if (statusStr === 'Partial') {
+        filteredFees = fees.filter((f: any) => f.fee_status === 'Partially Paid');
+      }
+    }
+
+    if (search && typeof search === 'string' && search.trim() !== '') {
+      const q = search.toLowerCase().trim();
+      filteredFees = filteredFees.filter((f: any) => {
+        const fullName = `${f.first_name || ''} ${f.last_name || ''}`.toLowerCase();
+        return fullName.includes(q) || (f.room_number && f.room_number.toString().includes(q));
+      });
     }
 
     const todayDate = new Date();

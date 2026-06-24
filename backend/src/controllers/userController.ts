@@ -31,35 +31,19 @@ export const getOwners = async (req: Request, res: Response) => {
 export const updateOwner = async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
-    const { full_name, email, phone, password } = req.body;
+    const reqUser = (req as any).user;
+    const targetUserId = userId && userId !== 'undefined' ? userId : reqUser?.user_id;
 
-    // Validate required fields
-    if (!full_name || !phone) {
+    if (!targetUserId) {
       return res.status(400).json({
         success: false,
-        error: 'Full name and phone are required'
-      });
-    }
-
-    // Validate email format if provided
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid email format'
-      });
-    }
-
-    // Validate phone format (10 digits)
-    if (!/^\d{10}$/.test(phone)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Phone number must be 10 digits'
+        error: 'User ID is required'
       });
     }
 
     // Check if owner exists
     const existingOwner = await db('users')
-      .where({ user_id: userId, role_id: 2 })
+      .where({ user_id: targetUserId })
       .first();
 
     if (!existingOwner) {
@@ -69,11 +53,41 @@ export const updateOwner = async (req: Request, res: Response) => {
       });
     }
 
+    const { full_name, email, phone, password } = req.body;
+
+    const finalFullName = full_name || existingOwner.full_name;
+    const finalEmail = email !== undefined ? email : existingOwner.email;
+    const finalPhone = phone !== undefined ? phone : existingOwner.phone;
+
+    // Validate required fields
+    if (!finalFullName || !finalPhone) {
+      return res.status(400).json({
+        success: false,
+        error: 'Full name and phone are required'
+      });
+    }
+
+    // Validate email format if provided
+    if (finalEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(finalEmail)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid email format'
+      });
+    }
+
+    // Validate phone format (10 digits)
+    if (finalPhone && !/^\d{10}$/.test(finalPhone)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Phone number must be 10 digits'
+      });
+    }
+
     // Check for duplicate email (excluding current user) only if email is provided
-    if (email) {
+    if (finalEmail) {
       const emailExists = await db('users')
-        .where({ email })
-        .whereNot({ user_id: userId })
+        .where({ email: finalEmail })
+        .whereNot({ user_id: targetUserId })
         .first();
 
       if (emailExists) {
@@ -86,9 +100,9 @@ export const updateOwner = async (req: Request, res: Response) => {
 
     // Prepare update data
     const updateData: any = {
-      full_name,
-      email: email || null,
-      phone,
+      full_name: finalFullName,
+      email: finalEmail || null,
+      phone: finalPhone,
       updated_at: new Date()
     };
 
@@ -99,13 +113,13 @@ export const updateOwner = async (req: Request, res: Response) => {
 
     // Update owner
     await db('users')
-      .where({ user_id: userId })
+      .where({ user_id: targetUserId })
       .update(updateData);
 
     // Fetch updated owner data
     const updatedOwner = await db('users')
       .select('user_id', 'full_name', 'email', 'phone')
-      .where({ user_id: userId })
+      .where({ user_id: targetUserId })
       .first();
 
     res.json({

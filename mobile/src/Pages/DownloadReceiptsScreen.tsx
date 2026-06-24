@@ -17,6 +17,8 @@ import { AppHeader } from '../components/AppHeader';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { SuccessModal } from '../components/SuccessModal';
+import { downloadAndSaveFile } from '../utils/fileDownloader';
+import { MonthFilter } from '../components/MonthFilter';
 
 const { width } = Dimensions.get('window');
 
@@ -152,8 +154,12 @@ export default function DownloadReceiptsScreen() {
             setShowExportModal(false);
 
             if (downloadResult.status === 200) {
-                setDownloadedFileUri(downloadResult.uri);
-                setSuccessModalVisible(true);
+                await downloadAndSaveFile(
+                    downloadResult.uri,
+                    filename,
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    true
+                );
             } else {
                 Alert.alert('Error', `Server returned status code ${downloadResult.status}`);
             }
@@ -276,7 +282,11 @@ export default function DownloadReceiptsScreen() {
                         <Download color="#FFF" size={20} />
                     </TouchableOpacity>
                 }
-            />
+            >
+                <View style={{ marginTop: 12 }}>
+                    <MonthFilter value={refDate} onChange={setRefDate} />
+                </View>
+            </AppHeader>
 
             {/* BODY */}
             {loading ? (
@@ -331,11 +341,7 @@ export default function DownloadReceiptsScreen() {
                                     value={searchQuery}
                                     onChangeText={setSearchQuery}
                                     placeholderTextColor="#94A3B8"
-                                
                                 />
-                                <TouchableOpacity onPress={() => setDatePickerVisible(true)}>
-                                    <Ionicons name="calendar-outline" size={18} color="#2563EB" />
-                                </TouchableOpacity>
                             </View>
 
                             {/* Monthly Collections Selector Row */}
@@ -344,21 +350,6 @@ export default function DownloadReceiptsScreen() {
                                     <Text style={s.collectionsTitle}>Select Payment Receipt</Text>
                                     <Text style={s.collectionsSubtitle}>Tap card to download receipt PDF</Text>
                                 </View>
-                            </View>
-
-                            <View style={s.filterOptionsRow}>
-                                <TouchableOpacity style={s.allFilterBtn} activeOpacity={0.8}>
-                                    <Ionicons name="grid-outline" size={18} color="#2563EB" />
-                                    <Text style={s.allFilterText}>All</Text>
-                                </TouchableOpacity>
-                                
-                                <TouchableOpacity style={s.monthDropdown} onPress={() => setDatePickerVisible(true)} activeOpacity={0.8}>
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={s.dropdownLabel}>Collection Month & Year</Text>
-                                        <Text style={s.dropdownValue}>{getMonthLabel(refDate)}</Text>
-                                    </View>
-                                    <Ionicons name="chevron-down" size={18} color="#1E293B" />
-                                </TouchableOpacity>
                             </View>
                         </View>
                     }
@@ -474,26 +465,6 @@ export default function DownloadReceiptsScreen() {
                 onCancel={() => setDatePickerVisible(false)}
             />
 
-            <SuccessModal
-                visible={successModalVisible}
-                title="Excel Report Ready"
-                message="Your receipts report has been successfully generated and saved to your device cache."
-                buttonText="Share / Save Excel"
-                onButtonPress={async () => {
-                    setSuccessModalVisible(false);
-                    if (downloadedFileUri) {
-                        setTimeout(async () => {
-                            await Sharing.shareAsync(downloadedFileUri, {
-                                mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                                dialogTitle: 'Share / Save Excel Report',
-                                UTI: 'com.microsoft.excel.xls'
-                            });
-                        }, 300);
-                    }
-                }}
-                onClose={() => setSuccessModalVisible(false)}
-                autoCloseDuration={0}
-            />
         </View>
     );
 }

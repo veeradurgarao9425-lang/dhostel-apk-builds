@@ -21,6 +21,10 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
+import { SuccessModal } from '../components/SuccessModal';
+import { downloadAndSaveFile } from '../utils/fileDownloader';
+import { toLocalDateStr } from '../utils/dateUtils';
+import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -28,7 +32,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { AppHeader } from '../components/AppHeader';
 import { ProfileMenu } from '../components/ProfileMenu';
 import { buildReportHtml } from '../utils/reportHtml';
-import { SuccessModal } from '../components/SuccessModal';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`;
@@ -167,15 +170,24 @@ export default function ReportsScreen() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [exporting, setExporting] = useState<null | 'pdf' | 'excel' | 'email'>(null);
-    const [exportModal, setExportModal] = useState(false);
     const [successModalVisible, setSuccessModalVisible] = useState(false);
     const [downloadedFileUri, setDownloadedFileUri] = useState<string | null>(null);
+
+    // Excel date-range picker state
+    const [excelRangeModal, setExcelRangeModal] = useState(false);
+    const [excelStart, setExcelStart] = useState(() => {
+        const d = new Date(); d.setDate(1); return d;
+    });
+    const [excelEnd, setExcelEnd] = useState(new Date());
+    const [showStartPicker, setShowStartPicker] = useState(false);
+    const [showEndPicker, setShowEndPicker] = useState(false);
 
     const [stats, setStats] = useState<any>(null);
     const [monthlyFees, setMonthlyFees] = useState<any>(null);
     const [defaulters, setDefaulters] = useState<any[]>([]);
     const [expenses, setExpenses] = useState<any[]>([]);
     const [trend, setTrend] = useState<any[]>([]);
+
 
     const loadData = useCallback(async (silent = false) => {
         if (!silent) setLoading(true);
@@ -244,7 +256,6 @@ export default function ReportsScreen() {
     // ── Export: on-device PDF (instant, offline, professional) ────────────────
     const handleExportPDF = async () => {
         setExporting('pdf');
-        setExportModal(false);
         try {
             const html = buildReportHtml({
                 hostelName: user?.hostel_name || 'My Hostel',
@@ -272,36 +283,69 @@ export default function ReportsScreen() {
         }
     };
 
-    // ── Export: Excel from backend (full transaction spreadsheet) ─────────────
-    const handleExportExcel = async () => {
-        setExportModal(false);
+    // ── Export: Open date-range modal first ──────────────────────────────────
+    const handleExportExcel = () => {
+        // Pre-set to this month
+        const d = new Date(); d.setDate(1);
+        setExcelStart(d);
+        setExcelEnd(new Date());
+        setExcelRangeModal(true);
+    };
+
+    // ── Export: Actual download with date range ───────────────────────────────
+    const handleDoExcelDownload = async () => {
+        if (excelStart > excelEnd) {
+            Alert.alert('Invalid Range', 'Start date must be before or equal to end date.');
+            return;
+        }
+        setExcelRangeModal(false);
+        setExporting('excel');
         try {
             const token = await AsyncStorage.getItem('token');
+            if (!token) {
+                Alert.alert('Error', 'Authentication token not found. Please log in again.');
+                return;
+            }
+            const startStr = toLocalDateStr(excelStart);
+            const endStr = toLocalDateStr(excelEnd);
             const base = api.defaults.baseURL?.replace(/\/$/, '') || '';
-            const exportUrl = `${base}/reports/download/excel?month=${monthParam}&token=${encodeURIComponent(token || '')}`;
+            const exportUrl = `${base}/reports/download/excel?startDate=${startStr}&endDate=${endStr}&token=${encodeURIComponent(token)}`;
             
-            const filename = `reports_excel_${monthParam}.xlsx`;
+            const filename = `reports_${startStr}_to_${endStr}.xlsx`;
             const fileUri = `${FileSystem.documentDirectory}${filename}`;
 
             const downloadResult = await FileSystem.downloadAsync(exportUrl, fileUri);
 
             if (downloadResult.status === 200) {
-                setDownloadedFileUri(downloadResult.uri);
-                setSuccessModalVisible(true);
+                await downloadAndSaveFile(
+                    downloadResult.uri,
+                    filename,
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    true
+                );
             } else {
-                Alert.alert('Error', `Server returned status code ${downloadResult.status}`);
+                Alert.alert('Download Failed', `Server returned status ${downloadResult.status}. Please try again.`);
             }
         } catch (e: any) {
-            Alert.alert('Excel Export Failed', e?.message || 'Could not initiate the Excel download.');
+            Alert.alert('Excel Export Failed', e?.message || 'Could not generate the Excel report.');
+        } finally {
+            setExporting(null);
         }
     };
 
+
     // ── Email the Excel report to the logged-in user's own email ──────────────
     const handleEmailExcel = async () => {
+        if (excelStart > excelEnd) {
+            Alert.alert('Invalid Range', 'Start date must be before or equal to end date.');
+            return;
+        }
+        setExcelRangeModal(false);
         setExporting('email');
-        setExportModal(false);
         try {
-            const res = await api.post(`/reports/email-excel?month=${monthParam}`);
+            const startStr = toLocalDateStr(excelStart);
+            const endStr = toLocalDateStr(excelEnd);
+            const res = await api.post(`/reports/email-excel?startDate=${startStr}&endDate=${endStr}`);
             if (res.data?.success) {
                 Alert.alert('Report Sent 📧', res.data.message || `The report has been emailed to ${user?.email}.`);
             } else {
@@ -337,7 +381,7 @@ export default function ReportsScreen() {
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                         <TouchableOpacity
                             style={[s.headerExportBtn, !!exporting && { opacity: 0.6 }]}
-                            onPress={() => setExportModal(true)}
+                            onPress={handleExportExcel}
                             disabled={!!exporting}
                             activeOpacity={0.8}
                         >
@@ -587,95 +631,165 @@ export default function ReportsScreen() {
 
             </ScrollView>
 
-            {/* ── EXPORT OPTIONS SHEET ─────────────────────────────────────── */}
+            {/* ── EXPORT OPTIONS MODAL ─────────────────────────────────────── */}
             <Modal
-                visible={exportModal}
+                visible={excelRangeModal}
                 transparent
                 animationType="slide"
-                onRequestClose={() => setExportModal(false)}
+                onRequestClose={() => setExcelRangeModal(false)}
             >
                 <TouchableOpacity
                     style={s.sheetBackdrop}
                     activeOpacity={1}
-                    onPress={() => setExportModal(false)}
+                    onPress={() => setExcelRangeModal(false)}
                 >
-                    <TouchableOpacity activeOpacity={1} style={[s.sheet, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]}>
+                    <TouchableOpacity activeOpacity={1} style={[s.sheet, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', paddingBottom: 32 }]}>
                         <View style={s.sheetHandle} />
                         <Text style={[s.sheetTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>Export Report</Text>
                         <Text style={[s.sheetSub, { color: isDark ? '#94A3B8' : '#64748B' }]}>
-                            {periodLabel} · {user?.hostel_name || 'My Hostel'}
+                            Select the date range to include in your Excel report
                         </Text>
 
-
-
-                        {/* Excel */}
-                        <TouchableOpacity
-                            style={[s.sheetOption, { borderColor: isDark ? '#334155' : '#ECECF5' }]}
-                            onPress={handleExportExcel}
-                            activeOpacity={0.8}
-                        >
-                            <View style={[s.sheetIcon, { backgroundColor: '#00875A18' }]}>
-                                <Ionicons name="grid" size={22} color="#00875A" />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={[s.sheetOptTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>Download Excel</Text>
-                                <Text style={[s.sheetOptSub, { color: isDark ? '#94A3B8' : '#64748B' }]}>Full transaction spreadsheet (.xlsx)</Text>
-                            </View>
-                            <Ionicons name="chevron-forward" size={18} color={isDark ? '#475569' : '#CBD5E1'} />
-                        </TouchableOpacity>
-
-                        {/* Email to my account */}
-                        <TouchableOpacity
-                            style={[s.sheetOption, { borderColor: isDark ? '#334155' : '#ECECF5' }]}
-                            onPress={handleEmailExcel}
-                            activeOpacity={0.8}
-                        >
-                            <View style={[s.sheetIcon, { backgroundColor: theme.primary + '18' }]}>
-                                <Ionicons name="mail" size={22} color={theme.primary} />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={[s.sheetOptTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>Email to my account</Text>
-                                <Text style={[s.sheetOptSub, { color: isDark ? '#94A3B8' : '#64748B' }]} numberOfLines={1}>
-                                    Send Excel to {user?.email || 'your email'}
-                                </Text>
-                            </View>
-                            <Ionicons name="chevron-forward" size={18} color={isDark ? '#475569' : '#CBD5E1'} />
-                        </TouchableOpacity>
-
-                        <View style={s.sheetNote}>
-                            <Ionicons name="information-circle-outline" size={14} color={isDark ? '#94A3B8' : '#64748B'} />
-                            <Text style={[s.sheetNoteText, { color: isDark ? '#94A3B8' : '#64748B' }]}>
-                                Tip: after a download, tap “Mail” in the share sheet to send it to anyone. “Email to my account” sends it straight to your registered email.
-                            </Text>
+                        {/* Quick presets */}
+                        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 20 }}>
+                            {[
+                                { label: 'Last 7 Days', days: 7 },
+                                { label: 'This Month', days: 0 },
+                                { label: 'Last Month', days: -1 },
+                            ].map(preset => (
+                                <TouchableOpacity
+                                    key={preset.label}
+                                    onPress={() => {
+                                        const today = new Date();
+                                        if (preset.days > 0) {
+                                            const s = new Date(today); s.setDate(today.getDate() - preset.days + 1);
+                                            setExcelStart(s); setExcelEnd(today);
+                                        } else if (preset.days === 0) {
+                                            const s = new Date(today); s.setDate(1);
+                                            setExcelStart(s); setExcelEnd(today);
+                                        } else {
+                                            const s = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                                            const e = new Date(today.getFullYear(), today.getMonth(), 0);
+                                            setExcelStart(s); setExcelEnd(e);
+                                        }
+                                    }}
+                                    style={{
+                                        flex: 1,
+                                        paddingVertical: 8,
+                                        backgroundColor: isDark ? '#334155' : '#F1F5F9',
+                                        borderRadius: 10,
+                                        alignItems: 'center',
+                                    }}
+                                >
+                                    <Text style={{ fontSize: 11, fontWeight: '700', color: isDark ? '#CBD5E1' : '#475569' }}>
+                                        {preset.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
                         </View>
 
-                        <TouchableOpacity style={s.sheetCancel} onPress={() => setExportModal(false)} activeOpacity={0.7}>
+                        {/* Date pickers row */}
+                        <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
+                            <TouchableOpacity
+                                onPress={() => setShowStartPicker(true)}
+                                style={{
+                                    flex: 1,
+                                    backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
+                                    borderRadius: 12,
+                                    padding: 14,
+                                    borderWidth: 1.5,
+                                    borderColor: isDark ? '#334155' : '#E2E8F0',
+                                }}
+                            >
+                                <Text style={{ fontSize: 10, fontWeight: '700', color: isDark ? '#64748B' : '#94A3B8', marginBottom: 4 }}>FROM</Text>
+                                <Text style={{ fontSize: 14, fontWeight: '800', color: isDark ? '#F1F5F9' : '#0F172A' }}>
+                                    {excelStart.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                </Text>
+                            </TouchableOpacity>
+                            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+                                <Ionicons name="arrow-forward" size={18} color={isDark ? '#475569' : '#94A3B8'} />
+                            </View>
+                            <TouchableOpacity
+                                onPress={() => setShowEndPicker(true)}
+                                style={{
+                                    flex: 1,
+                                    backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
+                                    borderRadius: 12,
+                                    padding: 14,
+                                    borderWidth: 1.5,
+                                    borderColor: isDark ? '#334155' : '#E2E8F0',
+                                }}
+                            >
+                                <Text style={{ fontSize: 10, fontWeight: '700', color: isDark ? '#64748B' : '#94A3B8', marginBottom: 4 }}>TO</Text>
+                                <Text style={{ fontSize: 14, fontWeight: '800', color: isDark ? '#F1F5F9' : '#0F172A' }}>
+                                    {excelEnd.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Download button */}
+                        <TouchableOpacity
+                            onPress={handleDoExcelDownload}
+                            style={{
+                                backgroundColor: '#00875A',
+                                borderRadius: 14,
+                                paddingVertical: 14,
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 8,
+                                marginBottom: 10,
+                            }}
+                            activeOpacity={0.85}
+                        >
+                            <Ionicons name="download" size={20} color="#FFF" />
+                            <Text style={{ color: '#FFF', fontSize: 15, fontWeight: '800' }}>Download Excel (.xlsx)</Text>
+                        </TouchableOpacity>
+
+                        {/* Email button */}
+                        <TouchableOpacity
+                            onPress={handleEmailExcel}
+                            style={{
+                                backgroundColor: theme.primary,
+                                borderRadius: 14,
+                                paddingVertical: 14,
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 8,
+                                marginBottom: 16,
+                            }}
+                            activeOpacity={0.85}
+                        >
+                            <Ionicons name="mail" size={20} color="#FFF" />
+                            <Text style={{ color: '#FFF', fontSize: 15, fontWeight: '800' }}>Email to My Account</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={s.sheetCancel} onPress={() => setExcelRangeModal(false)} activeOpacity={0.7}>
                             <Text style={[s.sheetCancelText, { color: theme.primary }]}>Cancel</Text>
                         </TouchableOpacity>
                     </TouchableOpacity>
                 </TouchableOpacity>
             </Modal>
 
-            <SuccessModal
-                visible={successModalVisible}
-                title="Excel Report Ready"
-                message="Your reports has been successfully generated and saved to your device cache."
-                buttonText="Share / Save Excel"
-                onButtonPress={async () => {
-                    setSuccessModalVisible(false);
-                    if (downloadedFileUri) {
-                        setTimeout(async () => {
-                            await Sharing.shareAsync(downloadedFileUri, {
-                                mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                                dialogTitle: 'Share / Save Excel Report',
-                                UTI: 'com.microsoft.excel.xls'
-                            });
-                        }, 300);
-                    }
-                }}
-                onClose={() => setSuccessModalVisible(false)}
-                autoCloseDuration={0}
+            {/* Date pickers for Excel range */}
+            <DateTimePickerModal
+                isVisible={showStartPicker}
+                mode="date"
+                date={excelStart}
+                maximumDate={new Date()}
+                onConfirm={(date) => { setExcelStart(date); setShowStartPicker(false); }}
+                onCancel={() => setShowStartPicker(false)}
             />
+            <DateTimePickerModal
+                isVisible={showEndPicker}
+                mode="date"
+                date={excelEnd}
+                maximumDate={new Date()}
+                onConfirm={(date) => { setExcelEnd(date); setShowEndPicker(false); }}
+                onCancel={() => setShowEndPicker(false)}
+            />
+
         </View>
     );
 }

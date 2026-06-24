@@ -13,6 +13,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { AppHeader } from '../components/AppHeader';
 import { useAuth } from '../../contexts/AuthContext';
+import { downloadAndSaveFile } from '../utils/fileDownloader';
 
 export const ReceiptScreen = ({ navigation, route }: any) => {
     const { feeData } = route.params || {};
@@ -360,6 +361,17 @@ export const ReceiptScreen = ({ navigation, route }: any) => {
         }
     };
 
+    const downloadPdf = async () => {
+        try {
+            const { uri } = await Print.printToFileAsync({ html: generateHtml() });
+            const filename = `receipt_${receiptNo.replace(/[^a-zA-Z0-9-_]/g, '_')}.pdf`;
+            await downloadAndSaveFile(uri, filename, 'application/pdf', true);
+        } catch (error) {
+            console.error('Error saving PDF:', error);
+            Alert.alert('Error', 'Failed to save PDF');
+        }
+    };
+
     return (
         <View style={styles.container}>
             <StatusBar barStyle="light-content" backgroundColor="#5f259f" />
@@ -444,11 +456,20 @@ export const ReceiptScreen = ({ navigation, route }: any) => {
                     </View>
                 </View>
 
-                {/* Share Button */}
-                <TouchableOpacity style={styles.shareButton} onPress={sharePdf}>
-                    <Ionicons name="logo-whatsapp" size={20} color="#FFF" style={{ marginRight: 8 }} />
-                    <Text style={styles.shareText}>Share to WhatsApp</Text>
-                </TouchableOpacity>
+                {/* Action Buttons Row */}
+                <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
+                    {/* Share Button */}
+                    <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#25D366', flex: 1 }]} onPress={sharePdf} activeOpacity={0.85}>
+                        <Ionicons name="logo-whatsapp" size={18} color="#FFF" style={{ marginRight: 6 }} />
+                        <Text style={styles.actionBtnText}>Share WhatsApp</Text>
+                    </TouchableOpacity>
+
+                    {/* Download Button */}
+                    <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#4F46E5', flex: 1 }]} onPress={downloadPdf} activeOpacity={0.85}>
+                        <Ionicons name="download-outline" size={18} color="#FFF" style={{ marginRight: 6 }} />
+                        <Text style={styles.actionBtnText}>Save PDF</Text>
+                    </TouchableOpacity>
+                </View>
 
                 {/* Hostix Branding Footer */}
                 <View style={styles.brandingFooter}>
@@ -664,6 +685,26 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#94A3B8',
         fontWeight: '500',
+    },
+    brandingDot: {
+        color: '#E2E8F0',
+        fontWeight: '900',
+    },
+    actionBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 14,
+        borderRadius: 16,
+        elevation: 2,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+    },
+    actionBtnText: {
+        color: '#FFF',
+        fontSize: 14,
+        fontWeight: '800',
     },
     brandingText: {
         fontWeight: '900',

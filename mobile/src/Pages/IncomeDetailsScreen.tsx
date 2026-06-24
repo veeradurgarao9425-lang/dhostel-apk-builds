@@ -16,6 +16,7 @@ import { AppHeader } from '../components/AppHeader';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { SuccessModal } from '../components/SuccessModal';
+import { downloadAndSaveFile } from '../utils/fileDownloader';
 
 const { width, height } = Dimensions.get('window');
 type Period = 'day' | 'week' | 'month';
@@ -113,8 +114,12 @@ export default function IncomeDetailsScreen() {
             setShowExportModal(false);
 
             if (downloadResult.status === 200) {
-                setDownloadedFileUri(downloadResult.uri);
-                setSuccessModalVisible(true);
+                await downloadAndSaveFile(
+                    downloadResult.uri,
+                    filename,
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    true
+                );
             } else {
                 Alert.alert('Error', `Server returned status code ${downloadResult.status}`);
             }
@@ -805,26 +810,7 @@ export default function IncomeDetailsScreen() {
                 onCancel={() => setDatePickerVisible(false)}
             />
 
-            <SuccessModal
-                visible={successModalVisible}
-                title="Excel Report Ready"
-                message="Your income report has been successfully generated and saved to your device cache."
-                buttonText="Share / Save Excel"
-                onButtonPress={async () => {
-                    setSuccessModalVisible(false);
-                    if (downloadedFileUri) {
-                        setTimeout(async () => {
-                            await Sharing.shareAsync(downloadedFileUri, {
-                                mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                                dialogTitle: 'Share / Save Excel Report',
-                                UTI: 'com.microsoft.excel.xls'
-                            });
-                        }, 300);
-                    }
-                }}
-                onClose={() => setSuccessModalVisible(false)}
-                autoCloseDuration={0}
-            />
+
         </View>
     );
 }

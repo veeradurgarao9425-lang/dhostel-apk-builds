@@ -479,17 +479,80 @@ export default function MoreScreen() {
                                             style={[
                                                 s.hostelItem,
                                                 isActive && s.hostelItemActive,
-                                                isActive && { borderColor: theme.primary, backgroundColor: isDark ? 'rgba(124, 58, 237, 0.15)' : 'rgba(124, 58, 237, 0.08)' }
+                                                isActive ? {
+                                                    borderColor: theme.primary,
+                                                    backgroundColor: isDark ? 'rgba(124, 58, 237, 0.15)' : 'rgba(124, 58, 237, 0.08)',
+                                                    shadowColor: theme.primary,
+                                                    shadowOffset: { width: 0, height: 4 },
+                                                    shadowOpacity: 0.15,
+                                                    shadowRadius: 8,
+                                                    elevation: 4,
+                                                } : {
+                                                    borderColor: isDark ? '#334155' : '#E2E8F0',
+                                                    backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                                                }
                                             ]}
                                             onPress={() => handleSwitchHostel(h.hostel_id)}
                                             activeOpacity={0.7}
                                         >
-                                            <Text style={[s.hostelItemText, { color: theme.textPrimary }]}>
-                                                {h.hostel_name}
-                                            </Text>
-                                            {isActive && (
-                                                <Ionicons name="checkmark-circle" size={22} color={theme.primary} />
-                                            )}
+                                            <View style={[
+                                                s.hostelItemIconContainer,
+                                                { backgroundColor: isActive ? theme.primary : (isDark ? '#334155' : '#F1F5F9') }
+                                            ]}>
+                                                <Ionicons 
+                                                    name="business" 
+                                                    size={20} 
+                                                    color={isActive ? '#FFFFFF' : theme.textSecondary} 
+                                                />
+                                            </View>
+
+                                            <View style={s.hostelItemContent}>
+                                                <View style={s.hostelItemHeaderRow}>
+                                                    <Text style={[s.hostelItemText, { color: theme.textPrimary }]} numberOfLines={1}>
+                                                        {h.hostel_name}
+                                                    </Text>
+                                                    {h.hostel_type && (
+                                                        <View style={[
+                                                            s.hostelTypeBadge,
+                                                            { 
+                                                                backgroundColor: h.hostel_type === 'Boys' 
+                                                                    ? 'rgba(59, 130, 246, 0.15)' 
+                                                                    : h.hostel_type === 'Girls' 
+                                                                        ? 'rgba(236, 72, 153, 0.15)' 
+                                                                        : 'rgba(16, 185, 129, 0.15)' 
+                                                            }
+                                                        ]}>
+                                                            <Text style={[
+                                                                s.hostelTypeBadgeText,
+                                                                { 
+                                                                    color: h.hostel_type === 'Boys' 
+                                                                        ? '#3B82F6' 
+                                                                        : h.hostel_type === 'Girls' 
+                                                                            ? '#EC4899' 
+                                                                            : '#10B981'
+                                                                }
+                                                            ]}>
+                                                                {h.hostel_type}
+                                                            </Text>
+                                                        </View>
+                                                    )}
+                                                </View>
+
+                                                <View style={s.hostelLocationRow}>
+                                                    <Ionicons name="location-outline" size={12} color={theme.textSecondary} style={{ marginRight: 3 }} />
+                                                    <Text style={[s.hostelLocationText, { color: theme.textSecondary }]} numberOfLines={1}>
+                                                        {h.address || h.city || 'No address added'}
+                                                    </Text>
+                                                </View>
+                                            </View>
+
+                                            <View style={s.hostelItemRight}>
+                                                {isActive ? (
+                                                    <Ionicons name="checkmark-circle" size={24} color={theme.primary} />
+                                                ) : (
+                                                    <View style={[s.hostelItemUncheckedCircle, { borderColor: isDark ? '#475569' : '#CBD5E1' }]} />
+                                                )}
+                                            </View>
                                         </TouchableOpacity>
                                     );
                                 })}
@@ -750,22 +813,64 @@ const s = StyleSheet.create({
     hostelItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingVertical: 14,
-        paddingHorizontal: 16,
-        borderRadius: 16,
-        marginBottom: 10,
+        paddingVertical: 12,
+        paddingHorizontal: 12,
+        borderRadius: 18,
+        marginBottom: 12,
         borderWidth: 1.5,
-        borderColor: 'rgba(148, 163, 184, 0.15)',
     },
     hostelItemActive: {
         borderColor: '#7C3AED',
-        backgroundColor: 'rgba(124, 58, 237, 0.08)',
     },
     hostelItemText: {
         fontSize: 15,
-        fontWeight: '700',
+        fontWeight: '800',
+    },
+    hostelItemIconContainer: {
+        width: 42,
+        height: 42,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 12,
+    },
+    hostelItemContent: {
         flex: 1,
+        justifyContent: 'center',
+        marginRight: 6,
+    },
+    hostelItemHeaderRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 2,
+    },
+    hostelTypeBadge: {
+        paddingHorizontal: 7,
+        paddingVertical: 1.5,
+        borderRadius: 8,
+    },
+    hostelTypeBadgeText: {
+        fontWeight: '800',
+        fontSize: 9,
+    },
+    hostelLocationRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    hostelLocationText: {
+        fontWeight: '600',
+        fontSize: 11,
+    },
+    hostelItemRight: {
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    hostelItemUncheckedCircle: {
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        borderWidth: 2,
     },
     addHostelBtn: {
         flexDirection: 'row',

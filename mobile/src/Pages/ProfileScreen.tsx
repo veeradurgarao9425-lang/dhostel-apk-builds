@@ -7,6 +7,9 @@ import {
     TouchableOpacity,
     StatusBar,
     Alert,
+    Modal,
+    ActivityIndicator,
+    TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,9 +21,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useConfirmation } from '../../contexts/ConfirmationContext';
 
-
 const ProfileScreen = ({ navigation }: any) => {
-    const { signOut, user, hostels, cycleHostels } = useAuth();
+    const { signOut, user, cycleHostels, updateTokenAndUser } = useAuth();
     const { theme, isDark } = useTheme();
     const { t } = useTranslation();
     const insets = useSafeAreaInsets();
@@ -28,11 +30,35 @@ const ProfileScreen = ({ navigation }: any) => {
     const [stats, setStats] = useState<any>(null);
     const [switching, setSwitching] = useState(false);
 
+    // Hostel switcher states
+    const [selectorVisible, setSelectorVisible] = useState(false);
+    const [hostelsList, setHostelsList] = useState<any[]>([]);
+    const [loadingHostels, setLoadingHostels] = useState(false);
+
+    // Profile edit states
+    const [editModalVisible, setEditModalVisible] = useState(false);
+    const [editForm, setEditForm] = useState({
+        full_name: '',
+        email: '',
+        phone: '',
+    });
+    const [savingProfile, setSavingProfile] = useState(false);
 
     const fetchStats = async () => {
         try {
-            const response = await api.get('/dashboard/owner-stats');
-            if (response.data.success) setStats(response.data.data);
+            const [ownerRes, reportRes] = await Promise.all([
+                api.get('/dashboard/owner-stats').catch(() => ({ data: { success: false } })),
+                api.get('/reports/dashboard-stats').catch(() => ({ data: { success: false } }))
+            ]);
+            
+            let combinedStats: any = {};
+            if (ownerRes.data?.success) {
+                combinedStats = { ...combinedStats, ...ownerRes.data.data };
+            }
+            if (reportRes.data?.success) {
+                combinedStats = { ...combinedStats, ...reportRes.data.data };
+            }
+            setStats(combinedStats);
         } catch {}
     };
 
@@ -52,25 +78,106 @@ const ProfileScreen = ({ navigation }: any) => {
         });
     };
 
+    const openHostelSelector = async () => {
+        setSelectorVisible(true);
+        setLoadingHostels(true);
+        try {
+            const res = await api.get('/hostels');
+            if (res.data?.success) {
+                setHostelsList(res.data.data || []);
+            }
+        } catch (e) {
+            console.error('Failed to fetch owned hostels:', e);
+        } finally {
+            setLoadingHostels(false);
+        }
+    };
 
-    const handleSwitchHostel = async () => {
-        if (!hostels || hostels.length < 2) {
-            Alert.alert(t('profile.singleHostel'), t('profile.singleHostelMsg'));
+    const handleSelectHostel = async (hostelId: number) => {
+        if (hostelId === user?.hostel_id) {
+            setSelectorVisible(false);
             return;
         }
         setSwitching(true);
         try {
-            const newName = await cycleHostels();
-            if (newName) {
-                Alert.alert(t('profile.hostelSwitched'), t('profile.hostelSwitchedMsg', { name: newName }));
+            const res = await api.put('/auth/active-hostel', { hostel_id: hostelId });
+            if (res.data?.success) {
+                const { token, hostel_name } = res.data.data;
+                await updateTokenAndUser(token, { hostel_id: hostelId, hostel_name });
+                setSelectorVisible(false);
+                fetchStats(); // refresh stats for new active hostel
+                Alert.alert(t('profile.hostelSwitched', 'Hostel Switched'), t('profile.hostelSwitchedMsg', { name: hostel_name }));
+            } else {
+                Alert.alert(t('common.error', 'Error'), res.data?.error || 'Failed to switch active hostel');
             }
-        } catch {
-            Alert.alert(t('common.error'), t('profile.switchError'));
+        } catch (err: any) {
+            console.error('Switch active hostel error:', err);
+            Alert.alert(t('common.error', 'Error'), err.response?.data?.error || 'An error occurred while switching hostels.');
         } finally {
             setSwitching(false);
         }
     };
 
+    const openEditModal = () => {
+        setEditForm({
+            full_name: user?.full_name || '',
+            email: user?.email || '',
+            phone: user?.phone || '',
+        });
+        setEditModalVisible(true);
+    };
+
+    const handleSaveProfile = async () => {
+        if (!editForm.full_name.trim()) {
+            Alert.alert(t('common.error', 'Error'), t('profile.nameRequired', 'Full Name is required.'));
+            return;
+        }
+        if (!editForm.phone.trim()) {
+            Alert.alert(t('common.error', 'Error'), t('profile.phoneRequired', 'Phone Number is required.'));
+            return;
+        }
+        if (!/^\d{10}$/.test(editForm.phone.trim())) {
+            Alert.alert(t('common.error', 'Error'), t('profile.phoneLength', 'Phone Number must be exactly 10 digits.'));
+            return;
+        }
+        if (editForm.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editForm.email.trim())) {
+            Alert.alert(t('common.error', 'Error'), t('profile.invalidEmail', 'Please enter a valid email address.'));
+            return;
+        }
+
+        setSavingProfile(true);
+        try {
+            const res = await api.put(`/users/owners/${user?.user_id}`, {
+                full_name: editForm.full_name.trim(),
+                email: editForm.email.trim(),
+                phone: editForm.phone.trim(),
+            });
+            if (res.data?.success) {
+                await updateTokenAndUser(undefined, {
+                    full_name: editForm.full_name.trim(),
+                    email: editForm.email.trim(),
+                    phone: editForm.phone.trim(),
+                });
+                setEditModalVisible(false);
+                Alert.alert(t('common.success', 'Success'), t('profile.profileUpdated', 'Profile updated successfully!'));
+            } else {
+                Alert.alert(t('common.error', 'Error'), res.data?.error || 'Failed to update profile.');
+            }
+        } catch (err: any) {
+            console.error('Update profile error:', err);
+            Alert.alert(t('common.error', 'Error'), err.response?.data?.error || 'An error occurred while updating profile.');
+        } finally {
+            setSavingProfile(false);
+        }
+    };
+
+    // Compact currency formatter
+    const fmt = (n: number) => {
+        if (n >= 10000000) return `₹${(n / 10000000).toFixed(1)}Cr`;
+        if (n >= 100000) return `₹${(n / 100000).toFixed(1)}L`;
+        if (n >= 1000) return `₹${(n / 1000).toFixed(1)}k`;
+        return `₹${n.toLocaleString('en-IN')}`;
+    };
 
     const initials = (user?.full_name || user?.email || 'U')
         .split(' ')
@@ -79,77 +186,207 @@ const ProfileScreen = ({ navigation }: any) => {
         .toUpperCase()
         .slice(0, 2);
 
-    const roleLabel = user?.role_id === 1 ? t('profile.administrator') : t('profile.hostelOwner');
+    const roleLabel = user?.role_id === 1 ? t('profile.administrator', 'Administrator') : t('profile.hostelOwner', 'Hostel Owner');
 
+    const totalHostels = stats?.hostelsCount ?? hostelsList?.length ?? 0;
+    const totalTenants = stats?.totalStudents ?? stats?.tenantsCount ?? 0;
+    const occupiedBeds = stats?.occupiedBeds ?? stats?.rooms?.occupied_beds ?? 0;
+    const totalBeds = stats?.totalBeds ?? stats?.rooms?.total_beds ?? 0;
+    const occupancyRate = stats?.occupancyRate ?? (totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0);
+    const thisMonthRevenue = stats?.feeCollection ?? stats?.monthlyRentCollected ?? 0;
 
     return (
-        <View style={[styles.root, { backgroundColor: isDark ? '#0F172A' : '#F0F4FF' }]}>
-            <StatusBar barStyle="light-content" />
+        <View style={[styles.root, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }]}>
+            <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
             {/* ── HERO HEADER ── */}
             <LinearGradient
-                colors={['#5B21B6', '#7C3AED', '#8B5CF6']}
+                colors={['#4F46E5', '#7C3AED', '#9333EA']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={[styles.hero, { paddingTop: insets.top + 16 }]}
+                style={[styles.hero, { paddingTop: insets.top + 12 }]}
             >
-                {/* Back button */}
-                {navigation.canGoBack() && (
-                    <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-                        <Ionicons name="chevron-back" size={22} color="#FFF" />
-                    </TouchableOpacity>
-                )}
-
-                {/* Avatar */}
-                <View style={styles.avatarRing}>
-                    <LinearGradient colors={['#FFFFFF', '#E9D5FF']} style={styles.avatarInner}>
-                        <Text style={styles.avatarText}>{initials}</Text>
-                    </LinearGradient>
+                {/* Header Top Navigation Row */}
+                <View style={styles.headerTopRow}>
+                    {navigation.canGoBack() ? (
+                        <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+                            <Ionicons name="chevron-back" size={22} color="#FFF" />
+                        </TouchableOpacity>
+                    ) : (
+                        <View style={{ width: 36 }} />
+                    )}
+                    <View style={styles.headerActionsRight}>
+                        <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.navigate('Notifications')} activeOpacity={0.7}>
+                            <Ionicons name="notifications-outline" size={22} color="#FFF" />
+                            <View style={styles.notiBadge} />
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.navigate('Settings')} activeOpacity={0.7}>
+                            <Ionicons name="settings-outline" size={22} color="#FFF" />
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
-                <Text style={styles.heroName}>{user?.full_name || t('profile.hostelOwner')}</Text>
-                <View style={styles.rolePill}>
-                    <Ionicons name={user?.role_id === 1 ? 'shield-checkmark' : 'business'} size={12} color="#7C3AED" />
-                    <Text style={styles.roleText}>{roleLabel}</Text>
-                </View>
-                <Text style={styles.heroHostel}>{user?.hostel_name || t('profile.noActiveHostel')}</Text>
+                {/* Profile Summary Row */}
+                <View style={styles.profileSummaryRow}>
+                    {/* Avatar with purple ring & camera icon */}
+                    <View style={styles.avatarContainer}>
+                        <LinearGradient colors={['#A78BFA', '#C084FC']} style={styles.avatarInner}>
+                            <Text style={styles.avatarText}>{initials}</Text>
+                        </LinearGradient>
+                        <TouchableOpacity 
+                            style={styles.cameraBadge} 
+                            onPress={() => Alert.alert(t('profile.photoTitle', 'Profile Photo'), t('profile.photoMsg', 'Upload profile photo feature coming soon!'))}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons name="camera" size={12} color="#7C3AED" />
+                        </TouchableOpacity>
+                    </View>
 
+                    {/* Profile Details Column */}
+                    <View style={styles.profileDetailsCol}>
+                        <Text style={styles.profileName} numberOfLines={1}>{user?.full_name || t('profile.hostelOwner', 'Hostel Owner')}</Text>
+                        <View style={styles.roleBadge}>
+                            <Ionicons name="shield-checkmark" size={12} color="#7C3AED" />
+                            <Text style={styles.roleBadgeText}>{roleLabel}</Text>
+                        </View>
+                        <View style={styles.activeHostelSubRow}>
+                            <Ionicons name="business" size={13} color="rgba(255,255,255,0.8)" />
+                            <Text style={styles.activeHostelSubText} numberOfLines={1}>
+                                {user?.hostel_name || t('profile.noActiveHostel', 'No Active Hostel')}
+                            </Text>
+                        </View>
+                    </View>
+                </View>
             </LinearGradient>
 
             <ScrollView
                 style={{ flex: 1 }}
-                contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 120 }}
+                contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 100 }}
                 showsVerticalScrollIndicator={false}
             >
-                {/* ── STATS ROW ── */}
-                <View style={styles.statsRow}>
-                    {[
-                        { icon: 'business-outline', label: t('profile.hostels'), value: hostels?.length ?? 0, color: '#7C3AED', bg: '#EDE9FE' },
-                        { icon: 'bed-outline', label: t('profile.occupied'), value: stats?.occupiedBeds ?? 0, color: '#059669', bg: '#DCFCE7' },
-                        { icon: 'people-outline', label: t('profile.tenants'), value: stats?.tenantsCount ?? stats?.occupiedBeds ?? 0, color: '#0284C7', bg: '#E0F2FE' },
-                    ].map((s, i) => (
-
-                        <View key={i} style={[styles.statCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]}>
-                            <View style={[styles.statIconBox, { backgroundColor: s.bg }]}>
-                                <Ionicons name={s.icon as any} size={18} color={s.color} />
-                            </View>
-                            <Text style={[styles.statValue, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>{s.value}</Text>
-                            <Text style={[styles.statLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>{s.label}</Text>
+                {/* ── APP-STYLE STATS GRID ── */}
+                <View style={styles.statsGrid}>
+                    {/* Hostels */}
+                    <View style={[styles.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                        <View style={[styles.statIconBox, { backgroundColor: '#EDE9FE' }]}>
+                            <Ionicons name="business" size={18} color="#7C3AED" />
                         </View>
-                    ))}
+                        <Text style={[styles.statValue, { color: theme.textPrimary }]}>{totalHostels}</Text>
+                        <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{t('profile.hostels', 'Hostels')}</Text>
+                    </View>
+
+                    {/* Tenants */}
+                    <View style={[styles.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                        <View style={[styles.statIconBox, { backgroundColor: '#DCFCE7' }]}>
+                            <Ionicons name="people" size={18} color="#10B981" />
+                        </View>
+                        <Text style={[styles.statValue, { color: theme.textPrimary }]}>{totalTenants}</Text>
+                        <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{t('profile.tenants', 'Tenants')}</Text>
+                    </View>
+
+                    {/* Occupied */}
+                    <View style={[styles.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                        <View style={[styles.statIconBox, { backgroundColor: '#E0F2FE' }]}>
+                            <Ionicons name="bed" size={18} color="#0284C7" />
+                        </View>
+                        <Text style={[styles.statValue, { color: theme.textPrimary }]}>{occupiedBeds}</Text>
+                        <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{t('profile.occupied', 'Occupied')}</Text>
+                    </View>
+
+                    {/* Revenue (This Month) */}
+                    <View style={[styles.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                        <View style={[styles.statIconBox, { backgroundColor: '#FEF3C7' }]}>
+                            <Ionicons name="cash" size={18} color="#D97706" />
+                        </View>
+                        <Text style={[styles.statValue, { color: theme.textPrimary }]} numberOfLines={1}>{fmt(thisMonthRevenue)}</Text>
+                        <Text style={[styles.statLabel, { color: theme.textSecondary }]} numberOfLines={1}>{t('profile.thisMonth', 'This Month')}</Text>
+                    </View>
                 </View>
 
-                {/* ── ACCOUNT INFO ── */}
-                <Text style={[styles.sectionLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>{t('profile.accountDetails')}</Text>
-                <View style={[styles.infoCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]}>
+                {/* ── ACTIVE HOSTEL SECTION ── */}
+                <View style={styles.sectionHeaderRow}>
+                    <Ionicons name="business" size={16} color="#7C3AED" />
+                    <Text style={[styles.sectionTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>
+                        {t('profile.activeHostelSection', 'Active Hostel')}
+                    </Text>
+                </View>
+
+                <TouchableOpacity 
+                    style={[styles.activeHostelCard, { backgroundColor: isDark ? '#1E293B' : '#F5F3FF', borderColor: isDark ? '#334155' : '#DDD6FE' }]}
+                    onPress={openHostelSelector}
+                    activeOpacity={0.8}
+                >
+                    <View style={styles.activeHostelDetailsRow}>
+                        {/* Purple-tinted building icon container */}
+                        <View style={styles.buildingIconContainer}>
+                            <Ionicons name="business" size={36} color="#7C3AED" />
+                        </View>
+
+                        {/* Details */}
+                        <View style={{ flex: 1, marginLeft: 14 }}>
+                            <Text style={[styles.activeHostelName, { color: isDark ? '#F8FAFC' : '#1E1B4B' }]} numberOfLines={1}>
+                                {user?.hostel_name || t('profile.noActiveHostel', 'No Active Hostel')}
+                            </Text>
+                            
+                            {/* Currently Active Status Pill */}
+                            <View style={styles.activeStatusPill}>
+                                <View style={styles.activeStatusDot} />
+                                <Text style={styles.activeStatusText}>{t('profile.currentlyActive', 'Currently Active')}</Text>
+                            </View>
+
+                            {/* Sub stats grid/columns */}
+                            <View style={styles.activeHostelStatsRow}>
+                                <View style={styles.activeSubStatItem}>
+                                    <View style={styles.activeSubStatValRow}>
+                                        <Ionicons name="people" size={14} color="#7C3AED" style={{ marginRight: 4 }} />
+                                        <Text style={[styles.activeSubStatValText, { color: theme.textPrimary }]}>{totalTenants}</Text>
+                                    </View>
+                                    <Text style={[styles.activeSubStatLabel, { color: theme.textSecondary }]}>Tenants</Text>
+                                </View>
+                                
+                                <View style={styles.activeSubStatItem}>
+                                    <View style={styles.activeSubStatValRow}>
+                                        <Ionicons name="bed" size={14} color="#10B981" style={{ marginRight: 4 }} />
+                                        <Text style={[styles.activeSubStatValText, { color: theme.textPrimary }]}>{occupiedBeds}/{totalBeds}</Text>
+                                    </View>
+                                    <Text style={[styles.activeSubStatLabel, { color: theme.textSecondary }]}>Beds Occupied</Text>
+                                </View>
+                                
+                                <View style={styles.activeSubStatItem}>
+                                    <View style={styles.activeSubStatValRow}>
+                                        <Ionicons name="trending-up" size={14} color="#F59E0B" style={{ marginRight: 4 }} />
+                                        <Text style={[styles.activeSubStatValText, { color: theme.textPrimary }]}>{occupancyRate}%</Text>
+                                    </View>
+                                    <Text style={[styles.activeSubStatLabel, { color: theme.textSecondary }]}>Occupancy</Text>
+                                </View>
+                            </View>
+                        </View>
+                    </View>
+                </TouchableOpacity>
+
+                {/* ── ACCOUNT DETAILS ── */}
+                <View style={styles.sectionHeaderRow}>
+                    <Ionicons name="person" size={16} color="#7C3AED" />
+                    <Text style={[styles.sectionTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>
+                        {t('profile.accountDetails', 'Account Details')}
+                    </Text>
+                    <TouchableOpacity 
+                        onPress={openEditModal} 
+                        style={styles.editLinkRow}
+                        activeOpacity={0.7}
+                    >
+                        <Ionicons name="create-outline" size={13} color="#7C3AED" />
+                        <Text style={styles.editLinkText}>{t('common.edit', 'Edit')}</Text>
+                    </TouchableOpacity>
+                </View>
+
+                <View style={[styles.accountCard, { backgroundColor: theme.cardBg }]}>
                     {[
-                        { icon: 'person-outline', label: t('profile.fullName'), value: user?.full_name || t('profile.notSet'), color: '#7C3AED', bg: '#EDE9FE' },
-                        { icon: 'mail-outline', label: t('profile.email'), value: user?.email || t('profile.notSet'), color: '#0284C7', bg: '#E0F2FE' },
-                        { icon: 'call-outline', label: t('profile.phone'), value: user?.phone || t('profile.notProvided'), color: '#059669', bg: '#DCFCE7' },
-                        { icon: 'home-outline', label: t('profile.activeHostel'), value: user?.hostel_name || t('profile.none'), color: '#D97706', bg: '#FEF3C7' },
+                        { icon: 'person-outline', label: t('profile.fullName', 'Full Name'), value: user?.full_name || t('profile.notSet', 'Not Set'), color: '#7C3AED', bg: '#EDE9FE' },
+                        { icon: 'mail-outline', label: t('profile.email', 'Email Address'), value: user?.email || t('profile.notSet', 'Not Set'), color: '#0284C7', bg: '#E0F2FE' },
+                        { icon: 'call-outline', label: t('profile.phone', 'Phone Number'), value: user?.phone || t('profile.notProvided', 'Not Provided'), color: '#059669', bg: '#DCFCE7' },
+                        { icon: 'home-outline', label: t('profile.registeredHostel', 'Registered Hostel'), value: user?.hostel_name || t('profile.none', 'None'), color: '#D97706', bg: '#FEF3C7' },
                     ].map((item, i, arr) => (
-
-
                         <View key={i}>
                             <View style={styles.infoRow}>
                                 <View style={[styles.infoIcon, { backgroundColor: item.bg }]}>
@@ -157,7 +394,7 @@ const ProfileScreen = ({ navigation }: any) => {
                                 </View>
                                 <View style={{ flex: 1 }}>
                                     <Text style={[styles.infoLabel, { color: isDark ? '#94A3B8' : '#94A3B8' }]}>{item.label}</Text>
-                                    <Text style={[styles.infoValue, { color: isDark ? '#F1F5F9' : '#0F172A' }]} numberOfLines={1}>{item.value}</Text>
+                                    <Text style={[styles.infoValue, { color: theme.textPrimary }]} numberOfLines={1}>{item.value}</Text>
                                 </View>
                             </View>
                             {i < arr.length - 1 && <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />}
@@ -165,53 +402,28 @@ const ProfileScreen = ({ navigation }: any) => {
                     ))}
                 </View>
 
-                {/* ── HOSTEL SWITCH (only if multiple) ── */}
-                {hostels && hostels.length > 1 && (
-                    <>
-                        <Text style={[styles.sectionLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>{t('profile.hostelSection')}</Text>
-                        <TouchableOpacity
-                            style={[styles.switchCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]}
-                            onPress={handleSwitchHostel}
-                            disabled={switching}
-                            activeOpacity={0.8}
-                        >
-                            <View style={[styles.infoIcon, { backgroundColor: '#F0FDF4' }]}>
-                                <Ionicons name="swap-horizontal-outline" size={18} color="#059669" />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={[styles.switchTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>{t('profile.switchActiveHostel')}</Text>
-                                <Text style={[styles.switchSub, { color: isDark ? '#94A3B8' : '#64748B' }]}>
-                                    {switching ? t('profile.switching') : t('profile.hostelsAvailable', { count: hostels.length })}
-                                </Text>
-                            </View>
-                            <Ionicons name="chevron-forward" size={18} color={isDark ? '#475569' : '#CBD5E1'} />
-                        </TouchableOpacity>
-                    </>
-                )}
+                {/* ── MANAGE SECTION ── */}
+                <View style={styles.sectionHeaderRow}>
+                    <Ionicons name="grid" size={16} color="#7C3AED" />
+                    <Text style={[styles.sectionTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>
+                        {t('profile.manage', 'Manage')}
+                    </Text>
+                </View>
 
-
-                {/* ── MENU ── */}
-                <Text style={[styles.sectionLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>{t('profile.settingsSupport')}</Text>
-                <View style={[styles.menuCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]}>
+                <View style={styles.manageGrid}>
                     {[
-                        { icon: 'settings-outline', label: t('profile.settings'), sub: t('profile.settingsSub'), color: '#7C3AED', bg: '#EDE9FE', onPress: () => navigation.navigate('Settings') },
-                        { icon: 'business-outline', label: t('profile.manageHostels'), sub: t('profile.manageHostelsSub'), color: '#0284C7', bg: '#E0F2FE', onPress: () => navigation.navigate('Hostels') },
-                        { icon: 'help-circle-outline', label: t('profile.helpSupport'), sub: t('profile.helpSupportSub'), color: '#D97706', bg: '#FEF3C7', onPress: () => Alert.alert(t('profile.helpSupport'), '📧 hello.hostix@gmail.com\n📞 +91 98765 43210\n\nAvailable 24/7') },
-                    ].map((item, i, arr) => (
-
-                        <View key={i}>
-                            <TouchableOpacity style={styles.menuRow} onPress={item.onPress} activeOpacity={0.7}>
-                                <View style={[styles.menuIcon, { backgroundColor: item.bg }]}>
-                                    <Ionicons name={item.icon as any} size={18} color={item.color} />
-                                </View>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={[styles.menuTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>{item.label}</Text>
-                                    <Text style={[styles.menuSub, { color: isDark ? '#94A3B8' : '#94A3B8' }]}>{item.sub}</Text>
-                                </View>
-                                <Ionicons name="chevron-forward" size={16} color={isDark ? '#475569' : '#CBD5E1'} />
-                            </TouchableOpacity>
-                            {i < arr.length - 1 && <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9', marginLeft: 62 }]} />}
-                        </View>
+                        { icon: 'swap-horizontal', label: t('profile.switchHostel', 'Switch Hostel'), color: '#10B981', bg: '#DCFCE7', onPress: openHostelSelector },
+                        { icon: 'business', label: t('profile.manageHostels', 'Hostels'), color: '#7C3AED', bg: '#EDE9FE', onPress: () => navigation.navigate('Hostels') },
+                        { icon: 'bar-chart', label: t('profile.reports', 'Reports'), color: '#0284C7', bg: '#E0F2FE', onPress: () => navigation.navigate('Reports') },
+                        { icon: 'medal', label: t('profile.subscription', 'Subscription'), color: '#D97706', bg: '#FEF3C7', onPress: () => navigation.navigate('ComingSoon') },
+                        { icon: 'headset', label: t('profile.support', 'Support'), color: '#EF4444', bg: '#FEE2E2', onPress: () => Alert.alert(t('profile.helpSupport', 'Help & Support'), '📧 hello.hostix@gmail.com\n📞 +91 98765 43210\n\nAvailable 24/7') },
+                    ].map((item, i) => (
+                        <TouchableOpacity key={i} style={styles.manageItem} onPress={item.onPress} activeOpacity={0.7}>
+                            <View style={[styles.manageIconBox, { backgroundColor: item.bg }]}>
+                                <Ionicons name={item.icon as any} size={18} color={item.color} />
+                            </View>
+                            <Text style={[styles.manageText, { color: theme.textPrimary }]} numberOfLines={1}>{item.label}</Text>
+                        </TouchableOpacity>
                     ))}
                 </View>
 
@@ -220,12 +432,232 @@ const ProfileScreen = ({ navigation }: any) => {
                     <View style={styles.logoutIconBox}>
                         <Ionicons name="log-out-outline" size={20} color="#EF4444" />
                     </View>
-                    <Text style={styles.logoutText}>{t('profile.signOut')}</Text>
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                        <Text style={styles.logoutTitle}>{t('profile.signOut', 'Logout')}</Text>
+                        <Text style={styles.logoutSub}>{t('profile.signOutDesc', 'Sign out from your account')}</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color="#EF4444" />
                 </TouchableOpacity>
 
-                <Text style={[styles.version, { color: isDark ? '#334155' : '#CBD5E1' }]}>{t('profile.version')}</Text>
-
+                {/* Footer text */}
+                <Text style={[styles.version, { color: isDark ? '#475569' : '#94A3B8' }]}>
+                    Hostix v1.0.0 - Smart Hostel Management
+                </Text>
             </ScrollView>
+
+            {/* ─── HOSTEL SWITCHER MODAL (DRAWER) ─── */}
+            <Modal
+                animationType="slide"
+                transparent={true}
+                visible={selectorVisible}
+                onRequestClose={() => setSelectorVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <TouchableOpacity
+                        style={StyleSheet.absoluteFillObject}
+                        activeOpacity={1}
+                        onPress={() => setSelectorVisible(false)}
+                    />
+                    <View style={[styles.modalSheet, { backgroundColor: theme.cardBg }]}>
+                        <View style={styles.modalHeader}>
+                            <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>{t('profile.switchHostel', 'Switch Hostel')}</Text>
+                            <TouchableOpacity
+                                style={styles.modalCloseBtn}
+                                onPress={() => setSelectorVisible(false)}
+                            >
+                                <Ionicons name="close" size={22} color={theme.textPrimary} />
+                            </TouchableOpacity>
+                        </View>
+
+                        {switching || loadingHostels ? (
+                            <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+                                <ActivityIndicator size="large" color={theme.primary} />
+                                <Text style={{ marginTop: 12, color: theme.textSecondary, fontWeight: '600' }}>
+                                    {switching ? t('profile.switchingHostel', 'Switching active hostel...') : t('profile.loadingHostels', 'Loading hostels...')}
+                                </Text>
+                            </View>
+                        ) : (
+                            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 50 }}>
+                                {hostelsList.map((h: any) => {
+                                    const isActive = h.hostel_id === user?.hostel_id;
+                                    return (
+                                        <TouchableOpacity
+                                            key={h.hostel_id}
+                                            style={[
+                                                styles.hostelItem,
+                                                isActive && styles.hostelItemActive,
+                                                isActive ? {
+                                                    borderColor: theme.primary,
+                                                    backgroundColor: isDark ? 'rgba(124, 58, 237, 0.15)' : 'rgba(124, 58, 237, 0.08)',
+                                                    shadowColor: theme.primary,
+                                                    shadowOffset: { width: 0, height: 4 },
+                                                    shadowOpacity: 0.15,
+                                                    shadowRadius: 8,
+                                                    elevation: 4,
+                                                } : {
+                                                    borderColor: isDark ? '#334155' : '#E2E8F0',
+                                                    backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                                                }
+                                            ]}
+                                            onPress={() => handleSelectHostel(h.hostel_id)}
+                                            activeOpacity={0.7}
+                                        >
+                                            <View style={[
+                                                styles.hostelItemIconContainer,
+                                                { backgroundColor: isActive ? theme.primary : (isDark ? '#334155' : '#F1F5F9') }
+                                            ]}>
+                                                <Ionicons 
+                                                    name="business" 
+                                                    size={20} 
+                                                    color={isActive ? '#FFFFFF' : theme.textSecondary} 
+                                                />
+                                            </View>
+
+                                            <View style={styles.hostelItemContent}>
+                                                <View style={styles.hostelItemHeaderRow}>
+                                                    <Text style={[styles.hostelItemText, { color: theme.textPrimary }]} numberOfLines={1}>
+                                                        {h.hostel_name}
+                                                    </Text>
+                                                    {h.hostel_type && (
+                                                        <View style={[
+                                                            styles.hostelTypeBadge,
+                                                            { 
+                                                                backgroundColor: h.hostel_type === 'Boys' 
+                                                                    ? 'rgba(59, 130, 246, 0.15)' 
+                                                                    : h.hostel_type === 'Girls' 
+                                                                        ? 'rgba(236, 72, 153, 0.15)' 
+                                                                        : 'rgba(16, 185, 129, 0.15)' 
+                                                            }
+                                                        ]}>
+                                                            <Text style={[
+                                                                styles.hostelTypeBadgeText,
+                                                                { 
+                                                                    color: h.hostel_type === 'Boys' 
+                                                                        ? '#3B82F6' 
+                                                                        : h.hostel_type === 'Girls' 
+                                                                            ? '#EC4899' 
+                                                                            : '#10B981'
+                                                                }
+                                                            ]}>
+                                                                {h.hostel_type}
+                                                            </Text>
+                                                        </View>
+                                                    )}
+                                                </View>
+
+                                                <View style={styles.hostelLocationRow}>
+                                                    <Ionicons name="location-outline" size={12} color={theme.textSecondary} style={{ marginRight: 3 }} />
+                                                    <Text style={[styles.hostelLocationText, { color: theme.textSecondary }]} numberOfLines={1}>
+                                                        {h.address || h.city || 'No address added'}
+                                                    </Text>
+                                                </View>
+                                            </View>
+
+                                            <View style={styles.hostelItemRight}>
+                                                {isActive ? (
+                                                    <Ionicons name="checkmark-circle" size={24} color={theme.primary} />
+                                                ) : (
+                                                    <View style={[styles.hostelItemUncheckedCircle, { borderColor: isDark ? '#475569' : '#CBD5E1' }]} />
+                                                )}
+                                            </View>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+
+                                <TouchableOpacity
+                                    style={[styles.addHostelBtn, { backgroundColor: theme.primary }]}
+                                    onPress={() => {
+                                        setSelectorVisible(false);
+                                        navigation.navigate('AddHostel');
+                                    }}
+                                    activeOpacity={0.8}
+                                >
+                                    <Ionicons name="add" size={20} color="#FFF" />
+                                    <Text style={styles.addHostelText}>{t('profile.addNewHostel', 'Add New Hostel')}</Text>
+                                </TouchableOpacity>
+                            </ScrollView>
+                        )}
+                    </View>
+                </View>
+            </Modal>
+
+            {/* ─── EDIT PROFILE MODAL ─── */}
+            <Modal
+                animationType="fade"
+                transparent={true}
+                visible={editModalVisible}
+                onRequestClose={() => setEditModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <TouchableOpacity
+                        style={StyleSheet.absoluteFillObject}
+                        activeOpacity={1}
+                        onPress={() => setEditModalVisible(false)}
+                    />
+                    <View style={[styles.modalSheet, { backgroundColor: theme.cardBg, paddingBottom: 30 }]}>
+                        <View style={styles.modalHeader}>
+                            <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>{t('profile.editProfile', 'Edit Profile')}</Text>
+                            <TouchableOpacity
+                                style={styles.modalCloseBtn}
+                                onPress={() => setEditModalVisible(false)}
+                            >
+                                <Ionicons name="close" size={22} color={theme.textPrimary} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 4 }}>
+                            <View style={styles.inputGroup}>
+                                <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>{t('profile.fullName', 'Full Name')}</Text>
+                                <TextInput
+                                    style={[styles.modalInput, { color: theme.textPrimary, borderColor: isDark ? '#334155' : '#E2E8F0', backgroundColor: isDark ? '#1E293B' : '#FFF' }]}
+                                    value={editForm.full_name}
+                                    onChangeText={(val) => setEditForm(p => ({ ...p, full_name: val }))}
+                                    placeholder="Full Name"
+                                    placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
+                                />
+                            </View>
+
+                            <View style={styles.inputGroup}>
+                                <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>{t('profile.email', 'Email Address')}</Text>
+                                <TextInput
+                                    style={[styles.modalInput, { color: theme.textPrimary, borderColor: isDark ? '#334155' : '#E2E8F0', backgroundColor: isDark ? '#1E293B' : '#FFF' }]}
+                                    value={editForm.email}
+                                    onChangeText={(val) => setEditForm(p => ({ ...p, email: val }))}
+                                    placeholder="Email Address"
+                                    placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
+                                    keyboardType="email-address"
+                                    autoCapitalize="none"
+                                />
+                            </View>
+
+                            <View style={styles.inputGroup}>
+                                <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>{t('profile.phone', 'Phone Number')}</Text>
+                                <TextInput
+                                    style={[styles.modalInput, { color: theme.textPrimary, borderColor: isDark ? '#334155' : '#E2E8F0', backgroundColor: isDark ? '#1E293B' : '#FFF' }]}
+                                    value={editForm.phone}
+                                    onChangeText={(val) => setEditForm(p => ({ ...p, phone: val }))}
+                                    placeholder="Phone Number"
+                                    placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
+                                    keyboardType="phone-pad"
+                                    maxLength={10}
+                                />
+                            </View>
+
+                            {savingProfile ? (
+                                <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 20 }} />
+                            ) : (
+                                <TouchableOpacity
+                                    style={[styles.saveBtn, { backgroundColor: theme.primary }]}
+                                    onPress={handleSaveProfile}
+                                    activeOpacity={0.8}
+                                >
+                                    <Text style={styles.saveBtnText}>{t('common.save', 'Save Changes')}</Text>
+                                </TouchableOpacity>
+                            )}
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 };
@@ -235,139 +667,294 @@ export default ProfileScreen;
 const styles = StyleSheet.create({
     root: { flex: 1 },
 
-    // Hero
-    hero: {
+    // Header Top Row
+    headerTopRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'center',
-        paddingBottom: 30,
-        paddingHorizontal: 20,
+        width: '100%',
+        paddingHorizontal: 16,
+        marginBottom: 20,
     },
-    backBtn: {
-        position: 'absolute',
-        left: 16,
-        top: 44,
+    headerActionsRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 14,
+    },
+    headerBtn: {
         width: 36,
         height: 36,
         borderRadius: 18,
-        backgroundColor: 'rgba(255,255,255,0.2)',
+        backgroundColor: 'rgba(255, 255, 255, 0.18)',
         alignItems: 'center',
         justifyContent: 'center',
     },
-    avatarRing: {
-        width: 90,
-        height: 90,
-        borderRadius: 45,
-        backgroundColor: 'rgba(255,255,255,0.3)',
-        padding: 3,
-        marginBottom: 12,
-        marginTop: 10,
+    notiBadge: {
+        position: 'absolute',
+        top: 8,
+        right: 8,
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#F59E0B',
+        borderWidth: 1,
+        borderColor: '#7C3AED',
+    },
+
+    // Hero
+    hero: {
+        borderBottomLeftRadius: 30,
+        borderBottomRightRadius: 30,
+        paddingBottom: 28,
+    },
+    profileSummaryRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+    },
+    avatarContainer: {
+        position: 'relative',
+        width: 84,
+        height: 84,
+        borderRadius: 42,
+        borderWidth: 2,
+        borderColor: 'rgba(255, 255, 255, 0.4)',
+        padding: 2,
     },
     avatarInner: {
         flex: 1,
-        borderRadius: 42,
+        borderRadius: 38,
         alignItems: 'center',
         justifyContent: 'center',
     },
     avatarText: {
-        fontSize: 28,
-        fontWeight: '900',
-        color: '#7C3AED',
-    },
-    heroName: {
-        fontSize: 22,
+        fontSize: 26,
         fontWeight: '900',
         color: '#FFFFFF',
-        marginBottom: 8,
-        textAlign: 'center',
     },
-    rolePill: {
+    cameraBadge: {
+        position: 'absolute',
+        right: -2,
+        bottom: -2,
+        width: 26,
+        height: 26,
+        borderRadius: 13,
+        backgroundColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOpacity: 0.15,
+        shadowRadius: 2,
+        shadowOffset: { width: 0, height: 1 },
+    },
+    profileDetailsCol: {
+        flex: 1,
+        marginLeft: 16,
+        justifyContent: 'center',
+    },
+    profileName: {
+        fontSize: 20,
+        fontWeight: '800',
+        color: '#FFFFFF',
+        marginBottom: 4,
+    },
+    roleBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: '#FFFFFF',
+        alignSelf: 'flex-start',
+        borderRadius: 20,
+        paddingHorizontal: 10,
+        paddingVertical: 3,
+        marginBottom: 8,
+        elevation: 1,
+    },
+    roleBadgeText: {
+        fontSize: 10,
+        fontWeight: '800',
+        color: '#7C3AED',
+        textTransform: 'uppercase',
+    },
+    activeHostelSubRow: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 5,
-        backgroundColor: '#FFFFFF',
-        borderRadius: 20,
-        paddingHorizontal: 12,
-        paddingVertical: 4,
-        marginBottom: 10,
     },
-    roleText: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: '#7C3AED',
-    },
-    heroHostel: {
+    activeHostelSubText: {
         fontSize: 13,
         fontWeight: '600',
-        color: 'rgba(255,255,255,0.8)',
-        letterSpacing: 0.3,
+        color: 'rgba(255, 255, 255, 0.85)',
     },
 
-    // Stats
-    statsRow: {
+    // Stats Grid (our app pattern)
+    statsGrid: {
         flexDirection: 'row',
-        gap: 10,
+        gap: 8,
         marginBottom: 20,
     },
     statCard: {
         flex: 1,
-        borderRadius: 16,
-        padding: 14,
-        alignItems: 'center',
+        borderRadius: 12,
+        paddingVertical: 12,
+        paddingHorizontal: 4,
+        borderWidth: 1,
         elevation: 2,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.07,
-        shadowRadius: 4,
-    },
-    statIconBox: {
-        width: 38,
-        height: 38,
-        borderRadius: 12,
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 2 },
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 8,
+    },
+    statIconBox: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 6,
     },
     statValue: {
-        fontSize: 20,
-        fontWeight: '900',
+        fontSize: 14,
+        fontWeight: '800',
+        textAlign: 'center',
+        marginBottom: 2,
     },
     statLabel: {
-        fontSize: 11,
-        fontWeight: '600',
-        marginTop: 2,
+        fontSize: 10,
+        fontWeight: '700',
+        textAlign: 'center',
     },
 
-    // Section label
-    sectionLabel: {
-        fontSize: 10,
-        fontWeight: '800',
-        letterSpacing: 1,
+    // Section Titles
+    sectionHeaderRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginTop: 10,
         marginBottom: 10,
-        marginLeft: 4,
+        paddingHorizontal: 4,
+    },
+    sectionTitle: {
+        fontSize: 14,
+        fontWeight: '800',
+    },
+    editLinkRow: {
+        marginLeft: 'auto',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 3,
+        paddingVertical: 2,
+        paddingHorizontal: 6,
+    },
+    editLinkText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#7C3AED',
+    },
+
+    // Active Hostel Section
+    activeHostelCard: {
+        borderRadius: 16,
+        padding: 16,
+        borderWidth: 1,
+        marginBottom: 20,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 2 },
+    },
+    activeHostelDetailsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    buildingIconContainer: {
+        width: 70,
+        height: 70,
+        borderRadius: 14,
+        backgroundColor: '#EDE9FE',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    activeHostelName: {
+        fontSize: 16,
+        fontWeight: '800',
+        marginBottom: 4,
+    },
+    activeStatusPill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#DCFCE7',
+        alignSelf: 'flex-start',
+        borderRadius: 12,
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        marginBottom: 8,
+    },
+    activeStatusDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: '#10B981',
+        marginRight: 5,
+    },
+    activeStatusText: {
+        fontSize: 9,
+        fontWeight: '800',
+        color: '#15803D',
         textTransform: 'uppercase',
     },
+    activeHostelStatsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginTop: 8,
+        width: '100%',
+    },
+    activeSubStatItem: {
+        flex: 1,
+        alignItems: 'center',
+    },
+    activeSubStatValRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 2,
+    },
+    activeSubStatValText: {
+        fontSize: 14,
+        fontWeight: '800',
+    },
+    activeSubStatLabel: {
+        fontSize: 10,
+        fontWeight: '700',
+    },
 
-    // Info card
-    infoCard: {
-        borderRadius: 20,
+    // Account Card
+    accountCard: {
+        borderRadius: 16,
         padding: 4,
         marginBottom: 20,
         elevation: 2,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.06,
-        shadowRadius: 4,
+        shadowOpacity: 0.05,
+        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 2 },
     },
     infoRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 14,
-        paddingHorizontal: 14,
+        gap: 12,
+        paddingHorizontal: 12,
         paddingVertical: 12,
     },
     infoIcon: {
         width: 36,
         height: 36,
-        borderRadius: 12,
+        borderRadius: 10,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -375,7 +962,7 @@ const styles = StyleSheet.create({
         fontSize: 10,
         fontWeight: '700',
         textTransform: 'uppercase',
-        letterSpacing: 0.5,
+        letterSpacing: 0.3,
         marginBottom: 2,
     },
     infoValue: {
@@ -384,99 +971,214 @@ const styles = StyleSheet.create({
     },
     divider: {
         height: 1,
-        marginHorizontal: 14,
+        marginHorizontal: 12,
     },
 
-    // Switch card
-    switchCard: {
+    // Manage Grid
+    manageGrid: {
         flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 24,
+        gap: 4,
+    },
+    manageItem: {
+        width: '19%',
         alignItems: 'center',
-        gap: 14,
-        padding: 16,
-        borderRadius: 16,
-        marginBottom: 20,
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.06,
-        shadowRadius: 4,
     },
-    switchTitle: {
-        fontSize: 14,
-        fontWeight: '700',
-    },
-    switchSub: {
-        fontSize: 12,
-        fontWeight: '500',
-        marginTop: 2,
-    },
-
-    // Menu card
-    menuCard: {
-        borderRadius: 20,
-        padding: 4,
-        marginBottom: 20,
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.06,
-        shadowRadius: 4,
-    },
-    menuRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 14,
-        paddingHorizontal: 14,
-        paddingVertical: 14,
-    },
-    menuIcon: {
-        width: 36,
-        height: 36,
-        borderRadius: 12,
+    manageIconBox: {
+        width: 44,
+        height: 44,
+        borderRadius: 14,
         alignItems: 'center',
         justifyContent: 'center',
+        marginBottom: 6,
+        elevation: 1,
     },
-    menuTitle: {
-        fontSize: 14,
+    manageText: {
+        fontSize: 10,
         fontWeight: '700',
-    },
-    menuSub: {
-        fontSize: 12,
-        fontWeight: '500',
-        marginTop: 2,
+        textAlign: 'center',
     },
 
     // Logout
     logoutBtn: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
         backgroundColor: '#FEF2F2',
         borderRadius: 16,
-        padding: 16,
-        marginBottom: 20,
         borderWidth: 1,
         borderColor: '#FECACA',
+        paddingHorizontal: 14,
+        paddingVertical: 14,
+        marginBottom: 24,
     },
     logoutIconBox: {
-        width: 36,
-        height: 36,
+        width: 40,
+        height: 40,
         borderRadius: 12,
         backgroundColor: '#FFE4E6',
         alignItems: 'center',
         justifyContent: 'center',
     },
-    logoutText: {
+    logoutTitle: {
         fontSize: 15,
-        fontWeight: '700',
+        fontWeight: '800',
         color: '#EF4444',
+        marginBottom: 2,
+    },
+    logoutSub: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#94A3B8',
     },
 
-    // Footer
+    // Version
     version: {
         textAlign: 'center',
         fontSize: 11,
         fontWeight: '600',
-        marginBottom: 10,
+        marginBottom: 20,
+    },
+
+    // Bottom Drawer Modals
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(15, 23, 42, 0.4)',
+        justifyContent: 'flex-end',
+    },
+    modalSheet: {
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+        paddingHorizontal: 20,
+        paddingTop: 20,
+        maxHeight: '75%',
+        elevation: 10,
+        shadowColor: '#000',
+        shadowOpacity: 0.15,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: -3 },
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20,
+        paddingBottom: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(148, 163, 184, 0.15)',
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '800',
+    },
+    modalCloseBtn: {
+        padding: 4,
+    },
+    hostelItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 12,
+        borderRadius: 18,
+        marginBottom: 12,
+        borderWidth: 1.5,
+    },
+    hostelItemActive: {
+        borderColor: '#7C3AED',
+    },
+    hostelItemText: {
+        fontSize: 15,
+        fontWeight: '800',
+    },
+    hostelItemIconContainer: {
+        width: 42,
+        height: 42,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 12,
+    },
+    hostelItemContent: {
+        flex: 1,
+        justifyContent: 'center',
+        marginRight: 6,
+    },
+    hostelItemHeaderRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 2,
+    },
+    hostelTypeBadge: {
+        paddingHorizontal: 7,
+        paddingVertical: 1.5,
+        borderRadius: 8,
+    },
+    hostelTypeBadgeText: {
+        fontWeight: '800',
+        fontSize: 9,
+    },
+    hostelLocationRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    hostelLocationText: {
+        fontWeight: '600',
+        fontSize: 11,
+    },
+    hostelItemRight: {
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    hostelItemUncheckedCircle: {
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        borderWidth: 2,
+    },
+    addHostelBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 14,
+        borderRadius: 16,
+        marginTop: 10,
+        gap: 8,
+    },
+    addHostelText: {
+        color: '#FFF',
+        fontWeight: '800',
+        fontSize: 15,
+    },
+
+    // Edit Profile Inputs
+    inputGroup: {
+        marginBottom: 16,
+    },
+    inputLabel: {
+        fontSize: 12,
+        fontWeight: '700',
+        marginBottom: 6,
+        marginLeft: 4,
+    },
+    modalInput: {
+        borderWidth: 1.5,
+        borderRadius: 12,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    saveBtn: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 14,
+        borderRadius: 16,
+        marginTop: 10,
+    },
+    saveBtnText: {
+        color: '#FFF',
+        fontWeight: '800',
+        fontSize: 15,
     },
 });
