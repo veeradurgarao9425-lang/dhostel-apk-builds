@@ -62,8 +62,69 @@ export const getRoomAmenities = async (req: Request, res: Response) => {
 };
 
 /**
- * Create a new amenity (Admin only)
+ * Create a new room amenity
+ * Used when owner adds a custom amenity from the Add Room form
  */
+export const createRoomAmenity = async (req: Request, res: Response) => {
+  try {
+    const { amenity_name, amenity_icon, description } = req.body;
+
+    if (!amenity_name) {
+      return res.status(400).json({
+        success: false,
+        error: 'Amenity name is required'
+      });
+    }
+
+    // Check if room amenity already exists
+    const existingAmenity = await db('room_amenities_master')
+      .where({ amenity_name })
+      .first();
+
+    if (existingAmenity) {
+      // Return the existing one instead of erroring
+      return res.json({
+        success: true,
+        message: 'Amenity already exists',
+        data: existingAmenity
+      });
+    }
+
+    // Get max display_order
+    const maxOrderResult = await db('room_amenities_master')
+      .max('display_order as max_order')
+      .first();
+
+    const nextOrder = (maxOrderResult?.max_order || 0) + 1;
+
+    const [amenityId] = await db('room_amenities_master').insert({
+      amenity_name,
+      amenity_icon: amenity_icon || null,
+      description: description || null,
+      display_order: nextOrder,
+      is_active: 1
+    });
+
+    const newAmenity = await db('room_amenities_master')
+      .select('amenity_id', 'amenity_name', 'amenity_icon', 'description', 'display_order')
+      .where({ amenity_id: amenityId })
+      .first();
+
+    res.status(201).json({
+      success: true,
+      message: 'Room amenity created successfully',
+      data: newAmenity
+    });
+  } catch (error) {
+    console.error('Create room amenity error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create room amenity'
+    });
+  }
+};
+
+
 export const createAmenity = async (req: Request, res: Response) => {
   try {
     const { amenity_name, amenity_icon, description } = req.body;

@@ -24,7 +24,7 @@ export const ConfirmationProvider = ({ children }: { children: React.ReactNode }
     const [loading, setLoading] = useState(false);
 
     const fadeAnim = useRef(new Animated.Value(0)).current;
-    const slideAnim = useRef(new Animated.Value(300)).current;
+    const scaleAnim = useRef(new Animated.Value(0.9)).current;
 
     const showConfirmation = (cfg: ConfirmationConfig) => {
         setConfig(cfg);
@@ -39,10 +39,10 @@ export const ConfirmationProvider = ({ children }: { children: React.ReactNode }
                     duration: 200,
                     useNativeDriver: true,
                 }),
-                Animated.spring(slideAnim, {
-                    toValue: 0,
-                    tension: 65,
-                    friction: 9,
+                Animated.spring(scaleAnim, {
+                    toValue: 1,
+                    tension: 120,
+                    friction: 10,
                     useNativeDriver: true,
                 }),
             ]).start();
@@ -53,8 +53,8 @@ export const ConfirmationProvider = ({ children }: { children: React.ReactNode }
                     duration: 150,
                     useNativeDriver: true,
                 }),
-                Animated.timing(slideAnim, {
-                    toValue: 300,
+                Animated.timing(scaleAnim, {
+                    toValue: 0.9,
                     duration: 150,
                     useNativeDriver: true,
                 }),
@@ -134,14 +134,14 @@ export const ConfirmationProvider = ({ children }: { children: React.ReactNode }
                                 styles.card,
                                 {
                                     backgroundColor: theme.cardBg,
-                                    transform: [{ translateY: slideAnim }],
+                                    transform: [{ scale: scaleAnim }],
+                                    opacity: fadeAnim,
                                     shadowColor: isDark ? '#000' : '#475569',
                                     borderColor: isDark ? '#334155' : '#F1F5F9',
                                 },
                             ]}
                         >
-                            {/* Top Grab Handle */}
-                            <View style={[styles.grabHandle, { backgroundColor: isDark ? '#475569' : theme.primary + '25' }]} />
+                            {/* No grab handle — centered dialog */}
 
                             {/* Header row: Left Icon, Right Text Column */}
                             <View style={styles.headerBlock}>
@@ -204,8 +204,9 @@ export const useConfirmation = () => {
 const styles = StyleSheet.create({
     overlay: {
         flex: 1,
-        justifyContent: 'flex-end',
+        justifyContent: 'center',
         alignItems: 'center',
+        padding: 24,
     },
     backdrop: {
         ...StyleSheet.absoluteFillObject,
@@ -213,16 +214,15 @@ const styles = StyleSheet.create({
     },
     card: {
         width: '100%',
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
+        borderRadius: 24,
         borderWidth: 1,
         paddingHorizontal: 24,
-        paddingTop: 12,
-        paddingBottom: Platform.OS === 'ios' ? 34 : 24,
+        paddingTop: 24,
+        paddingBottom: 24,
         elevation: 20,
-        shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.15,
+        shadowRadius: 16,
     },
     grabHandle: {
         width: 40,

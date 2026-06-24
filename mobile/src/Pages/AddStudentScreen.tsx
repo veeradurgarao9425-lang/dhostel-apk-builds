@@ -24,7 +24,7 @@ import {
     User, Phone, Mail, Home, MapPin,
     CreditCard, Users, Fingerprint, Check,
     ChevronDown, Camera, X, BedDouble, Calendar, Search,
-    Upload,
+    Upload, AlertTriangle, Info,
 } from 'lucide-react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import * as ImagePicker from 'expo-image-picker';
@@ -82,6 +82,43 @@ const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: any) => {
                 ]}>
                     {children}
                 </Animated.View>
+            </View>
+        </Modal>
+    );
+};
+
+// ─── Custom Alert Modal ───────────────────────────────────────────────────────
+const CustomAlertModal = ({ visible, title, message, onClose, primaryAction, secondaryAction, icon: Icon = AlertTriangle }: any) => {
+    const { theme, isDark, fontSize } = useTheme();
+    return (
+        <Modal transparent visible={visible} animationType="fade" statusBarTranslucent onRequestClose={onClose}>
+            <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+                <View style={{ backgroundColor: isDark ? '#1E293B' : '#FFF', borderRadius: 24, padding: 24, width: '100%', maxWidth: 340, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 }}>
+                    <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : '#FEE2E2', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+                        <Icon size={32} color="#EF4444" />
+                    </View>
+                    <Text style={{ fontSize: fontSize + 2, fontWeight: '800', color: theme.textPrimary, marginBottom: 12, textAlign: 'center' }}>{title}</Text>
+                    <Text style={{ fontSize: fontSize, color: theme.textSecondary, textAlign: 'center', marginBottom: 28, lineHeight: 22 }}>{message}</Text>
+                    
+                    {primaryAction || secondaryAction ? (
+                        <View style={{ flexDirection: 'row', gap: 12, width: '100%' }}>
+                            {secondaryAction && (
+                                <TouchableOpacity onPress={secondaryAction.onPress} activeOpacity={0.8} style={{ flex: 1, backgroundColor: isDark ? '#334155' : '#F1F5F9', paddingVertical: 14, borderRadius: 14, alignItems: 'center' }}>
+                                    <Text style={{ color: theme.textSecondary, fontSize: fontSize, fontWeight: '700' }}>{secondaryAction.label}</Text>
+                                </TouchableOpacity>
+                            )}
+                            {primaryAction && (
+                                <TouchableOpacity onPress={primaryAction.onPress} activeOpacity={0.8} style={{ flex: 1, backgroundColor: theme.primary, paddingVertical: 14, borderRadius: 14, alignItems: 'center' }}>
+                                    <Text style={{ color: '#FFF', fontSize: fontSize, fontWeight: '700' }}>{primaryAction.label}</Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    ) : (
+                        <TouchableOpacity onPress={onClose} activeOpacity={0.8} style={{ width: '100%', backgroundColor: theme.primary, paddingVertical: 14, borderRadius: 14, alignItems: 'center' }}>
+                            <Text style={{ color: '#FFF', fontSize: fontSize, fontWeight: '700' }}>Okay, I understand</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
             </View>
         </Modal>
     );
@@ -299,11 +336,12 @@ const ImageSourceDrawer = ({ visible, onClose, onSelectCamera, onSelectGallery, 
 const DocumentUploadBox = ({ label, uri, onCapture, onRemove, isFront, error }: { label: string; uri: string | null; onCapture: (uri: string) => void; onRemove: () => void; isFront: boolean; error?: string }) => {
     const { theme, isDark } = useTheme();
     const [pickerVisible, setPickerVisible] = useState(false);
+    const [permError, setPermError] = useState({ visible: false, title: '', message: '' });
 
     const onSelectCamera = async () => {
         const p = await ImagePicker.requestCameraPermissionsAsync();
         if (!p.granted) {
-            Alert.alert('Permission Required', 'Camera permission is needed to upload documents.');
+            setPermError({ visible: true, title: 'Permission Required', message: 'Camera permission is needed to upload documents. Please enable it in your device settings.' });
             return;
         }
         const r = await ImagePicker.launchCameraAsync({ quality: 0.7 });
@@ -313,7 +351,7 @@ const DocumentUploadBox = ({ label, uri, onCapture, onRemove, isFront, error }: 
     const onSelectGallery = async () => {
         const p = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (!p.granted) {
-            Alert.alert('Permission Required', 'Media library permission is needed to upload documents.');
+            setPermError({ visible: true, title: 'Permission Required', message: 'Media library permission is needed to upload documents. Please enable it in your device settings.' });
             return;
         }
         const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.7 });
@@ -387,6 +425,12 @@ const DocumentUploadBox = ({ label, uri, onCapture, onRemove, isFront, error }: 
                 onSelectGallery={onSelectGallery}
                 title={`Upload ${label}`}
             />
+            <CustomAlertModal 
+                visible={permError.visible}
+                title={permError.title}
+                message={permError.message}
+                onClose={() => setPermError({ ...permError, visible: false })}
+            />
         </>
     );
 };
@@ -445,11 +489,12 @@ const IdentityUploadCard = ({
 // ─── Profile avatar capture at top ───────────────────────────────────────────
 const ProfilePhotoCapture = ({ uri, onCapture, onRemove, error }: any) => {
     const { theme, isDark, fontSize } = useTheme();
+    const [permError, setPermError] = useState({ visible: false, title: '', message: '' });
 
     const openCamera = async () => {
         const p = await ImagePicker.requestCameraPermissionsAsync();
         if (!p.granted) {
-            Alert.alert('Permission Required', 'Camera permission is needed to take a profile photo.');
+            setPermError({ visible: true, title: 'Permission Required', message: 'Camera permission is needed to take a profile photo.' });
             return;
         }
         const r = await ImagePicker.launchCameraAsync({ quality: 0.8, allowsEditing: true, aspect: [1, 1] });
@@ -459,7 +504,7 @@ const ProfilePhotoCapture = ({ uri, onCapture, onRemove, error }: any) => {
     const openGallery = async () => {
         const p = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (!p.granted) {
-            Alert.alert('Permission Required', 'Media library permission is needed to pick a profile photo.');
+            setPermError({ visible: true, title: 'Permission Required', message: 'Media library permission is needed to pick a profile photo.' });
             return;
         }
         const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, allowsEditing: true, aspect: [1, 1] });
@@ -502,6 +547,13 @@ const ProfilePhotoCapture = ({ uri, onCapture, onRemove, error }: any) => {
                     <Text style={[styles.profileUploadBtnText, { color: error ? '#EF4444' : theme.primary }]}>{uri ? 'Change Photo' : 'Upload Photo'}</Text>
                 </TouchableOpacity>
             </View>
+
+            <CustomAlertModal 
+                visible={permError.visible}
+                title={permError.title}
+                message={permError.message}
+                onClose={() => setPermError({ ...permError, visible: false })}
+            />
         </View>
     );
 };
@@ -546,6 +598,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
     const [dateMode, setDateMode] = useState<'dob' | 'admission'>('dob');
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [touched, setTouched] = useState<Record<string, boolean>>({});
+    const [pageAlert, setPageAlert] = useState<any>({ visible: false, title: '', message: '' });
 
     const validateField = (name: string, value: any, currentIdProofId?: string) => {
         let err = '';
@@ -703,16 +756,8 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                             floor_number: matchedRoom.floor_number?.toString() || '0',
                             monthly_rent: matchedRoom.rent_per_bed?.toString() || '',
                         }));
-                        fetchBeds(roomId.toString());
-                        if (bedId) {
-                            setFormData(p => ({
-                                ...p,
-                                room_id: roomId.toString(),
-                                floor_number: matchedRoom.floor_number?.toString() || '0',
-                                monthly_rent: matchedRoom.rent_per_bed?.toString() || '',
-                                bed_id: bedId.toString(),
-                            }));
-                        }
+                        // Pass matchedRoom directly so fetchBeds doesn't depend on stale availableRooms state
+                        fetchBeds(roomId.toString(), matchedRoom);
                     }
                 }
             }
@@ -729,19 +774,22 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
         } catch (e) { console.error(e); }
     };
 
-    const fetchBeds = useCallback(async (roomId: string) => {
+    const fetchBeds = useCallback(async (roomId: string, roomData?: any) => {
         setBedsLoading(true);
         try {
             const res = await api.get(`/rooms/${roomId}/beds`);
-            if (res.data.success) { setBeds(res.data.data); return; }
+            if (res.data.success) { setBeds(res.data.data); setBedsLoading(false); return; }
         } catch { }
-        const room = availableRooms.find(r => r.room_id?.toString() === roomId);
-        const cap = room?.capacity ?? 1;
+        // Fallback: generate fake beds from room data
+        // Use passed roomData first, then search availableRooms
+        const room = roomData || availableRooms.find(r => r.room_id?.toString() === roomId);
+        const cap = room?.total_capacity ?? room?.capacity ?? 4;
+        const occupiedCount = room?.occupied_beds ?? 0;
         const fake = Array.from({ length: Number(cap) }, (_, i) => ({
             bed_id: `${roomId}_${i + 1}`,
-            bed_name: `${room?.room_number}${String.fromCharCode(65 + i)}`,
-            status: i < (room?.available_beds ?? cap) ? 'available' : 'occupied',
-            student_id: i < (room?.available_beds ?? cap) ? null : 1,
+            bed_name: `Bed ${i + 1}`,
+            status: i >= occupiedCount ? 'available' : 'occupied',
+            student_id: i >= occupiedCount ? null : 1,
         }));
         setBeds(fake);
         setBedsLoading(false);
@@ -853,21 +901,23 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 // Billing only starts once a room is allocated, so this keeps the rent roll clean.
                 if (!isEdit && !payload.room_id) {
                     const newId = res.data.data?.student_id;
-                    Alert.alert(
-                        'Tenant added — no room yet',
-                        'Billing starts only after you allocate a room. Would you like to allocate one now?',
-                        [
-                            { text: 'Later', style: 'cancel', onPress: () => navigation.goBack() },
-                            {
-                                text: 'Allocate Now',
-                                onPress: () => navigation.replace('AddStudent', {
+                    setPageAlert({
+                        visible: true,
+                        title: 'Tenant Added',
+                        message: 'Billing starts only after you allocate a room. Would you like to allocate one now?',
+                        icon: Info,
+                        secondaryAction: { label: 'Later', onPress: () => { setPageAlert({ visible: false }); navigation.goBack(); } },
+                        primaryAction: {
+                            label: 'Allocate Now',
+                            onPress: () => {
+                                setPageAlert({ visible: false });
+                                navigation.replace('AddStudent', {
                                     student: { ...payload, student_id: newId, photo: profilePhoto },
                                     isEdit: true,
-                                }),
-                            },
-                        ],
-                        { cancelable: false }
-                    );
+                                });
+                            }
+                        }
+                    });
                 } else {
                     showSuccess(`Tenant ${isEdit ? 'updated' : 'registered'} successfully!`);
                     navigation.goBack();
@@ -1115,7 +1165,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                             <ChevronDown size={15} color={selectedRoom ? theme.primary : theme.textSecondary} />
                         </TouchableOpacity>
                         <TouchableOpacity style={[styles.allocationBtn, { backgroundColor: isDark ? '#1E293B' : '#F9FAFB', borderColor: isDark ? '#334155' : '#E2E8F0' }, selectedBed && { backgroundColor: isDark ? theme.primary + '20' : COLORS.primaryLight, borderColor: theme.primary }, !selectedRoom && styles.allocationBtnDisabled]}
-                            onPress={() => { if (!selectedRoom) { Alert.alert('Select Room First', 'Please pick a room first.'); return; } setBedModal(true); }} activeOpacity={0.8}>
+                            onPress={() => { if (!selectedRoom) { setPageAlert({ visible: true, title: 'Select Room First', message: 'Please pick a room first.' }); return; } setBedModal(true); }} activeOpacity={0.8}>
                             <BedDouble size={17} color={selectedBed ? theme.primary : !selectedRoom ? (isDark ? '#334155' : '#CBD5E1') : theme.textSecondary} />
                             <Text style={[styles.allocationBtnText, { color: theme.textSecondary }, selectedBed && { color: theme.primary }, !selectedRoom && { color: isDark ? '#334155' : '#CBD5E1' }]} numberOfLines={1}>{selectedBed ? (selectedBed.bed_name ?? 'Bed') : 'Select Bed'}</Text>
                             <ChevronDown size={15} color={selectedBed ? theme.primary : theme.textSecondary} />
@@ -1233,6 +1283,16 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                     }
                 }}
                 onCancel={() => setShowDatePicker(false)} />
+
+            <CustomAlertModal
+                visible={pageAlert.visible}
+                title={pageAlert.title}
+                message={pageAlert.message}
+                icon={pageAlert.icon}
+                primaryAction={pageAlert.primaryAction}
+                secondaryAction={pageAlert.secondaryAction}
+                onClose={() => setPageAlert({ ...pageAlert, visible: false })}
+            />
         </KeyboardAvoidingView>
     );
 };
@@ -1296,10 +1356,10 @@ const RoomPickerDrawer = ({ visible, rooms, selectedRoomId, onSelectRoom, onClos
                                     key={floor}
                                     onPress={() => setSelectedFloor(floor)}
                                     style={{
-                                        paddingHorizontal: 12,
-                                        paddingVertical: 6,
-                                        borderRadius: 16,
-                                        borderWidth: 1,
+                                        paddingHorizontal: 14,
+                                        paddingVertical: 7,
+                                        borderRadius: 20,
+                                        borderWidth: 1.5,
                                         borderColor: isSel ? theme.primary : (isDark ? '#334155' : '#E2E8F0'),
                                         backgroundColor: isSel ? theme.primary : (isDark ? '#1E293B' : '#FFF'),
                                     }}
@@ -1320,40 +1380,54 @@ const RoomPickerDrawer = ({ visible, rooms, selectedRoomId, onSelectRoom, onClos
                 {grouped.length === 0 && <View style={{ padding: 40, alignItems: 'center' }}><Text style={{ color: theme.textSecondary }}>No rooms found</Text></View>}
                 {grouped.map(({ floor, rooms: fr }) => (
                     <View key={floor}>
-                        <View style={[styles.floorChip, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}><Text style={[styles.floorChipText, { color: theme.textSecondary }]}>FLOOR {floor}</Text></View>
-                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'space-between' }}>
+                        <View style={[styles.floorChip, { backgroundColor: isDark ? '#334155' : '#EDE9FE' }]}>
+                            <Text style={[styles.floorChipText, { color: isDark ? '#C4B5FD' : '#6D28D9' }]}>FLOOR {floor}</Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
                             {fr.map((room: any) => {
                                 const isSel = selectedRoomId === room.room_id?.toString();
                                 const avail = room.available_beds ?? 0;
+                                const isFull = avail <= 0;
                                 return (
                                     <TouchableOpacity key={room.room_id}
                                         style={[
-                                            styles.roomCard, 
-                                            { 
-                                                backgroundColor: isDark ? '#1E293B' : (isSel ? theme.primary + '10' : '#FFF'), 
-                                                borderColor: isSel ? theme.primary : (isDark ? '#334155' : '#E2E8F0'),
-                                                width: '48.5%',
+                                            styles.roomCard,
+                                            {
+                                                backgroundColor: isSel
+                                                    ? (isDark ? '#4C1D95' : '#7C3AED')
+                                                    : (isDark ? '#1E293B' : '#FFF'),
+                                                borderColor: isSel ? '#7C3AED' : (isDark ? '#334155' : '#E2E8F0'),
+                                                width: '47%',
                                                 padding: 14,
                                                 marginBottom: 10,
-                                                borderWidth: 1.5,
+                                                borderWidth: isSel ? 2 : 1.5,
                                                 borderRadius: 14,
-                                                elevation: 1,
-                                                shadowColor: '#000',
-                                                shadowOpacity: 0.02,
-                                                shadowRadius: 3,
-                                                shadowOffset: { width: 0, height: 1 },
+                                                elevation: isSel ? 4 : 1,
+                                                shadowColor: isSel ? '#7C3AED' : '#000',
+                                                shadowOpacity: isSel ? 0.18 : 0.03,
+                                                shadowRadius: isSel ? 8 : 3,
+                                                shadowOffset: { width: 0, height: isSel ? 3 : 1 },
                                             },
-                                            avail <= 0 && { opacity: 0.55 }
+                                            isFull && !isSel && { opacity: 0.55 }
                                         ]}
                                         onPress={() => { onSelectRoom(room); setSearch(''); onClose(); }} activeOpacity={0.75}>
-                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                                            <Text style={{ fontSize: fontSize + 2, fontWeight: '800', color: isSel ? theme.primary : theme.textPrimary }}>Room {room.room_number}</Text>
-                                            {isSel && <Check size={14} color={theme.primary} />}
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                            <Text style={{ fontSize: fontSize + 2, fontWeight: '800', color: isSel ? '#FFF' : theme.textPrimary }}>Room {room.room_number}</Text>
+                                            {isSel
+                                                ? <View style={{ backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 10, padding: 3 }}><Check size={13} color="#FFF" /></View>
+                                                : <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: statusColor(room) }} />
+                                            }
                                         </View>
-                                        <View style={{ gap: 4 }}>
-                                            <Text style={{ fontSize: fontSize - 2, color: theme.textSecondary }} numberOfLines={1}>Type: {room.room_type_name ? room.room_type_name.replace(/share|sharing|sh/gi, '').trim() : 'Standard'}</Text>
-                                            <Text style={{ fontSize: fontSize - 2, color: statusColor(room), fontWeight: '700' }}>Avail: {avail} / {room.capacity ?? '—'}</Text>
-                                            <Text style={{ fontSize: fontSize - 2, color: theme.textPrimary, fontWeight: '700', marginTop: 2 }}>₹{room.rent_per_bed ?? room.base_rent ?? '—'}/bed</Text>
+                                        <View style={{ gap: 3 }}>
+                                            <Text style={{ fontSize: fontSize - 2, color: isSel ? 'rgba(255,255,255,0.75)' : theme.textSecondary }} numberOfLines={1}>
+                                                {room.room_type_name ? room.room_type_name.replace(/share|sharing|sh/gi, '').trim() : 'Standard'}
+                                            </Text>
+                                            <Text style={{ fontSize: fontSize - 2, color: isSel ? '#A7F3D0' : statusColor(room), fontWeight: '700' }}>
+                                                {avail} of {room.capacity ?? '—'} beds free
+                                            </Text>
+                                            <Text style={{ fontSize: fontSize - 1, color: isSel ? '#FFF' : theme.textPrimary, fontWeight: '700', marginTop: 2 }}>
+                                                ₹{room.rent_per_bed ?? room.base_rent ?? '—'}/bed
+                                            </Text>
                                         </View>
                                     </TouchableOpacity>
                                 );
@@ -1376,11 +1450,28 @@ const BedPickerDrawer = ({ visible, room, beds, selectedBedId, onSelectBed, onCl
                 <Text style={[styles.sheetTitle, { color: theme.textPrimary }]}>Beds in Room {room?.room_number}</Text>
                 <TouchableOpacity onPress={onClose} style={[styles.doneBtn, { backgroundColor: isDark ? theme.primary + '20' : COLORS.primaryLight }]}><Text style={[styles.doneBtnText, { color: theme.primary }]}>Close</Text></TouchableOpacity>
             </View>
-            {room && <View style={{ paddingHorizontal: 16, marginBottom: 8, marginTop: 8 }}><View style={[styles.floorChip, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}><Text style={[styles.floorChipText, { color: theme.textSecondary }]}>ROOM {room.room_number}</Text></View></View>}
+            {room && (
+                <View style={{ paddingHorizontal: 16, marginBottom: 4, marginTop: 10 }}>
+                    <View style={{ flexDirection: 'row', gap: 16 }}>
+                        <View style={{ flex: 1, backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderRadius: 10, padding: 10, alignItems: 'center' }}>
+                            <Text style={{ fontSize: 11, color: theme.textSecondary, fontWeight: '600' }}>Total Beds</Text>
+                            <Text style={{ fontSize: 18, fontWeight: '800', color: theme.textPrimary, marginTop: 2 }}>{room.total_capacity ?? room.capacity ?? beds.length}</Text>
+                        </View>
+                        <View style={{ flex: 1, backgroundColor: isDark ? '#1E293B' : '#F0FDF4', borderRadius: 10, padding: 10, alignItems: 'center' }}>
+                            <Text style={{ fontSize: 11, color: '#16A34A', fontWeight: '600' }}>Available</Text>
+                            <Text style={{ fontSize: 18, fontWeight: '800', color: '#16A34A', marginTop: 2 }}>{room.available_beds ?? beds.filter((b: any) => !b.student_id || b.status === 'available').length}</Text>
+                        </View>
+                        <View style={{ flex: 1, backgroundColor: isDark ? '#1E293B' : '#FFF0F0', borderRadius: 10, padding: 10, alignItems: 'center' }}>
+                            <Text style={{ fontSize: 11, color: '#DC2626', fontWeight: '600' }}>Occupied</Text>
+                            <Text style={{ fontSize: 18, fontWeight: '800', color: '#DC2626', marginTop: 2 }}>{room.occupied_beds ?? beds.filter((b: any) => b.student_id && b.status !== 'available').length}</Text>
+                        </View>
+                    </View>
+                </View>
+            )}
             {loading ? (
                 <ActivityIndicator color={theme.primary} size="large" style={{ marginVertical: 40 }} />
             ) : (
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 150 }}>
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 150, paddingTop: 14 }}>
                     {beds.length === 0 && <View style={{ padding: 40, alignItems: 'center' }}><Text style={{ color: theme.textSecondary }}>No beds in this room</Text></View>}
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
                         {beds.map((bed: any) => {
@@ -1390,14 +1481,33 @@ const BedPickerDrawer = ({ visible, room, beds, selectedBedId, onSelectBed, onCl
                                 <TouchableOpacity key={bed.bed_id}
                                     style={[
                                         styles.bedCard,
-                                        { backgroundColor: isDark ? '#1E293B' : COLORS.primaryLight, borderColor: isDark ? '#334155' : COLORS.border },
-                                        isSel && { borderColor: theme.primary },
-                                        !isAvail && { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#1E293B' : '#E2E8F0', opacity: 0.65 }
+                                        {
+                                            backgroundColor: isSel
+                                                ? (isDark ? '#4C1D95' : '#7C3AED')
+                                                : isAvail
+                                                    ? (isDark ? '#1E293B' : '#F0FDF4')
+                                                    : (isDark ? '#0F172A' : '#F8FAFC'),
+                                            borderColor: isSel ? '#7C3AED' : isAvail ? '#86EFAC' : (isDark ? '#1E293B' : '#E2E8F0'),
+                                            borderWidth: isSel ? 2 : 1.5,
+                                            opacity: !isAvail && !isSel ? 0.6 : 1,
+                                        }
                                     ]}
                                     onPress={() => { if (!isAvail) return; onSelectBed(bed); onClose(); }} activeOpacity={0.75}>
-                                    <BedDouble size={20} color={isSel ? theme.primary : !isAvail ? (isDark ? '#334155' : '#CBD5E1') : theme.textSecondary} />
-                                    <Text style={[styles.bedName, { fontSize: fontSize + 2, color: theme.textPrimary }, isSel && { color: theme.primary }, !isAvail && { color: theme.textSecondary }]}>{bed.bed_name ?? `Bed ${bed.bed_number}`}</Text>
-                                    <Text style={{ fontSize: fontSize - 3, fontWeight: '700', color: isAvail ? '#16A34A' : '#DC2626', marginTop: 2 }}>{isAvail ? '● AVAILABLE' : '● OCCUPIED'}</Text>
+                                    <BedDouble size={22} color={isSel ? '#FFF' : !isAvail ? (isDark ? '#334155' : '#CBD5E1') : '#22C55E'} />
+                                    <Text style={[styles.bedName, { fontSize: fontSize + 1, color: isSel ? '#FFF' : theme.textPrimary }]}>
+                                        {bed.bed_name ?? `Bed ${bed.bed_number ?? ''}`}
+                                    </Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: isAvail ? '#22C55E' : '#EF4444' }} />
+                                        <Text style={{ fontSize: fontSize - 3, fontWeight: '700', color: isSel ? 'rgba(255,255,255,0.8)' : isAvail ? '#16A34A' : '#DC2626' }}>
+                                            {isAvail ? 'AVAILABLE' : 'OCCUPIED'}
+                                        </Text>
+                                    </View>
+                                    {isSel && (
+                                        <View style={{ position: 'absolute', top: 6, right: 6 }}>
+                                            <Check size={12} color="#FFF" />
+                                        </View>
+                                    )}
                                 </TouchableOpacity>
                             );
                         })}

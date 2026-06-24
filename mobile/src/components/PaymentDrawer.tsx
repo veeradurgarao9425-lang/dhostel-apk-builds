@@ -88,12 +88,11 @@ export function PaymentDrawer({
     };
 
     return (
-        <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+        <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
             <View style={S.modalRoot}>
                 <Animated.View style={[S.modalBackdrop, { opacity: backdropOpacity }]} />
                 <View style={S.modalOverlay}>
                     <View style={S.drawerContent}>
-                        <View style={S.drawerHandle} />
 
                         {/* Header */}
                         <View style={S.drawerHeader}>
@@ -290,22 +289,22 @@ const S = StyleSheet.create({
     },
     modalOverlay: {
         flex: 1,
-        justifyContent: 'flex-end',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
     },
     drawerContent: {
         backgroundColor: '#FFFFFF',
-        borderTopLeftRadius: 28,
-        borderTopRightRadius: 28,
-        maxHeight: '90%',
+        borderRadius: 20,
+        width: '100%',
+        maxHeight: '85%',
         paddingHorizontal: 20,
-        paddingBottom: 8,
-    },
-    drawerHandle: {
-        width: 36, height: 4,
-        backgroundColor: '#E2E8F0',
-        borderRadius: 2,
-        alignSelf: 'center',
-        marginTop: 10, marginBottom: 4,
+        paddingBottom: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+        elevation: 5,
     },
     drawerHeader: {
         flexDirection: 'row',

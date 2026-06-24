@@ -35,6 +35,7 @@ import { SkeletonList } from '../components/ui/SkeletonCard';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { COLORS } from '../theme/index';
 import { toLocalDateStr } from '../utils/dateUtils';
+import { useRefresh } from '../../contexts/RefreshContext';
 
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -256,6 +257,7 @@ export default function StudentsScreen({ navigation, route }: any) {
     const { theme, isDark } = useTheme();
     const { showApiError, showSuccess } = useToast();
     const { t } = useTranslation();
+    const { refreshCounter } = useRefresh();
 
 
     const [allStudents, setAllStudents] = useState<any[]>([]);
@@ -386,6 +388,15 @@ export default function StudentsScreen({ navigation, route }: any) {
         });
         return unsubscribe;
     }, [navigation, fetchPage, route?.params]);
+
+    // ── Reload when global refresh triggered (e.g. after adding a student) ──
+    useEffect(() => {
+        if (refreshCounter === 0) return; // skip initial mount
+        setPage(1);
+        setHasMore(true);
+        fetchPage(1, true);
+        fetchCounts();
+    }, [refreshCounter]);
 
     // ── Fetch Counts ──────────────────────────────────────────────────────
     const fetchCounts = async () => {

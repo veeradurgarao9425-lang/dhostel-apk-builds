@@ -3,6 +3,7 @@ import {
   getAmenities,
   getRoomAmenities,
   createAmenity,
+  createRoomAmenity,
   updateAmenity,
   deleteAmenity
 } from '../controllers/amenitiesController.js';
@@ -15,6 +16,9 @@ router.get('/', authMiddleware, getAmenities);
 
 // Get all active room amenities (accessible by both admin and owners)
 router.get('/rooms', authMiddleware, getRoomAmenities);
+
+// Create a new room amenity (accessible by owners when adding custom amenities)
+router.post('/rooms', authMiddleware, createRoomAmenity);
 
 // Admin-only routes for managing amenities
 router.post('/', authMiddleware, createAmenity);
