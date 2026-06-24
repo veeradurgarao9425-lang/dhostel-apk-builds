@@ -526,9 +526,24 @@ export default function StudentsScreen({ navigation, route }: any) {
                         {countText}
                     </Text>
                 </View>
+
+                {counts.unallocated > 0 && activeTab !== 'Unallocated' && !debouncedSearch ? (
+                    <TouchableOpacity
+                        style={[styles.allocateBanner, { marginTop: 8 }]}
+                        activeOpacity={0.85}
+                        onPress={() => {
+                            setActiveTab('Unallocated');
+                        }}
+                    >
+                        <Text style={styles.allocateBannerText}>
+                            ⚠ {t('students.needRoom', { count: counts.unallocated, defaultValue: `${counts.unallocated} tenant(s) need a room` })}
+                        </Text>
+                        <Text style={styles.allocateBannerHint}>{t('students.allocateToBill', 'Allocate to start billing →')}</Text>
+                    </TouchableOpacity>
+                ) : null}
             </View>
         );
-    }, [totalMatching, allStudents.length, debouncedSearch, isDark]);
+    }, [totalMatching, allStudents.length, debouncedSearch, isDark, counts.unallocated, activeTab, t]);
 
 
     return (
@@ -599,7 +614,7 @@ export default function StudentsScreen({ navigation, route }: any) {
                 >
                     {[
                         { key: 'Active', label: t('students.active'), count: counts.active },
-                        ...(counts.unallocated > 0 ? [{ key: 'Unallocated', label: t('students.unallocatedTab', 'No Room'), count: counts.unallocated, isWarning: true }] : []),
+                        { key: 'Unallocated', label: t('students.unallocatedTab', 'No Room'), count: counts.unallocated, isWarning: counts.unallocated > 0 },
                         { key: 'PreBooked', label: t('students.prebooked'), count: counts.prebooked },
                         { key: 'QRRegister', label: t('students.qrSignups'), count: counts.qrRegister },
                         { key: 'Inactive', label: t('students.inactive'), count: counts.inactive },

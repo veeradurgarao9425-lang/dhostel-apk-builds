@@ -69,7 +69,8 @@
         "markActiveMsg": "{{name}} ను మళ్ళీ యాక్టివ్ గా గుర్తించాలా?",
         "yesProceed": "అవును, కొనసాగించు",
         "directory": "విద్యార్థుల డైరెక్టరీ",
-        "residents": "నివాసితులు"
+        "residents": "నివాసితులు",
+        "unallocatedTab": "గది లేదు"
     },
     "rooms": {
         "title": "గది స్థితి",

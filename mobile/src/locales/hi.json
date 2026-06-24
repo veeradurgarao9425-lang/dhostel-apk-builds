@@ -44,7 +44,8 @@
         "statusUpdated": "स्थिति अपडेट की गई",
         "studentRegistrationQR": "छात्र पंजीकरण QR",
         "scanInstructions": "छात्र इस QR कोड को स्कैन करके पंजीकरण कर सकते हैं",
-        "shareLink": "लिंक साझा करें"
+        "shareLink": "लिंक साझा करें",
+        "unallocatedTab": "कमरा नहीं"
     },
     "rooms": {
         "title": "कमरे",

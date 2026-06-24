@@ -69,7 +69,8 @@
         "markActiveMsg": "Mark {{name}} as active again?",
         "yesProceed": "Yes, proceed",
         "directory": "Student Directory",
-        "residents": "Residents"
+        "residents": "Residents",
+        "unallocatedTab": "No Room"
     },
     "rooms": {
         "title": "Room Status",
