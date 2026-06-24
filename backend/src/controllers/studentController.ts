@@ -46,6 +46,11 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
       query = query.where('s.hostel_id', hostelId);
     }
 
+    // Filter by unallocated (no room assigned)
+    if (req.query.unallocated === 'true') {
+      query = query.whereNull('s.room_id');
+    }
+
     // Filter by status if provided
     if (status !== undefined) {
       query = query.where('s.status', status);
@@ -70,17 +75,29 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
     }
 
     // Pagination
+    let total: number | undefined = undefined;
     if (page && limit) {
       const p = parseInt(page as string);
+      if (p === 1) {
+        const totalQuery = query.clone();
+        const countResult = await db.from(totalQuery.as('sub')).count('* as count').first() as any;
+        total = countResult ? parseInt(countResult.count as string) : 0;
+      }
+
       const l = parseInt(limit as string);
       query = query.limit(l).offset((p - 1) * l);
     }
 
     const students = await query.orderBy('s.created_at', 'desc');
 
+    if (!page || !limit) {
+      total = students.length;
+    }
+
     res.json({
       success: true,
-      data: students
+      data: students,
+      ...(total !== undefined ? { total } : {})
     });
   } catch (error: any) {
     console.error('Get students error:', error);
@@ -95,6 +112,58 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
       success: false,
       error: 'Failed to fetch students',
       details: process.env.NODE_ENV === 'development' ? error?.message : undefined
+    });
+  }
+};
+
+// Get stats / counts of students by status
+export const getStudentStats = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user;
+    const { hostelId } = req.query;
+
+    let hostel_id = user?.hostel_id;
+    if (user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id && !hostelId)) {
+      hostel_id = user.hostel_id;
+    } else if (hostelId) {
+      hostel_id = parseInt(hostelId as string);
+    }
+
+    if (!hostel_id) {
+      return res.status(403).json({
+        success: false,
+        error: 'Your account is not linked to any hostel.'
+      });
+    }
+
+    const stats = await db('students')
+      .where('hostel_id', hostel_id)
+      .select(
+        db.raw('count(*) as total'),
+        db.raw('sum(case when status = 1 then 1 else 0 end) as active'),
+        db.raw('sum(case when status = 0 then 1 else 0 end) as inactive'),
+        db.raw('sum(case when status = 2 then 1 else 0 end) as prebooked'),
+        db.raw('sum(case when status = 3 then 1 else 0 end) as qr_register'),
+        db.raw('sum(case when status = 1 and room_id is null then 1 else 0 end) as unallocated')
+      )
+      .first() as any;
+
+    res.json({
+      success: true,
+      data: {
+        total: parseInt(stats?.total || 0),
+        active: parseInt(stats?.active || 0),
+        inactive: parseInt(stats?.inactive || 0),
+        prebooked: parseInt(stats?.prebooked || 0),
+        qrRegister: parseInt(stats?.qr_register || 0),
+        unallocated: parseInt(stats?.unallocated || 0)
+      }
+    });
+  } catch (error: any) {
+    console.error('Get student stats error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch student stats'
     });
   }
 };

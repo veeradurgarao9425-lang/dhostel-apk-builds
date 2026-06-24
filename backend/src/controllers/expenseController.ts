@@ -248,6 +248,51 @@ export const getExpenseById = async (req: AuthRequest, res: Response) => {
   try {
     const { expenseId } = req.params;
 
+    if (typeof expenseId === 'string' && expenseId.startsWith('wage_')) {
+      const paymentId = parseInt(expenseId.replace('wage_', ''));
+      const wage = await db('staff_payments as sp')
+        .leftJoin('staff as st', 'sp.staff_id', 'st.staff_id')
+        .leftJoin('hostel_master as h', 'sp.hostel_id', 'h.hostel_id')
+        .select(
+          'sp.payment_id',
+          'sp.hostel_id',
+          'sp.amount',
+          'sp.payment_date as expense_date',
+          'sp.note as description',
+          'st.full_name as vendor_name',
+          'h.hostel_name'
+        )
+        .where('sp.payment_id', paymentId)
+        .first();
+
+      if (!wage) {
+        return res.status(404).json({
+          success: false,
+          error: 'Wage payment not found'
+        });
+      }
+
+      if (req.user?.hostel_id && wage.hostel_id !== req.user.hostel_id) {
+        return res.status(403).json({ success: false, error: 'Access denied.' });
+      }
+
+      return res.json({
+        success: true,
+        data: {
+          expense_id: `wage_${wage.payment_id}`,
+          hostel_id: wage.hostel_id,
+          category_name: 'Staff Wages',
+          expense_date: wage.expense_date,
+          amount: wage.amount,
+          payment_mode: 'Cash',
+          vendor_name: wage.vendor_name || 'Staff',
+          description: wage.description || 'Wage payment',
+          is_wage: true,
+          hostel_name: wage.hostel_name
+        }
+      });
+    }
+
     const expense = await db('expenses as e')
       .leftJoin('hostel_master as h', 'e.hostel_id', 'h.hostel_id')
       .leftJoin('expense_categories as ec', 'e.category_id', 'ec.category_id')
@@ -363,6 +408,26 @@ export const updateExpense = async (req: AuthRequest, res: Response) => {
     const user = req.user;
     const { expenseId } = req.params;
 
+    if (typeof expenseId === 'string' && expenseId.startsWith('wage_')) {
+      const paymentId = parseInt(expenseId.replace('wage_', ''));
+      const payment = await db('staff_payments').where('payment_id', paymentId).first();
+      if (!payment) {
+        return res.status(404).json({ success: false, error: 'Wage payment not found' });
+      }
+      if (req.user?.hostel_id && payment.hostel_id !== req.user.hostel_id) {
+        return res.status(403).json({ success: false, error: 'Access denied.' });
+      }
+      
+      const { amount, expense_date, description } = req.body;
+      const updateData: any = {};
+      if (amount !== undefined) updateData.amount = Number(amount);
+      if (expense_date !== undefined) updateData.payment_date = expense_date;
+      if (description !== undefined) updateData.note = description;
+      
+      await db('staff_payments').where('payment_id', paymentId).update(updateData);
+      return res.json({ success: true, message: 'Wage payment updated successfully' });
+    }
+
     // Check if expense exists
     const expense = await db('expenses')
       .where('expense_id', expenseId)
@@ -426,6 +491,19 @@ export const deleteExpense = async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user;
     const { expenseId } = req.params;
+
+    if (typeof expenseId === 'string' && expenseId.startsWith('wage_')) {
+      const paymentId = parseInt(expenseId.replace('wage_', ''));
+      const payment = await db('staff_payments').where('payment_id', paymentId).first();
+      if (!payment) {
+        return res.status(404).json({ success: false, error: 'Wage payment not found' });
+      }
+      if (req.user?.hostel_id && payment.hostel_id !== req.user.hostel_id) {
+        return res.status(403).json({ success: false, error: 'Access denied.' });
+      }
+      await db('staff_payments').where('payment_id', paymentId).del();
+      return res.json({ success: true, message: 'Wage payment deleted successfully' });
+    }
 
     // Check if expense exists
     const expense = await db('expenses')

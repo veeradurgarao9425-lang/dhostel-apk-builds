@@ -30,6 +30,8 @@ import {
 import Toast from 'react-native-toast-message';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import api from '../services/api';
+import { PaymentDrawer } from '../components/PaymentDrawer';
+import { toLocalDateStr } from '../utils/dateUtils';
 import { HeaderNotification } from '../components/HeaderNotification';
 import { ProfileMenu } from '../components/ProfileMenu';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -44,7 +46,7 @@ const STATUS_THEME: any = {
 };
 
 // ─── INTERNAL MODAL COMPONENT ───────────────────────────────────────
-const CollectModal = ({ visible, onClose, fee, onSuccess, theme }: any) => {
+const UnusedCollectModal = ({ visible, onClose, fee, onSuccess, theme }: any) => {
     const [amount, setAmount] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -126,6 +128,34 @@ export default function FeeManagementScreen() {
     const [payModalVisible, setPayModalVisible] = useState(false);
     const [selectedFee, setSelectedFee] = useState<any>(null);
 
+    const [payAmount, setPayAmount] = useState('');
+    const [payNotes, setPayNotes] = useState('');
+    const [payTransactionId, setPayTransactionId] = useState('');
+    const [payDate, setPayDate] = useState(() => toLocalDateStr(new Date()));
+    const [payDueDate, setPayDueDate] = useState(() => {
+        const d = new Date(); d.setMonth(d.getMonth() + 1); return toLocalDateStr(d);
+    });
+    const [payModeId, setPayModeId] = useState('');
+    const [payLoading, setPayLoading] = useState(false);
+    const [paymentModes, setPaymentModes] = useState<any[]>([]);
+
+    useEffect(() => {
+        const fetchModes = async () => {
+            try {
+                const res = await api.get('/payment-modes');
+                if (res.data.success) {
+                    setPaymentModes(res.data.data);
+                }
+            } catch {
+                setPaymentModes([
+                    { payment_mode_id: 1, payment_mode_name: 'Cash' },
+                    { payment_mode_id: 2, payment_mode_name: 'UPI' }
+                ]);
+            }
+        };
+        fetchModes();
+    }, []);
+
     const fetchData = useCallback(async (showLoader = false) => {
         try {
             if (showLoader) setLoading(true);
@@ -157,6 +187,40 @@ export default function FeeManagementScreen() {
             return matches && f.fee_status === 'Partially Paid';
         });
     }, [fees, search, activeTab]);
+
+    const handleCollectRent = useCallback(async () => {
+        if (!payAmount || parseFloat(payAmount) <= 0) {
+            Alert.alert('Invalid Amount', 'Please enter a valid amount'); return;
+        }
+        if (!selectedFee) return;
+
+        try {
+            setPayLoading(true);
+            const payload: any = {
+                student_id: selectedFee.student_id,
+                hostel_id: selectedFee.hostel_id,
+                amount: parseFloat(payAmount),
+                payment_date: payDate,
+                due_date: payDueDate,
+                payment_mode_id: parseInt(payModeId || '1'),
+                notes: payNotes || null,
+                transaction_id: payTransactionId || null,
+                fee_month: selectedFee.fee_month || new Date().toISOString().slice(0, 7),
+            };
+            const res = await api.post('/monthly-fees/record-payment', payload);
+            if (res.data.success) {
+                Toast.show({ type: 'success', text1: 'Payment recorded successfully!' });
+                setPayModalVisible(false);
+                fetchData(true);
+            }
+        } catch (error: any) {
+            console.log('[FeeManagementScreen] Error saving payment:', error.response?.data || error.message);
+            const serverError = error.response?.data?.error || error.response?.data?.message || error.message;
+            Alert.alert('Error', serverError || 'Failed to record payment');
+        } finally {
+            setPayLoading(false);
+        }
+    }, [selectedFee, payAmount, payDate, payDueDate, payModeId, payNotes, payTransactionId, fetchData]);
 
     const renderFeeCard = ({ item }: { item: any }) => {
         const style = STATUS_THEME[item.fee_status] || STATUS_THEME['Pending'];
@@ -195,7 +259,19 @@ export default function FeeManagementScreen() {
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={[styles.collectBtn, { backgroundColor: theme.primary }]}
-                            onPress={() => { setSelectedFee(item); setPayModalVisible(true); }}
+                            onPress={() => {
+                                setSelectedFee(item);
+                                setPayAmount(due.toString());
+                                const upiMode = (paymentModes || []).find((m: any) => m.payment_mode_name?.toLowerCase() === 'upi');
+                                const defaultMode = upiMode ? upiMode.payment_mode_id.toString() : (paymentModes?.[0]?.payment_mode_id?.toString() || '1');
+                                setPayModeId(defaultMode);
+                                setPayNotes('');
+                                setPayTransactionId('');
+                                setPayDate(toLocalDateStr(new Date()));
+                                const next = new Date(); next.setMonth(next.getMonth() + 1);
+                                setPayDueDate(toLocalDateStr(next));
+                                setPayModalVisible(true);
+                            }}
                         >
                             <Text style={styles.collectBtnText}>COLLECT</Text>
                         </TouchableOpacity>
@@ -249,12 +325,20 @@ export default function FeeManagementScreen() {
                 ListEmptyComponent={<View style={styles.empty}><AlertCircle size={40} color="#CBD5E1" /><Text style={styles.emptyText}>No financial records found</Text></View>}
             />
 
-            <CollectModal
+            <PaymentDrawer
                 visible={payModalVisible}
-                fee={selectedFee}
-                theme={theme}
                 onClose={() => setPayModalVisible(false)}
-                onSuccess={() => { setPayModalVisible(false); fetchData(true); }}
+                selectedFee={selectedFee}
+                paymentModes={paymentModes}
+                payAmount={payAmount} setPayAmount={setPayAmount}
+                payNotes={payNotes} setPayNotes={setPayNotes}
+                payTransactionId={payTransactionId} setPayTransactionId={setPayTransactionId}
+                payDate={payDate} setPayDate={setPayDate}
+                payDueDate={payDueDate} setPayDueDate={setPayDueDate}
+                payModeId={payModeId} setPayModeId={setPayModeId}
+                payLoading={payLoading}
+                onConfirm={handleCollectRent}
+                themeColor={theme.primary}
             />
         </View>
     );

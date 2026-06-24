@@ -225,7 +225,17 @@ const RoomPickerDrawer = ({ visible, rooms, selectedRoomId, onSelectRoom, onClos
         }
         const map: Record<number, any[]> = {};
         f.forEach((r: any) => { const fl = r.floor_number ?? 0; if (!map[fl]) map[fl] = []; map[fl].push(r); });
-        return Object.keys(map).sort((a, b) => Number(a) - Number(b)).map(fl => ({ floor: Number(fl), rooms: map[Number(fl)] }));
+        return Object.keys(map).sort((a, b) => Number(a) - Number(b)).map(fl => {
+            const floorRooms = map[Number(fl)];
+            floorRooms.sort((a: any, b: any) => {
+                const aAvail = (a.available_beds ?? 0) > 0;
+                const bAvail = (b.available_beds ?? 0) > 0;
+                if (aAvail && !bAvail) return -1;
+                if (!aAvail && bAvail) return 1;
+                return (a.room_number ?? '').toString().localeCompare((b.room_number ?? '').toString(), undefined, { numeric: true });
+            });
+            return { floor: Number(fl), rooms: floorRooms };
+        });
     }, [rooms, search, selectedFloor]);
 
     const statusColor = (r: any) => r.status === 'MAINTENANCE' ? '#F97316' : (r.available_beds ?? 0) > 0 ? '#16A34A' : '#DC2626';

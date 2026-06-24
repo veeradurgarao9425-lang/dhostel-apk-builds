@@ -43,6 +43,7 @@ const INITIAL_STATE = {
     latestNotice: null as any,
     revenueTrend: [] as any[],
     upcomingVacates: [] as any[],
+    unallocatedCount: 0,
 };
 
 // ─── Greeting helper ──────────────────────────────────────────────────────────
@@ -227,6 +228,9 @@ export default function HomeScreen() {
                     })
                 : [];
 
+            const activeStudents = studentsRes.data?.success ? (studentsRes.data.data || []) : [];
+            const unallocatedCount = activeStudents.filter((s: any) => s.status === 1 && !s.room_id).length;
+
             setData({
                 hostelName: user?.hostel_name || d2.hostel_name || hostelRes?.data?.data?.hostel_name || 'My Hostel',
                 monthAmount: monthCollected,
@@ -251,6 +255,7 @@ export default function HomeScreen() {
                 latestNotice: activeNotice,
                 revenueTrend: overviewRes.data?.success && overviewRes.data.data?.trend ? overviewRes.data.data.trend : [],
                 upcomingVacates,
+                unallocatedCount,
             });
             isFirstLoadRef.current = false;
         } catch {
@@ -417,6 +422,45 @@ export default function HomeScreen() {
                 }
             >
                 <View style={s.body}>
+
+                    {/* Unallocated Tenants warning card */}
+                    {data.unallocatedCount > 0 && (
+                        <TouchableOpacity
+                            style={[
+                                s.card,
+                                {
+                                    backgroundColor: isDark ? '#3B1A1A' : '#FEF2F2',
+                                    borderColor: '#FCA5A5',
+                                    borderWidth: 1,
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    padding: 14,
+                                    marginBottom: 16,
+                                    borderRadius: 16,
+                                }
+                            ]}
+                            onPress={() => {
+                                navigation.navigate('Students', { filterUnallocated: true });
+                            }}
+                            activeOpacity={0.8}
+                        >
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#FEE2E2', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Ionicons name="alert-circle" size={20} color="#DC2626" />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={{ fontWeight: '800', fontSize: 14, color: isDark ? '#FECACA' : '#991B1B' }}>
+                                        {data.unallocatedCount} {data.unallocatedCount === 1 ? 'Tenant needs room allocation' : 'Tenants need room allocation'}
+                                    </Text>
+                                    <Text style={{ fontSize: 11, color: isDark ? '#FCA5A5' : '#EF4444', marginTop: 2 }}>
+                                        Tap to allocate rooms
+                                    </Text>
+                                </View>
+                            </View>
+                            <Ionicons name="chevron-forward" size={18} color="#DC2626" />
+                        </TouchableOpacity>
+                    )}
 
                     {/* ─────────────────── TOP METRICS ROW ─────────────────── */}
                     <View style={s.topMetricsRow}>

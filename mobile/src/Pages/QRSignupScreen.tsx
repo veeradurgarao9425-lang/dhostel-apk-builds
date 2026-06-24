@@ -83,7 +83,17 @@ const RoomPickerModal = ({ visible, rooms, selectedRoomId, onSelectRoom, onClose
             if (!map[floor]) map[floor] = [];
             map[floor].push(r);
         });
-        return Object.keys(map).sort((a, b) => Number(a) - Number(b)).map(floor => ({ floor: Number(floor), rooms: map[Number(floor)] }));
+        return Object.keys(map).sort((a, b) => Number(a) - Number(b)).map(floor => {
+            const floorRooms = map[Number(floor)];
+            floorRooms.sort((a: any, b: any) => {
+                const aAvail = (a.available_beds ?? 0) > 0;
+                const bAvail = (b.available_beds ?? 0) > 0;
+                if (aAvail && !bAvail) return -1;
+                if (!aAvail && bAvail) return 1;
+                return (a.room_number ?? '').toString().localeCompare((b.room_number ?? '').toString(), undefined, { numeric: true });
+            });
+            return { floor: Number(floor), rooms: floorRooms };
+        });
     }, [rooms, search]);
 
     const statusColor = (r: any) => r.status === 'MAINTENANCE' ? '#F97316' : (r.available_beds ?? 0) > 0 ? '#16A34A' : '#DC2626';

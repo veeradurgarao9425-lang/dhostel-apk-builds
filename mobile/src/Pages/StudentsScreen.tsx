@@ -268,13 +268,15 @@ export default function StudentsScreen({ navigation, route }: any) {
     const [activeTab, setActiveTab] = useState<TabType>('Active');
     const [initialLoading, setInitialLoading] = useState(true);
     const [debouncedSearch, setDebouncedSearch] = useState('');
-    const [counts, setCounts] = useState({ active: 0, inactive: 0, prebooked: 0, qrRegister: 0, total: 0 });
+    const [counts, setCounts] = useState({ active: 0, inactive: 0, prebooked: 0, qrRegister: 0, total: 0, unallocated: 0 });
+    const [totalMatching, setTotalMatching] = useState(0);
     const [dateFilter, setDateFilter] = useState<Date | null>(null);
     const [startDateFilter, setStartDateFilter] = useState<string | null>(null);
     const [endDateFilter, setEndDateFilter] = useState<string | null>(null);
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [backgroundLoading, setBackgroundLoading] = useState(false);
+    const [showUnallocatedOnly, setShowUnallocatedOnly] = useState(false);
     // Confirm dialog state
     const [confirmDialog, setConfirmDialog] = useState<{
         visible: boolean;
@@ -286,6 +288,11 @@ export default function StudentsScreen({ navigation, route }: any) {
 
     // Update activeTab if passed via params
     useEffect(() => {
+        if (route?.params?.filterUnallocated) {
+            setShowUnallocatedOnly(true);
+            setActiveTab('Active');
+            navigation.setParams({ filterUnallocated: undefined });
+        }
         if (route?.params?.filter) {
             setActiveTab(route.params.filter);
             navigation.setParams({ filter: undefined });
@@ -331,6 +338,7 @@ export default function StudentsScreen({ navigation, route }: any) {
             const params: Record<string, any> = { page: pageNum, limit: PAGE_SIZE };
             if (debouncedSearch) params.search = debouncedSearch;
             if (statusParam !== undefined) params.status = statusParam;
+            if (showUnallocatedOnly) params.unallocated = 'true';
             if (dateFilter) {
                 params.date = toLocalDateStr(dateFilter);
             } else if (startDateFilter && endDateFilter) {
@@ -343,6 +351,10 @@ export default function StudentsScreen({ navigation, route }: any) {
 
             if (response.data.success) {
                 const newData: any[] = response.data.data || [];
+                const totalCount = response.data.total;
+                if (totalCount !== undefined) {
+                    setTotalMatching(totalCount);
+                }
                 if (newData.length < PAGE_SIZE) setHasMore(false);
 
                 setAllStudents(prev => {
@@ -363,7 +375,7 @@ export default function StudentsScreen({ navigation, route }: any) {
                 setBackgroundLoading(false);
             }
         }
-    }, [activeTab, debouncedSearch, dateFilter, startDateFilter, endDateFilter]);
+    }, [activeTab, debouncedSearch, dateFilter, startDateFilter, endDateFilter, showUnallocatedOnly]);
 
     // ── Reset when tab or search changes ─────────────────────────────────
     useEffect(() => {
@@ -371,7 +383,7 @@ export default function StudentsScreen({ navigation, route }: any) {
         setHasMore(true);
         fetchPage(1, false);
         return () => { abortRef.current?.abort(); };
-    }, [activeTab, debouncedSearch, dateFilter, startDateFilter, endDateFilter]);
+    }, [activeTab, debouncedSearch, dateFilter, startDateFilter, endDateFilter, showUnallocatedOnly]);
 
     // ── Reload on focus, skip the very first mount ────────────────────────
     const isMounted = useRef(false);
@@ -401,31 +413,10 @@ export default function StudentsScreen({ navigation, route }: any) {
     // ── Fetch Counts ──────────────────────────────────────────────────────
     const fetchCounts = async () => {
         try {
-            // Fetch all counts in parallel. Note: Backend ignores limit, so we get full array.
-            const [resActive, resInactive, resPreBooked, resQRRegister, resTotal] = await Promise.all([
-                api.get('/students', { params: { status: 1 } }),
-                api.get('/students', { params: { status: 0 } }),
-                api.get('/students', { params: { status: 2 } }),
-                api.get('/students', { params: { status: 3 } }),
-                api.get('/students')
-            ]);
-
-            if (resActive.data.success) {
-                setCounts(p => ({ ...p, active: resActive.data.data?.length || 0 }));
+            const res = await api.get('/students/stats');
+            if (res.data.success) {
+                setCounts(res.data.data);
             }
-            if (resInactive.data.success) {
-                setCounts(p => ({ ...p, inactive: resInactive.data.data?.length || 0 }));
-            }
-            if (resPreBooked.data.success) {
-                setCounts(p => ({ ...p, prebooked: resPreBooked.data.data?.length || 0 }));
-            }
-            if (resQRRegister.data.success) {
-                setCounts(p => ({ ...p, qrRegister: resQRRegister.data.data?.length || 0 }));
-            }
-            if (resTotal.data.success) {
-                setCounts(p => ({ ...p, total: resTotal.data.data?.length || 0 }));
-            }
-
         } catch (e) {
             console.log('Error fetching counts', e);
         }
@@ -507,9 +498,19 @@ export default function StudentsScreen({ navigation, route }: any) {
     const keyExtractor = useCallback((item: any) => item.student_id.toString(), []);
 
     const subtitleText = useMemo(() => {
+        if (debouncedSearch) {
+            return `${totalMatching} matching result${totalMatching !== 1 ? 's' : ''}`;
+        }
+        if (showUnallocatedOnly) {
+            return `${counts.unallocated} Unallocated ${t('students.residents')}`;
+        }
         const label = activeTab === 'All' ? t('students.total') : activeTab;
-        return `${allStudents.length}${hasMore ? '+' : ''} ${label} ${t('students.residents')}`;
-    }, [allStudents.length, hasMore, activeTab, t]);
+        const totalCount = activeTab === 'Active' ? counts.active :
+                           activeTab === 'Inactive' ? counts.inactive :
+                           activeTab === 'PreBooked' ? counts.prebooked :
+                           activeTab === 'QRRegister' ? counts.qrRegister : counts.total;
+        return `${totalCount} ${label} ${t('students.residents')}`;
+    }, [counts, activeTab, showUnallocatedOnly, debouncedSearch, totalMatching, t]);
 
     // Active tenants in the loaded list who have no room → not yet on the rent roll.
     const unallocatedCount = useMemo(
@@ -518,20 +519,59 @@ export default function StudentsScreen({ navigation, route }: any) {
     );
 
     const listHeader = useMemo(() => {
-        if (unallocatedCount === 0) return null;
+        const countText = debouncedSearch
+            ? `${totalMatching} search result${totalMatching !== 1 ? 's' : ''} found`
+            : `Showing ${allStudents.length} of ${totalMatching} resident${totalMatching !== 1 ? 's' : ''}`;
+
         return (
-            <TouchableOpacity
-                style={styles.allocateBanner}
-                activeOpacity={0.85}
-                onPress={() => { if (activeTab !== 'Active') setActiveTab('Active'); }}
-            >
-                <Text style={styles.allocateBannerText}>
-                    ⚠ {t('students.needRoom', { count: unallocatedCount, defaultValue: `${unallocatedCount} tenant(s) need a room` })}
-                </Text>
-                <Text style={styles.allocateBannerHint}>{t('students.allocateToBill', 'Allocate to start billing →')}</Text>
-            </TouchableOpacity>
+            <View style={{ marginBottom: 12 }}>
+                <View style={[styles.countRow, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
+                    <Users size={14} color={isDark ? '#94A3B8' : '#64748B'} />
+                    <Text style={[styles.countRowText, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+                        {countText}
+                    </Text>
+                </View>
+
+                {showUnallocatedOnly ? (
+                    <View style={{
+                        backgroundColor: '#FEF3C7',
+                        borderColor: '#FDE68A',
+                        borderWidth: 1,
+                        padding: 12,
+                        borderRadius: 12,
+                        marginTop: 8,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between'
+                    }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Ionicons name="alert-circle-outline" size={18} color="#D97706" />
+                            <Text style={{ fontSize: 13, color: '#92400E', fontWeight: '700' }}>
+                                Showing Unallocated Tenants Only
+                            </Text>
+                        </View>
+                        <TouchableOpacity onPress={() => setShowUnallocatedOnly(false)}>
+                            <Text style={{ fontSize: 12, color: '#B45309', fontWeight: '800' }}>Clear</Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : unallocatedCount > 0 ? (
+                    <TouchableOpacity
+                        style={[styles.allocateBanner, { marginTop: 8 }]}
+                        activeOpacity={0.85}
+                        onPress={() => {
+                            setShowUnallocatedOnly(true);
+                            if (activeTab !== 'Active') setActiveTab('Active');
+                        }}
+                    >
+                        <Text style={styles.allocateBannerText}>
+                            ⚠ {t('students.needRoom', { count: unallocatedCount, defaultValue: `${unallocatedCount} tenant(s) need a room` })}
+                        </Text>
+                        <Text style={styles.allocateBannerHint}>{t('students.allocateToBill', 'Allocate to start billing →')}</Text>
+                    </TouchableOpacity>
+                ) : null}
+            </View>
         );
-    }, [unallocatedCount, activeTab, t]);
+    }, [unallocatedCount, activeTab, t, showUnallocatedOnly, totalMatching, allStudents.length, debouncedSearch, isDark]);
 
 
     return (
@@ -910,5 +950,18 @@ const styles = StyleSheet.create({
         position: 'absolute', bottom: 45, right: 24,
         width: 50, height: 50, borderRadius: 25,
         justifyContent: 'center', alignItems: 'center', elevation: 5
+    },
+    countRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+        alignSelf: 'flex-start',
+    },
+    countRowText: {
+        fontSize: 12,
+        fontWeight: '600',
     },
 });

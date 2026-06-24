@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
     View,
     StyleSheet,
@@ -19,6 +19,7 @@ import api from '../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useRefresh } from '../../contexts/RefreshContext';
+import { useFocusEffect } from '@react-navigation/native';
 import {
     Check,
     ChevronDown,
@@ -56,6 +57,19 @@ const AMENITY_ICONS: Record<string, any> = {
     'Chair': Armchair,
 };
 const getAmenityIcon = (name: string) => AMENITY_ICONS[name] || Star;
+
+const extractCapacity = (name: string): string => {
+    const clean = name.toLowerCase();
+    const match = clean.match(/(\d+)/);
+    if (match) return match[1];
+    if (clean.includes('single') || clean.includes('one')) return '1';
+    if (clean.includes('double') || clean.includes('two')) return '2';
+    if (clean.includes('triple') || clean.includes('three')) return '3';
+    if (clean.includes('four')) return '4';
+    if (clean.includes('five')) return '5';
+    if (clean.includes('six')) return '6';
+    return '';
+};
 
 export const AddRoomScreen = ({ navigation, route }: any) => {
     const { user } = useAuth();
@@ -95,10 +109,12 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
 
     const [formData, setFormData] = useState(initialFormState);
 
-    useEffect(() => {
-        fetchRoomTypes();
-        fetchAmenities();
-    }, []);
+    useFocusEffect(
+        useCallback(() => {
+            fetchRoomTypes();
+            fetchAmenities();
+        }, [])
+    );
 
     const fetchRoomTypes = async () => {
         try {
@@ -346,7 +362,7 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
                                 backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
                                 borderColor: errors.floor_number ? '#EF4444' : (isDark ? '#334155' : '#E8EAF6'),
                             }]}>
-                                <Building2 size={16} color={errors.floor_number ? '#EF4444' : '#94A3B8'} style={styles.inputIcon} />
+                                <Layers size={16} color={errors.floor_number ? '#EF4444' : '#94A3B8'} style={styles.inputIcon} />
                                 <TextInput
                                     style={[styles.inputText, { color: theme.textPrimary }]}
                                     placeholder="Enter floor number"
@@ -399,7 +415,7 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
                         activeOpacity={0.7}
                     >
                         <View style={styles.selectLeft}>
-                            <LayoutGrid size={16} color={errors.room_type_id ? '#EF4444' : '#7C3AED'} style={styles.inputIcon} />
+                            <BedDouble size={16} color={errors.room_type_id ? '#EF4444' : '#7C3AED'} style={styles.inputIcon} />
                             <Text style={[styles.inputText, { color: selectedRoomType ? theme.textPrimary : '#94A3B8' }]}>
                                 {selectedRoomType?.room_type_name || 'Select Room Type'}
                             </Text>
@@ -649,9 +665,15 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
                                     <TouchableOpacity
                                         style={[styles.modalOption, selected && { backgroundColor: '#F5F3FF' }]}
                                         onPress={() => {
-                                            setFormData(p => ({ ...p, room_type_id: item.room_type_id.toString() }));
+                                            const autoCap = extractCapacity(item.room_type_name);
+                                            setFormData(p => ({
+                                                ...p,
+                                                room_type_id: item.room_type_id.toString(),
+                                                capacity: autoCap || p.capacity
+                                            }));
                                             setTypeModalVisible(false);
                                             if (errors.room_type_id) setErrors(e => { const n = { ...e }; delete n.room_type_id; return n; });
+                                            if (autoCap && errors.capacity) setErrors(e => { const n = { ...e }; delete n.capacity; return n; });
                                         }}
                                         activeOpacity={0.7}
                                     >

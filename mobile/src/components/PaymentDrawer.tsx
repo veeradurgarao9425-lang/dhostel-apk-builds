@@ -110,14 +110,20 @@ export function PaymentDrawer({
                             <View style={S.infoSummary}>
                                 <View>
                                     <Text style={S.summaryName}>
-                                        {selectedFee.first_name} {selectedFee.last_name}
+                                        {selectedFee.full_name || `${selectedFee.first_name || ''} ${selectedFee.last_name || ''}`.trim() || 'Tenant'}
                                     </Text>
-                                    <Text style={S.summaryRoom}>Room {selectedFee.room_number}</Text>
+                                    <Text style={S.summaryRoom}>Room {selectedFee.room_number || selectedFee.room || 'N/A'}</Text>
                                 </View>
                                 <View style={[S.summaryAmtBox, { backgroundColor: themeColor + '15' }]}>
                                     <Text style={S.summaryAmtLabel}>DUE</Text>
                                     <Text style={[S.summaryAmt, { color: themeColor }]}>
-                                        ₹{payAmount}
+                                        ₹{(() => {
+                                            const rawDue = selectedFee.dueAmount ?? selectedFee.balance ?? selectedFee.total_due ?? selectedFee.due;
+                                            if (rawDue !== undefined && rawDue !== null) {
+                                                return parseFloat(rawDue.toString()).toLocaleString('en-IN');
+                                            }
+                                            return payAmount || '0';
+                                        })()}
                                     </Text>
                                 </View>
                             </View>

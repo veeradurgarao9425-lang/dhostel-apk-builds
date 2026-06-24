@@ -2,6 +2,7 @@ import express from 'express';
 import { authMiddleware } from '../middleware/auth.js';
 import {
   getStudents,
+  getStudentStats,
   getStudentById,
   createStudent,
   updateStudent,
@@ -15,6 +16,7 @@ const router = express.Router();
 router.use(authMiddleware);
 
 // Student routes
+router.get('/stats', getStudentStats);
 router.get('/', getStudents);
 router.get('/:studentId', getStudentById);
 router.post('/', createStudent);

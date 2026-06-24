@@ -15,6 +15,7 @@ import {
     RefreshControl,
 } from 'react-native';
 import api from '../services/api';
+import { toLocalDateStr } from '../utils/dateUtils';
 import { MonthFilter } from '../components/MonthFilter';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -35,6 +36,7 @@ import { HeaderNotification } from '../components/HeaderNotification';
 import { Header } from '../components/Header';
 import { CustomLoader } from '../components/CustomLoader';
 import { ProfileMenu } from '../components/ProfileMenu';
+import { PaymentDrawer } from '../components/PaymentDrawer';
 import { useTheme } from '../../contexts/ThemeContext';
 import { fmtINR, getInitials, avatarColor } from '../utils/formatUtils';
 
@@ -317,7 +319,7 @@ const TABS: { key: TabType; label: string; color: string }[] = [
 ];
 
 // ─── Collect Modal ────────────────────────────────────────────────────
-const CollectModal = ({
+const UnusedCollectModal = ({
     visible,
     fee,
     paymentModes,
@@ -557,6 +559,15 @@ export default function FeeCollectionScreen({ navigation, route }: any) {
     const [payLoading, setPayLoading] = useState(false);
     const [paymentModes, setPaymentModes] = useState<any[]>([]);
 
+    const [payAmount, setPayAmount] = useState('');
+    const [payNotes, setPayNotes] = useState('');
+    const [payTransactionId, setPayTransactionId] = useState('');
+    const [payDate, setPayDate] = useState(() => toLocalDateStr(new Date()));
+    const [payDueDate, setPayDueDate] = useState(() => {
+        const d = new Date(); d.setMonth(d.getMonth() + 1); return toLocalDateStr(d);
+    });
+    const [payModeId, setPayModeId] = useState('');
+
     const searchTimeout = useRef<NodeJS.Timeout | null>(null);
 
     // Debounce search input
@@ -664,15 +675,27 @@ export default function FeeCollectionScreen({ navigation, route }: any) {
         Paid: summary?.fully_paid || 0,
     };
 
-    const openCollect = (fee: any) => { setSelectedFee(fee); setPayModalVisible(true); };
+    const openCollect = (fee: any) => {
+        setSelectedFee(fee);
+        setPayAmount(fee.balance?.toString() || '');
+        const upiMode = (paymentModes || []).find((m: any) => m.payment_mode_name?.toLowerCase() === 'upi');
+        const defaultMode = upiMode ? upiMode.payment_mode_id.toString() : (paymentModes?.[0]?.payment_mode_id?.toString() || '1');
+        setPayModeId(defaultMode);
+        setPayNotes('');
+        setPayTransactionId('');
+        setPayDate(toLocalDateStr(new Date()));
+        const next = new Date(); next.setMonth(next.getMonth() + 1);
+        setPayDueDate(toLocalDateStr(next));
+        setPayModalVisible(true);
+    };
 
-    const handleConfirmPayment = async ({ amount, modeId, txnId, notes }: any) => {
-        if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+    const handleConfirmPayment = async () => {
+        if (!payAmount || isNaN(parseFloat(payAmount)) || parseFloat(payAmount) <= 0) {
             Alert.alert('Invalid Amount', 'Please enter a valid amount.'); return;
         }
-        const activeMode = (paymentModes || []).find((m: any) => m.payment_mode_id.toString() === modeId);
+        const activeMode = (paymentModes || []).find((m: any) => m.payment_mode_id.toString() === payModeId);
         const isUpiActive = activeMode?.payment_mode_name?.toLowerCase() === 'upi';
-        if (isUpiActive && !txnId?.trim()) {
+        if (isUpiActive && !payTransactionId?.trim()) {
             Alert.alert('Required Field', 'Please enter the UPI Transaction Reference ID (UTR).');
             return;
         }
@@ -681,12 +704,12 @@ export default function FeeCollectionScreen({ navigation, route }: any) {
             const payload = {
                 student_id: selectedFee.student_id,
                 hostel_id: selectedFee.hostel_id,
-                amount: parseFloat(amount),
-                payment_date: new Date().toISOString().split('T')[0],
-                due_date: selectedFee.due_date?.substring(0, 10) || new Date().toISOString().split('T')[0],
-                payment_mode_id: parseInt(modeId),
-                transaction_id: txnId || null,
-                notes,
+                amount: parseFloat(payAmount),
+                payment_date: payDate,
+                due_date: payDueDate,
+                payment_mode_id: parseInt(payModeId),
+                transaction_id: payTransactionId || null,
+                notes: payNotes || null,
                 fee_month: selectedFee.fee_month,
             };
             const res = await api.post('/monthly-fees/record-payment', payload);
@@ -855,13 +878,20 @@ export default function FeeCollectionScreen({ navigation, route }: any) {
                 }
             />
 
-            <CollectModal
+            <PaymentDrawer
                 visible={payModalVisible}
-                fee={selectedFee}
-                paymentModes={paymentModes}
                 onClose={() => setPayModalVisible(false)}
+                selectedFee={selectedFee}
+                paymentModes={paymentModes}
+                payAmount={payAmount} setPayAmount={setPayAmount}
+                payNotes={payNotes} setPayNotes={setPayNotes}
+                payTransactionId={payTransactionId} setPayTransactionId={setPayTransactionId}
+                payDate={payDate} setPayDate={setPayDate}
+                payDueDate={payDueDate} setPayDueDate={setPayDueDate}
+                payModeId={payModeId} setPayModeId={setPayModeId}
+                payLoading={payLoading}
                 onConfirm={handleConfirmPayment}
-                loading={payLoading}
+                themeColor={theme.primary}
             />
 
             <CustomLoader visible={payLoading} message="Processing Payment..." />
