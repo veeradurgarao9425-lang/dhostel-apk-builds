@@ -24,6 +24,7 @@ import {
     User, Phone, Mail, Home, MapPin,
     CreditCard, Users, Fingerprint, Check,
     ChevronDown, Camera, X, BedDouble, Calendar, Search,
+    Upload,
 } from 'lucide-react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import * as ImagePicker from 'expo-image-picker';
@@ -87,7 +88,7 @@ const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: any) => {
 };
 
 // ─── Reusable form components ─────────────────────────────────────────────────
-const FormInput = ({ label, icon: Icon, placeholder, value, onChangeText, keyboardType, multiline, error, onFocus }: any) => {
+const FormInput = ({ label, icon: Icon, placeholder, value, onChangeText, keyboardType, multiline, error, onFocus, onBlur, autoCapitalize }: any) => {
     const { theme, isDark, fontSize } = useTheme();
     return (
         <View style={styles.inputGroup}>
@@ -104,6 +105,8 @@ const FormInput = ({ label, icon: Icon, placeholder, value, onChangeText, keyboa
                     multiline={multiline}
                     numberOfLines={multiline ? 4 : 1}
                     onFocus={onFocus}
+                    onBlur={onBlur}
+                    autoCapitalize={autoCapitalize}
                 />
             </View>
             {error && <Text style={styles.errorText}>{error}</Text>}
@@ -243,97 +246,262 @@ const OptionsDrawer = ({ visible, title, data, selectedId, onSelect, onClose, ke
     );
 };
 
-// ─── Aadhaar photo capture ────────────────────────────────────────────────────
-const AadhaarCapture = ({ label, uri, onCapture, onRemove }: any) => {
+const SectionHeader = ({ number, title }: { number: number; title: string }) => {
     const { theme, isDark, fontSize } = useTheme();
-    const pick = () => {
-        Alert.alert('Add Photo', label, [
-            {
-                text: '📷 Camera', onPress: async () => {
-                    const p = await ImagePicker.requestCameraPermissionsAsync();
-                    if (!p.granted) return;
-                    const r = await ImagePicker.launchCameraAsync({ quality: 0.7 });
-                    if (!r.canceled) onCapture(r.assets[0].uri);
-                }
-            },
-            {
-                text: '🖼️ Gallery', onPress: async () => {
-                    const p = await ImagePicker.requestMediaLibraryPermissionsAsync();
-                    if (!p.granted) return;
-                    const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.7 });
-                    if (!r.canceled) onCapture(r.assets[0].uri);
-                }
-            },
-            { text: 'Cancel', style: 'cancel' },
-        ]);
-    };
     return (
-        <View style={{ flex: 1 }}>
-            <Text style={[styles.photoLabel, { fontSize: fontSize - 2, color: theme.textSecondary }]}>{label}</Text>
-            {uri ? (
-                <View style={styles.photoPreviewWrap}>
-                    <Image source={{ uri }} style={styles.photoPreview} />
-                    <TouchableOpacity style={styles.photoRemoveBtn} onPress={onRemove}><X size={13} color="#FFF" /></TouchableOpacity>
-                    <TouchableOpacity style={[styles.photoRetakeRow, { backgroundColor: isDark ? '#1E293BCC' : '#FFFFFFCC' }]} onPress={pick}>
-                        <Camera size={13} color={theme.primary} /><Text style={{ fontSize: 10, color: theme.primary, fontWeight: '700', marginLeft: 3 }}>Retake</Text>
-                    </TouchableOpacity>
-                </View>
-            ) : (
-                <TouchableOpacity
-                    style={[styles.photoCaptureBtn, { backgroundColor: isDark ? '#1E293B' : theme.lightBg, borderColor: isDark ? '#334155' : COLORS.border, borderStyle: 'dashed', borderWidth: 1.5, borderRadius: 12, height: 110, alignItems: 'center', justifyContent: 'center' }]}
-                    onPress={pick}
+        <View style={[styles.sectionHeader, { borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>
+            <View style={[styles.sectionBadge, { backgroundColor: theme.primary }]}>
+                <Text style={styles.sectionBadgeText}>{number}</Text>
+            </View>
+            <Text style={[styles.sectionHeaderText, { color: theme.textPrimary, fontSize: fontSize + 1 }]}>{title}</Text>
+        </View>
+    );
+};
+
+const ImageSourceDrawer = ({ visible, onClose, onSelectCamera, onSelectGallery, title }: any) => {
+    const { theme, isDark, fontSize } = useTheme();
+    return (
+        <ModalSheet visible={visible} onClose={onClose} maxHeight="45%">
+            <View style={styles.sheetHandle} />
+            <View style={[styles.sheetHeader, { borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                <Text style={[styles.sheetTitle, { color: theme.textPrimary, fontSize: fontSize + 1 }]}>{title || 'Choose Source'}</Text>
+                <TouchableOpacity onPress={onClose} style={[styles.doneBtn, { backgroundColor: isDark ? theme.primary + '20' : COLORS.primaryLight }]}>
+                    <Text style={[styles.doneBtnText, { color: theme.primary, fontSize }]}>Cancel</Text>
+                </TouchableOpacity>
+            </View>
+            <View style={{ padding: 24, gap: 16, flexDirection: 'row', justifyContent: 'space-around' }}>
+                <TouchableOpacity 
+                    style={[styles.sourceOptionBtn, { backgroundColor: isDark ? '#1E293B' : '#F3EEFF', borderColor: theme.primary }]}
+                    onPress={() => { onSelectCamera(); onClose(); }}
                     activeOpacity={0.75}
                 >
-                    <Camera size={26} color={theme.primary} />
-                    <Text style={[styles.photoCaptureText, { color: theme.primary, fontSize: fontSize - 2, fontWeight: '600', marginTop: 4 }]}>Tap to add</Text>
-                    <Text style={[styles.photoCaptureHint, { fontSize: fontSize - 4, color: theme.textSecondary }]}>Camera or Gallery</Text>
+                    <View style={[styles.sourceIconBg, { backgroundColor: theme.primary }]}>
+                        <Camera size={24} color="#FFF" />
+                    </View>
+                    <Text style={[styles.sourceOptionText, { color: theme.textPrimary, fontSize }]}>Use Camera</Text>
                 </TouchableOpacity>
-            )}
+
+                <TouchableOpacity 
+                    style={[styles.sourceOptionBtn, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
+                    onPress={() => { onSelectGallery(); onClose(); }}
+                    activeOpacity={0.75}
+                >
+                    <View style={[styles.sourceIconBg, { backgroundColor: isDark ? '#475569' : '#CBD5E1' }]}>
+                        <Upload size={24} color={isDark ? '#FFF' : '#475569'} />
+                    </View>
+                    <Text style={[styles.sourceOptionText, { color: theme.textPrimary, fontSize }]}>Choose Gallery</Text>
+                </TouchableOpacity>
+            </View>
+        </ModalSheet>
+    );
+};
+
+const DocumentUploadBox = ({ label, uri, onCapture, onRemove, isFront, error }: { label: string; uri: string | null; onCapture: (uri: string) => void; onRemove: () => void; isFront: boolean; error?: string }) => {
+    const { theme, isDark } = useTheme();
+    const [pickerVisible, setPickerVisible] = useState(false);
+
+    const onSelectCamera = async () => {
+        const p = await ImagePicker.requestCameraPermissionsAsync();
+        if (!p.granted) {
+            Alert.alert('Permission Required', 'Camera permission is needed to upload documents.');
+            return;
+        }
+        const r = await ImagePicker.launchCameraAsync({ quality: 0.7 });
+        if (!r.canceled) onCapture(r.assets[0].uri);
+    };
+
+    const onSelectGallery = async () => {
+        const p = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!p.granted) {
+            Alert.alert('Permission Required', 'Media library permission is needed to upload documents.');
+            return;
+        }
+        const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.7 });
+        if (!r.canceled) onCapture(r.assets[0].uri);
+    };
+
+    return (
+        <>
+            <View style={[styles.docUploadBox, { backgroundColor: isDark ? '#1E293B' : '#F9FAFB', borderColor: error ? '#EF4444' : (isDark ? '#334155' : '#E2E8F0'), borderStyle: 'dashed' }]}>
+                {uri ? (
+                    <View style={styles.docPreviewContainer}>
+                        <Image source={{ uri }} style={styles.docPreviewImage} />
+                        <TouchableOpacity style={styles.docRemoveBtn} onPress={onRemove}>
+                            <X size={14} color="#FFF" />
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.docRetakeRow, { backgroundColor: 'rgba(0,0,0,0.6)' }]} onPress={() => setPickerVisible(true)}>
+                            <Camera size={12} color="#FFF" />
+                            <Text style={{ fontSize: 10, color: '#FFF', fontWeight: '700', marginLeft: 4 }}>Retake</Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : (
+                    <View style={{ flex: 1, justifyContent: 'space-between' }}>
+                        <View style={styles.docBoxTopRow}>
+                            {/* Skeleton Card Illustration */}
+                            <View style={[styles.skeletonCard, { borderColor: error ? '#EF4444' : (isDark ? '#475569' : '#CBD5E1') }]}>
+                                {isFront ? (
+                                    <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center', height: '100%' }}>
+                                        <View style={[styles.skeletonAvatar, { backgroundColor: error ? '#EF4444' : (isDark ? '#475569' : '#CBD5E1') }]} />
+                                        <View style={{ flex: 1, gap: 3 }}>
+                                            <View style={[styles.skeletonLine, { width: '80%', backgroundColor: error ? '#EF4444' : (isDark ? '#475569' : '#CBD5E1') }]} />
+                                            <View style={[styles.skeletonLine, { width: '60%', backgroundColor: error ? '#EF4444' : (isDark ? '#475569' : '#CBD5E1') }]} />
+                                        </View>
+                                    </View>
+                                ) : (
+                                    <View style={{ justifyContent: 'center', height: '100%', gap: 3 }}>
+                                        <View style={[styles.skeletonLine, { width: '90%', backgroundColor: error ? '#EF4444' : (isDark ? '#475569' : '#CBD5E1') }]} />
+                                        <View style={[styles.skeletonLine, { width: '80%', backgroundColor: error ? '#EF4444' : (isDark ? '#475569' : '#CBD5E1') }]} />
+                                        <View style={[styles.skeletonLine, { width: '40%', backgroundColor: error ? '#EF4444' : (isDark ? '#475569' : '#CBD5E1') }]} />
+                                    </View>
+                                )}
+                            </View>
+
+                            {/* Top Right Upload Circle */}
+                            <View style={[styles.uploadCircle, { backgroundColor: error ? '#FEE2E2' : (isDark ? '#2D1B6B' : '#F3EEFF') }]}>
+                                <Upload size={14} color={error ? '#EF4444' : theme.primary} />
+                            </View>
+                        </View>
+
+                        <View style={{ marginTop: 8 }}>
+                            <Text style={[styles.docBoxTitle, { color: error ? '#EF4444' : (isDark ? '#F1F5F9' : '#1E293B') }]}>{label}</Text>
+                            <Text style={styles.docBoxSubtitle}>JPG, PNG or PDF{"\n"}Max. 5MB</Text>
+                        </View>
+
+                        <TouchableOpacity 
+                            style={[styles.docUploadBtn, { borderColor: error ? '#EF4444' : theme.primary }]}
+                            onPress={() => setPickerVisible(true)}
+                            activeOpacity={0.7}
+                        >
+                            <Upload size={12} color={error ? '#EF4444' : theme.primary} />
+                            <Text style={[styles.docUploadBtnText, { color: error ? '#EF4444' : theme.primary }]}>Upload</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+                {error && <Text style={{ color: '#EF4444', fontSize: 9, marginTop: 4, fontWeight: '600', textAlign: 'center' }}>{error}</Text>}
+            </View>
+
+            <ImageSourceDrawer 
+                visible={pickerVisible}
+                onClose={() => setPickerVisible(false)}
+                onSelectCamera={onSelectCamera}
+                onSelectGallery={onSelectGallery}
+                title={`Upload ${label}`}
+            />
+        </>
+    );
+};
+
+const IdentityUploadCard = ({ 
+    title, 
+    frontUri, 
+    backUri, 
+    onCaptureFront, 
+    onCaptureBack, 
+    onRemoveFront, 
+    onRemoveBack,
+    frontError,
+    backError
+}: any) => {
+    const { theme, isDark, fontSize } = useTheme();
+    return (
+        <View style={[styles.idUploadCard, { backgroundColor: isDark ? '#1E293B' : '#FFF', borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+            <View style={styles.idUploadHeader}>
+                <View style={[styles.idHeaderIconContainer, { backgroundColor: isDark ? '#2D1B6B' : '#F3EEFF' }]}>
+                    <Fingerprint size={20} color={theme.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={[styles.idCardTitle, { color: theme.textPrimary, fontSize }]}>{title} Card</Text>
+                        <View style={styles.requiredBadge}>
+                            <Text style={styles.requiredBadgeText}>Required</Text>
+                        </View>
+                    </View>
+                    <Text style={[styles.idCardSubtitle, { color: theme.textSecondary }]}>Upload both sides of {title} card</Text>
+                </View>
+            </View>
+
+            <View style={styles.idUploadBoxesRow}>
+                <DocumentUploadBox 
+                    label="Front Side" 
+                    uri={frontUri} 
+                    onCapture={onCaptureFront} 
+                    onRemove={onRemoveFront} 
+                    isFront={true} 
+                    error={frontError}
+                />
+                <DocumentUploadBox 
+                    label="Back Side" 
+                    uri={backUri} 
+                    onCapture={onCaptureBack} 
+                    onRemove={onRemoveBack} 
+                    isFront={false} 
+                    error={backError}
+                />
+            </View>
         </View>
     );
 };
 
 // ─── Profile avatar capture at top ───────────────────────────────────────────
-const ProfilePhotoCapture = ({ uri, onCapture, onRemove }: any) => {
+const ProfilePhotoCapture = ({ uri, onCapture, onRemove, error }: any) => {
     const { theme, isDark, fontSize } = useTheme();
-    const pick = () => {
-        Alert.alert('Profile Photo', 'Choose source', [
-            {
-                text: '📷 Camera', onPress: async () => {
-                    const p = await ImagePicker.requestCameraPermissionsAsync();
-                    if (!p.granted) return;
-                    const r = await ImagePicker.launchCameraAsync({ quality: 0.8, allowsEditing: true, aspect: [1, 1] });
-                    if (!r.canceled) onCapture(r.assets[0].uri);
-                }
-            },
-            {
-                text: '🖼️ Gallery', onPress: async () => {
-                    const p = await ImagePicker.requestMediaLibraryPermissionsAsync();
-                    if (!p.granted) return;
-                    const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, allowsEditing: true, aspect: [1, 1] });
-                    if (!r.canceled) onCapture(r.assets[0].uri);
-                }
-            },
-            { text: 'Cancel', style: 'cancel' },
-        ]);
+
+    const openCamera = async () => {
+        const p = await ImagePicker.requestCameraPermissionsAsync();
+        if (!p.granted) {
+            Alert.alert('Permission Required', 'Camera permission is needed to take a profile photo.');
+            return;
+        }
+        const r = await ImagePicker.launchCameraAsync({ quality: 0.8, allowsEditing: true, aspect: [1, 1] });
+        if (!r.canceled) onCapture(r.assets[0].uri);
     };
+
+    const openGallery = async () => {
+        const p = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!p.granted) {
+            Alert.alert('Permission Required', 'Media library permission is needed to pick a profile photo.');
+            return;
+        }
+        const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, allowsEditing: true, aspect: [1, 1] });
+        if (!r.canceled) onCapture(r.assets[0].uri);
+    };
+
     return (
-        <View style={styles.profilePhotoWrap}>
-            <TouchableOpacity onPress={pick} activeOpacity={0.85}>
+        <View style={[styles.profilePhotoCard, { backgroundColor: isDark ? '#1E293B' : '#FFF', borderColor: error ? '#EF4444' : (isDark ? '#334155' : 'transparent'), borderWidth: (isDark || error) ? 1 : 0 }]}>
+            <TouchableOpacity onPress={openCamera} activeOpacity={0.85} style={styles.profileAvatarContainer}>
                 {uri ? (
-                    <View>
-                        <Image source={{ uri }} style={[styles.profileAvatar, { borderColor: theme.primary }]} />
-                        <View style={[styles.profileEditBadge, { backgroundColor: theme.primary }]}><Camera size={14} color="#FFF" /></View>
-                        <TouchableOpacity style={styles.profileRemoveBtn} onPress={onRemove}><X size={12} color="#FFF" /></TouchableOpacity>
+                    <View style={styles.profileAvatarWrapper}>
+                        <Image source={{ uri }} style={[styles.profileAvatar, { borderColor: error ? '#EF4444' : theme.primary }]} />
+                        <View style={[styles.profileEditBadge, { backgroundColor: theme.primary }]}>
+                            <Camera size={12} color="#FFF" />
+                        </View>
+                        <TouchableOpacity style={styles.profileRemoveBtn} onPress={onRemove}>
+                            <X size={10} color="#FFF" />
+                        </TouchableOpacity>
                     </View>
                 ) : (
-                    <View style={[styles.profileAvatarPlaceholder, { backgroundColor: isDark ? '#1E293B' : theme.lightBg, borderColor: isDark ? '#334155' : COLORS.border }]}>
-                        <User size={38} color={theme.primary} />
-                        <View style={[styles.profileEditBadge, { backgroundColor: theme.primary }]}><Camera size={14} color="#FFF" /></View>
+                    <View style={[styles.profileAvatarPlaceholder, { backgroundColor: isDark ? '#2D1B6B' : '#F3EEFF', borderColor: error ? '#EF4444' : theme.primary }]}>
+                        <User size={32} color={error ? '#EF4444' : theme.primary} />
+                        <View style={[styles.profileEditBadge, { backgroundColor: theme.primary }]}>
+                            <Camera size={12} color="#FFF" />
+                        </View>
                     </View>
                 )}
             </TouchableOpacity>
-            <Text style={[styles.profilePhotoHint, { fontSize: fontSize - 2, color: theme.textSecondary }]}>{uri ? 'Tap to change photo' : 'Add profile photo'}</Text>
+            
+            <View style={styles.profileDetailsContainer}>
+                <Text style={[styles.profilePhotoTitle, { color: theme.textPrimary, fontSize: fontSize + 1 }]}>Add Profile Photo *</Text>
+                <Text style={[styles.profilePhotoSubtitle, { color: theme.textSecondary }]}>Upload a clear photo of the tenant</Text>
+                {error && <Text style={{ color: '#EF4444', fontSize: 11, fontWeight: '600', marginBottom: 8 }}>{error}</Text>}
+                <TouchableOpacity 
+                    style={[styles.profileUploadBtn, { borderColor: error ? '#EF4444' : theme.primary }]}
+                    onPress={openGallery}
+                    activeOpacity={0.7}
+                >
+                    <Upload size={14} color={error ? '#EF4444' : theme.primary} />
+                    <Text style={[styles.profileUploadBtnText, { color: error ? '#EF4444' : theme.primary }]}>{uri ? 'Change Photo' : 'Upload Photo'}</Text>
+                </TouchableOpacity>
+            </View>
         </View>
     );
 };
@@ -377,11 +545,101 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [dateMode, setDateMode] = useState<'dob' | 'admission'>('dob');
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+    const validateField = (name: string, value: any, currentIdProofId?: string) => {
+        let err = '';
+        if (name === 'first_name') {
+            if (!value || !value.trim()) err = 'First name is required';
+        } else if (name === 'date_of_birth') {
+            if (!value) err = 'Date of birth is required';
+        } else if (name === 'phone') {
+            if (!value) err = 'Mobile number is required';
+            else if (!/^[6-9]/.test(value)) err = 'Must start with 6, 7, 8, or 9';
+            else if (value.length !== 10) err = 'Must be exactly 10 digits';
+        } else if (name === 'email') {
+            if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) err = 'Invalid email format';
+        } else if (name === 'id_proof_type_id') {
+            if (!value) err = 'ID Proof type is required';
+        } else if (name === 'id_proof_number') {
+            if (!value || !value.trim()) {
+                err = 'ID Proof number is required';
+            } else {
+                const proofId = currentIdProofId !== undefined ? currentIdProofId : formData.id_proof_type_id;
+                const proofTypeName = idProofTypes.find(t => t.id.toString() === proofId)?.name || '';
+                if (proofTypeName.toLowerCase().includes('aadhar') || proofTypeName.toLowerCase().includes('aadhaar')) {
+                    if (value.length !== 12) err = 'Aadhaar must be exactly 12 digits';
+                    else if (!/^\d{12}$/.test(value)) err = 'Aadhaar must be numeric';
+                } else if (proofTypeName.toLowerCase().includes('pan')) {
+                    if (value.length !== 10) err = 'PAN must be exactly 10 characters';
+                    else if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i.test(value)) err = 'Invalid PAN format. Must be like ABCDE1234F';
+                }
+            }
+        } else if (name === 'guardian_phone') {
+            if (value) {
+                if (!/^[6-9]/.test(value)) err = 'Must start with 6, 7, 8, or 9';
+                else if (value.length !== 10) err = 'Must be exactly 10 digits';
+            }
+        } else if (name === 'admission_date') {
+            if (!value) err = 'Admission date is required';
+        } else if (name === 'permanent_address') {
+            if (!value || !value.trim()) err = 'Address is required';
+        } else if (name === 'profilePhoto') {
+            if (!value) err = 'Profile photo is required';
+        } else if (name === 'aadhaarFront') {
+            const proofId = currentIdProofId !== undefined ? currentIdProofId : formData.id_proof_type_id;
+            const proofTypeName = idProofTypes.find(t => t.id.toString() === proofId)?.name || '';
+            const isPhotoReq = proofTypeName.toLowerCase().includes('aadhar') || proofTypeName.toLowerCase().includes('aadhaar') || proofTypeName.toLowerCase().includes('pan');
+            if (isPhotoReq && !value) err = 'Front side image is required';
+        } else if (name === 'aadhaarBack') {
+            const proofId = currentIdProofId !== undefined ? currentIdProofId : formData.id_proof_type_id;
+            const proofTypeName = idProofTypes.find(t => t.id.toString() === proofId)?.name || '';
+            const isPhotoReq = proofTypeName.toLowerCase().includes('aadhar') || proofTypeName.toLowerCase().includes('aadhaar') || proofTypeName.toLowerCase().includes('pan');
+            if (isPhotoReq && !value) err = 'Back side image is required';
+        }
+
+        setErrors(prev => {
+            if (err) {
+                return { ...prev, [name]: err };
+            } else {
+                const copy = { ...prev };
+                delete copy[name];
+                return copy;
+            }
+        });
+        return err;
+    };
+
+    const getFieldError = (name: string) => {
+        const err = errors[name];
+        if (!err) return '';
+        if (name === 'profilePhoto' || name === 'aadhaarFront' || name === 'aadhaarBack') {
+            if (touched[name]) return err;
+            return '';
+        }
+        const val = formData[name as keyof typeof formData];
+        if (name === 'phone' || name === 'guardian_phone' || name === 'id_proof_number') {
+            if (val && val.length > 0) return err;
+        }
+        if (touched[name]) return err;
+        return '';
+    };
+
+    const markTouched = (name: string) => {
+        setTouched(prev => ({ ...prev, [name]: true }));
+        validateField(name, formData[name as keyof typeof formData]);
+    };
 
     const selectedRoom = availableRooms.find(r => r.room_id?.toString() === formData.room_id);
     const selectedBed = beds.find(b => b.bed_id?.toString() === formData.bed_id);
 
     const selectedIdProofName = idProofTypes.find(t => t.id.toString() === formData.id_proof_type_id)?.name || '';
+    const cleanIdLabel = (() => {
+        const lowerName = selectedIdProofName.toLowerCase();
+        if (lowerName.includes('aadhar') || lowerName.includes('aadhaar')) return 'Aadhaar';
+        if (lowerName.includes('pan')) return 'PAN';
+        return selectedIdProofName || 'ID';
+    })();
     const showIdPhotos = selectedIdProofName.toLowerCase().includes('aadhar') || selectedIdProofName.toLowerCase().includes('aadhaar') || selectedIdProofName.toLowerCase().includes('pan');
 
     useEffect(() => {
@@ -423,10 +681,11 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
 
     const fetchInitialData = async () => {
         try {
-            const [proofRes, relRes, roomsRes] = await Promise.all([
+            const [proofRes, relRes, roomsRes, hostelRes] = await Promise.all([
                 api.get('/id-proof-types'),
                 api.get('/relations'),
                 api.get(`/rooms?hostelId=${user?.hostel_id}&limit=200`),
+                user?.hostel_id ? api.get(`/hostels/${user.hostel_id}`) : Promise.resolve(null),
             ]);
             if (proofRes.data.success) setIdProofTypes(proofRes.data.data);
             if (relRes.data.success) setRelations(relRes.data.data);
@@ -457,6 +716,16 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                     }
                 }
             }
+            if (hostelRes && hostelRes.data?.success) {
+                const hostelData = hostelRes.data.data;
+                const defaultFee = hostelData?.admission_fee ? hostelData.admission_fee.toString() : '0';
+                if (!isEdit) {
+                    setFormData(p => ({
+                        ...p,
+                        admission_fee: defaultFee
+                    }));
+                }
+            }
         } catch (e) { console.error(e); }
     };
 
@@ -480,12 +749,78 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
 
     const validate = () => {
         const e: Record<string, string> = {};
-        if (!formData.first_name) e.first_name = 'First name is required';
-        if (!formData.phone) e.phone = 'Phone is required';
-        else if (!/^\d{10}$/.test(formData.phone)) e.phone = 'Must be exactly 10 digits';
-        if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) e.email = 'Invalid email format';
-        if (formData.guardian_phone && !/^\d{10}$/.test(formData.guardian_phone)) e.guardian_phone = 'Must be exactly 10 digits';
-        if (!formData.admission_date) e.admission_date = 'Admission date is required';
+        
+        // Touch all validated fields
+        const allTouched = {
+            first_name: true,
+            phone: true,
+            email: true,
+            date_of_birth: true,
+            id_proof_type_id: true,
+            id_proof_number: true,
+            guardian_phone: true,
+            admission_date: true,
+            permanent_address: true,
+            profilePhoto: true,
+            aadhaarFront: true,
+            aadhaarBack: true,
+        };
+        setTouched(allTouched);
+
+        if (!profilePhoto) {
+            e.profilePhoto = 'Profile photo is required';
+        }
+
+        if (showIdPhotos && formData.id_proof_type_id) {
+            if (!aadhaarFront) {
+                e.aadhaarFront = 'Front side image is required';
+            }
+            if (!aadhaarBack) {
+                e.aadhaarBack = 'Back side image is required';
+            }
+        }
+
+        if (!formData.first_name || !formData.first_name.trim()) {
+            e.first_name = 'First name is required';
+        }
+        if (!formData.date_of_birth) {
+            e.date_of_birth = 'Date of birth is required';
+        }
+        if (!formData.phone) {
+            e.phone = 'Mobile number is required';
+        } else {
+            if (!/^[6-9]/.test(formData.phone)) e.phone = 'Must start with 6, 7, 8, or 9';
+            else if (formData.phone.length !== 10) e.phone = 'Must be exactly 10 digits';
+        }
+        if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+            e.email = 'Invalid email format';
+        }
+        if (!formData.id_proof_type_id) {
+            e.id_proof_type_id = 'ID Proof type is required';
+        }
+        if (!formData.id_proof_number || !formData.id_proof_number.trim()) {
+            e.id_proof_number = 'ID Proof number is required';
+        } else if (formData.id_proof_type_id) {
+            const proofTypeName = idProofTypes.find(t => t.id.toString() === formData.id_proof_type_id)?.name || '';
+            if (proofTypeName.toLowerCase().includes('aadhar') || proofTypeName.toLowerCase().includes('aadhaar')) {
+                if (formData.id_proof_number.length !== 12) e.id_proof_number = 'Aadhaar must be exactly 12 digits';
+                else if (!/^\d{12}$/.test(formData.id_proof_number)) e.id_proof_number = 'Aadhaar must be numeric';
+            } else if (proofTypeName.toLowerCase().includes('pan')) {
+                if (formData.id_proof_number.length !== 10) e.id_proof_number = 'PAN must be exactly 10 characters';
+                else if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i.test(formData.id_proof_number)) e.id_proof_number = 'Invalid PAN format. Must be like ABCDE1234F';
+            }
+        }
+        if (formData.guardian_phone) {
+            if (!/^[6-9]/.test(formData.guardian_phone)) e.guardian_phone = 'Must start with 6, 7, 8, or 9';
+            else if (formData.guardian_phone.length !== 10) e.guardian_phone = 'Must be exactly 10 digits';
+        }
+        if (!formData.admission_date) {
+            e.admission_date = 'Admission date is required';
+        }
+        if (!formData.permanent_address || !formData.permanent_address.trim()) {
+            e.permanent_address = 'Address is required';
+        }
+
         setErrors(e);
         return Object.keys(e).length === 0;
     };
@@ -545,7 +880,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
 
     const handleReset = () => {
         setFormData({ first_name: '', last_name: '', gender: 'Male', phone: '', email: '', date_of_birth: '', id_proof_number: '', id_proof_type_id: '', guardian_name: '', guardian_phone: '', guardian_relation_id: '', admission_date: new Date().toISOString().split('T')[0], admission_fee: '0', admission_status: 'Paid', permanent_address: '', room_id: '', bed_id: '', floor_number: '', monthly_rent: '' });
-        setProfilePhoto(null); setAadhaarFront(null); setAadhaarBack(null); setErrors({});
+        setProfilePhoto(null); setAadhaarFront(null); setAadhaarBack(null); setErrors({}); setTouched({});
         setRoomModal(false); setBedModal(false); setGenderModal(false); setProofModal(false); setRelationModal(false); setShowDatePicker(false);
     };
 
@@ -571,72 +906,191 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
             >
 
                 {/* ── Profile Photo ── */}
-                <ProfilePhotoCapture uri={profilePhoto} onCapture={setProfilePhoto} onRemove={() => setProfilePhoto(null)} />
+                <ProfilePhotoCapture 
+                    uri={profilePhoto} 
+                    onCapture={(uri: string) => {
+                        setProfilePhoto(uri);
+                        setTouched(prev => ({ ...prev, profilePhoto: true }));
+                        validateField('profilePhoto', uri);
+                    }} 
+                    onRemove={() => {
+                        setProfilePhoto(null);
+                        setTouched(prev => ({ ...prev, profilePhoto: true }));
+                        validateField('profilePhoto', null);
+                    }} 
+                    error={getFieldError('profilePhoto')}
+                />
 
                 {/* ── Basic Info ── */}
                 <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
-                    <Text style={[styles.sectionTitle, { fontSize: fontSize + 1, color: theme.textPrimary, borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>👤 Basic Information</Text>
-                    <FormInput label="First Name *" icon={User} placeholder="e.g. Ravi" value={formData.first_name} error={errors.first_name}
-                        onChangeText={(t: string) => { up('first_name', t.replace(/[^a-zA-Z0-9\s]/g, '')); if (errors.first_name && t) setErrors(p => { const e = { ...p }; delete e.first_name; return e; }); }} />
+                    <SectionHeader number={1} title="Basic Information" />
+                    <FormInput 
+                        label="First Name *" 
+                        icon={User} 
+                        placeholder="e.g. Ravi" 
+                        value={formData.first_name} 
+                        error={getFieldError('first_name')}
+                        onBlur={() => markTouched('first_name')}
+                        onChangeText={(t: string) => { 
+                            const clean = t.replace(/[^a-zA-Z0-9\s]/g, '');
+                            up('first_name', clean); 
+                            validateField('first_name', clean);
+                        }} 
+                    />
                     <FormInput label="Last Name" icon={User} placeholder="e.g. Kumar" value={formData.last_name} onChangeText={(t: string) => up('last_name', t.replace(/[^a-zA-Z0-9\s]/g, ''))} />
                     <Selector label="Gender *" options={['Male', 'Female', 'Other']} selected={formData.gender} onSelect={(v: string) => up('gender', v)} />
-                    <SelectField label="Date of Birth" icon={Calendar} placeholder="Pick date" value={formData.date_of_birth} onPress={() => { setDateMode('dob'); setShowDatePicker(true); }} />
-                    <FormInput label="Phone *" icon={Phone} placeholder="9876543210" keyboardType="phone-pad" value={formData.phone} error={errors.phone}
-                        onChangeText={(t: string) => { const c = t.replace(/\D/g, '').slice(0, 10); up('phone', c); if (errors.phone && c.length === 10) setErrors(p => { const e = { ...p }; delete e.phone; return e; }); }} />
-                    <FormInput label="Email" icon={Mail} placeholder="tenant@email.com" keyboardType="email-address" value={formData.email} error={errors.email}
-                        onChangeText={(t: string) => up('email', t.trim())} />
+                    <SelectField 
+                        label="Date of Birth *" 
+                        icon={Calendar} 
+                        placeholder="Pick date" 
+                        value={formData.date_of_birth} 
+                        error={getFieldError('date_of_birth')}
+                        onPress={() => { 
+                            setDateMode('dob'); 
+                            setShowDatePicker(true); 
+                        }} 
+                    />
+                    <FormInput 
+                        label="Mobile Number *" 
+                        icon={Phone} 
+                        placeholder="9876543210" 
+                        keyboardType="phone-pad" 
+                        value={formData.phone} 
+                        error={getFieldError('phone')}
+                        onBlur={() => markTouched('phone')}
+                        onChangeText={(t: string) => { 
+                            const c = t.replace(/\D/g, '').slice(0, 10); 
+                            up('phone', c); 
+                            validateField('phone', c); 
+                        }} 
+                    />
+                    <FormInput 
+                        label="Email" 
+                        icon={Mail} 
+                        placeholder="tenant@email.com" 
+                        keyboardType="email-address" 
+                        value={formData.email} 
+                        error={getFieldError('email')}
+                        onBlur={() => markTouched('email')}
+                        onChangeText={(t: string) => {
+                            const clean = t.trim();
+                            up('email', clean);
+                            validateField('email', clean);
+                        }} 
+                    />
                 </View>
 
                 {/* ── Identity & Aadhaar ── */}
                 <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
-                    <Text style={[styles.sectionTitle, { fontSize: fontSize + 1, color: theme.textPrimary, borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>🪪 Identity & Documents</Text>
-                    <SelectField label="ID Proof Type" value={idProofTypes.find(t => t.id.toString() === formData.id_proof_type_id)?.name} placeholder="Select ID Type" icon={Fingerprint} onPress={() => setProofModal(true)} />
-                    <FormInput
-                        label={`${selectedIdProofName || 'ID'} Number`}
-                        icon={CreditCard}
-                        placeholder="Enter ID number"
-                        value={formData.id_proof_number}
-                        keyboardType={(selectedIdProofName.toLowerCase().includes('aadhar') || selectedIdProofName.toLowerCase().includes('aadhaar')) ? 'number-pad' : 'default'}
-                        onChangeText={(t: string) => {
-                            if (selectedIdProofName.toLowerCase().includes('aadhar') || selectedIdProofName.toLowerCase().includes('aadhaar')) {
-                                up('id_proof_number', t.replace(/\D/g, '').slice(0, 12));
-                            } else {
-                                up('id_proof_number', t);
-                            }
-                        }}
+                    <SectionHeader number={2} title="Identity & Documents" />
+                    <SelectField 
+                        label="ID Proof Type *" 
+                        value={idProofTypes.find(t => t.id.toString() === formData.id_proof_type_id)?.name} 
+                        placeholder="Select ID Type" 
+                        icon={Fingerprint} 
+                        error={getFieldError('id_proof_type_id')}
+                        onPress={() => setProofModal(true)} 
                     />
+                    {formData.id_proof_type_id ? (
+                        <FormInput
+                            label={`${cleanIdLabel} Number *`}
+                            icon={CreditCard}
+                            placeholder={(selectedIdProofName.toLowerCase().includes('aadhar') || selectedIdProofName.toLowerCase().includes('aadhaar')) 
+                                ? '12-digit Aadhaar number' 
+                                : selectedIdProofName.toLowerCase().includes('pan') 
+                                    ? '10-character PAN number' 
+                                    : 'Enter ID number'}
+                            value={formData.id_proof_number}
+                            keyboardType={(selectedIdProofName.toLowerCase().includes('aadhar') || selectedIdProofName.toLowerCase().includes('aadhaar')) ? 'number-pad' : 'default'}
+                            autoCapitalize={selectedIdProofName.toLowerCase().includes('pan') ? 'characters' : 'none'}
+                            error={getFieldError('id_proof_number')}
+                            onBlur={() => markTouched('id_proof_number')}
+                            onChangeText={(t: string) => {
+                                let clean = t;
+                                if (selectedIdProofName.toLowerCase().includes('aadhar') || selectedIdProofName.toLowerCase().includes('aadhaar')) {
+                                    clean = t.replace(/\D/g, '').slice(0, 12);
+                                } else if (selectedIdProofName.toLowerCase().includes('pan')) {
+                                    clean = t.slice(0, 10);
+                                }
+                                up('id_proof_number', clean);
+                                validateField('id_proof_number', clean);
+                            }}
+                        />
+                    ) : null}
 
-                    {showIdPhotos && (
-                        <>
-                            <Text style={[styles.photoSectionLabel, { fontSize: fontSize - 1, color: theme.textPrimary, marginTop: 10 }]}>📸 {selectedIdProofName} Photos <Text style={{ color: theme.textSecondary, fontWeight: '400', fontSize: fontSize - 3 }}>(stored locally)</Text></Text>
-                            <View style={{ gap: 14, marginTop: 8 }}>
-                                <AadhaarCapture label="Front Side" uri={aadhaarFront} onCapture={setAadhaarFront} onRemove={() => setAadhaarFront(null)} />
-                                <AadhaarCapture label="Back Side" uri={aadhaarBack} onCapture={setAadhaarBack} onRemove={() => setAadhaarBack(null)} />
-                            </View>
-                        </>
+                    {showIdPhotos && formData.id_proof_type_id && (
+                        <IdentityUploadCard
+                            title={cleanIdLabel}
+                            frontUri={aadhaarFront}
+                            backUri={aadhaarBack}
+                            onCaptureFront={(uri: string) => {
+                                setAadhaarFront(uri);
+                                setTouched(prev => ({ ...prev, aadhaarFront: true }));
+                                validateField('aadhaarFront', uri);
+                            }}
+                            onCaptureBack={(uri: string) => {
+                                setAadhaarBack(uri);
+                                setTouched(prev => ({ ...prev, aadhaarBack: true }));
+                                validateField('aadhaarBack', uri);
+                            }}
+                            onRemoveFront={() => {
+                                setAadhaarFront(null);
+                                setTouched(prev => ({ ...prev, aadhaarFront: true }));
+                                validateField('aadhaarFront', null);
+                            }}
+                            onRemoveBack={() => {
+                                setAadhaarBack(null);
+                                setTouched(prev => ({ ...prev, aadhaarBack: true }));
+                                validateField('aadhaarBack', null);
+                            }}
+                            frontError={getFieldError('aadhaarFront')}
+                            backError={getFieldError('aadhaarBack')}
+                        />
                     )}
                 </View>
 
                 {/* ── Guardian (Optional) ── */}
                 <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
-                    <Text style={[styles.sectionTitle, { fontSize: fontSize + 1, color: theme.textPrimary, borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>👨‍👩‍👦 Guardian <Text style={{ fontWeight: '400', color: theme.textSecondary, fontSize: 12 }}>(Optional)</Text></Text>
+                    <SectionHeader number={3} title="Guardian (Optional)" />
                     <SelectField label="Relation" value={relations.find(r => r.relation_id.toString() === formData.guardian_relation_id)?.relation_name} placeholder="Relation" icon={Users} onPress={() => setRelationModal(true)} />
                     <FormInput label="Guardian Name" icon={User} placeholder="Parent / Guardian" value={formData.guardian_name} onChangeText={(t: string) => up('guardian_name', t.replace(/[^a-zA-Z0-9\s]/g, ''))} />
-                    <FormInput label="Guardian Phone" icon={Phone} placeholder="9876543211" keyboardType="phone-pad" value={formData.guardian_phone} error={errors.guardian_phone}
-                        onChangeText={(t: string) => { const c = t.replace(/\D/g, '').slice(0, 10); up('guardian_phone', c); }} />
+                    <FormInput 
+                        label="Guardian Phone" 
+                        icon={Phone} 
+                        placeholder="9876543211" 
+                        keyboardType="phone-pad" 
+                        value={formData.guardian_phone} 
+                        error={getFieldError('guardian_phone')}
+                        onBlur={() => markTouched('guardian_phone')}
+                        onChangeText={(t: string) => { 
+                            const c = t.replace(/\D/g, '').slice(0, 10); 
+                            up('guardian_phone', c); 
+                            validateField('guardian_phone', c); 
+                        }} 
+                    />
                 </View>
 
                 {/* ── Admission ── */}
                 <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
-                    <Text style={[styles.sectionTitle, { fontSize: fontSize + 1, color: theme.textPrimary, borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>📋 Admission Details</Text>
-                    <SelectField label="Admission Date *" icon={Calendar} placeholder="Pick date" value={formData.admission_date} error={errors.admission_date} onPress={() => { setDateMode('admission'); setShowDatePicker(true); }} />
+                    <SectionHeader number={4} title="Admission Details" />
+                    <SelectField 
+                        label="Admission Date *" 
+                        icon={Calendar} 
+                        placeholder="Pick date" 
+                        value={formData.admission_date} 
+                        error={getFieldError('admission_date')} 
+                        onPress={() => { 
+                            setDateMode('admission'); 
+                            setShowDatePicker(true); 
+                        }} 
+                    />
                     <FormInput label="Admission Fee (₹)" icon={CreditCard} placeholder="0" keyboardType="numeric" value={formData.admission_fee} onChangeText={(t: string) => up('admission_fee', t.replace(/\D/g, ''))} />
                     <Selector label="Payment Status" options={['Paid', 'Unpaid']} selected={formData.admission_status} onSelect={(v: string) => up('admission_status', v)} />
                 </View>
 
                 {/* ── Room & Bed ── */}
                 <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
-                    <Text style={[styles.sectionTitle, { fontSize: fontSize + 1, color: theme.textPrimary, borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>🏠 Room & Bed Allocation</Text>
+                    <SectionHeader number={5} title="Room & Bed Allocation" />
                     {selectedRoom && (
                         <View style={[styles.allocationSummary, { backgroundColor: isDark ? '#1E293B' : COLORS.primaryLight, borderColor: isDark ? '#334155' : COLORS.border }]}>
                             <View style={{ flex: 1 }}>
@@ -678,14 +1132,19 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
 
                 {/* ── Address ── */}
                 <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
-                    <Text style={[styles.sectionTitle, { fontSize: fontSize + 1, color: theme.textPrimary, borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>📍 Address</Text>
+                    <SectionHeader number={6} title="Address" />
                     <FormInput
-                        label="Permanent Address"
+                        label="Permanent Address *"
                         icon={MapPin}
                         placeholder="Full home address..."
                         multiline
                         value={formData.permanent_address}
-                        onChangeText={(t: string) => up('permanent_address', t)}
+                        error={getFieldError('permanent_address')}
+                        onBlur={() => markTouched('permanent_address')}
+                        onChangeText={(t: string) => {
+                            up('permanent_address', t);
+                            validateField('permanent_address', t);
+                        }}
                         onFocus={() => {
                             setTimeout(() => {
                                 scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -726,7 +1185,29 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
 
             {/* ── Drawers ── */}
             <OptionsDrawer visible={genderModal} title="Select Gender" data={['Male', 'Female', 'Other']} selectedId={formData.gender} keyExtractor={(i: string) => i} labelExtractor={(i: string) => i} onSelect={(i: string) => up('gender', i)} onClose={() => setGenderModal(false)} />
-            <OptionsDrawer visible={proofModal} title="ID Proof Type" data={idProofTypes} selectedId={formData.id_proof_type_id} keyExtractor={(i: any) => i.id.toString()} labelExtractor={(i: any) => i.name} onSelect={(i: any) => up('id_proof_type_id', i.id.toString())} onClose={() => setProofModal(false)} />
+            <OptionsDrawer visible={proofModal} title="ID Proof Type" data={idProofTypes} selectedId={formData.id_proof_type_id} keyExtractor={(i: any) => i.id.toString()} labelExtractor={(i: any) => i.name} 
+                onSelect={(i: any) => {
+                    const newId = i.id.toString();
+                    up('id_proof_type_id', newId);
+                    setTouched(prev => ({ ...prev, id_proof_type_id: true }));
+                    validateField('id_proof_type_id', newId);
+                    validateField('id_proof_number', formData.id_proof_number, newId);
+                    
+                    const proofTypeName = i.name || '';
+                    const isPhotoReq = proofTypeName.toLowerCase().includes('aadhar') || proofTypeName.toLowerCase().includes('aadhaar') || proofTypeName.toLowerCase().includes('pan');
+                    if (isPhotoReq) {
+                        validateField('aadhaarFront', aadhaarFront, newId);
+                        validateField('aadhaarBack', aadhaarBack, newId);
+                    } else {
+                        setErrors(prev => {
+                            const copy = { ...prev };
+                            delete copy.aadhaarFront;
+                            delete copy.aadhaarBack;
+                            return copy;
+                        });
+                    }
+                }} 
+                onClose={() => setProofModal(false)} />
             <OptionsDrawer visible={relationModal} title="Relation" data={relations} selectedId={formData.guardian_relation_id} keyExtractor={(i: any) => i.relation_id.toString()} labelExtractor={(i: any) => i.relation_name} onSelect={(i: any) => up('guardian_relation_id', i.relation_id.toString())} onClose={() => setRelationModal(false)} />
 
             <RoomPickerDrawer visible={roomModal} rooms={availableRooms} selectedRoomId={formData.room_id}
@@ -738,7 +1219,19 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
 
             <DateTimePickerModal isVisible={showDatePicker} mode="date"
                 date={(() => { try { const d = dateMode === 'dob' ? (formData.date_of_birth ? new Date(formData.date_of_birth) : new Date(2000, 0, 1)) : (formData.admission_date ? new Date(formData.admission_date) : new Date()); return isNaN(d.getTime()) ? new Date() : d; } catch { return new Date(); } })()}
-                onConfirm={(d: Date) => { setShowDatePicker(false); const s = d.toISOString().split('T')[0]; dateMode === 'dob' ? up('date_of_birth', s) : up('admission_date', s); }}
+                onConfirm={(d: Date) => { 
+                    setShowDatePicker(false); 
+                    const s = d.toISOString().split('T')[0]; 
+                    if (dateMode === 'dob') {
+                        up('date_of_birth', s); 
+                        setTouched(prev => ({ ...prev, date_of_birth: true }));
+                        validateField('date_of_birth', s);
+                    } else {
+                        up('admission_date', s); 
+                        setTouched(prev => ({ ...prev, admission_date: true }));
+                        validateField('admission_date', s);
+                    }
+                }}
                 onCancel={() => setShowDatePicker(false)} />
         </KeyboardAvoidingView>
     );
@@ -1045,6 +1538,232 @@ const styles = StyleSheet.create({
     },
     selectorTabText: {
         fontWeight: '600',
+    },
+    // New Section Header styles
+    sectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingBottom: 10,
+        marginBottom: 16,
+        borderBottomWidth: 1,
+    },
+    sectionBadge: {
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 8,
+    },
+    sectionBadgeText: {
+        color: '#FFF',
+        fontWeight: 'bold',
+        fontSize: 12,
+    },
+    sectionHeaderText: {
+        fontWeight: 'bold',
+    },
+
+    // Document & Identity card upload
+    idUploadCard: {
+        borderRadius: 16,
+        padding: 16,
+        marginTop: 14,
+        borderWidth: 1,
+    },
+    idUploadHeader: {
+        flexDirection: 'row',
+        gap: 12,
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    idHeaderIconContainer: {
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    idCardTitle: {
+        fontWeight: '700',
+    },
+    requiredBadge: {
+        backgroundColor: '#DCFCE7',
+        borderRadius: 4,
+        paddingVertical: 2,
+        paddingHorizontal: 6,
+    },
+    requiredBadgeText: {
+        color: '#15803D',
+        fontSize: 10,
+        fontWeight: 'bold',
+    },
+    idCardSubtitle: {
+        fontSize: 12,
+        marginTop: 2,
+    },
+    idUploadBoxesRow: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    docUploadBox: {
+        flex: 1,
+        borderWidth: 1.5,
+        borderStyle: 'dashed',
+        borderRadius: 12,
+        padding: 12,
+        height: 165,
+    },
+    docPreviewContainer: {
+        flex: 1,
+        position: 'relative',
+        borderRadius: 8,
+        overflow: 'hidden',
+    },
+    docPreviewImage: {
+        width: '100%',
+        height: '100%',
+    },
+    docRemoveBtn: {
+        position: 'absolute',
+        top: 6,
+        right: 6,
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    docRetakeRow: {
+        position: 'absolute',
+        bottom: 6,
+        right: 6,
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderRadius: 8,
+        paddingHorizontal: 7,
+        paddingVertical: 4,
+    },
+    docBoxTopRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    skeletonCard: {
+        width: 65,
+        height: 40,
+        borderRadius: 6,
+        borderWidth: 1,
+        padding: 4,
+    },
+    skeletonAvatar: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+    },
+    skeletonLine: {
+        height: 3,
+        borderRadius: 1.5,
+    },
+    uploadCircle: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    docBoxTitle: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        marginBottom: 2,
+    },
+    docBoxSubtitle: {
+        fontSize: 9,
+        color: '#94A3B8',
+        lineHeight: 12,
+    },
+    docUploadBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 4,
+        borderWidth: 1,
+        borderRadius: 6,
+        paddingVertical: 6,
+    },
+    docUploadBtnText: {
+        fontSize: 11,
+        fontWeight: 'bold',
+    },
+
+    // Profile Photo row redesign
+    profilePhotoCard: {
+        flexDirection: 'row',
+        padding: 16,
+        borderRadius: 16,
+        gap: 16,
+        marginBottom: 14,
+    },
+    profileAvatarContainer: {
+        position: 'relative',
+    },
+    profileAvatarWrapper: {
+        position: 'relative',
+    },
+    profileDetailsContainer: {
+        flex: 1,
+        justifyContent: 'center',
+    },
+    profilePhotoTitle: {
+        fontWeight: '700',
+        marginBottom: 4,
+    },
+    profilePhotoSubtitle: {
+        fontSize: 12,
+        marginBottom: 12,
+    },
+    profileUploadBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        borderWidth: 1.5,
+        borderStyle: 'dashed',
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        alignSelf: 'flex-start',
+    },
+    profileUploadBtnText: {
+        fontWeight: '700',
+        fontSize: 13,
+    },
+    // Custom Image Source Drawer styles
+    sourceOptionBtn: {
+        flex: 1,
+        height: 120,
+        borderRadius: 16,
+        borderWidth: 1.5,
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 12,
+        padding: 16,
+        elevation: 1,
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowRadius: 5,
+        shadowOffset: { width: 0, height: 2 },
+    },
+    sourceIconBg: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    sourceOptionText: {
+        fontWeight: '700',
+        fontSize: 14,
     },
 });
 
