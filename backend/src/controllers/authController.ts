@@ -177,11 +177,11 @@ export const authController = {
     try {
       const { full_name, email, phone, password, hostel_name } = req.body;
 
-      // Validate required fields
-      if (!full_name || !password || (!email && !phone)) {
+      // Validate required fields (all are mandatory now)
+      if (!full_name || !password || !email || !phone || !hostel_name) {
         return res.status(400).json({
           success: false,
-          error: 'Full name, password, and an email or phone number are required.',
+          error: 'All fields (Full Name, Email, Mobile Number, PG Name, and Password) are mandatory.',
         });
       }
       if (String(password).length < 6) {
@@ -190,45 +190,63 @@ export const authController = {
           error: 'Password must be at least 6 characters.',
         });
       }
-      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         return res.status(400).json({ success: false, error: 'Invalid email format.' });
       }
-      if (phone && !/^[0-9+\-\s]{7,15}$/.test(phone)) {
-        return res.status(400).json({ success: false, error: 'Invalid phone number.' });
+      if (!/^[6-9]\d{9}$/.test(phone)) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Mobile number must be a valid 10-digit Indian number starting with 6, 7, 8, or 9.' 
+        });
+      }
+      if (String(hostel_name).trim().length < 3) {
+        return res.status(400).json({
+          success: false,
+          error: 'PG Name must be at least 3 characters.',
+        });
       }
 
-      // If an email was provided, it must have been verified via OTP first.
-      // (Phone-only signups skip this — email is optional.)
-      if (email) {
-        try {
-          const verified = await db('otps').where({ email, verified: 1 }).first();
-          if (!verified) {
-            return res.status(400).json({
-              success: false,
-              error: 'Please verify your email with the OTP before creating an account.',
-            });
-          }
-        } catch (e) {
-          // otps table/column missing on older DBs — don't hard-block, just proceed.
-          console.warn('OTP verification check skipped:', (e as any)?.message);
+      // Check if email OTP verified status has not expired
+      try {
+        const verified = await db('otps').where({ email, verified: 1 }).first();
+        if (!verified) {
+          return res.status(400).json({
+            success: false,
+            error: 'Please verify your email with the OTP before creating an account.',
+          });
         }
+        
+        // Expiry check (10 minutes)
+        const expiresAt = new Date(verified.expires_at).getTime();
+        const now = new Date().getTime();
+        if (expiresAt < now) {
+          return res.status(400).json({
+            success: false,
+            error: 'Verification code has expired. Please verify your email again.',
+          });
+        }
+      } catch (e) {
+        // otps table/column missing on older DBs — don't hard-block, just proceed.
+        console.warn('OTP verification check skipped:', (e as any)?.message);
       }
 
-      const resolvedEmail = email || `${phone || Date.now()}@dhostel.com`;
-      const resolvedUsername = email || phone || `user_${Date.now()}`;
+      const resolvedEmail = email;
+      const resolvedUsername = email;
 
-      // Reject duplicates by email, phone or username
-      const existingUser = await db('users')
-        .where('email', resolvedEmail)
-        .orWhere('username', resolvedUsername)
-        .orWhere(function () {
-          if (phone) this.where('phone', phone);
-        })
-        .first();
-      if (existingUser) {
+      // Reject duplicates by email or phone individually with precise errors
+      const existingEmail = await db('users').where('email', resolvedEmail).first();
+      if (existingEmail) {
         return res.status(409).json({
           success: false,
-          error: 'An account with this email or phone number already exists.',
+          error: 'An account with this email already exists.',
+        });
+      }
+
+      const existingPhone = await db('users').where('phone', phone).first();
+      if (existingPhone) {
+        return res.status(409).json({
+          success: false,
+          error: 'An account with this mobile number already exists.',
         });
       }
 
@@ -787,8 +805,10 @@ export const authController = {
         });
       }
 
-      // Check expiry
-      if (new Date(record.expires_at) < new Date()) {
+      // Check expiry timezone-independently
+      const expiresTime = new Date(record.expires_at).getTime();
+      const currentTime = new Date().getTime();
+      if (expiresTime < currentTime) {
         return res.status(400).json({
           success: false,
           error: 'Verification code has expired',
@@ -808,6 +828,41 @@ export const authController = {
       return res.status(500).json({
         success: false,
         error: 'Failed to verify OTP',
+      });
+    }
+  },
+
+  // Check if phone exists
+  async checkPhone(req: Request, res: Response) {
+    try {
+      const { phone } = req.body;
+
+      if (!phone) {
+        return res.status(400).json({
+          success: false,
+          error: 'Phone number is required',
+        });
+      }
+
+      // Check format
+      if (!/^[6-9]\d{9}$/.test(phone)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Phone number must be a valid 10-digit Indian number starting with 6, 7, 8, or 9.',
+        });
+      }
+
+      const existingUser = await db('users').where('phone', phone).first();
+
+      return res.json({
+        success: true,
+        exists: !!existingUser,
+      });
+    } catch (error: any) {
+      console.error('Check phone error:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Internal server error',
       });
     }
   },

@@ -97,34 +97,70 @@ export default function RegisterScreen({ navigation }: any) {
         }
     };
 
+    const getPasswordStrength = (pass: string) => {
+        if (!pass) return { score: 0, label: '', color: '#CBD5E1' };
+        let score = 0;
+        if (pass.length >= 6) score += 1;
+        if (pass.length >= 8) score += 1;
+        if (/[A-Z]/.test(pass)) score += 1;
+        if (/[0-9]/.test(pass)) score += 1;
+        if (/[^A-Za-z0-9]/.test(pass)) score += 1;
+
+        if (score <= 2) return { score, label: 'Weak', color: '#EF4444' };
+        if (score <= 4) return { score, label: 'Medium', color: '#F97316' };
+        return { score, label: 'Strong', color: '#22C55E' };
+    };
+
     const handleRegister = async () => {
         Keyboard.dismiss();
-        if (!fullName.trim()) return setErrorMessage('Please enter your full name');
-        if (!email.trim() && !phone.trim()) return setErrorMessage('Enter an email or phone number');
-        // Email is optional, but if one is entered it must be valid AND verified.
-        if (email.trim()) {
-            if (!EMAIL_REGEX.test(email.trim())) return setErrorMessage('Please enter a valid email');
-            if (!emailVerified) return setErrorMessage('Please verify your email, or remove it to sign up with phone only');
+        
+        // Trim inputs
+        const trimmedName = fullName.trim();
+        const trimmedEmail = email.trim();
+        const trimmedPhone = phone.trim();
+        const trimmedHostel = hostelName.trim();
+
+        if (!trimmedName) return setErrorMessage('Please enter your full name');
+        
+        if (!trimmedEmail) return setErrorMessage('Please enter your email');
+        if (!EMAIL_REGEX.test(trimmedEmail)) return setErrorMessage('Please enter a valid email address');
+        if (!emailVerified) return setErrorMessage('Please verify your email to receive OTP and continue');
+
+        if (!trimmedPhone) return setErrorMessage('Please enter your mobile number');
+        if (!/^[6-9]\d{9}$/.test(trimmedPhone)) {
+            return setErrorMessage('Please enter a valid 10-digit Indian mobile number (must start with 6, 7, 8, or 9)');
         }
+
+        if (!trimmedHostel) return setErrorMessage("Please enter your PG's name");
+        if (trimmedHostel.length < 3) return setErrorMessage("PG Name must be at least 3 characters");
+
         if (password.length < 6) return setErrorMessage('Password must be at least 6 characters');
 
         setIsLoading(true);
         setErrorMessage(null);
         try {
+            // First check if phone exists in DB
+            const { data: phoneCheck } = await api.post('/auth/check-phone', { phone: trimmedPhone });
+            if (phoneCheck?.exists) {
+                setIsLoading(false);
+                return setErrorMessage('This mobile number is already registered');
+            }
+
             const { error } = await signUp({
-                full_name: fullName.trim(),
-                email: email.trim() || undefined,
-                phone: phone.trim() || undefined,
+                full_name: trimmedName,
+                email: trimmedEmail,
+                phone: trimmedPhone,
                 password,
-                hostel_name: hostelName.trim() || undefined,
+                hostel_name: trimmedHostel,
             });
             if (!error) {
                 navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
             } else {
                 setErrorMessage(typeof error === 'string' ? error : 'Registration failed. Please try again.');
             }
-        } catch {
-            setErrorMessage('An unexpected error occurred. Please try again.');
+        } catch (err: any) {
+            const checkMsg = err.response?.data?.error || err.response?.data?.message;
+            setErrorMessage(checkMsg || 'An unexpected error occurred. Please try again.');
         } finally {
             setIsLoading(false);
         }
@@ -187,46 +223,74 @@ export default function RegisterScreen({ navigation }: any) {
                 </Field>
 
                 {/* Email + verify */}
-                <Field label="Email">
-                    <Ionicons name="mail-outline" size={18} color="#7C3AED" style={styles.icon} />
-                    <TextInput
-                        ref={emailRef}
-                        style={styles.input}
-                        placeholder="you@example.com"
-                        placeholderTextColor="#B8B8B8"
-                        autoCapitalize="none"
-                        keyboardType="email-address"
-                        editable={!emailVerified}
-                        value={email}
-                        returnKeyType="next"
-                        onSubmitEditing={() => phoneRef.current?.focus()}
-                        blurOnSubmit={false}
-                        onChangeText={(t) => {
-                            // Editing the email invalidates any prior verification
-                            setEmail(t);
-                            if (emailVerified) setEmailVerified(false);
-                            if (otpSent) setOtpSent(false);
-                            clearErr();
-                        }}
-                    />
-                    {emailVerified ? (
-                        <View style={styles.verifiedBadge}>
-                            <Ionicons name="checkmark-circle" size={16} color="#16A34A" />
-                            <Text style={styles.verifiedText}>Verified</Text>
-                        </View>
-                    ) : (
-                        <TouchableOpacity
-                            style={[styles.verifyBtn, (sendingOtp || !email.trim()) && { opacity: 0.6 }]}
-                            onPress={handleSendOtp}
-                            disabled={sendingOtp || !email.trim()}
-                            activeOpacity={0.8}
-                        >
-                            {sendingOtp
-                                ? <ActivityIndicator color="#5F2EEA" size="small" />
-                                : <Text style={styles.verifyBtnText}>{otpSent ? 'Resend' : 'Verify'}</Text>}
-                        </TouchableOpacity>
-                    )}
-                </Field>
+                <View>
+                    <Field label="Email">
+                        <Ionicons name="mail-outline" size={18} color="#7C3AED" style={styles.icon} />
+                        <TextInput
+                            ref={emailRef}
+                            style={styles.input}
+                            placeholder="you@example.com"
+                            placeholderTextColor="#B8B8B8"
+                            autoCapitalize="none"
+                            keyboardType="email-address"
+                            editable={!otpSent && !emailVerified && !sendingOtp}
+                            value={email}
+                            returnKeyType="next"
+                            onSubmitEditing={() => phoneRef.current?.focus()}
+                            blurOnSubmit={false}
+                            onChangeText={(t) => {
+                                setEmail(t);
+                                if (emailVerified) setEmailVerified(false);
+                                if (otpSent) setOtpSent(false);
+                                clearErr();
+                            }}
+                        />
+                        {emailVerified ? (
+                            <View style={styles.verifiedBadge}>
+                                <Ionicons name="checkmark-circle" size={16} color="#16A34A" />
+                                <Text style={styles.verifiedText}>Verified</Text>
+                            </View>
+                        ) : otpSent ? (
+                            <View style={styles.verifyBtnGroup}>
+                                <TouchableOpacity
+                                    style={styles.changeEmailBtn}
+                                    onPress={() => {
+                                        setOtpSent(false);
+                                        setOtp('');
+                                        clearErr();
+                                    }}
+                                    activeOpacity={0.7}
+                                >
+                                    <Text style={styles.changeEmailBtnText}>Change</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.verifyBtn, sendingOtp && { opacity: 0.6 }]}
+                                    onPress={handleSendOtp}
+                                    disabled={sendingOtp}
+                                    activeOpacity={0.8}
+                                >
+                                    {sendingOtp
+                                        ? <ActivityIndicator color="#5F2EEA" size="small" />
+                                        : <Text style={styles.verifyBtnText}>Resend</Text>}
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            <TouchableOpacity
+                                style={[styles.verifyBtn, (sendingOtp || !email.trim()) && { opacity: 0.6 }]}
+                                onPress={handleSendOtp}
+                                disabled={sendingOtp || !email.trim()}
+                                activeOpacity={0.8}
+                            >
+                                {sendingOtp
+                                    ? <ActivityIndicator color="#5F2EEA" size="small" />
+                                    : <Text style={styles.verifyBtnText}>Verify</Text>}
+                            </TouchableOpacity>
+                        )}
+                    </Field>
+                    <Text style={styles.helperText}>
+                        Please enter your correct email; you will receive a verification OTP on this email.
+                    </Text>
+                </View>
 
                 {/* OTP entry — shown only after a code has been sent and not yet verified */}
                 {otpSent && !emailVerified && (
@@ -265,12 +329,13 @@ export default function RegisterScreen({ navigation }: any) {
                         style={styles.input}
                         placeholder="10-digit mobile number"
                         placeholderTextColor="#B8B8B8"
-                        keyboardType="phone-pad"
+                        keyboardType="number-pad"
+                        maxLength={10}
                         value={phone}
                         returnKeyType="next"
                         onSubmitEditing={() => hostelRef.current?.focus()}
                         blurOnSubmit={false}
-                        onChangeText={(t) => { setPhone(t); clearErr(); }}
+                        onChangeText={(t) => { setPhone(t.replace(/[^0-9]/g, '')); clearErr(); }}
                     />
                 </Field>
 
@@ -291,26 +356,42 @@ export default function RegisterScreen({ navigation }: any) {
                 </Field>
 
                 {/* Password */}
-                <Field label="Password">
-                    <Ionicons name="lock-closed-outline" size={18} color="#7C3AED" style={styles.icon} />
-                    <TextInput
-                        ref={passwordRef}
-                        style={styles.input}
-                        placeholder="At least 6 characters"
-                        placeholderTextColor="#B8B8B8"
-                        secureTextEntry={!showPassword}
-                        value={password}
-                        returnKeyType="done"
-                        onSubmitEditing={handleRegister}
-                        onChangeText={(t) => { setPassword(t); clearErr(); }}
-                    />
-                    <TouchableOpacity
-                        onPress={() => setShowPassword(!showPassword)}
-                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    >
-                        <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color="#94A3B8" />
-                    </TouchableOpacity>
-                </Field>
+                <View>
+                    <Field label="Password">
+                        <Ionicons name="lock-closed-outline" size={18} color="#7C3AED" style={styles.icon} />
+                        <TextInput
+                            ref={passwordRef}
+                            style={styles.input}
+                            placeholder="At least 6 characters"
+                            placeholderTextColor="#B8B8B8"
+                            secureTextEntry={!showPassword}
+                            value={password}
+                            returnKeyType="done"
+                            onSubmitEditing={handleRegister}
+                            onChangeText={(t) => { setPassword(t); clearErr(); }}
+                        />
+                        <TouchableOpacity
+                            onPress={() => setShowPassword(!showPassword)}
+                            style={styles.eyeBtn}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        >
+                            <Ionicons name={showPassword ? 'eye-outline' : 'eye-off-outline'} size={20} color={showPassword ? '#7C3AED' : '#94A3B8'} />
+                        </TouchableOpacity>
+                    </Field>
+                    {password.length > 0 && (
+                        <View style={styles.strengthContainer}>
+                            <View style={styles.strengthBarBackground}>
+                                <View style={[styles.strengthBarActive, { width: `${(getPasswordStrength(password).score / 5) * 100}%`, backgroundColor: getPasswordStrength(password).color }]} />
+                            </View>
+                            <Text style={[styles.strengthText, { color: getPasswordStrength(password).color }]}>
+                                Password Strength: {getPasswordStrength(password).label}
+                            </Text>
+                        </View>
+                    )}
+                    <Text style={styles.securityNote}>
+                        🔐 Passwords are encrypted at the storage level using strong bcrypt hashing to ensure your account security.
+                    </Text>
+                </View>
 
                 <TouchableOpacity
                     style={[styles.submitBtn, isLoading && { opacity: 0.8 }]}
@@ -346,7 +427,7 @@ export default function RegisterScreen({ navigation }: any) {
 // Small labelled input wrapper to keep the form consistent
 const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
     <View style={styles.inputGroup}>
-        <Text style={styles.label}>{label}</Text>
+        <Text style={styles.label}>{label} <Text style={{ color: '#EF4444' }}>*</Text></Text>
         <View style={styles.inputContainer}>{children}</View>
     </View>
 );
@@ -447,4 +528,68 @@ const styles = StyleSheet.create({
     loginRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 22 },
     loginRowText: { fontSize: 14, color: '#64748B', fontWeight: '500' },
     loginLink: { fontSize: 14, color: '#5F2EEA', fontWeight: '800' },
+    verifyBtnGroup: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    changeEmailBtn: {
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
+        backgroundColor: '#F1F5F9',
+        borderWidth: 1,
+        borderColor: '#CBD5E1',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    changeEmailBtnText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#64748B',
+    },
+    helperText: {
+        fontSize: 11,
+        color: '#64748B',
+        marginTop: -10,
+        marginBottom: 14,
+        marginLeft: 2,
+        lineHeight: 15,
+        fontWeight: '500',
+    },
+    eyeBtn: {
+        padding: 6,
+        borderRadius: 8,
+        backgroundColor: '#F1F5F9',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    strengthContainer: {
+        marginTop: 6,
+        marginBottom: 4,
+        paddingHorizontal: 2,
+    },
+    strengthBarBackground: {
+        height: 4,
+        backgroundColor: '#E2E8F0',
+        borderRadius: 2,
+        overflow: 'hidden',
+        marginBottom: 4,
+    },
+    strengthBarActive: {
+        height: '100%',
+        borderRadius: 2,
+    },
+    strengthText: {
+        fontSize: 11,
+        fontWeight: '700',
+    },
+    securityNote: {
+        fontSize: 11,
+        color: '#64748B',
+        marginTop: 6,
+        marginLeft: 2,
+        lineHeight: 15,
+        fontWeight: '500',
+    },
 });
