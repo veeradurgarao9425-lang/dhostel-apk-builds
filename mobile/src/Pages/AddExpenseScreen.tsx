@@ -195,8 +195,8 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
             Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Amount must be greater than 0' });
             return;
         }
-        if (!formData.description || !formData.description.trim()) {
-            Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Description is mandatory' });
+        if (!formData.vendor_name || !formData.vendor_name.trim()) {
+            Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Vendor name is required' });
             return;
         }
 
@@ -335,37 +335,51 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
 
                 {/* ── Card 3: Vendor details & description ── */}
                 <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#EDE9FE', borderWidth: 1 }]}>
-                    <Text style={[styles.sectionTitle, { fontSize: fontSize + 1, color: theme.textPrimary, borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>📄 Additional Info (Optional)</Text>
-                    
+                    <Text style={[styles.sectionTitle, { fontSize: fontSize + 1, color: theme.textPrimary, borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>📄 Vendor & Notes</Text>
+
                     <FormInput
-                        label="Vendor Name"
+                        label="Vendor Name *"
                         icon={User}
-                        placeholder="e.g. Reliance Fresh"
+                        placeholder="Who did you pay? e.g. BESCOM, Reliance Fresh"
                         value={formData.vendor_name}
                         onChangeText={(text: string) => setFormData({ ...formData, vendor_name: text })}
                     />
 
                     <FormInput
-                        label="Bill Number"
+                        label="Bill / Reference Number"
                         icon={FileText}
-                        placeholder="e.g. INV-001"
+                        placeholder="e.g. INV-001 (optional)"
                         value={formData.bill_number}
                         onChangeText={(text: string) => setFormData({ ...formData, bill_number: text })}
                     />
 
-                    <FormInput
-                        label="Description *"
-                        icon={FileText}
-                        placeholder="Add details about the expense..."
-                        value={formData.description}
-                        onChangeText={(text: string) => setFormData({ ...formData, description: text })}
-                        multiline
-                        onFocus={() => {
-                            setTimeout(() => {
-                                scrollRef.current?.scrollToEnd({ animated: true });
-                            }, 200);
-                        }}
-                    />
+                    {/* Description — styled as a smooth textarea, no side icon */}
+                    <View style={styles.inputGroup}>
+                        <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }]}>Notes (optional)</Text>
+                        <TextInput
+                            style={[
+                                styles.textArea,
+                                {
+                                    color: theme.textPrimary,
+                                    backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
+                                    borderColor: isDark ? '#334155' : '#E2E8F0',
+                                    fontSize,
+                                } as any
+                            ]}
+                            placeholder="Any extra notes about this expense..."
+                            placeholderTextColor={isDark ? '#475569' : '#BBBBBB'}
+                            value={formData.description}
+                            onChangeText={(text: string) => setFormData({ ...formData, description: text })}
+                            multiline
+                            numberOfLines={4}
+                            textAlignVertical="top"
+                            onFocus={() => {
+                                setTimeout(() => {
+                                    scrollRef.current?.scrollToEnd({ animated: true });
+                                }, 200);
+                            }}
+                        />
+                    </View>
                 </View>
             </ScrollView>
 
@@ -491,7 +505,16 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     submitButtonText: { color: '#FFF', fontWeight: '700', fontSize: 15 },
-    disabledButton: { opacity: 0.7 }
+    disabledButton: { opacity: 0.7 },
+    textArea: {
+        borderWidth: 1,
+        borderRadius: 12,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        minHeight: 100,
+        fontWeight: '500',
+        lineHeight: 20,
+    }
 });
 
 export default AddExpenseScreen;

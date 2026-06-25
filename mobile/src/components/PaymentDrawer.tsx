@@ -21,6 +21,7 @@ import {
 import { X, Calendar } from 'lucide-react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { toLocalDateStr } from '../utils/dateUtils';
+import { FullScreenLoader } from './FullScreenLoader';
 
 export interface PaymentDrawerProps {
     visible: boolean;
@@ -88,7 +89,11 @@ export function PaymentDrawer({
     };
 
     return (
-        <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+        <>
+            {/* Full-screen loader — rendered outside the drawer Modal so it truly covers everything */}
+            <FullScreenLoader visible={payLoading} />
+
+            <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
             <View style={S.modalRoot}>
                 <Animated.View style={[S.modalBackdrop, { opacity: backdropOpacity }]} />
                 <View style={S.modalOverlay}>
@@ -284,6 +289,7 @@ export function PaymentDrawer({
                 date={new Date(payDueDate)}
             />
         </Modal>
+        </>
     );
 }
 

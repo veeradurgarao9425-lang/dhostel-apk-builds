@@ -13,6 +13,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { AppHeader } from '../components/AppHeader';
 import { useTranslation } from 'react-i18next';
 import { MonthFilter } from '../components/MonthFilter';
+import { useRefresh } from '../../contexts/RefreshContext';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -100,6 +101,7 @@ export default function OverviewScreen() {
     const navigation = useNavigation<any>();
     const { theme } = useTheme();
     const { t } = useTranslation();
+    const { refreshCounter } = useRefresh();
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -134,6 +136,12 @@ export default function OverviewScreen() {
     useEffect(() => {
         fetchData(false);
     }, [monthStr, fetchData]);
+
+    // ── Auto-refresh when anything is added/updated globally (expenses, income, students) ──
+    useEffect(() => {
+        if (refreshCounter === 0) return;
+        fetchData(true);
+    }, [refreshCounter]);
 
     const canGoBack = navigation.canGoBack();
 
