@@ -19,6 +19,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import api from '../services/api';
 import { AppHeader } from '../components/AppHeader';
 import { EmptyState } from '../components/ui/EmptyState';
+import * as Clipboard from 'expo-clipboard';
 
 export const HostelsScreen = () => {
     const navigation = useNavigation<any>();
@@ -29,6 +30,17 @@ export const HostelsScreen = () => {
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [switchingId, setSwitchingId] = useState<number | null>(null);
+    const [copiedHostelId, setCopiedHostelId] = useState<number | null>(null);
+
+    const handleCopyHostelCode = async (code: string, hostelId: number) => {
+        try {
+            await Clipboard.setStringAsync(code);
+            setCopiedHostelId(hostelId);
+            setTimeout(() => setCopiedHostelId(null), 2000);
+        } catch (err) {
+            console.error('Failed to copy hostel code:', err);
+        }
+    };
 
     // Hostel details are handled via navigated screen now
 
@@ -189,18 +201,20 @@ export const HostelsScreen = () => {
                                 style={[
                                     styles.premiumCard, 
                                     { 
-                                        backgroundColor: isDark ? '#1E293B' : statusBgColor, 
-                                        borderColor: isDark ? '#334155' : statusBorderColor, 
+                                        backgroundColor: theme.cardBg, 
+                                        borderColor: isDark ? '#334155' : '#E2E8F0', 
                                         borderWidth: 1,
-                                        elevation: 0, // removed shadow so it looks clean with solid borders
-                                        shadowOpacity: 0
+                                        elevation: 2,
+                                        shadowColor: '#000',
+                                        shadowOpacity: isDark ? 0.2 : 0.05,
+                                        shadowRadius: 8,
+                                        shadowOffset: { width: 0, height: 4 },
                                     }
                                 ]}
                                 onPress={() => handleViewDetails(h)}
                                 activeOpacity={0.9}
                                 disabled={isSwitching}
                             >
-                                <View style={[styles.cardAccentLine, { backgroundColor: statusColor }]} />
                                 <View style={styles.cardInner}>
                                     <View style={styles.cardHeader}>
                                         <View style={[styles.avatarBox, { backgroundColor: avatarBg }]}>
@@ -212,19 +226,49 @@ export const HostelsScreen = () => {
                                             <Text style={[styles.nameText, { color: theme.textPrimary }]} numberOfLines={1}>
                                                 {h.hostel_name}
                                             </Text>
-                                            <Text style={[styles.subDetailText, { color: theme.textSecondary }]} numberOfLines={1}>
-                                                {(() => {
-                                                    const addressParts = [h.address, h.city].filter(v => v && String(v).trim().length > 0 && String(v).trim() !== ',');
-                                                    const addressStr = addressParts.join(', ');
-                                                    return addressStr ? `${addressStr} • ${h.hostel_type || 'Co-Living'}` : (h.hostel_type || 'Co-Living');
-                                                })()}
-                                            </Text>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 3 }}>
+                                                <Ionicons name="location-outline" size={12} color={theme.textSecondary} style={{ marginRight: 3 }} />
+                                                <Text style={[styles.subDetailText, { color: theme.textSecondary }]} numberOfLines={1}>
+                                                    {(() => {
+                                                        const addressParts = [h.address, h.city].filter(v => v && String(v).trim().length > 0 && String(v).trim() !== ',');
+                                                        return addressParts.join(', ') || 'No address details';
+                                                    })()}
+                                                </Text>
+                                            </View>
                                         </View>
                                         <View style={[styles.statusBadge, { backgroundColor: isActive ? theme.success + '15' : 'rgba(148, 163, 184, 0.15)' }]}>
+                                            <View style={[styles.statusDot, { backgroundColor: isActive ? theme.success : theme.textSecondary }]} />
                                             <Text style={[styles.statusBadgeText, { color: isActive ? theme.success : theme.textSecondary }]}>
                                                 {isActive ? 'Active' : 'Inactive'}
                                             </Text>
                                         </View>
+                                    </View>
+
+                                    {/* Hostel quick specs row */}
+                                    <View style={styles.metaRow}>
+                                        <View style={[styles.metaItem, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                            <Ionicons name="business-outline" size={13} color={theme.primary} />
+                                            <Text style={[styles.metaText, { color: theme.textPrimary }]}>{h.hostel_type || 'Co-Living'}</Text>
+                                        </View>
+                                        <View style={[styles.metaItem, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                            <Ionicons name="layers-outline" size={13} color={theme.primary} />
+                                            <Text style={[styles.metaText, { color: theme.textPrimary }]}>{h.total_floors} Floors</Text>
+                                        </View>
+                                        {h.hostel_code && (
+                                            <TouchableOpacity 
+                                                onPress={(e) => {
+                                                    e.stopPropagation();
+                                                    handleCopyHostelCode(h.hostel_code, h.hostel_id);
+                                                }}
+                                                style={[styles.metaItem, { backgroundColor: copiedHostelId === h.hostel_id ? (isDark ? '#064E3B' : '#D1FAE5') : (isDark ? '#334155' : '#F1F5F9'), borderColor: copiedHostelId === h.hostel_id ? '#10B981' : 'transparent', borderWidth: 1 }]}
+                                                activeOpacity={0.7}
+                                            >
+                                                <Ionicons name={copiedHostelId === h.hostel_id ? "checkmark-circle" : "key-outline"} size={13} color={copiedHostelId === h.hostel_id ? '#10B981' : theme.primary} />
+                                                <Text style={[styles.metaText, { color: copiedHostelId === h.hostel_id ? (isDark ? '#A7F3D0' : '#064E3B') : theme.textPrimary }]}>
+                                                    {copiedHostelId === h.hostel_id ? 'Copied!' : h.hostel_code}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        )}
                                     </View>
 
                                     <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
@@ -248,7 +292,7 @@ export const HostelsScreen = () => {
                                                 }}
                                                 style={[styles.actionBtnIcon, { backgroundColor: isDark ? '#334155' : '#F8FAFC', borderColor: isDark ? '#475569' : '#E2E8F0' }]}
                                             >
-                                                <Ionicons name="bar-chart" size={14} color="#2563EB" />
+                                                <Ionicons name="bar-chart-outline" size={14} color="#2563EB" />
                                                 <Text style={[styles.actionBtnIconText, { color: theme.textSecondary }]}>Reports</Text>
                                             </TouchableOpacity>
                                         </View>
@@ -311,23 +355,13 @@ const styles = StyleSheet.create({
         fontSize: 16,
     },
     premiumCard: {
-        borderRadius: 20,
-        marginBottom: 12,
-        flexDirection: 'row',
+        borderRadius: 16,
+        marginBottom: 16,
         overflow: 'hidden',
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowRadius: 6,
-        shadowOffset: { width: 0, height: 2 },
-    },
-    cardAccentLine: {
-        width: 5,
     },
     cardInner: {
         flex: 1,
-        padding: 14,
-        gap: 12,
+        padding: 16,
     },
     cardHeader: {
         flexDirection: 'row',
@@ -359,17 +393,43 @@ const styles = StyleSheet.create({
         marginTop: 4,
     },
     statusBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
         paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: 8,
+        gap: 4,
+    },
+    statusDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
     },
     statusBadgeText: {
         fontSize: 10,
         fontWeight: '700',
     },
+    metaRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginTop: 14,
+    },
+    metaItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+    },
+    metaText: {
+        fontSize: 11,
+        fontWeight: '600',
+    },
     divider: {
         height: 1,
-        marginVertical: 10,
+        marginVertical: 14,
     },
     cardActions: {
         flexDirection: 'row',

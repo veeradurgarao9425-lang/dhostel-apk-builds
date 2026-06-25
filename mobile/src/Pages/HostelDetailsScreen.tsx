@@ -15,6 +15,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import api from '../services/api';
 import { AppHeader } from '../components/AppHeader';
+import * as Clipboard from 'expo-clipboard';
 
 export const HostelDetailsScreen = () => {
     const navigation = useNavigation<any>();
@@ -26,6 +27,17 @@ export const HostelDetailsScreen = () => {
     const [selectedHostelDetails, setSelectedHostelDetails] = useState<any>(hostel);
     const [switchingId, setSwitchingId] = useState<number | null>(null);
     const [loadingHostel, setLoadingHostel] = useState(false);
+    const [copied, setCopied] = useState(false);
+
+    const handleCopyCode = async (code: string) => {
+        try {
+            await Clipboard.setStringAsync(code);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+            console.error('Failed to copy code:', err);
+        }
+    };
 
     const getInitials = (name: string) => {
         if (!name) return 'H';
@@ -153,14 +165,28 @@ useEffect(() => {
                             <Ionicons name="key" size={16} color={theme.primary} />
                             <Text style={[styles.premiumCardHeaderTitle, { color: theme.primary }]}>Hostel Connection Code</Text>
                         </View>
-                        <View style={[styles.premiumGridItem, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9', alignItems: 'center', paddingVertical: 20 }]}>
-                            <Text style={{ color: theme.textSecondary, marginBottom: 8, textAlign: 'center' }}>
+                        <TouchableOpacity 
+                            style={[styles.premiumGridItem, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9', alignItems: 'center', paddingVertical: 20 }]}
+                            onPress={() => handleCopyCode(selectedHostelDetails.hostel_code)}
+                            activeOpacity={0.75}
+                        >
+                            <Text style={{ color: theme.textSecondary, marginBottom: 8, textAlign: 'center', fontSize: 13 }}>
                                 Share this code with your tenants so they can connect to this hostel in their app.
                             </Text>
-                            <Text style={{ fontSize: 28, fontWeight: 'bold', color: theme.textPrimary, letterSpacing: 4 }}>
-                                {selectedHostelDetails.hostel_code}
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                                <Text style={{ fontSize: 28, fontWeight: 'bold', color: copied ? '#10B981' : theme.textPrimary, letterSpacing: 4 }}>
+                                    {selectedHostelDetails.hostel_code}
+                                </Text>
+                                <Ionicons 
+                                    name={copied ? "checkmark-circle" : "copy-outline"} 
+                                    size={22} 
+                                    color={copied ? '#10B981' : theme.primary} 
+                                />
+                            </View>
+                            <Text style={{ fontSize: 11, color: copied ? '#10B981' : theme.textSecondary, marginTop: 8, fontWeight: copied ? '700' : '400' }}>
+                                {copied ? 'Code copied to clipboard!' : 'Tap code to copy and share.'}
                             </Text>
-                        </View>
+                        </TouchableOpacity>
                     </View>
                 )}
 
