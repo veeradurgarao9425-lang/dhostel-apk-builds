@@ -122,7 +122,7 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
             Toast.show({
                 type: 'error',
                 text1: 'Validation Error',
-                text2: 'Please fix the highlighted fields.',
+                text2: 'Please fill in the required fields.',
             });
             return;
         }

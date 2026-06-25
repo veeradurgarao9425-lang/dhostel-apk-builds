@@ -72,7 +72,7 @@ export default function AddGuestScreen({ navigation }: any) {
 
     const handleSave = async () => {
         if (!validate()) {
-            Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please fix the highlighted fields.' });
+            Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please fill in the required fields.' });
             return;
         }
         setLoading(true);

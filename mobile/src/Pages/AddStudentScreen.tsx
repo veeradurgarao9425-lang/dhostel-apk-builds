@@ -897,7 +897,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
             const missed = Object.keys(validationErrors)
                 .map(k => fieldLabels[k] || k)
                 .join(', ');
-            showError(`Please fix or fill: ${missed}`);
+            showError(`Please fill: ${missed}`);
             return;
         }
         setLoading(true);
