@@ -26,7 +26,6 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
         's.*',
         'h.hostel_name',
         'r.room_number',
-        'r.floor_number',
         's.admission_date as check_in_date'
       );
 
@@ -180,7 +179,6 @@ export const getStudentById = async (req: AuthRequest, res: Response) => {
         's.*',
         'h.hostel_name',
         'r.room_number',
-        'r.floor_number',
         's.admission_date as check_in_date'
       )
       .where('s.student_id', studentId)
