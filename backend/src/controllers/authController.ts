@@ -951,11 +951,7 @@ export const authController = {
 
       const tenant = await db('students')
         .select('students.*', 'rooms.room_number')
-        .leftJoin('room_allocations', function() {
-          this.on('room_allocations.student_id', '=', 'students.student_id')
-              .andOn('room_allocations.is_current', '=', db.raw('?', [true]));
-        })
-        .leftJoin('rooms', 'rooms.room_id', 'room_allocations.room_id')
+        .leftJoin('rooms', 'rooms.room_id', 'students.room_id')
         .where('students.hostel_id', hostel_id)
         .andWhere(function() {
           this.where('students.email', identifier).orWhere('students.phone', identifier);
