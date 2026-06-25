@@ -801,7 +801,7 @@ export const StudentsPage: React.FC = () => {
         : "",
       admission_status: student.admission_status || 0,  // 1=Paid, 0=Unpaid
       due_date: student.due_date || "",
-      status: student.status || 1,  // 1=Active, 0=Inactive
+      status: student.status === 0 ? 0 : 1,  // 1=Active, 0=Inactive (3=pending mobile reg → show as Active)
       room_id: student.room_id ? student.room_id.toString() : "",
       floor_number: student.floor_number ? student.floor_number.toString() : "",
       monthly_rent: student.monthly_rent ? student.monthly_rent.toString() : "",

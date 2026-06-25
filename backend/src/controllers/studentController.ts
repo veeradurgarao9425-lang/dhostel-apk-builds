@@ -569,6 +569,15 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
       updateData.monthly_rent = monthly_rent;
     }
 
+    // INVARIANT: assigning a real room always activates the tenant.
+    // A room can never belong to an inactive student, and a pending mobile
+    // registration (status = 3) is "accepted" precisely by being given a room.
+    // This guards against the owner form sending status 0 for a status-3 tenant.
+    if (room_id) {
+      updateData.status = 1;
+      updateData.inactive_date = null;
+    }
+
     // Handle room allocation changes if room_id is provided
     // BUT: Don't allow room assignment if student is being set to Inactive
     const updateFinalStatus = updateData.status !== undefined ? updateData.status : oldStatus;
@@ -868,37 +877,36 @@ export const allocateRoom = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Check if student is active (only active students count in room occupancy)
-    // status is TINYINT: 1 = Active, 0 = Inactive
-    const isStudentActive = student.status === 1 || student.status === 'Active';
+    // Was the student already counted in occupancy before this allocation?
+    // status is TINYINT: 1 = Active, 0 = Inactive (3 = pending mobile registration)
+    const wasStudentActive = student.status === 1 || student.status === 'Active';
     const oldRoomId = student.room_id;
 
     // If student had a previous room, decrement its occupied beds
-    if (oldRoomId) {
-      // Decrease old room occupied beds ONLY if student is active
-      if (isStudentActive) {
-        await db('rooms')
-          .where({ room_id: oldRoomId })
-          .decrement('occupied_beds', 1);
-      }
+    // (only if they were already counted, i.e. previously active).
+    if (oldRoomId && wasStudentActive) {
+      await db('rooms')
+        .where({ room_id: oldRoomId })
+        .decrement('occupied_beds', 1);
     }
 
-    // Update student with new room
+    // Update student with new room. Allocating a room activates the tenant —
+    // this accepts a pending (status 3) mobile registration.
     await db('students')
       .where({ student_id: studentId })
       .update({
         room_id: room_id,
         monthly_rent: room.rent_per_bed,
+        status: 1,
+        inactive_date: null,
         admission_date: new Date(), // Update admission_date when room is allocated
         updated_at: new Date()
       });
 
-    // Increase new room occupied beds ONLY if student is active
-    if (isStudentActive) {
-      await db('rooms')
-        .where({ room_id })
-        .increment('occupied_beds', 1);
-    }
+    // The tenant is now active in this room — count the bed.
+    await db('rooms')
+      .where({ room_id })
+      .increment('occupied_beds', 1);
 
     res.json({
       success: true,
