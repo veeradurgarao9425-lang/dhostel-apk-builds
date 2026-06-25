@@ -982,7 +982,29 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
     }
     otherIncome += guestIncome;
 
-    const totalIncome = feeCollection + otherIncome;
+    // ── 2c. Admission fee collection (one-time fees paid during this month) ──
+    let admissionFeeCollection = 0;
+    let admissionFeeCount = 0;
+    try {
+      let admissionFeeQuery = db('students')
+        .whereBetween('admission_date', [monthStart, monthEnd])
+        .where(function() {
+          this.where('admission_status', 1)
+            .orWhere('admission_status', 'Paid');
+        })
+        .sum('admission_fee as total')
+        .count('* as count');
+      if (hostelIds.length > 0) {
+        admissionFeeQuery = admissionFeeQuery.whereIn('hostel_id', hostelIds);
+      }
+      const admissionFeeResult = await admissionFeeQuery.first();
+      admissionFeeCollection = Number(admissionFeeResult?.total || 0);
+      admissionFeeCount = Number(admissionFeeResult?.count || 0);
+    } catch (e) {
+      admissionFeeCollection = 0;
+    }
+
+    const totalIncome = feeCollection + otherIncome + admissionFeeCollection;
 
     // ── 3. Expenses by category for the month ──
     let expenseCatQuery = db('expenses as e')
@@ -1108,7 +1130,21 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
         tWages = Number((await tWagesQ.first())?.total || 0);
       } catch (e) { tWages = 0; }
 
-      const tIncome = Number(tFee?.total || 0) + Number(tInc?.total || 0) + tGuest;
+      // Admission fees
+      let tAdmission = 0;
+      try {
+        let tAdmissionQ = db('students')
+          .whereBetween('admission_date', [tStart, tEnd])
+          .where(function() {
+            this.where('admission_status', 1)
+              .orWhere('admission_status', 'Paid');
+          })
+          .sum('admission_fee as total');
+        if (hostelIds.length > 0) tAdmissionQ = tAdmissionQ.whereIn('hostel_id', hostelIds);
+        tAdmission = Number((await tAdmissionQ.first())?.total || 0);
+      } catch (e) { tAdmission = 0; }
+
+      const tIncome = Number(tFee?.total || 0) + Number(tInc?.total || 0) + tGuest + tAdmission;
       const tExpenses = Number(tExp?.total || 0) + tWages;
 
       trend.push({
@@ -1133,6 +1169,8 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
           feeCount,
           otherIncome,
           guestIncome,
+          admissionFeeCollection,
+          admissionFeeCount,
           staffWages,
           totalIncome,
           totalExpenses,

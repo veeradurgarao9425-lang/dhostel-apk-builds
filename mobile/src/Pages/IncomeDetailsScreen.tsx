@@ -199,11 +199,13 @@ export default function IncomeDetailsScreen() {
     const rentTransactions = transactionsList.filter((t: any) => t.type === 'Rent');
     const guestTransactions = transactionsList.filter((t: any) => t.type === 'Guest');
     const otherTransactions = transactionsList.filter((t: any) => t.type === 'Other');
+    const admissionTransactions = transactionsList.filter((t: any) => t.type === 'Admission');
 
     const total = transactionsList.reduce((sum: number, t: any) => sum + t.amount, 0);
     const rentTotal = rentTransactions.reduce((sum: number, t: any) => sum + t.amount, 0);
     const guestTotal = guestTransactions.reduce((sum: number, t: any) => sum + t.amount, 0);
     const otherTotal = otherTransactions.reduce((sum: number, t: any) => sum + t.amount, 0);
+    const admissionTotal = admissionTransactions.reduce((sum: number, t: any) => sum + t.amount, 0);
 
     const totalPaymentsCount = transactionsList.length;
     const averagePayment = totalPaymentsCount > 0 ? Math.round(total / totalPaymentsCount) : 0;
@@ -384,7 +386,7 @@ export default function IncomeDetailsScreen() {
                                 <View key={i} style={s.barColumn}>
                                     {b.value > 0 && (
                                         <Text style={[s.barValueLabel, isHighest && s.barValueLabelHighest]}>
-                                            ₹{b.value >= 1000 ? `${(b.value / 1000).toFixed(0)}k` : Math.round(b.value)}
+                                            ₹{b.value >= 10000 ? `${(b.value / 1000).toFixed(1)}k` : Math.round(b.value).toLocaleString('en-IN')}
                                         </Text>
                                     )}
                                     <View style={[
@@ -509,10 +511,20 @@ export default function IncomeDetailsScreen() {
                             <Text style={s.statsLbl}>Payments</Text>
                         </View>
                         <View style={s.statsDivider} />
-                        <View style={s.statsCol}>
+                        <TouchableOpacity 
+                            style={s.statsCol}
+                            onPress={() => Alert.alert(
+                                'Average Payment',
+                                'This is the average amount collected per transaction (Total Earnings ÷ Total Payments).'
+                            )}
+                            activeOpacity={0.7}
+                        >
                             <Text style={s.statsNum}>₹{averagePayment.toLocaleString('en-IN')}</Text>
-                            <Text style={s.statsLbl}>Avg Payment</Text>
-                        </View>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                <Text style={s.statsLbl}>Avg Payment</Text>
+                                <Ionicons name="help-circle-outline" size={13} color="#64748B" />
+                            </View>
+                        </TouchableOpacity>
                     </View>
                 )}
 
@@ -521,7 +533,7 @@ export default function IncomeDetailsScreen() {
                     <View style={s.cardsWrapper}>
                         
                         {/* Rent Collections Card */}
-                        {(rentTransactions.length > 0 || (guestTransactions.length === 0 && otherTransactions.length === 0)) && (
+                        {(rentTransactions.length > 0 || (guestTransactions.length === 0 && otherTransactions.length === 0 && admissionTransactions.length === 0)) && (
                             <View style={s.flatCard}>
                                 <View style={s.cardHeaderRow}>
                                     <Text style={s.cardHeaderTitle}>
@@ -584,6 +596,41 @@ export default function IncomeDetailsScreen() {
                                                 <Text style={s.txSubText}>
                                                     {new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · {tx.subtitle}
                                                     {tx.description ? ` · ${tx.description}` : ''}
+                                                </Text>
+                                            </View>
+                                            <Text style={s.txAmountText}>₹{tx.amount.toLocaleString('en-IN')}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </View>
+                        )}
+
+                        {/* Admission Collections Card */}
+                        {admissionTransactions.length > 0 && (
+                            <View style={[s.flatCard, { marginTop: 16 }]}>
+                                <View style={s.cardHeaderRow}>
+                                    <Text style={s.cardHeaderTitle}>Admission Collections</Text>
+                                    <Text style={s.cardHeaderTotal}>₹{admissionTotal.toLocaleString('en-IN')}</Text>
+                                </View>
+                                <View style={s.cardBody}>
+                                    {admissionTransactions.map((tx: any, index: number) => (
+                                        <TouchableOpacity
+                                            key={tx.id ?? index}
+                                            style={[s.transactionRow, index === admissionTransactions.length - 1 && { borderBottomWidth: 0 }]}
+                                            onPress={() => {
+                                                if (tx.student_id) {
+                                                    navigation.navigate('TenantTransactions', { studentId: tx.student_id, studentName: tx.title });
+                                                }
+                                            }}
+                                            activeOpacity={0.7}
+                                        >
+                                            <View style={[s.avatarCircle, { backgroundColor: '#EDE9FE' }]}>
+                                                <Text style={[s.avatarText, { color: '#7C3AED' }]}>{(tx.title || 'A')[0]}</Text>
+                                            </View>
+                                            <View style={s.txDetails}>
+                                                <Text style={s.txTitleText} numberOfLines={1}>{tx.title}</Text>
+                                                <Text style={s.txSubText}>
+                                                    {new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · {tx.subtitle}
                                                 </Text>
                                             </View>
                                             <Text style={s.txAmountText}>₹{tx.amount.toLocaleString('en-IN')}</Text>

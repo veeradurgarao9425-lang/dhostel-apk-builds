@@ -88,7 +88,7 @@ export function PaymentDrawer({
     };
 
     return (
-        <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+        <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
             <View style={S.modalRoot}>
                 <Animated.View style={[S.modalBackdrop, { opacity: backdropOpacity }]} />
                 <View style={S.modalOverlay}>
@@ -295,19 +295,18 @@ const S = StyleSheet.create({
     },
     modalOverlay: {
         flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
+        justifyContent: 'flex-end',
     },
     drawerContent: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 20,
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
         width: '100%',
         maxHeight: '85%',
         paddingHorizontal: 20,
-        paddingBottom: 20,
+        paddingBottom: 40,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: { width: 0, height: -4 },
         shadowOpacity: 0.15,
         shadowRadius: 12,
         elevation: 5,

@@ -77,10 +77,49 @@ export const getAllIncome = async (req: AuthRequest, res: Response) => {
         is_guest: true,
       }));
     } catch (e) {
-      guestRows = []; // guests table may not exist on older databases
+    // ── Merge in admission fee payments from students table ──
+    let admissionFeeRows: any[] = [];
+    try {
+      let admissionQuery = db('students as s')
+        .leftJoin('hostel_master as h', 's.hostel_id', 'h.hostel_id')
+        .select(
+          's.student_id',
+          's.hostel_id',
+          'h.hostel_name',
+          's.admission_date as income_date',
+          's.admission_fee as amount',
+          's.first_name',
+          's.last_name'
+        )
+        .where('s.admission_fee', '>', 0)
+        .where(function() {
+          this.where('s.admission_status', 1)
+            .orWhere('s.admission_status', 'Paid');
+        });
+      if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && user.hostel_id) {
+        admissionQuery = admissionQuery.where('s.hostel_id', user.hostel_id);
+      }
+      if (startDate && endDate) {
+        admissionQuery = admissionQuery.whereBetween('s.admission_date', [startDate, endDate]);
+      }
+      const admissions = await admissionQuery;
+      admissionFeeRows = admissions.map((s: any) => ({
+        income_id: `admission_${s.student_id}`,
+        hostel_id: s.hostel_id,
+        hostel_name: s.hostel_name,
+        income_date: s.income_date,
+        amount: Number(s.amount),
+        source: 'Admission Fee',
+        payment_mode: 'Cash',
+        receipt_number: null,
+        description: `${s.first_name} ${s.last_name || ''}`.trim() + ' — Admission Fee',
+        is_admission: true,
+      }));
+    } catch (e) {
+      admissionFeeRows = [];
     }
 
-    const merged = [...incomes, ...guestRows].map(inc => ({
+    const merged = [...incomes, ...guestRows, ...admissionFeeRows].map(inc => ({
       ...inc,
       income_date: safeGetDateString(inc.income_date)
     })).sort((a, b) => String(b.income_date).localeCompare(String(a.income_date)));
@@ -446,6 +485,33 @@ export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
         guests = [];
     }
 
+    // 2.7 Fetch Admission payments
+    let admissionQuery = db('students as s')
+      .where('s.admission_fee', '>', 0)
+      .where(function() {
+        this.where('s.admission_status', 1)
+          .orWhere('s.admission_status', 'Paid');
+      })
+      .whereBetween('s.admission_date', [startDate, endDate]);
+
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && hostelId) {
+      admissionQuery = admissionQuery.where('s.hostel_id', hostelId);
+    }
+    if (search) {
+      const s = `%${search}%`;
+      admissionQuery = admissionQuery.where(function () {
+        this.where('s.first_name', 'like', s)
+          .orWhere('s.last_name', 'like', s);
+      });
+    }
+
+    let admissions: any[] = [];
+    try {
+        admissions = await admissionQuery.select('s.*');
+    } catch (e) {
+        admissions = [];
+    }
+
     // 3. Combine Transactions
     const transactions = [
       ...incomes.map(inc => ({
@@ -476,6 +542,16 @@ export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
         date: safeGetDateString(g.check_in_date),
         type: 'Guest',
         description: g.purpose || 'Daily Stay'
+      })),
+      ...admissions.map(a => ({
+        id: `admission_${a.student_id}`,
+        title: `${a.first_name || 'Student'} ${a.last_name || ''}`.trim(),
+        subtitle: `Admission · Cash`,
+        amount: parseFloat(a.admission_fee),
+        date: safeGetDateString(a.admission_date),
+        type: 'Admission',
+        student_id: a.student_id,
+        description: 'Admission Fee Payment'
       }))
     ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -617,6 +693,28 @@ export const getIncomeExport = async (req: AuthRequest, res: Response) => {
         guests = [];
     }
 
+    // Fetch Admission Payments
+    let admissionQuery = db('students as s')
+      .where('s.admission_fee', '>', 0)
+      .where(function() {
+        this.where('s.admission_status', 1)
+          .orWhere('s.admission_status', 'Paid');
+      });
+
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && hostelId) {
+      admissionQuery = admissionQuery.where('s.hostel_id', hostelId);
+    }
+    if (startDate && endDate) {
+      admissionQuery = admissionQuery.whereBetween('s.admission_date', [startDate, endDate]);
+    }
+
+    let admissions: any[] = [];
+    try {
+        admissions = await admissionQuery.select('s.*');
+    } catch (e) {
+        admissions = [];
+    }
+
     // Create workbook
     const workbook = new ExcelJS.Workbook();
 
@@ -661,6 +759,17 @@ export const getIncomeExport = async (req: AuthRequest, res: Response) => {
         type: 'Guest',
         mode: 'Cash',
         details: g.purpose || 'Guest Stay'
+      });
+    });
+
+    admissions.forEach(a => {
+      worksheet.addRow({
+        date: a.admission_date,
+        title: `${a.first_name || 'Student'} ${a.last_name || ''}`.trim(),
+        amount: parseFloat(a.admission_fee),
+        type: 'Admission',
+        mode: 'Cash',
+        details: 'Admission Fee Payment'
       });
     });
 

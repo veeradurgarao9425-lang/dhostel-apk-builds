@@ -261,8 +261,11 @@ export default function OverviewScreen() {
                             <Text style={[s.summaryValue, { color: '#065F46' }]}>{fmt(cm.totalIncome || 0)}</Text>
                             <View style={s.summaryDetail}>
                                 <Text style={s.summaryDetailText}>{t('overview.fees')}: {fmt(cm.feeCollection || 0)}</Text>
+                                {Number(cm.admissionFeeCollection || 0) > 0 && (
+                                    <Text style={s.summaryDetailText}>Admission: {fmt(cm.admissionFeeCollection)}</Text>
+                                )}
                                 {(cm.otherIncome || 0) > 0 && (
-                                    <Text style={s.summaryDetailText}>{t('overview.other')}: {fmt(cm.otherIncome)}</Text>
+                                    <Text style={s.summaryDetailText}>{t('overview.other')}: {fmt(Math.max(0, Number(cm.otherIncome) - Number(cm.guestIncome || 0)))}</Text>
                                 )}
                             </View>
                         </TouchableOpacity>
@@ -318,6 +321,57 @@ export default function OverviewScreen() {
                             </View>
                         </View>
                     )}
+
+                    {/* ── Income Breakdown ── */}
+                    {(() => {
+                        const rentAmt = Number(cm.feeCollection || 0);
+                        const guestAmt = Number(cm.guestIncome || 0);
+                        const admissionAmt = Number(cm.admissionFeeCollection || 0);
+                        const otherAmt = Math.max(0, Number(cm.otherIncome || 0) - guestAmt);
+                        const incomeItems = [
+                            { name: 'Rent Collection', amount: rentAmt, icon: 'card-outline', color: '#10B981', lightColor: '#D1FAE5' },
+                            { name: 'Admission Fees', amount: admissionAmt, icon: 'person-add-outline', color: '#8B5CF6', lightColor: '#EDE9FE' },
+                            { name: 'Guest Stay', amount: guestAmt, icon: 'walk-outline', color: '#06B6D4', lightColor: '#CFFAFE' },
+                            { name: 'Other Income', amount: otherAmt, icon: 'gift-outline', color: '#F59E0B', lightColor: '#FEF3C7' },
+                        ].filter(item => item.amount > 0).sort((a, b) => b.amount - a.amount);
+
+                        return (
+                            <View style={s.card}>
+                                <View style={s.cardHeader}>
+                                    <View style={s.cardHeaderLeft}>
+                                        <Ionicons name="trending-up-outline" size={18} color="#10B981" />
+                                        <Text style={s.cardTitle}>Income Breakdown</Text>
+                                    </View>
+                                    <Text style={[s.cardMeta, { color: '#10B981' }]}>{fmtFull(cm.totalIncome || 0)}</Text>
+                                </View>
+
+                                {incomeItems.length === 0 ? (
+                                    <View style={s.emptyBlock}>
+                                        <Ionicons name="receipt-outline" size={36} color="#CBD5E1" />
+                                        <Text style={s.emptyText}>No income collected this month</Text>
+                                    </View>
+                                ) : (
+                                    <View style={{ gap: 14 }}>
+                                        {incomeItems.map((item, i) => (
+                                            <View key={i}>
+                                                <View style={s.catRow}>
+                                                    <View style={s.catLeft}>
+                                                        <View style={[s.catIconBox, { backgroundColor: item.lightColor }]}>
+                                                            <Ionicons name={item.icon as any} size={15} color={item.color} />
+                                                        </View>
+                                                        <Text style={s.catName}>{item.name}</Text>
+                                                    </View>
+                                                    <View style={s.catRight}>
+                                                        <Text style={s.catAmount}>{fmtFull(item.amount)}</Text>
+                                                    </View>
+                                                </View>
+                                            </View>
+                                        ))}
+                                    </View>
+                                )}
+                            </View>
+                        );
+                    })()}
 
                     {/* ── Expense Breakdown ── */}
                     <View style={s.card}>
