@@ -192,9 +192,11 @@ export const getStudentById = async (req: AuthRequest, res: Response) => {
     }
 
     // Get payment history
-    const payments = await db('fee_payments')
-      .where({ student_id: studentId })
-      .orderBy('payment_date', 'desc')
+    const payments = await db('fee_payments as fp')
+      .leftJoin('payment_modes as pm', 'fp.payment_mode_id', 'pm.payment_mode_id')
+      .where('fp.student_id', studentId)
+      .select('fp.*', 'pm.payment_mode_name')
+      .orderBy('fp.payment_date', 'desc')
       .limit(10);
 
     // Get pending dues from monthly_fees

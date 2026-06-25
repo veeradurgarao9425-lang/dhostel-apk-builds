@@ -11,48 +11,154 @@ import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { queryClient } from './src/lib/queryClient';
 
 import './src/i18n';
-import { ThemeProvider } from './contexts/ThemeContext';
+import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { RefreshProvider } from './contexts/RefreshContext';
 import { ConfirmationProvider } from './contexts/ConfirmationContext';
 
-const toastConfig = {
-  success: (props: any) => (
-    <BaseToast
-      {...props}
-      style={{ borderLeftColor: '#10B981', borderLeftWidth: 6, backgroundColor: '#064E3B', height: 75, width: '92%', borderRadius: 12 }}
-      contentContainerStyle={{ paddingHorizontal: 16 }}
-      text1Style={{
-        fontSize: 16,
-        fontWeight: '800',
-        color: '#FFFFFF'
-      }}
-      text2Style={{
-        fontSize: 13,
-        fontWeight: '600',
-        color: '#D1FAE5'
-      }}
-      text2NumberOfLines={2}
-    />
-  ),
-  error: (props: any) => (
-    <ErrorToast
-      {...props}
-      style={{ borderLeftColor: '#EF4444', borderLeftWidth: 6, backgroundColor: '#7F1D1D', minHeight: 75, height: 'auto', width: '92%', borderRadius: 12, paddingVertical: 10 }}
-      contentContainerStyle={{ paddingHorizontal: 16 }}
-      text1Style={{
-        fontSize: 16,
-        fontWeight: '800',
-        color: '#FFFFFF'
-      }}
-      text2Style={{
-        fontSize: 13,
-        fontWeight: '600',
-        color: '#FEE2E2'
-      }}
-      text2NumberOfLines={3}
-    />
-  )
+const ThemedToast = () => {
+  const { theme, isDark } = useTheme();
+
+  const toastConfig = {
+    success: (props: any) => (
+      <BaseToast
+        {...props}
+        style={{
+          borderLeftColor: theme.success,
+          borderLeftWidth: 6,
+          backgroundColor: theme.cardBg,
+          minHeight: 75,
+          height: 'auto',
+          width: '92%',
+          borderRadius: 12,
+          paddingVertical: 10,
+          borderWidth: isDark ? 1 : 0,
+          borderColor: isDark ? '#334155' : '#E2E8F0',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
+          elevation: 4
+        }}
+        contentContainerStyle={{ paddingHorizontal: 16 }}
+        text1Style={{
+          fontSize: 15,
+          fontWeight: '700',
+          color: theme.textPrimary
+        }}
+        text2Style={{
+          fontSize: 12,
+          fontWeight: '500',
+          color: theme.textSecondary
+        }}
+        text2NumberOfLines={3}
+      />
+    ),
+    error: (props: any) => (
+      <ErrorToast
+        {...props}
+        style={{
+          borderLeftColor: theme.error,
+          borderLeftWidth: 6,
+          backgroundColor: theme.cardBg,
+          minHeight: 75,
+          height: 'auto',
+          width: '92%',
+          borderRadius: 12,
+          paddingVertical: 10,
+          borderWidth: isDark ? 1 : 0,
+          borderColor: isDark ? '#334155' : '#E2E8F0',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
+          elevation: 4
+        }}
+        contentContainerStyle={{ paddingHorizontal: 16 }}
+        text1Style={{
+          fontSize: 15,
+          fontWeight: '700',
+          color: theme.textPrimary
+        }}
+        text2Style={{
+          fontSize: 12,
+          fontWeight: '500',
+          color: theme.textSecondary
+        }}
+        text2NumberOfLines={3}
+      />
+    ),
+    warning: (props: any) => (
+      <BaseToast
+        {...props}
+        style={{
+          borderLeftColor: theme.warning || '#F59E0B',
+          borderLeftWidth: 6,
+          backgroundColor: theme.cardBg,
+          minHeight: 75,
+          height: 'auto',
+          width: '92%',
+          borderRadius: 12,
+          paddingVertical: 10,
+          borderWidth: isDark ? 1 : 0,
+          borderColor: isDark ? '#334155' : '#E2E8F0',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
+          elevation: 4
+        }}
+        contentContainerStyle={{ paddingHorizontal: 16 }}
+        text1Style={{
+          fontSize: 15,
+          fontWeight: '700',
+          color: theme.textPrimary
+        }}
+        text2Style={{
+          fontSize: 12,
+          fontWeight: '500',
+          color: theme.textSecondary
+        }}
+        text2NumberOfLines={3}
+      />
+    ),
+    info: (props: any) => (
+      <BaseToast
+        {...props}
+        style={{
+          borderLeftColor: theme.primary,
+          borderLeftWidth: 6,
+          backgroundColor: theme.cardBg,
+          minHeight: 75,
+          height: 'auto',
+          width: '92%',
+          borderRadius: 12,
+          paddingVertical: 10,
+          borderWidth: isDark ? 1 : 0,
+          borderColor: isDark ? '#334155' : '#E2E8F0',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
+          elevation: 4
+        }}
+        contentContainerStyle={{ paddingHorizontal: 16 }}
+        text1Style={{
+          fontSize: 15,
+          fontWeight: '700',
+          color: theme.textPrimary
+        }}
+        text2Style={{
+          fontSize: 12,
+          fontWeight: '500',
+          color: theme.textSecondary
+        }}
+        text2NumberOfLines={3}
+      />
+    )
+  };
+
+  return <Toast config={toastConfig} />;
 };
 
 export default function App() {
@@ -81,7 +187,7 @@ export default function App() {
                   />
                 </OfflineFallback>
                 {showChatbot && <HostelChatbot />}
-                <Toast config={toastConfig} />
+                <ThemedToast />
               </SafeAreaProvider>
             </ToastProvider>
             </ConfirmationProvider>
