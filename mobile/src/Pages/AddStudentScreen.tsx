@@ -24,7 +24,7 @@ import {
     User, Phone, Mail, Home, MapPin,
     CreditCard, Users, Fingerprint, Check,
     ChevronDown, Camera, X, BedDouble, Calendar, Search,
-    Upload, AlertTriangle, Info,
+    Upload, AlertTriangle, Info, Plus
 } from 'lucide-react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import * as ImagePicker from 'expo-image-picker';
@@ -1286,6 +1286,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
             <OptionsDrawer visible={relationModal} title="Relation" data={relations} selectedId={formData.guardian_relation_id} keyExtractor={(i: any) => i.relation_id.toString()} labelExtractor={(i: any) => i.relation_name} onSelect={(i: any) => up('guardian_relation_id', i.relation_id.toString())} onClose={() => setRelationModal(false)} />
 
             <RoomPickerDrawer visible={roomModal} rooms={availableRooms} selectedRoomId={formData.room_id}
+                navigation={navigation}
                 onSelectRoom={(room: any) => { up('room_id', room.room_id.toString()); up('floor_number', room.floor_number?.toString() || ''); up('monthly_rent', room.rent_per_bed?.toString() || room.base_rent?.toString() || formData.monthly_rent); up('bed_id', ''); setBeds([]); fetchBeds(room.room_id.toString()); }}
                 onClose={() => setRoomModal(false)} />
 
@@ -1323,7 +1324,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
 };
 
 // ── Floor-grouped room picker ────────────────────────────────────────────────
-const RoomPickerDrawer = ({ visible, rooms, selectedRoomId, onSelectRoom, onClose }: any) => {
+const RoomPickerDrawer = ({ visible, rooms, selectedRoomId, onSelectRoom, onClose, navigation }: any) => {
     const { theme, isDark, fontSize } = useTheme();
     const [search, setSearch] = useState('');
     const [selectedFloor, setSelectedFloor] = useState('All');
@@ -1412,7 +1413,31 @@ const RoomPickerDrawer = ({ visible, rooms, selectedRoomId, onSelectRoom, onClos
                 </View>
             )}
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 150, paddingHorizontal: 16 }}>
-                {grouped.length === 0 && <View style={{ padding: 40, alignItems: 'center' }}><Text style={{ color: theme.textSecondary }}>No rooms found</Text></View>}
+                {grouped.length === 0 && (
+                    <View style={{ padding: 40, alignItems: 'center', gap: 14 }}>
+                        <Text style={{ color: theme.textSecondary, textAlign: 'center', fontSize: fontSize }}>No rooms available in this hostel.</Text>
+                        <TouchableOpacity
+                            style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                gap: 6,
+                                backgroundColor: theme.primary,
+                                paddingVertical: 10,
+                                paddingHorizontal: 18,
+                                borderRadius: 12,
+                                marginTop: 8,
+                            }}
+                            onPress={() => {
+                                onClose();
+                                navigation.navigate('AddRoom');
+                            }}
+                            activeOpacity={0.8}
+                        >
+                            <Plus size={16} color="#FFF" />
+                            <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 13 }}>Add Room</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
                 {grouped.map(({ floor, rooms: fr }) => (
                     <View key={floor}>
                         <View style={[styles.floorChip, { backgroundColor: isDark ? '#334155' : '#EDE9FE' }]}>
