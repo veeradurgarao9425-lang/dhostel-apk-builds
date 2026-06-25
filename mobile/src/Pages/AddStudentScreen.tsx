@@ -874,11 +874,32 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
         }
 
         setErrors(e);
-        return Object.keys(e).length === 0;
+        return e;
     };
 
     const handleSave = async () => {
-        if (!validate()) { showError('Please fix the highlighted fields.'); return; }
+        const validationErrors = validate();
+        if (Object.keys(validationErrors).length > 0) {
+            const fieldLabels: Record<string, string> = {
+                profilePhoto: 'Profile Photo',
+                first_name: 'First Name',
+                date_of_birth: 'Date of Birth',
+                phone: 'Mobile Number',
+                id_proof_type_id: 'ID Proof Type',
+                id_proof_number: 'ID Proof Number',
+                admission_date: 'Admission Date',
+                permanent_address: 'Permanent Address',
+                aadhaarFront: 'ID Front Image',
+                aadhaarBack: 'ID Back Image',
+                email: 'Email',
+                guardian_phone: 'Guardian Phone',
+            };
+            const missed = Object.keys(validationErrors)
+                .map(k => fieldLabels[k] || k)
+                .join(', ');
+            showError(`Please fix or fill: ${missed}`);
+            return;
+        }
         setLoading(true);
         try {
             const payload = {
@@ -1212,7 +1233,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
             </ScrollView>
 
             {/* ─── Sticky Footer ───────────────────────────────────────────────────── */}
-            <View style={[styles.stickyFooter, { backgroundColor: theme.cardBg, borderTopColor: isDark ? '#334155' : '#F1F5F9', paddingBottom: Math.max(insets.bottom, 16) }]}>
+            <View style={[styles.stickyFooter, { backgroundColor: theme.cardBg, borderTopColor: isDark ? '#334155' : '#F1F5F9', paddingBottom: Math.max(insets.bottom, 28) }]}>
                 <TouchableOpacity
                     style={[styles.cancelButton, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#CBD5E1' }]}
                     onPress={handleReset}
