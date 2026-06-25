@@ -197,7 +197,7 @@ export default function MoreScreen() {
     const fetchHostels = async () => {
         try {
             setLoadingHostels(true);
-            const res = await api.get('/hostels');
+            const res = await api.get('/hostels?my_hostels=true');
             if (res.data?.success) {
                 setHostels(res.data.data || []);
             }
@@ -507,12 +507,7 @@ export default function MoreScreen() {
                                                 isActive && s.hostelItemActive,
                                                 isActive ? {
                                                     borderColor: theme.primary,
-                                                    backgroundColor: isDark ? 'rgba(124, 58, 237, 0.15)' : 'rgba(124, 58, 237, 0.08)',
-                                                    shadowColor: theme.primary,
-                                                    shadowOffset: { width: 0, height: 4 },
-                                                    shadowOpacity: 0.15,
-                                                    shadowRadius: 8,
-                                                    elevation: 4,
+                                                    backgroundColor: isDark ? 'rgba(124, 58, 237, 0.2)' : theme.lightBg,
                                                 } : {
                                                     borderColor: isDark ? '#334155' : '#E2E8F0',
                                                     backgroundColor: isDark ? '#1E293B' : '#FFFFFF',

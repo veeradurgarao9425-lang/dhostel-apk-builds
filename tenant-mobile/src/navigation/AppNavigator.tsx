@@ -1,32 +1,51 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Home, CreditCard, MessageSquare, Info } from 'lucide-react-native';
+import BottomTabNavigator from '../components/BottomTabNavigator';
 
 import { useAuth } from '../context/AuthContext';
 import { navigationRef } from './navigationRef';
+import { colors } from '../theme';
 
-// Screens
+// Auth / onboarding
 import { HostelKeyScreen } from '../Pages/HostelKeyScreen';
 import LoginScreen from '../Pages/LoginScreen';
 import OTPScreen from '../Pages/OTPScreen';
+import RegistrationScreen from '../Pages/RegistrationScreen';
+
+// Main tabs
 import HomeScreen from '../Pages/HomeScreen';
 import DuesScreen from '../Pages/DuesScreen';
+import ExpensesScreen from '../Pages/ExpensesScreen';
+import NoticesScreen from '../Pages/NoticesScreen';
 import MessagesScreen from '../Pages/MessagesScreen';
+
+// Stack screens (navigated to from tabs / quick actions)
 import RoomInfoScreen from '../Pages/RoomInfoScreen';
+import ComplaintsScreen from '../Pages/ComplaintsScreen';
+import DocumentsScreen from '../Pages/DocumentsScreen';
+import SplitsScreen from '../Pages/SplitsScreen';
+import NotificationsScreen from '../Pages/NotificationsScreen';
+import ProfileScreen from '../Pages/ProfileScreen';
 import PaymentScreen from '../Pages/PaymentScreen';
+import MoreScreen from '../Pages/MoreScreen';
+import ServicesScreen from '../Pages/ServicesScreen';
+import FullMenuScreen from '../Pages/FullMenuScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
+
+const navTheme = {
+  ...DefaultTheme,
+  colors: { ...DefaultTheme.colors, background: colors.bg },
+};
 
 const ConnectStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="HostelKey" component={HostelKeyScreen} />
   </Stack.Navigator>
 );
-
-import RegistrationScreen from '../Pages/RegistrationScreen';
 
 const AuthStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -36,25 +55,16 @@ const AuthStack = () => (
   </Stack.Navigator>
 );
 
+/** Bottom tab bar — 5 tabs matching Figma design */
 const MainTabs = () => (
   <Tab.Navigator
-    screenOptions={({ route }) => ({
-      headerShown: true,
-      tabBarIcon: ({ color, size }) => {
-        if (route.name === 'Home') return <Home color={color} size={size} />;
-        if (route.name === 'Dues') return <CreditCard color={color} size={size} />;
-        if (route.name === 'Messages') return <MessageSquare color={color} size={size} />;
-        if (route.name === 'RoomInfo') return <Info color={color} size={size} />;
-        return null;
-      },
-      tabBarActiveTintColor: '#6B5B95',
-      tabBarInactiveTintColor: 'gray',
-    })}
+    tabBar={(props) => <BottomTabNavigator {...props} />}
+    screenOptions={{ headerShown: false }}
   >
-    <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Dashboard' }} />
-    <Tab.Screen name="Dues" component={DuesScreen} options={{ title: 'Dues' }} />
-    <Tab.Screen name="Messages" component={MessagesScreen} options={{ title: 'Messages' }} />
-    <Tab.Screen name="RoomInfo" component={RoomInfoScreen} options={{ title: 'Room Info' }} />
+    <Tab.Screen name="Home" component={HomeScreen} />
+    <Tab.Screen name="Dues" component={DuesScreen} />
+    <Tab.Screen name="Expenses" component={ExpensesScreen} />
+    <Tab.Screen name="Notices" component={NoticesScreen} />
   </Tab.Navigator>
 );
 
@@ -62,16 +72,27 @@ export default function AppNavigator() {
   const { user, connectedHostel, loading } = useAuth();
 
   if (loading) {
-    return null; // Or a splash screen
+    return null;
   }
 
   return (
-    <NavigationContainer ref={navigationRef}>
+    <NavigationContainer ref={navigationRef} theme={navTheme}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
           <>
             <Stack.Screen name="Main" component={MainTabs} />
+            {/* Stack screens accessible from any tab */}
+            <Stack.Screen name="RoomInfo" component={RoomInfoScreen} />
+            <Stack.Screen name="Complaints" component={ComplaintsScreen} />
+            <Stack.Screen name="Documents" component={DocumentsScreen} />
+            <Stack.Screen name="Splits" component={SplitsScreen} />
+            <Stack.Screen name="Notifications" component={NotificationsScreen} />
+            <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen name="Messages" component={MessagesScreen} />
             <Stack.Screen name="Payments" component={PaymentScreen} />
+            <Stack.Screen name="More" component={MoreScreen} />
+            <Stack.Screen name="Services" component={ServicesScreen} />
+            <Stack.Screen name="FullMenu" component={FullMenuScreen} />
           </>
         ) : connectedHostel ? (
           <Stack.Screen name="Auth" component={AuthStack} />

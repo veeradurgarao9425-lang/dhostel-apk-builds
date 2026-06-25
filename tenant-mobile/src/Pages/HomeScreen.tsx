@@ -1,43 +1,140 @@
 import React, { useCallback, useState } from 'react';
 import {
-  View,
-  Text,
   StyleSheet,
+  Text,
   TouchableOpacity,
+  View,
   ScrollView,
   RefreshControl,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
-import { useAuth } from '../context/AuthContext';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
+import {
+  Bell,
+  ChevronRight,
+  Wrench,
+  BedDouble,
+  FileText,
+  Coffee,
+  Soup,
+  Moon,
+  Clock,
+  Megaphone,
+  MessageCircle,
+  AlertCircle,
+} from 'lucide-react-native';
 
-const DetailRow = ({ label, value }: { label: string; value?: string | null }) => (
-  <View style={styles.detailRow}>
-    <Text style={styles.detailLabel}>{label}</Text>
-    <Text style={styles.detailValue}>{value || '—'}</Text>
-  </View>
-);
+import { useAuth } from '../context/AuthContext';
+import { colors, radius, spacing, font, shadow } from '../theme';
+import { formatCurrency } from '../utils/format';
+import { todayMenu, sampleNotifications, sampleNotices } from '../data/tenantContent';
 
-const formatCurrency = (value?: number | null) =>
-  `₹${Number(value || 0).toLocaleString('en-IN')}`;
-
-const formatDate = (value?: string | null) => {
-  if (!value) return null;
-  const d = new Date(value);
-  if (isNaN(d.getTime())) return value;
-  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+// ── Time-based greeting ───────────────────────────────────────────────────────
+const greeting = () => {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good Morning';
+  if (h < 17) return 'Good Afternoon';
+  return 'Good Evening';
 };
 
+const greetingEmoji = () => {
+  const h = new Date().getHours();
+  if (h < 12) return '☀️';
+  if (h < 17) return '👋';
+  return '🌙';
+};
+
+// ── Meal slot config ──────────────────────────────────────────────────────────
+const mealConfig = {
+  Breakfast: { icon: Coffee, color: '#F59E0B', bg: '#FEF3C7', emoji: '☕', time: '7:30–9:30 AM' },
+  Lunch:     { icon: Soup,   color: '#22C55E', bg: '#DCFCE7', emoji: '🍛', time: '12:30–2:30 PM' },
+  Dinner:    { icon: Moon,   color: '#5B4CF0', bg: '#EEF2FF', emoji: '🌙', time: '7:30–9:30 PM' },
+};
+
+// ── Meal Section ────────────────────────────────────────────────────────────────
+function MealSection({ meal, items, time, isLast }: { meal: string; items: string; time: string; isLast: boolean }) {
+  const cfg = mealConfig[meal as keyof typeof mealConfig] || mealConfig.Breakfast;
+  const Icon = cfg.icon;
+  const itemArray = items.split(',').map(s => s.trim());
+
+  return (
+    <View style={[mealStyles.section, !isLast && mealStyles.sectionDivider]}>
+      <View style={mealStyles.sectionHeader}>
+        <View style={mealStyles.headerLeft}>
+          <View style={[mealStyles.iconWrap, { backgroundColor: cfg.bg }]}>
+            <Icon size={16} color={cfg.color} />
+          </View>
+          <Text style={[mealStyles.mealName, { color: cfg.color }]}>{meal}</Text>
+        </View>
+        <Text style={mealStyles.time}>{time}</Text>
+      </View>
+      <View style={mealStyles.chipsRow}>
+        {itemArray.map((item, idx) => (
+          <View key={idx} style={[mealStyles.chip, { backgroundColor: cfg.bg }]}>
+            <Text style={[mealStyles.chipText, { color: cfg.color }]}>{item}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+const mealStyles = StyleSheet.create({
+  section: {
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+  },
+  sectionDivider: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  iconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mealName: { fontSize: 15, fontWeight: '700' },
+  time: { fontSize: 11, color: colors.textMuted, fontWeight: '500' },
+  chipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingLeft: 36, // Align with text
+  },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+  },
+  chipText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+});
+
+// ── Main Screen ───────────────────────────────────────────────────────────────
 export default function HomeScreen({ navigation }: any) {
-  const { user, signOut, refreshUser } = useAuth();
+  const { user, refreshUser, connectedHostel } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
 
-  // Refresh live data every time the dashboard gains focus so owner actions
-  // (room allocation, dues) show up without re-login.
   useFocusEffect(
     useCallback(() => {
       refreshUser();
-    }, [])
+    }, []),
   );
 
   const onRefresh = useCallback(async () => {
@@ -47,268 +144,491 @@ export default function HomeScreen({ navigation }: any) {
   }, [refreshUser]);
 
   const isAllocated = !!user?.is_allocated;
+  const hasDue = Number(user?.outstanding_due || 0) > 0;
+  const unread = sampleNotifications.filter((n) => !n.read).length;
+  const initials = (user?.name || 'T').split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase();
+
+  // Recent notices (latest 2)
+  const recentNotices = sampleNotices.slice(0, 2);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
+
+      {/* ── White Sticky Header ───────────────────────────────────────── */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <Text style={styles.greetingText}>
+            {greeting()} {greetingEmoji()}
+          </Text>
+          <Text style={styles.nameText} numberOfLines={1}>
+            {user?.name || 'Welcome back'}
+          </Text>
+        </View>
+
+        <View style={styles.headerRight}>
+          {/* Notification bell */}
+          <TouchableOpacity
+            style={styles.headerIconBtn}
+            onPress={() => navigation.navigate('Messages')}
+            activeOpacity={0.7}
+          >
+            <Bell size={20} color={colors.text} />
+            {unread > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{unread > 9 ? '9+' : unread}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          {/* Profile avatar */}
+          <TouchableOpacity
+            style={styles.avatarBtn}
+            onPress={() => navigation.navigate('Profile')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.avatarText}>{initials}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <ScrollView
-        contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
       >
-        <View style={styles.header}>
-          <Text style={styles.greeting}>Hello, {user?.name || 'Tenant'}</Text>
-          <TouchableOpacity onPress={signOut} style={styles.logoutBtn}>
-            <Text style={styles.logoutText}>Logout</Text>
+
+        {/* ── Hostel badge ────────────────────────────────────────── */}
+        <View style={styles.hostelBadge}>
+          <BedDouble size={12} color={colors.primary} />
+          <Text style={styles.hostelBadgeText}>
+            {connectedHostel?.hostel_name || 'D Hostel'}
+            {user?.room_number ? ` · Room ${user.room_number}` : ''}
+          </Text>
+        </View>
+
+        {/* ── Rent Status Card ─────────────────────────────────────── */}
+        {isAllocated && hasDue && (
+          <View style={styles.rentCard}>
+            {/* Left purple accent bar */}
+            <View style={styles.rentAccentBar} />
+            <View style={styles.rentCardInner}>
+              <View style={styles.rentCardLeft}>
+                <View style={styles.rentDueChip}>
+                  <AlertCircle size={10} color={colors.danger} />
+                  <Text style={styles.rentDueChipText}>Payment Due</Text>
+                </View>
+                <Text style={styles.rentAmount}>
+                  {formatCurrency(user?.outstanding_due || 6500)}
+                </Text>
+                <Text style={styles.rentSub}>Due on 05 Jun, 2025 · Rent</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.payNowBtn}
+                onPress={() => navigation.navigate('Payments')}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.payNowText}>Pay Now</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* Paid state */}
+        {isAllocated && !hasDue && (
+          <View style={styles.rentCard}>
+            <View style={[styles.rentAccentBar, { backgroundColor: colors.success }]} />
+            <View style={styles.rentCardInner}>
+              <View style={styles.rentCardLeft}>
+                <View style={[styles.rentDueChip, { backgroundColor: colors.successSoft }]}>
+                  <Text style={[styles.rentDueChipText, { color: colors.success }]}>✓ All Paid</Text>
+                </View>
+                <Text style={styles.rentAmount}>
+                  {formatCurrency(user?.monthly_rent || 6500)}
+                </Text>
+                <Text style={[styles.rentSub, { color: colors.success }]}>Paid for June 2025</Text>
+              </View>
+              <View style={styles.paidBadge}>
+                <Text style={styles.paidBadgeText}>Clear</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Not allocated */}
+        {!isAllocated && (
+          <View style={styles.pendingCard}>
+            <Clock size={20} color={colors.warning} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.pendingTitle}>Room not assigned yet</Text>
+              <Text style={styles.pendingBody}>Pull down to refresh once the owner assigns your room.</Text>
+            </View>
+          </View>
+        )}
+
+        {/* ── Today's Menu ─────────────────────────────────────────── */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Today's Menu</Text>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('FullMenu')}
+            style={styles.seeAllBtn}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.seeAllText}>See all</Text>
+            <ChevronRight size={14} color={colors.primary} />
           </TouchableOpacity>
         </View>
 
-        {!isAllocated ? (
-          // Pending state — registered, waiting for the owner to allocate a room.
-          // Instead of an empty screen we show the details the tenant submitted,
-          // so the room/dues just slot in once the owner accepts.
-          <>
-            <View style={styles.pendingCard}>
-              <Text style={styles.pendingIcon}>⏳</Text>
-              <Text style={styles.pendingTitle}>Waiting for room allocation</Text>
-              <Text style={styles.pendingText}>
-                Your registration is complete. The hostel owner will review and allocate your room
-                shortly. Your room and rent details will appear here automatically once that's done.
-              </Text>
-              <Text style={styles.pendingHint}>Pull down to refresh</Text>
-            </View>
+        <View style={styles.menuCard}>
+          {todayMenu.map((item, i) => (
+            <MealSection
+              key={item.meal}
+              meal={item.meal}
+              items={item.items}
+              time={item.time}
+              isLast={i === todayMenu.length - 1}
+            />
+          ))}
+        </View>
 
-            <Text style={styles.sectionTitle}>Your details</Text>
-            <View style={styles.detailsCard}>
-              <DetailRow label="Name" value={user?.name} />
-              <DetailRow label="Phone" value={user?.phone} />
-              <DetailRow label="Email" value={user?.email} />
-              <DetailRow label="Gender" value={user?.gender} />
-            </View>
-          </>
-        ) : (
-          // Allocated — show the real room + dues.
-          <>
-            <View style={styles.roomCard}>
-              <Text style={styles.roomLabel}>Your Room</Text>
-              <Text style={styles.roomNumber}>{user?.room_number || '—'}</Text>
-              <Text style={styles.rentText}>
-                Monthly Rent: {formatCurrency(user?.monthly_rent)}
-              </Text>
-            </View>
+        {/* ── Recent Notices ────────────────────────────────────────── */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Recent Notices</Text>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Notices')}
+            style={styles.seeAllBtn}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.seeAllText}>View all</Text>
+            <ChevronRight size={14} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
 
-            <View style={styles.dueCard}>
-              <Text style={styles.dueAmount}>{formatCurrency(user?.outstanding_due)}</Text>
-              <Text style={styles.dueLabel}>
-                {user?.next_due_date
-                  ? `Due on: ${formatDate(user?.next_due_date)}`
-                  : 'Total outstanding'}
-              </Text>
-              <View
-                style={[
-                  styles.statusBadge,
-                  (user?.outstanding_due || 0) > 0 ? styles.statusBadgePending : styles.statusBadgePaid,
-                ]}
+        <View style={styles.noticesCard}>
+          {recentNotices.map((notice, i) => {
+            const isLast = i === recentNotices.length - 1;
+            const isImportant = notice.category === 'Important';
+            return (
+              <TouchableOpacity
+                key={notice.id}
+                style={[styles.noticeRow, !isLast && styles.noticeDivider]}
+                activeOpacity={0.7}
               >
-                <Text
-                  style={[
-                    styles.statusText,
-                    (user?.outstanding_due || 0) > 0 ? styles.statusTextPending : styles.statusTextPaid,
-                  ]}
-                >
-                  {(user?.outstanding_due || 0) > 0 ? 'Pending ⚠️' : 'All clear ✅'}
-                </Text>
-              </View>
-              {(user?.outstanding_due || 0) > 0 && (
-                <TouchableOpacity
-                  style={styles.payButton}
-                  onPress={() => navigation.navigate('Payments')}
-                >
-                  <Text style={styles.payButtonText}>Pay Now</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </>
-        )}
+                <View style={[
+                  styles.noticeDotWrap,
+                  { backgroundColor: isImportant ? colors.dangerSoft : colors.primarySoft }
+                ]}>
+                  <Megaphone size={14} color={isImportant ? colors.danger : colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.noticeTitle} numberOfLines={1}>{notice.title}</Text>
+                  <Text style={styles.noticeBody} numberOfLines={1}>{notice.body}</Text>
+                </View>
+                <ChevronRight size={14} color={colors.textSubtle} />
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* ── Quick Actions ─────────────────────────────────────────── */}
+        <View style={[styles.sectionHeader, { marginTop: spacing['2xl'] }]}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+        </View>
+
+        <View style={styles.shortcutGrid}>
+          {[
+            {
+              icon: Wrench,
+              label: 'Maintenance',
+              desc: 'Report issue',
+              color: '#F59E0B',
+              bg: '#FEF3C7',
+              onPress: () => navigation.navigate('Complaints'),
+            },
+            {
+              icon: BedDouble,
+              label: 'Room Info',
+              desc: 'View details',
+              color: '#5B4CF0',
+              bg: '#EEF2FF',
+              onPress: () => navigation.navigate('RoomInfo'),
+            },
+            {
+              icon: FileText,
+              label: 'Documents',
+              desc: 'My files',
+              color: '#3B82F6',
+              bg: '#EFF6FF',
+              onPress: () => navigation.navigate('Documents'),
+            },
+            {
+              icon: MessageCircle,
+              label: 'Messages',
+              desc: 'Chat support',
+              color: '#22C55E',
+              bg: '#DCFCE7',
+              onPress: () => navigation.navigate('Messages'),
+            },
+          ].map((s) => {
+            const Icon = s.icon;
+            return (
+              <TouchableOpacity
+                key={s.label}
+                style={styles.shortcutCard}
+                activeOpacity={0.8}
+                onPress={s.onPress}
+              >
+                <View style={[styles.shortcutIcon, { backgroundColor: s.bg }]}>
+                  <Icon size={22} color={s.color} />
+                </View>
+                <Text style={styles.shortcutLabel}>{s.label}</Text>
+                <Text style={styles.shortcutDesc}>{s.desc}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
       </ScrollView>
     </SafeAreaView>
   );
 }
 
+// ── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
-  },
-  content: {
-    padding: 16,
-    flexGrow: 1,
-  },
+  safe: { flex: 1, backgroundColor: colors.bg },
+
+  // ── Header ────────────────────────────────────────────────────────────────
   header: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing['2xl'],
+    paddingTop: 4,
+    paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+    minHeight: 64,
   },
-  greeting: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#212121',
-    flex: 1,
-  },
-  logoutBtn: {
-    padding: 8,
-  },
-  logoutText: {
-    color: '#FF5252',
-    fontWeight: '600',
-  },
-  // Pending
-  pendingCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 28,
-    alignItems: 'center',
-    marginTop: 8,
+  headerLeft: { flex: 1, paddingRight: spacing.md },
+  greetingText: { fontSize: 13, color: colors.textMuted, fontWeight: '500', marginBottom: 1 },
+  nameText: { fontSize: 20, fontWeight: '700', color: colors.text, letterSpacing: -0.3 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  headerIconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.bg,
     borderWidth: 1,
-    borderColor: '#FFE0B2',
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  pendingIcon: {
-    fontSize: 48,
-    marginBottom: 12,
+  badge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: colors.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: colors.surface,
   },
-  pendingTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#E65100',
-    marginBottom: 12,
-    textAlign: 'center',
+  badgeText: { color: '#fff', fontSize: 8, fontWeight: '800' },
+  avatarBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  pendingText: {
-    fontSize: 15,
-    color: '#616161',
-    textAlign: 'center',
-    lineHeight: 22,
+  avatarText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+
+  // ── Scroll content ────────────────────────────────────────────────────────
+  scrollContent: { paddingBottom: 120, paddingTop: 12 },
+
+  // ── Hostel badge ──────────────────────────────────────────────────────────
+  hostelBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginHorizontal: spacing['2xl'],
+    marginBottom: 16,
+    backgroundColor: colors.primarySoft,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.primaryBorder,
   },
-  pendingHint: {
-    fontSize: 13,
-    color: '#9E9E9E',
-    marginTop: 20,
+  hostelBadgeText: { fontSize: 12, fontWeight: '600', color: colors.primary },
+
+  // ── Rent card ─────────────────────────────────────────────────────────────
+  rentCard: {
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    marginHorizontal: spacing['2xl'],
+    marginBottom: spacing['2xl'],
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+    ...shadow.card,
   },
-  // Details
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#212121',
-    marginTop: 24,
-    marginBottom: 12,
+  rentAccentBar: {
+    width: 4,
+    backgroundColor: colors.primary,
   },
-  detailsCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
+  rentCardInner: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing.xl,
   },
-  detailRow: {
+  rentCardLeft: { flex: 1 },
+  rentDueChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.dangerSoft,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+    marginBottom: 8,
+  },
+  rentDueChipText: { fontSize: 11, fontWeight: '700', color: colors.danger },
+  rentAmount: { fontSize: 28, fontWeight: '800', color: colors.text, letterSpacing: -0.5, marginBottom: 3 },
+  rentSub: { fontSize: 12, color: colors.textMuted },
+
+  payNowBtn: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+    borderRadius: radius.md,
+    ...shadow.raised,
+  },
+  payNowText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+
+  paidBadge: {
+    backgroundColor: colors.successSoft,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.successBorder,
+  },
+  paidBadgeText: { color: colors.success, fontWeight: '700', fontSize: 12 },
+
+  // Pending card
+  pendingCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.warningSoft,
+    borderRadius: radius.xl,
+    marginHorizontal: spacing['2xl'],
+    marginBottom: spacing['2xl'],
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.warningBorder,
+  },
+  pendingTitle: { fontSize: 14, fontWeight: '700', color: colors.warning, marginBottom: 2 },
+  pendingBody: { fontSize: 12, color: colors.textMuted },
+
+  // ── Section headers ───────────────────────────────────────────────────────
+  sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingHorizontal: spacing['2xl'],
+    marginBottom: spacing.md,
+  },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
+  seeAllBtn: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  seeAllText: { fontSize: 13, color: colors.primary, fontWeight: '600' },
+
+  // ── Menu card ─────────────────────────────────────────────────────────────
+  menuCard: {
+    marginHorizontal: spacing['2xl'],
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: spacing['2xl'],
+    overflow: 'hidden',
+    ...shadow.card,
+  },
+
+  // ── Notices card ──────────────────────────────────────────────────────────
+  noticesCard: {
+    marginHorizontal: spacing['2xl'],
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+    marginBottom: spacing.md,
+    ...shadow.card,
+  },
+  noticeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+  },
+  noticeDivider: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#EEEEEE',
+    borderBottomColor: colors.border,
   },
-  detailLabel: {
-    fontSize: 15,
-    color: '#757575',
-  },
-  detailValue: {
-    fontSize: 15,
-    color: '#212121',
-    fontWeight: '600',
-    flexShrink: 1,
-    textAlign: 'right',
-    marginLeft: 12,
-  },
-  // Room
-  roomCard: {
-    backgroundColor: '#6B5B95',
+  noticeDotWrap: {
+    width: 32,
+    height: 32,
     borderRadius: 16,
-    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  noticeTitle: { fontSize: 13, fontWeight: '600', color: colors.text, marginBottom: 2 },
+  noticeBody: { fontSize: 12, color: colors.textMuted },
+
+  // ── Quick actions ─────────────────────────────────────────────────────────
+  shortcutGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: spacing['2xl'],
+    gap: 12,
     marginBottom: 16,
   },
-  roomLabel: {
-    color: '#E0DFF0',
-    fontSize: 14,
+  shortcutCard: {
+    width: '46.5%',
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadow.card,
   },
-  roomNumber: {
-    color: '#FFFFFF',
-    fontSize: 32,
-    fontWeight: 'bold',
-    marginTop: 4,
-  },
-  rentText: {
-    color: '#E0DFF0',
-    fontSize: 16,
-    marginTop: 8,
-  },
-  // Dues
-  dueCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 24,
+  shortcutIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     alignItems: 'center',
-    marginBottom: 24,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
+    justifyContent: 'center',
+    marginBottom: 10,
   },
-  dueAmount: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#212121',
-  },
-  dueLabel: {
-    fontSize: 16,
-    color: '#757575',
-    marginTop: 8,
-  },
-  statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginTop: 12,
-  },
-  statusBadgePending: {
-    backgroundColor: '#FFF9C4',
-  },
-  statusBadgePaid: {
-    backgroundColor: '#C8E6C9',
-  },
-  statusText: {
-    fontWeight: 'bold',
-  },
-  statusTextPending: {
-    color: '#FBC02D',
-  },
-  statusTextPaid: {
-    color: '#388E3C',
-  },
-  payButton: {
-    backgroundColor: '#4CAF50',
-    paddingVertical: 12,
-    paddingHorizontal: 32,
-    borderRadius: 24,
-    marginTop: 24,
-    width: '100%',
-    alignItems: 'center',
-  },
-  payButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
+  shortcutLabel: { fontSize: 14, fontWeight: '700', color: colors.text, marginBottom: 2 },
+  shortcutDesc: { fontSize: 12, color: colors.textMuted },
 });

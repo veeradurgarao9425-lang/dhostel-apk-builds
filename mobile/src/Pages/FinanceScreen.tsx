@@ -111,11 +111,12 @@ const RentCard = React.memo(({ item, themeColor, onNavigate, onCollect, onWhatsA
     const status = STATUS_THEME[statusKey] ?? STATUS_THEME['upcoming'];
     let total = sf(item.monthly_rent || item.total_amount || item.total_due || item.amount || 0);
     let paid = sf(item.amount_paid || item.paid_amount || item.received_amount || 0);
-    if (statusKey === 'paid' || statusKey === 'fully paid') {
+    const isPaidStatus = PAID_STATUSES.has(statusKey);
+    if (isPaidStatus) {
         if (total > 0 && paid <= 0) paid = total;
         if (paid > 0 && total <= 0) total = paid;
     }
-    const due = item.fee_status === 'Fully Paid' ? 0 : Math.max(0, total - paid);
+    const due = isPaidStatus ? 0 : Math.max(0, total - paid);
     const feeMonth = item.fee_month || item.month;
     const dueDateStr = (() => {
         if (item.due_date) {

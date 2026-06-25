@@ -105,7 +105,7 @@ export default function OTPScreen({ route, navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#F4F5FB',
   },
   content: {
     flex: 1,
@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
   },
   backText: {
     fontSize: 16,
-    color: '#6B5B95',
+    color: '#6366F1',
   },
   title: {
     fontSize: 28,
@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
     letterSpacing: 8,
   },
   button: {
-    backgroundColor: '#6B5B95',
+    backgroundColor: '#6366F1',
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   resendText: {
-    color: '#6B5B95',
+    color: '#6366F1',
     fontSize: 16,
     fontWeight: '600',
   },

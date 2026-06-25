@@ -1,52 +1,86 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, SlidersHorizontal, Bell } from 'lucide-react-native';
-import { colors, spacing, radius, font, shadow } from '../theme';
-import { sampleMessages, MessageItem } from '../data/tenantContent';
+import { Search, SlidersHorizontal, Megaphone } from 'lucide-react-native';
+import { colors, radius, spacing, font, shadow } from '../theme';
+import { sampleNotices, Notice } from '../data/tenantContent';
 
-type FilterTab = 'All' | 'Admin' | 'Support' | 'System';
+type FilterTab = 'All' | 'Important' | 'Maintenance' | 'Food';
 
-const FILTER_TABS: FilterTab[] = ['All', 'Admin', 'Support', 'System'];
+const FILTER_TABS: FilterTab[] = ['All', 'Important', 'Maintenance', 'Food'];
 
-function MessageCard({ msg }: { msg: MessageItem }) {
-  const initials = msg.from.slice(0, 2).toUpperCase();
+const categoryMeta: Record<string, { dotColor: string; bgColor: string; textColor: string; label: string }> = {
+  Important: { dotColor: '#EF4444', bgColor: '#FEE2E2', textColor: '#DC2626', label: 'Important' },
+  Maintenance: { dotColor: '#F59E0B', bgColor: '#FEF3C7', textColor: '#D97706', label: 'Maintenance' },
+  General: { dotColor: '#0EA5E9', bgColor: '#E0F2FE', textColor: '#0284C7', label: 'General' },
+  Food: { dotColor: '#10B981', bgColor: '#D1FAE5', textColor: '#059669', label: 'Food' },
+};
+
+function timeAgo(dateStr: string): string {
+  const now = new Date('2025-06-09');
+  const then = new Date(dateStr);
+  const diffMs = now.getTime() - then.getTime();
+  const diffH = Math.floor(diffMs / 3600000);
+  const diffD = Math.floor(diffMs / 86400000);
+  if (diffH < 1) return 'Just now';
+  if (diffH < 24) return `${diffH}h ago`;
+  return `${diffD}d ago`;
+}
+
+function groupNoticesByDate(notices: Notice[]) {
+  const today = '2025-06-09';
+  const yesterday = '2025-06-08';
+  const todayGroup = notices.filter((n) => n.date === today);
+  const yesterdayGroup = notices.filter((n) => n.date === yesterday);
+  const olderGroup = notices.filter((n) => n.date < yesterday);
+  return [
+    ...(todayGroup.length ? [{ label: 'Today', items: todayGroup }] : []),
+    ...(yesterdayGroup.length ? [{ label: 'Yesterday', items: yesterdayGroup }] : []),
+    ...(olderGroup.length ? [{ label: 'Earlier', items: olderGroup }] : []),
+  ];
+}
+
+function NoticeCard({ notice }: { notice: Notice }) {
+  const meta = categoryMeta[notice.category] || categoryMeta['General'];
 
   return (
-    <TouchableOpacity style={styles.msgCard} activeOpacity={0.75}>
-      {/* Avatar */}
-      <View style={[styles.avatar, { backgroundColor: msg.avatarColor }]}>
-        <Text style={styles.avatarText}>{initials}</Text>
-      </View>
+    <TouchableOpacity style={styles.noticeCard} activeOpacity={0.75}>
+      {/* Left color bar */}
+      <View style={[styles.colorBar, { backgroundColor: meta.dotColor }]} />
 
-      {/* Content */}
-      <View style={styles.msgContent}>
-        <View style={styles.msgTopRow}>
-          <Text style={styles.msgTitle} numberOfLines={1}>{msg.title}</Text>
-          <Text style={styles.msgTime}>{msg.time}</Text>
+      <View style={styles.noticeBody}>
+        {/* Category pill + unread */}
+        <View style={styles.noticeTopRow}>
+          <View style={[styles.catPill, { backgroundColor: meta.bgColor }]}>
+            <View style={[styles.catDot, { backgroundColor: meta.dotColor }]} />
+            <Text style={[styles.catPillText, { color: meta.textColor }]}>{meta.label}</Text>
+          </View>
+          {notice.pinned && <View style={styles.unreadDot} />}
         </View>
-        <Text style={styles.msgBody} numberOfLines={2}>{msg.body}</Text>
-      </View>
 
-      {/* Unread dot */}
-      {!msg.read && <View style={styles.unreadDot} />}
+        <Text style={styles.noticeTitle}>{notice.title}</Text>
+        <Text style={styles.noticeBodyText} numberOfLines={3}>{notice.body}</Text>
+        <Text style={styles.noticeTime}>{timeAgo(notice.date)}</Text>
+      </View>
     </TouchableOpacity>
   );
 }
 
-export default function MessagesScreen({ navigation }: any) {
+export default function NoticesScreen({ navigation }: any) {
   const [activeFilter, setActiveFilter] = useState<FilterTab>('All');
 
-  const filtered = sampleMessages.filter((m) => {
+  const filtered = sampleNotices.filter((n) => {
     if (activeFilter === 'All') return true;
-    return m.fromType === activeFilter;
+    return n.category === activeFilter;
   });
+
+  const grouped = groupNoticesByDate(filtered);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       {/* ── White Header ─────────────────────────────────────────────────────────── */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Messages</Text>
+        <Text style={styles.headerTitle}>Notices</Text>
         <View style={styles.headerActions}>
           <TouchableOpacity style={styles.headerIconBtn} activeOpacity={0.7}>
             <Search size={20} color={colors.text} />
@@ -75,21 +109,28 @@ export default function MessagesScreen({ navigation }: any) {
         </ScrollView>
       </View>
 
-      {/* ── Message list ───────────────────────────────────────────────────────── */}
+      {/* ── Notices list ───────────────────────────────────────────────────────── */}
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
       >
-        {filtered.length === 0 ? (
+        {grouped.length === 0 ? (
           <View style={styles.empty}>
             <View style={styles.emptyIconWrap}>
-              <Bell size={32} color={colors.textSubtle} />
+              <Megaphone size={32} color={colors.textSubtle} />
             </View>
-            <Text style={styles.emptyTitle}>No messages</Text>
-            <Text style={styles.emptyBody}>Messages from your hostel will appear here.</Text>
+            <Text style={styles.emptyTitle}>No notices</Text>
+            <Text style={styles.emptyBody}>Announcements from your hostel will appear here.</Text>
           </View>
         ) : (
-          filtered.map((msg) => <MessageCard key={msg.id} msg={msg} />)
+          grouped.map(({ label, items }) => (
+            <View key={label}>
+              <Text style={styles.groupLabel}>{label}</Text>
+              {items.map((notice) => (
+                <NoticeCard key={notice.id} notice={notice} />
+              ))}
+            </View>
+          ))
         )}
       </ScrollView>
     </SafeAreaView>
@@ -145,53 +186,49 @@ const styles = StyleSheet.create({
   filterTabTextActive: { color: '#fff' },
 
   // ── List ────────────────────────────────────────────────────────────────────
-  listContent: { paddingHorizontal: spacing['2xl'], paddingBottom: 120, gap: spacing.sm },
+  listContent: { paddingHorizontal: spacing['2xl'], paddingBottom: 120 },
+  groupLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textSubtle,
+    marginBottom: spacing.sm,
+    marginTop: spacing.sm,
+    letterSpacing: 0.5,
+  },
 
-  // ── Message Card ────────────────────────────────────────────────────────────
-  msgCard: {
+  // ── Notice Card ─────────────────────────────────────────────────────────────
+  noticeCard: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.md,
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
-    padding: spacing.xl,
+    marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
+    overflow: 'hidden',
     ...shadow.card,
   },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  avatarText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  msgContent: { flex: 1 },
-  msgTopRow: {
+  colorBar: { width: 4 },
+  noticeBody: { flex: 1, padding: spacing.xl },
+  noticeTopRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 4,
+    marginBottom: spacing.sm,
   },
-  msgTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.text,
-    flex: 1,
-    marginRight: spacing.sm,
+  catPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: radius.pill,
   },
-  msgTime: { fontSize: 11, color: colors.textSubtle, fontWeight: '600' },
-  msgBody: { fontSize: 13, color: colors.textMuted, lineHeight: 19 },
-  unreadDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: colors.danger,
-    flexShrink: 0,
-    marginTop: 6,
-  },
+  catDot: { width: 6, height: 6, borderRadius: 3 },
+  catPillText: { fontSize: 11, fontWeight: '700' },
+  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.danger },
+  noticeTitle: { fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 4 },
+  noticeBodyText: { fontSize: 13, color: colors.textMuted, lineHeight: 19, marginBottom: 8 },
+  noticeTime: { fontSize: 11, color: colors.textSubtle, fontWeight: '500' },
 
   // ── Empty state ─────────────────────────────────────────────────────────────
   empty: { alignItems: 'center', paddingTop: 80, gap: spacing.md },

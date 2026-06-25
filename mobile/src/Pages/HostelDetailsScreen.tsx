@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -22,9 +22,10 @@ export const HostelDetailsScreen = () => {
     const { user, updateTokenAndUser } = useAuth();
     const { theme, isDark } = useTheme();
 
-    const { hostel } = route.params || {};
+    const { hostel, hostelId } = route.params || {};
     const [selectedHostelDetails, setSelectedHostelDetails] = useState<any>(hostel);
     const [switchingId, setSwitchingId] = useState<number | null>(null);
+    const [loadingHostel, setLoadingHostel] = useState(false);
 
     const getInitials = (name: string) => {
         if (!name) return 'H';
@@ -54,12 +55,37 @@ export const HostelDetailsScreen = () => {
         }
     };
 
-    if (!selectedHostelDetails) {
+useEffect(() => {
+        const fetchSelectedHostel = async () => {
+            if (!hostelId) return;
+            if (selectedHostelDetails?.hostel_code && selectedHostelDetails?.hostel_name) return;
+
+            try {
+                setLoadingHostel(true);
+                const res = await api.get(`/hostels/${hostelId}`);
+                if (res.data?.success && res.data.data) {
+                    setSelectedHostelDetails(prev => ({ ...prev, ...res.data.data }));
+                }
+            } catch (err: any) {
+                console.error('Hostel details fetch error:', err);
+            } finally {
+                setLoadingHostel(false);
+            }
+        };
+
+        fetchSelectedHostel();
+    }, [hostelId, selectedHostelDetails]);
+
+    if (!selectedHostelDetails || loadingHostel) {
         return (
-            <View style={[styles.center, { backgroundColor: isDark ? theme.background : '#F5F6F8' }]}>
+            <View style={[styles.center, { backgroundColor: isDark ? theme.background : '#F5F6F8' }]}> 
                 <AppHeader title="Hostel Details" showBack={true} />
                 <View style={styles.emptyContainer}>
-                    <Text style={{ color: theme.textSecondary, fontSize: 16 }}>No hostel details found.</Text>
+                    {loadingHostel ? (
+                        <ActivityIndicator size="large" color={theme.primary} />
+                    ) : (
+                        <Text style={{ color: theme.textSecondary, fontSize: 16 }}>No hostel details found.</Text>
+                    )}
                 </View>
             </View>
         );
@@ -155,12 +181,20 @@ export const HostelDetailsScreen = () => {
                                 <Text style={[styles.premiumValue, { color: theme.textPrimary }]}>{selectedHostelDetails.total_floors || 'N/A'}</Text>
                             </View>
                         </View>
-                        <View style={[styles.premiumGridItem, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                            <Text style={styles.premiumLabel}>Hostel Address</Text>
-                            <Text style={[styles.premiumValue, { color: theme.textPrimary, lineHeight: 18 }]}>
-                                {selectedHostelDetails.address}, {selectedHostelDetails.city}, {selectedHostelDetails.state} - {selectedHostelDetails.pincode || 'N/A'}
-                            </Text>
-                        </View>
+                    {(() => {
+                        const addressParts = [selectedHostelDetails.address, selectedHostelDetails.city, selectedHostelDetails.state].filter(Boolean);
+                        const addressLabel = addressParts.join(', ');
+                        const pincodeText = selectedHostelDetails.pincode ? ` - ${selectedHostelDetails.pincode}` : '';
+                        if (!addressLabel && !selectedHostelDetails.pincode) return null;
+                        return (
+                            <View style={[styles.premiumGridItem, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9' }]}> 
+                                <Text style={styles.premiumLabel}>Hostel Address</Text>
+                                <Text style={[styles.premiumValue, { color: theme.textPrimary, lineHeight: 18 }]}> 
+                                    {addressLabel || 'Not available'}{pincodeText}
+                                </Text>
+                            </View>
+                        );
+                    })()}
                     </View>
                 </View>
 

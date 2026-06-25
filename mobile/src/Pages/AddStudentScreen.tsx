@@ -297,6 +297,7 @@ const SectionHeader = ({ number, title }: { number: number; title: string }) => 
 
 const ImageSourceDrawer = ({ visible, onClose, onSelectCamera, onSelectGallery, title }: any) => {
     const { theme, isDark, fontSize } = useTheme();
+    const insets = useSafeAreaInsets();
     return (
         <ModalSheet visible={visible} onClose={onClose} maxHeight="45%">
             <View style={styles.sheetHandle} />
@@ -306,7 +307,7 @@ const ImageSourceDrawer = ({ visible, onClose, onSelectCamera, onSelectGallery, 
                     <Text style={[styles.doneBtnText, { color: theme.primary, fontSize }]}>Cancel</Text>
                 </TouchableOpacity>
             </View>
-            <View style={{ padding: 24, gap: 16, flexDirection: 'row', justifyContent: 'space-around' }}>
+            <View style={{ padding: 24, paddingBottom: Math.max(insets.bottom, 24) + 20, gap: 16, flexDirection: 'row', justifyContent: 'space-around' }}>
                 <TouchableOpacity 
                     style={[styles.sourceOptionBtn, { backgroundColor: isDark ? '#1E293B' : '#F3EEFF', borderColor: theme.primary }]}
                     onPress={() => { onSelectCamera(); onClose(); }}
@@ -1864,13 +1865,13 @@ const styles = StyleSheet.create({
     // Custom Image Source Drawer styles
     sourceOptionBtn: {
         flex: 1,
-        height: 120,
+        height: 100,
         borderRadius: 16,
         borderWidth: 1.5,
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 12,
-        padding: 16,
+        gap: 8,
+        padding: 12,
         elevation: 1,
         shadowColor: '#000',
         shadowOpacity: 0.05,
@@ -1878,9 +1879,9 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
     },
     sourceIconBg: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         alignItems: 'center',
         justifyContent: 'center',
     },

@@ -56,7 +56,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const loadHostels = async () => {
     try {
-      const res = await api.get('/hostels');
+      const res = await api.get('/hostels?my_hostels=true');
       if (res.data?.success) {
         setHostels(res.data.data || []);
       }
@@ -112,7 +112,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     try {
-      const res: any = await withTimeout(api.get('/hostels'));
+      const res: any = await withTimeout(api.get('/hostels?my_hostels=true'));
       if (res?.data?.success) setHostels(res.data.data || []);
     } catch (e) {
       if (__DEV__) console.warn('Background hostels-list fetch failed:', e);
@@ -161,7 +161,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         // Fetch all user hostels
         try {
-          const res = await api.get('/hostels');
+          const res = await api.get('/hostels?my_hostels=true');
           if (res.data?.success) {
             setHostels(res.data.data || []);
           }
@@ -211,7 +211,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         // Load hostels list (will be empty until they add one)
         try {
-          const res = await api.get('/hostels');
+          const res = await api.get('/hostels?my_hostels=true');
           if (res.data?.success) setHostels(res.data.data || []);
         } catch { /* non-fatal */ }
 
@@ -277,7 +277,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     let activeHostels = hostels;
     if (activeHostels.length === 0) {
       try {
-        const res = await api.get('/hostels');
+        const res = await api.get('/hostels?my_hostels=true');
         if (res.data?.success) {
           activeHostels = res.data.data || [];
           setHostels(activeHostels);

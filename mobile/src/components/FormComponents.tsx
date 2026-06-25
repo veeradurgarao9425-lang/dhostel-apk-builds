@@ -99,7 +99,7 @@ export const OptionsDrawer = ({ visible, title, data, selectedId, onSelect, onCl
     }, [data, search, searchable, labelExtractor]);
 
     return (
-        <ModalSheet visible={visible} onClose={() => { setSearch(''); onClose(); }} maxHeight="70%">
+        <ModalSheet visible={visible} onClose={() => { setSearch(''); onClose(); }} maxHeight="78%">
             <View style={styles.sheetHeader}>
                 <Text style={styles.sheetTitle}>{title}</Text>
                 <TouchableOpacity onPress={() => { setSearch(''); onClose(); }} style={styles.doneBtn}><Text style={styles.doneBtnText}>Done</Text></TouchableOpacity>
@@ -123,7 +123,7 @@ export const OptionsDrawer = ({ visible, title, data, selectedId, onSelect, onCl
                     );
                 }}
                 ListEmptyComponent={<View style={{ padding: 40, alignItems: 'center' }}><Text style={{ color: '#94A3B8', fontSize: 14 }}>No options</Text></View>}
-                contentContainerStyle={{ paddingBottom: 40 }}
+                contentContainerStyle={{ paddingBottom: 60 }}
             />
         </ModalSheet>
     );
@@ -147,14 +147,14 @@ const styles = StyleSheet.create({
     selectorText: { fontSize: 14, color: '#64748B', fontWeight: '600' },
     selectorTextActive: { color: '#7C3AED', fontWeight: '700' },
     
-    sheet: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#FFF', borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingTop: 12, paddingBottom: 20 },
-    sheetHandle: { width: 44, height: 5, backgroundColor: '#E2E8F0', borderRadius: 3, alignSelf: 'center', marginBottom: 16 },
+    sheet: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#FFF', borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingTop: 16, paddingBottom: 28, minHeight: 260 },
+    sheetHandle: { width: 44, height: 5, backgroundColor: '#E2E8F0', borderRadius: 3, alignSelf: 'center', marginBottom: 18 },
     sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
     sheetTitle: { fontSize: 18, fontWeight: '800', color: '#1E293B' },
-    doneBtn: { paddingVertical: 6, paddingHorizontal: 14, borderRadius: 8, backgroundColor: '#F5F3FF' },
+    doneBtn: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 10, backgroundColor: '#F5F3FF' },
     doneBtnText: { color: '#7C3AED', fontWeight: '700', fontSize: 14 },
     searchInput: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 12, fontSize: 15, color: '#1E293B', fontWeight: '500' },
-    optionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
+    optionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 18, paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: '#F8FAFC', minHeight: 60 },
     optionRowActive: { backgroundColor: '#F5F3FF' },
     optionLabel: { fontSize: 15, color: '#334155', fontWeight: '500' },
     optionLabelActive: { color: '#7C3AED', fontWeight: '700' },

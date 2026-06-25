@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
+import { syncDueReminders } from '../services/notifications';
 
 type TenantUser = {
   id: string | number;
@@ -196,6 +197,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         AsyncStorage.setItem('user', JSON.stringify(merged)).catch(() => {});
         return merged;
       });
+      // Keep local rent reminders in sync with the latest due (fire-and-forget).
+      syncDueReminders({
+        outstanding: fresh.outstanding_due,
+        nextDueDate: fresh.next_due_date,
+      }).catch(() => {});
     } catch (error) {
       if (__DEV__) console.error('Failed to refresh user', error);
     }

@@ -35,7 +35,7 @@ export const HostelsScreen = () => {
     const fetchHostels = async () => {
         try {
             setLoading(true);
-            const res = await api.get('/hostels');
+            const res = await api.get('/hostels?my_hostels=true');
             if (res.data?.success) {
                 setHostels(res.data.data || []);
             }
@@ -50,7 +50,7 @@ export const HostelsScreen = () => {
     const handleRefresh = async () => {
         setRefreshing(true);
         try {
-            const res = await api.get('/hostels');
+            const res = await api.get('/hostels?my_hostels=true');
             if (res.data?.success) {
                 setHostels(res.data.data || []);
             }
@@ -119,7 +119,11 @@ export const HostelsScreen = () => {
                     return;
                 }
             }
-            navigation.navigate('Reports');
+            
+            // Navigate directly to Reports after context is settled
+            setTimeout(() => {
+                navigation.navigate('Reports');
+            }, 100);
         } catch (err: any) {
             console.error('Quick Reports error:', err);
             Alert.alert('Error', err.response?.data?.error || 'Failed to switch hostel for viewing reports.');
@@ -173,14 +177,23 @@ export const HostelsScreen = () => {
                         const isGirls = h.hostel_type?.toLowerCase().includes('girl');
                         const isBoys = h.hostel_type?.toLowerCase().includes('boy');
                         const statusColor = isGirls ? '#DB2777' : (isBoys ? '#2563EB' : '#0EA5E9');
+                        const statusBgColor = isGirls ? 'rgba(219, 39, 119, 0.06)' : (isBoys ? 'rgba(37, 99, 235, 0.06)' : 'rgba(14, 165, 233, 0.06)');
+                        const statusBorderColor = isGirls ? 'rgba(219, 39, 119, 0.2)' : (isBoys ? 'rgba(37, 99, 235, 0.2)' : 'rgba(14, 165, 233, 0.2)');
 
-                        const avatarBg = statusColor + '20';
+                        const avatarBg = isGirls ? 'rgba(219, 39, 119, 0.15)' : (isBoys ? 'rgba(37, 99, 235, 0.15)' : 'rgba(14, 165, 233, 0.15)');
                         const avatarTextColor = statusColor;
 
                         return (
                             <TouchableOpacity
                                 key={h.hostel_id}
-                                style={[styles.premiumCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}
+                                style={[
+                                    styles.premiumCard, 
+                                    { 
+                                        backgroundColor: isDark ? '#1E293B' : statusBgColor, 
+                                        borderColor: isDark ? '#334155' : statusBorderColor, 
+                                        borderWidth: 1 
+                                    }
+                                ]}
                                 onPress={() => handleViewDetails(h)}
                                 activeOpacity={0.9}
                                 disabled={isSwitching}
@@ -198,7 +211,7 @@ export const HostelsScreen = () => {
                                                 {h.hostel_name}
                                             </Text>
                                             <Text style={[styles.subDetailText, { color: theme.textSecondary }]} numberOfLines={1}>
-                                                {h.address}, {h.city} • {h.hostel_type || 'Co-Living'}
+                                                {[h.address, h.city].filter(v => v && v.trim() !== '').join(', ')} • {h.hostel_type || 'Co-Living'}
                                             </Text>
                                         </View>
                                         <View style={[styles.statusBadge, { backgroundColor: isActive ? theme.success + '15' : 'rgba(148, 163, 184, 0.15)' }]}>
