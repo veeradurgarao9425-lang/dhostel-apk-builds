@@ -862,5 +862,138 @@ export const authController = {
       });
     }
   },
+
+  // ============================================
+  // TENANT AUTHENTICATION (Mobile App)
+  // ============================================
+
+  async verifyHostelKey(req: Request, res: Response) {
+    try {
+      const { hostel_code } = req.body;
+      if (!hostel_code) {
+        return res.status(400).json({ success: false, error: 'Hostel Code is required' });
+      }
+
+      const hostel = await db('hostel_master')
+        .where('hostel_code', hostel_code)
+        .where('is_active', 1)
+        .first();
+
+      if (!hostel) {
+        return res.status(404).json({ success: false, error: 'Invalid Hostel Code' });
+      }
+
+      return res.json({
+        success: true,
+        data: {
+          hostel_id: hostel.hostel_id,
+          hostel_name: hostel.hostel_name,
+        }
+      });
+    } catch (error) {
+      console.error('verifyHostelKey error:', error);
+      return res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+  },
+
+  async tenantSendOtp(req: Request, res: Response) {
+    try {
+      const { identifier, hostel_id } = req.body; // phone or email
+      if (!identifier || !hostel_id) {
+        return res.status(400).json({ success: false, error: 'Identifier and hostel_id are required' });
+      }
+
+      // Check if tenant exists in this hostel
+      const tenant = await db('students')
+        .where('hostel_id', hostel_id)
+        .andWhere(function() {
+          this.where('email', identifier).orWhere('phone', identifier);
+        })
+        .first();
+
+      if (!tenant) {
+        return res.status(404).json({ success: false, error: 'No tenant found with this detail in this hostel.' });
+      }
+
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+      await db('otps').where('email', identifier).del();
+      await db('otps').insert({ email: identifier, otp, expires_at: expiresAt });
+
+      console.log(`[TENANT OTP] ${identifier} -> ${otp}`);
+      // Send OTP via email if it's an email (or integrate SMS later if phone)
+      if (identifier.includes('@')) {
+        await sendOtpEmail(identifier, otp);
+      }
+
+      return res.json({ success: true, message: 'OTP sent successfully' });
+    } catch (error) {
+      console.error('tenantSendOtp error:', error);
+      return res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+  },
+
+  async tenantVerifyOtp(req: Request, res: Response) {
+    try {
+      const { identifier, otp, hostel_id } = req.body;
+      if (!identifier || !otp || !hostel_id) {
+        return res.status(400).json({ success: false, error: 'Identifier, otp, and hostel_id are required' });
+      }
+
+      const record = await db('otps').where('email', identifier).where('otp', otp).first();
+      if (!record) {
+        return res.status(400).json({ success: false, error: 'Invalid OTP' });
+      }
+
+      if (new Date(record.expires_at) < new Date()) {
+        return res.status(400).json({ success: false, error: 'OTP has expired' });
+      }
+
+      const tenant = await db('students')
+        .select('students.*', 'rooms.room_number')
+        .leftJoin('room_allocations', function() {
+          this.on('room_allocations.student_id', '=', 'students.student_id')
+              .andOn('room_allocations.is_current', '=', db.raw('?', [true]));
+        })
+        .leftJoin('rooms', 'rooms.room_id', 'room_allocations.room_id')
+        .where('students.hostel_id', hostel_id)
+        .andWhere(function() {
+          this.where('students.email', identifier).orWhere('students.phone', identifier);
+        })
+        .first();
+
+      if (!tenant) {
+        return res.status(404).json({ success: false, error: 'Tenant not found.' });
+      }
+
+      await db('otps').where('email', identifier).del();
+
+      const token = generateToken({
+        user_id: tenant.student_id,
+        email: tenant.email,
+        role_id: 3, // Tenant Role
+        hostel_id: tenant.hostel_id,
+      });
+
+      return res.json({
+        success: true,
+        data: {
+          token,
+          tenant: {
+            id: tenant.student_id,
+            name: tenant.first_name + (tenant.last_name ? ' ' + tenant.last_name : ''),
+            email: tenant.email,
+            phone: tenant.phone,
+            room: tenant.room_number || 'N/A',
+            hostel_id: tenant.hostel_id
+          }
+        }
+      });
+    } catch (error) {
+      console.error('tenantVerifyOtp error:', error);
+      return res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+  },
 };
 

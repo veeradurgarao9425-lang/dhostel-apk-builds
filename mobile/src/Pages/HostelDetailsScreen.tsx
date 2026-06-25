@@ -120,6 +120,24 @@ export const HostelDetailsScreen = () => {
 
                 <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
 
+                {/* Hostel Connection Code Block */}
+                {selectedHostelDetails.hostel_code && (
+                    <View style={[styles.premiumCardContainer, { backgroundColor: theme.cardBg, borderColor: theme.primary, borderWidth: 1 }]}>
+                        <View style={styles.premiumCardHeader}>
+                            <Ionicons name="key" size={16} color={theme.primary} />
+                            <Text style={[styles.premiumCardHeaderTitle, { color: theme.primary }]}>Hostel Connection Code</Text>
+                        </View>
+                        <View style={[styles.premiumGridItem, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9', alignItems: 'center', paddingVertical: 20 }]}>
+                            <Text style={{ color: theme.textSecondary, marginBottom: 8, textAlign: 'center' }}>
+                                Share this code with your tenants so they can connect to this hostel in their app.
+                            </Text>
+                            <Text style={{ fontSize: 28, fontWeight: 'bold', color: theme.textPrimary, letterSpacing: 4 }}>
+                                {selectedHostelDetails.hostel_code}
+                            </Text>
+                        </View>
+                    </View>
+                )}
+
                 {/* Premium Card: Hostel General & Location Info */}
                 <View style={[styles.premiumCardContainer, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
                     <View style={styles.premiumCardHeader}>

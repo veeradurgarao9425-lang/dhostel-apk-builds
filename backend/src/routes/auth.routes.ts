@@ -15,6 +15,11 @@ router.post('/forgot-password', authController.forgotPassword);
 router.post('/reset-password', authController.resetPassword);
 router.post('/verify-reset-token', authController.verifyResetToken);
 
+// Tenant routes
+router.post('/tenant/verify-hostel', authController.verifyHostelKey);
+router.post('/tenant/send-otp', authController.tenantSendOtp);
+router.post('/tenant/verify-otp', authController.tenantVerifyOtp);
+
 // Protected routes
 router.get('/me', authMiddleware, authController.me);
 router.post('/change-password', authMiddleware, authController.changePassword);

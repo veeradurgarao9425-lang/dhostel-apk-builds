@@ -229,6 +229,12 @@ async function patchDatabaseSchema() {
           console.log('[schema-patch] adding admission_fee to hostel_master...');
           await db.raw("ALTER TABLE hostel_master ADD COLUMN admission_fee DECIMAL(10, 2) DEFAULT 0");
         }
+        if (!columnNames.includes('hostel_code')) {
+          console.log('[schema-patch] adding hostel_code to hostel_master...');
+          await db.raw("ALTER TABLE hostel_master ADD COLUMN hostel_code VARCHAR(10) UNIQUE AFTER hostel_name");
+          // Generate codes for existing hostels
+          await db.raw("UPDATE hostel_master SET hostel_code = SUBSTRING(MD5(RAND()), 1, 6) WHERE hostel_code IS NULL");
+        }
         if (!columnNames.includes('updated_at')) {
           console.log('[schema-patch] adding updated_at to hostel_master...');
           await db.raw("ALTER TABLE hostel_master ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
