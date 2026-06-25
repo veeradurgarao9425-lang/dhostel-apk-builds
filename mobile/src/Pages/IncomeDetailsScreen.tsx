@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
-    ScrollView, StatusBar, ActivityIndicator, Dimensions, Linking, Modal, Alert, Platform
+    ScrollView, StatusBar, ActivityIndicator, Dimensions, Linking, Modal, Alert, Platform, Animated
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -85,6 +85,30 @@ export default function IncomeDetailsScreen() {
     const [downloadedFileUri, setDownloadedFileUri] = useState<string | null>(null);
 
     const { theme } = useTheme();
+
+    const [avgModalVisible, setAvgModalVisible] = useState(false);
+    const [scaleAnim] = useState(new Animated.Value(0));
+
+    const openAvgModal = () => {
+        setAvgModalVisible(true);
+        scaleAnim.setValue(0);
+        Animated.spring(scaleAnim, {
+            toValue: 1,
+            friction: 7,
+            tension: 40,
+            useNativeDriver: true,
+        }).start();
+    };
+
+    const closeAvgModal = () => {
+        Animated.timing(scaleAnim, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
+        }).start(() => {
+            setAvgModalVisible(false);
+        });
+    };
 
     const handleExport = async () => {
         if (exportStart > exportEnd) {
@@ -513,10 +537,7 @@ export default function IncomeDetailsScreen() {
                         <View style={s.statsDivider} />
                         <TouchableOpacity 
                             style={s.statsCol}
-                            onPress={() => Alert.alert(
-                                'Average Payment',
-                                'This is the average amount collected per transaction (Total Earnings ÷ Total Payments).'
-                            )}
+                            onPress={openAvgModal}
                             activeOpacity={0.7}
                         >
                             <Text style={s.statsNum}>₹{averagePayment.toLocaleString('en-IN')}</Text>
@@ -857,6 +878,55 @@ export default function IncomeDetailsScreen() {
                 onCancel={() => setDatePickerVisible(false)}
             />
 
+            {/* Average Payment Info Modal */}
+            <Modal
+                visible={avgModalVisible}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={closeAvgModal}
+            >
+                <View style={s.modalOverlay}>
+                    <Animated.View 
+                        style={[
+                            s.modalContent, 
+                            { 
+                                backgroundColor: theme.cardBg,
+                                transform: [{ scale: scaleAnim }]
+                            }
+                        ]}
+                    >
+                        <View style={[s.modalHeader, { borderBottomColor: theme.background }]}>
+                            <Text style={[s.modalTitle, { color: theme.textPrimary }]}>Average Payment</Text>
+                            <TouchableOpacity onPress={closeAvgModal} style={s.modalCloseBtn}>
+                                <Ionicons name="close" size={20} color={theme.textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+                        
+                        <View style={s.modalBody}>
+                            <View style={[s.iconWrapper, { backgroundColor: theme.lightBg }]}>
+                                <Ionicons name="stats-chart" size={32} color={theme.primary} />
+                            </View>
+                            <Text style={[s.modalDescription, { color: theme.textSecondary }]}>
+                                This represents the average amount collected per payment transaction.
+                            </Text>
+                            
+                            <View style={[s.formulaCard, { backgroundColor: theme.background }]}>
+                                <Text style={[s.formulaLabel, { color: theme.textSecondary }]}>Calculation Formula:</Text>
+                                <Text style={[s.formulaText, { color: theme.textPrimary }]}>
+                                    Total Earnings ÷ Total Payments
+                                </Text>
+                            </View>
+                        </View>
+
+                        <TouchableOpacity 
+                            style={[s.modalConfirmBtn, { backgroundColor: theme.primary }]} 
+                            onPress={closeAvgModal}
+                        >
+                            <Text style={s.modalConfirmText}>Got it</Text>
+                        </TouchableOpacity>
+                    </Animated.View>
+                </View>
+            </Modal>
 
         </View>
     );
@@ -1342,6 +1412,91 @@ const s = StyleSheet.create({
         backgroundColor: '#A7F3D0',
     },
     exportConfirmText: {
+        color: '#FFFFFF',
+        fontSize: 13,
+        fontWeight: '800',
+    },
+
+    // ── AVERAGE PAYMENT MODAL ──
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(15, 23, 42, 0.6)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 24,
+    },
+    modalContent: {
+        width: '100%',
+        maxWidth: 340,
+        borderRadius: 20,
+        padding: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.15,
+        shadowRadius: 20,
+        elevation: 8,
+        borderWidth: 1,
+        borderColor: 'rgba(226, 232, 240, 0.8)',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingBottom: 12,
+        borderBottomWidth: 1,
+    },
+    modalTitle: {
+        fontSize: 16,
+        fontWeight: '800',
+    },
+    modalCloseBtn: {
+        padding: 4,
+    },
+    modalBody: {
+        alignItems: 'center',
+        paddingVertical: 18,
+    },
+    iconWrapper: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 14,
+    },
+    modalDescription: {
+        fontSize: 13,
+        textAlign: 'center',
+        lineHeight: 18,
+        fontWeight: '500',
+        marginBottom: 16,
+        paddingHorizontal: 8,
+    },
+    formulaCard: {
+        width: '100%',
+        borderRadius: 12,
+        padding: 12,
+        alignItems: 'center',
+    },
+    formulaLabel: {
+        fontSize: 11,
+        fontWeight: '700',
+        marginBottom: 4,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    formulaText: {
+        fontSize: 13,
+        fontWeight: '800',
+    },
+    modalConfirmBtn: {
+        borderRadius: 12,
+        height: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 6,
+    },
+    modalConfirmText: {
         color: '#FFFFFF',
         fontSize: 13,
         fontWeight: '800',
