@@ -8,18 +8,25 @@ export default function RegistrationScreen({ route, navigation }: any) {
   const { identifier, hostel_id } = route.params;
   const { updateTokenAndUser } = useAuth();
   
+  const isEmail = identifier.includes('@');
+  
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [phone, setPhone] = useState(isEmail ? '' : identifier);
+  const [email, setEmail] = useState(isEmail ? identifier : '');
   const [gender, setGender] = useState('Male'); // Default
   const [guardianName, setGuardianName] = useState('');
   const [guardianPhone, setGuardianPhone] = useState('');
+  const [permanentAddress, setPermanentAddress] = useState('');
+  const [idProofType, setIdProofType] = useState('1'); // Assuming 1 is Aadhaar
+  const [idProofNumber, setIdProofNumber] = useState('');
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleRegister = async () => {
-    if (!firstName.trim()) {
-      setError('First name is required.');
+    if (!firstName.trim() || !phone.trim() || !idProofNumber.trim()) {
+      setError('First name, Phone, and ID Proof are required.');
       return;
     }
 
@@ -32,20 +39,23 @@ export default function RegistrationScreen({ route, navigation }: any) {
         hostel_id,
         first_name: firstName,
         last_name: lastName,
+        phone,
+        email,
         gender,
         guardian_name: guardianName,
         guardian_phone: guardianPhone,
+        permanent_address: permanentAddress,
+        id_proof_type: idProofType,
+        id_proof_number: idProofNumber,
       });
 
       setLoading(false);
 
       if (response.data?.success) {
-        // Registration successful! We have a token and user
         Alert.alert('Success', 'Registration successful! Awaiting owner approval.');
         const token = response.data.data.token;
         const tenantData = response.data.data.tenant;
         
-        // This will log the user in automatically
         await updateTokenAndUser(token, tenantData);
       } else {
         setError(response.data?.error || 'Registration failed.');
@@ -85,6 +95,32 @@ export default function RegistrationScreen({ route, navigation }: any) {
         </View>
 
         <View style={styles.formGroup}>
+          <Text style={styles.label}>Phone Number *</Text>
+          <TextInput
+            style={[styles.input, !isEmail && styles.inputDisabled]}
+            placeholder="10-digit mobile number"
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+            maxLength={10}
+            editable={isEmail}
+          />
+        </View>
+
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Email Address</Text>
+          <TextInput
+            style={[styles.input, isEmail && styles.inputDisabled]}
+            placeholder="your.email@example.com"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            editable={!isEmail}
+          />
+        </View>
+
+        <View style={styles.formGroup}>
           <Text style={styles.label}>Gender *</Text>
           <View style={styles.genderRow}>
             <TouchableOpacity 
@@ -100,6 +136,28 @@ export default function RegistrationScreen({ route, navigation }: any) {
               <Text style={[styles.genderText, gender === 'Female' && styles.genderTextActive]}>Female</Text>
             </TouchableOpacity>
           </View>
+        </View>
+
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Aadhaar / ID Proof Number *</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter ID number"
+            value={idProofNumber}
+            onChangeText={setIdProofNumber}
+          />
+        </View>
+
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Permanent Address</Text>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            placeholder="Full address"
+            value={permanentAddress}
+            onChangeText={setPermanentAddress}
+            multiline
+            numberOfLines={3}
+          />
         </View>
 
         <View style={styles.formGroup}>
@@ -178,6 +236,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     borderWidth: 1,
     borderColor: '#E0E0E0',
+  },
+  inputDisabled: {
+    backgroundColor: '#F5F5F5',
+    color: '#9E9E9E',
+  },
+  textArea: {
+    height: 100,
+    textAlignVertical: 'top',
   },
   genderRow: {
     flexDirection: 'row',

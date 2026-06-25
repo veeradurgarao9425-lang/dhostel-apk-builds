@@ -1006,6 +1006,11 @@ export const authController = {
         return res.status(400).json({ success: false, error: 'Missing required fields' });
       }
 
+      const finalPhone = phone || (identifier.includes('@') ? null : identifier);
+      if (!finalPhone) {
+        return res.status(400).json({ success: false, error: 'Phone number is required.' });
+      }
+
       // Check if tenant already exists (shouldn't happen but just in case)
       const existing = await db('students')
         .where('hostel_id', hostel_id)
@@ -1029,7 +1034,7 @@ export const authController = {
         hostel_id,
         first_name,
         last_name: last_name || null,
-        phone: phone || (identifier.includes('@') ? null : identifier),
+        phone: finalPhone,
         email: email || (identifier.includes('@') ? identifier : null),
         gender,
         guardian_name: guardian_name || null,
