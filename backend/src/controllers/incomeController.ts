@@ -77,6 +77,9 @@ export const getAllIncome = async (req: AuthRequest, res: Response) => {
         is_guest: true,
       }));
     } catch (e) {
+      guestRows = [];
+    }
+
     // ── Merge in admission fee payments from students table ──
     let admissionFeeRows: any[] = [];
     try {
