@@ -20,6 +20,7 @@ router.post('/tenant/verify-hostel', authController.verifyHostelKey);
 router.post('/tenant/send-otp', authController.tenantSendOtp);
 router.post('/tenant/verify-otp', authController.tenantVerifyOtp);
 router.post('/tenant/register', authController.tenantRegister);
+router.get('/tenant/me', authMiddleware, authController.tenantMe);
 
 // Protected routes
 router.get('/me', authMiddleware, authController.me);

@@ -1,32 +1,80 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import api from '../services/api';
 
+const TOTAL_STEPS = 3;
+
 export default function RegistrationScreen({ route, navigation }: any) {
   const { identifier, hostel_id } = route.params;
-  const { updateTokenAndUser } = useAuth();
-  
+  const { updateTokenAndUser, refreshUser } = useAuth();
+
   const isEmail = identifier.includes('@');
-  
+
+  const [step, setStep] = useState(1);
+
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState(isEmail ? '' : identifier);
   const [email, setEmail] = useState(isEmail ? identifier : '');
-  const [gender, setGender] = useState('Male'); // Default
+  const [gender, setGender] = useState('Male');
   const [guardianName, setGuardianName] = useState('');
   const [guardianPhone, setGuardianPhone] = useState('');
   const [permanentAddress, setPermanentAddress] = useState('');
-  const [idProofType, setIdProofType] = useState('1'); // Assuming 1 is Aadhaar
+  const idProofType = '1'; // 1 = Aadhaar
   const [idProofNumber, setIdProofNumber] = useState('');
-  
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Validate only the fields on the current step before advancing.
+  const validateStep = () => {
+    if (step === 1) {
+      if (!firstName.trim()) return 'Please enter your first name.';
+    }
+    if (step === 2) {
+      if (!phone.trim() || phone.trim().length < 10) return 'Please enter a valid 10-digit phone number.';
+    }
+    if (step === 3) {
+      if (!idProofNumber.trim()) return 'Please enter your ID proof number.';
+    }
+    return '';
+  };
+
+  const handleNext = () => {
+    const msg = validateStep();
+    if (msg) {
+      setError(msg);
+      return;
+    }
+    setError('');
+    setStep((s) => Math.min(s + 1, TOTAL_STEPS));
+  };
+
+  const handleBack = () => {
+    setError('');
+    if (step === 1) {
+      navigation.goBack();
+    } else {
+      setStep((s) => s - 1);
+    }
+  };
+
   const handleRegister = async () => {
-    if (!firstName.trim() || !phone.trim() || !idProofNumber.trim()) {
-      setError('First name, Phone, and ID Proof are required.');
+    const msg = validateStep();
+    if (msg) {
+      setError(msg);
       return;
     }
 
@@ -49,15 +97,16 @@ export default function RegistrationScreen({ route, navigation }: any) {
         id_proof_number: idProofNumber,
       });
 
-      setLoading(false);
-
       if (response.data?.success) {
-        Alert.alert('Success', 'Registration successful! Awaiting owner approval.');
         const token = response.data.data.token;
         const tenantData = response.data.data.tenant;
-        
         await updateTokenAndUser(token, tenantData);
+        // Pull the full live profile so the dashboard's pending state is accurate.
+        await refreshUser();
+        // Auth context now has a user → AppNavigator swaps to the dashboard,
+        // which shows the "waiting for room allocation" state.
       } else {
+        setLoading(false);
         setError(response.data?.error || 'Registration failed.');
       }
     } catch (err: any) {
@@ -68,157 +117,207 @@ export default function RegistrationScreen({ route, navigation }: any) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.title}>Complete Registration</Text>
-        <Text style={styles.subtitle}>Welcome! Please complete your profile to request admission to the hostel.</Text>
-
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>First Name *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. Rahul"
-            value={firstName}
-            onChangeText={setFirstName}
-          />
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        {/* Header + progress */}
+        <View style={styles.headerBar}>
+          <TouchableOpacity onPress={handleBack} style={styles.backButton} disabled={loading}>
+            <Text style={styles.backText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.stepCount}>Step {step} of {TOTAL_STEPS}</Text>
         </View>
 
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Last Name</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. Sharma"
-            value={lastName}
-            onChangeText={setLastName}
-          />
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressBar, { width: `${(step / TOTAL_STEPS) * 100}%` }]} />
         </View>
 
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Phone Number *</Text>
-          <TextInput
-            style={[styles.input, !isEmail && styles.inputDisabled]}
-            placeholder="10-digit mobile number"
-            value={phone}
-            onChangeText={setPhone}
-            keyboardType="phone-pad"
-            maxLength={10}
-            editable={isEmail}
-          />
-        </View>
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+          {step === 1 && (
+            <>
+              <Text style={styles.title}>About you</Text>
+              <Text style={styles.subtitle}>Let's start with your name and gender.</Text>
 
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Email Address</Text>
-          <TextInput
-            style={[styles.input, isEmail && styles.inputDisabled]}
-            placeholder="your.email@example.com"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            editable={!isEmail}
-          />
-        </View>
+              <Field label="First Name *">
+                <TextInput style={styles.input} placeholder="e.g. Rahul" value={firstName} onChangeText={setFirstName} />
+              </Field>
 
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Gender *</Text>
-          <View style={styles.genderRow}>
-            <TouchableOpacity 
-              style={[styles.genderButton, gender === 'Male' && styles.genderButtonActive]}
-              onPress={() => setGender('Male')}
-            >
-              <Text style={[styles.genderText, gender === 'Male' && styles.genderTextActive]}>Male</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.genderButton, gender === 'Female' && styles.genderButtonActive]}
-              onPress={() => setGender('Female')}
-            >
-              <Text style={[styles.genderText, gender === 'Female' && styles.genderTextActive]}>Female</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+              <Field label="Last Name">
+                <TextInput style={styles.input} placeholder="e.g. Sharma" value={lastName} onChangeText={setLastName} />
+              </Field>
 
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Aadhaar / ID Proof Number *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter ID number"
-            value={idProofNumber}
-            onChangeText={setIdProofNumber}
-          />
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Permanent Address</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="Full address"
-            value={permanentAddress}
-            onChangeText={setPermanentAddress}
-            multiline
-            numberOfLines={3}
-          />
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Guardian Name</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Parent or Guardian Name"
-            value={guardianName}
-            onChangeText={setGuardianName}
-          />
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Guardian Phone</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="10-digit mobile number"
-            value={guardianPhone}
-            onChangeText={setGuardianPhone}
-            keyboardType="phone-pad"
-            maxLength={10}
-          />
-        </View>
-
-        <TouchableOpacity 
-          style={styles.button} 
-          onPress={handleRegister}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Submit Application</Text>
+              <Field label="Gender *">
+                <View style={styles.genderRow}>
+                  {['Male', 'Female'].map((g) => (
+                    <TouchableOpacity
+                      key={g}
+                      style={[styles.genderButton, gender === g && styles.genderButtonActive]}
+                      onPress={() => setGender(g)}
+                    >
+                      <Text style={[styles.genderText, gender === g && styles.genderTextActive]}>{g}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </Field>
+            </>
           )}
-        </TouchableOpacity>
-      </ScrollView>
+
+          {step === 2 && (
+            <>
+              <Text style={styles.title}>Contact</Text>
+              <Text style={styles.subtitle}>How can the hostel reach you?</Text>
+
+              <Field label="Phone Number *">
+                <TextInput
+                  style={[styles.input, !isEmail && styles.inputDisabled]}
+                  placeholder="10-digit mobile number"
+                  value={phone}
+                  onChangeText={setPhone}
+                  keyboardType="phone-pad"
+                  maxLength={10}
+                  editable={isEmail}
+                />
+              </Field>
+
+              <Field label="Email Address">
+                <TextInput
+                  style={[styles.input, isEmail && styles.inputDisabled]}
+                  placeholder="your.email@example.com"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  editable={!isEmail}
+                />
+              </Field>
+            </>
+          )}
+
+          {step === 3 && (
+            <>
+              <Text style={styles.title}>ID & guardian</Text>
+              <Text style={styles.subtitle}>Required for hostel records.</Text>
+
+              <Field label="Aadhaar / ID Proof Number *">
+                <TextInput style={styles.input} placeholder="Enter ID number" value={idProofNumber} onChangeText={setIdProofNumber} />
+              </Field>
+
+              <Field label="Permanent Address">
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  placeholder="Full address"
+                  value={permanentAddress}
+                  onChangeText={setPermanentAddress}
+                  multiline
+                  numberOfLines={3}
+                />
+              </Field>
+
+              <Field label="Guardian Name">
+                <TextInput style={styles.input} placeholder="Parent or Guardian Name" value={guardianName} onChangeText={setGuardianName} />
+              </Field>
+
+              <Field label="Guardian Phone">
+                <TextInput
+                  style={styles.input}
+                  placeholder="10-digit mobile number"
+                  value={guardianPhone}
+                  onChangeText={setGuardianPhone}
+                  keyboardType="phone-pad"
+                  maxLength={10}
+                />
+              </Field>
+            </>
+          )}
+
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        </ScrollView>
+
+        {/* Sticky footer action */}
+        <View style={styles.footer}>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={step === TOTAL_STEPS ? handleRegister : handleNext}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>{step === TOTAL_STEPS ? 'Submit Application' : 'Continue'}</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
+
+const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
+  <View style={styles.formGroup}>
+    <Text style={styles.label}>{label}</Text>
+    {children}
+  </View>
+);
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F5F5',
   },
+  flex: {
+    flex: 1,
+  },
+  headerBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  backButton: {
+    paddingVertical: 4,
+    paddingRight: 12,
+  },
+  backText: {
+    fontSize: 16,
+    color: '#6B5B95',
+    fontWeight: '600',
+  },
+  stepCount: {
+    fontSize: 14,
+    color: '#757575',
+    fontWeight: '600',
+  },
+  progressTrack: {
+    height: 6,
+    backgroundColor: '#E0E0E0',
+    marginHorizontal: 24,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressBar: {
+    height: 6,
+    backgroundColor: '#6B5B95',
+    borderRadius: 3,
+  },
   scrollContent: {
     padding: 24,
-    paddingBottom: 40,
+    paddingBottom: 32,
   },
   title: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: 'bold',
     color: '#212121',
-    marginBottom: 8,
-    marginTop: 20,
+    marginBottom: 6,
+    marginTop: 8,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#757575',
-    marginBottom: 32,
-    lineHeight: 24,
+    marginBottom: 28,
+    lineHeight: 22,
   },
   formGroup: {
     marginBottom: 20,
@@ -271,12 +370,18 @@ const styles = StyleSheet.create({
     color: '#6B5B95',
     fontWeight: 'bold',
   },
+  footer: {
+    padding: 24,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#E0E0E0',
+    backgroundColor: '#F5F5F5',
+  },
   button: {
     backgroundColor: '#6B5B95',
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
-    marginTop: 16,
   },
   buttonText: {
     color: '#FFFFFF',
@@ -285,7 +390,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: '#FF5252',
-    marginBottom: 16,
+    marginTop: 8,
     textAlign: 'center',
   },
 });

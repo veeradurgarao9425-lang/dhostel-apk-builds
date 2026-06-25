@@ -10,6 +10,14 @@ type TenantUser = {
   room?: any;
   rent?: number;
   hostel_id?: number;
+  // Live fields hydrated from GET /auth/tenant/me
+  gender?: string;
+  status?: number;
+  is_allocated?: boolean;
+  room_number?: string | null;
+  monthly_rent?: number | null;
+  outstanding_due?: number;
+  next_due_date?: string | null;
 };
 
 type ConnectedHostel = {
@@ -27,6 +35,7 @@ type AuthContextType = {
   signOut: () => Promise<void>;
   disconnectHostel: () => Promise<void>;
   updateTokenAndUser: (token: string | null | undefined, updatedFields: Partial<TenantUser>) => Promise<void>;
+  refreshUser: () => Promise<void>;
   logoutLoading: boolean;
 };
 
@@ -40,6 +49,7 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => {},
   disconnectHostel: async () => {},
   updateTokenAndUser: async () => {},
+  refreshUser: async () => {},
   logoutLoading: false,
 });
 
@@ -173,6 +183,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  // Re-fetch the tenant's live profile/allocation/dues from the server and
+  // merge it into the cached user. Called on dashboard focus & pull-to-refresh
+  // so the UI reflects owner actions (e.g. room allocation) without re-login.
+  const refreshUser = async () => {
+    try {
+      const response = await api.get('/auth/tenant/me');
+      const fresh = response.data?.data;
+      if (!fresh) return;
+      setUser(prev => {
+        const merged = { ...(prev || {}), ...fresh } as TenantUser;
+        AsyncStorage.setItem('user', JSON.stringify(merged)).catch(() => {});
+        return merged;
+      });
+    } catch (error) {
+      if (__DEV__) console.error('Failed to refresh user', error);
+    }
+  };
+
   const updateTokenAndUser = async (token: string | null | undefined, updatedFields: Partial<TenantUser>) => {
     try {
       if (token) {
@@ -201,6 +229,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     signOut,
     disconnectHostel,
     updateTokenAndUser,
+    refreshUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

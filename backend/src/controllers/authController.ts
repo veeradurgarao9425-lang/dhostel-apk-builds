@@ -1080,5 +1080,66 @@ export const authController = {
       return res.status(500).json({ success: false, error: error?.sqlMessage || 'Internal server error' });
     }
   },
+
+  // Returns the logged-in tenant's own live profile, allocation and dues.
+  // The mobile dashboard polls this on focus / pull-to-refresh so it updates
+  // automatically once the owner allocates a room.
+  async tenantMe(req: AuthRequest, res: Response) {
+    try {
+      const studentId = req.user?.user_id;
+      if (!studentId) {
+        return res.status(401).json({ success: false, error: 'Unauthorized' });
+      }
+
+      const tenant = await db('students')
+        .select('students.*', 'rooms.room_number', 'rooms.rent_per_bed')
+        .leftJoin('rooms', 'rooms.room_id', 'students.room_id')
+        .where('students.student_id', studentId)
+        .first();
+
+      if (!tenant) {
+        return res.status(404).json({ success: false, error: 'Tenant not found' });
+      }
+
+      const status = Number(tenant.status);
+      // Allocated only once the owner has set a room AND marked the tenant active
+      // (status 3 = pending mobile registration awaiting owner action).
+      const isAllocated = tenant.room_id != null && status === 1;
+
+      const dueRow = await db('monthly_fees')
+        .where('student_id', studentId)
+        .whereIn('fee_status', ['Pending', 'Partially Paid', 'Overdue'])
+        .sum({ total_balance: 'balance' })
+        .first();
+
+      const nextDue = await db('monthly_fees')
+        .where('student_id', studentId)
+        .whereIn('fee_status', ['Pending', 'Partially Paid', 'Overdue'])
+        .whereNotNull('due_date')
+        .orderBy('due_date', 'asc')
+        .first();
+
+      return res.json({
+        success: true,
+        data: {
+          id: tenant.student_id,
+          name: tenant.first_name + (tenant.last_name ? ' ' + tenant.last_name : ''),
+          email: tenant.email,
+          phone: tenant.phone,
+          gender: tenant.gender,
+          status,
+          is_allocated: isAllocated,
+          room_number: tenant.room_number || null,
+          monthly_rent: tenant.monthly_rent ?? tenant.rent_per_bed ?? null,
+          outstanding_due: Number(dueRow?.total_balance || 0),
+          next_due_date: nextDue?.due_date || null,
+          hostel_id: tenant.hostel_id,
+        },
+      });
+    } catch (error) {
+      console.error('tenantMe error:', error);
+      return res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+  },
 };
 
