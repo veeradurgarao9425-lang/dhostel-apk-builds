@@ -12,6 +12,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import api from '../services/api';
 import { useTranslation } from 'react-i18next';
 import { useConfirmation } from '../../contexts/ConfirmationContext';
+import * as Clipboard from 'expo-clipboard';
 
 // ─── Menu item definition ─────────────────────────────────────────────────────
 interface MenuItem {
@@ -193,6 +194,23 @@ export default function MoreScreen() {
     const [hostels, setHostels] = useState<any[]>([]);
     const [switching, setSwitching] = useState(false);
     const [loadingHostels, setLoadingHostels] = useState(false);
+    const [copiedActiveCode, setCopiedActiveCode] = useState(false);
+    const [copiedCardCode, setCopiedCardCode] = useState(false);
+
+    const handleCopyCode = async (code: string, type: 'active' | 'card') => {
+        try {
+            await Clipboard.setStringAsync(code);
+            if (type === 'active') {
+                setCopiedActiveCode(true);
+                setTimeout(() => setCopiedActiveCode(false), 2000);
+            } else {
+                setCopiedCardCode(true);
+                setTimeout(() => setCopiedCardCode(false), 2000);
+            }
+        } catch (err) {
+            console.error('Failed to copy to clipboard:', err);
+        }
+    };
 
     const fetchHostels = async () => {
         try {
@@ -366,9 +384,23 @@ export default function MoreScreen() {
                                                 const hCode = authHostels.find((h: any) => h.hostel_id === user?.hostel_id)?.hostel_code;
                                                 if (hCode) {
                                                     return (
-                                                        <Text style={{ fontSize: fontSize - 3, color: theme.primary, fontWeight: '700', marginTop: 2 }}>
-                                                            Code: {hCode}
-                                                        </Text>
+                                                        <TouchableOpacity
+                                                            onPress={(e) => {
+                                                                e.stopPropagation();
+                                                                handleCopyCode(hCode, 'active');
+                                                            }}
+                                                            style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}
+                                                            activeOpacity={0.7}
+                                                        >
+                                                            <Text style={{ fontSize: fontSize - 3, color: copiedActiveCode ? '#10B981' : theme.primary, fontWeight: '700' }}>
+                                                                {copiedActiveCode ? 'Copied!' : `Code: ${hCode}`}
+                                                            </Text>
+                                                            <Ionicons 
+                                                                name={copiedActiveCode ? "checkmark-circle" : "copy-outline"} 
+                                                                size={12} 
+                                                                color={copiedActiveCode ? '#10B981' : theme.primary} 
+                                                            />
+                                                        </TouchableOpacity>
                                                     );
                                                 }
                                                 return null;
@@ -388,14 +420,28 @@ export default function MoreScreen() {
                                             <Ionicons name="key" size={16} color={theme.primary} />
                                             <Text style={[s.codeCardTitle, { color: theme.textPrimary }]}>Hostel Connection Code</Text>
                                         </View>
-                                        <View style={[s.codeBox, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                                            <Text style={{ fontSize: 28, fontWeight: '800', letterSpacing: 4, color: theme.primary }}>
-                                                {authHostels.find((h: any) => h.hostel_id === user?.hostel_id)?.hostel_code}
+                                        <TouchableOpacity 
+                                            style={[s.codeBox, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9' }]}
+                                            onPress={() => {
+                                                const hCode = authHostels.find((h: any) => h.hostel_id === user?.hostel_id)?.hostel_code;
+                                                if (hCode) handleCopyCode(hCode, 'card');
+                                            }}
+                                            activeOpacity={0.7}
+                                        >
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                                <Text style={{ fontSize: 28, fontWeight: '800', letterSpacing: 4, color: copiedCardCode ? '#10B981' : theme.primary }}>
+                                                    {authHostels.find((h: any) => h.hostel_id === user?.hostel_id)?.hostel_code}
+                                                </Text>
+                                                <Ionicons 
+                                                    name={copiedCardCode ? "checkmark-circle" : "copy-outline"} 
+                                                    size={20} 
+                                                    color={copiedCardCode ? '#10B981' : theme.primary} 
+                                                />
+                                            </View>
+                                            <Text style={{ fontSize: 12, color: copiedCardCode ? '#10B981' : theme.textSecondary, marginTop: 6, textAlign: 'center', fontWeight: copiedCardCode ? '700' : '400' }}>
+                                                {copiedCardCode ? 'Code copied to clipboard!' : 'Tap code to copy and share with your tenants.'}
                                             </Text>
-                                            <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 6, textAlign: 'center' }}>
-                                                Share this code with your tenants to let them connect to this hostel.
-                                            </Text>
-                                        </View>
+                                        </TouchableOpacity>
                                     </View>
                                 )}
                             </View>
