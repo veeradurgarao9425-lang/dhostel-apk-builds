@@ -1000,6 +1000,8 @@ export const authController = {
       console.error('tenantVerifyOtp error:', error);
       return res.status(500).json({ success: false, error: 'Internal server error' });
     }
+  },
+
   async tenantRegister(req: Request, res: Response) {
     try {
       const { identifier, hostel_id, first_name, last_name, phone, email, gender, guardian_name, guardian_phone, guardian_relation, permanent_address, id_proof_type, id_proof_number } = req.body;
