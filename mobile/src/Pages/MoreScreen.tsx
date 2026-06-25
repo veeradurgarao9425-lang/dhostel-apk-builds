@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
     StatusBar, ScrollView, Platform, Alert, TextInput,
@@ -28,8 +28,14 @@ interface MenuItem {
 
 export default function MoreScreen() {
     const navigation = useNavigation<any>();
-    const { user, signOut, updateTokenAndUser } = useAuth();
+    const { user, signOut, updateTokenAndUser, hostels: authHostels, loadHostels } = useAuth();
     const confirm = useConfirmation();
+
+    useEffect(() => {
+        if (authHostels.length === 0) {
+            loadHostels();
+        }
+    }, [authHostels.length, loadHostels]);
     const { theme, isDark, fontSize } = useTheme();
     const { t } = useTranslation();
 
@@ -335,33 +341,53 @@ export default function MoreScreen() {
             >
                 {/* Active Hostel Selection Card */}
                 {!isListEmpty && !searchQuery && (
-                    <TouchableOpacity
-                        style={[
-                            s.activeHostelCard,
-                            {
-                                backgroundColor: theme.cardBg,
-                                borderColor: isDark ? '#334155' : '#E2E8F0',
-                            }
-                        ]}
-                        onPress={openHostelSelector}
-                        activeOpacity={0.8}
-                    >
-                        <View style={s.activeHostelLeft}>
-                            <View style={[s.activeHostelIconContainer, { backgroundColor: isDark ? 'rgba(124, 58, 237, 0.15)' : theme.primary + '12' }]}>
-                                <Ionicons name="business" size={20} color={theme.primary} />
+                    <View>
+                        <TouchableOpacity
+                            style={[
+                                s.activeHostelCard,
+                                {
+                                    backgroundColor: theme.cardBg,
+                                    borderColor: isDark ? '#334155' : '#E2E8F0',
+                                }
+                            ]}
+                            onPress={openHostelSelector}
+                            activeOpacity={0.8}
+                        >
+                            <View style={s.activeHostelLeft}>
+                                <View style={[s.activeHostelIconContainer, { backgroundColor: isDark ? 'rgba(124, 58, 237, 0.15)' : theme.primary + '12' }]}>
+                                    <Ionicons name="business" size={20} color={theme.primary} />
+                                </View>
+                                <View style={s.activeHostelTextWrap}>
+                                    <Text style={[s.activeHostelLabel, { color: theme.textSecondary, fontSize: fontSize - 4 }]}>{t('more.activeHostel')}</Text>
+                                    <Text style={[s.activeHostelName, { color: theme.textPrimary, fontSize: fontSize - 1 }]} numberOfLines={1}>
+                                        {user?.hostel_name || t('more.noActiveHostel')}
+                                    </Text>
+                                </View>
                             </View>
-                            <View style={s.activeHostelTextWrap}>
-                                <Text style={[s.activeHostelLabel, { color: theme.textSecondary, fontSize: fontSize - 4 }]}>{t('more.activeHostel')}</Text>
-                                <Text style={[s.activeHostelName, { color: theme.textPrimary, fontSize: fontSize - 1 }]} numberOfLines={1}>
-                                    {user?.hostel_name || t('more.noActiveHostel')}
-                                </Text>
+                            <View style={[s.activeHostelSwitchBtn, { backgroundColor: theme.primary }]}>
+                                <Text style={s.activeHostelSwitchText}>{t('more.switch')}</Text>
+                                <Ionicons name="swap-horizontal" size={12} color="#FFF" />
                             </View>
-                        </View>
-                        <View style={[s.activeHostelSwitchBtn, { backgroundColor: theme.primary }]}>
-                            <Text style={s.activeHostelSwitchText}>{t('more.switch')}</Text>
-                            <Ionicons name="swap-horizontal" size={12} color="#FFF" />
-                        </View>
-                    </TouchableOpacity>
+                        </TouchableOpacity>
+
+                        {/* Hostel Connection Code Block */}
+                        {authHostels.find((h: any) => h.hostel_id === user?.hostel_id)?.hostel_code && (
+                            <View style={[s.codeCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                                <View style={s.codeCardHeader}>
+                                    <Ionicons name="key" size={16} color={theme.primary} />
+                                    <Text style={[s.codeCardTitle, { color: theme.textPrimary }]}>Hostel Connection Code</Text>
+                                </View>
+                                <View style={[s.codeBox, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                    <Text style={{ fontSize: 28, fontWeight: '800', letterSpacing: 4, color: theme.primary }}>
+                                        {authHostels.find((h: any) => h.hostel_id === user?.hostel_id)?.hostel_code}
+                                    </Text>
+                                    <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 6, textAlign: 'center' }}>
+                                        Share this code with your tenants to let them connect to this hostel.
+                                    </Text>
+                                </View>
+                            </View>
+                        )}
+                    </View>
                 )}
 
                 {/* Empty State */}
@@ -955,5 +981,34 @@ const s = StyleSheet.create({
         color: '#FFF',
         fontSize: 11,
         fontWeight: '800',
+    },
+    codeCard: {
+        marginHorizontal: 16,
+        marginBottom: 20,
+        padding: 16,
+        borderRadius: 20,
+        borderWidth: 1,
+        elevation: 2,
+        shadowColor: '#7C3AED',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+    },
+    codeCardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 12,
+    },
+    codeCardTitle: {
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    codeBox: {
+        paddingVertical: 16,
+        paddingHorizontal: 12,
+        borderRadius: 14,
+        alignItems: 'center',
+        borderWidth: 1,
     },
 });
