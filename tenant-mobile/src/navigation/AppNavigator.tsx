@@ -26,10 +26,13 @@ const ConnectStack = () => (
   </Stack.Navigator>
 );
 
+import RegistrationScreen from '../Pages/RegistrationScreen';
+
 const AuthStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="Login" component={LoginScreen} />
     <Stack.Screen name="OTP" component={OTPScreen} />
+    <Stack.Screen name="RegistrationScreen" component={RegistrationScreen} />
   </Stack.Navigator>
 );
 

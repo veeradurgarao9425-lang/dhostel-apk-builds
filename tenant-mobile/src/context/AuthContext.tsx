@@ -23,7 +23,7 @@ type AuthContextType = {
   loading: boolean;
   connectHostel: (code: string) => Promise<{ error: any; data?: ConnectedHostel }>;
   signInOtp: (emailOrPhone: string) => Promise<{ error: any; message?: string }>;
-  verifyOtp: (emailOrPhone: string, otp: string) => Promise<{ error: any; user?: TenantUser }>;
+  verifyOtp: (emailOrPhone: string, otp: string) => Promise<{ error: any; user?: TenantUser; isNewUser?: boolean; data?: any }>;
   signOut: () => Promise<void>;
   disconnectHostel: () => Promise<void>;
   updateTokenAndUser: (token: string | null | undefined, updatedFields: Partial<TenantUser>) => Promise<void>;
@@ -127,6 +127,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         hostel_id: connectedHostel.hostel_id 
       });
       const body = response.data;
+      
+      if (body?.isNewUser) {
+        return { error: null, isNewUser: true, data: body.data };
+      }
+
       const token = body?.data?.token;
       const userData = body?.data?.tenant;
 

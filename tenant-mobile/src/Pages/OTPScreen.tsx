@@ -32,6 +32,9 @@ export default function OTPScreen({ route, navigation }: any) {
     
     if (res.error) {
       setError(res.error);
+    } else if (res.isNewUser) {
+      // Navigate to Registration Screen for new users
+      navigation.replace('RegistrationScreen', { identifier: res.data?.identifier, hostel_id: res.data?.hostel_id });
     } else {
       // The auth context will automatically swap the stack to Main
     }

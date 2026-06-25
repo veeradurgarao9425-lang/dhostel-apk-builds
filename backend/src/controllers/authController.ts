@@ -911,9 +911,8 @@ export const authController = {
         })
         .first();
 
-      if (!tenant) {
-        return res.status(404).json({ success: false, error: 'No tenant found with this detail in this hostel.' });
-      }
+      // If tenant doesn't exist, we still send the OTP so they can register as a new user.
+      const isNewUser = !tenant;
 
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
@@ -964,7 +963,14 @@ export const authController = {
         .first();
 
       if (!tenant) {
-        return res.status(404).json({ success: false, error: 'Tenant not found.' });
+        return res.json({
+          success: true,
+          isNewUser: true,
+          data: {
+            identifier,
+            hostel_id
+          }
+        });
       }
 
       await db('otps').where('email', identifier).del();
@@ -993,6 +999,82 @@ export const authController = {
     } catch (error) {
       console.error('tenantVerifyOtp error:', error);
       return res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+  async tenantRegister(req: Request, res: Response) {
+    try {
+      const { identifier, hostel_id, first_name, last_name, phone, email, gender, guardian_name, guardian_phone, guardian_relation, permanent_address, id_proof_type, id_proof_number } = req.body;
+      
+      if (!identifier || !hostel_id || !first_name || !gender) {
+        return res.status(400).json({ success: false, error: 'Missing required fields' });
+      }
+
+      // Check if tenant already exists (shouldn't happen but just in case)
+      const existing = await db('students')
+        .where('hostel_id', hostel_id)
+        .andWhere(function() {
+          if (email) this.orWhere('email', email);
+          if (phone) this.orWhere('phone', phone);
+          this.orWhere('email', identifier).orWhere('phone', identifier);
+        })
+        .first();
+
+      if (existing) {
+        return res.status(400).json({ success: false, error: 'A tenant with these details already exists in this hostel.' });
+      }
+
+      // Format current date for admission_date
+      const today = new Date();
+      const admission_date = today.toISOString().split('T')[0];
+
+      // Insert into students with status = 3 (QR Register / Pending)
+      const [student_id] = await db('students').insert({
+        hostel_id,
+        first_name,
+        last_name: last_name || null,
+        phone: phone || (identifier.includes('@') ? null : identifier),
+        email: email || (identifier.includes('@') ? identifier : null),
+        gender,
+        guardian_name: guardian_name || null,
+        guardian_phone: guardian_phone || null,
+        guardian_relation: guardian_relation || null,
+        permanent_address: permanent_address || null,
+        id_proof_type: id_proof_type || null,
+        id_proof_number: id_proof_number || null,
+        admission_date,
+        status: 3, // QR Register / Pending Status
+        created_at: new Date()
+      });
+
+      // Clear OTP just in case
+      await db('otps').where('email', identifier).del();
+
+      // Issue JWT token immediately so they can log in
+      const { generateToken } = await import('../utils/jwt.js');
+      const token = generateToken({
+        user_id: student_id,
+        email: email || identifier,
+        role_id: 3, // Tenant
+        hostel_id,
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: 'Registration successful! Awaiting owner approval.',
+        data: {
+          token,
+          tenant: {
+            id: student_id,
+            name: first_name + (last_name ? ' ' + last_name : ''),
+            email: email || identifier,
+            phone: phone || identifier,
+            room: 'Pending',
+            hostel_id
+          }
+        }
+      });
+    } catch (error: any) {
+      console.error('tenantRegister error:', error);
+      return res.status(500).json({ success: false, error: error?.sqlMessage || 'Internal server error' });
     }
   },
 };
