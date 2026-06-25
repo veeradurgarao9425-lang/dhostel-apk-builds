@@ -414,6 +414,46 @@ export default function OverviewScreen() {
                         )}
                     </View>
 
+                    {/* ── Admission Fee Status ── */}
+                    {(() => {
+                        const adm = cm.admissionStats;
+                        if (!adm || adm.totalStudents === 0) return null;
+                        const paidPct = adm.totalStudents > 0 ? Math.round((adm.paidStudents / adm.totalStudents) * 100) : 0;
+                        return (
+                            <View style={[s.card, { paddingVertical: 12 }]}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                        <View style={{ width: 30, height: 30, borderRadius: 10, backgroundColor: '#FEF3C7', alignItems: 'center', justifyContent: 'center' }}>
+                                            <Ionicons name="key-outline" size={15} color="#D97706" />
+                                        </View>
+                                        <View>
+                                            <Text style={{ fontSize: 12, fontWeight: '700', color: '#1E293B' }}>Admission Fees</Text>
+                                            <Text style={{ fontSize: 10, color: '#64748B', marginTop: 1 }}>
+                                                {adm.paidStudents}/{adm.totalStudents} students paid · {adm.pendingStudents} pending
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <View style={{ alignItems: 'flex-end' }}>
+                                        <Text style={{ fontSize: 13, fontWeight: '800', color: '#D97706' }}>
+                                            ₹{adm.totalPaidAmount.toLocaleString('en-IN')}
+                                        </Text>
+                                        <Text style={{ fontSize: 9, color: '#94A3B8', marginTop: 1 }}>
+                                            of ₹{adm.totalExpectedAmount.toLocaleString('en-IN')} expected
+                                        </Text>
+                                    </View>
+                                </View>
+                                {adm.totalExpectedAmount > 0 && (
+                                    <View style={{ marginTop: 10 }}>
+                                        <View style={{ height: 5, backgroundColor: '#FEF3C7', borderRadius: 3, overflow: 'hidden' }}>
+                                            <View style={{ height: '100%', width: `${paidPct}%`, backgroundColor: '#D97706', borderRadius: 3 }} />
+                                        </View>
+                                        <Text style={{ fontSize: 9, color: '#94A3B8', marginTop: 4 }}>{paidPct}% collected</Text>
+                                    </View>
+                                )}
+                            </View>
+                        );
+                    })()}
+
                     {/* ── 12-Month Trend ── */}
                     <View style={s.card}>
                         <View style={s.cardHeader}>

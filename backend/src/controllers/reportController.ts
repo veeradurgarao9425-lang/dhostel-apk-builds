@@ -985,6 +985,15 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
     // ── 2c. Admission fee collection (one-time fees paid during this month) ──
     let admissionFeeCollection = 0;
     let admissionFeeCount = 0;
+    // Per-student admission fee stats (ALL active students, not just this month)
+    let admissionStats = {
+      totalStudents: 0,
+      paidStudents: 0,
+      pendingStudents: 0,
+      totalExpectedAmount: 0,
+      totalPaidAmount: 0,
+      totalPendingAmount: 0,
+    };
     try {
       let admissionFeeQuery = db('students')
         .whereBetween('admission_date', [monthStart, monthEnd])
@@ -1000,6 +1009,33 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
       const admissionFeeResult = await admissionFeeQuery.first();
       admissionFeeCollection = Number(admissionFeeResult?.total || 0);
       admissionFeeCount = Number(admissionFeeResult?.count || 0);
+
+      // Per-student breakdown (all active students with a non-zero admission_fee set)
+      let statsQuery = db('students')
+        .where('status', 1) // active students
+        .where('admission_fee', '>', 0)
+        .select(
+          db.raw('COUNT(*) as total_students'),
+          db.raw('SUM(admission_fee) as total_expected'),
+          db.raw(`SUM(CASE WHEN admission_status = 1 OR admission_status = 'Paid' THEN admission_fee ELSE 0 END) as total_paid`),
+          db.raw(`SUM(CASE WHEN admission_status = 1 OR admission_status = 'Paid' THEN 1 ELSE 0 END) as paid_count`),
+          db.raw(`SUM(CASE WHEN admission_status != 1 AND admission_status != 'Paid' THEN 1 ELSE 0 END) as pending_count`),
+          db.raw(`SUM(CASE WHEN admission_status != 1 AND admission_status != 'Paid' THEN admission_fee ELSE 0 END) as total_pending`)
+        );
+      if (hostelIds.length > 0) {
+        statsQuery = statsQuery.whereIn('hostel_id', hostelIds);
+      }
+      const statsResult = await statsQuery.first();
+      if (statsResult) {
+        admissionStats = {
+          totalStudents: Number(statsResult.total_students || 0),
+          paidStudents: Number(statsResult.paid_count || 0),
+          pendingStudents: Number(statsResult.pending_count || 0),
+          totalExpectedAmount: Number(statsResult.total_expected || 0),
+          totalPaidAmount: Number(statsResult.total_paid || 0),
+          totalPendingAmount: Number(statsResult.total_pending || 0),
+        };
+      }
     } catch (e) {
       admissionFeeCollection = 0;
     }
@@ -1179,7 +1215,8 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
           expenseBreakdown: expenseCategories,
           rentDue: totalRentDue,
           rentPending: totalRentPending,
-          rentCollected: feeCollection
+          rentCollected: feeCollection,
+          admissionStats,
         },
         trend
       }

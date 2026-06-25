@@ -920,12 +920,12 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
             };
             const res = isEdit ? await api.put(`/students/${student.student_id}`, payload) : await api.post('/students', payload);
             if (res.data.success) {
-                triggerRefresh();
-
                 // If a NEW tenant was added without a room, prompt to allocate now.
                 // Billing only starts once a room is allocated, so this keeps the rent roll clean.
                 if (!isEdit && !payload.room_id) {
                     const newId = res.data.data?.student_id;
+                    // Trigger refresh now so list is ready when user goes back
+                    triggerRefresh();
                     setPageAlert({
                         visible: true,
                         title: 'Tenant Added',
@@ -945,7 +945,9 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                     });
                 } else {
                     showSuccess(`Tenant ${isEdit ? 'updated' : 'registered'} successfully!`);
+                    // Navigate first, then signal refresh so destination screen fetches fresh data
                     navigation.goBack();
+                    setTimeout(() => triggerRefresh(), 50);
                 }
             }
         } catch (error: any) {
