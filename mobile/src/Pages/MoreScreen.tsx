@@ -295,10 +295,10 @@ export default function MoreScreen() {
                         </View>
                         <View style={{ flex: 1 }}>
                             <Text style={[s.headerName, { fontSize: fontSize + 3 }]} numberOfLines={1}>
-                                {user?.role_id === 1 ? 'Hostel Administrator' : 'Hostel Owner'}
+                                {user?.full_name || (user?.role_id === 1 ? 'Hostel Administrator' : 'Hostel Owner')}
                             </Text>
                             <Text style={{ fontSize: fontSize - 2, color: 'rgba(255, 255, 255, 0.75)', fontWeight: '600', marginTop: 2 }} numberOfLines={1}>
-                                {user?.phone || user?.email || ''}
+                                {user?.phone ? `+91 ${user.phone}` : (user?.email || 'Admin User')}
                             </Text>
                         </View>
                     </TouchableOpacity>
@@ -362,6 +362,17 @@ export default function MoreScreen() {
                                             <Text style={[s.activeHostelName, { color: theme.textPrimary, fontSize: fontSize - 1 }]} numberOfLines={1}>
                                                 {user?.hostel_name || t('more.noActiveHostel')}
                                             </Text>
+                                            {(() => {
+                                                const hCode = authHostels.find((h: any) => h.hostel_id === user?.hostel_id)?.hostel_code;
+                                                if (hCode) {
+                                                    return (
+                                                        <Text style={{ fontSize: fontSize - 3, color: theme.primary, fontWeight: '700', marginTop: 2 }}>
+                                                            Code: {hCode}
+                                                        </Text>
+                                                    );
+                                                }
+                                                return null;
+                                            })()}
                                         </View>
                                     </View>
                                     <View style={[s.activeHostelSwitchBtn, { backgroundColor: theme.primary }]}>
