@@ -176,6 +176,7 @@ export const getAllHostels = async (req: AuthRequest, res: Response) => {
         'h.owner_id',
         'h.amenities',
         'h.admission_fee',
+        'h.hostel_code',
         'u.full_name as owner_name',
         'u.phone as contact_number',
         'u.email as email',
