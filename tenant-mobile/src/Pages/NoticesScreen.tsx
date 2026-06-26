@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, SlidersHorizontal, Megaphone } from 'lucide-react-native';
 import { colors, radius, spacing, font, shadow } from '../theme';
 import { sampleNotices, Notice } from '../data/tenantContent';
+import api from '../services/api';
 
 type FilterTab = 'All' | 'Important' | 'Maintenance' | 'Food';
 
@@ -68,8 +69,34 @@ function NoticeCard({ notice }: { notice: Notice }) {
 
 export default function NoticesScreen({ navigation }: any) {
   const [activeFilter, setActiveFilter] = useState<FilterTab>('All');
+  const [notices, setNotices] = useState<Notice[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = sampleNotices.filter((n) => {
+  useEffect(() => {
+    const fetchNotices = async () => {
+      try {
+        const res = await api.get('/notices');
+        if (res.data.success) {
+          const formatted = res.data.data.map((n: any) => ({
+            id: String(n.notice_id),
+            title: n.title,
+            body: n.content,
+            category: 'General', // Backend currently doesn't store category for notices, map to General
+            date: n.created_at.slice(0, 10),
+            pinned: false
+          }));
+          setNotices(formatted);
+        }
+      } catch (err) {
+        console.error('Failed to fetch notices:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchNotices();
+  }, []);
+
+  const filtered = notices.filter((n) => {
     if (activeFilter === 'All') return true;
     return n.category === activeFilter;
   });

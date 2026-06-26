@@ -1,14 +1,14 @@
 import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
-import { sendNotificationToHostelOwner } from '../utils/notification.js';
+import { sendNotificationToHostelOwner, sendNotificationToAllHostelStudents } from '../utils/notification.js';
 
 // Get all notices for a hostel
 export const getNotices = async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user;
 
-    if (!user || (user.role_id !== 1 && user.role_id !== 2)) {
+    if (!user || (user.role_id !== 1 && user.role_id !== 2 && user.role_id !== 3)) {
       return res.status(403).json({
         success: false,
         error: 'Unauthorized access.'
@@ -81,12 +81,22 @@ export const createNotice = async (req: AuthRequest, res: Response) => {
     // Trigger push and in-app notification to owner
     sendNotificationToHostelOwner(
       user.hostel_id,
-      'General',
+      'Notice',
       'New Notice Published',
       `Notice: "${title}" has been published.`,
       'Medium',
       { id: notice_id }
     ).catch(err => console.error('Failed to send notice notification:', err));
+
+    // Trigger push and in-app notification to all students in the hostel
+    sendNotificationToAllHostelStudents(
+      user.hostel_id,
+      'Notice',
+      title,
+      content,
+      'High',
+      { id: notice_id }
+    ).catch(err => console.error('Failed to send notice to students:', err));
   } catch (error: any) {
     console.error('Create notice error:', error);
     res.status(500).json({

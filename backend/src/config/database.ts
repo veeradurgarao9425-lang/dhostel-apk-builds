@@ -614,6 +614,122 @@ async function patchDatabaseSchema() {
       console.error('[schema-patch] Error seeding default expense categories:', e.message);
     }
 
+    // 16. Ecosystem Tables (Complaints, Leave, Visitor, Mess Menu)
+    try {
+      if (!tableNamesLower.includes('complaints')) {
+        console.log('[schema-patch] creating missing complaints table...');
+        await db.raw(`
+          CREATE TABLE complaints (
+            complaint_id INT AUTO_INCREMENT PRIMARY KEY,
+            hostel_id INT NOT NULL,
+            student_id INT NOT NULL,
+            category VARCHAR(100) NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            description TEXT NULL,
+            status VARCHAR(50) DEFAULT 'Open',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (hostel_id) REFERENCES hostel_master(hostel_id) ON DELETE CASCADE,
+            FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+      }
+      if (!tableNamesLower.includes('leave_requests')) {
+        console.log('[schema-patch] creating missing leave_requests table...');
+        await db.raw(`
+          CREATE TABLE leave_requests (
+            leave_id INT AUTO_INCREMENT PRIMARY KEY,
+            hostel_id INT NOT NULL,
+            student_id INT NOT NULL,
+            start_date DATE NOT NULL,
+            end_date DATE NOT NULL,
+            reason TEXT NULL,
+            status VARCHAR(50) DEFAULT 'Pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (hostel_id) REFERENCES hostel_master(hostel_id) ON DELETE CASCADE,
+            FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+      }
+      if (!tableNamesLower.includes('visitor_requests')) {
+        console.log('[schema-patch] creating missing visitor_requests table...');
+        await db.raw(`
+          CREATE TABLE visitor_requests (
+            visitor_id INT AUTO_INCREMENT PRIMARY KEY,
+            hostel_id INT NOT NULL,
+            student_id INT NOT NULL,
+            visitor_name VARCHAR(255) NOT NULL,
+            relation VARCHAR(100) NULL,
+            visit_date DATE NOT NULL,
+            visit_time VARCHAR(50) NOT NULL,
+            status VARCHAR(50) DEFAULT 'Pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (hostel_id) REFERENCES hostel_master(hostel_id) ON DELETE CASCADE,
+            FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+      }
+      if (!tableNamesLower.includes('mess_menu')) {
+        console.log('[schema-patch] creating missing mess_menu table...');
+        await db.raw(`
+          CREATE TABLE mess_menu (
+            menu_id INT AUTO_INCREMENT PRIMARY KEY,
+            hostel_id INT NOT NULL,
+            day_of_week VARCHAR(20) NULL,
+            meal_type VARCHAR(50) NOT NULL,
+            items TEXT NOT NULL,
+            timing VARCHAR(100) NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (hostel_id) REFERENCES hostel_master(hostel_id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error creating ecosystem tables:', e.message);
+    }
+
+    // 17. Ensure notifications has student_id and string type
+    try {
+      if (tableNamesLower.includes('notifications')) {
+        const [columns] = await db.raw("SHOW COLUMNS FROM notifications");
+        const columnNames = (columns as any[]).map(col => col.Field.toLowerCase());
+
+        if (!columnNames.includes('student_id')) {
+          console.log('[schema-patch] adding student_id to notifications...');
+          await db.raw("ALTER TABLE notifications ADD COLUMN student_id INT NULL");
+          await db.raw("ALTER TABLE notifications ADD FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE");
+        }
+        // Make user_id nullable since notifications can now be for students
+        await db.raw("ALTER TABLE notifications MODIFY COLUMN user_id INT NULL");
+        // Change notification_type to VARCHAR to support new types without ENUM issues
+        await db.raw("ALTER TABLE notifications MODIFY COLUMN notification_type VARCHAR(100) NOT NULL");
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error updating notifications for ecosystem:', e.message);
+    }
+
+    // 18. Ensure student_fee_payments has verification_status and proof_url
+    try {
+      if (tableNamesLower.includes('student_fee_payments')) {
+        const [columns] = await db.raw("SHOW COLUMNS FROM student_fee_payments");
+        const columnNames = (columns as any[]).map(col => col.Field.toLowerCase());
+
+        if (!columnNames.includes('verification_status')) {
+          console.log('[schema-patch] adding verification_status to student_fee_payments...');
+          await db.raw("ALTER TABLE student_fee_payments ADD COLUMN verification_status VARCHAR(50) DEFAULT 'Verified'");
+        }
+        if (!columnNames.includes('proof_url')) {
+          console.log('[schema-patch] adding proof_url to student_fee_payments...');
+          await db.raw("ALTER TABLE student_fee_payments ADD COLUMN proof_url TEXT NULL");
+        }
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error updating student_fee_payments for ecosystem:', e.message);
+    }
+
     console.log('[schema-patch] Schema check and patch complete.');
   } catch (err: any) {
     console.error('[schema-patch] Critical error during schema patching:', err.message);

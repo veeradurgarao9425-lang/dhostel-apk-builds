@@ -58,6 +58,12 @@ import OverviewScreen        from '../Pages/OverviewScreen';
 import PendingPaymentsScreen from '../Pages/PendingPaymentsScreen';
 import DownloadReceiptsScreen from '../Pages/DownloadReceiptsScreen';
 
+// ── Ecosystem screens ────────────────────────────────────────────────────────
+import ComplaintsManagementScreen from '../Pages/ComplaintsManagementScreen';
+import RequestsManagementScreen from '../Pages/RequestsManagementScreen';
+import MessMenuManagementScreen from '../Pages/MessMenuManagementScreen';
+import PaymentVerificationScreen from '../Pages/PaymentVerificationScreen';
+
 // ── Navigators ────────────────────────────────────────────────────────────────
 import BottomTabNavigator from '../components/BottomTabNavigator';
 
@@ -224,6 +230,12 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen name="QRSignup"    component={QRSignupScreen}    />
                     <Stack.Screen name="PreBooking"  component={PreBookingScreen}  />
                     <Stack.Screen name="Notices"     component={NoticesScreen}     />
+
+                    {/* Ecosystem Management */}
+                    <Stack.Screen name="ComplaintsManagement" component={ComplaintsManagementScreen} />
+                    <Stack.Screen name="RequestsManagement"   component={RequestsManagementScreen} />
+                    <Stack.Screen name="MessMenuManagement"   component={MessMenuManagementScreen} />
+                    <Stack.Screen name="PaymentVerification"  component={PaymentVerificationScreen} />
 
                     {/* Reports */}
                     <Stack.Screen name="Reports" component={ReportsScreen} />

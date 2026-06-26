@@ -22,6 +22,9 @@ import reminderRoutes from './routes/reminderRoutes.js';
 import noticeRoutes from './routes/noticeRoutes.js';
 import guestRoutes from './routes/guestRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
+import complaintRoutes from './routes/complaintRoutes.js';
+import leaveVisitorRoutes from './routes/leaveVisitorRoutes.js';
+import messMenuRoutes from './routes/messMenuRoutes.js';
 import { startMonthlyFeesGenerationJob } from './jobs/monthlyFeesGeneration.js';
 import { startGuestOverstayJob } from './jobs/guestOverstay.js';
 import { sendNotificationToHostelOwner } from './utils/notification.js';
@@ -90,6 +93,9 @@ app.use('/api/reminders', reminderRoutes);
 app.use('/api/notices', noticeRoutes);
 app.use('/api/guests', guestRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/complaints', complaintRoutes);
+app.use('/api/requests', leaveVisitorRoutes);
+app.use('/api/mess-menu', messMenuRoutes);
 
 // Public QR tenant signup (no auth) — supports optional roomId & bedId pre-fill
 app.get('/api/public/qr-signup', async (req, res) => {

@@ -97,8 +97,11 @@ export const getNotifications = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    const isTenant = user.role_id === 3;
+    const condition = isTenant ? { student_id: user.user_id } : { user_id: user.user_id };
+
     const notifications = await db('notifications')
-      .where({ user_id: user.user_id })
+      .where(condition)
       .orderBy('created_at', 'desc')
       .limit(limit);
 
@@ -128,8 +131,13 @@ export const markAsRead = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    const isTenant = user.role_id === 3;
+    const condition = isTenant 
+      ? { notification_id: id, student_id: user.user_id } 
+      : { notification_id: id, user_id: user.user_id };
+
     await db('notifications')
-      .where({ notification_id: id, user_id: user.user_id })
+      .where(condition)
       .update({ is_read: 1 });
 
     res.json({
@@ -157,8 +165,11 @@ export const markAllAsRead = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    const isTenant = user.role_id === 3;
+    const condition = isTenant ? { student_id: user.user_id } : { user_id: user.user_id };
+
     await db('notifications')
-      .where({ user_id: user.user_id })
+      .where(condition)
       .update({ is_read: 1 });
 
     res.json({

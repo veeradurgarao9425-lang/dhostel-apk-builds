@@ -28,6 +28,8 @@ export const getFeePayments = async (req: AuthRequest, res: Response) => {
         'fp.receipt_number',
         'fp.notes as remarks',
         'fp.created_at',
+        'fp.verification_status',
+        'fp.proof_url',
         'mf.fee_month as payment_for_month',
         's.first_name',
         's.last_name',
@@ -111,6 +113,8 @@ export const getStudentPaymentHistory = async (req: AuthRequest, res: Response) 
         'fp.receipt_number',
         'fp.transaction_id as transaction_reference',
         'fp.notes as remarks',
+        'fp.verification_status',
+        'fp.proof_url',
         'pm.payment_mode_name as payment_mode'
       )
       .where('fp.student_id', studentId);
@@ -381,3 +385,107 @@ export const getAvailableMonths = async (req: AuthRequest, res: Response) => {
     });
   }
 };
+
+// Upload Payment Proof (Tenant)
+export const uploadPaymentProof = async (req: AuthRequest, res: Response) => {
+  try {
+    const student_id = req.user?.user_id;
+    const { amount_paid, payment_mode_id, transaction_reference } = req.body;
+    
+    if (!student_id) return res.status(401).json({ success: false, message: 'Unauthorized' });
+    if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
+
+    const student = await db('students').where('student_id', student_id).first();
+    if (!student) return res.status(404).json({ success: false, message: 'Student not found' });
+
+    const proof_url = `/uploads/${req.file.filename}`;
+    const receiptNumber = `RCP${Date.now()}${Math.floor(Math.random() * 1000)}`;
+
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    let monthlyFee = await db('monthly_fees').where({ student_id, fee_month: currentMonth }).first();
+
+    if (!monthlyFee) {
+      const monthlyRent = parseFloat(student?.monthly_rent || 0);
+      const [fee_id] = await db('monthly_fees').insert({
+        student_id,
+        hostel_id: student.hostel_id,
+        fee_month: currentMonth,
+        fee_date: now.getMonth() + 1,
+        monthly_rent: monthlyRent,
+        carry_forward: 0,
+        total_due: monthlyRent,
+        paid_amount: 0,
+        balance: monthlyRent,
+        fee_status: 'Pending',
+        due_date: now,
+        created_at: now,
+        updated_at: now
+      });
+      monthlyFee = await db('monthly_fees').where({ fee_id }).first();
+    }
+
+    const [payment_id] = await db('fee_payments').insert({
+      fee_id: monthlyFee.fee_id,
+      student_id,
+      hostel_id: student.hostel_id,
+      amount: amount_paid || 0,
+      payment_date: now,
+      payment_mode_id: payment_mode_id || null,
+      transaction_id: transaction_reference || null,
+      receipt_number: receiptNumber,
+      verification_status: 'Pending',
+      proof_url,
+      created_at: now,
+      updated_at: now
+    });
+
+    res.status(201).json({ success: true, message: 'Payment proof uploaded successfully', payment_id });
+  } catch (error: any) {
+    console.error('Upload payment proof error:', error);
+    res.status(500).json({ success: false, message: 'Internal Server Error' });
+  }
+};
+
+// Verify Payment Proof (Owner)
+export const verifyPaymentProof = async (req: AuthRequest, res: Response) => {
+  try {
+    const { paymentId } = req.params;
+    const { status } = req.body; // 'Verified' or 'Rejected'
+
+    if (!['Verified', 'Rejected'].includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid status' });
+    }
+
+    const payment = await db('fee_payments').where('payment_id', paymentId).first();
+    if (!payment) return res.status(404).json({ success: false, message: 'Payment not found' });
+
+    await db('fee_payments')
+      .where('payment_id', paymentId)
+      .update({ verification_status: status });
+
+    if (status === 'Verified') {
+      const monthlyFee = await db('monthly_fees').where('fee_id', payment.fee_id).first();
+      if (monthlyFee) {
+        const newPaidAmount = parseFloat(monthlyFee.paid_amount || 0) + parseFloat(payment.amount);
+        const newBalance = parseFloat(monthlyFee.total_due || 0) - newPaidAmount;
+        const newStatus = newBalance <= 0 ? 'Fully Paid' : newPaidAmount > 0 ? 'Partially Paid' : 'Pending';
+
+        await db('monthly_fees')
+          .where({ fee_id: monthlyFee.fee_id })
+          .update({
+            paid_amount: newPaidAmount,
+            balance: Math.max(0, newBalance),
+            fee_status: newStatus,
+            updated_at: new Date()
+          });
+      }
+    }
+
+    res.status(200).json({ success: true, message: `Payment proof ${status}` });
+  } catch (error: any) {
+    console.error('Verify payment proof error:', error);
+    res.status(500).json({ success: false, message: 'Internal Server Error' });
+  }
+};
+

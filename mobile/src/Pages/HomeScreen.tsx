@@ -17,10 +17,12 @@ import { HeaderNotification } from '../components/HeaderNotification';
 import { toLocalDateStr } from '../utils/dateUtils';
 import { useRefresh } from '../../contexts/RefreshContext';
 import { useTranslation } from 'react-i18next';
+import { TenantAppCard } from '../components/TenantAppCard';
 
 // ─── Initial state ────────────────────────────────────────────────────────────
 const INITIAL_STATE = {
     hostelName: '',
+    hostelCode: '',
     monthAmount: 0,
     monthDue: 0,
     pendingAmount: 0,
@@ -58,12 +60,12 @@ const getGreetingKey = () => {
 const QUICK_ACTIONS = [
     { label: 'Add Tenant', icon: 'person-add-outline', color: '#7C3AED', bg: '#EDE9FE', route: 'AddStudent' },
     { label: 'Pre-Book', icon: 'calendar-outline', color: '#F97316', bg: '#FFF7ED', route: 'PreBooking' },
-    { label: 'Add Receipt', icon: 'receipt-outline', color: '#16A34A', bg: '#DCFCE7', route: 'DownloadReceipts' },
     { label: 'Collected Rent', icon: 'wallet-outline', color: '#0D9488', bg: '#CCFBF1', route: 'CollectedPayments' },
     { label: 'Add Expense', icon: 'card-outline', color: '#D97706', bg: '#FEF3C7', route: 'AddExpense' },
+    { label: 'Complaints', icon: 'construct-outline', color: '#DC2626', bg: '#FEE2E2', route: 'ComplaintsManagement' },
     { label: 'Bills', icon: 'document-text-outline', color: '#EA580C', bg: '#FFEDD5', route: 'BillReminders' },
+    { label: 'Mess Menu', icon: 'restaurant-outline', color: '#059669', bg: '#D1FAE5', route: 'MessMenuManagement' },
     { label: 'Staff', icon: 'people-outline', color: '#059669', bg: '#D1FAE5', route: 'AddStaff' },
-    { label: 'Reminders', icon: 'notifications-outline', color: '#8B5CF6', bg: '#F5F3FF', route: 'Reminders' },
 ];
 
 const getQuickActionLabelKey = (label: string) => {
@@ -235,6 +237,7 @@ export default function HomeScreen() {
 
             setData({
                 hostelName: user?.hostel_name || d2.hostel_name || hostelRes?.data?.data?.hostel_name || 'My Hostel',
+                hostelCode: (user as any)?.hostel_code || (d2 as any)?.hostel_code || hostelRes?.data?.data?.hostel_code || hostelRes?.data?.data?.code || 'STAYVIX',
                 monthAmount: currentMonthRevenue,
                 monthDue,
                 pendingAmount: monthPending,
@@ -675,46 +678,45 @@ export default function HomeScreen() {
                     )}
 
                     {/* ─────────────────── QUICK ACTIONS ─────────────────── */}
-                    <View style={[s.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                        <View style={s.cardHeader}>
-                            <View style={s.cardHeaderLeft}>
-                                <Ionicons name="flash-outline" size={15} color={theme.primary} />
-                                <Text style={[s.cardTitle, { fontSize: fontSize - 1, color: theme.textPrimary }]}>{t('dashboard.quickActions')}</Text>
-                            </View>
-                        </View>
-                        <View style={s.quickRow}>
-                            {QUICK_ACTIONS.map((a, i) => (
-                                <TouchableOpacity
-                                    key={i}
-                                    style={s.quickItem}
-                                    activeOpacity={0.75}
-                                    onPress={() => handleQuickAction(a)}
-                                >
-                                    <View style={s.quickIconWrap}>
-                                        <View style={[s.quickIconCircle, { backgroundColor: isDark ? '#334155' : a.bg }]}>
-                                            {a.icon === 'rupee' ? (
-                                                <Text style={{ color: isDark ? theme.primary : a.color, fontSize: 18, fontWeight: '800' }}>₹</Text>
-                                            ) : (
-                                                <Ionicons name={a.icon as any} size={22} color={isDark ? theme.primary : a.color} />
+                    <View style={s.sectionBlock}>
+                        <Text style={[s.sectionTitle, { fontSize: fontSize, color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }]}>
+                            {t('dashboard.quickActions')}
+                        </Text>
+                        <View style={[s.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9', borderRadius: 20, paddingVertical: 16, paddingHorizontal: 8, elevation: 4, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } }]}>
+                            <View style={s.quickRow}>
+                                {QUICK_ACTIONS.map((a, i) => (
+                                    <TouchableOpacity
+                                        key={i}
+                                        style={s.quickItem}
+                                        activeOpacity={0.75}
+                                        onPress={() => handleQuickAction(a)}
+                                    >
+                                        <View style={s.quickIconWrap}>
+                                            <View style={[{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', backgroundColor: isDark ? '#334155' : a.bg, borderRadius: 12 }]}>
+                                                {a.icon === 'rupee' ? (
+                                                    <Text style={{ color: isDark ? theme.primary : a.color, fontSize: 18, fontWeight: '800' }}>₹</Text>
+                                                ) : (
+                                                    <Ionicons name={a.icon as any} size={22} color={isDark ? theme.primary : a.color} />
+                                                )}
+                                            </View>
+                                            {a.route === 'PreBooking' && data.prebookingsCount > 0 && (
+                                                <View style={s.prebookBadge}>
+                                                    <Text style={s.prebookBadgeText}>{data.prebookingsCount}</Text>
+                                                </View>
                                             )}
                                         </View>
-                                        {a.route === 'PreBooking' && data.prebookingsCount > 0 && (
-                                            <View style={s.prebookBadge}>
-                                                <Text style={s.prebookBadgeText}>{data.prebookingsCount}</Text>
-                                            </View>
-                                        )}
-                                    </View>
-                                    <Text
-                                        style={[
-                                            s.quickLabel,
-                                            { fontSize: Math.max(9, fontSize - 5), color: theme.textPrimary }
-                                        ]}
-                                        numberOfLines={2}
-                                    >
-                                        {t(getQuickActionLabelKey(a.label))}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
+                                        <Text
+                                            style={[
+                                                s.quickLabel,
+                                                { fontSize: Math.max(9, fontSize - 4), color: isDark ? theme.textSecondary : '#475569', fontWeight: '600', marginTop: 4 }
+                                            ]}
+                                            numberOfLines={2}
+                                        >
+                                            {t(getQuickActionLabelKey(a.label))}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
                         </View>
                     </View>
 
@@ -852,6 +854,9 @@ export default function HomeScreen() {
                             </View>
                         </View>
                     ) : null}
+
+                    {/* ─────────────────── TENANT APP PROMO ─────────────────── */}
+                    <TenantAppCard theme={theme} isDark={isDark} hostelCode={data.hostelCode} />
 
                     {/* ─────────────────── REVENUE OVERVIEW ─────────────────── */}
                     <TouchableOpacity

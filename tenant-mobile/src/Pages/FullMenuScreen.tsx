@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -10,6 +10,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowLeft, Coffee, Soup, Moon, ChefHat } from 'lucide-react-native';
 import { colors, radius, spacing, font, shadow } from '../theme';
+import { useAuth } from '../context/AuthContext';
+import api from '../services/api';
 
 // 7-day menu data
 type MealSlot = { items: string; time: string };
@@ -52,6 +54,8 @@ const WEEK_MENU: Record<string, DayMenu> = {
     dinner:    { items: 'Chapathi, Dal Makhani, Rice', time: '7:30 – 9:30 PM' },
   },
 };
+
+const DEFAULT_MENU: Record<string, DayMenu> = JSON.parse(JSON.stringify(WEEK_MENU));
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -111,8 +115,37 @@ function MealCard({ cfg, slot }: { cfg: typeof mealSlotConfig[0]; slot: MealSlot
 }
 
 export default function FullMenuScreen({ navigation }: any) {
+  const { user } = useAuth();
   const [selectedDay, setSelectedDay] = useState('Mon');
-  const dayMenu = WEEK_MENU[selectedDay];
+  const [menuData, setMenuData] = useState<Record<string, DayMenu>>(DEFAULT_MENU);
+
+  useEffect(() => {
+    const fetchMenu = async () => {
+      if (!user?.hostel_id) return;
+      try {
+        const res = await api.get(`/mess-menu/${user.hostel_id}`);
+        if (res.data.success && res.data.menu && res.data.menu.length > 0) {
+          const fetchedMenu = JSON.parse(JSON.stringify(DEFAULT_MENU)); // start with defaults or empty
+          res.data.menu.forEach((m: any) => {
+            const day = m.day_of_week;
+            const type = m.meal_type.toLowerCase();
+            if (fetchedMenu[day] && fetchedMenu[day][type]) {
+              fetchedMenu[day][type].items = m.items;
+              if (m.timing) {
+                fetchedMenu[day][type].time = m.timing;
+              }
+            }
+          });
+          setMenuData(fetchedMenu);
+        }
+      } catch (err) {
+        console.error('Failed to fetch mess menu:', err);
+      }
+    };
+    fetchMenu();
+  }, [user?.hostel_id]);
+
+  const dayMenu = menuData[selectedDay];
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>

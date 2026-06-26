@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   KeyboardAvoidingView,
   Modal,
@@ -31,6 +31,7 @@ import type { Tone } from '../components/ui';
 import { colors, radius, spacing, font } from '../theme';
 import { formatDate, relativeDay } from '../utils/format';
 import { sampleComplaints, Complaint } from '../data/tenantContent';
+import api from '../services/api';
 
 const statusMeta: Record<Complaint['status'], { tone: Tone; icon: any }> = {
   Open: { tone: 'danger', icon: Clock },
@@ -55,27 +56,58 @@ export default function ComplaintsScreen({ navigation }: any) {
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const submit = () => {
+  const fetchComplaints = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/complaints/tenant');
+      if (res.data.success) {
+        const formatted = res.data.complaints.map((c: any) => ({
+          id: String(c.complaint_id),
+          title: c.title,
+          category: c.category,
+          status: c.status,
+          date: c.created_at,
+          note: c.description
+        }));
+        setItems(formatted);
+      }
+    } catch (err) {
+      console.error('Failed to fetch complaints', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchComplaints();
+  }, []);
+
+  const submit = async () => {
     if (title.trim().length < 4) return;
     setSubmitting(true);
-    // Local optimistic add — swap for api.post('/tenant/complaints', ...) later.
-    setTimeout(() => {
-      const newItem: Complaint = {
-        id: `c${Date.now()}`,
-        title: title.trim(),
+    
+    try {
+      const res = await api.post('/complaints/tenant', {
+        hostel_id: user?.hostel_id,
         category,
-        status: 'Open',
-        date: new Date().toISOString().slice(0, 10),
-        note: note.trim() || undefined,
-      };
-      setItems((prev) => [newItem, ...prev]);
-      setTitle('');
-      setNote('');
-      setCategory('Electrical');
+        title: title.trim(),
+        description: note.trim() || undefined
+      });
+
+      if (res.data.success) {
+        setTitle('');
+        setNote('');
+        setCategory('Electrical');
+        setShowForm(false);
+        fetchComplaints();
+      }
+    } catch (err) {
+      console.error('Failed to raise complaint', err);
+    } finally {
       setSubmitting(false);
-      setShowForm(false);
-    }, 500);
+    }
   };
 
   return (
@@ -92,7 +124,12 @@ export default function ComplaintsScreen({ navigation }: any) {
 
       <View style={{ height: spacing.lg }} />
 
-      {items.length === 0 ? (
+      {loading ? (
+        <Card style={{ alignItems: 'center', padding: spacing.xl }}>
+          <Loader size={24} color={colors.primary} />
+          <Text style={{ marginTop: spacing.md, color: colors.textMuted }}>Loading complaints...</Text>
+        </Card>
+      ) : items.length === 0 ? (
         <Card>
           <EmptyState
             icon={Wrench}

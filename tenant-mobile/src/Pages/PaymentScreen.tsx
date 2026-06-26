@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Smartphone, Landmark, Banknote, ShieldCheck } from 'lucide-react-native';
 
 import { useAuth } from '../context/AuthContext';
 import { Card, Button } from '../components/ui';
+import * as ImagePicker from 'expo-image-picker';
+import api from '../services/api';
 import { colors, radius, spacing, font } from '../theme';
 import { formatCurrency, formatDate } from '../utils/format';
 
@@ -15,8 +17,50 @@ const methods = [
 ];
 
 export default function PaymentScreen({ navigation }: any) {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const amount = Number(user?.outstanding_due || 0);
+  const [uploading, setUploading] = useState(false);
+
+  const handleUploadProof = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        quality: 0.8,
+      });
+
+      if (!result.canceled) {
+        setUploading(true);
+        const asset = result.assets[0];
+        
+        const formData = new FormData();
+        formData.append('proof', {
+          uri: asset.uri,
+          name: asset.fileName || 'proof.jpg',
+          type: asset.mimeType || 'image/jpeg',
+        } as any);
+        formData.append('amount_paid', String(amount));
+        formData.append('payment_mode_id', '1'); // Defaulting to UPI/Online for uploaded proofs
+
+        const response = await api.post('/fees/upload-proof', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+
+        if (response.data.success) {
+          alert('Payment proof uploaded successfully!');
+          await refreshUser();
+          navigation.goBack();
+        }
+      }
+    } catch (error) {
+      console.error('Error uploading proof:', error);
+      alert('Failed to upload payment proof');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -59,9 +103,10 @@ export default function PaymentScreen({ navigation }: any) {
         </View>
 
         <Button
-          title="Online payment coming soon"
-          variant="secondary"
-          disabled
+          title="Upload Payment Proof"
+          icon={Smartphone}
+          onPress={handleUploadProof}
+          loading={uploading}
           style={{ marginTop: spacing.lg }}
         />
         <Text style={styles.hint}>

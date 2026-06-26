@@ -478,30 +478,36 @@ export default function PendingPaymentsScreen() {
             <View style={s.summaryContainer}>
                 <View style={s.cardsRow}>
                     {/* Card 1: Outstanding Dues */}
-                    <View style={[s.smallCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#EDE9FE', borderWidth: isDark ? 1 : 0 }]}>
-                        <View style={s.cardHeaderRow}>
-                            <View style={[s.iconCircle, { backgroundColor: '#FEE2E2' }]}>
-                                <Ionicons name="alert-circle" size={20} color="#DC2626" />
+                    <View style={[s.smallCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F8FAFC', borderWidth: 1, borderRadius: 20, padding: 16, elevation: 3, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } }]}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                            <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: '#FEE2E2', justifyContent: 'center', alignItems: 'center' }}>
+                                <Ionicons name="alert-circle" size={22} color="#DC2626" />
                             </View>
-                            <TouchableOpacity onPress={() => load(1, false)} style={s.smallRefreshBtn} activeOpacity={0.7}>
-                                <Ionicons name="refresh" size={14} color="#94A3B8" />
+                            <TouchableOpacity onPress={() => load(1, false)} activeOpacity={0.7} style={{ backgroundColor: '#F1F5F9', padding: 6, borderRadius: 12 }}>
+                                <Ionicons name="refresh" size={14} color="#64748B" />
                             </TouchableOpacity>
                         </View>
-                        <Text style={[s.cardLabel, { fontSize: fontSize - 3, color: theme.textSecondary }]}>{t('pendingDues.outstandingDues')}</Text>
-                        <Text style={[s.cardValue, { color: '#DC2626', fontSize: fontSize + 2 }]}>₹{totalPending.toLocaleString('en-IN')}</Text>
-                        <Text style={[s.cardSubText, { fontSize: fontSize - 4, color: theme.textSecondary }]}>{totalDefaulters} {t('pendingDues.defaulters')}</Text>
+                        <Text style={{ fontSize: fontSize - 2, color: theme.textSecondary, fontWeight: '600', marginBottom: 4 }}>
+                            {t('pendingDues.outstandingDues')}
+                        </Text>
+                        <Text style={{ fontSize: fontSize + 10, fontWeight: '900', color: theme.textPrimary }}>
+                            ₹{totalPending.toLocaleString('en-IN')}
+                        </Text>
                     </View>
 
                     {/* Card 2: Partial Paid */}
-                    <View style={[s.smallCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#EDE9FE', borderWidth: isDark ? 1 : 0 }]}>
-                        <View style={s.cardHeaderRow}>
-                            <View style={[s.iconCircle, { backgroundColor: '#FEF3C7' }]}>
-                                <Ionicons name="hourglass" size={18} color="#D97706" />
+                    <View style={[s.smallCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F8FAFC', borderWidth: 1, borderRadius: 20, padding: 16, elevation: 3, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } }]}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                            <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: '#FEF3C7', justifyContent: 'center', alignItems: 'center' }}>
+                                <Ionicons name="hourglass" size={22} color="#D97706" />
                             </View>
                         </View>
-                        <Text style={[s.cardLabel, { fontSize: fontSize - 3, color: theme.textSecondary }]}>{t('pendingDues.partialPaid')}</Text>
-                        <Text style={[s.cardValue, { color: '#D97706', fontSize: fontSize + 2 }]}>₹{partialPaid.toLocaleString('en-IN')}</Text>
-                        <Text style={[s.cardSubText, { fontSize: fontSize - 4, color: theme.textSecondary }]}>{t('pendingDues.duesCollectedPartially')}</Text>
+                        <Text style={{ fontSize: fontSize - 2, color: theme.textSecondary, fontWeight: '600', marginBottom: 4 }}>
+                            {t('pendingDues.partialPaid')}
+                        </Text>
+                        <Text style={{ fontSize: fontSize + 10, fontWeight: '900', color: theme.textPrimary }}>
+                            ₹{partialPaid.toLocaleString('en-IN')}
+                        </Text>
                     </View>
                 </View>
             </View>

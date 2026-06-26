@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ArrowLeft, Wallet, Megaphone, Wrench, BellRing, Bell } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,19 +7,50 @@ import { Card, EmptyState } from '../components/ui';
 import { colors, radius, spacing, font } from '../theme';
 import { relativeDay } from '../utils/format';
 import { sampleNotifications, NotificationItem } from '../data/tenantContent';
+import api from '../services/api';
 
-const typeMeta: Record<NotificationItem['type'], { icon: any; tint: string; soft: string }> = {
-  due: { icon: Wallet, tint: colors.primary, soft: colors.primarySoft },
-  notice: { icon: Megaphone, tint: colors.info, soft: colors.infoSoft },
-  complaint: { icon: Wrench, tint: colors.warning, soft: colors.warningSoft },
-  system: { icon: BellRing, tint: colors.textMuted, soft: '#F1F5F9' },
+const typeMeta: Record<string, { icon: any; tint: string; soft: string }> = {
+  'Payment Due': { icon: Wallet, tint: colors.primary, soft: colors.primarySoft },
+  'Notice': { icon: Megaphone, tint: colors.info, soft: colors.infoSoft },
+  'Complaint': { icon: Wrench, tint: colors.warning, soft: colors.warningSoft },
+  'General': { icon: BellRing, tint: colors.textMuted, soft: '#F1F5F9' },
 };
 
 export default function NotificationsScreen({ navigation }: any) {
-  const [items, setItems] = useState(sampleNotifications);
+  const [items, setItems] = useState<any[]>([]);
   const hasUnread = items.some((i) => !i.read);
 
-  const markAllRead = () => setItems((prev) => prev.map((i) => ({ ...i, read: true })));
+  const fetchNotifications = async () => {
+    try {
+      const res = await api.get('/notifications');
+      if (res.data.success) {
+        const formatted = res.data.data.map((n: any) => ({
+          id: n.notification_id,
+          title: n.title,
+          body: n.message,
+          type: n.notification_type || 'General',
+          date: n.created_at,
+          read: !!n.is_read
+        }));
+        setItems(formatted);
+      }
+    } catch (err) {
+      console.error('Fetch notifications error:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  const markAllRead = async () => {
+    try {
+      setItems((prev) => prev.map((i) => ({ ...i, read: true })));
+      await api.put('/notifications/read-all');
+    } catch (err) {
+      console.error('Mark all read error:', err);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -48,7 +79,7 @@ export default function NotificationsScreen({ navigation }: any) {
           </Card>
         ) : (
           items.map((n) => {
-            const meta = typeMeta[n.type];
+            const meta = typeMeta[n.type] || typeMeta['General'];
             const Icon = meta.icon;
             return (
               <View key={n.id} style={[styles.row, !n.read && styles.rowUnread]}>
