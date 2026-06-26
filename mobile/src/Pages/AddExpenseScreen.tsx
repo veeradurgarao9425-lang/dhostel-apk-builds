@@ -111,6 +111,9 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
     const scrollRef = useRef<ScrollView>(null);
     const [loading, setLoading] = useState(false);
     const [categories, setCategories] = useState<any[]>([]);
+    const [errors, setErrors] = useState<Record<string, string>>({});
+    const [customCategory, setCustomCategory] = useState('');
+    const [showCustomCategoryInput, setShowCustomCategoryInput] = useState(false);
     const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
     const [formData, setFormData] = useState({
         title: '',
@@ -186,17 +189,48 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
         });
     };
 
+    const addCustomCategory = async () => {
+        const trimmed = customCategory.trim();
+        if (!trimmed) return;
+
+        const exists = categories.some(cat => cat.category_name?.toLowerCase() === trimmed.toLowerCase());
+        if (exists) {
+            const existingCategory = categories.find(cat => cat.category_name?.toLowerCase() === trimmed.toLowerCase());
+            setFormData({ ...formData, category_id: existingCategory.category_id.toString() });
+            setCustomCategory('');
+            setShowCustomCategoryInput(false);
+            return;
+        }
+
+        try {
+            const response = await api.post('/expenses/categories', { category_name: trimmed });
+            const savedCategory = response.data?.data || { category_id: Date.now(), category_name: trimmed };
+            setCategories(prev => [...prev, savedCategory]);
+            setFormData({ ...formData, category_id: savedCategory.category_id.toString() });
+            Toast.show({ type: 'success', text1: 'Category Added', text2: `${trimmed} is now available.` });
+        } catch (error) {
+            setCategories(prev => [...prev, { category_id: Date.now(), category_name: trimmed }]);
+            setFormData({ ...formData, category_id: Date.now().toString() });
+            Toast.show({ type: 'info', text1: 'Added for this form', text2: `${trimmed} was added locally.` });
+        } finally {
+            setCustomCategory('');
+            setShowCustomCategoryInput(false);
+        }
+    };
+
+    const validateForm = () => {
+        const nextErrors: Record<string, string> = {};
+        if (!formData.category_id) nextErrors.category_id = 'Please select a category';
+        if (!formData.expense_date) nextErrors.expense_date = 'Expense date is required';
+        if (!formData.amount || isNaN(Number(formData.amount)) || Number(formData.amount) <= 0) nextErrors.amount = 'Amount must be greater than 0';
+        if (!formData.vendor_name || !formData.vendor_name.trim()) nextErrors.vendor_name = 'Vendor name is required';
+        setErrors(nextErrors);
+        return Object.keys(nextErrors).length === 0;
+    };
+
     const handleSave = async () => {
-        if (!formData.category_id || !formData.expense_date) {
-            Toast.show({ type: 'error', text1: 'Error', text2: 'Please select category and date' });
-            return;
-        }
-        if (!formData.amount || isNaN(Number(formData.amount)) || Number(formData.amount) <= 0) {
-            Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Amount must be greater than 0' });
-            return;
-        }
-        if (!formData.vendor_name || !formData.vendor_name.trim()) {
-            Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Vendor name is required' });
+        if (!validateForm()) {
+            Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please add the required fields and try again.' });
             return;
         }
 
@@ -280,7 +314,34 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
                                 </TouchableOpacity>
                             );
                         })}
+                        <TouchableOpacity
+                            style={[
+                                styles.catButton,
+                                { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' },
+                                showCustomCategoryInput && { borderColor: theme.primary, backgroundColor: theme.primary + '12' }
+                            ]}
+                            onPress={() => setShowCustomCategoryInput(prev => !prev)}
+                        >
+                            <Text style={[styles.catButtonText, { fontSize: fontSize - 2, color: theme.primary }]}>+ Add</Text>
+                        </TouchableOpacity>
                     </View>
+
+                    {showCustomCategoryInput ? (
+                        <View style={styles.customInputRow}>
+                            <TextInput
+                                style={[styles.customInput, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', color: theme.textPrimary, borderColor: isDark ? '#334155' : '#E2E8F0' }]}
+                                placeholder="Enter category name"
+                                placeholderTextColor={isDark ? '#475569' : '#94A3B8'}
+                                value={customCategory}
+                                onChangeText={setCustomCategory}
+                            />
+                            <TouchableOpacity style={[styles.addCustomButton, { backgroundColor: theme.primary }]} onPress={addCustomCategory}>
+                                <Text style={styles.addCustomButtonText}>Add</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ) : null}
+
+                    {errors.category_id ? <Text style={styles.errorText}>{errors.category_id}</Text> : null}
 
                     <FormInput
                         label="Amount (₹) *"
@@ -288,7 +349,11 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
                         placeholder="0.00"
                         keyboardType="numeric"
                         value={formData.amount}
-                        onChangeText={(text: string) => setFormData({ ...formData, amount: text })}
+                        error={errors.amount}
+                        onChangeText={(text: string) => {
+                            setFormData({ ...formData, amount: text });
+                            if (errors.amount) setErrors(prev => { const next = { ...prev }; delete next.amount; return next; });
+                        }}
                     />
                 </View>
 
@@ -301,6 +366,7 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
                         icon={Calendar}
                         value={formData.expense_date}
                         placeholder="Select Date"
+                        error={errors.expense_date}
                         onPress={() => setDatePickerVisibility(true)}
                     />
 
@@ -340,7 +406,7 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
                     <FormInput
                         label="Vendor Name *"
                         icon={User}
-                        placeholder="Who did you pay? e.g. BESCOM, Reliance Fresh"
+                        placeholder="Enter name"
                         value={formData.vendor_name}
                         onChangeText={(text: string) => setFormData({ ...formData, vendor_name: text })}
                     />
@@ -469,6 +535,10 @@ const styles = StyleSheet.create({
     inputError: { borderColor: '#EF4444', backgroundColor: '#FEF2F2' },
     errorText: { color: '#EF4444', fontSize: 11, fontWeight: '600', marginTop: 4, marginLeft: 4 },
     categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 14, marginTop: 4 },
+    customInputRow: { flexDirection: 'row', gap: 8, marginBottom: 10, alignItems: 'center' },
+    customInput: { flex: 1, borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10 },
+    addCustomButton: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12 },
+    addCustomButtonText: { color: '#FFF', fontWeight: '700' },
     catButton: {
         paddingHorizontal: 12,
         paddingVertical: 8,

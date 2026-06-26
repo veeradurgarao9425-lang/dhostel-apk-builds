@@ -63,16 +63,33 @@ export default function AddGuestScreen({ navigation }: any) {
         const e: Record<string, string> = {};
         if (!form.full_name.trim()) e.full_name = 'Guest name is required';
         if (!form.check_in_date) e.check_in_date = 'Check-in date is required';
-        if (form.phone && !/^\d{10}$/.test(form.phone)) e.phone = 'Phone must be 10 digits';
+        if (!form.phone.trim()) {
+            e.phone = 'Mobile number is required';
+        } else if (!/^\d{10}$/.test(form.phone)) {
+            e.phone = 'Phone must be 10 digits';
+        }
+        if (!form.room_number.trim()) e.room_number = 'Room number is required';
         if (form.amount_paid && (isNaN(Number(form.amount_paid)) || Number(form.amount_paid) < 0)) e.amount_paid = 'Enter a valid amount';
         if (form.days && (isNaN(Number(form.days)) || Number(form.days) < 1)) e.days = 'Days must be at least 1';
         setErrors(e);
-        return Object.keys(e).length === 0;
+        return e;
     };
 
     const handleSave = async () => {
-        if (!validate()) {
-            Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please fill in the required fields.' });
+        const validationErrors = validate();
+        if (Object.keys(validationErrors).length > 0) {
+            const missing = Object.keys(validationErrors).map((key) => {
+                const labels: Record<string, string> = {
+                    full_name: 'Guest name',
+                    check_in_date: 'Check-in date',
+                    phone: 'Mobile number',
+                    room_number: 'Room number',
+                    amount_paid: 'Amount paid',
+                    days: 'Days',
+                };
+                return labels[key] || key;
+            }).join(', ');
+            Toast.show({ type: 'error', text1: 'Validation Error', text2: `Please complete: ${missing}` });
             return;
         }
         setLoading(true);

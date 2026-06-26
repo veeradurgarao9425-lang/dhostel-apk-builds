@@ -469,7 +469,10 @@ export default function PreBookingScreen({ navigation, route }: any) {
     };
 
     const handleSave = async () => {
-        if (!validate()) return;
+        if (!validate()) {
+            Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please complete the highlighted fields.' });
+            return;
+        }
         setLoading(true);
         try {
             const payload = {
@@ -531,7 +534,7 @@ export default function PreBookingScreen({ navigation, route }: any) {
                 </View>
             </ScrollView>
 
-            <View style={[styles.stickyFooter, { backgroundColor: theme.cardBg, borderTopColor: isDark ? '#334155' : '#F1F5F9', paddingBottom: isKeyboardVisible ? 0 : insets.bottom + 12 }]}>
+            <View style={[styles.stickyFooter, { backgroundColor: theme.cardBg, borderTopColor: isDark ? '#334155' : '#F1F5F9', paddingBottom: isKeyboardVisible ? 0 : insets.bottom + 16, paddingTop: 12, marginTop: 8 }]}>
                 <TouchableOpacity style={[styles.cancelButton, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#CBD5E1' }]} onPress={handleReset}><Text style={[styles.cancelButtonText, { color: theme.textSecondary }]}>Reset</Text></TouchableOpacity>
                 <TouchableOpacity style={[styles.submitButton, { backgroundColor: theme.primary }]} onPress={handleSave}><Text style={styles.submitButtonText}>Save Pre-Booking</Text></TouchableOpacity>
             </View>

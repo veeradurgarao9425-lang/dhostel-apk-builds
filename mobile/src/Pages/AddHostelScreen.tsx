@@ -43,6 +43,16 @@ const STATES_CITIES: Record<string, string[]> = {
     'Kerala': ['Thiruvananthapuram', 'Kochi', 'Kozhikode', 'Thrissur', 'Kollam', 'Alappuzha', 'Palakkad', 'Kannur', 'Kottayam'],
 };
 
+const CITY_PINCODE_PREFIXES: Record<string, string[]> = {
+    Hyderabad: ['5'],
+    Chennai: ['6'],
+    Bengaluru: ['56'],
+    Mumbai: ['4'],
+    Delhi: ['11', '12', '13', '14', '15'],
+    Kolkata: ['70'],
+    Pune: ['41'],
+};
+
 export const AddHostelScreen = ({ navigation, route }: any) => {
     const { theme, isDark } = useTheme();
     const { user, updateTokenAndUser } = useAuth();
@@ -50,6 +60,7 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
     const [loading, setLoading] = useState(false);
     const [isKeyboardVisible, setKeyboardVisible] = useState(false);
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+    const [hostelFloorLimit, setHostelFloorLimit] = useState<number | null>(null);
     const scrollViewRef = useRef<ScrollView>(null);
     const [stateModalVisible, setStateModalVisible] = useState(false);
     const [cityModalVisible, setCityModalVisible] = useState(false);
@@ -81,6 +92,8 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
 
     useEffect(() => {
         if (isEdit && editHostel) {
+            const floorLimit = editHostel.total_floors ? Number(editHostel.total_floors) : null;
+            setHostelFloorLimit(Number.isFinite(floorLimit) && floorLimit! > 0 ? floorLimit : null);
             setFormData({
                 hostel_name: editHostel.hostel_name || '',
                 address: editHostel.address || '',
@@ -102,16 +115,31 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
             errs.hostel_name = 'Hostel name must be at least 3 characters';
         if (!address || address.trim().length === 0)
             errs.address = 'Address is required';
-        if (!state)
-            errs.state = 'Please select a state';
-        if (!city)
-            errs.city = 'Please select a city';
-        if (!pincode || !/^\d{6}$/.test(pincode.trim()))
-            errs.pincode = 'Pincode must be exactly 6 digits';
-        if (total_floors && (isNaN(Number(total_floors)) || Number(total_floors) < 1))
-            errs.total_floors = 'Floors must be a positive number';
-        if (admission_fee && (isNaN(Number(admission_fee)) || Number(admission_fee) < 0))
+
+        if (pincode) {
+            if (!/^\d{6}$/.test(pincode.trim())) {
+                errs.pincode = 'Pincode must be exactly 6 digits';
+            } else if (city) {
+                const prefixes = CITY_PINCODE_PREFIXES[city];
+                if (prefixes && !prefixes.some(prefix => pincode.trim().startsWith(prefix))) {
+                    errs.pincode = `Pincode does not match the selected city (${city})`;
+                }
+            }
+        }
+
+        if (!total_floors || total_floors.trim().length === 0) {
+            errs.total_floors = 'Total floors is required';
+        } else if (isNaN(Number(total_floors)) || Number(total_floors) < 1) {
+            errs.total_floors = 'Total floors must be a positive number';
+        } else if (hostelFloorLimit !== null && Number(total_floors) > hostelFloorLimit) {
+            errs.total_floors = `Maximum allowed floors for this hostel is ${hostelFloorLimit}`;
+        }
+
+        if (!admission_fee || admission_fee.trim().length === 0) {
+            errs.admission_fee = 'Admission fee is required';
+        } else if (isNaN(Number(admission_fee)) || Number(admission_fee) < 0) {
             errs.admission_fee = 'Admission fee must be 0 or more';
+        }
 
         setFieldErrors(errs);
         return Object.keys(errs).length === 0;
@@ -122,7 +150,7 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
             Toast.show({
                 type: 'error',
                 text1: 'Validation Error',
-                text2: 'Please fill in the required fields.',
+                text2: 'Please add the required fields and try again.',
             });
             return;
         }
@@ -215,6 +243,7 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
             admission_fee: '',
         });
         setHostelType('Boys');
+        setFieldErrors({});
     };
 
     return (
@@ -252,7 +281,7 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
 
                     <Text style={[styles.label, { color: theme.textPrimary }]}>Hostel Type *</Text>
                     <View style={styles.typeRow}>
-                        {['Boys', 'Girls', 'Co-ed'].map((t) => (
+                        {['Boys', 'Girls', 'Co-Living'].map((t) => (
                             <TouchableOpacity
                                 key={t}
                                 style={[
@@ -290,17 +319,9 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
                         }}
                     />
 
-                    {/* State/City error messages when nothing selected */}
-                    {fieldErrors.state ? (
-                        <Text style={{ color: '#EF4444', fontSize: 11, marginBottom: 4, marginLeft: 4 }}>{fieldErrors.state}</Text>
-                    ) : null}
-                    {fieldErrors.city ? (
-                        <Text style={{ color: '#EF4444', fontSize: 11, marginBottom: 4, marginLeft: 4 }}>{fieldErrors.city}</Text>
-                    ) : null}
-
                     <View style={styles.row}>
                         <View style={{ flex: 1, marginRight: 8, marginBottom: 16 }}>
-                            <Text style={[styles.label, { color: theme.textPrimary }]}>State *</Text>
+                            <Text style={[styles.label, { color: theme.textPrimary }]}>State</Text>
                             <TouchableOpacity
                                 style={[
                                     styles.selectContainer,
@@ -320,9 +341,10 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
                                 </Text>
                                 <ChevronDown size={18} color="#94A3B8" />
                             </TouchableOpacity>
+                            {fieldErrors.state ? <Text style={styles.inlineError}>{fieldErrors.state}</Text> : null}
                         </View>
                         <View style={{ flex: 1, marginLeft: 8, marginBottom: 16 }}>
-                            <Text style={[styles.label, { color: theme.textPrimary }]}>City *</Text>
+                            <Text style={[styles.label, { color: theme.textPrimary }]}>City</Text>
                             <TouchableOpacity
                                 style={[
                                     styles.selectContainer,
@@ -352,12 +374,13 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
                                 </Text>
                                 <ChevronDown size={18} color="#94A3B8" />
                             </TouchableOpacity>
+                            {fieldErrors.city ? <Text style={styles.inlineError}>{fieldErrors.city}</Text> : null}
                         </View>
                     </View>
 
                     <View style={styles.row}>
                         <InputField
-                            label="Pincode *"
+                            label="Pincode"
                             placeholder="6-digit ZIP code"
                             keyboardType="numeric"
                             value={formData.pincode}
@@ -376,7 +399,7 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
                             }}
                         />
                         <InputField
-                            label="Total Floors"
+                            label="Total Floors *"
                             placeholder="e.g. 3"
                             keyboardType="numeric"
                             value={formData.total_floors}
@@ -396,7 +419,7 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
                     </View>
 
                     <InputField
-                        label="Admission Fee (₹)"
+                        label="Admission Fee (₹) *"
                         placeholder="e.g. 1000"
                         keyboardType="numeric"
                         value={formData.admission_fee}
@@ -666,6 +689,13 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         marginBottom: 8,
+    },
+    inlineError: {
+        color: '#EF4444',
+        fontSize: 11,
+        marginTop: 6,
+        marginLeft: 2,
+        fontWeight: '600',
     },
     typeRow: {
         flexDirection: 'row',

@@ -119,6 +119,14 @@ export default function MoreScreen() {
                     iconBg: '#CFFAFE',
                     route: 'Staff',
                 },
+                {
+                    label: 'Manager',
+                    subtitle: 'Manage staff and hostel operations',
+                    icon: 'shield-checkmark',
+                    iconColor: '#7C3AED',
+                    iconBg: '#EDE9FE',
+                    route: 'Staff',
+                },
             ],
         },
         {

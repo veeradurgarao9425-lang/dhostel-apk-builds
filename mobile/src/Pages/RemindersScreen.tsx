@@ -134,7 +134,7 @@ export default function RemindersScreen() {
 
     const handleSaveReminder = async () => {
         if (!title || !date) {
-            Alert.alert('Required Fields', 'Please fill Title and Select Date');
+            Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please add the required fields and try again.' });
             return;
         }
 

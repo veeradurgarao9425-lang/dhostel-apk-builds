@@ -174,6 +174,8 @@ export default function HomeScreen() {
             const monthDue = (d2.monthlyRentDue ?? (monthCollected + monthPending)) as number;
             const occupied = d2.occupiedBeds || 0;
             const total = d2.totalBeds || 0;
+            const monthlyOverview = overviewRes.data?.success ? overviewRes.data.data : null;
+            const currentMonthRevenue = Number(monthlyOverview?.currentMonth?.totalIncome ?? monthCollected ?? 0);
 
             // Build top 3 defaulters list
             let topDefaulters: any[] = [];
@@ -233,7 +235,7 @@ export default function HomeScreen() {
 
             setData({
                 hostelName: user?.hostel_name || d2.hostel_name || hostelRes?.data?.data?.hostel_name || 'My Hostel',
-                monthAmount: monthCollected,
+                monthAmount: currentMonthRevenue,
                 monthDue,
                 pendingAmount: monthPending,
                 totalDuesAmount: d2.pendingDuesAmount || 0,

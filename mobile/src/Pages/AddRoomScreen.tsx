@@ -87,6 +87,7 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
     const [typeModalVisible, setTypeModalVisible] = useState(false);
     const [customAmenityInput, setCustomAmenityInput] = useState('');
     const [showCustomInput, setShowCustomInput] = useState(false);
+    const [hostelFloorLimit, setHostelFloorLimit] = useState<number | null>(null);
     const insets = useSafeAreaInsets();
     const [isKeyboardVisible, setKeyboardVisible] = useState(false);
     const scrollViewRef = useRef<ScrollView>(null);
@@ -113,8 +114,22 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
         useCallback(() => {
             fetchRoomTypes();
             fetchAmenities();
+            fetchHostelDetails();
         }, [])
     );
+
+    const fetchHostelDetails = async () => {
+        if (!user?.hostel_id) return;
+        try {
+            const response = await api.get(`/hostels/${user.hostel_id}`);
+            const floorCount = Number(response?.data?.data?.total_floors);
+            if (Number.isFinite(floorCount) && floorCount > 0) {
+                setHostelFloorLimit(floorCount);
+            }
+        } catch (error) {
+            console.error('Error fetching hostel details:', error);
+        }
+    };
 
     const fetchRoomTypes = async () => {
         try {
@@ -236,7 +251,16 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
     const validate = () => {
         const newErrors: Record<string, string> = {};
         if (!formData.room_number) newErrors.room_number = 'Room number is required';
-        if (!formData.floor_number) newErrors.floor_number = 'Floor number is required';
+        if (!formData.floor_number) {
+            newErrors.floor_number = 'Floor number is required';
+        } else {
+            const floorNumber = Number(formData.floor_number);
+            if (!Number.isInteger(floorNumber) || floorNumber < 1) {
+                newErrors.floor_number = 'Floor number must be a positive whole number';
+            } else if (hostelFloorLimit !== null && floorNumber > hostelFloorLimit) {
+                newErrors.floor_number = `Floor number cannot be greater than ${hostelFloorLimit}`;
+            }
+        }
         if (!formData.capacity) newErrors.capacity = 'Capacity is required';
         if (!formData.rent_per_bed) newErrors.rent_per_bed = 'Rent is required';
         if (!formData.room_type_id) newErrors.room_type_id = 'Room type is required';
@@ -255,7 +279,14 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
     };
 
     const handleSave = async () => {
-        if (!validate()) return;
+        if (!validate()) {
+            Toast.show({
+                type: 'error',
+                text1: 'Validation Error',
+                text2: 'Please complete the highlighted fields before saving.',
+            });
+            return;
+        }
         setLoading(true);
         try {
             const payload = {
@@ -365,7 +396,7 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
                                 <Layers size={16} color={errors.floor_number ? '#EF4444' : '#94A3B8'} style={styles.inputIcon} />
                                 <TextInput
                                     style={[styles.inputText, { color: theme.textPrimary }]}
-                                    placeholder="Enter floor number"
+                                    placeholder="e.g. 1"
                                     placeholderTextColor="#94A3B8"
                                     keyboardType="numeric"
                                     value={formData.floor_number}

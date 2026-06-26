@@ -72,6 +72,11 @@ export default function AddStaffScreen() {
         } else if (!/^\d{10}$/.test(phone.trim())) {
             errs.phone = 'Phone must be exactly 10 digits';
         }
+        if (!monthlySalary.trim()) {
+            errs.monthlySalary = 'Salary is required';
+        } else if (isNaN(Number(monthlySalary)) || Number(monthlySalary) < 0) {
+            errs.monthlySalary = 'Salary must be a valid amount';
+        }
         if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
             errs.email = 'Invalid email address';
         }
@@ -79,12 +84,23 @@ export default function AddStaffScreen() {
             errs.aadhaarNumber = 'Aadhaar must be exactly 12 digits';
         }
         setErrors(errs);
-        return Object.keys(errs).length === 0;
+        return errs;
     };
 
     const handleSave = async () => {
-        if (!validate()) {
-            Alert.alert('Validation Error', 'Please correct the highlighted fields.');
+        const validationErrors = validate();
+        if (Object.keys(validationErrors).length > 0) {
+            const missing = Object.keys(validationErrors).map((key) => {
+                const labels: Record<string, string> = {
+                    fullName: 'Full name',
+                    phone: 'Phone number',
+                    monthlySalary: 'Salary',
+                    email: 'Email',
+                    aadhaarNumber: 'Aadhaar number',
+                };
+                return labels[key] || key;
+            }).join(', ');
+            Toast.show({ type: 'error', text1: 'Validation Error', text2: `Please correct: ${missing}` });
             return;
         }
 
