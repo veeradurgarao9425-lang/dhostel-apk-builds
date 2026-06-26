@@ -1,73 +1,141 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  BedDouble,
-  Wrench,
-  Utensils,
-  FileText,
-  Megaphone,
-  Bell,
-  User2,
-  Users,
-  LogOut,
+  FileText, PieChart, Megaphone, Wrench, User, HelpCircle, Settings,
 } from 'lucide-react-native';
-import { Alert } from 'react-native';
 
 import { useAuth } from '../context/AuthContext';
-import { Screen, AppHeader, Card, ListRow } from '../components/ui';
-import { colors, spacing } from '../theme';
+import { colors, spacing, radius, shadow } from '../theme';
+
+const GRID_ITEMS = [
+  { icon: FileText,  label: 'Due',          screen: 'Dues',       iconBg: '#FEE2E2', iconColor: '#EF4444' },
+  { icon: PieChart,  label: 'Expenses',     screen: 'Expenses',   iconBg: '#DCFCE7', iconColor: '#16A34A' },
+  { icon: Megaphone, label: 'Notices',      screen: 'Notices',    iconBg: '#EFF6FF', iconColor: '#3B82F6' },
+  { icon: Wrench,    label: 'Complaints',   screen: 'Complaints', iconBg: '#FEF3C7', iconColor: '#F59E0B' },
+  { icon: User,      label: 'Profile',      screen: 'Profile',    iconBg: colors.primarySoft, iconColor: colors.primary },
+  { icon: HelpCircle,label: 'Help & Support', screen: 'Messages', iconBg: '#F3F4F6', iconColor: '#6B7280' },
+];
 
 export default function MoreScreen({ navigation }: any) {
-  const { user, signOut } = useAuth();
-
-  const confirmLogout = () =>
-    Alert.alert('Log out', 'Are you sure you want to log out?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Log out', style: 'destructive', onPress: signOut },
-    ]);
+  const { user } = useAuth();
 
   return (
-    <Screen>
-      <AppHeader
-        eyebrow="All features"
-        title="More"
-        name={user?.name}
-        onPressBell={() => navigation.navigate('Notifications')}
-        onPressAvatar={() => navigation.navigate('Profile')}
-      />
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <Text style={styles.greeting}>Hello, {user?.name?.split(' ')[0] || 'Tenant'}</Text>
+          <Text style={styles.subGreeting}>What do you need today?</Text>
+        </View>
+        <Text style={{ fontSize: 28 }}>👋</Text>
+      </View>
 
-      <Card padded={false} style={styles.group}>
-        <ListRow icon={BedDouble} title="My Room" subtitle="Room, rent & hostel contact" tint={colors.primary} tintSoft={colors.primarySoft} onPress={() => navigation.navigate('RoomInfo')} />
-        <Divider />
-        <ListRow icon={Wrench} title="Complaints" subtitle="Raise & track maintenance issues" tint={colors.warning} tintSoft={colors.warningSoft} onPress={() => navigation.navigate('Complaints')} />
-        <Divider />
-        <ListRow icon={Users} title="Splits" subtitle="Split shared expenses with roommates" tint={colors.success} tintSoft={colors.successSoft} onPress={() => navigation.navigate('Splits')} />
-        <Divider />
-        <ListRow icon={Utensils} title="Services" subtitle="Mess menu, laundry & facilities" tint={colors.success} tintSoft={colors.successSoft} onPress={() => navigation.navigate('Services')} />
-        <Divider />
-        <ListRow icon={FileText} title="Documents" subtitle="Agreement, receipts & KYC" tint={colors.info} tintSoft={colors.infoSoft} onPress={() => navigation.navigate('Documents')} />
-      </Card>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        {/* ── Icon Grid ────────────────────────────────────────────────────── */}
+        <View style={styles.grid}>
+          {GRID_ITEMS.map((item) => {
+            const Icon = item.icon;
+            return (
+              <TouchableOpacity
+                key={item.label}
+                style={styles.gridItem}
+                onPress={() => navigation.navigate(item.screen)}
+                activeOpacity={0.75}
+              >
+                <View style={[styles.gridIconWrap, { backgroundColor: item.iconBg }]}>
+                  <Icon size={26} color={item.iconColor} strokeWidth={1.5} />
+                </View>
+                <Text style={styles.gridLabel}>{item.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
 
-      <Card padded={false} style={styles.group}>
-        <ListRow icon={Megaphone} title="Notices" subtitle="Hostel announcements" tint={colors.primary} tintSoft={colors.primarySoft} onPress={() => navigation.navigate('Notices')} />
-        <Divider />
-        <ListRow icon={Bell} title="Notifications" subtitle="Reminders & updates" tint={colors.primary} tintSoft={colors.primarySoft} onPress={() => navigation.navigate('Notifications')} />
-        <Divider />
-        <ListRow icon={User2} title="Profile" subtitle="Your details & account" tint={colors.primary} tintSoft={colors.primarySoft} onPress={() => navigation.navigate('Profile')} />
-      </Card>
-
-      <Card padded={false} style={styles.group}>
-        <ListRow icon={LogOut} title="Log out" tint={colors.danger} tintSoft={colors.dangerSoft} showChevron={false} onPress={confirmLogout} />
-      </Card>
-    </Screen>
+        {/* ── Settings ─────────────────────────────────────────────────────── */}
+        <TouchableOpacity
+          style={styles.settingsRow}
+          onPress={() => navigation.navigate('Settings')}
+          activeOpacity={0.75}
+        >
+          <View style={[styles.settingsIconWrap, { backgroundColor: colors.primarySoft }]}>
+            <Settings size={22} color={colors.primary} strokeWidth={1.5} />
+          </View>
+          <Text style={styles.settingsLabel}>Settings</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
-function Divider() {
-  return <View style={styles.divider} />;
-}
-
 const styles = StyleSheet.create({
-  group: { marginBottom: spacing.lg, paddingHorizontal: spacing.lg },
-  divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginLeft: 52 },
+  safe: { flex: 1, backgroundColor: colors.bg },
+  scrollContent: { paddingBottom: 120 },
+
+  // ── Header ────────────────────────────────────────────────────────────────
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.xl,
+    paddingVertical: 16,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  headerLeft: {},
+  greeting: { fontSize: 18, fontWeight: '700', color: colors.text },
+  subGreeting: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
+
+  // ── Grid ──────────────────────────────────────────────────────────────────
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    padding: spacing.xl,
+    gap: 12,
+  },
+  gridItem: {
+    width: '30%',
+    alignItems: 'center',
+    paddingVertical: 16,
+    backgroundColor: colors.surface,
+    borderRadius: radius['2xl'],
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 8,
+    ...shadow.card,
+    flexGrow: 1,
+  },
+  gridIconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gridLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text,
+    textAlign: 'center',
+  },
+
+  // ── Settings Row ──────────────────────────────────────────────────────────
+  settingsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    marginHorizontal: spacing.xl,
+    padding: spacing.xl,
+    backgroundColor: colors.surface,
+    borderRadius: radius['2xl'],
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadow.card,
+  },
+  settingsIconWrap: {
+    width: 44, height: 44, borderRadius: 14,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  settingsLabel: { fontSize: 15, fontWeight: '600', color: colors.text },
 });

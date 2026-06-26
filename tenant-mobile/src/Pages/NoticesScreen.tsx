@@ -22,10 +22,10 @@ const categoryMeta: Record<string, {
   accentColor: string;
   label: string;
 }> = {
-  Important:   { icon: AlertCircle,      iconColor: colors.danger,   iconBg: colors.dangerSoft,   accentColor: colors.danger,   label: 'Important' },
-  Maintenance: { icon: Wrench,           iconColor: colors.warning,  iconBg: colors.warningSoft,  accentColor: colors.warning,  label: 'Maintenance' },
-  General:     { icon: Bell,             iconColor: colors.primary,  iconBg: colors.primarySoft,  accentColor: colors.primary,  label: 'General' },
-  Food:        { icon: UtensilsCrossed,  iconColor: colors.success,  iconBg: colors.successSoft,  accentColor: colors.success,  label: 'Food' },
+  Important: { icon: AlertCircle, iconColor: colors.danger, iconBg: colors.dangerSoft, accentColor: colors.danger, label: 'Important' },
+  Maintenance: { icon: Wrench, iconColor: colors.warning, iconBg: colors.warningSoft, accentColor: colors.warning, label: 'Maintenance' },
+  General: { icon: Bell, iconColor: colors.primary, iconBg: colors.primarySoft, accentColor: colors.primary, label: 'General' },
+  Food: { icon: UtensilsCrossed, iconColor: colors.success, iconBg: colors.successSoft, accentColor: colors.success, label: 'Food' },
 };
 
 function timeAgo(dateStr: string): string {
@@ -135,9 +135,7 @@ export default function NoticesScreen({ navigation }: any) {
             <Text style={styles.headerTitle}>Notices</Text>
           </View>
           <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.headerIconBtn} activeOpacity={0.75}>
-              <Search size={18} color="#fff" />
-            </TouchableOpacity>
+            <View style={styles.backBtn} />
             <TouchableOpacity style={styles.headerIconBtn} activeOpacity={0.75}>
               <SlidersHorizontal size={18} color="#fff" />
             </TouchableOpacity>

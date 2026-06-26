@@ -1,489 +1,236 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+  StyleSheet, Text, TouchableOpacity, View, ScrollView, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import {
-  Plus, Wrench, X, CheckCircle2, Clock, Loader,
-  Zap, Droplets, Wifi, Sparkles, Sofa, MoreHorizontal,
-  ArrowLeft,
-} from 'lucide-react-native';
-
-import { useAuth } from '../context/AuthContext';
-import { colors, radius, spacing, font, shadow } from '../theme';
-import { relativeDay } from '../utils/format';
-import { sampleComplaints, Complaint } from '../data/tenantContent';
-import api from '../services/api';
-
-const statusConfig: Record<Complaint['status'], {
-  bg: string; text: string; border: string; label: string;
-}> = {
-  Open:        { bg: colors.dangerSoft,  text: colors.danger,  border: colors.dangerBorder,  label: 'Open' },
-  'In Progress': { bg: colors.warningSoft, text: colors.warning, border: colors.warningBorder, label: 'In Progress' },
-  Resolved:    { bg: colors.successSoft, text: colors.success, border: colors.successBorder, label: 'Resolved' },
-};
-
-const categories: { key: Complaint['category']; icon: any; label: string }[] = [
-  { key: 'Electrical', icon: Zap,         label: 'Electrical' },
-  { key: 'Plumbing',   icon: Droplets,    label: 'Plumbing' },
-  { key: 'WiFi',       icon: Wifi,        label: 'WiFi' },
-  { key: 'Cleaning',   icon: Sparkles,    label: 'Cleaning' },
-  { key: 'Furniture',  icon: Sofa,        label: 'Furniture' },
-  { key: 'Other',      icon: MoreHorizontal, label: 'Other' },
-];
+import { ArrowLeft } from 'lucide-react-native';
+import { colors, radius, spacing, shadow } from '../theme';
+import { Complaint } from '../data/tenantContent';
 
 type FilterTab = 'All' | 'Open' | 'Resolved';
 const FILTER_TABS: FilterTab[] = ['All', 'Open', 'Resolved'];
 
+// Mock data matching the image
+const COMPLAINTS = [
+  { id: '1', title: 'WIFI Not Working', date: '14 May 2026, 09:30 AM', status: 'Open', category: 'WiFi', priority: 'High', note: 'Internet is very slow and keeps disconnecting in my room.' },
+  { id: '2', title: 'Water Leakage', date: '13 May 2026, 04:20 PM', status: 'In Progress', category: 'Maintenance', priority: 'Medium', note: 'There is a water leakage in room near the window.' },
+  { id: '3', title: 'Fan Not Working', date: '12 May 2026, 11:15 AM', status: 'Resolved', category: 'Electrical', priority: 'Low', note: 'Fan makes noise.' },
+  { id: '4', title: 'Mess Food Issue', date: '10 May 2026, 08:00 PM', status: 'Resolved', category: 'Food', priority: 'High', note: 'Food was too spicy today.' },
+];
+
+const statusConfig: Record<string, { bg: string; text: string }> = {
+  Open:          { bg: '#FFF7ED', text: '#EA580C' }, // Orange
+  'In Progress': { bg: '#EFF6FF', text: '#3B82F6' }, // Blue (list)
+  Resolved:      { bg: '#F0FDF4', text: '#16A34A' }, // Green
+};
+
+// ── Detail View ───────────────────────────────────────────────────────────────
+function ComplaintDetailView({ complaint, onClose }: { complaint: any; onClose: () => void }) {
+  // The image shows "In Progress" as orange in the detail view, I'll match it
+  const statusColor = complaint.status === 'In Progress' ? '#C2410C' : statusConfig[complaint.status].text;
+
+  return (
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backBtn} onPress={onClose} activeOpacity={0.75}>
+          <ArrowLeft size={20} color={colors.text} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Complaint Details</Text>
+        <View style={{ width: 36 }} />
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        {/* Top Card */}
+        <View style={[styles.detailCard, { backgroundColor: '#FFF6EF' }]}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <View>
+              <Text style={styles.detailCardTitle}>{complaint.title}</Text>
+              <Text style={styles.detailCardDate}>{complaint.date}</Text>
+            </View>
+            <Text style={{ color: statusColor, fontWeight: '700', fontSize: 13 }}>{complaint.status}</Text>
+          </View>
+        </View>
+
+        <View style={styles.detailSection}>
+          <Text style={styles.detailLabel}>Description</Text>
+          <Text style={styles.detailText}>{complaint.note}</Text>
+        </View>
+
+        <View style={styles.detailSection}>
+          <Text style={styles.detailLabel}>Category</Text>
+          <Text style={styles.detailText}>{complaint.category}</Text>
+        </View>
+
+        <View style={styles.detailSection}>
+          <Text style={styles.detailLabel}>Priority</Text>
+          <Text style={styles.detailText}>{complaint.priority}</Text>
+        </View>
+
+        <View style={styles.detailSection}>
+          <Text style={styles.detailLabel}>Attachments</Text>
+          <View style={styles.attachmentsRow}>
+            {/* Using colored boxes as placeholders for images to match layout */}
+            <View style={styles.attachmentBox}>
+               <Text style={{ fontSize: 24 }}>📷</Text>
+            </View>
+            <View style={styles.attachmentBox}>
+               <Text style={{ fontSize: 24 }}>📷</Text>
+            </View>
+          </View>
+        </View>
+
+      </ScrollView>
+
+      {/* Add Update Button pinned to bottom */}
+      <View style={styles.bottomBtnWrap}>
+        <TouchableOpacity style={styles.updateBtn} activeOpacity={0.85}>
+          <Text style={styles.updateBtnText}>Add Update</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+// ── Main Screen ───────────────────────────────────────────────────────────────
 export default function ComplaintsScreen({ navigation }: any) {
-  const { user } = useAuth();
-  const [items, setItems] = useState<Complaint[]>(sampleComplaints);
-  const [showForm, setShowForm] = useState(false);
-  const [category, setCategory] = useState<Complaint['category']>('Electrical');
-  const [title, setTitle] = useState('');
-  const [note, setNote] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState<FilterTab>('All');
+  const [activeTab, setActiveTab] = useState<FilterTab>('All');
+  const [selectedComplaint, setSelectedComplaint] = useState<any>(null);
 
-  const fetchComplaints = async () => {
-    try {
-      setLoading(true);
-      const res = await api.get('/complaints/tenant');
-      if (res.data.success) {
-        const formatted = res.data.complaints.map((c: any) => ({
-          id: String(c.complaint_id),
-          title: c.title,
-          category: c.category,
-          status: c.status,
-          date: c.created_at,
-          note: c.description,
-        }));
-        setItems(formatted);
-      }
-    } catch (err) {
-      console.error('Failed to fetch complaints', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (selectedComplaint) {
+    return <ComplaintDetailView complaint={selectedComplaint} onClose={() => setSelectedComplaint(null)} />;
+  }
 
-  useEffect(() => { fetchComplaints(); }, []);
-
-  const submit = async () => {
-    if (title.trim().length < 4) return;
-    setSubmitting(true);
-    try {
-      const res = await api.post('/complaints/tenant', {
-        hostel_id: user?.hostel_id,
-        category,
-        title: title.trim(),
-        description: note.trim() || undefined,
-      });
-      if (res.data.success) {
-        setTitle(''); setNote(''); setCategory('Electrical');
-        setShowForm(false);
-        fetchComplaints();
-      }
-    } catch (err) {
-      console.error('Failed to raise complaint', err);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const filtered = items.filter((c) => {
-    if (activeFilter === 'All') return true;
-    if (activeFilter === 'Open') return c.status === 'Open' || c.status === 'In Progress';
+  const filtered = COMPLAINTS.filter((c) => {
+    if (activeTab === 'All') return true;
+    if (activeTab === 'Open') return c.status === 'Open' || c.status === 'In Progress';
     return c.status === 'Resolved';
   });
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* ── Gradient Header ──────────────────────────────────────────────── */}
-      <LinearGradient
-        colors={[colors.gradientStart, colors.gradientEnd]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.header}
-      >
-        <View style={styles.hCircle1} />
-        <View style={styles.hCircle2} />
-        <View style={styles.headerRow}>
-          <TouchableOpacity
-            style={styles.backBtn}
-            onPress={() => navigation.goBack()}
-            activeOpacity={0.75}
-          >
-            <ArrowLeft size={20} color="#fff" />
-          </TouchableOpacity>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.headerEyebrow}>Maintenance</Text>
-            <Text style={styles.headerTitle}>Complaints</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.addBtn}
-            onPress={() => setShowForm(true)}
-            activeOpacity={0.8}
-          >
-            <Plus size={20} color="#fff" />
-          </TouchableOpacity>
-        </View>
-      </LinearGradient>
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.75}>
+          <ArrowLeft size={20} color={colors.text} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Complaints</Text>
+        <Text style={{ fontSize: 32 }}>🎧</Text>
+      </View>
 
-      {/* ── Filter tabs ─────────────────────────────────────────────────── */}
-      <View style={styles.filterWrapper}>
-        <View style={styles.filterRow}>
+      {/* ── Tabs Wrapper ─────────────────────────────────────────────────── */}
+      <View style={styles.tabWrapper}>
+        <View style={styles.tabContainer}>
           {FILTER_TABS.map((tab) => (
             <TouchableOpacity
               key={tab}
-              style={[styles.filterTab, activeFilter === tab && styles.filterTabActive]}
-              onPress={() => setActiveFilter(tab)}
+              style={[styles.tab, activeTab === tab && styles.tabActive]}
+              onPress={() => setActiveTab(tab)}
               activeOpacity={0.7}
             >
-              <Text style={[styles.filterTabText, activeFilter === tab && styles.filterTabTextActive]}>
-                {tab}
-              </Text>
+              <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
             </TouchableOpacity>
           ))}
         </View>
       </View>
 
-      {/* ── List ────────────────────────────────────────────────────────── */}
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
-      >
-        {filtered.length === 0 ? (
-          <View style={styles.empty}>
-            <View style={styles.emptyIconWrap}>
-              <Wrench size={28} color={colors.textSubtle} strokeWidth={1.5} />
-            </View>
-            <Text style={styles.emptyTitle}>No complaints</Text>
-            <Text style={styles.emptyBody}>
-              Raise an issue and track it from open to resolved right here.
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.listCard}>
-            {filtered.map((c, i) => {
-              const status = statusConfig[c.status];
-              const cat = categories.find((x) => x.key === c.category);
-              const CatIcon = cat?.icon || MoreHorizontal;
-              return (
-                <View
-                  key={c.id}
-                  style={[styles.listRow, i < filtered.length - 1 && styles.listRowDivider]}
-                >
-                  <View style={styles.catIconWrap}>
-                    <CatIcon size={18} color={colors.primary} strokeWidth={1.5} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.cardTitle}>{c.title}</Text>
-                    <Text style={styles.cardSub}>
-                      {c.category} · {relativeDay(c.date)}
-                    </Text>
-                    {!!c.note && (
-                      <Text style={styles.cardNote} numberOfLines={2}>{c.note}</Text>
-                    )}
-                  </View>
-                  <View style={[styles.statusPill, {
-                    backgroundColor: status.bg,
-                    borderColor: status.border,
-                  }]}>
-                    <Text style={[styles.statusPillText, { color: status.text }]}>
-                      {status.label}
-                    </Text>
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-        )}
-      </ScrollView>
-
-      {/* ── New complaint modal ──────────────────────────────────────────── */}
-      <Modal
-        visible={showForm}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setShowForm(false)}
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.modalWrap}
-        >
-          <View style={styles.sheet}>
-            {/* Sheet header */}
-            <View style={styles.sheetHandle} />
-            <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>New Complaint</Text>
-              <TouchableOpacity
-                onPress={() => setShowForm(false)}
-                hitSlop={12}
-                style={styles.closeBtn}
-              >
-                <X size={18} color={colors.textMuted} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {/* Category */}
-              <Text style={styles.fieldLabel}>Category</Text>
-              <View style={styles.catGrid}>
-                {categories.map((c) => {
-                  const Icon = c.icon;
-                  const active = category === c.key;
-                  return (
-                    <TouchableOpacity
-                      key={c.key}
-                      style={[styles.catChip, active && styles.catChipActive]}
-                      onPress={() => setCategory(c.key)}
-                      activeOpacity={0.8}
-                    >
-                      <Icon size={15} color={active ? '#fff' : colors.primary} />
-                      <Text style={[styles.catChipText, active && styles.catChipTextActive]}>
-                        {c.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
+      {/* ── List ────────────────────────────────────────────────────────────── */}
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        {filtered.map((c) => {
+          const status = statusConfig[c.status];
+          return (
+            <TouchableOpacity
+              key={c.id}
+              style={styles.complaintCard}
+              onPress={() => setSelectedComplaint(c)}
+              activeOpacity={0.75}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={styles.complaintTitle}>{c.title}</Text>
+                <Text style={styles.complaintDate}>{c.date}</Text>
               </View>
-
-              {/* Title */}
-              <Text style={styles.fieldLabel}>Title</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. Bathroom tap leaking"
-                placeholderTextColor={colors.textSubtle}
-                value={title}
-                onChangeText={setTitle}
-              />
-
-              {/* Description */}
-              <Text style={styles.fieldLabel}>Description (optional)</Text>
-              <TextInput
-                style={[styles.input, styles.textarea]}
-                placeholder="Add details that'll help fix it faster…"
-                placeholderTextColor={colors.textSubtle}
-                value={note}
-                onChangeText={setNote}
-                multiline
-              />
-
-              {/* Submit */}
-              <TouchableOpacity
-                style={[styles.submitBtn, title.trim().length < 4 && styles.submitBtnDisabled]}
-                onPress={submit}
-                disabled={submitting || title.trim().length < 4}
-                activeOpacity={0.85}
-              >
-                <LinearGradient
-                  colors={title.trim().length >= 4
-                    ? [colors.gradientStart, colors.gradientEnd]
-                    : ['#C4BAE8', '#D0C8EF']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.submitBtnGrad}
-                >
-                  <Text style={styles.submitBtnText}>
-                    {submitting ? 'Submitting…' : 'Submit Complaint'}
-                  </Text>
-                </LinearGradient>
-              </TouchableOpacity>
-              <View style={{ height: spacing.xl }} />
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+              <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
+                <Text style={[styles.statusText, { color: status.text }]}>{c.status}</Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
+// ── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
 
-  // ── Header ────────────────────────────────────────────────────────────────
+  // Header
   header: {
-    paddingHorizontal: spacing.xl,
-    paddingTop: 12,
-    paddingBottom: 20,
-    overflow: 'hidden',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: spacing.xl, paddingVertical: 14,
   },
-  hCircle1: {
-    position: 'absolute', width: 130, height: 130, borderRadius: 65,
-    backgroundColor: 'rgba(255,255,255,0.07)', top: -40, right: -20,
-  },
-  hCircle2: {
-    position: 'absolute', width: 60, height: 60, borderRadius: 30,
-    backgroundColor: 'rgba(255,255,255,0.05)', bottom: 10, right: 80,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  backBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  headerEyebrow: { fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: '500' },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: '#fff', letterSpacing: -0.3, marginTop: 3 },
-  addBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.3)',
-  },
+  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
 
-  // ── Filter ────────────────────────────────────────────────────────────────
-  filterWrapper: {
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: 12,
-  },
-  filterRow: { flexDirection: 'row', gap: spacing.sm },
-  filterTab: {
-    paddingHorizontal: 18,
-    paddingVertical: 8,
+  // Tabs
+  tabWrapper: { paddingHorizontal: spacing.xl, paddingTop: 10, paddingBottom: 16 },
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#F3F4F6',
     borderRadius: radius.pill,
-    backgroundColor: colors.surfaceAlt,
-    borderWidth: 1,
-    borderColor: colors.border,
+    padding: 4,
   },
-  filterTabActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  filterTabText: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
-  filterTabTextActive: { color: '#fff', fontWeight: '700' },
+  tab: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: radius.pill },
+  tabActive: { backgroundColor: colors.primary, ...shadow.subtle },
+  tabText: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
+  tabTextActive: { color: '#fff', fontWeight: '700' },
 
-  // ── List ──────────────────────────────────────────────────────────────────
-  listContent: { padding: spacing.xl, paddingBottom: 120 },
-  listCard: {
+  // List
+  scrollContent: { padding: spacing.xl, paddingBottom: 120 },
+  complaintCard: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     backgroundColor: colors.surface,
-    borderRadius: radius['2xl'],
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: 'hidden',
-    ...shadow.card,
-  },
-  listRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
     padding: 16,
+    borderRadius: radius.xl,
+    marginBottom: 12,
+    ...shadow.subtle,
   },
-  listRowDivider: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  catIconWrap: {
-    width: 38, height: 38, borderRadius: 10,
-    backgroundColor: colors.primarySoft,
-    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-  },
-  cardTitle: { fontSize: 14, fontWeight: '700', color: colors.text, marginBottom: 3 },
-  cardSub: { fontSize: 12, color: colors.textMuted },
-  cardNote: { fontSize: 12, color: colors.textMuted, marginTop: 4, lineHeight: 17 },
-  statusPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    alignSelf: 'flex-start',
-    flexShrink: 0,
-    marginTop: 2,
-  },
-  statusPillText: { fontSize: 11, fontWeight: '700' },
+  complaintTitle: { fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 6 },
+  complaintDate: { fontSize: 12, color: colors.textMuted, fontWeight: '500' },
+  statusBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.sm },
+  statusText: { fontSize: 11, fontWeight: '800' },
 
-  // ── Empty ─────────────────────────────────────────────────────────────────
-  empty: { alignItems: 'center', paddingTop: 80, gap: spacing.md },
-  emptyIconWrap: {
-    width: 64, height: 64, borderRadius: 32,
-    backgroundColor: colors.surface,
-    borderWidth: 1, borderColor: colors.border,
+  // Detail View
+  detailCard: {
+    padding: 20,
+    borderRadius: radius.xl,
+    marginBottom: 24,
+  },
+  detailCardTitle: { fontSize: 16, fontWeight: '800', color: colors.text, marginBottom: 6 },
+  detailCardDate: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
+  
+  detailSection: { marginBottom: 20 },
+  detailLabel: { fontSize: 12, fontWeight: '800', color: '#111827', marginBottom: 8 },
+  detailText: { fontSize: 14, color: '#4B5563', lineHeight: 22 },
+  
+  attachmentsRow: { flexDirection: 'row', gap: 12 },
+  attachmentBox: {
+    width: 90, height: 90,
+    backgroundColor: '#E5E7EB',
+    borderRadius: radius.lg,
     alignItems: 'center', justifyContent: 'center',
   },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
-  emptyBody: {
-    fontSize: 14, color: colors.textMuted,
-    textAlign: 'center', paddingHorizontal: 40,
-  },
 
-  // ── Modal ─────────────────────────────────────────────────────────────────
-  modalWrap: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(32,33,36,0.5)' },
-  sheet: {
-    backgroundColor: colors.bg,
-    borderTopLeftRadius: radius['3xl'],
-    borderTopRightRadius: radius['3xl'],
+  bottomBtnWrap: {
     padding: spacing.xl,
-    paddingTop: 12,
-    maxHeight: '92%',
+    paddingBottom: 40,
+    backgroundColor: colors.bg,
   },
-  sheetHandle: {
-    width: 36, height: 4, borderRadius: 2,
-    backgroundColor: colors.border,
-    alignSelf: 'center', marginBottom: 16,
-  },
-  sheetHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.xl,
-  },
-  sheetTitle: { fontSize: 20, fontWeight: '700', color: colors.text },
-  closeBtn: {
-    width: 32, height: 32, borderRadius: 16,
-    backgroundColor: colors.surfaceAlt,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  fieldLabel: {
-    fontSize: 13, fontWeight: '700',
-    color: colors.textMuted,
-    marginBottom: spacing.sm, marginTop: spacing.lg,
-  },
-  catGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  catChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 8,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primarySoft,
-    borderWidth: 1,
-    borderColor: colors.primaryBorder,
-  },
-  catChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  catChipText: { fontSize: 13, fontWeight: '600', color: colors.primary },
-  catChipTextActive: { color: '#fff' },
-  input: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    fontSize: font.body,
-    color: colors.text,
-  },
-  textarea: { height: 100, textAlignVertical: 'top' },
-  submitBtn: { borderRadius: radius.lg, marginTop: spacing.xl, ...shadow.raised },
-  submitBtnDisabled: { opacity: 0.65 },
-  submitBtnGrad: {
-    height: 54,
+  updateBtn: {
+    backgroundColor: '#7B3A2A',
+    paddingVertical: 16,
     borderRadius: radius.lg,
     alignItems: 'center',
-    justifyContent: 'center',
+    ...shadow.raised,
   },
-  submitBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  updateBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });
