@@ -82,10 +82,12 @@ export default function ReportsScreen() {
     const [showEndPicker, setShowEndPicker] = useState(false);
 
     const [stats, setStats] = useState<any>(null);
+    const [overview, setOverview] = useState<any>(null);
     const [defaulters, setDefaulters] = useState<any[]>([]);
-    const [expenses, setExpenses] = useState<any[]>([]);
+    const [expensePreview, setExpensePreview] = useState<any[]>([]);
     const [trend, setTrend] = useState<any[]>([]);
     const [statsMonth, setStatsMonth] = useState(new Date());
+    const lastLoadedMonth = useRef<string>('');
 
     const changeMonth = (dir: -1 | 1) => {
         const now = new Date();
@@ -95,70 +97,156 @@ export default function ReportsScreen() {
         setStatsMonth(d);
     };
 
-    const loadData = useCallback(async (silent = false, forceRefresh = false) => {
-        // Skip reload if data is still fresh (cache hit)
+    const getCurrentMonthRange = useCallback(() => {
+        const year = statsMonth.getFullYear();
+        const month = statsMonth.getMonth() + 1;
+        const monthStart = `${year}-${String(month).padStart(2, '0')}-01`;
+        const lastDay = new Date(year, month, 0).getDate();
+        const monthEnd = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+        return { monthStart, monthEnd };
+    }, [statsMonth]);
+
+    const loadExpensePreview = useCallback(async () => {
+        try {
+            const { monthStart, monthEnd } = getCurrentMonthRange();
+            const res = await api.get('/expenses', {
+                params: {
+                    startDate: monthStart,
+                    endDate: monthEnd,
+                    page: 1,
+                    limit: 25,
+                },
+            });
+            if (res.data?.success) {
+                setExpensePreview(res.data.data || []);
+            }
+        } catch (error) {
+            console.warn('ReportsScreen: expense preview failed', error);
+        }
+    }, [getCurrentMonthRange]);
+
+    const loadData = useCallback(async (silent = false, forceRefresh = false, targetMonth?: Date) => {
+        const month = targetMonth || statsMonth;
+        const selectedMonth = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}`;
+
+        // Skip reload if data is still fresh for this month (cache hit)
         const now = Date.now();
-        const isCacheValid = lastLoadedAt.current > 0 && (now - lastLoadedAt.current) < CACHE_TTL_MS;
-        if (isCacheValid && !forceRefresh && !silent) {
+        const isCacheValid = lastLoadedAt.current > 0 && lastLoadedMonth.current === selectedMonth && (now - lastLoadedAt.current) < CACHE_TTL_MS;
+        if (isCacheValid && !forceRefresh) {
             setLoading(false);
+            setRefreshing(false);
             return;
         }
         if (!silent) setLoading(true);
         try {
-            const [statsRes, feesRes, expRes, trendRes] = await Promise.all([
+            const [statsRes, feesSummaryRes, overviewRes] = await Promise.all([
                 api.get('/reports/dashboard-stats').catch(() => ({ data: { success: false } })),
-                api.get('/monthly-fees/summary').catch(() => ({ data: { success: false } })),
-                api.get('/expenses').catch(() => ({ data: { success: false } })),
-                api.get('/reports/monthly-overview').catch(() => ({ data: { success: false } })),
+                api.get('/monthly-fees/summary', {
+                    params: {
+                        fee_month: selectedMonth,
+                        onlyPending: 'true',
+                        page: 1,
+                        limit: 10,
+                    },
+                }).catch(() => ({ data: { success: false } })),
+                api.get('/reports/monthly-overview', {
+                    params: {
+                        month: selectedMonth,
+                    },
+                }).catch(() => ({ data: { success: false } })),
             ]);
+
             if (statsRes.data?.success) setStats(statsRes.data.data);
-            if (trendRes.data?.success && trendRes.data.data?.trend) setTrend(trendRes.data.data.trend.slice(-6));
-            if (feesRes.data?.success && feesRes.data.data?.fees) {
-                const fees: any[] = feesRes.data.data.fees;
-                const nowDate = new Date(); nowDate.setHours(0, 0, 0, 0);
-                setDefaulters(
-                    fees
-                        .filter(f => (f.balance || 0) > 0 && !['paid', 'fully paid'].includes((f.fee_status || '').toLowerCase()))
-                        .sort((a, b) => (b.balance || 0) - (a.balance || 0))
-                        .slice(0, 5)
-                        .map(f => {
-                            const due = f.due_date ? new Date(f.due_date) : new Date();
-                            due.setHours(0, 0, 0, 0);
-                            return { id: f.student_id, name: `${f.first_name || ''} ${f.last_name || ''}`.trim(), amount: f.balance || 0, days: Math.floor((nowDate.getTime() - due.getTime()) / 86400000) };
-                        })
-                );
+
+            if (feesSummaryRes.data?.success && Array.isArray(feesSummaryRes.data.data?.fees)) {
+                const fees: any[] = feesSummaryRes.data.data.fees;
+                const nowDate = new Date();
+                nowDate.setHours(0, 0, 0, 0);
+                const topDefaulters = fees
+                    .filter((f) => (f.balance || 0) > 0 && !['fully paid', 'paid'].includes(String(f.fee_status || '').toLowerCase()))
+                    .sort((a, b) => (b.balance || 0) - (a.balance || 0))
+                    .slice(0, 3)
+                    .map((f) => {
+                        const dueDate = f.due_date ? new Date(f.due_date) : nowDate;
+                        dueDate.setHours(0, 0, 0, 0);
+                        const daysLate = Math.max(0, Math.floor((nowDate.getTime() - dueDate.getTime()) / 86400000));
+                        return {
+                            id: f.student_id || `${f.fee_id}-${Math.random()}`,
+                            name: `${f.first_name || ''} ${f.last_name || ''}`.trim() || 'Unknown',
+                            amount: Number(f.balance || 0),
+                            days: daysLate,
+                        };
+                    });
+                setDefaulters(topDefaulters);
             }
-            if (expRes.data?.success) setExpenses(expRes.data.data || []);
-            lastLoadedAt.current = Date.now(); // Mark cache as fresh
-        } catch (e) { console.error('ReportsScreen:', e); }
-        finally { setLoading(false); setRefreshing(false); }
-    }, []);
+
+            if (overviewRes.data?.success && overviewRes.data.data?.currentMonth) {
+                setOverview(overviewRes.data.data.currentMonth);
+                if (overviewRes.data.data.trend) {
+                    setTrend(overviewRes.data.data.trend.slice(-6));
+                }
+            }
+
+            lastLoadedAt.current = Date.now();
+            lastLoadedMonth.current = selectedMonth;
+        } catch (e) {
+            console.error('ReportsScreen:', e);
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    }, [statsMonth]);
 
     useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
 
+    React.useEffect(() => {
+        // Reload overview and defaulter summaries when the selected month changes.
+        loadData(true, true, statsMonth);
+    }, [statsMonth, loadData]);
+
     const onRefresh = () => { setRefreshing(true); loadData(true, true); };
 
-    const totalRent = stats ? (stats.monthlyRentCollected || stats.feeCollection || 0) : 0;
-    const pending = stats ? (stats.monthlyRentPending || stats.pendingDuesAmount || 0) : 0;
+    const totalRent = overview?.rentCollected ?? overview?.feeCollection ?? stats?.monthlyRentCollected ?? stats?.feeCollection ?? 0;
+    const pending = overview?.rentPending ?? stats?.monthlyRentPending ?? stats?.pendingDuesAmount ?? 0;
+    const totalExpenses = overview?.totalExpenses ?? stats?.monthlyExpenses ?? 0;
+    const netProfit = overview?.netProfit ?? (totalRent - totalExpenses);
     const totalDue = totalRent + pending;
     const occupancyRate = stats?.occupancyRate || 0;
     const totalBeds = stats?.totalBeds || 0;
     const occupiedBeds = stats?.occupiedBeds || 0;
-    const totalExpenses = expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
-    const netProfit = totalRent - totalExpenses;
-    const periodLabel = new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+    const periodLabel = statsMonth.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
     const collectionRate = totalDue > 0 ? Math.round((totalRent / totalDue) * 100) : 0;
+    const expenseDescription = expensePreview.length > 0
+        ? `${expensePreview.length} recent expenses`
+        : 'Expense summary and spending patterns';
 
     const handleExportPDF = async () => {
         setExporting('pdf');
         try {
-            const html = buildReportHtml({ hostelName: user?.hostel_name || 'My Hostel', ownerName: user?.full_name, periodLabel, totalRent, pending, totalExpenses, netProfit, collectionRate, occupancyRate, occupiedBeds, totalBeds, defaulters, expenses, trend });
+            if (expensePreview.length === 0) {
+                await loadExpensePreview();
+            }
+            const html = buildReportHtml({
+                hostelName: user?.hostel_name || 'My Hostel',
+                ownerName: user?.full_name,
+                periodLabel,
+                totalRent,
+                pending,
+                totalExpenses,
+                netProfit,
+                collectionRate,
+                occupancyRate,
+                occupiedBeds,
+                totalBeds,
+                defaulters,
+                expenses: expensePreview,
+                trend,
+            });
             const { uri } = await Print.printToFileAsync({ html });
-            const canShare = await Sharing.isAvailableAsync();
-            if (canShare) await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Share PDF Report', UTI: 'com.adobe.pdf' });
-            else Alert.alert('Saved', 'Report saved to:\n' + uri);
-        } catch (e: any) { Alert.alert('Export Failed', e?.message || 'Could not generate PDF.'); }
-        finally { setExporting(null); }
+            await downloadAndSaveFile(uri, `report_${periodLabel.replace(/\s+/g, '_')}.pdf`, 'application/pdf', true);
+        } catch (e: any) {
+            Alert.alert('Export Failed', e?.message || 'Could not generate PDF.');
+        } finally { setExporting(null); }
     };
 
     const openExcelModal = (type: 'download' | 'email') => {
@@ -211,7 +299,7 @@ export default function ReportsScreen() {
     const REPORTS = [
         { id: 'collection', title: 'Collection Report', description: 'All rent payments received', icon: 'cash-outline', iconColor: '#10B981', iconBg: '#D1FAE5', canDownload: true, onView: () => navigation.navigate('CollectedPayments') },
         { id: 'dues', title: 'Due & Pending Report', description: `${defaulters.length} tenants with outstanding dues`, icon: 'alert-circle-outline', iconColor: '#F59E0B', iconBg: '#FEF3C7', canDownload: true, onView: () => navigation.navigate('PendingPayments') },
-        { id: 'expenses', title: 'Expense Report', description: `${expenses.length} expenses recorded`, icon: 'trending-down-outline', iconColor: '#EF4444', iconBg: '#FEE2E2', canDownload: true, onView: () => navigation.navigate('Expenses') },
+        { id: 'expenses', title: 'Expense Report', description: expenseDescription, icon: 'trending-down-outline', iconColor: '#EF4444', iconBg: '#FEE2E2', canDownload: true, onView: () => navigation.navigate('Expenses') },
         { id: 'occupancy', title: 'Occupancy Report', description: `${occupiedBeds}/${totalBeds} beds occupied · ${occupancyRate}% full`, icon: 'bed-outline', iconColor: '#3B82F6', iconBg: '#DBEAFE', canDownload: true, onView: () => navigation.navigate('Rooms') },
         { id: 'tenants', title: 'Tenant Report', description: 'All active tenants and their details', icon: 'people-outline', iconColor: '#8B5CF6', iconBg: '#EDE9FE', canDownload: true, onView: () => navigation.navigate('Students') },
         { id: 'monthly', title: 'Monthly Summary', description: `${periodLabel} · Net ${netProfit >= 0 ? '+' : ''}\u20b9${fmt(netProfit)}`, icon: 'bar-chart-outline', iconColor: '#7C3AED', iconBg: '#EDE9FE', canDownload: true, onView: () => navigation.navigate('Overview') },

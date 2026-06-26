@@ -81,7 +81,6 @@ app.use('/api/monthly-fees', monthlyFeeRoutes);
 app.use('/api/month-fees', monthlyFeeRoutes); // Alias for common typo
 app.use('/api/income', incomeRoutes);
 app.use('/api/expenses', expenseRoutes);
-app.use('/api/analytics', reportRoutes); // Keep this as well for mobile compatibility
 app.use('/api/activity', activityRoutes);
 app.use('/api/amenities', amenitiesRoutes);
 app.use('/api/relations', relationsRoutes);
@@ -353,3 +352,4 @@ app.listen(PORT, HOST, () => {
 });
 
 export default app;
+

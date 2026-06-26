@@ -46,7 +46,7 @@ export type PaymentRecord = {
   dueDate?: string;
 };
 
-export type ExpenseCategory = 'Food' | 'Travel' | 'Shopping' | 'Other' | 'Medical' | 'Utilities';
+export type ExpenseCategory = 'Food' | 'Travel' | 'Shopping' | 'Tea/Coffee' | 'Other' | 'Medical' | 'Utilities';
 
 export type ExpenseRecord = {
   id: string;
@@ -212,10 +212,10 @@ export const samplePayments: PaymentRecord[] = [
 // ── Expense data ─────────────────────────────────────────────────────────────
 
 export const sampleExpenses: ExpenseRecord[] = [
-  { id: 'e1', title: 'Breakfast', category: 'Food', amount: 50, date: '2025-06-09', time: '08:30 AM' },
+  { id: 'e1', title: 'Breakfast', category: 'Food', amount: 120, date: '2025-06-09', time: '08:30 AM' },
   { id: 'e2', title: 'Auto Ride', category: 'Travel', amount: 80, date: '2025-06-09', time: '09:15 AM' },
-  { id: 'e3', title: 'Lunch', category: 'Food', amount: 120, date: '2025-06-09', time: '01:30 PM' },
-  { id: 'e4', title: 'Snacks', category: 'Food', amount: 30, date: '2025-06-09', time: '05:00 PM' },
+  { id: 'e3', title: 'Groceries', category: 'Shopping', amount: 150, date: '2025-06-09', time: '11:45 AM' },
+  { id: 'e4', title: 'Evening Tea', category: 'Tea/Coffee', amount: 50, date: '2025-06-09', time: '04:20 PM' },
   { id: 'e5', title: 'Other', category: 'Other', amount: 40, date: '2025-06-09', time: '08:00 PM' },
   { id: 'e6', title: 'Breakfast', category: 'Food', amount: 45, date: '2025-06-08', time: '08:00 AM' },
   { id: 'e7', title: 'Bus Ticket', category: 'Travel', amount: 25, date: '2025-06-08', time: '10:00 AM' },
@@ -331,3 +331,4 @@ export const sampleDocuments: TenantDocument[] = [
   { id: 'd3', name: 'Apr 2025 Receipt', type: 'Receipt', date: '2025-04-05', sizeKb: 94 },
   { id: 'd4', name: 'ID Proof (Aadhaar)', type: 'KYC', date: '2025-01-01', sizeKb: 220 },
 ];
+

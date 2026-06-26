@@ -50,8 +50,10 @@ export const downloadAndSaveFile = async (
         }
 
         const canShare = await Sharing.isAvailableAsync();
+        const shareUri = await getShareableUri(localUri);
+
         if (canShare) {
-            await Sharing.shareAsync(localUri, {
+            await Sharing.shareAsync(shareUri, {
                 mimeType,
                 dialogTitle: `Open ${filename}`,
                 UTI: getUTI(mimeType),
@@ -63,6 +65,19 @@ export const downloadAndSaveFile = async (
         console.error('downloadAndSaveFile error:', error);
         Alert.alert('Download Failed', error.message || 'An error occurred while downloading the file.');
     }
+};
+
+const getShareableUri = async (localUri: string): Promise<string> => {
+    if (Platform.OS === 'android') {
+        try {
+            const contentUri = await FileSystem.getContentUriAsync(localUri);
+            return contentUri;
+        } catch (error) {
+            console.warn('Could not get content URI for Android:', error);
+            return localUri;
+        }
+    }
+    return localUri;
 };
 
 const getUTI = (mimeType: string): string => {

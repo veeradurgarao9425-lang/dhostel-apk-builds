@@ -3,6 +3,24 @@ import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
 
+const tableExists = async (tableName: string): Promise<boolean> => {
+  try {
+    const [rows] = await db.raw(
+      `
+        SELECT COUNT(*) as count
+        FROM information_schema.tables
+        WHERE table_schema = DATABASE()
+        AND table_name = ?
+      `,
+      [tableName]
+    );
+    return Number(rows?.[0]?.count || 0) > 0;
+  } catch (error) {
+    console.warn(`[reports] Could not check table "${tableName}":`, error);
+    return false;
+  }
+};
+
 // Get dashboard statistics for owner
 export const getDashboardStats = async (req: AuthRequest, res: Response) => {
   try {
@@ -134,28 +152,38 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
     const expenses = Number(monthlyExpenses?.total || 0);
     const netProfit = income - expenses;
 
-    // Monthly rent due and pending for current month from monthly_fees
-    let monthlyFeesDueQuery = db('monthly_fees')
-      .where('fee_month', `${year}-${String(month).padStart(2, '0')}`)
-      .sum('total_due as total_due')
-      .sum('balance as total_pending');
-    if (hostelIds.length > 0) {
-      monthlyFeesDueQuery = monthlyFeesDueQuery.whereIn('hostel_id', hostelIds);
-    }
-    const monthlyFeesDue = await monthlyFeesDueQuery.first();
-    const monthlyRentDue = Number(monthlyFeesDue?.total_due || 0);
-    const monthlyRentPending = Number(monthlyFeesDue?.total_pending || 0);
-    const monthlyRentCollected = Number(feeCollection?.total || 0);
+    const hasMonthlyFees = await tableExists('monthly_fees');
+    let monthlyRentDue = 0;
+    let monthlyRentPending = 0;
+    let pendingDuesCount = 0;
+    let pendingDuesAmount = 0;
 
-    // Get pending dues count - count unpaid monthly fees
-    let pendingDuesQuery = db('monthly_fees')
-      .whereIn('fee_status', ['Pending', 'Partially Paid', 'Overdue'])
-      .count('* as count')
-      .sum('balance as total');
-    if (hostelIds.length > 0) {
-      pendingDuesQuery = pendingDuesQuery.whereIn('hostel_id', hostelIds);
+    // Monthly fee tables can be absent on databases that were partially consolidated.
+    // Report loading should still return the rest of the dashboard instead of 500ing.
+    if (hasMonthlyFees) {
+      let monthlyFeesDueQuery = db('monthly_fees')
+        .where('fee_month', `${year}-${String(month).padStart(2, '0')}`)
+        .sum('total_due as total_due')
+        .sum('balance as total_pending');
+      if (hostelIds.length > 0) {
+        monthlyFeesDueQuery = monthlyFeesDueQuery.whereIn('hostel_id', hostelIds);
+      }
+      const monthlyFeesDue = await monthlyFeesDueQuery.first();
+      monthlyRentDue = Number(monthlyFeesDue?.total_due || 0);
+      monthlyRentPending = Number(monthlyFeesDue?.total_pending || 0);
+
+      let pendingDuesQuery = db('monthly_fees')
+        .whereIn('fee_status', ['Pending', 'Partially Paid', 'Overdue'])
+        .count('* as count')
+        .sum('balance as total');
+      if (hostelIds.length > 0) {
+        pendingDuesQuery = pendingDuesQuery.whereIn('hostel_id', hostelIds);
+      }
+      const pendingDues = await pendingDuesQuery.first();
+      pendingDuesCount = Number(pendingDues?.count || 0);
+      pendingDuesAmount = Number(pendingDues?.total || 0);
     }
-    const pendingDues = await pendingDuesQuery.first();
+    const monthlyRentCollected = Number(feeCollection?.total || 0);
 
     // Get left tenants (inactive students) count
     let leftTenantsQuery = db('students')
@@ -289,8 +317,8 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
         netProfit: Number(netProfit),
         feeCollection: Number(feeCollection?.total || 0),
         feeCollectionCount: Number(feeCollection?.count || 0),
-        pendingDuesCount: Number(pendingDues?.count || 0),
-        pendingDuesAmount: Number(pendingDues?.total || 0),
+        pendingDuesCount,
+        pendingDuesAmount,
         leftTenants: Number(leftTenants),
         prebookingsCount: Number(prebookingsCount),
         noticesCount: Number(noticesCount),
@@ -1105,16 +1133,20 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
     const netProfit = totalIncome - totalExpenses;
 
     // ── 4. Monthly rent due/collected/pending for context ──
-    let monthlyFeeQuery = db('monthly_fees')
-      .where('fee_month', feeMonthStr)
-      .sum('total_due as total_due')
-      .sum('balance as total_pending');
-    if (hostelIds.length > 0) {
-      monthlyFeeQuery = monthlyFeeQuery.whereIn('hostel_id', hostelIds);
+    let totalRentDue = 0;
+    let totalRentPending = 0;
+    if (await tableExists('monthly_fees')) {
+      let monthlyFeeQuery = db('monthly_fees')
+        .where('fee_month', feeMonthStr)
+        .sum('total_due as total_due')
+        .sum('balance as total_pending');
+      if (hostelIds.length > 0) {
+        monthlyFeeQuery = monthlyFeeQuery.whereIn('hostel_id', hostelIds);
+      }
+      const monthlyFeeResult = await monthlyFeeQuery.first();
+      totalRentDue = Number(monthlyFeeResult?.total_due || 0);
+      totalRentPending = Number(monthlyFeeResult?.total_pending || 0);
     }
-    const monthlyFeeResult = await monthlyFeeQuery.first();
-    const totalRentDue = Number(monthlyFeeResult?.total_due || 0);
-    const totalRentPending = Number(monthlyFeeResult?.total_pending || 0);
 
     // ── 5. 12-month trend (last 12 months including current) ──
     const trend: any[] = [];
@@ -1229,3 +1261,4 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
     });
   }
 };
+

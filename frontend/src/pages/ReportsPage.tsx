@@ -76,7 +76,7 @@ export const ReportsPage: React.FC = () => {
 
     try {
       setDownloading(true);
-      const response = await api.get('/analytics/download/excel', {
+      const response = await api.get('/reports/download/excel', {
         params: { month: selectedMonth },
         responseType: 'blob',
       });
@@ -362,3 +362,4 @@ export const ReportsPage: React.FC = () => {
   );
 };
 export default ReportsPage;
+
