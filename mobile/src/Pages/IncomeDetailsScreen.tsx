@@ -138,12 +138,17 @@ export default function IncomeDetailsScreen() {
             setShowExportModal(false);
 
             if (downloadResult.status === 200) {
-                await downloadAndSaveFile(
-                    downloadResult.uri,
-                    filename,
-                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                    true
-                );
+                // File is already in documentDirectory — share directly (no re-copy)
+                const canShare = await Sharing.isAvailableAsync();
+                if (canShare) {
+                    await Sharing.shareAsync(downloadResult.uri, {
+                        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        dialogTitle: `Open ${filename}`,
+                        UTI: 'com.microsoft.excel.xlsx',
+                    });
+                } else {
+                    Alert.alert('Downloaded', `File saved as:\n${filename}`);
+                }
             } else {
                 Alert.alert('Error', `Server returned status code ${downloadResult.status}`);
             }

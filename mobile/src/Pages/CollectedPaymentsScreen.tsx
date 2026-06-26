@@ -73,21 +73,21 @@ export default function CollectedPaymentsScreen() {
                 type: 'month',
                 date: dateStr,
                 page: pageNum,
-                limit: 10
+                limit: 20   // Increased from 10 to 20 for faster loading
             };
             if (debouncedSearchQuery) {
                 params.search = debouncedSearchQuery;
             }
             const res = await api.get('/income/analytics', {
                 params,
-                timeout: 15000,
+                timeout: 30000,  // 30s for cold-start Render servers
             });
 
             if (res.data?.success) {
                 const analyticsData = res.data.data ?? null;
                 setData(analyticsData);
                 const newTransactions = analyticsData?.transactions ?? [];
-                setHasMore(analyticsData?.hasMore ?? (newTransactions.length === 10));
+                setHasMore(analyticsData?.hasMore ?? (newTransactions.length === 20));
 
                 setTransactions(prev => {
                     if (pageNum === 1) return newTransactions;
@@ -108,7 +108,7 @@ export default function CollectedPaymentsScreen() {
                 setData(null);
                 setTransactions([]);
                 if (e?.code === 'ECONNABORTED') {
-                    setError('Request timed out. Check your connection.');
+                    setError('Server is waking up. Please wait a moment and tap to retry.');
                 } else {
                     setError('Failed to load data. Tap to retry.');
                 }
@@ -164,12 +164,17 @@ export default function CollectedPaymentsScreen() {
             setShowExportModal(false);
 
             if (downloadResult.status === 200) {
-                await downloadAndSaveFile(
-                    downloadResult.uri,
-                    filename,
-                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                    true
-                );
+                // File is already in documentDirectory — share it directly (no copy needed)
+                const canShare = await Sharing.isAvailableAsync();
+                if (canShare) {
+                    await Sharing.shareAsync(downloadResult.uri, {
+                        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        dialogTitle: `Open ${filename}`,
+                        UTI: 'com.microsoft.excel.xlsx',
+                    });
+                } else {
+                    Alert.alert('Downloaded', `File saved as:\n${filename}`);
+                }
             } else {
                 Alert.alert('Error', `Server returned status code ${downloadResult.status}`);
             }
@@ -313,8 +318,14 @@ export default function CollectedPaymentsScreen() {
 
             {/* BODY */}
             {loading ? (
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                    <ActivityIndicator size="large" color="#059669" style={{ marginTop: 40 }} />
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', gap: 16 }}>
+                    <ActivityIndicator size="large" color="#059669" />
+                    <View style={{ alignItems: 'center', gap: 4 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#334155' }}>Loading payments...</Text>
+                        <Text style={{ fontSize: 12, color: '#94A3B8', textAlign: 'center', paddingHorizontal: 40 }}>
+                            This may take a moment on first load
+                        </Text>
+                    </View>
                 </View>
             ) : (
                 <FlatList
@@ -374,7 +385,7 @@ export default function CollectedPaymentsScreen() {
                                 </View>
                             )}
 
-                            {/* Search Bar */}
+                            {/* Search Bar + Month Filter */}
                             <View style={s.searchBarContainer}>
                                 <Ionicons name="search" size={18} color="#94A3B8" />
                                 <TextInput
@@ -384,11 +395,40 @@ export default function CollectedPaymentsScreen() {
                                     onChangeText={setSearchQuery}
                                     placeholderTextColor="#94A3B8"
                                 />
-                                <TouchableOpacity onPress={() => setDatePickerVisible(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                    <Ionicons name="calendar-outline" size={18} color="#059669" />
-                                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#059669', marginRight: 2 }}>
-                                        {refDate.toLocaleDateString('en-IN', { month: 'short', year: '2-digit' })}
+                            </View>
+
+                            {/* Month Navigation Bar */}
+                            <View style={s.monthNavBar}>
+                                <TouchableOpacity
+                                    style={s.monthNavArrow}
+                                    onPress={() => shiftMonth(-1)}
+                                    activeOpacity={0.7}
+                                >
+                                    <Ionicons name="chevron-back" size={18} color="#059669" />
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={s.monthNavLabel}
+                                    onPress={() => setDatePickerVisible(true)}
+                                    activeOpacity={0.8}
+                                >
+                                    <Ionicons name="calendar-outline" size={14} color="#059669" />
+                                    <Text style={s.monthNavLabelText}>
+                                        {refDate.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
                                     </Text>
+                                    <Ionicons name="chevron-down" size={13} color="#059669" />
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={[
+                                        s.monthNavArrow,
+                                        !canGoForward() && { opacity: 0.3 },
+                                    ]}
+                                    onPress={() => canGoForward() && shiftMonth(1)}
+                                    disabled={!canGoForward()}
+                                    activeOpacity={0.7}
+                                >
+                                    <Ionicons name="chevron-forward" size={18} color="#059669" />
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -662,6 +702,45 @@ const s = StyleSheet.create({
         fontSize: 13,
         fontWeight: '600',
         color: '#0F172A',
+    },
+
+    monthNavBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#E6F7ED',
+        borderRadius: 14,
+        paddingHorizontal: 8,
+        paddingVertical: 8,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#BFEAD0',
+    },
+    monthNavArrow: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        elevation: 1,
+        shadowColor: '#000',
+        shadowOpacity: 0.06,
+        shadowRadius: 3,
+    },
+    monthNavLabel: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingVertical: 4,
+    },
+    monthNavLabelText: {
+        fontSize: 14,
+        fontWeight: '800',
+        color: '#059669',
+        letterSpacing: 0.2,
     },
 
     collectionsHeaderRow: {

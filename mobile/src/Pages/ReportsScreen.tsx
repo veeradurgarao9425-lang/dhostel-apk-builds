@@ -67,9 +67,12 @@ export default function ReportsScreen() {
     const { theme, isDark } = useTheme();
     const { user } = useAuth();
 
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [exporting, setExporting] = useState<null | string>(null);
+    // Cache: store data between navigations, only reload if stale (>2 min)
+    const lastLoadedAt = useRef<number>(0);
+    const CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
 
     const [excelRangeModal, setExcelRangeModal] = useState(false);
     const [pendingExportType, setPendingExportType] = useState<'download' | 'email'>('download');
@@ -82,8 +85,24 @@ export default function ReportsScreen() {
     const [defaulters, setDefaulters] = useState<any[]>([]);
     const [expenses, setExpenses] = useState<any[]>([]);
     const [trend, setTrend] = useState<any[]>([]);
+    const [statsMonth, setStatsMonth] = useState(new Date());
 
-    const loadData = useCallback(async (silent = false) => {
+    const changeMonth = (dir: -1 | 1) => {
+        const now = new Date();
+        const d = new Date(statsMonth);
+        d.setMonth(d.getMonth() + dir);
+        if (dir === 1 && (d.getFullYear() > now.getFullYear() || (d.getFullYear() === now.getFullYear() && d.getMonth() > now.getMonth()))) return;
+        setStatsMonth(d);
+    };
+
+    const loadData = useCallback(async (silent = false, forceRefresh = false) => {
+        // Skip reload if data is still fresh (cache hit)
+        const now = Date.now();
+        const isCacheValid = lastLoadedAt.current > 0 && (now - lastLoadedAt.current) < CACHE_TTL_MS;
+        if (isCacheValid && !forceRefresh && !silent) {
+            setLoading(false);
+            return;
+        }
         if (!silent) setLoading(true);
         try {
             const [statsRes, feesRes, expRes, trendRes] = await Promise.all([
@@ -96,7 +115,7 @@ export default function ReportsScreen() {
             if (trendRes.data?.success && trendRes.data.data?.trend) setTrend(trendRes.data.data.trend.slice(-6));
             if (feesRes.data?.success && feesRes.data.data?.fees) {
                 const fees: any[] = feesRes.data.data.fees;
-                const now = new Date(); now.setHours(0, 0, 0, 0);
+                const nowDate = new Date(); nowDate.setHours(0, 0, 0, 0);
                 setDefaulters(
                     fees
                         .filter(f => (f.balance || 0) > 0 && !['paid', 'fully paid'].includes((f.fee_status || '').toLowerCase()))
@@ -105,16 +124,19 @@ export default function ReportsScreen() {
                         .map(f => {
                             const due = f.due_date ? new Date(f.due_date) : new Date();
                             due.setHours(0, 0, 0, 0);
-                            return { id: f.student_id, name: `${f.first_name || ''} ${f.last_name || ''}`.trim(), amount: f.balance || 0, days: Math.floor((now.getTime() - due.getTime()) / 86400000) };
+                            return { id: f.student_id, name: `${f.first_name || ''} ${f.last_name || ''}`.trim(), amount: f.balance || 0, days: Math.floor((nowDate.getTime() - due.getTime()) / 86400000) };
                         })
                 );
             }
             if (expRes.data?.success) setExpenses(expRes.data.data || []);
+            lastLoadedAt.current = Date.now(); // Mark cache as fresh
         } catch (e) { console.error('ReportsScreen:', e); }
         finally { setLoading(false); setRefreshing(false); }
     }, []);
 
     useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
+
+    const onRefresh = () => { setRefreshing(true); loadData(true, true); };
 
     const totalRent = stats ? (stats.monthlyRentCollected || stats.feeCollection || 0) : 0;
     const pending = stats ? (stats.monthlyRentPending || stats.pendingDuesAmount || 0) : 0;
@@ -155,9 +177,21 @@ export default function ReportsScreen() {
             const base = api.defaults.baseURL?.replace(/\/$/, '') || '';
             const url = `${base}/reports/download/excel?startDate=${startStr}&endDate=${endStr}&token=${encodeURIComponent(token)}`;
             const filename = `hostel_report_${startStr}_to_${endStr}.xlsx`;
-            const result = await FileSystem.downloadAsync(url, `${FileSystem.documentDirectory}${filename}`);
-            if (result.status === 200) await downloadAndSaveFile(result.uri, filename, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', true);
-            else Alert.alert('Download Failed', `Server returned ${result.status}`);
+            const destUri = `${FileSystem.documentDirectory}${filename}`;
+            const result = await FileSystem.downloadAsync(url, destUri);
+            if (result.status === 200) {
+                // File is already saved — share directly, no re-copy
+                const canShare = await Sharing.isAvailableAsync();
+                if (canShare) {
+                    await Sharing.shareAsync(result.uri, {
+                        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        dialogTitle: `Open ${filename}`,
+                        UTI: 'com.microsoft.excel.xlsx',
+                    });
+                } else {
+                    Alert.alert('Downloaded', `Saved as:\n${filename}`);
+                }
+            } else Alert.alert('Download Failed', `Server returned ${result.status}`);
         } catch (e: any) { Alert.alert('Export Failed', e?.message || 'Could not download Excel.'); }
         finally { setExporting(null); }
     };
@@ -175,17 +209,22 @@ export default function ReportsScreen() {
     };
 
     const REPORTS = [
-        { id: 'collection', title: 'Collection Report', description: 'All rent payments received this month', icon: 'cash-outline', iconColor: '#10B981', iconBg: '#D1FAE5', canDownload: false, onView: () => navigation.navigate('CollectedPayments') },
-        { id: 'dues', title: 'Due & Pending Report', description: `${defaulters.length} tenants with outstanding dues`, icon: 'alert-circle-outline', iconColor: '#F59E0B', iconBg: '#FEF3C7', canDownload: false, onView: () => navigation.navigate('PendingPayments') },
-        { id: 'expenses', title: 'Expense Report', description: `${expenses.length} expenses recorded this month`, icon: 'trending-down-outline', iconColor: '#EF4444', iconBg: '#FEE2E2', canDownload: false, onView: () => navigation.navigate('Expenses') },
-        { id: 'occupancy', title: 'Occupancy Report', description: `${occupiedBeds}/${totalBeds} beds occupied · ${occupancyRate}% full`, icon: 'bed-outline', iconColor: '#3B82F6', iconBg: '#DBEAFE', canDownload: false, onView: () => navigation.navigate('Rooms') },
-        { id: 'tenants', title: 'Tenant Report', description: 'All active tenants and their details', icon: 'people-outline', iconColor: '#8B5CF6', iconBg: '#EDE9FE', canDownload: false, onView: () => navigation.navigate('Students') },
+        { id: 'collection', title: 'Collection Report', description: 'All rent payments received', icon: 'cash-outline', iconColor: '#10B981', iconBg: '#D1FAE5', canDownload: true, onView: () => navigation.navigate('CollectedPayments') },
+        { id: 'dues', title: 'Due & Pending Report', description: `${defaulters.length} tenants with outstanding dues`, icon: 'alert-circle-outline', iconColor: '#F59E0B', iconBg: '#FEF3C7', canDownload: true, onView: () => navigation.navigate('PendingPayments') },
+        { id: 'expenses', title: 'Expense Report', description: `${expenses.length} expenses recorded`, icon: 'trending-down-outline', iconColor: '#EF4444', iconBg: '#FEE2E2', canDownload: true, onView: () => navigation.navigate('Expenses') },
+        { id: 'occupancy', title: 'Occupancy Report', description: `${occupiedBeds}/${totalBeds} beds occupied · ${occupancyRate}% full`, icon: 'bed-outline', iconColor: '#3B82F6', iconBg: '#DBEAFE', canDownload: true, onView: () => navigation.navigate('Rooms') },
+        { id: 'tenants', title: 'Tenant Report', description: 'All active tenants and their details', icon: 'people-outline', iconColor: '#8B5CF6', iconBg: '#EDE9FE', canDownload: true, onView: () => navigation.navigate('Students') },
         { id: 'monthly', title: 'Monthly Summary', description: `${periodLabel} · Net ${netProfit >= 0 ? '+' : ''}\u20b9${fmt(netProfit)}`, icon: 'bar-chart-outline', iconColor: '#7C3AED', iconBg: '#EDE9FE', canDownload: true, onView: () => navigation.navigate('Overview') },
         { id: 'excel', title: 'Custom Report (Excel)', description: 'Download full data for any date range', icon: 'grid-outline', iconColor: '#059669', iconBg: '#D1FAE5', canDownload: true, onView: () => openExcelModal('download') },
         { id: 'pdf', title: 'Summary Report (PDF)', description: 'Shareable PDF with all key metrics', icon: 'document-text-outline', iconColor: '#DC2626', iconBg: '#FEE2E2', canDownload: true, onView: handleExportPDF },
     ];
 
     const downloadHandlers: Record<string, () => void> = {
+        collection: () => openExcelModal('download'),
+        dues: () => openExcelModal('download'),
+        expenses: () => openExcelModal('download'),
+        occupancy: () => openExcelModal('download'),
+        tenants: () => openExcelModal('download'),
         monthly: () => openExcelModal('download'),
         excel: () => openExcelModal('download'),
         pdf: handleExportPDF,
@@ -224,21 +263,27 @@ export default function ReportsScreen() {
                 style={{ flex: 1 }}
                 contentContainerStyle={{ paddingBottom: 120 }}
                 showsVerticalScrollIndicator={false}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadData(true); }} colors={[theme.primary]} />}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.primary]} />}
             >
                 {/* Live KPI Banner */}
                 <LinearGradient colors={['#7C3AED', '#5F2EEA', '#4338CA']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={R.banner}>
                     <View style={R.bannerTop}>
-                        <View>
-                            <Text style={R.bannerMonthLabel}>THIS MONTH</Text>
+                        <TouchableOpacity onPress={() => changeMonth(-1)} style={R.navBtn}>
+                            <Ionicons name="chevron-back" size={20} color="#FFF" />
+                        </TouchableOpacity>
+                        <View style={{ flex: 1, alignItems: 'center' }}>
+                            <Text style={R.bannerMonthLabel}>PERIOD</Text>
                             <Text style={R.bannerPeriod}>{periodLabel}</Text>
                         </View>
-                        <View style={R.netBox}>
-                            <Text style={R.netLabel}>NET PROFIT</Text>
-                            <Text style={[R.netVal, { color: netProfit >= 0 ? '#4ADE80' : '#FCA5A5' }]}>
-                                {netProfit >= 0 ? '+' : ''}{'\u20b9'}{fmt(netProfit)}
-                            </Text>
-                        </View>
+                        <TouchableOpacity onPress={() => changeMonth(1)} style={R.navBtn} disabled={statsMonth.getMonth() === new Date().getMonth() && statsMonth.getFullYear() === new Date().getFullYear()}>
+                            <Ionicons name="chevron-forward" size={20} color={statsMonth.getMonth() === new Date().getMonth() && statsMonth.getFullYear() === new Date().getFullYear() ? 'rgba(255,255,255,0.2)' : '#FFF'} />
+                        </TouchableOpacity>
+                    </View>
+                    <View style={[R.netBox, { alignItems: 'center', marginBottom: 16 }]}>
+                        <Text style={R.netLabel}>NET PROFIT</Text>
+                        <Text style={[R.netVal, { color: netProfit >= 0 ? '#4ADE80' : '#FCA5A5' }]}>
+                            {netProfit >= 0 ? '+' : ''}{'\u20b9'}{fmt(netProfit)}
+                        </Text>
                     </View>
                     <View style={R.kpiRow}>
                         {[
@@ -264,6 +309,16 @@ export default function ReportsScreen() {
                             <Text style={R.progLbl}>{collectionRate}% collection rate this month</Text>
                         </View>
                     )}
+                    {/* Quick Download Button */}
+                    <TouchableOpacity
+                        style={R.bannerDownloadBtn}
+                        onPress={() => openExcelModal('download')}
+                        disabled={!!exporting}
+                        activeOpacity={0.85}
+                    >
+                        <Ionicons name="download-outline" size={14} color="#7C3AED" />
+                        <Text style={R.bannerDownloadTxt}>Download Full Report (Excel)</Text>
+                    </TouchableOpacity>
                 </LinearGradient>
 
                 {/* Top Defaulters Alert */}
@@ -410,12 +465,15 @@ const R = StyleSheet.create({
     root: { flex: 1 },
     hBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
     banner: { marginHorizontal: 16, marginTop: 14, marginBottom: 14, borderRadius: 20, padding: 18, shadowColor: '#7C3AED', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 8 },
-    bannerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
-    bannerMonthLabel: { color: 'rgba(255,255,255,0.75)', fontSize: 10, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' },
-    bannerPeriod: { color: '#FFFFFF', fontSize: 16, fontWeight: '800', marginTop: 2 },
-    netBox: { alignItems: 'flex-end' },
-    netLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 9, fontWeight: '700', letterSpacing: 0.5 },
-    netVal: { fontSize: 18, fontWeight: '900', marginTop: 2 },
+    bannerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+    bannerMonthLabel: { color: 'rgba(255,255,255,0.75)', fontSize: 10, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', textAlign: 'center' },
+    bannerPeriod: { color: '#FFFFFF', fontSize: 15, fontWeight: '800', marginTop: 2, textAlign: 'center' },
+    netBox: { alignItems: 'center', marginBottom: 14 },
+    netLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 9, fontWeight: '700', letterSpacing: 0.5, textAlign: 'center' },
+    netVal: { fontSize: 22, fontWeight: '900', marginTop: 2 },
+    navBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
+    bannerDownloadBtn: { marginTop: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 12, paddingVertical: 9, paddingHorizontal: 16 },
+    bannerDownloadTxt: { fontSize: 12, fontWeight: '800', color: '#7C3AED' },
     kpiRow: { flexDirection: 'row', alignItems: 'center' },
     kpiItem: { flex: 1, alignItems: 'center' },
     kpiVal: { color: '#FFFFFF', fontSize: 12, fontWeight: '800' },

@@ -13,10 +13,10 @@
  *   <PaymentDrawer visible={visible} onClose={onClose} ... />
  */
 
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
     View, Text, StyleSheet, Modal, TouchableOpacity,
-    TextInput, ScrollView, ActivityIndicator, Animated,
+    TextInput, ScrollView, ActivityIndicator,
 } from 'react-native';
 import { X, Calendar } from 'lucide-react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
@@ -66,18 +66,8 @@ export function PaymentDrawer({
     payLoading, onConfirm,
     themeColor = '#7C3AED',
 }: PaymentDrawerProps) {
-    const backdropOpacity = useRef(new Animated.Value(0)).current;
     const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
     const [isDueDatePickerVisible, setDueDatePickerVisibility] = useState(false);
-
-    React.useEffect(() => {
-        Animated.timing(backdropOpacity, {
-            toValue: visible ? 1 : 0,
-            duration: visible ? 220 : 160,
-            delay: visible ? 80 : 0,
-            useNativeDriver: true,
-        }).start();
-    }, [visible]);
 
     const handleConfirmDate = (d: Date) => {
         setPayDate(toLocalDateStr(d));
@@ -95,7 +85,6 @@ export function PaymentDrawer({
 
             <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
             <View style={S.modalRoot}>
-                <Animated.View style={[S.modalBackdrop, { opacity: backdropOpacity }]} />
                 <View style={S.modalOverlay}>
                     <View style={S.drawerContent}>
 
@@ -294,14 +283,13 @@ export function PaymentDrawer({
 }
 
 const S = StyleSheet.create({
-    modalRoot: { flex: 1 },
-    modalBackdrop: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(0,0,0,0.5)',
+    modalRoot: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.45)',
+        justifyContent: 'flex-end',
     },
     modalOverlay: {
-        flex: 1,
-        justifyContent: 'flex-end',
+        // kept for compatibility — content aligns to bottom via modalRoot
     },
     drawerContent: {
         backgroundColor: '#FFFFFF',
