@@ -8,12 +8,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowLeft, Coffee, Soup, Moon, ChefHat } from 'lucide-react-native';
+import { ArrowLeft, ChefHat } from 'lucide-react-native';
 import { colors, radius, spacing, font, shadow } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 
-// 7-day menu data
+// ── 7-day menu data ───────────────────────────────────────────────────────────
 type MealSlot = { items: string; time: string };
 type DayMenu = { breakfast: MealSlot; lunch: MealSlot; dinner: MealSlot };
 
@@ -58,62 +58,110 @@ const WEEK_MENU: Record<string, DayMenu> = {
 const DEFAULT_MENU: Record<string, DayMenu> = JSON.parse(JSON.stringify(WEEK_MENU));
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
-// Dates for the week starting Mon 09 Jun 2025
 const DATES: Record<string, string> = {
   Mon: '09', Tue: '10', Wed: '11', Thu: '12', Fri: '13', Sat: '14', Sun: '15',
 };
+const DAY_FULL: Record<string, string> = {
+  Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday',
+  Fri: 'Friday', Sat: 'Saturday', Sun: 'Sunday',
+};
 
-const mealSlotConfig = [
+// ── Meal slot config ──────────────────────────────────────────────────────────
+const MEALS = [
   {
     key: 'breakfast' as const,
     label: 'Breakfast',
-    icon: Coffee,
-    gradient: ['#F59E0B', '#F97316'] as const,
-    emoji: '☕',
+    emoji: '☀️',
+    borderColor: '#F59E0B',
+    iconBg: '#FFF8EC',
     time: '',
   },
   {
     key: 'lunch' as const,
     label: 'Lunch',
-    icon: Soup,
-    gradient: ['#10B981', '#059669'] as const,
     emoji: '🍛',
+    borderColor: '#16A34A',
+    iconBg: '#EDFBF3',
     time: '',
   },
   {
     key: 'dinner' as const,
     label: 'Dinner',
-    icon: Moon,
-    gradient: ['#6366F1', '#8B5CF6'] as const,
     emoji: '🌙',
+    borderColor: colors.primary,
+    iconBg: colors.primarySoft,
     time: '',
   },
 ];
 
-function MealCard({ cfg, slot }: { cfg: typeof mealSlotConfig[0]; slot: MealSlot }) {
-  const Icon = cfg.icon;
+// ── Meal Row — Apple Settings-style ──────────────────────────────────────────
+function MealRow({
+  meal,
+  slot,
+  isLast,
+}: {
+  meal: typeof MEALS[0];
+  slot: MealSlot;
+  isLast: boolean;
+}) {
   return (
-    <LinearGradient
-      colors={cfg.gradient}
-      style={styles.mealCard}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-    >
-      <View style={styles.mealCardTop}>
-        <View style={styles.mealIconCircle}>
-          <Icon size={18} color="#fff" />
+    <View style={[rowStyles.row, !isLast && rowStyles.divider]}>
+      {/* Left accent bar */}
+      <View style={[rowStyles.accent, { backgroundColor: meal.borderColor }]} />
+
+      <View style={rowStyles.content}>
+        {/* Header row */}
+        <View style={rowStyles.header}>
+          <View style={[rowStyles.emojiWrap, { backgroundColor: meal.iconBg }]}>
+            <Text style={rowStyles.emoji}>{meal.emoji}</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[rowStyles.label, { color: meal.borderColor }]}>{meal.label}</Text>
+            <Text style={rowStyles.time}>{slot.time}</Text>
+          </View>
         </View>
-        <View style={{ flex: 1, marginLeft: spacing.md }}>
-          <Text style={styles.mealSlotLabel}>{cfg.emoji} {cfg.label}</Text>
-          <Text style={styles.mealSlotTime}>{slot.time}</Text>
-        </View>
+        {/* Items */}
+        <Text style={rowStyles.items}>
+          {slot.items.split(',').map((s) => s.trim()).join(' · ')}
+        </Text>
       </View>
-      <Text style={styles.mealItems}>{slot.items}</Text>
-    </LinearGradient>
+    </View>
   );
 }
 
+const rowStyles = StyleSheet.create({
+  row: { flexDirection: 'row' },
+  divider: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  accent: { width: 4 },
+  content: { flex: 1, padding: 16 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 8,
+  },
+  emojiWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emoji: { fontSize: 16 },
+  label: { fontSize: 15, fontWeight: '700' },
+  time: { fontSize: 11, color: colors.textMuted, marginTop: 1 },
+  items: {
+    fontSize: 13,
+    color: colors.textMuted,
+    lineHeight: 19,
+    paddingLeft: 44,
+  },
+});
+
+// ── Main Screen ───────────────────────────────────────────────────────────────
 export default function FullMenuScreen({ navigation }: any) {
   const { user } = useAuth();
   const [selectedDay, setSelectedDay] = useState('Mon');
@@ -125,15 +173,13 @@ export default function FullMenuScreen({ navigation }: any) {
       try {
         const res = await api.get(`/mess-menu/${user.hostel_id}`);
         if (res.data.success && res.data.menu && res.data.menu.length > 0) {
-          const fetchedMenu = JSON.parse(JSON.stringify(DEFAULT_MENU)); // start with defaults or empty
+          const fetchedMenu = JSON.parse(JSON.stringify(DEFAULT_MENU));
           res.data.menu.forEach((m: any) => {
             const day = m.day_of_week;
             const type = m.meal_type.toLowerCase();
             if (fetchedMenu[day] && fetchedMenu[day][type]) {
               fetchedMenu[day][type].items = m.items;
-              if (m.timing) {
-                fetchedMenu[day][type].time = m.timing;
-              }
+              if (m.timing) fetchedMenu[day][type].time = m.timing;
             }
           });
           setMenuData(fetchedMenu);
@@ -149,73 +195,89 @@ export default function FullMenuScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <ArrowLeft size={20} color={colors.text} />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Today's Menu</Text>
-          <Text style={styles.headerSub}>Week of 09 Jun, 2025</Text>
+      {/* ── Gradient Header ─────────────────────────────────────────────── */}
+      <LinearGradient
+        colors={[colors.gradientStart, colors.gradientEnd]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
+        <View style={styles.hCircle1} />
+        <View style={styles.hCircle2} />
+
+        <View style={styles.headerRow}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.75}
+          >
+            <ArrowLeft size={20} color="#fff" />
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.headerEyebrow}>Mess Schedule</Text>
+            <Text style={styles.headerTitle}>Weekly Menu</Text>
+          </View>
+          <View style={styles.chefIconWrap}>
+            <ChefHat size={20} color="#fff" />
+          </View>
         </View>
-        <View style={styles.chefIcon}>
-          <ChefHat size={20} color={colors.primary} />
-        </View>
+      </LinearGradient>
+
+      {/* ── 7-day pill selector ─────────────────────────────────────────── */}
+      <View style={styles.dayTabsWrapper}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.dayTabsScroll}
+        >
+          {DAYS.map((day) => {
+            const isSelected = day === selectedDay;
+            return (
+              <TouchableOpacity
+                key={day}
+                style={[styles.dayTab, isSelected && styles.dayTabActive]}
+                onPress={() => setSelectedDay(day)}
+                activeOpacity={0.75}
+              >
+                <Text style={[styles.dayTabDay, isSelected && styles.dayTabDayActive]}>{day}</Text>
+                <Text style={[styles.dayTabDate, isSelected && styles.dayTabDateActive]}>
+                  {DATES[day]}
+                </Text>
+                {day === 'Mon' && <View style={styles.todayDot} />}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
-      {/* 7-day tab pills */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.dayTabsScroll}
-        style={styles.dayTabsRow}
-      >
-        {DAYS.map((day) => {
-          const isSelected = day === selectedDay;
-          return (
-            <TouchableOpacity
-              key={day}
-              style={[styles.dayTab, isSelected && styles.dayTabActive]}
-              onPress={() => setSelectedDay(day)}
-              activeOpacity={0.75}
-            >
-              <Text style={[styles.dayTabDay, isSelected && styles.dayTabDayActive]}>{day}</Text>
-              <Text style={[styles.dayTabDate, isSelected && styles.dayTabDateActive]}>
-                {DATES[day]}
-              </Text>
-              {day === 'Mon' && (
-                <View style={styles.todayDot} />
-              )}
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-
-      {/* Meals */}
+      {/* ── Menu Content ────────────────────────────────────────────────── */}
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
+        {/* Day title */}
         <View style={styles.dayTitleRow}>
-          <Text style={styles.dayFullName}>
-            {selectedDay === 'Mon' ? 'Monday' :
-             selectedDay === 'Tue' ? 'Tuesday' :
-             selectedDay === 'Wed' ? 'Wednesday' :
-             selectedDay === 'Thu' ? 'Thursday' :
-             selectedDay === 'Fri' ? 'Friday' :
-             selectedDay === 'Sat' ? 'Saturday' : 'Sunday'}
-          </Text>
-          <Text style={styles.dayFullDate}>09 Jun 2025</Text>
+          <Text style={styles.dayFullName}>{DAY_FULL[selectedDay]}</Text>
+          <Text style={styles.dayDate}>09 Jun 2025</Text>
         </View>
 
-        {mealSlotConfig.map((cfg) => (
-          <MealCard key={cfg.key} cfg={cfg} slot={dayMenu[cfg.key]} />
-        ))}
+        {/* Apple Settings-style meal list */}
+        <View style={styles.menuCard}>
+          {MEALS.map((meal, i) => (
+            <MealRow
+              key={meal.key}
+              meal={meal}
+              slot={dayMenu[meal.key]}
+              isLast={i === MEALS.length - 1}
+            />
+          ))}
+        </View>
 
         {/* Info note */}
         <View style={styles.noteCard}>
+          <Text style={styles.noteIcon}>🕐</Text>
           <Text style={styles.noteText}>
-            🕐 Meal timings may vary on public holidays. Sunday special breakfast starts 30 min late.
+            Timings may vary on public holidays. Sunday breakfast starts 30 min late.
           </Text>
         </View>
       </ScrollView>
@@ -226,76 +288,77 @@ export default function FullMenuScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
 
-  // Header
+  // ── Header ────────────────────────────────────────────────────────────────
   header: {
+    paddingHorizontal: spacing.xl,
+    paddingTop: 12,
+    paddingBottom: 20,
+    overflow: 'hidden',
+  },
+  hCircle1: {
+    position: 'absolute', width: 120, height: 120, borderRadius: 60,
+    backgroundColor: 'rgba(255,255,255,0.07)', top: -30, right: -20,
+  },
+  hCircle2: {
+    position: 'absolute', width: 60, height: 60, borderRadius: 30,
+    backgroundColor: 'rgba(255,255,255,0.05)', bottom: 10, right: 80,
+  },
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
     gap: spacing.md,
   },
   backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center', justifyContent: 'center',
   },
-  headerCenter: { flex: 1 },
-  headerTitle: { fontSize: font.h3, fontWeight: '800', color: colors.text },
-  headerSub: { fontSize: font.tiny, color: colors.textSubtle, marginTop: 1 },
-  chefIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primarySoft,
-    borderWidth: 1,
-    borderColor: colors.primaryBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
+  headerEyebrow: { fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: '500' },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: '#fff', letterSpacing: -0.3 },
+  chefIconWrap: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center', justifyContent: 'center',
   },
 
-  // Day tabs
-  dayTabsRow: { flexShrink: 0 },
+  // ── Day tabs ──────────────────────────────────────────────────────────────
+  dayTabsWrapper: {
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
   dayTabsScroll: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: 12,
     gap: spacing.sm,
   },
   dayTab: {
     alignItems: 'center',
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 9,
     borderRadius: radius.lg,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceAlt,
     borderWidth: 1,
     borderColor: colors.border,
     minWidth: 52,
     position: 'relative',
   },
   dayTabActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primaryDark,
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primaryBorder,
   },
-  dayTabDay: { fontSize: font.small, fontWeight: '700', color: colors.textMuted },
-  dayTabDayActive: { color: '#fff' },
-  dayTabDate: { fontSize: font.tiny, color: colors.textSubtle, marginTop: 2 },
-  dayTabDateActive: { color: 'rgba(255,255,255,0.8)' },
+  dayTabDay: { fontSize: 13, fontWeight: '700', color: colors.textMuted },
+  dayTabDayActive: { color: colors.primary },
+  dayTabDate: { fontSize: 11, color: colors.textSubtle, marginTop: 2 },
+  dayTabDateActive: { color: colors.primary },
   todayDot: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#EF4444',
+    position: 'absolute', top: 4, right: 4,
+    width: 5, height: 5, borderRadius: 3,
+    backgroundColor: colors.danger,
   },
 
-  // Scroll content
-  scrollContent: { padding: spacing.lg, paddingBottom: 120 },
+  // ── Scroll Content ────────────────────────────────────────────────────────
+  scrollContent: { padding: spacing.xl, paddingBottom: 120 },
 
   dayTitleRow: {
     flexDirection: 'row',
@@ -303,46 +366,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.lg,
   },
-  dayFullName: { fontSize: font.h2, fontWeight: '800', color: colors.text },
-  dayFullDate: { fontSize: font.small, color: colors.textSubtle },
+  dayFullName: { fontSize: 20, fontWeight: '700', color: colors.text, letterSpacing: -0.3 },
+  dayDate: { fontSize: 13, color: colors.textMuted },
 
-  // Meal card
-  mealCard: {
-    borderRadius: radius.xl,
-    padding: spacing.xl,
-    marginBottom: spacing.lg,
-    ...shadow.raised,
-  },
-  mealCardTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  mealIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  mealSlotLabel: { color: '#fff', fontWeight: '800', fontSize: font.body },
-  mealSlotTime: { color: 'rgba(255,255,255,0.7)', fontSize: font.tiny, marginTop: 2 },
-  mealItems: {
-    color: '#fff',
-    fontSize: font.body,
-    fontWeight: '500',
-    lineHeight: 22,
-    letterSpacing: 0.1,
+  // ── Menu card ─────────────────────────────────────────────────────────────
+  menuCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius['2xl'],
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+    marginBottom: spacing.xl,
+    ...shadow.card,
   },
 
-  // Note
+  // ── Info note ─────────────────────────────────────────────────────────────
   noteCard: {
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius['2xl'],
+    padding: spacing.xl,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  noteText: { fontSize: font.small, color: colors.textMuted, lineHeight: 20 },
+  noteIcon: { fontSize: 16 },
+  noteText: { flex: 1, fontSize: font.small, color: colors.textMuted, lineHeight: 20 },
 });

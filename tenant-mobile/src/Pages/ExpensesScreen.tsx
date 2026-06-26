@@ -699,20 +699,25 @@ export default function ExpensesScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
-      {/* ── Header ───────────────────────────────────────────────── */}
-      <View style={s.header}>
-        <TouchableOpacity style={s.menuBtn} activeOpacity={0.7}>
-          <View style={s.menuIcon}>
-            <View style={s.menuLine} />
-            <View style={s.menuLine} />
-            <View style={s.menuLine} />
+      {/* ── Gradient Header ───────────────────────────────────────────────── */}
+      <LinearGradient
+        colors={[colors.gradientStart, colors.gradientEnd]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={s.header}
+      >
+        <View style={s.hCircle1} />
+        <View style={s.hCircle2} />
+        <View style={s.headerRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={s.headerEyebrow}>My Wallet</Text>
+            <Text style={s.headerTitle}>Expenses</Text>
           </View>
-        </TouchableOpacity>
-        <Text style={s.headerTitle}>Expenses</Text>
-        <TouchableOpacity style={s.iconBtnHeader} activeOpacity={0.7}>
-          <Bell size={18} color={colors.text} />
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity style={s.headerIconBtn} activeOpacity={0.75}>
+            <Bell size={18} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
 
@@ -832,81 +837,150 @@ export default function ExpensesScreen({ navigation }: any) {
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FFFFFF' },
-  scroll: { paddingBottom: 112, backgroundColor: '#FFFFFF' },
+  safe: { flex: 1, backgroundColor: colors.bg },
+  scroll: { paddingBottom: 120 },
 
+  // ── Gradient Header ──────────────────────────────────────────────────────
   header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF', paddingHorizontal: 18, paddingTop: 2,
-    paddingBottom: 10, minHeight: 52,
+    paddingHorizontal: spacing.xl,
+    paddingTop: 12,
+    paddingBottom: 20,
+    overflow: 'hidden',
   },
-  menuBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
-  menuIcon: { width: 15, height: 12, justifyContent: 'space-between' },
-  menuLine: { width: 15, height: 2, backgroundColor: '#111827', borderRadius: 1 },
-  headerTitle: { fontSize: 16, fontWeight: '800', color: '#111827' },
-  iconBtnHeader: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
+  hCircle1: {
+    position: 'absolute', width: 130, height: 130, borderRadius: 65,
+    backgroundColor: 'rgba(255,255,255,0.07)', top: -40, right: -20,
+  },
+  hCircle2: {
+    position: 'absolute', width: 60, height: 60, borderRadius: 30,
+    backgroundColor: 'rgba(255,255,255,0.05)', bottom: 10, right: 80,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerEyebrow: { fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: '500', marginBottom: 3 },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: '#fff', letterSpacing: -0.3 },
+  headerIconBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center', justifyContent: 'center',
+  },
 
+  // ── Period selector ──────────────────────────────────────────────────────
   periodSelector: {
-    flexDirection: 'row', paddingHorizontal: 18, marginTop: 2,
-    marginBottom: 14, gap: 10,
+    flexDirection: 'row',
+    paddingHorizontal: spacing.xl,
+    marginTop: spacing.lg,
+    marginBottom: spacing.md,
+    gap: 8,
   },
   periodTab: {
-    flex: 1, height: 34, borderRadius: 8, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E8E5F6',
+    flex: 1, height: 36, borderRadius: radius.lg,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1, borderColor: colors.border,
   },
-  periodTabActive: { backgroundColor: '#F1ECFF', borderColor: '#E4DAFF' },
-  periodTabText: { fontSize: 11, fontWeight: '800', color: '#111827' },
-  periodTabTextActive: { color: '#4F46E5' },
+  periodTabActive: {
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primaryBorder,
+  },
+  periodTabText: { fontSize: 12, fontWeight: '600', color: colors.textMuted },
+  periodTabTextActive: { color: colors.primary, fontWeight: '700' },
 
+  // ── Total card ──────────────────────────────────────────────────────────
   totalCard: {
-    backgroundColor: '#FFFFFF', borderRadius: 14, paddingHorizontal: 18, paddingTop: 14, paddingBottom: 12,
-    marginHorizontal: 18, marginBottom: 18, borderWidth: 1, borderColor: '#F0F1F5',
-    shadowColor: '#0F172A', shadowOpacity: 0.05, shadowRadius: 9, shadowOffset: { width: 0, height: 3 }, elevation: 2,
+    backgroundColor: colors.surface,
+    borderRadius: radius['2xl'],
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.lg,
+    marginHorizontal: spacing.xl,
+    marginBottom: spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadow.card,
   },
-  totalCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-  totalLabel: { fontSize: 11, fontWeight: '800', color: '#111827' },
-  trendBadge: { flexDirection: 'row', alignItems: 'center', gap: 2, backgroundColor: '#FFF0F8', paddingHorizontal: 9, paddingVertical: 5, borderRadius: 7 },
-  trendArrow: { fontSize: 12, fontWeight: '900', color: '#FF2D8F' },
-  trendText: { fontSize: 11, fontWeight: '900', color: '#FF2D8F' },
-  totalAmount: { fontSize: 30, fontWeight: '900', color: '#4F46E5', letterSpacing: -0.6, marginBottom: 0 },
-  totalSubtext: { fontSize: 10, color: '#6B7280', alignSelf: 'flex-end', marginTop: -18, fontWeight: '700' },
+  totalCardHeader: {
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between', marginBottom: 8,
+  },
+  totalLabel: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
+  trendBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 2,
+    backgroundColor: colors.successSoft,
+    paddingHorizontal: 9, paddingVertical: 4, borderRadius: radius.pill,
+  },
+  trendArrow: { fontSize: 12, fontWeight: '700', color: colors.success },
+  trendText: { fontSize: 11, fontWeight: '700', color: colors.success },
+  totalAmount: {
+    fontSize: 32, fontWeight: '800', color: colors.primary,
+    letterSpacing: -1, marginBottom: 2,
+  },
+  totalSubtext: { fontSize: 12, color: colors.textMuted, fontWeight: '500' },
 
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 18, marginBottom: 10 },
-  sectionTitle: { fontSize: 13, fontWeight: '900', color: '#111827' },
-  seeAllText: { fontSize: 12, color: '#7C3AED', fontWeight: '900' },
+  // ── Section header ───────────────────────────────────────────────────────
+  sectionHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: spacing.xl, marginBottom: spacing.md,
+  },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.text, letterSpacing: -0.2 },
+  seeAllText: { fontSize: 13, color: colors.primary, fontWeight: '600' },
+
+  // ── Category card ────────────────────────────────────────────────────────
   categoryCard: {
-    backgroundColor: '#FFFFFF', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14,
-    marginHorizontal: 18, marginBottom: 18, borderWidth: 1, borderColor: '#F0F1F5',
-    shadowColor: '#0F172A', shadowOpacity: 0.05, shadowRadius: 9, shadowOffset: { width: 0, height: 3 }, elevation: 2,
+    backgroundColor: colors.surface,
+    borderRadius: radius['2xl'],
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xl,
+    marginHorizontal: spacing.xl,
+    marginBottom: spacing.xl,
+    borderWidth: 1, borderColor: colors.border,
+    ...shadow.card,
   },
   categoryContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  categoryLeft: { flex: 1, gap: 7, paddingRight: 8 },
+  categoryLeft: { flex: 1, gap: 8, paddingRight: 8 },
   categoryHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   categoryIconBg: { width: 30, height: 30, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  categoryHeaderText: { fontSize: 12, fontWeight: '900', color: '#111827' },
-  categoryRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  categoryHeaderText: { fontSize: 13, fontWeight: '700', color: colors.text },
+  categoryRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   categoryDot: { width: 7, height: 7, borderRadius: 4 },
-  categoryName: { fontSize: 11, fontWeight: '800', color: '#111827', flex: 1 },
-  categoryPercent: { fontSize: 11, color: '#111827', fontWeight: '900' },
+  categoryName: { fontSize: 13, fontWeight: '600', color: colors.text, flex: 1 },
+  categoryPercent: { fontSize: 12, color: colors.textMuted, fontWeight: '600' },
   donutContainer: { marginLeft: 4 },
 
+  // ── Expense list ─────────────────────────────────────────────────────────
   expenseList: {
-    marginHorizontal: 18, paddingVertical: 4, backgroundColor: '#FFFFFF', borderRadius: 14,
-    borderWidth: 1, borderColor: '#F0F1F5', shadowColor: '#0F172A', shadowOpacity: 0.04,
-    shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 1,
+    marginHorizontal: spacing.xl,
+    backgroundColor: colors.surface,
+    borderRadius: radius['2xl'],
+    borderWidth: 1, borderColor: colors.border,
+    overflow: 'hidden',
+    ...shadow.card,
   },
-  expenseCard: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: '#FFFFFF' },
-  expenseIcon: { width: 34, height: 34, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  expenseCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: 16, paddingVertical: 13,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  expenseIcon: { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   expenseMid: { flex: 1 },
-  expenseTitle: { fontSize: 12, fontWeight: '900', color: '#111827', marginBottom: 2 },
-  expenseTime: { fontSize: 10, color: '#6B7280', fontWeight: '600' },
-  expenseAmt: { fontSize: 12, fontWeight: '900', color: '#111827' },
+  expenseTitle: { fontSize: 14, fontWeight: '700', color: colors.text, marginBottom: 2 },
+  expenseTime: { fontSize: 11, color: colors.textMuted, fontWeight: '500' },
+  expenseAmt: { fontSize: 14, fontWeight: '700', color: colors.text },
 
-  fabContainer: { position: 'absolute', bottom: 76, right: 24, alignItems: 'center' },
+  // ── FAB ──────────────────────────────────────────────────────────────────
+  fabContainer: { position: 'absolute', bottom: 88, right: 24, alignItems: 'center' },
   fabBtn: {
-    width: 58, height: 58, borderRadius: 29, backgroundColor: '#5B2DFF',
-    alignItems: 'center', justifyContent: 'center', shadowColor: '#5B2DFF',
-    shadowOpacity: 0.36, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 10,
+    width: 58, height: 58, borderRadius: 29,
+    backgroundColor: colors.primary,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: colors.primary,
+    shadowOpacity: 0.35, shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 }, elevation: 10,
   },
 });
 export { AddModal, AddCategoryScreen, SuccessModal };

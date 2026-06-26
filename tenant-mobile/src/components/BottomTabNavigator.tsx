@@ -1,38 +1,39 @@
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, font, shadow } from '../theme/index';
+import { Home, FileText, PieChart, Megaphone, User } from 'lucide-react-native';
+import { colors, font, shadow, radius } from '../theme/index';
 
-// ── Tab configuration ─────────────────────────────────────────────────────────
+// ── 5-tab configuration ───────────────────────────────────────────────────────
 const TABS = [
   {
     label: 'Home',
     route: 'Home',
-    activeIcon: 'home' as const,
-    inactiveIcon: 'home-outline' as const,
+    Icon: Home,
   },
   {
     label: 'Dues',
     route: 'Dues',
-    activeIcon: 'document-text' as const,
-    inactiveIcon: 'document-text-outline' as const,
+    Icon: FileText,
   },
   {
     label: 'Expenses',
     route: 'Expenses',
-    activeIcon: 'pie-chart' as const,
-    inactiveIcon: 'pie-chart-outline' as const,
+    Icon: PieChart,
   },
   {
-    label: 'Updates',
+    label: 'Notices',
     route: 'Notices',
-    activeIcon: 'megaphone' as const,
-    inactiveIcon: 'megaphone-outline' as const,
+    Icon: Megaphone,
+  },
+  {
+    label: 'Profile',
+    route: 'Profile',
+    Icon: User,
   },
 ];
 
-const TAB_BAR_HEIGHT = 64;
+const TAB_BAR_HEIGHT = 68;
 
 const BottomTabNavigator = ({ state, navigation }: any) => {
   const insets = useSafeAreaInsets();
@@ -41,17 +42,19 @@ const BottomTabNavigator = ({ state, navigation }: any) => {
     <View
       style={[
         styles.container,
-        { paddingBottom: Math.max(insets.bottom, 6) },
+        { paddingBottom: Math.max(insets.bottom, 8) },
       ]}
     >
-      {state.routes.map((route: any, index: number) => {
-        const tabConfig = TABS.find((t) => t.route === route.name);
-        if (!tabConfig) return null;
+      {TABS.map((tab, index) => {
+        // Find the corresponding route index
+        const routeIndex = state.routes.findIndex((r: any) => r.name === tab.route);
+        if (routeIndex === -1) return null;
 
-        const isActive = state.index === index;
-        const iconName = isActive ? tabConfig.activeIcon : tabConfig.inactiveIcon;
+        const isActive = state.index === routeIndex;
+        const { Icon } = tab;
 
         const handlePress = () => {
+          const route = state.routes[routeIndex];
           const event = navigation.emit({
             type: 'tabPress',
             target: route.key,
@@ -64,23 +67,20 @@ const BottomTabNavigator = ({ state, navigation }: any) => {
 
         return (
           <TouchableOpacity
-            key={route.key}
+            key={tab.route}
             style={styles.tabItem}
             onPress={handlePress}
             activeOpacity={0.7}
             accessibilityRole="button"
-            accessibilityLabel={tabConfig.label}
+            accessibilityLabel={tab.label}
             accessibilityState={{ selected: isActive }}
           >
-            {/* Top indicator pill — visible only on active */}
-            <View style={[styles.topIndicator, isActive && styles.topIndicatorActive]} />
-
-            {/* Icon with active background pill */}
+            {/* Icon with active pill background */}
             <View style={[styles.iconWrap, isActive && styles.iconWrapActive]}>
-              <Ionicons
-                name={iconName}
+              <Icon
                 size={22}
                 color={isActive ? colors.primary : colors.textMuted}
+                strokeWidth={isActive ? 2 : 1.5}
               />
             </View>
 
@@ -93,7 +93,7 @@ const BottomTabNavigator = ({ state, navigation }: any) => {
               ]}
               numberOfLines={1}
             >
-              {tabConfig.label}
+              {tab.label}
             </Text>
           </TouchableOpacity>
         );
@@ -109,9 +109,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: colors.surface,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopWidth: 1,
     borderTopColor: colors.border,
-    paddingTop: 6,
+    paddingTop: 8,
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'flex-start',
@@ -121,37 +121,23 @@ const styles = StyleSheet.create({
   tabItem: {
     flex: 1,
     alignItems: 'center',
-    paddingTop: 0,
     gap: 3,
     position: 'relative',
-    minHeight: TAB_BAR_HEIGHT - 6,
+    minHeight: TAB_BAR_HEIGHT - 8,
   },
-  // Top indicator pill — Material 3 style
-  topIndicator: {
-    position: 'absolute',
-    top: 0,
-    width: 28,
-    height: 3,
-    borderRadius: 999,
-    backgroundColor: 'transparent',
-  },
-  topIndicatorActive: {
-    backgroundColor: colors.primary,
-  },
-  // Icon container — active gets a soft purple pill bg
+  // Icon container — active gets soft purple pill bg
   iconWrap: {
-    width: 44,
-    height: 30,
-    borderRadius: 15,
+    width: 48,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 4,
   },
   iconWrapActive: {
     backgroundColor: colors.primarySoft,
   },
   label: {
-    fontSize: font.tiny,
+    fontSize: 10,
     letterSpacing: 0.1,
     fontWeight: '500',
   },

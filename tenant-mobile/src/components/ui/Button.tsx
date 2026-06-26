@@ -1,78 +1,150 @@
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, ViewStyle } from 'react-native';
-import { LucideIcon } from 'lucide-react-native';
-import { colors, radius, font, shadow } from '../../theme';
+import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { colors, radius, font, spacing, shadow } from '../../theme';
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'success';
+type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
-const bg: Record<Variant, string> = {
-  primary: colors.primary,
-  success: colors.success,
-  secondary: colors.surface,
-  ghost: 'transparent',
-};
-const fg: Record<Variant, string> = {
-  primary: colors.textOnPrimary,
-  success: colors.textOnPrimary,
-  secondary: colors.text,
-  ghost: colors.primary,
-};
+interface ButtonProps {
+  title: string;
+  onPress?: () => void;
+  disabled?: boolean;
+  loading?: boolean;
+  variant?: Variant;
+  icon?: any;
+  style?: ViewStyle;
+}
 
 export default function Button({
   title,
   onPress,
-  variant = 'primary',
-  loading,
   disabled,
+  loading,
+  variant = 'primary',
   icon: Icon,
   style,
-}: {
-  title: string;
-  onPress?: () => void;
-  variant?: Variant;
-  loading?: boolean;
-  disabled?: boolean;
-  icon?: LucideIcon;
-  style?: ViewStyle;
-}) {
+}: ButtonProps) {
   const isDisabled = disabled || loading;
+
+  if (variant === 'primary') {
+    return (
+      <TouchableOpacity
+        onPress={onPress}
+        disabled={isDisabled}
+        activeOpacity={0.85}
+        style={[styles.touchable, style]}
+      >
+        <LinearGradient
+          colors={isDisabled
+            ? ['#B8AAE8', '#C9BFEE']
+            : [colors.gradientStart, colors.gradientEnd]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={[styles.base, styles.primaryGradient]}
+        >
+          {loading
+            ? <ActivityIndicator size="small" color="#fff" />
+            : <>
+                {Icon && <Icon size={18} color="#fff" style={{ marginRight: 6 }} />}
+                <Text style={styles.primaryText}>{title}</Text>
+              </>
+          }
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  }
+
+  if (variant === 'danger') {
+    return (
+      <TouchableOpacity
+        onPress={onPress}
+        disabled={isDisabled}
+        activeOpacity={0.85}
+        style={[styles.base, styles.dangerBtn, style]}
+      >
+        {loading ? <ActivityIndicator size="small" color={colors.danger} /> :
+          <Text style={styles.dangerText}>{title}</Text>
+        }
+      </TouchableOpacity>
+    );
+  }
+
+  if (variant === 'ghost') {
+    return (
+      <TouchableOpacity
+        onPress={onPress}
+        disabled={isDisabled}
+        activeOpacity={0.7}
+        style={[styles.base, styles.ghostBtn, style]}
+      >
+        {Icon && <Icon size={18} color={colors.primary} style={{ marginRight: 6 }} />}
+        <Text style={styles.ghostText}>{title}</Text>
+      </TouchableOpacity>
+    );
+  }
+
+  // secondary
   return (
     <TouchableOpacity
-      activeOpacity={0.85}
       onPress={onPress}
       disabled={isDisabled}
-      style={[
-        styles.base,
-        { backgroundColor: bg[variant] },
-        variant === 'secondary' && styles.bordered,
-        (variant === 'primary' || variant === 'success') && shadow.raised,
-        isDisabled && styles.disabled,
-        style,
-      ]}
+      activeOpacity={0.8}
+      style={[styles.base, styles.secondaryBtn, style]}
     >
-      {loading ? (
-        <ActivityIndicator color={fg[variant]} />
-      ) : (
-        <>
-          {Icon && <Icon size={18} color={fg[variant]} />}
-          <Text style={[styles.text, { color: fg[variant] }]}>{title}</Text>
-        </>
-      )}
+      {Icon && <Icon size={18} color={colors.primary} style={{ marginRight: 6 }} />}
+      <Text style={styles.secondaryText}>{title}</Text>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
+  touchable: {
+    borderRadius: radius.lg,
+    ...shadow.raised,
+  },
   base: {
-    height: 52,
-    borderRadius: radius.md,
+    height: 54,
+    borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 20,
+    paddingHorizontal: spacing['2xl'],
   },
-  bordered: { borderWidth: 1, borderColor: colors.border },
-  disabled: { opacity: 0.5 },
-  text: { fontSize: font.body, fontWeight: '700' },
+  primaryGradient: {
+    borderRadius: radius.lg,
+  },
+  primaryText: {
+    color: '#fff',
+    fontSize: font.body,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  secondaryBtn: {
+    backgroundColor: colors.surface,
+    borderWidth: 1.5,
+    borderColor: colors.primaryBorder,
+  },
+  secondaryText: {
+    color: colors.primary,
+    fontSize: font.body,
+    fontWeight: '600',
+  },
+  ghostBtn: {
+    backgroundColor: colors.primarySoft,
+  },
+  ghostText: {
+    color: colors.primary,
+    fontSize: font.body,
+    fontWeight: '600',
+  },
+  dangerBtn: {
+    backgroundColor: colors.dangerSoft,
+    borderWidth: 1.5,
+    borderColor: colors.dangerBorder,
+  },
+  dangerText: {
+    color: colors.danger,
+    fontSize: font.body,
+    fontWeight: '600',
+  },
 });

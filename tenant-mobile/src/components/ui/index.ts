@@ -1,5 +1,6 @@
 export { default as Screen } from './Screen';
 export { default as AppHeader } from './AppHeader';
+export { default as PremiumHeader } from './PremiumHeader';
 export { default as Avatar } from './Avatar';
 export { default as Card } from './Card';
 export { default as Pill } from './Pill';

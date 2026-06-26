@@ -19,7 +19,7 @@ import HomeScreen from '../Pages/HomeScreen';
 import DuesScreen from '../Pages/DuesScreen';
 import ExpensesScreen from '../Pages/ExpensesScreen';
 import NoticesScreen from '../Pages/NoticesScreen';
-import MessagesScreen from '../Pages/MessagesScreen';
+import ProfileScreen from '../Pages/ProfileScreen';
 
 // Stack screens (navigated to from tabs / quick actions)
 import RoomInfoScreen from '../Pages/RoomInfoScreen';
@@ -27,11 +27,11 @@ import ComplaintsScreen from '../Pages/ComplaintsScreen';
 import DocumentsScreen from '../Pages/DocumentsScreen';
 import SplitsScreen from '../Pages/SplitsScreen';
 import NotificationsScreen from '../Pages/NotificationsScreen';
-import ProfileScreen from '../Pages/ProfileScreen';
 import PaymentScreen from '../Pages/PaymentScreen';
 import MoreScreen from '../Pages/MoreScreen';
 import ServicesScreen from '../Pages/ServicesScreen';
 import FullMenuScreen from '../Pages/FullMenuScreen';
+import MessagesScreen from '../Pages/MessagesScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -55,7 +55,7 @@ const AuthStack = () => (
   </Stack.Navigator>
 );
 
-/** Bottom tab bar — 5 tabs matching Figma design */
+/** Bottom tab bar — 5 tabs: Home, Dues, Expenses, Notices, Profile */
 const MainTabs = () => (
   <Tab.Navigator
     tabBar={(props) => <BottomTabNavigator {...props} />}
@@ -65,6 +65,7 @@ const MainTabs = () => (
     <Tab.Screen name="Dues" component={DuesScreen} />
     <Tab.Screen name="Expenses" component={ExpensesScreen} />
     <Tab.Screen name="Notices" component={NoticesScreen} />
+    <Tab.Screen name="Profile" component={ProfileScreen} />
   </Tab.Navigator>
 );
 
@@ -87,7 +88,6 @@ export default function AppNavigator() {
             <Stack.Screen name="Documents" component={DocumentsScreen} />
             <Stack.Screen name="Splits" component={SplitsScreen} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
-            <Stack.Screen name="Profile" component={ProfileScreen} />
             <Stack.Screen name="Messages" component={MessagesScreen} />
             <Stack.Screen name="Payments" component={PaymentScreen} />
             <Stack.Screen name="More" component={MoreScreen} />

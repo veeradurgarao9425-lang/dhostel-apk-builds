@@ -1,34 +1,31 @@
 import React from 'react';
-import { StyleSheet, View, ViewStyle, TouchableOpacity } from 'react-native';
-import { colors, radius, spacing, shadow } from '../../theme';
+import { View, StyleSheet, ViewStyle } from 'react-native';
+import { colors, radius, shadow } from '../../theme';
 
-type Props = {
+interface CardProps {
   children: React.ReactNode;
   style?: ViewStyle | ViewStyle[];
-  onPress?: () => void;
-  padded?: boolean;
-};
+  noPadding?: boolean;
+}
 
-/** Base white rounded card with soft shadow. Tappable when onPress is given. */
-export default function Card({ children, style, onPress, padded = true }: Props) {
-  const body = <View style={[styles.card, padded && styles.padded, style]}>{children}</View>;
-  if (onPress) {
-    return (
-      <TouchableOpacity activeOpacity={0.85} onPress={onPress}>
-        {body}
-      </TouchableOpacity>
-    );
-  }
-  return body;
+export default function Card({ children, style, noPadding }: CardProps) {
+  return (
+    <View style={[styles.card, !noPadding && styles.padding, style]}>
+      {children}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    borderRadius: radius['2xl'],
     borderWidth: 1,
-    borderColor: colors.borderSoft,
+    borderColor: colors.border,
+    overflow: 'hidden',
     ...shadow.card,
   },
-  padded: { padding: spacing.lg },
+  padding: {
+    padding: 20,
+  },
 });
