@@ -922,3 +922,43 @@ export const allocateRoom = async (req: AuthRequest, res: Response) => {
     });
   }
 };
+
+// ─── Get tenants who self-registered via mobile (status=3) — for owner dashboard ─
+export const getPendingRegistrations = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user || (user.role_id !== 1 && user.role_id !== 2)) {
+      return res.status(403).json({ success: false, error: 'Unauthorized' });
+    }
+    if (!user.hostel_id) {
+      return res.status(403).json({ success: false, error: 'Account not linked to hostel' });
+    }
+
+    const pending = await db('students as s')
+      .leftJoin('rooms as r', 's.room_id', 'r.room_id')
+      .where('s.hostel_id', user.hostel_id)
+      .where('s.status', 3) // status 3 = QR/Mobile registered, awaiting owner activation
+      .select(
+        's.student_id',
+        's.first_name',
+        's.last_name',
+        's.phone',
+        's.email',
+        's.gender',
+        's.created_at',
+        's.room_id',
+        'r.room_number',
+      )
+      .orderBy('s.created_at', 'desc');
+
+    return res.json({
+      success: true,
+      count: pending.length,
+      data: pending,
+    });
+  } catch (error: any) {
+    console.error('getPendingRegistrations error:', error);
+    return res.status(500).json({ success: false, error: 'Failed to fetch pending registrations' });
+  }
+};
+

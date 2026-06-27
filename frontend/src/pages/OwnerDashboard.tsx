@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Users, DollarSign, FileText, TrendingUp, AlertCircle, CreditCard } from 'lucide-react';
+import { Building2, Users, DollarSign, FileText, TrendingUp, AlertCircle, CreditCard, UserCheck } from 'lucide-react';
 import { StatCard } from '../components/ui/StatCard';
 import { Card } from '../components/ui/Card';
 import api from '../services/api';
@@ -36,15 +36,27 @@ interface Activity {
   created_at: string;
 }
 
+interface PendingRegistration {
+  student_id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  gender: string;
+  created_at: string;
+}
+
 export const OwnerDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [pendingRegistrations, setPendingRegistrations] = useState<PendingRegistration[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchDashboardStats();
     fetchRecentActivity();
+    fetchPendingRegistrations();
   }, []);
 
   const fetchDashboardStats = async () => {
@@ -65,6 +77,17 @@ export const OwnerDashboard: React.FC = () => {
       setActivities(response.data.data);
     } catch (error: any) {
       console.error('Failed to fetch recent activity:', error);
+    }
+  };
+
+  const fetchPendingRegistrations = async () => {
+    try {
+      const response = await api.get('/students/pending-registrations');
+      if (response.data?.success) {
+        setPendingRegistrations(response.data.data);
+      }
+    } catch (error: any) {
+      console.error('Failed to fetch pending registrations:', error);
     }
   };
 
@@ -222,8 +245,8 @@ export const OwnerDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Alerts and Quick Actions */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      {/* Alerts, Registrations, and Quick Actions */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card className="flex flex-col h-full">
           <Card.Header>
             <div className="flex items-center justify-between">
@@ -259,6 +282,46 @@ export const OwnerDashboard: React.FC = () => {
             ) : (
               <div className="text-center py-6">
                 <p className="text-slate-500 dark:text-slate-400">All payments are up to date! 🎉</p>
+              </div>
+            )}
+          </Card.Body>
+        </Card>
+
+        <Card className="flex flex-col h-full">
+          <Card.Header>
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">New Registrations</h3>
+              {pendingRegistrations.length > 0 && (
+                <span className="px-2.5 py-1 text-xs font-semibold text-cyan-800 bg-cyan-100 dark:bg-cyan-950/40 dark:text-cyan-400 rounded-full border border-cyan-200 dark:border-cyan-900/30">
+                  {pendingRegistrations.length} new
+                </span>
+              )}
+            </div>
+          </Card.Header>
+          <Card.Body className="flex-1 flex flex-col justify-center">
+            {pendingRegistrations.length > 0 ? (
+              <div className="space-y-3">
+                <div className="flex items-center p-4 bg-cyan-50/50 dark:bg-cyan-950/20 border border-cyan-200/50 dark:border-cyan-900/30 rounded-2xl">
+                  <UserCheck className="h-5 w-5 text-cyan-600 dark:text-cyan-400 mr-3 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                      {pendingRegistrations.length} student{pendingRegistrations.length > 1 ? 's' : ''} awaiting approval
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      Verify & assign room
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => navigate('/owner/students')}
+                    className="text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm px-3.5 py-2 rounded-xl transition-all"
+                  >
+                    Verify
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-6">
+                <p className="text-slate-500 dark:text-slate-400">No pending registrations</p>
               </div>
             )}
           </Card.Body>

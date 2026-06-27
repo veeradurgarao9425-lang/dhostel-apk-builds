@@ -46,6 +46,8 @@ const INITIAL_STATE = {
     revenueTrend: [] as any[],
     upcomingVacates: [] as any[],
     unallocatedCount: 0,
+    qrRegisterCount: 0,
+    openComplaintsCount: 0,
 };
 
 // ─── Greeting helper ──────────────────────────────────────────────────────────
@@ -154,7 +156,7 @@ export default function HomeScreen() {
             }
             setHasError(false);
 
-            const [statsRes, summaryRes, hostelRes, noticeRes, overviewRes, studentsRes]: any = await Promise.all([
+            const [statsRes, summaryRes, hostelRes, noticeRes, overviewRes, studentsRes, complaintsRes]: any = await Promise.all([
                 api.get('/reports/dashboard-stats').catch(() => ({ data: { success: false } })),
                 api.get('/monthly-fees/summary').catch(() => ({ data: { success: false } })),
                 user?.hostel_id
@@ -162,7 +164,10 @@ export default function HomeScreen() {
                     : Promise.resolve({ data: { success: false } }),
                 api.get('/notices').catch(() => ({ data: { success: false } })),
                 api.get('/reports/monthly-overview').catch(() => ({ data: { success: false } })),
-                api.get('/students?limit=250').catch(() => ({ data: { success: false } }))
+                api.get('/students?limit=250').catch(() => ({ data: { success: false } })),
+                user?.hostel_id
+                    ? api.get(`/complaints/hostel/${user.hostel_id}`).catch(() => ({ data: { success: false } }))
+                    : Promise.resolve({ data: { success: false } })
             ]);
 
             if (!statsRes.data.success && !summaryRes.data.success) {
@@ -234,6 +239,9 @@ export default function HomeScreen() {
 
             const activeStudents = studentsRes.data?.success ? (studentsRes.data.data || []) : [];
             const unallocatedCount = activeStudents.filter((s: any) => s.status === 1 && !s.room_id).length;
+            const qrRegisterCount = activeStudents.filter((s: any) => s.status === 3).length;
+            const allComplaints = complaintsRes.data?.success ? (complaintsRes.data.complaints || []) : [];
+            const openComplaintsCount = allComplaints.filter((c: any) => c.status === 'Open' || c.status === 'In Progress').length;
 
             setData({
                 hostelName: user?.hostel_name || d2.hostel_name || hostelRes?.data?.data?.hostel_name || 'My Hostel',
@@ -261,6 +269,8 @@ export default function HomeScreen() {
                 revenueTrend: overviewRes.data?.success && overviewRes.data.data?.trend ? overviewRes.data.data.trend : [],
                 upcomingVacates,
                 unallocatedCount,
+                qrRegisterCount,
+                openComplaintsCount,
             });
             isFirstLoadRef.current = false;
         } catch {
@@ -464,6 +474,84 @@ export default function HomeScreen() {
                                 </View>
                             </View>
                             <Ionicons name="chevron-forward" size={18} color="#DC2626" />
+                        </TouchableOpacity>
+                    )}
+
+                    {/* QR Signups warning card */}
+                    {data.qrRegisterCount > 0 && (
+                        <TouchableOpacity
+                            style={[
+                                s.card,
+                                {
+                                    backgroundColor: isDark ? '#1A3038' : '#F0F9FF',
+                                    borderColor: '#BAE6FD',
+                                    borderWidth: 1,
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    padding: 14,
+                                    marginBottom: 16,
+                                    borderRadius: 16,
+                                }
+                            ]}
+                            onPress={() => {
+                                navigation.navigate('Students', { filter: 'QRRegister' });
+                            }}
+                            activeOpacity={0.8}
+                        >
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#E0F2FE', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Ionicons name="person-add" size={20} color="#0284C7" />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={{ fontWeight: '800', fontSize: 14, color: isDark ? '#E0F2FE' : '#0369A1' }}>
+                                        {data.qrRegisterCount} {data.qrRegisterCount === 1 ? 'New Registration Awaiting Approval' : 'New Registrations Awaiting Approval'}
+                                    </Text>
+                                    <Text style={{ fontSize: 11, color: isDark ? '#BAE6FD' : '#0284C7', marginTop: 2 }}>
+                                        Tap to review and approve signups
+                                    </Text>
+                                </View>
+                            </View>
+                            <Ionicons name="chevron-forward" size={18} color="#0284C7" />
+                        </TouchableOpacity>
+                    )}
+
+                    {/* Open Complaints warning card */}
+                    {data.openComplaintsCount > 0 && (
+                        <TouchableOpacity
+                            style={[
+                                s.card,
+                                {
+                                    backgroundColor: isDark ? '#2D1A0E' : '#FFF7ED',
+                                    borderColor: '#FED7AA',
+                                    borderWidth: 1,
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    padding: 14,
+                                    marginBottom: 16,
+                                    borderRadius: 16,
+                                }
+                            ]}
+                            onPress={() => {
+                                navigation.navigate('ComplaintsManagement');
+                            }}
+                            activeOpacity={0.8}
+                        >
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#FEF3C7', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Ionicons name="construct" size={20} color="#D97706" />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={{ fontWeight: '800', fontSize: 14, color: isDark ? '#FEF3C7' : '#92400E' }}>
+                                        {data.openComplaintsCount} {data.openComplaintsCount === 1 ? 'Open Complaint' : 'Open Complaints'} from Tenants
+                                    </Text>
+                                    <Text style={{ fontSize: 11, color: isDark ? '#FCD34D' : '#D97706', marginTop: 2 }}>
+                                        Tap to view and resolve
+                                    </Text>
+                                </View>
+                            </View>
+                            <Ionicons name="chevron-forward" size={18} color="#D97706" />
                         </TouchableOpacity>
                     )}
 

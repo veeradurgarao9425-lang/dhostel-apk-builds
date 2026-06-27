@@ -98,7 +98,7 @@ export default function MoreScreen() {
                 {
                     label: t('more.vacateNotices'),
                     subtitle: t('more.vacateNoticesSub'),
-                    icon: 'megaphone',
+                    icon: 'calendar-outline',
                     iconColor: '#EA580C',
                     iconBg: '#FFEDD5',
                     route: 'Notices',
@@ -142,6 +142,14 @@ export default function MoreScreen() {
                     iconColor: '#059669',
                     iconBg: '#D1FAE5',
                     route: 'MessMenuManagement',
+                },
+                {
+                    label: 'Notices Board',
+                    subtitle: 'Post announcements to tenants',
+                    icon: 'megaphone-outline',
+                    iconColor: '#7C3AED',
+                    iconBg: '#EDE9FE',
+                    route: 'NoticesManagement',
                 },
                 {
                     label: 'Verify Rent',

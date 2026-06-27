@@ -7,13 +7,17 @@ import {
   createStudent,
   updateStudent,
   deleteStudent,
-  allocateRoom
+  allocateRoom,
+  getPendingRegistrations,
 } from '../controllers/studentController.js';
 
 const router = express.Router();
 
 // All routes require authentication
 router.use(authMiddleware);
+
+// Owner: get tenants awaiting activation (status=3 / mobile self-register)
+router.get('/pending-registrations', getPendingRegistrations);
 
 // Student routes
 router.get('/stats', getStudentStats);

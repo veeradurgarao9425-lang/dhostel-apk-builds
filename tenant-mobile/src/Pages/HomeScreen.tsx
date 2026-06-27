@@ -139,26 +139,88 @@ const QUICK_ACTIONS = [
 export default function HomeScreen({ navigation }: any) {
   const { user, refreshUser, connectedHostel } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
+  const [recentNotice, setRecentNotice] = useState<any>(null);
+  const [recentPayments, setRecentPayments] = useState<any[]>([]);
+  const [menuItems, setMenuItems] = useState<any[]>(todayMenu);
+
+  const fetchData = async () => {
+    try {
+      const [noticesRes, feesRes, menuRes] = await Promise.allSettled([
+        api.get('/notices'),
+        api.get('/fees/my-fees'),
+        user?.hostel_id ? api.get(`/mess-menu/${user.hostel_id}`) : Promise.resolve({ data: { success: false } }),
+      ]);
+
+      if (noticesRes.status === 'fulfilled' && noticesRes.value.data?.success) {
+        const n = noticesRes.value.data.data;
+        if (n && n.length > 0) {
+          setRecentNotice({
+            id: String(n[0].notice_id),
+            title: n[0].title,
+            body: n[0].content,
+            category: n[0].notice_type || 'General',
+            date: n[0].created_at.slice(0, 10),
+            pinned: false,
+          });
+        }
+      }
+
+      if (feesRes.status === 'fulfilled' && feesRes.value.data?.success) {
+        const fees = feesRes.value.data.data;
+        // Flatten payments
+        let allPayments: any[] = [];
+        fees.forEach((f: any) => {
+          f.payments?.forEach((p: any) => {
+            allPayments.push({
+              id: p.payment_id,
+              amount: p.amount,
+              month: f.fee_month,
+              paidOn: p.payment_date ? p.payment_date.slice(0, 10) : '',
+              status: 'Paid'
+            });
+          });
+        });
+        // Sort by paidOn desc
+        allPayments.sort((a, b) => new Date(b.paidOn).getTime() - new Date(a.paidOn).getTime());
+        setRecentPayments(allPayments.slice(0, 3));
+      }
+
+      if (menuRes.status === 'fulfilled' && menuRes.value.data?.success) {
+        const shortDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const todayStr = shortDays[new Date().getDay()];
+        const menu = menuRes.value.data.menu || [];
+        const todayItems = menu.filter((m: any) => m.day_of_week === todayStr);
+        if (todayItems.length > 0) {
+          const mapped = todayItems.map((m: any) => ({
+            meal: m.meal_type,
+            items: m.items,
+          }));
+          setMenuItems(mapped);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching home data:', error);
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
       refreshUser();
-    }, []),
+      fetchData();
+    }, [user?.hostel_id]),
   );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await refreshUser();
+    await fetchData();
     setRefreshing(false);
-  }, [refreshUser]);
+  }, [refreshUser, user?.hostel_id]);
 
   const isAllocated = !!user?.is_allocated;
   const hasDue = Number(user?.outstanding_due || 0) > 0;
-  const unread = sampleNotifications.filter((n) => !n.read).length;
+  const unread = 0; // Replace with actual unread count if notifications API exists
   const initials = (user?.name || 'T').split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase();
-
-  const recentNotice = sampleNotices[0];
-  const recentPayments = samplePayments.filter((p) => p.status === 'Paid').slice(0, 3);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -293,14 +355,20 @@ export default function HomeScreen({ navigation }: any) {
         </View>
 
         <View style={styles.menuCard}>
-          {todayMenu.map((item, i) => (
-            <MealRow
-              key={item.meal}
-              meal={item.meal}
-              items={item.items}
-              isLast={i === todayMenu.length - 1}
-            />
-          ))}
+          {menuItems.length > 0 ? (
+            menuItems.map((item, i) => (
+              <MealRow
+                key={item.meal}
+                meal={item.meal}
+                items={item.items}
+                isLast={i === menuItems.length - 1}
+              />
+            ))
+          ) : (
+            <View style={{ padding: 20, alignItems: 'center' }}>
+              <Text style={{ color: colors.textMuted, fontSize: 13 }}>No menu available for today.</Text>
+            </View>
+          )}
         </View>
 
         {/* ── Quick Actions ─────────────────────────────────────────────────── */}

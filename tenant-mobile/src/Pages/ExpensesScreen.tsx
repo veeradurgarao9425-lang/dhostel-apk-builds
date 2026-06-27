@@ -15,6 +15,7 @@ import {
 } from 'lucide-react-native';
 import { colors, spacing, radius, font, shadow } from '../theme';
 import { sampleExpenses, ExpenseRecord, ExpenseCategory } from '../data/tenantContent';
+import api from '../services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -325,16 +326,38 @@ function AddModal({ visible, defaultCat, onClose, onSave }: any) {
   const [showSuccess, setShowSuccess] = useState(false);
   const [lastSaved, setLastSaved] = useState<any>(null);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!amount || Number(amount) <= 0) return Alert.alert('Enter amount', 'Valid amount needed.');
-    const expenseData = {
-      id: `e${Date.now()}`, title: cat, category: cat as ExpenseCategory,
-      amount: Number(amount), date: TODAY, time: 'Now', note
-    };
-    setLastSaved(expenseData);
-    onSave(expenseData);
-    setAmount(''); setNote(''); setCat(defaultCat);
-    setShowSuccess(true);
+    try {
+      const res = await api.post('/tenant-expenses', {
+        title: note.trim() || cat,
+        amount: Number(amount),
+        category: cat,
+        date: new Date().toISOString().split('T')[0],
+      });
+      
+      if (res.data?.success) {
+        const e = res.data.data;
+        const expenseData = {
+          id: String(e.expense_id),
+          title: e.title,
+          category: e.category,
+          amount: Number(e.amount),
+          date: e.date.split('T')[0],
+          time: 'Now',
+          note: e.note || ''
+        };
+        setLastSaved(expenseData);
+        onSave(expenseData);
+        setAmount(''); setNote(''); setCat(defaultCat);
+        setShowSuccess(true);
+      } else {
+        Alert.alert('Error', res.data?.error || 'Failed to add expense');
+      }
+    } catch (err: any) {
+      console.error('Error adding expense:', err);
+      Alert.alert('Error', err.message || 'Network error');
+    }
   };
 
   const handleSuccessClose = () => {
@@ -674,15 +697,44 @@ const allExp = StyleSheet.create({
 
 // ── Main Screen ───────────────────────────────────────────────────────────────
 export default function ExpensesScreen({ navigation }: any) {
-  const [expenses, setExpenses] = useState<ExpenseRecord[]>(sampleExpenses);
+  const [expenses, setExpenses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [addDefaultCat, setAddDefaultCat] = useState('Food');
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState('Today');
   const [showAllExpenses, setShowAllExpenses] = useState(false);
 
-  const todayExpenses = expenses.filter((e) => e.date === TODAY);
-  const total = 350;
+  useEffect(() => {
+    fetchExpenses();
+  }, []);
+
+  const fetchExpenses = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/tenant-expenses');
+      if (res.data?.success) {
+        const formatted = res.data.data.map((e: any) => ({
+          id: String(e.expense_id),
+          title: e.title,
+          category: e.category,
+          amount: Number(e.amount),
+          date: e.date.split('T')[0],
+          time: new Date(e.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+          note: e.note || ''
+        }));
+        setExpenses(formatted);
+      }
+    } catch (err) {
+      console.error('Failed to fetch expenses', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todayExpenses = expenses.filter((e) => e.date === todayStr);
+  const total = todayExpenses.reduce((sum, e) => sum + e.amount, 0);
   const pct = 43;
   const recentExpenses = todayExpenses.slice(0, 4);
 

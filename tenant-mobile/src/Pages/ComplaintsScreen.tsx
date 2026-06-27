@@ -130,13 +130,15 @@ export default function ComplaintsScreen({ navigation }: any) {
             <Text style={styles.headerEyebrow}>Maintenance</Text>
             <Text style={styles.headerTitle}>Complaints</Text>
           </View>
-          <TouchableOpacity
-            style={styles.addBtn}
-            onPress={() => setShowForm(true)}
-            activeOpacity={0.8}
-          >
-            <Plus size={20} color="#fff" />
-          </TouchableOpacity>
+          {user?.is_allocated && (
+            <TouchableOpacity
+              style={styles.addBtn}
+              onPress={() => setShowForm(true)}
+              activeOpacity={0.8}
+            >
+              <Plus size={20} color="#fff" />
+            </TouchableOpacity>
+          )}
         </View>
       </LinearGradient>
 
@@ -170,7 +172,7 @@ export default function ComplaintsScreen({ navigation }: any) {
             </View>
             <Text style={styles.emptyTitle}>No complaints</Text>
             <Text style={styles.emptyBody}>
-              Raise an issue and track it from open to resolved right here.
+              {user?.is_allocated ? 'Raise an issue and track it from open to resolved right here.' : 'You need to be room-allocated to raise complaints.'}
             </Text>
           </View>
         ) : (

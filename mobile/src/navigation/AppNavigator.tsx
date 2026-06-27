@@ -63,6 +63,7 @@ import ComplaintsManagementScreen from '../Pages/ComplaintsManagementScreen';
 import RequestsManagementScreen from '../Pages/RequestsManagementScreen';
 import MessMenuManagementScreen from '../Pages/MessMenuManagementScreen';
 import PaymentVerificationScreen from '../Pages/PaymentVerificationScreen';
+import NoticesManagementScreen from '../Pages/NoticesManagementScreen';
 
 // ── Navigators ────────────────────────────────────────────────────────────────
 import BottomTabNavigator from '../components/BottomTabNavigator';
@@ -236,6 +237,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen name="RequestsManagement"   component={RequestsManagementScreen} />
                     <Stack.Screen name="MessMenuManagement"   component={MessMenuManagementScreen} />
                     <Stack.Screen name="PaymentVerification"  component={PaymentVerificationScreen} />
+                    <Stack.Screen name="NoticesManagement"    component={NoticesManagementScreen} />
 
                     {/* Reports */}
                     <Stack.Screen name="Reports" component={ReportsScreen} />

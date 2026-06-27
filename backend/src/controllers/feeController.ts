@@ -447,6 +447,77 @@ export const uploadPaymentProof = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// ─── GET Tenant's own fee history (called by mobile app) ─────────────────────
+export const getTenantFeeHistory = async (req: AuthRequest, res: Response) => {
+  try {
+    const studentId = req.user?.user_id;
+    if (!studentId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+
+    // Monthly fee records for this tenant
+    const fees = await db('monthly_fees as mf')
+      .leftJoin('fee_payments as fp', 'fp.fee_id', 'mf.fee_id')
+      .leftJoin('payment_modes as pm', 'fp.payment_mode_id', 'pm.payment_mode_id')
+      .where('mf.student_id', studentId)
+      .select(
+        'mf.fee_id',
+        'mf.fee_month',
+        'mf.monthly_rent',
+        'mf.total_due',
+        'mf.paid_amount',
+        'mf.balance',
+        'mf.fee_status',
+        'mf.due_date',
+        'fp.payment_id',
+        'fp.amount as payment_amount',
+        'fp.payment_date',
+        'fp.transaction_id',
+        'fp.receipt_number',
+        'fp.verification_status',
+        'fp.proof_url',
+        'pm.payment_mode_name as payment_mode',
+      )
+      .orderBy('mf.fee_month', 'desc');
+
+    // Group by fee_month so each month is one record with its payments
+    const grouped: Record<string, any> = {};
+    for (const row of fees) {
+      if (!grouped[row.fee_id]) {
+        grouped[row.fee_id] = {
+          fee_id: row.fee_id,
+          fee_month: row.fee_month,
+          monthly_rent: Number(row.monthly_rent || 0),
+          total_due: Number(row.total_due || 0),
+          paid_amount: Number(row.paid_amount || 0),
+          balance: Number(row.balance || 0),
+          fee_status: row.fee_status,
+          due_date: row.due_date,
+          payments: [],
+        };
+      }
+      if (row.payment_id) {
+        grouped[row.fee_id].payments.push({
+          payment_id: row.payment_id,
+          amount: Number(row.payment_amount || 0),
+          payment_date: row.payment_date,
+          transaction_id: row.transaction_id,
+          receipt_number: row.receipt_number,
+          verification_status: row.verification_status,
+          proof_url: row.proof_url,
+          payment_mode: row.payment_mode,
+        });
+      }
+    }
+
+    return res.json({
+      success: true,
+      data: Object.values(grouped),
+    });
+  } catch (error: any) {
+    console.error('getTenantFeeHistory error:', error);
+    return res.status(500).json({ success: false, error: 'Failed to fetch fee history' });
+  }
+};
+
 // Verify Payment Proof (Owner)
 export const verifyPaymentProof = async (req: AuthRequest, res: Response) => {
   try {

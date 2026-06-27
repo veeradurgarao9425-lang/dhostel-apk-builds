@@ -8,6 +8,7 @@ export const getNotices = async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user;
 
+    // Allow role_id 1 (admin), 2 (owner), 3 (tenant)
     if (!user || (user.role_id !== 1 && user.role_id !== 2 && user.role_id !== 3)) {
       return res.status(403).json({
         success: false,
@@ -39,11 +40,11 @@ export const getNotices = async (req: AuthRequest, res: Response) => {
   }
 };
 
-// Create a new notice
+// Create a new notice (owner only)
 export const createNotice = async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user;
-    const { title, content } = req.body;
+    const { title, content, notice_type } = req.body;
 
     if (!user || (user.role_id !== 1 && user.role_id !== 2)) {
       return res.status(403).json({
@@ -66,11 +67,31 @@ export const createNotice = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const [notice_id] = await db('notices').insert({
-      hostel_id: user.hostel_id,
-      title,
-      content
-    });
+    // Validate notice_type if provided
+    const validTypes = ['General', 'Important', 'Maintenance', 'Food'];
+    const resolvedType = validTypes.includes(notice_type) ? notice_type : 'General';
+
+    // Insert notice — try with notice_type column, fall back gracefully if it doesn't exist
+    let notice_id: number;
+    try {
+      [notice_id] = await db('notices').insert({
+        hostel_id: user.hostel_id,
+        title,
+        content,
+        notice_type: resolvedType,
+      });
+    } catch (colErr: any) {
+      // If notice_type column doesn't exist, insert without it
+      if (colErr?.code === 'ER_BAD_FIELD_ERROR') {
+        [notice_id] = await db('notices').insert({
+          hostel_id: user.hostel_id,
+          title,
+          content,
+        });
+      } else {
+        throw colErr;
+      }
+    }
 
     res.status(201).json({
       success: true,
@@ -78,23 +99,13 @@ export const createNotice = async (req: AuthRequest, res: Response) => {
       data: { notice_id }
     });
 
-    // Trigger push and in-app notification to owner
-    sendNotificationToHostelOwner(
-      user.hostel_id,
-      'Notice',
-      'New Notice Published',
-      `Notice: "${title}" has been published.`,
-      'Medium',
-      { id: notice_id }
-    ).catch(err => console.error('Failed to send notice notification:', err));
-
-    // Trigger push and in-app notification to all students in the hostel
+    // Notify all students in the hostel
     sendNotificationToAllHostelStudents(
       user.hostel_id,
-      'Notice',
+      resolvedType,
       title,
       content,
-      'High',
+      resolvedType === 'Important' ? 'High' : 'Medium',
       { id: notice_id }
     ).catch(err => console.error('Failed to send notice to students:', err));
   } catch (error: any) {
@@ -126,7 +137,6 @@ export const deleteNotice = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Verify notice belongs to owner's hostel
     const notice = await db('notices')
       .where({ notice_id: noticeId, hostel_id: user.hostel_id })
       .first();
@@ -138,9 +148,7 @@ export const deleteNotice = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    await db('notices')
-      .where({ notice_id: noticeId })
-      .del();
+    await db('notices').where({ notice_id: noticeId }).del();
 
     res.json({
       success: true,

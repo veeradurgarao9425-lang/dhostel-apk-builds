@@ -29,7 +29,7 @@ const categoryMeta: Record<string, {
 };
 
 function timeAgo(dateStr: string): string {
-  const now = new Date('2025-06-09');
+  const now = new Date();
   const then = new Date(dateStr);
   const diffMs = now.getTime() - then.getTime();
   const diffH = Math.floor(diffMs / 3600000);
@@ -40,17 +40,21 @@ function timeAgo(dateStr: string): string {
 }
 
 function groupNoticesByDate(notices: Notice[]) {
-  const today = '2025-06-09';
-  const yesterday = '2025-06-08';
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toISOString().split('T')[0];
+
   return [
-    ...(notices.filter((n) => n.date === today).length
-      ? [{ label: 'Today', items: notices.filter((n) => n.date === today) }]
+    ...(notices.filter((n) => n.date === todayStr).length
+      ? [{ label: 'Today', items: notices.filter((n) => n.date === todayStr) }]
       : []),
-    ...(notices.filter((n) => n.date === yesterday).length
-      ? [{ label: 'Yesterday', items: notices.filter((n) => n.date === yesterday) }]
+    ...(notices.filter((n) => n.date === yesterdayStr).length
+      ? [{ label: 'Yesterday', items: notices.filter((n) => n.date === yesterdayStr) }]
       : []),
-    ...(notices.filter((n) => n.date < yesterday).length
-      ? [{ label: 'Earlier', items: notices.filter((n) => n.date < yesterday) }]
+    ...(notices.filter((n) => n.date < yesterdayStr).length
+      ? [{ label: 'Earlier', items: notices.filter((n) => n.date < yesterdayStr) }]
       : []),
   ];
 }
@@ -96,7 +100,7 @@ export default function NoticesScreen({ navigation }: any) {
             id: String(n.notice_id),
             title: n.title,
             body: n.content,
-            category: 'General',
+            category: n.notice_type || 'General',
             date: n.created_at.slice(0, 10),
             pinned: false,
           }));
@@ -111,7 +115,7 @@ export default function NoticesScreen({ navigation }: any) {
     fetchNotices();
   }, []);
 
-  const displayNotices = notices.length > 0 ? notices : sampleNotices;
+  const displayNotices = notices.length > 0 ? notices : [];
   const filtered = displayNotices.filter((n) =>
     activeFilter === 'All' ? true : n.category === activeFilter
   );

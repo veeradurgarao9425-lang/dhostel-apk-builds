@@ -68,8 +68,11 @@ export default function ComplaintsManagementScreen({ navigation }: any) {
                         complaints.map((c) => (
                             <View key={c.complaint_id} style={styles.card}>
                                 <View style={styles.cardHeader}>
-                                    <View>
+                                    <View style={{ flex: 1, marginRight: 8 }}>
                                         <Text style={styles.title}>{c.title}</Text>
+                                        <Text style={styles.tenantName}>
+                                            👤 {c.first_name} {c.last_name || ''}{c.room_number ? `  ·  Room ${c.room_number}` : ''}
+                                        </Text>
                                         <Text style={styles.category}>{c.category}</Text>
                                     </View>
                                     <View style={[styles.statusBadge, { backgroundColor: c.status === 'Resolved' ? '#DCFCE7' : c.status === 'In Progress' ? '#FEF3C7' : '#FEE2E2' }]}>
@@ -117,6 +120,7 @@ const styles = StyleSheet.create({
     },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
     title: { fontSize: 16, fontWeight: '700', color: '#1E293B', marginBottom: 2 },
+    tenantName: { fontSize: 13, color: '#7C3AED', fontWeight: '600', marginBottom: 2 },
     category: { fontSize: 13, color: '#64748B', fontWeight: '500' },
     statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
     statusText: { fontSize: 12, fontWeight: '700' },

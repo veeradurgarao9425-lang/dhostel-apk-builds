@@ -5,10 +5,11 @@ import {
   TouchableOpacity,
   View,
   ScrollView,
+  Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowLeft, ChefHat } from 'lucide-react-native';
+import { ArrowLeft, ChefHat, Info } from 'lucide-react-native';
 import { colors, radius, spacing, font, shadow } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
@@ -66,102 +67,12 @@ const DAY_FULL: Record<string, string> = {
   Fri: 'Friday', Sat: 'Saturday', Sun: 'Sunday',
 };
 
-// ── Meal slot config ──────────────────────────────────────────────────────────
 const MEALS = [
-  {
-    key: 'breakfast' as const,
-    label: 'Breakfast',
-    emoji: '☀️',
-    borderColor: '#F59E0B',
-    iconBg: '#FFF8EC',
-    time: '',
-  },
-  {
-    key: 'lunch' as const,
-    label: 'Lunch',
-    emoji: '🍛',
-    borderColor: '#16A34A',
-    iconBg: '#EDFBF3',
-    time: '',
-  },
-  {
-    key: 'dinner' as const,
-    label: 'Dinner',
-    emoji: '🌙',
-    borderColor: colors.primary,
-    iconBg: colors.primarySoft,
-    time: '',
-  },
+  { key: 'breakfast' as const, label: 'Breakfast', emoji: '☀️', color: '#F59E0B', bg: '#FFF4E5' },
+  { key: 'lunch' as const, label: 'Lunch', emoji: '🍛', color: '#10B981', bg: '#E9FBF3' },
+  { key: 'dinner' as const, label: 'Dinner', emoji: '🌙', color: colors.primary, bg: colors.primarySoft },
 ];
 
-// ── Meal Row — Apple Settings-style ──────────────────────────────────────────
-function MealRow({
-  meal,
-  slot,
-  isLast,
-}: {
-  meal: typeof MEALS[0];
-  slot: MealSlot;
-  isLast: boolean;
-}) {
-  return (
-    <View style={[rowStyles.row, !isLast && rowStyles.divider]}>
-      {/* Left accent bar */}
-      <View style={[rowStyles.accent, { backgroundColor: meal.borderColor }]} />
-
-      <View style={rowStyles.content}>
-        {/* Header row */}
-        <View style={rowStyles.header}>
-          <View style={[rowStyles.emojiWrap, { backgroundColor: meal.iconBg }]}>
-            <Text style={rowStyles.emoji}>{meal.emoji}</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[rowStyles.label, { color: meal.borderColor }]}>{meal.label}</Text>
-            <Text style={rowStyles.time}>{slot.time}</Text>
-          </View>
-        </View>
-        {/* Items */}
-        <Text style={rowStyles.items}>
-          {slot.items.split(',').map((s) => s.trim()).join(' · ')}
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-const rowStyles = StyleSheet.create({
-  row: { flexDirection: 'row' },
-  divider: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  accent: { width: 4 },
-  content: { flex: 1, padding: 16 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 8,
-  },
-  emojiWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emoji: { fontSize: 16 },
-  label: { fontSize: 15, fontWeight: '700' },
-  time: { fontSize: 11, color: colors.textMuted, marginTop: 1 },
-  items: {
-    fontSize: 13,
-    color: colors.textMuted,
-    lineHeight: 19,
-    paddingLeft: 44,
-  },
-});
-
-// ── Main Screen ───────────────────────────────────────────────────────────────
 export default function FullMenuScreen({ navigation }: any) {
   const { user } = useAuth();
   const [selectedDay, setSelectedDay] = useState('Mon');
@@ -195,7 +106,6 @@ export default function FullMenuScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* ── Gradient Header ─────────────────────────────────────────────── */}
       <LinearGradient
         colors={[colors.gradientStart, colors.gradientEnd]}
         start={{ x: 0, y: 0 }}
@@ -204,16 +114,11 @@ export default function FullMenuScreen({ navigation }: any) {
       >
         <View style={styles.hCircle1} />
         <View style={styles.hCircle2} />
-
         <View style={styles.headerRow}>
-          <TouchableOpacity
-            style={styles.backBtn}
-            onPress={() => navigation.goBack()}
-            activeOpacity={0.75}
-          >
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
             <ArrowLeft size={20} color="#fff" />
           </TouchableOpacity>
-          <View style={{ flex: 1 }}>
+          <View style={{ flex: 1, marginLeft: 16 }}>
             <Text style={styles.headerEyebrow}>Mess Schedule</Text>
             <Text style={styles.headerTitle}>Weekly Menu</Text>
           </View>
@@ -223,13 +128,8 @@ export default function FullMenuScreen({ navigation }: any) {
         </View>
       </LinearGradient>
 
-      {/* ── 7-day pill selector ─────────────────────────────────────────── */}
       <View style={styles.dayTabsWrapper}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.dayTabsScroll}
-        >
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dayTabsScroll}>
           {DAYS.map((day) => {
             const isSelected = day === selectedDay;
             return (
@@ -237,12 +137,10 @@ export default function FullMenuScreen({ navigation }: any) {
                 key={day}
                 style={[styles.dayTab, isSelected && styles.dayTabActive]}
                 onPress={() => setSelectedDay(day)}
-                activeOpacity={0.75}
+                activeOpacity={0.8}
               >
                 <Text style={[styles.dayTabDay, isSelected && styles.dayTabDayActive]}>{day}</Text>
-                <Text style={[styles.dayTabDate, isSelected && styles.dayTabDateActive]}>
-                  {DATES[day]}
-                </Text>
+                <Text style={[styles.dayTabDate, isSelected && styles.dayTabDateActive]}>{DATES[day]}</Text>
                 {day === 'Mon' && <View style={styles.todayDot} />}
               </TouchableOpacity>
             );
@@ -250,32 +148,34 @@ export default function FullMenuScreen({ navigation }: any) {
         </ScrollView>
       </View>
 
-      {/* ── Menu Content ────────────────────────────────────────────────── */}
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {/* Day title */}
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <View style={styles.dayTitleRow}>
           <Text style={styles.dayFullName}>{DAY_FULL[selectedDay]}</Text>
-          <Text style={styles.dayDate}>09 Jun 2025</Text>
+          <Text style={styles.dayDate}>June 2025</Text>
         </View>
 
-        {/* Apple Settings-style meal list */}
-        <View style={styles.menuCard}>
-          {MEALS.map((meal, i) => (
-            <MealRow
-              key={meal.key}
-              meal={meal}
-              slot={dayMenu[meal.key]}
-              isLast={i === MEALS.length - 1}
-            />
-          ))}
-        </View>
+        {MEALS.map((meal) => {
+          const slot = dayMenu[meal.key];
+          return (
+            <View key={meal.key} style={styles.mealCard}>
+              <View style={[styles.mealHeader, { backgroundColor: meal.bg }]}>
+                <View style={styles.mealHeaderLeft}>
+                  <Text style={styles.mealEmoji}>{meal.emoji}</Text>
+                  <Text style={[styles.mealLabel, { color: meal.color }]}>{meal.label}</Text>
+                </View>
+                <Text style={[styles.mealTime, { color: meal.color }]}>{slot.time}</Text>
+              </View>
+              <View style={styles.mealBody}>
+                <Text style={styles.mealItems}>
+                  {slot.items.split(',').map(s => s.trim()).join('  •  ')}
+                </Text>
+              </View>
+            </View>
+          );
+        })}
 
-        {/* Info note */}
         <View style={styles.noteCard}>
-          <Text style={styles.noteIcon}>🕐</Text>
+          <Info size={16} color={colors.textMuted} />
           <Text style={styles.noteText}>
             Timings may vary on public holidays. Sunday breakfast starts 30 min late.
           </Text>
@@ -287,110 +187,39 @@ export default function FullMenuScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
+  header: { paddingHorizontal: spacing.xl, paddingTop: Platform.OS === 'ios' ? 12 : 20, paddingBottom: 24, overflow: 'hidden' },
+  hCircle1: { position: 'absolute', width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(255,255,255,0.07)', top: -40, right: -20 },
+  hCircle2: { position: 'absolute', width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(255,255,255,0.05)', bottom: 10, right: 60 },
+  headerRow: { flexDirection: 'row', alignItems: 'center' },
+  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
+  headerEyebrow: { fontSize: 13, color: 'rgba(255,255,255,0.8)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: '#fff', letterSpacing: -0.5 },
+  chefIconWrap: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
 
-  // ── Header ────────────────────────────────────────────────────────────────
-  header: {
-    paddingHorizontal: spacing.xl,
-    paddingTop: 12,
-    paddingBottom: 20,
-    overflow: 'hidden',
-  },
-  hCircle1: {
-    position: 'absolute', width: 120, height: 120, borderRadius: 60,
-    backgroundColor: 'rgba(255,255,255,0.07)', top: -30, right: -20,
-  },
-  hCircle2: {
-    position: 'absolute', width: 60, height: 60, borderRadius: 30,
-    backgroundColor: 'rgba(255,255,255,0.05)', bottom: 10, right: 80,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  backBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  headerEyebrow: { fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: '500' },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: '#fff', letterSpacing: -0.3 },
-  chefIconWrap: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-
-  // ── Day tabs ──────────────────────────────────────────────────────────────
-  dayTabsWrapper: {
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  dayTabsScroll: {
-    paddingHorizontal: spacing.xl,
-    paddingVertical: 12,
-    gap: spacing.sm,
-  },
-  dayTab: {
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceAlt,
-    borderWidth: 1,
-    borderColor: colors.border,
-    minWidth: 52,
-    position: 'relative',
-  },
-  dayTabActive: {
-    backgroundColor: colors.primarySoft,
-    borderColor: colors.primaryBorder,
-  },
+  dayTabsWrapper: { backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
+  dayTabsScroll: { paddingHorizontal: spacing.xl, paddingVertical: 14, gap: spacing.md },
+  dayTab: { alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderRadius: radius.xl, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border, minWidth: 58, position: 'relative' },
+  dayTabActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   dayTabDay: { fontSize: 13, fontWeight: '700', color: colors.textMuted },
-  dayTabDayActive: { color: colors.primary },
-  dayTabDate: { fontSize: 11, color: colors.textSubtle, marginTop: 2 },
-  dayTabDateActive: { color: colors.primary },
-  todayDot: {
-    position: 'absolute', top: 4, right: 4,
-    width: 5, height: 5, borderRadius: 3,
-    backgroundColor: colors.danger,
-  },
+  dayTabDayActive: { color: 'rgba(255,255,255,0.9)' },
+  dayTabDate: { fontSize: 15, fontWeight: '800', color: colors.text, marginTop: 4 },
+  dayTabDateActive: { color: '#fff' },
+  todayDot: { position: 'absolute', top: 6, right: 6, width: 6, height: 6, borderRadius: 3, backgroundColor: colors.danger },
 
-  // ── Scroll Content ────────────────────────────────────────────────────────
-  scrollContent: { padding: spacing.xl, paddingBottom: 120 },
+  scrollContent: { padding: spacing.xl, paddingBottom: 100 },
+  dayTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xl },
+  dayFullName: { fontSize: 22, fontWeight: '800', color: colors.text, letterSpacing: -0.3 },
+  dayDate: { fontSize: 14, fontWeight: '600', color: colors.textMuted },
 
-  dayTitleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-  dayFullName: { fontSize: 20, fontWeight: '700', color: colors.text, letterSpacing: -0.3 },
-  dayDate: { fontSize: 13, color: colors.textMuted },
+  mealCard: { backgroundColor: colors.surface, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.lg, overflow: 'hidden', ...shadow.card },
+  mealHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12 },
+  mealHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  mealEmoji: { fontSize: 16 },
+  mealLabel: { fontSize: 15, fontWeight: '800' },
+  mealTime: { fontSize: 13, fontWeight: '700' },
+  mealBody: { padding: 16 },
+  mealItems: { fontSize: 15, color: colors.text, lineHeight: 24, fontWeight: '500' },
 
-  // ── Menu card ─────────────────────────────────────────────────────────────
-  menuCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius['2xl'],
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: 'hidden',
-    marginBottom: spacing.xl,
-    ...shadow.card,
-  },
-
-  // ── Info note ─────────────────────────────────────────────────────────────
-  noteCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: radius['2xl'],
-    padding: spacing.xl,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  noteIcon: { fontSize: 16 },
-  noteText: { flex: 1, fontSize: font.small, color: colors.textMuted, lineHeight: 20 },
+  noteCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.surfaceAlt, borderRadius: radius.lg, padding: 16, marginTop: spacing.md },
+  noteText: { flex: 1, fontSize: 13, color: colors.textMuted, lineHeight: 20, fontWeight: '500' },
 });

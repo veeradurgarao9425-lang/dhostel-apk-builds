@@ -10,7 +10,8 @@ import {
   getReceipt,
   getAvailableMonths,
   uploadPaymentProof,
-  verifyPaymentProof
+  verifyPaymentProof,
+  getTenantFeeHistory,
 } from '../controllers/feeController.js';
 
 const router = express.Router();
@@ -28,6 +29,9 @@ const upload = multer({ storage });
 // All routes require authentication
 router.use(authMiddleware);
 
+// Tenant self-service routes (accessible by role_id=3)
+router.get('/my-fees', getTenantFeeHistory);
+
 // Fee/Payment routes
 router.get('/payments', getFeePayments);
 router.get('/available-months', getAvailableMonths);
@@ -36,7 +40,7 @@ router.post('/payments', recordPayment);
 router.get('/payment-modes', getPaymentModes);
 router.get('/receipts/:paymentId', getReceipt);
 
-// Payment proof endpoints
+// Payment proof endpoints (tenant uploads, owner verifies)
 router.post('/upload-proof', upload.single('proof'), uploadPaymentProof);
 router.put('/payments/:paymentId/verify', verifyPaymentProof);
 

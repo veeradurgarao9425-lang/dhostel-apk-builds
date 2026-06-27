@@ -1011,19 +1011,24 @@ export const authController = {
         return res.status(400).json({ success: false, error: 'Phone number is required.' });
       }
 
-      // Check if tenant already exists (shouldn't happen but just in case)
-      const existing = await db('students')
-        .where('hostel_id', hostel_id)
-        .andWhere(function() {
-          if (email) this.orWhere('email', email);
-          if (phone) this.orWhere('phone', phone);
-          this.orWhere('email', identifier).orWhere('phone', identifier);
-        })
-        .first();
-
-      if (existing) {
-        return res.status(400).json({ success: false, error: 'A tenant with these details already exists in this hostel.' });
+      // ── Global uniqueness checks ───────────────────────────────────────────
+      // Phone must be unique across ALL hostels (prevents identity confusion)
+      if (finalPhone) {
+        const existingPhone = await db('students').where('phone', finalPhone).first();
+        if (existingPhone) {
+          return res.status(400).json({ success: false, error: 'This phone number is already registered. Please login instead.' });
+        }
       }
+
+      // Email must be unique across ALL hostels
+      const finalEmail = email || (identifier.includes('@') ? identifier : null);
+      if (finalEmail) {
+        const existingEmail = await db('students').where('email', finalEmail).first();
+        if (existingEmail) {
+          return res.status(400).json({ success: false, error: 'This email address is already registered. Please login instead.' });
+        }
+      }
+      // ──────────────────────────────────────────────────────────────────────
 
       // Format current date for admission_date
       const today = new Date();
@@ -1035,7 +1040,7 @@ export const authController = {
         first_name,
         last_name: last_name || null,
         phone: finalPhone,
-        email: email || (identifier.includes('@') ? identifier : null),
+        email: finalEmail || null,
         gender,
         guardian_name: guardian_name || null,
         guardian_phone: guardian_phone || null,
@@ -1055,7 +1060,7 @@ export const authController = {
       const { generateToken } = await import('../utils/jwt.js');
       const token = generateToken({
         user_id: student_id,
-        email: email || identifier,
+        email: finalEmail || identifier,
         role_id: 3, // Tenant
         hostel_id,
       });
@@ -1068,8 +1073,8 @@ export const authController = {
           tenant: {
             id: student_id,
             name: first_name + (last_name ? ' ' + last_name : ''),
-            email: email || identifier,
-            phone: phone || identifier,
+            email: finalEmail || identifier,
+            phone: finalPhone,
             room: 'Pending',
             hostel_id
           }
@@ -1080,6 +1085,7 @@ export const authController = {
       return res.status(500).json({ success: false, error: error?.sqlMessage || 'Internal server error' });
     }
   },
+
 
   // Returns the logged-in tenant's own live profile, allocation and dues.
   // The mobile dashboard polls this on focus / pull-to-refresh so it updates
