@@ -32,6 +32,8 @@ import MoreScreen from '../Pages/MoreScreen';
 import ServicesScreen from '../Pages/ServicesScreen';
 import FullMenuScreen from '../Pages/FullMenuScreen';
 import MessagesScreen from '../Pages/MessagesScreen';
+import AddExpenseScreen from '../Pages/AddExpenseScreen';
+import SettingsScreen from '../Pages/SettingsScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -93,6 +95,8 @@ export default function AppNavigator() {
             <Stack.Screen name="More" component={MoreScreen} />
             <Stack.Screen name="Services" component={ServicesScreen} />
             <Stack.Screen name="FullMenu" component={FullMenuScreen} />
+            <Stack.Screen name="Settings" component={SettingsScreen} />
+            <Stack.Screen name="AddExpense" component={AddExpenseScreen} />
           </>
         ) : connectedHostel ? (
           <Stack.Screen name="Auth" component={AuthStack} />

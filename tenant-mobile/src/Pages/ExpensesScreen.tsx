@@ -1,23 +1,22 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, ScrollView, Modal,
   TextInput, KeyboardAvoidingView, Platform, Alert, Dimensions,
   Animated, Easing,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import {
   Calendar, Bell, TrendingDown, Utensils, Car, ShoppingBag,
   Film, MoreHorizontal, Plus, ChevronDown, FileText, ArrowLeft,
   Clock, Wallet, Smartphone, CreditCard, Landmark, CheckCircle,
   PieChart, BarChart2, Coffee, Search, Filter,
-  X, Receipt
+  X, Receipt, Home, User, Pill, AlertCircle,
 } from 'lucide-react-native';
 import { colors, spacing, radius, font, shadow } from '../theme';
 import { sampleExpenses, ExpenseRecord, ExpenseCategory } from '../data/tenantContent';
 import api from '../services/api';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // ── Category config ───────────────────────────────────────────────────────────
 const CAT: Record<string, { icon: any; color: string; bg: string; label: string }> = {
@@ -335,7 +334,7 @@ function AddModal({ visible, defaultCat, onClose, onSave }: any) {
         category: cat,
         date: new Date().toISOString().split('T')[0],
       });
-      
+
       if (res.data?.success) {
         const e = res.data.data;
         const expenseData = {
@@ -418,7 +417,7 @@ function AddModal({ visible, defaultCat, onClose, onSave }: any) {
                     style={[modal.catPill, active && { backgroundColor: m.bg, borderColor: m.color }]}
                     onPress={() => setCat(c)}
                   >
-                    <View style={[modal.catIconBg, { backgroundColor: active ? '#FFFFFF' : m.bg }]}> 
+                    <View style={[modal.catIconBg, { backgroundColor: active ? '#FFFFFF' : m.bg }]}>
                       <m.icon size={16} color={m.color} />
                     </View>
                     <Text style={[modal.catLabel, active && { color: m.color }]}>{m.label}</Text>
@@ -572,9 +571,9 @@ function AllExpensesScreen({ expenses, onBack }: any) {
       </View>
 
       {/* Filter Chips */}
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false} 
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
         contentContainerStyle={allExp.filterScroll}
       >
         {FILTER_CHIPS.map((chip) => (
@@ -742,8 +741,8 @@ export default function ExpensesScreen({ navigation }: any) {
 
   if (showAllExpenses) {
     return (
-      <AllExpensesScreen 
-        expenses={expenses} 
+      <AllExpensesScreen
+        expenses={expenses}
         onBack={() => setShowAllExpenses(false)}
       />
     );
@@ -751,74 +750,77 @@ export default function ExpensesScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
-      {/* ── Gradient Header ───────────────────────────────────────────────── */}
-      <LinearGradient
-        colors={[colors.gradientStart, colors.gradientEnd]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={s.header}
-      >
-        <View style={s.hCircle1} />
-        <View style={s.hCircle2} />
+      {/* ── Header ───────────────────────────────────────────────── */}
+      <View style={s.header}>
         <View style={s.headerRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={s.headerEyebrow}>My Wallet</Text>
-            <Text style={s.headerTitle}>Expenses</Text>
-          </View>
-          <TouchableOpacity style={s.headerIconBtn} activeOpacity={0.75}>
-            <Bell size={18} color="#fff" />
+          <TouchableOpacity>
+            <ArrowLeft size={20} color="#fff" />
+          </TouchableOpacity>
+          <Text style={s.headerTitle}>Expenses</Text>
+          <TouchableOpacity>
+            <BarChart2 size={20} color="#fff" />
           </TouchableOpacity>
         </View>
-      </LinearGradient>
+      </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
 
-        {/* ── Period Selector ───────────────────────────────────── */}
-        <View style={s.periodSelector}>
-          {['Today', 'Last 7 Days', 'This Month'].map((period) => (
+        {/* ── Tabs ───────────────────────────────────── */}
+        <View style={s.tabsContainer}>
+          {['Overview', 'Categories', 'Analytics'].map((tab) => (
             <TouchableOpacity
-              key={period}
-              style={[s.periodTab, selectedPeriod === period && s.periodTabActive]}
-              onPress={() => setSelectedPeriod(period)}
+              key={tab}
+              style={[s.tab, activeTab === tab && s.tabActive]}
+              onPress={() => setActiveTab(tab)}
             >
-              <Text style={[s.periodTabText, selectedPeriod === period && s.periodTabTextActive]}>
-                {period}
+              <Text style={[s.tabText, activeTab === tab && s.tabTextActive]}>
+                {tab}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
 
+        {/* ── Month Filter ───────────────────────────────────── */}
+        <View style={s.monthFilterContainer}>
+          <TouchableOpacity style={s.monthFilterBtn}>
+            <Text style={s.monthFilterText}>This Month</Text>
+            <ChevronDown size={14} color={HEADER_COLOR} />
+          </TouchableOpacity>
+        </View>
+
         {/* ── Total Spent Card ──────────────────────────────────── */}
         <View style={s.totalCard}>
-          <View style={s.totalCardHeader}>
-            <Text style={s.totalLabel}>Total Spent Today</Text>
+          <Text style={s.totalLabel}>Total Spent</Text>
+          <View style={s.totalAmountRow}>
+            <Text style={s.totalAmount}>₹ 3,650</Text>
             <View style={s.trendBadge}>
-              <Text style={s.trendArrow}>↑</Text>
-              <Text style={s.trendText}>12%</Text>
+              <Text style={s.trendText}>↑ 12%</Text>
+              <Text style={s.trendSubText}>vs Last Month</Text>
             </View>
           </View>
-          <Text style={s.totalAmount}>₹ {total.toLocaleString('en-IN')}</Text>
-          <Text style={s.totalSubtext}>vs Yesterday</Text>
         </View>
 
-        {/* ── Top Spending Category ─────────────────────────────── */}
-        <View style={s.sectionHeader}>
-          <Text style={s.sectionTitle}>Top Spending Category</Text>
-        </View>
-
-        <View style={s.categoryCard}>
-          <View style={s.categoryContent}>
-            <View style={s.categoryLeft}>
-              <View style={s.categoryHeaderRow}>
-                <View style={[s.categoryIconBg, { backgroundColor: '#FFEAF4' }]}>
-                  <Utensils size={15} color="#FF2D8F" />
+        {/* ── Donut Chart Section ─────────────────────────────── */}
+        <View style={s.chartCard}>
+          <View style={s.chartContent}>
+            {/* Donut Chart */}
+            <View style={s.donutContainer}>
+              <View style={s.donutOuter}>
+                <View style={s.donutRing}>
+                  <View style={s.donutInner}>
+                    <Text style={s.donutAmount}>₹ 3,650</Text>
+                    <Text style={s.donutLabel}>Total</Text>
+                  </View>
                 </View>
-                <Text style={s.categoryHeaderText}>Food   ₹ 150 (43%)</Text>
               </View>
-              <View style={s.categoryRow}>
-                <View style={[s.categoryDot, { backgroundColor: '#FF2D8F' }]} />
-                <Text style={s.categoryName}>Food</Text>
-                <Text style={s.categoryPercent}>43%</Text>
+            </View>
+
+            {/* Legend */}
+            <View style={s.legend}>
+              <View style={s.legendItem}>
+                <View style={[s.dot, { backgroundColor: '#EF4444' }]} />
+                <Text style={s.legendLabel}>Food</Text>
+                <Text style={s.legendPercent}>57%</Text>
               </View>
               <View style={s.categoryRow}>
                 <View style={[s.categoryDot, { backgroundColor: '#F59E0B' }]} />
@@ -843,26 +845,24 @@ export default function ExpensesScreen({ navigation }: any) {
         </View>
 
         {/* ── Recent Expenses ───────────────────────────────────── */}
-        <View style={s.sectionHeader}>
-          <Text style={s.sectionTitle}>Recent Expenses</Text>
-          <TouchableOpacity onPress={() => setShowAllExpenses(true)}>
-            <Text style={s.seeAllText}>View All</Text>
-          </TouchableOpacity>
-        </View>
+        <Text style={s.sectionTitle}>Recent Expenses</Text>
 
-        <View style={s.expenseList}>
-          {recentExpenses.map((exp) => {
-            const m = CAT[exp.category] || CAT['Other'];
+        <View style={s.expensesList}>
+          {SAMPLE_EXPENSES.map((exp) => {
+            const cat = CAT[exp.category as keyof typeof CAT] || CAT.Others;
             return (
               <View key={exp.id} style={s.expenseCard}>
-                <View style={[s.expenseIcon, { backgroundColor: m.bg }]}>
-                  <m.icon size={20} color={m.color} />
+                <View style={[s.expenseIconBg, { backgroundColor: cat.bg }]}>
+                  <cat.icon size={20} color={cat.color} strokeWidth={2} />
                 </View>
-                <View style={s.expenseMid}>
+                <View style={s.expenseBody}>
                   <Text style={s.expenseTitle}>{exp.title}</Text>
                   <Text style={s.expenseTime}>Today, {exp.time}</Text>
                 </View>
-                <Text style={s.expenseAmt}>₹ {exp.amount}</Text>
+                <View style={s.expenseRight}>
+                  <Text style={s.expenseAmount}>₹ {exp.amount}</Text>
+                  <Text style={[s.expenseCategory, { color: cat.color }]}>{cat.label}</Text>
+                </View>
               </View>
             );
           })}
@@ -872,100 +872,138 @@ export default function ExpensesScreen({ navigation }: any) {
 
       {/* ── FAB ─────────────────────────────────────────────────── */}
       <View style={s.fabContainer}>
-        <TouchableOpacity style={s.fabBtn} onPress={() => openAdd('Food')} activeOpacity={0.9}>
-          <Plus size={24} color="#fff" strokeWidth={3} />
+        <TouchableOpacity
+          style={s.fabBtn}
+          onPress={() => navigation.navigate('AddExpense')}
+          activeOpacity={0.85}
+        >
+          <Plus size={28} color="#fff" strokeWidth={3} />
         </TouchableOpacity>
       </View>
 
-      {/* ── Modals ─────────────────────────────────────────────── */}
-      <AddModal
-        visible={showAdd}
-        defaultCat={addDefaultCat}
-        onClose={() => setShowAdd(false)}
-        onSave={(e: ExpenseRecord) => setExpenses(prev => [e, ...prev])}
-      />
+      {/* ── Bottom Navigation ───────────────────────────────────── */}
+      <View style={s.bottomNav}>
+        {[
+          { id: 'Home', icon: Home, label: 'Home' },
+          { id: 'Due', icon: FileText, label: 'Due' },
+          { id: 'Expenses', icon: Wallet, label: 'Expenses' },
+          { id: 'Notices', icon: Bell, label: 'Notices' },
+          { id: 'Profile', icon: User, label: 'Profile' },
+        ].map((item) => {
+          const Icon = item.icon;
+          const isActive = item.id === 'Expenses';
+          return (
+            <TouchableOpacity
+              key={item.id}
+              style={s.navItem}
+              activeOpacity={0.7}
+            >
+              <Icon
+                size={20}
+                color={isActive ? HEADER_COLOR : '#94A3B8'}
+                strokeWidth={isActive ? 2.5 : 2}
+              />
+              <Text style={[s.navLabel, isActive && s.navLabelActive]}>
+                {item.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
     </SafeAreaView>
   );
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1, backgroundColor: '#FAFAFA' },
   scroll: { paddingBottom: 120 },
 
-  // ── Gradient Header ──────────────────────────────────────────────────────
+  // ── Header ──────────────────────────────────────────────────────
   header: {
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 20,
-    overflow: 'hidden',
-  },
-  hCircle1: {
-    position: 'absolute', width: 130, height: 130, borderRadius: 65,
-    backgroundColor: 'rgba(255,255,255,0.07)', top: -40, right: -20,
-  },
-  hCircle2: {
-    position: 'absolute', width: 60, height: 60, borderRadius: 30,
-    backgroundColor: 'rgba(255,255,255,0.05)', bottom: 10, right: 80,
+    paddingBottom: 12,
+    backgroundColor: HEADER_COLOR,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  headerEyebrow: { fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: '500', marginBottom: 3 },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: '#fff', letterSpacing: -0.3 },
-  headerIconBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center', justifyContent: 'center',
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: -0.3,
   },
 
-  // ── Period selector ──────────────────────────────────────────────────────
-  periodSelector: {
+  // ── Tabs ──────────────────────────────────────────────────────
+  tabsContainer: {
     flexDirection: 'row',
-    paddingHorizontal: spacing.xl,
-    marginTop: spacing.lg,
-    marginBottom: spacing.md,
+    paddingHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 12,
     gap: 8,
   },
-  periodTab: {
-    flex: 1, height: 36, borderRadius: radius.lg,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: colors.surface,
-    borderWidth: 1, borderColor: colors.border,
+  tab: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#F5F5F5',
   },
-  periodTabActive: {
-    backgroundColor: colors.primarySoft,
-    borderColor: colors.primaryBorder,
+  tabActive: {
+    backgroundColor: HEADER_COLOR,
   },
-  periodTabText: { fontSize: 12, fontWeight: '600', color: colors.textMuted },
-  periodTabTextActive: { color: colors.primary, fontWeight: '700' },
+  tabText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  tabTextActive: {
+    color: '#fff',
+    fontWeight: '700',
+  },
+
+  // ── Month Filter ──────────────────────────────────────────────
+  monthFilterContainer: {
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  monthFilterBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  monthFilterText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#111827',
+  },
 
   // ── Total card ──────────────────────────────────────────────────────────
   totalCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius['2xl'],
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.lg,
-    marginHorizontal: spacing.xl,
-    marginBottom: spacing.xl,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadow.card,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    marginHorizontal: 16,
+    marginBottom: 16,
   },
-  totalCardHeader: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between', marginBottom: 8,
+  totalLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: 8,
   },
-  totalLabel: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
-  trendBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 2,
-    backgroundColor: colors.successSoft,
-    paddingHorizontal: 9, paddingVertical: 4, borderRadius: radius.pill,
+  totalAmountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  trendArrow: { fontSize: 12, fontWeight: '700', color: colors.success },
-  trendText: { fontSize: 11, fontWeight: '700', color: colors.success },
   totalAmount: {
     fontSize: 32, fontWeight: '800', color: colors.primary,
     letterSpacing: -1, marginBottom: 2,
@@ -1003,29 +1041,60 @@ const s = StyleSheet.create({
   donutContainer: { marginLeft: 4 },
 
   // ── Expense list ─────────────────────────────────────────────────────────
-  expenseList: {
-    marginHorizontal: spacing.xl,
-    backgroundColor: colors.surface,
-    borderRadius: radius['2xl'],
-    borderWidth: 1, borderColor: colors.border,
-    overflow: 'hidden',
-    ...shadow.card,
+  expensesList: {
+    marginHorizontal: 16,
+    gap: 8,
   },
   expenseCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: 16, paddingVertical: 13,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.surface,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
   },
-  expenseIcon: { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  expenseMid: { flex: 1 },
-  expenseTitle: { fontSize: 14, fontWeight: '700', color: colors.text, marginBottom: 2 },
-  expenseTime: { fontSize: 11, color: colors.textMuted, fontWeight: '500' },
-  expenseAmt: { fontSize: 14, fontWeight: '700', color: colors.text },
+  expenseIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  expenseBody: {
+    flex: 1,
+  },
+  expenseTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  expenseTime: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  expenseRight: {
+    alignItems: 'flex-end',
+  },
+  expenseAmount: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  expenseCategory: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
 
   // ── FAB ──────────────────────────────────────────────────────────────────
-  fabContainer: { position: 'absolute', bottom: 88, right: 24, alignItems: 'center' },
+  fabContainer: {
+    position: 'absolute',
+    bottom: 90,
+    right: 20,
+  },
   fabBtn: {
     width: 58, height: 58, borderRadius: 29,
     backgroundColor: colors.primary,

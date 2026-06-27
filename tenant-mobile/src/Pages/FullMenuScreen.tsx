@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -21,38 +21,38 @@ type DayMenu = { breakfast: MealSlot; lunch: MealSlot; dinner: MealSlot };
 const WEEK_MENU: Record<string, DayMenu> = {
   Mon: {
     breakfast: { items: 'Idli, Sambar, Chutney', time: '7:30 – 9:30 AM' },
-    lunch:     { items: 'Rice, Dal, Veg Curry, Salad', time: '12:30 – 2:30 PM' },
-    dinner:    { items: 'Chapathi, Paneer Curry, Pickle', time: '7:30 – 9:30 PM' },
+    lunch: { items: 'Rice, Dal, Veg Curry, Salad', time: '12:30 – 2:30 PM' },
+    dinner: { items: 'Chapathi, Paneer Curry, Pickle', time: '7:30 – 9:30 PM' },
   },
   Tue: {
     breakfast: { items: 'Poha, Boiled Eggs, Tea/Coffee', time: '7:30 – 9:30 AM' },
-    lunch:     { items: 'Curd Rice, Sambar, Papad', time: '12:30 – 2:30 PM' },
-    dinner:    { items: 'Roti, Dal Fry, Jeera Rice', time: '7:30 – 9:30 PM' },
+    lunch: { items: 'Curd Rice, Sambar, Papad', time: '12:30 – 2:30 PM' },
+    dinner: { items: 'Roti, Dal Fry, Jeera Rice', time: '7:30 – 9:30 PM' },
   },
   Wed: {
     breakfast: { items: 'Upma, Coconut Chutney, Juice', time: '7:30 – 9:30 AM' },
-    lunch:     { items: 'Biryani, Raita, Papad', time: '12:30 – 2:30 PM' },
-    dinner:    { items: 'Puri, Aloo Sabzi, Dal', time: '7:30 – 9:30 PM' },
+    lunch: { items: 'Biryani, Raita, Papad', time: '12:30 – 2:30 PM' },
+    dinner: { items: 'Puri, Aloo Sabzi, Dal', time: '7:30 – 9:30 PM' },
   },
   Thu: {
     breakfast: { items: 'Dosa, Sambar, Chutney', time: '7:30 – 9:30 AM' },
-    lunch:     { items: 'Rice, Rasam, Fry, Salad', time: '12:30 – 2:30 PM' },
-    dinner:    { items: 'Chapathi, Chana Masala, Rice', time: '7:30 – 9:30 PM' },
+    lunch: { items: 'Rice, Rasam, Fry, Salad', time: '12:30 – 2:30 PM' },
+    dinner: { items: 'Chapathi, Chana Masala, Rice', time: '7:30 – 9:30 PM' },
   },
   Fri: {
     breakfast: { items: 'Bread Toast, Omelette, Coffee', time: '7:30 – 9:30 AM' },
-    lunch:     { items: 'Pulao, Dal Tadka, Raita', time: '12:30 – 2:30 PM' },
-    dinner:    { items: 'Roti, Matar Paneer, Rice, Pickle', time: '7:30 – 9:30 PM' },
+    lunch: { items: 'Pulao, Dal Tadka, Raita', time: '12:30 – 2:30 PM' },
+    dinner: { items: 'Roti, Matar Paneer, Rice, Pickle', time: '7:30 – 9:30 PM' },
   },
   Sat: {
     breakfast: { items: 'Pongal, Vadai, Sambar', time: '7:30 – 9:30 AM' },
-    lunch:     { items: 'Chicken Curry, Rice, Raita', time: '12:30 – 2:30 PM' },
-    dinner:    { items: 'Naan, Butter Chicken / Paneer', time: '7:30 – 9:30 PM' },
+    lunch: { items: 'Chicken Curry, Rice, Raita', time: '12:30 – 2:30 PM' },
+    dinner: { items: 'Naan, Butter Chicken / Paneer', time: '7:30 – 9:30 PM' },
   },
   Sun: {
     breakfast: { items: 'Aloo Paratha, Curd, Pickle', time: '8:00 – 10:00 AM' },
-    lunch:     { items: 'Special Biryani, Raita, Sweet', time: '12:30 – 2:30 PM' },
-    dinner:    { items: 'Chapathi, Dal Makhani, Rice', time: '7:30 – 9:30 PM' },
+    lunch: { items: 'Special Biryani, Raita, Sweet', time: '12:30 – 2:30 PM' },
+    dinner: { items: 'Chapathi, Dal Makhani, Rice', time: '7:30 – 9:30 PM' },
   },
 };
 
@@ -74,35 +74,7 @@ const MEALS = [
 ];
 
 export default function FullMenuScreen({ navigation }: any) {
-  const { user } = useAuth();
-  const [selectedDay, setSelectedDay] = useState('Mon');
-  const [menuData, setMenuData] = useState<Record<string, DayMenu>>(DEFAULT_MENU);
-
-  useEffect(() => {
-    const fetchMenu = async () => {
-      if (!user?.hostel_id) return;
-      try {
-        const res = await api.get(`/mess-menu/${user.hostel_id}`);
-        if (res.data.success && res.data.menu && res.data.menu.length > 0) {
-          const fetchedMenu = JSON.parse(JSON.stringify(DEFAULT_MENU));
-          res.data.menu.forEach((m: any) => {
-            const day = m.day_of_week;
-            const type = m.meal_type.toLowerCase();
-            if (fetchedMenu[day] && fetchedMenu[day][type]) {
-              fetchedMenu[day][type].items = m.items;
-              if (m.timing) fetchedMenu[day][type].time = m.timing;
-            }
-          });
-          setMenuData(fetchedMenu);
-        }
-      } catch (err) {
-        console.error('Failed to fetch mess menu:', err);
-      }
-    };
-    fetchMenu();
-  }, [user?.hostel_id]);
-
-  const dayMenu = menuData[selectedDay];
+  const [activeTab, setActiveTab] = useState<TabKey>('Today');
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>

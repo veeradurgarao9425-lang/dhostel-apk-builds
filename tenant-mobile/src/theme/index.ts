@@ -1,27 +1,26 @@
 /**
- * Stayvix Tenant App — Unified Design System
+ * D-Hostel Tenant App — Unified Design System
  *
  * ONE source of truth for color, spacing, radius, typography and shadow.
  * Every screen must use ONLY these tokens — never hardcode values.
  *
- * Design Style: Minimal · Premium · Luxury · Modern · Calm · Fast · Elegant
- * Inspired by: Apple + Linear + Airbnb + Notion + CRED
+ * Design Style: Warm · Premium · Brown · Modern · Elegant
  */
 import { Platform, TextStyle, ViewStyle } from 'react-native';
 
 // ── Color Palette ─────────────────────────────────────────────────────────────
 export const colors = {
-  // Brand — ONE purple, used consistently everywhere
-  primary: '#673DE6',          // Brand purple
-  primaryDark: '#5B2FD1',      // Gradient start / pressed state
-  primaryLight: '#7A49F2',     // Gradient end / lighter variant
-  primarySoft: '#EFE8FF',      // Tinted surface — icon backgrounds, chips
-  primaryBorder: '#D4C5FA',    // Soft purple border
-  accent: '#8B5CF6',           // Secondary accent
+  // Brand — Warm Brown / Chocolate
+  primary: '#7B3A2A',          // Brand brown
+  primaryDark: '#5C2A1C',      // Gradient start / pressed state
+  primaryLight: '#9B5240',     // Gradient end / lighter variant
+  primarySoft: '#F5EDE9',      // Tinted surface — icon backgrounds, chips
+  primaryBorder: '#E8C5B5',    // Soft brown border
+  accent: '#A0522D',           // Secondary accent
 
   // Gradient — used on headers and primary buttons
-  gradientStart: '#5B2FD1',
-  gradientEnd: '#7A49F2',
+  gradientStart: '#5C2A1C',
+  gradientEnd: '#9B5240',
 
   // Surfaces
   bg: '#FAFAFC',               // App background — near-white
@@ -33,7 +32,7 @@ export const colors = {
   text: '#202124',             // Primary text — near-black
   textMuted: '#6B7280',        // Secondary text
   textSubtle: '#9CA3AF',       // Placeholder / tertiary
-  textOnPrimary: '#FFFFFF',    // Text on purple backgrounds
+  textOnPrimary: '#FFFFFF',    // Text on brown backgrounds
 
   // Borders / Dividers
   border: '#ECECF2',           // Default divider
@@ -100,7 +99,7 @@ export const shadow = {
   // Standard card shadow
   card: Platform.select<ViewStyle>({
     ios: {
-      shadowColor: '#673DE6',
+      shadowColor: '#7B3A2A',
       shadowOpacity: 0.06,
       shadowRadius: 12,
       shadowOffset: { width: 0, height: 2 },
@@ -111,7 +110,7 @@ export const shadow = {
   // Elevated — buttons, FAB, floating elements
   raised: Platform.select<ViewStyle>({
     ios: {
-      shadowColor: '#5B2FD1',
+      shadowColor: '#5C2A1C',
       shadowOpacity: 0.22,
       shadowRadius: 16,
       shadowOffset: { width: 0, height: 6 },

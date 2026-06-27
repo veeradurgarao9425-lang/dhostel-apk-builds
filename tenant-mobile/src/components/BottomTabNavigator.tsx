@@ -2,38 +2,17 @@ import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Home, FileText, PieChart, Megaphone, User } from 'lucide-react-native';
-import { colors, font, shadow, radius } from '../theme/index';
+import { colors, shadow, radius } from '../theme/index';
 
 // ── 5-tab configuration ───────────────────────────────────────────────────────
 const TABS = [
-  {
-    label: 'Home',
-    route: 'Home',
-    Icon: Home,
-  },
-  {
-    label: 'Dues',
-    route: 'Dues',
-    Icon: FileText,
-  },
-  {
-    label: 'Expenses',
-    route: 'Expenses',
-    Icon: PieChart,
-  },
-  {
-    label: 'Notices',
-    route: 'Notices',
-    Icon: Megaphone,
-  },
-  {
-    label: 'Profile',
-    route: 'Profile',
-    Icon: User,
-  },
+  { label: 'Home',     route: 'Home',     Icon: Home     },
+  { label: 'Due',      route: 'Dues',     Icon: FileText  },
+  { label: 'Expenses', route: 'Expenses', Icon: PieChart  },
+  { label: 'Notices',  route: 'Notices',  Icon: Megaphone },
 ];
 
-const TAB_BAR_HEIGHT = 68;
+const TAB_BAR_HEIGHT = 64;
 
 const BottomTabNavigator = ({ state, navigation }: any) => {
   const insets = useSafeAreaInsets();
@@ -45,8 +24,7 @@ const BottomTabNavigator = ({ state, navigation }: any) => {
         { paddingBottom: Math.max(insets.bottom, 8) },
       ]}
     >
-      {TABS.map((tab, index) => {
-        // Find the corresponding route index
+      {TABS.map((tab) => {
         const routeIndex = state.routes.findIndex((r: any) => r.name === tab.route);
         if (routeIndex === -1) return null;
 
@@ -75,12 +53,12 @@ const BottomTabNavigator = ({ state, navigation }: any) => {
             accessibilityLabel={tab.label}
             accessibilityState={{ selected: isActive }}
           >
-            {/* Icon with active pill background */}
+            {/* Icon */}
             <View style={[styles.iconWrap, isActive && styles.iconWrapActive]}>
               <Icon
-                size={22}
+                size={24}
                 color={isActive ? colors.primary : colors.textMuted}
-                strokeWidth={isActive ? 2 : 1.5}
+                strokeWidth={isActive ? 2.5 : 1.8}
               />
             </View>
 
@@ -121,13 +99,13 @@ const styles = StyleSheet.create({
   tabItem: {
     flex: 1,
     alignItems: 'center',
-    gap: 3,
+    gap: 4,
     position: 'relative',
     minHeight: TAB_BAR_HEIGHT - 8,
   },
-  // Icon container — active gets soft purple pill bg
+  // Active pill background (soft brown)
   iconWrap: {
-    width: 48,
+    width: 52,
     height: 32,
     borderRadius: 16,
     alignItems: 'center',
@@ -137,12 +115,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primarySoft,
   },
   label: {
-    fontSize: 10,
+    fontSize: 11,
     letterSpacing: 0.1,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   labelActive: {
-    fontWeight: '700',
+    fontWeight: '800',
     color: colors.primary,
   },
 });
