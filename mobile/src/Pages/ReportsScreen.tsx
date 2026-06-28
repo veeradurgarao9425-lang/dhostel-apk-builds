@@ -174,7 +174,7 @@ export default function ReportsScreen() {
         if (!silent) setLoading(true);
         try {
             const { startDate, endDate, monthStr } = getQueryDates();
-            
+
             const [statsRes, feesSummaryRes, overviewRes] = await Promise.all([
                 api.get('/reports/dashboard-stats', { params: { startDate, endDate } }).catch(() => ({ data: { success: false } })),
                 api.get('/monthly-fees/summary', { params: { startDate, endDate, onlyPending: 'true', page: 1, limit: 10 } }).catch(() => ({ data: { success: false } })),
@@ -222,26 +222,41 @@ export default function ReportsScreen() {
     const occupancyRate = stats?.occupancyRate || 0;
     const totalBeds = stats?.totalBeds || 0;
     const occupiedBeds = stats?.occupiedBeds || 0;
-    
+
     let periodLabel = '';
     if (filterMode === 'month') {
         periodLabel = statsMonth.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
     } else {
-        periodLabel = `${customStart.toLocaleDateString('en-IN', { day:'numeric', month:'short' })} - ${customEnd.toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })}`;
+        periodLabel = `${customStart.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} - ${customEnd.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`;
     }
-    
+
     const collectionRate = totalDue > 0 ? Math.round((totalRent / totalDue) * 100) : 0;
+
+    let profitChange = 0;
+    let profitChangeLabel = '';
+    if (trend && trend.length >= 2) {
+        const curr = trend[trend.length - 1].netProfit || 0;
+        const prev = trend[trend.length - 2].netProfit || 0;
+        if (prev === 0) {
+            profitChange = curr > 0 ? 100 : 0;
+        } else {
+            profitChange = Math.round(((curr - prev) / Math.abs(prev)) * 100);
+        }
+        if (profitChange > 0) profitChangeLabel = `+${profitChange}% vs last month`;
+        else if (profitChange < 0) profitChangeLabel = `${profitChange}% vs last month`;
+        else profitChangeLabel = `Same as last month`;
+    }
 
     const handleDownloadExcel = async (reportId: string = 'full_excel', overrideStart?: Date, overrideEnd?: Date) => {
         setExporting(reportId);
         try {
             const token = await AsyncStorage.getItem('token');
             if (!token) { showError('Authentication token not found.'); return; }
-            
+
             const base = api.defaults.baseURL?.replace(/\/$/, '') || '';
             let url = '';
             let filename = '';
-            
+
             if (overrideStart && overrideEnd) {
                 const startStr = toLocalDateStr(overrideStart);
                 const endStr = toLocalDateStr(overrideEnd);
@@ -257,7 +272,7 @@ export default function ReportsScreen() {
                     filename = `Report_${startDate}_to_${endDate}.xlsx`;
                 }
             }
-            
+
             await downloadAndSaveFile(url, filename, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         } catch (e: any) {
             showApiError(e, 'Could not download Excel report.');
@@ -277,7 +292,7 @@ export default function ReportsScreen() {
             });
             const { uri } = await Print.printToFileAsync({ html });
             await downloadAndSaveFile(uri, `report_${periodLabel.replace(/\s+/g, '_')}.pdf`, 'application/pdf', true);
-        } catch (e: any) { showApiError(e, 'Could not generate PDF.'); } 
+        } catch (e: any) { showApiError(e, 'Could not generate PDF.'); }
         finally { setExporting(null); }
     };
 
@@ -301,7 +316,7 @@ export default function ReportsScreen() {
     return (
         <View style={[R.root, { backgroundColor: isDark ? theme.background : '#F8FAFC' }]}>
             <StatusBar barStyle="light-content" />
-            
+
             <AppHeader
                 title="Analytics & Reports"
                 subtitle="Track performance & insights"
@@ -344,8 +359,8 @@ export default function ReportsScreen() {
                                     <Text style={R.liveTxt}>Loading...</Text>
                                 </View>
                             </View>
-                            <View style={[R.reportList, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', padding: 16, gap: 16 }]}>
-                                {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} style={{ height: 64, borderRadius: 16 }} isDark={isDark} />)}
+                            <View style={R.reportListContainer}>
+                                {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} style={{ height: 72, borderRadius: 16, marginBottom: 12 }} isDark={isDark} />)}
                             </View>
                         </>
                     ) : (
@@ -354,9 +369,15 @@ export default function ReportsScreen() {
                                 <CardWave color={netProfit >= 0 ? '#10B981' : '#EF4444'} />
                                 <View style={R.topCardLeft}>
                                     <Text style={R.topCardLabel}>Net Profit</Text>
-                                    <Text style={[R.topCardVal, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>
+                                    <Text style={[R.topCardVal, { color: isDark ? '#F1F5F9' : '#0F172A', fontSize: 34 }]} numberOfLines={1} adjustsFontSizeToFit>
                                         {netProfit < 0 ? '-' : ''}{'\u20b9'}{fmt(Math.abs(netProfit))}
                                     </Text>
+                                    {!!profitChangeLabel && (
+                                        <View style={[R.badge, { backgroundColor: profitChange > 0 ? (isDark ? 'rgba(16,185,129,0.15)' : '#D1FAE5') : profitChange < 0 ? (isDark ? 'rgba(239,68,68,0.15)' : '#FEE2E2') : (isDark ? 'rgba(100,116,139,0.15)' : '#F1F5F9') }]}>
+                                            <Ionicons name={profitChange > 0 ? 'trending-up' : profitChange < 0 ? 'trending-down' : 'remove'} size={12} color={profitChange > 0 ? '#10B981' : profitChange < 0 ? '#EF4444' : '#64748B'} />
+                                            <Text style={[R.badgeTxt, { color: profitChange > 0 ? '#10B981' : profitChange < 0 ? '#EF4444' : '#64748B' }]}>{profitChangeLabel}</Text>
+                                        </View>
+                                    )}
                                 </View>
                                 <View style={R.divider} />
                                 <View style={R.topCardRight}>
@@ -367,52 +388,51 @@ export default function ReportsScreen() {
                             </View>
 
                             <View style={R.gridRow}>
-                        {[
-                            { label: 'Collected', val: `₹${fmt(totalRent)}`, sub: 'Rent collected', c: '#10B981', i: 'wallet-outline', bg: '#D1FAE5' },
-                            { label: 'Pending', val: `₹${fmt(pending)}`, sub: 'Dues outstanding', c: '#F59E0B', i: 'time-outline', bg: '#FEF3C7' },
-                            { label: 'Expenses', val: `₹${fmt(totalExpenses)}`, sub: 'Total expenses', c: '#EF4444', i: 'trending-down-outline', bg: '#FEE2E2' },
-                            { label: 'Occupied', val: `${occupiedBeds}/${totalBeds}`, sub: `${occupancyRate}% full`, c: '#3B82F6', i: 'bed-outline', bg: '#DBEAFE' },
-                        ].map((m) => (
-                            <View key={m.label} style={[R.gridItem, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]}>
-                                <CardWave color={m.c} />
-                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 12 }}>
-                                    <View style={[R.gridIconBg, { backgroundColor: isDark ? m.c + '20' : m.bg }]}>
-                                        <Ionicons name={m.i as any} size={20} color={m.c} />
-                                    </View>
-                                    <View style={[R.gridArrow, { borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
-                                        <Ionicons name="arrow-forward" size={14} color={isDark ? '#FFF' : '#0F172A'} />
-                                    </View>
+                                {[
+                                    { label: 'Collected', val: `₹${fmt(totalRent)}`, sub: 'Rent collected', c: '#10B981', i: 'wallet-outline', bg: '#D1FAE5', screen: 'CollectedPayments' },
+                                    { label: 'Pending', val: `₹${fmt(pending)}`, sub: 'Dues outstanding', c: '#F59E0B', i: 'time-outline', bg: '#FEF3C7', screen: 'PendingPayments' },
+                                    { label: 'Expenses', val: `₹${fmt(totalExpenses)}`, sub: 'Total expenses', c: '#EF4444', i: 'trending-down-outline', bg: '#FEE2E2', screen: 'Expenses' },
+                                    { label: 'Occupancy', val: totalBeds > 0 ? `${occupiedBeds}/${totalBeds}` : 'N/A', sub: totalBeds > 0 ? `${occupancyRate}% occupied` : 'No beds data', c: '#3B82F6', i: 'bed-outline', bg: '#DBEAFE', screen: 'Rooms' },
+                                ].map((m) => (
+                                    <TouchableOpacity key={m.label} style={[R.gridItem, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]} onPress={() => navigation.navigate(m.screen)} activeOpacity={0.8}>
+                                        <CardWave color={m.c} />
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 12 }}>
+                                            <View style={[R.gridIconBg, { backgroundColor: isDark ? m.c + '20' : m.bg }]}>
+                                                <Ionicons name={m.i as any} size={20} color={m.c} />
+                                            </View>
+                                            <View style={[R.gridArrow, { borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                                                <Ionicons name="arrow-forward" size={14} color={isDark ? '#FFF' : '#0F172A'} />
+                                            </View>
+                                        </View>
+                                        <Text style={[R.gridLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>{m.label}</Text>
+                                        <Text style={[R.gridVal, { color: isDark ? '#F8FAFC' : '#0F172A' }]}>{m.val}</Text>
+                                        <Text style={R.gridSub}>{m.sub}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+
+                            {/* Download Full Report Button */}
+                            <TouchableOpacity style={R.mainDlBtn} onPress={() => setDownloadSelectModal(true)} activeOpacity={0.8}>
+                                <Ionicons name="download-outline" size={20} color="#4F46E5" />
+                                <Text style={R.mainDlBtnTxt}>Download Full Report (Excel)</Text>
+                            </TouchableOpacity>
+
+                            {/* All Reports */}
+                            <View style={R.secRow}>
+                                <Text style={[R.secTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>All Reports</Text>
+                                <View style={R.liveBadge}>
+                                    <View style={R.liveDot} />
+                                    <Text style={R.liveTxt}>Live data</Text>
                                 </View>
-                                <Text style={[R.gridLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>{m.label}</Text>
-                                <Text style={[R.gridVal, { color: isDark ? '#F8FAFC' : '#0F172A' }]}>{m.val}</Text>
-                                <Text style={R.gridSub}>{m.sub}</Text>
                             </View>
-                        ))}
-                    </View>
 
-                    {/* Download Full Report Button */}
-                    <TouchableOpacity style={R.mainDlBtn} onPress={() => setDownloadSelectModal(true)} activeOpacity={0.8}>
-                        <Ionicons name="download-outline" size={20} color="#4F46E5" />
-                        <Text style={R.mainDlBtnTxt}>Download Full Report (Excel)</Text>
-                    </TouchableOpacity>
-
-                    {/* All Reports */}
-                    <View style={R.secRow}>
-                        <Text style={[R.secTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>All Reports</Text>
-                        <View style={R.liveBadge}>
-                            <View style={R.liveDot} />
-                            <Text style={R.liveTxt}>Live data</Text>
-                        </View>
-                    </View>
-
-                    <View style={[R.reportList, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]}>
-                        {REPORTS.map((r, idx) => (
-                            <View key={r.id}>
-                                <ReportCard report={r} onView={r.onView} onDownload={downloadHandlers[r.id]} exporting={null} isDark={isDark} />
-                                {idx < REPORTS.length - 1 && <View style={[R.sep, { backgroundColor: isDark ? '#334155' : '#F8FAFC' }]} />}
+                            <View style={R.reportListContainer}>
+                                {REPORTS.map((r) => (
+                                    <View key={r.id} style={{ marginBottom: 12 }}>
+                                        <ReportCard report={r} onView={r.onView} onDownload={downloadHandlers[r.id]} exporting={exporting} isDark={isDark} />
+                                    </View>
+                                ))}
                             </View>
-                        ))}
-                    </View>
                         </>
                     )}
                 </ScrollView>
@@ -421,7 +441,7 @@ export default function ReportsScreen() {
             <Modal visible={filterSelectModal} transparent animationType="fade" onRequestClose={() => setFilterSelectModal(false)}>
                 <TouchableOpacity style={R.modalOverlay} activeOpacity={1} onPress={() => setFilterSelectModal(false)}>
                     <View style={[R.dropdownMenu, { backgroundColor: theme.cardBg }]}>
-                        <TouchableOpacity style={[R.filterOpt, { borderBottomColor: isDark ? '#334155' : '#E2E8F0', borderBottomWidth: 1 }]} 
+                        <TouchableOpacity style={[R.filterOpt, { borderBottomColor: isDark ? '#334155' : '#E2E8F0', borderBottomWidth: 1 }]}
                             onPress={() => { setFilterSelectModal(false); setShowMonthPicker(true); }}>
                             <Ionicons name="calendar-outline" size={18} color={theme.primary} />
                             <View style={{ flex: 1, marginLeft: 10 }}>
@@ -429,8 +449,8 @@ export default function ReportsScreen() {
                                 <Text style={R.fSub}>E.g., June 2026</Text>
                             </View>
                         </TouchableOpacity>
-                        
-                        <TouchableOpacity style={R.filterOpt} 
+
+                        <TouchableOpacity style={R.filterOpt}
                             onPress={() => { setFilterSelectModal(false); setShowCustomPicker(true); }}>
                             <Ionicons name="calendar-number-outline" size={18} color={theme.primary} />
                             <View style={{ flex: 1, marginLeft: 10 }}>
@@ -447,7 +467,7 @@ export default function ReportsScreen() {
                 <TouchableOpacity style={[R.modalOverlay, { justifyContent: 'center', alignItems: 'center' }]} activeOpacity={1} onPress={() => setDownloadSelectModal(false)}>
                     <View style={[R.dlModalBox, { backgroundColor: theme.cardBg }]}>
                         <Text style={{ fontSize: 16, fontWeight: '800', marginBottom: 20, color: theme.textPrimary, textAlign: 'center' }}>Download Full Report</Text>
-                        <TouchableOpacity style={[R.filterOpt, { borderBottomColor: isDark ? '#334155' : '#E2E8F0', borderBottomWidth: 1 }]} 
+                        <TouchableOpacity style={[R.filterOpt, { borderBottomColor: isDark ? '#334155' : '#E2E8F0', borderBottomWidth: 1 }]}
                             onPress={() => { setDownloadSelectModal(false); handleDownloadExcel('full_excel'); }}>
                             <Ionicons name="cloud-download-outline" size={18} color={theme.primary} />
                             <View style={{ flex: 1, marginLeft: 10 }}>
@@ -455,8 +475,8 @@ export default function ReportsScreen() {
                                 <Text style={R.fSub}>{periodLabel}</Text>
                             </View>
                         </TouchableOpacity>
-                        
-                        <TouchableOpacity style={R.filterOpt} 
+
+                        <TouchableOpacity style={R.filterOpt}
                             onPress={() => { setDownloadSelectModal(false); setShowExcelPicker(true); }}>
                             <Ionicons name="calendar-number-outline" size={18} color={theme.primary} />
                             <View style={{ flex: 1, marginLeft: 10 }}>
@@ -482,7 +502,7 @@ export default function ReportsScreen() {
                 initialStart={customStart}
                 initialEnd={customEnd}
             />
-            
+
             <CustomDateRangePicker
                 visible={showExcelPicker}
                 onClose={() => setShowExcelPicker(false)}
@@ -493,7 +513,7 @@ export default function ReportsScreen() {
                 initialStart={customStart}
                 initialEnd={customEnd}
             />
-            
+
             {!!exporting && (
                 <View style={R.overlay}>
                     <View style={[R.overlayBox, { backgroundColor: theme.cardBg }]}>
@@ -577,15 +597,19 @@ const R = StyleSheet.create({
     liveBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, backgroundColor: '#DCFCE7' },
     liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#16A34A' },
     liveTxt: { fontSize: 10, fontWeight: '700', color: '#16A34A' },
-    reportList: { marginHorizontal: 16, borderRadius: 16, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2 },
-    reportCard: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 12 },
+    reportListContainer: { marginHorizontal: 16, paddingBottom: 20 },
+    reportCard: { 
+        flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 16, gap: 12,
+        borderRadius: 16,
+        shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+    },
     iconCircle: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
     cardText: { flex: 1 },
     cardTitle: { fontSize: 13, fontWeight: '800', marginBottom: 2 },
     cardDesc: { fontSize: 11, fontWeight: '600' },
     cardActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     actionBtn: { padding: 4 },
-    sep: { height: 1, marginLeft: 68 },
+
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.15)', justifyContent: 'flex-start', alignItems: 'flex-end', paddingTop: 90, paddingRight: 16 },
     dropdownMenu: {
         position: 'absolute', top: 90, right: 16,

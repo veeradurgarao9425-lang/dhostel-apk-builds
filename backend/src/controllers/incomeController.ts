@@ -95,6 +95,8 @@ export const getAllIncome = async (req: AuthRequest, res: Response) => {
           's.last_name'
         )
         .where('s.admission_fee', '>', 0)
+        .whereNotNull('s.room_id')
+        .where('s.status', 1)
         .where(function() {
           this.where('s.admission_status', 1)
             .orWhere('s.admission_status', 'Paid');

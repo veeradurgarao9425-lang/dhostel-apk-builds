@@ -49,7 +49,10 @@ export default function NoticesScreen({ navigation }: any) {
                 const list = res.data.data || [];
                 setAllStudents(list);
                 const noticesList = list.filter(
-                    (s: any) => s.vacate_notice_date !== null && s.vacate_notice_date !== undefined
+                    (s: any) => s.vacate_notice_date !== null && 
+                                s.vacate_notice_date !== undefined && 
+                                s.status === 1 && 
+                                s.room_id != null
                 );
                 // Sort by notice date ascending (soonest first)
                 noticesList.sort((a: any, b: any) => a.vacate_notice_date.localeCompare(b.vacate_notice_date));
@@ -136,8 +139,10 @@ export default function NoticesScreen({ navigation }: any) {
     };
 
     const availableStudents = allStudents.filter(s => 
+        s.status === 1 && 
+        s.room_id != null &&
         !s.vacate_notice_date && 
-        s.room_number && 
+        s.room_number &&
         (
             (s.first_name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) || 
             (s.last_name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) || 

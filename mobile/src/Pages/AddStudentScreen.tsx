@@ -565,8 +565,8 @@ const ProfilePhotoCapture = ({ uri, onCapture, onRemove, error }: any) => {
 export const AddStudentScreen = ({ navigation, route }: any) => {
     const { user } = useAuth();
     const { theme, isDark, fontSize } = useTheme();
-    const { triggerRefresh } = useRefresh();
-    const { student, isEdit, roomId, bedId } = route.params || {};
+    const { triggerRefresh, refreshCounter, refreshPayload } = useRefresh();
+    const { student, isEdit, roomId: paramsRoomId, bedId } = route.params || {};
     const { showSuccess, showError, showApiError } = useToast();
     const insets = useSafeAreaInsets();
     const [loading, setLoading] = useState(false);
@@ -709,7 +709,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
 
     useEffect(() => {
         fetchInitialData();
-    }, [user?.hostel_id]);
+    }, [user?.hostel_id, refreshCounter, paramsRoomId, refreshPayload]);
 
     useEffect(() => {
         if (isEdit && student) {
@@ -752,18 +752,19 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 const roomsData = roomsRes.data.data;
                 setAvailableRooms(roomsData);
                 
-                // If roomId was passed in params, pre-select it and fetch its beds
-                if (roomId && !isEdit) {
-                    const matchedRoom = roomsData.find((r: any) => r.room_id?.toString() === roomId.toString());
+                // If roomId was passed in params or refreshPayload, pre-select it and fetch its beds
+                const activeRoomId = paramsRoomId || refreshPayload?.lastCreatedRoomId;
+                if (activeRoomId) {
+                    const matchedRoom = roomsData.find((r: any) => r.room_id?.toString() === activeRoomId.toString());
                     if (matchedRoom) {
                         setFormData(p => ({
                             ...p,
-                            room_id: roomId.toString(),
+                            room_id: activeRoomId.toString(),
                             floor_number: matchedRoom.floor_number?.toString() || '0',
                             monthly_rent: matchedRoom.rent_per_bed?.toString() || '',
                         }));
                         // Pass matchedRoom directly so fetchBeds doesn't depend on stale availableRooms state
-                        fetchBeds(roomId.toString(), matchedRoom);
+                        fetchBeds(activeRoomId.toString(), matchedRoom);
                     }
                 }
             }
@@ -949,10 +950,14 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                     showSuccess(`Tenant ${isEdit ? 'updated' : 'registered'} successfully!`);
                     // Navigate first, then signal refresh so destination screen fetches fresh data
                     navigation.goBack();
-                    setTimeout(() => triggerRefresh(), 50);
+                    setTimeout(() => triggerRefresh({ studentAllocated: !!payload.room_id }), 50);
                 }
             }
         } catch (error: any) {
+            const msg = error.response?.data?.error || '';
+            if (msg.toLowerCase().includes('phone') || msg.toLowerCase().includes('mobile')) {
+                setErrors(prev => ({ ...prev, phone: msg }));
+            }
             showApiError(error, 'Failed to save tenant');
         } finally { setLoading(false); }
     };

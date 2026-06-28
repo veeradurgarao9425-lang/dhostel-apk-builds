@@ -304,7 +304,8 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
                 : await api.post('/rooms', payload);
             if (response.status === 201 || response.status === 200) {
                 Toast.show({ type: 'success', text1: 'Success', text2: `Room ${isEdit ? 'updated' : 'added'} successfully!` });
-                triggerRefresh();
+                const savedRoom = response.data?.data;
+                triggerRefresh({ lastCreatedRoomId: savedRoom?.room_id });
                 navigation.goBack();
             }
         } catch (error: any) {

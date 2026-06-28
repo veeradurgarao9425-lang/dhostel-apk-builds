@@ -219,7 +219,7 @@ export default function HomeScreen() {
 
             const upcomingVacates = studentsRes.data?.success
                 ? (studentsRes.data.data || [])
-                    .filter((s: any) => s.vacate_notice_date !== null && s.vacate_notice_date !== undefined)
+                    .filter((s: any) => s.vacate_notice_date !== null && s.vacate_notice_date !== undefined && s.status === 1 && s.room_id != null)
                     .sort((a: any, b: any) => a.vacate_notice_date.localeCompare(b.vacate_notice_date))
                     .slice(0, 3)
                     .map((s: any) => {
@@ -870,7 +870,7 @@ export default function HomeScreen() {
                     {data.latestNotice ? (
                         <TouchableOpacity
                             style={[s.noticeBanner, { backgroundColor: isDark ? '#3D2A1C' : '#FFF9F2', borderColor: isDark ? '#5C3E26' : '#FFEFD6' }]}
-                            onPress={() => navigation.navigate('Notices')}
+                            onPress={() => navigation.navigate('NoticesManagement')}
                             activeOpacity={0.8}
                         >
                             <View style={s.noticeHeaderRow}>
@@ -880,7 +880,7 @@ export default function HomeScreen() {
                                 </View>
                                 <TouchableOpacity
                                     style={s.noticeViewAllBtn}
-                                    onPress={() => navigation.navigate('Notices')}
+                                    onPress={() => navigation.navigate('NoticesManagement')}
                                 >
                                     <Text style={s.noticeViewAllText}>{t('dashboard.viewAll')}  ➔</Text>
                                 </TouchableOpacity>

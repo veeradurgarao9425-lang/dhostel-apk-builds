@@ -448,7 +448,8 @@ export const getMonthlyFeesSummary = async (req: AuthRequest, res: Response) => 
         's.admission_date',
         's.status'
       )
-      .where('s.status', 1);
+      .where('s.status', 1)
+      .whereNotNull('s.room_id');
 
     // Filter by admission_date only if we want to be strict, but for Finance page,
     // it's safer to show all active students to avoid missing data due to date mismatches.

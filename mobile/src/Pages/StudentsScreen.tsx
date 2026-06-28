@@ -405,6 +405,9 @@ export default function StudentsScreen({ navigation, route }: any) {
     // ── Reload when global refresh triggered (e.g. after adding a student) ──
     useEffect(() => {
         if (refreshCounter === 0) return; // skip initial mount
+        if (refreshPayload?.studentAllocated) {
+            setActiveTab('Active');
+        }
         setPage(1);
         setHasMore(true);
         fetchPage(1, true);
@@ -726,9 +729,12 @@ export default function StudentsScreen({ navigation, route }: any) {
                     try {
                         const res = await api.put(`/students/${student.student_id}`, { status: targetStatus });
                         if (res.data.success) {
-                            setAllStudents(prev => prev.map(s =>
-                                s.student_id === student.student_id ? { ...s, status: targetStatus } : s
-                            ));
+                            setAllStudents(prev => {
+                                if (activeTab === 'All') {
+                                    return prev.map(s => s.student_id === student.student_id ? { ...s, status: targetStatus } : s);
+                                }
+                                return prev.filter(s => s.student_id !== student.student_id);
+                            });
                             fetchCounts();
                             showSuccess('Student status updated.');
                         }

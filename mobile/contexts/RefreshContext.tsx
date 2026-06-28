@@ -13,25 +13,29 @@ import React, { createContext, useContext, useState, useCallback } from 'react';
 
 interface RefreshContextType {
     refreshCounter: number;
-    triggerRefresh: () => void;
+    triggerRefresh: (payload?: any) => void;
+    refreshPayload?: any;
 }
 
 const RefreshContext = createContext<RefreshContextType>({
     refreshCounter: 0,
     triggerRefresh: () => {},
+    refreshPayload: null,
 });
 
 export const useRefresh = () => useContext(RefreshContext);
 
 export const RefreshProvider = ({ children }: { children: React.ReactNode }) => {
     const [refreshCounter, setRefreshCounter] = useState(0);
+    const [refreshPayload, setRefreshPayload] = useState<any>(null);
 
-    const triggerRefresh = useCallback(() => {
+    const triggerRefresh = useCallback((payload?: any) => {
+        if (payload) setRefreshPayload(payload);
         setRefreshCounter(prev => prev + 1);
     }, []);
 
     return (
-        <RefreshContext.Provider value={{ refreshCounter, triggerRefresh }}>
+        <RefreshContext.Provider value={{ refreshCounter, triggerRefresh, refreshPayload }}>
             {children}
         </RefreshContext.Provider>
     );

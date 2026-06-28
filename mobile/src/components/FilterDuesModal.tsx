@@ -32,10 +32,10 @@ export function FilterDuesModal({ visible, onClose, onApply }: FilterDuesProps) 
         const active = status === label;
         return (
             <TouchableOpacity 
-                style={[S.pill, active && { backgroundColor: primary, borderColor: primary }, isDark && !active && { borderColor: '#334155' }]} 
+                style={[S.pill, active && { backgroundColor: isDark ? primary + '30' : primary + '15', borderColor: 'transparent' }, isDark && !active && { borderColor: '#334155' }]} 
                 onPress={() => setStatus(label)}
             >
-                <Text style={[S.pillText, active && { color: '#FFF' }, isDark && !active && { color: '#CBD5E1' }]}>{label}</Text>
+                <Text style={[S.pillText, active && { color: primary, fontWeight: '600' }, isDark && !active && { color: '#CBD5E1' }]}>{label}</Text>
             </TouchableOpacity>
         );
     };
@@ -44,10 +44,10 @@ export function FilterDuesModal({ visible, onClose, onApply }: FilterDuesProps) 
         const active = datePreset === label;
         return (
             <TouchableOpacity 
-                style={[S.pill, active && { backgroundColor: primary, borderColor: primary }, isDark && !active && { borderColor: '#334155' }]} 
+                style={[S.pill, active && { backgroundColor: isDark ? primary + '30' : primary + '15', borderColor: 'transparent' }, isDark && !active && { borderColor: '#334155' }]} 
                 onPress={() => setDatePreset(label)}
             >
-                <Text style={[S.pillText, active && { color: '#FFF' }, isDark && !active && { color: '#CBD5E1' }]}>{label}</Text>
+                <Text style={[S.pillText, active && { color: primary, fontWeight: '600' }, isDark && !active && { color: '#CBD5E1' }]}>{label}</Text>
             </TouchableOpacity>
         );
     };
@@ -56,10 +56,10 @@ export function FilterDuesModal({ visible, onClose, onApply }: FilterDuesProps) 
         const active = room === label;
         return (
             <TouchableOpacity 
-                style={[S.pill, active && { backgroundColor: primary, borderColor: primary }, isDark && !active && { borderColor: '#334155' }]} 
+                style={[S.pill, active && { backgroundColor: isDark ? primary + '30' : primary + '15', borderColor: 'transparent' }, isDark && !active && { borderColor: '#334155' }]} 
                 onPress={() => setRoom(label)}
             >
-                <Text style={[S.pillText, active && { color: '#FFF' }, isDark && !active && { color: '#CBD5E1' }]}>{label}</Text>
+                <Text style={[S.pillText, active && { color: primary, fontWeight: '600' }, isDark && !active && { color: '#CBD5E1' }]}>{label}</Text>
             </TouchableOpacity>
         );
     };

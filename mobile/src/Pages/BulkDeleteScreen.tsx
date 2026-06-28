@@ -22,8 +22,12 @@ import { AppHeader } from '../components/AppHeader';
 import { EmptyState } from '../components/ui/EmptyState';
 import { SkeletonList } from '../components/ui/SkeletonCard';
 import { DangerModal } from '../components/ui/DangerModal';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function BulkDeleteScreen() {
+    const { user } = useAuth();
+    const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
     const { theme, isDark, fontSize } = useTheme();
     const { showApiError, showSuccess, showError } = useToast();
@@ -493,7 +497,7 @@ export default function BulkDeleteScreen() {
                 {
                     backgroundColor: isDark ? '#1E293B' : '#FFF',
                     borderTopColor: isDark ? '#334155' : '#F1F5F9',
-                    paddingBottom: Platform.OS === 'ios' ? 40 : 24
+                    paddingBottom: (Platform.OS === 'ios' ? 40 : 24) + insets.bottom
                 }
             ]}>
                 <TouchableOpacity

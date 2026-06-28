@@ -12,8 +12,10 @@ import { HeaderNotification } from '../components/HeaderNotification';
 import { useTheme } from '../../contexts/ThemeContext';
 import { AppHeader } from '../components/AppHeader';
 import { useTranslation } from 'react-i18next';
-import { MonthFilter } from '../components/MonthFilter';
 import { useRefresh } from '../../contexts/RefreshContext';
+import { CustomDateRangePicker } from '../components/ui/pickers/CustomDateRangePicker';
+import { CustomMonthYearPicker } from '../components/ui/pickers/CustomMonthYearPicker';
+import { toLocalDateStr } from '../utils/dateUtils';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -107,9 +109,28 @@ export default function OverviewScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [backgroundLoading, setBackgroundLoading] = useState(false);
 
-    // Default to current month
-    const [targetDate, setTargetDate] = useState(new Date());
-    const monthStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
+    // -- Filter State --
+    const [filterMode, setFilterMode] = useState<'month' | 'custom'>('month');
+    const [statsMonth, setStatsMonth] = useState(new Date());
+    const [customStart, setCustomStart] = useState(() => { const d = new Date(); d.setDate(1); return d; });
+    const [customEnd, setCustomEnd] = useState(new Date());
+
+    const [filterSelectModal, setFilterSelectModal] = useState(false);
+    const [showMonthPicker, setShowMonthPicker] = useState(false);
+    const [showCustomPicker, setShowCustomPicker] = useState(false);
+
+    const getQueryDates = useCallback(() => {
+        if (filterMode === 'month') {
+            const year = statsMonth.getFullYear();
+            const month = statsMonth.getMonth() + 1;
+            const start = `${year}-${String(month).padStart(2, '0')}-01`;
+            const lastDay = new Date(year, month, 0).getDate();
+            const end = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+            return { startDate: start, endDate: end, monthStr: `${year}-${String(month).padStart(2, '0')}` };
+        } else {
+            return { startDate: toLocalDateStr(customStart), endDate: toLocalDateStr(customEnd), monthStr: null };
+        }
+    }, [filterMode, statsMonth, customStart, customEnd]);
 
     const fetchData = useCallback(async (isRefresh = false) => {
         try {
@@ -118,7 +139,10 @@ export default function OverviewScreen() {
             } else if (data !== null) {
                 setBackgroundLoading(true);
             }
-            const res = await api.get('/reports/monthly-overview', { params: { month: monthStr } });
+            const { startDate, endDate, monthStr } = getQueryDates();
+            const res = await api.get('/reports/monthly-overview', { 
+                params: monthStr ? { month: monthStr } : { startDate, endDate } 
+            });
             if (res.data.success) {
                 setData(res.data.data);
             }
@@ -135,7 +159,7 @@ export default function OverviewScreen() {
 
     useEffect(() => {
         fetchData(false);
-    }, [monthStr, fetchData]);
+    }, [filterMode, statsMonth, customStart, customEnd, fetchData]);
 
     // ── Auto-refresh when anything is added/updated globally (expenses, income, students) ──
     useEffect(() => {
@@ -177,6 +201,14 @@ export default function OverviewScreen() {
     const isProfit = (cm.netProfit || 0) >= 0;
     const trendMax = Math.max(...trend.map((t: any) => Math.max(t.income, t.expenses)), 1);
     const shortMonths = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+    
+    const currentMonthStr = filterMode === 'month' 
+        ? `${statsMonth.getFullYear()}-${String(statsMonth.getMonth() + 1).padStart(2, '0')}`
+        : null;
+
+    const periodLabel = filterMode === 'month' 
+        ? statsMonth.toLocaleString('default', { month: 'short', year: 'numeric' })
+        : `${customStart.getDate()} ${customStart.toLocaleString('default', { month: 'short' })} - ${customEnd.getDate()} ${customEnd.toLocaleString('default', { month: 'short' })}`;
 
     return (
         <View style={s.root}>
@@ -193,9 +225,23 @@ export default function OverviewScreen() {
                     </View>
                 }
             >
-                <View style={{ marginTop: 12 }}>
-                    <MonthFilter value={targetDate} onChange={setTargetDate} />
-                </View>
+                <TouchableOpacity 
+                    style={{
+                        flexDirection: 'row', alignItems: 'center', gap: 6,
+                        alignSelf: 'center',
+                        marginTop: 12,
+                        paddingHorizontal: 12, paddingVertical: 8,
+                        borderRadius: 8,
+                        backgroundColor: 'rgba(255,255,255,0.15)',
+                    }} 
+                    onPress={() => setFilterSelectModal(true)} 
+                    activeOpacity={0.8}
+                >
+                    <Ionicons name="calendar-outline" size={14} color="#FFF" />
+                    <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '700' }}>{periodLabel}</Text>
+                    <Ionicons name="chevron-down" size={12} color="#FFF" />
+                </TouchableOpacity>
+
                 {/* Quick shortcut to daily income view */}
                 <TouchableOpacity
                     onPress={() => navigation.navigate('IncomeDetails', { period: 'day' })}
@@ -489,7 +535,7 @@ export default function OverviewScreen() {
                                 {trend.map((tVal: any, i: number) => {
                                     const incH = Math.max(3, (tVal.income / trendMax) * 90);
                                     const expH = Math.max(3, (tVal.expenses / trendMax) * 90);
-                                    const isCurrent = tVal.month === monthStr;
+                                    const isCurrent = tVal.month === currentMonthStr;
                                     return (
                                         <View key={tVal.month} style={[s.chartCol, isCurrent && s.chartColCurrent]}>
                                             {/* Values on top */}
@@ -556,6 +602,47 @@ export default function OverviewScreen() {
                     <Text style={s.loadingText}>{t('overview.fetchingOverview')}</Text>
                 </View>
             )}
+
+            <Modal visible={filterSelectModal} transparent animationType="fade" onRequestClose={() => setFilterSelectModal(false)}>
+                <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.15)', justifyContent: 'flex-start', alignItems: 'flex-end', paddingTop: 90, paddingRight: 16 }} activeOpacity={1} onPress={() => setFilterSelectModal(false)}>
+                    <View style={{ backgroundColor: theme.cardBg, position: 'absolute', top: 90, right: 16, borderRadius: 16, padding: 8, width: 220, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 }}>
+                        <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 6, borderBottomColor: theme.cardBorder, borderBottomWidth: 1 }}
+                            onPress={() => { setFilterSelectModal(false); setShowMonthPicker(true); }}>
+                            <Ionicons name="calendar-outline" size={18} color={theme.primary} />
+                            <View style={{ flex: 1, marginLeft: 10 }}>
+                                <Text style={{ fontSize: 13, fontWeight: '700', color: theme.textPrimary }}>Specific Month</Text>
+                                <Text style={{ fontSize: 10, color: theme.textSecondary, marginTop: 2, fontWeight: '600' }}>E.g., June 2026</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={14} color={theme.textSecondary} />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 6 }}
+                            onPress={() => { setFilterSelectModal(false); setShowCustomPicker(true); }}>
+                            <Ionicons name="options-outline" size={18} color={theme.primary} />
+                            <View style={{ flex: 1, marginLeft: 10 }}>
+                                <Text style={{ fontSize: 13, fontWeight: '700', color: theme.textPrimary }}>Custom Range</Text>
+                                <Text style={{ fontSize: 10, color: theme.textSecondary, marginTop: 2, fontWeight: '600' }}>Select start & end date</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={14} color={theme.textSecondary} />
+                        </TouchableOpacity>
+                    </View>
+                </TouchableOpacity>
+            </Modal>
+
+            <CustomMonthYearPicker
+                visible={showMonthPicker}
+                onClose={() => setShowMonthPicker(false)}
+                onConfirm={(d: Date) => { setFilterMode('month'); setStatsMonth(d); setShowMonthPicker(false); }}
+                initialDate={statsMonth}
+            />
+
+            <CustomDateRangePicker
+                visible={showCustomPicker}
+                onClose={() => setShowCustomPicker(false)}
+                onConfirm={(s: Date, e: Date) => { setFilterMode('custom'); setCustomStart(s); setCustomEnd(e); setShowCustomPicker(false); }}
+                initialStart={customStart}
+                initialEnd={customEnd}
+            />
         </View>
     );
 }

@@ -22,6 +22,7 @@ import { toLocalDateStr } from '../utils/dateUtils';
 import { AppHeader } from '../components/AppHeader';
 import { useTranslation } from 'react-i18next';
 import { FilterDuesModal } from '../components/FilterDuesModal';
+import { FullScreenLoader } from '../components/FullScreenLoader';
 
 const { width } = Dimensions.get('window');
 
@@ -304,9 +305,14 @@ export default function PendingPaymentsScreen() {
     
     // Filter Modal state
     const [filterModalVisible, setFilterModalVisible] = useState(false);
-    const handleApplyFilters = (filters: any) => {
-        // Just log for now, full integration of filter params later
+    const [filterLoading, setFilterLoading] = useState(false);
+    const handleApplyFilters = async (filters: any) => {
+        setFilterLoading(true);
+        setPage(1);
+        setHasMore(true);
         console.log('Applied filters:', filters);
+        await load(1, true);
+        setFilterLoading(false);
     };
     const [totalPending, setTotalPending] = useState(0);
     const [partialPaid, setPartialPaid] = useState(0);
@@ -498,8 +504,8 @@ export default function PendingPaymentsScreen() {
                     showBack={navigation.canGoBack()}
                     rightComponent={
                         <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-                            <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: isDark ? '#334155' : '#E2E8F0' }} />
-                            <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: isDark ? '#334155' : '#E2E8F0' }} />
+                            <HeaderNotification navigation={navigation} />
+                            <ProfileMenu />
                         </View>
                     }
                 />
@@ -522,6 +528,7 @@ export default function PendingPaymentsScreen() {
     return (
         <View style={[s.root, { backgroundColor: theme.background }]}>
             <StatusBar barStyle="light-content" />
+            <FullScreenLoader visible={filterLoading} />
 
             {/* ── Header ── */}
             <AppHeader
@@ -612,12 +619,12 @@ export default function PendingPaymentsScreen() {
                 </View>
 
                 <TouchableOpacity
-                    style={[s.filterBtn, { backgroundColor: theme.primary, shadowColor: theme.primary }]}
+                    style={[s.filterBtn, { backgroundColor: isDark ? '#1E293B' : '#FFF', borderColor: isDark ? '#334155' : '#ECECEC', borderWidth: 1, shadowColor: 'transparent', elevation: 0 }]}
                     activeOpacity={0.7}
                     onPress={() => setFilterModalVisible(true)}
                 >
-                    <Ionicons name="filter" size={16} color="#FFFFFF" />
-                    <Text style={[s.filterTxt]}>
+                    <Ionicons name="filter" size={16} color={theme.primary} />
+                    <Text style={[s.filterTxt, { color: theme.primary }]}>
                         Filter
                     </Text>
                 </TouchableOpacity>

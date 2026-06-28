@@ -54,9 +54,10 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
     }
     const availableRooms = await availableRoomsQuery.first();
 
-    // Get total students (active)
+    // Get total students (active and allocated)
     let studentsQuery = db('students')
       .where('status', 1)
+      .whereNotNull('room_id')
       .count('* as count');
     if (hostelIds.length > 0) {
       studentsQuery = studentsQuery.whereIn('hostel_id', hostelIds);
@@ -129,12 +130,15 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
     const totalMonthlyIncome = Number(monthlyIncome?.total || 0);
 
     // Get fee collection for current month (from fee_payments table)
-    let feeCollectionQuery = db('fee_payments')
-      .whereBetween('payment_date', [monthStart, monthEnd])
-      .sum('amount as total')
+    let feeCollectionQuery = db('fee_payments as fp')
+      .join('students as s', 'fp.student_id', 's.student_id')
+      .whereNotNull('s.room_id')
+      .where('s.status', 1)
+      .whereBetween('fp.payment_date', [monthStart, monthEnd])
+      .sum('fp.amount as total')
       .count('* as count');
     if (hostelIds.length > 0) {
-      feeCollectionQuery = feeCollectionQuery.whereIn('hostel_id', hostelIds);
+      feeCollectionQuery = feeCollectionQuery.whereIn('fp.hostel_id', hostelIds);
     }
     const feeCollection = await feeCollectionQuery.first();
 
@@ -161,29 +165,46 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
     // Monthly fee tables can be absent on databases that were partially consolidated.
     // Report loading should still return the rest of the dashboard instead of 500ing.
     if (hasMonthlyFees) {
-      let monthlyFeesDueQuery = db('monthly_fees')
-        .where('fee_month', `${year}-${String(month).padStart(2, '0')}`)
-        .sum('total_due as total_due')
-        .sum('balance as total_pending');
+      let monthlyFeesDueQuery = db('monthly_fees as mf')
+        .join('students as s', 'mf.student_id', 's.student_id')
+        .whereNotNull('s.room_id')
+        .where('s.status', 1)
+        .where('mf.fee_month', `${year}-${String(month).padStart(2, '0')}`)
+        .sum('mf.total_due as total_due')
+        .sum('mf.balance as total_pending');
       if (hostelIds.length > 0) {
-        monthlyFeesDueQuery = monthlyFeesDueQuery.whereIn('hostel_id', hostelIds);
+        monthlyFeesDueQuery = monthlyFeesDueQuery.whereIn('mf.hostel_id', hostelIds);
       }
       const monthlyFeesDue = await monthlyFeesDueQuery.first();
       monthlyRentDue = Number(monthlyFeesDue?.total_due || 0);
       monthlyRentPending = Number(monthlyFeesDue?.total_pending || 0);
 
-      let pendingDuesQuery = db('monthly_fees')
-        .whereIn('fee_status', ['Pending', 'Partially Paid', 'Overdue'])
+      let pendingDuesQuery = db('monthly_fees as mf')
+        .join('students as s', 'mf.student_id', 's.student_id')
+        .whereNotNull('s.room_id')
+        .where('s.status', 1)
+        .whereIn('mf.fee_status', ['Pending', 'Partially Paid', 'Overdue'])
         .count('* as count')
-        .sum('balance as total');
+        .sum('mf.balance as total');
       if (hostelIds.length > 0) {
-        pendingDuesQuery = pendingDuesQuery.whereIn('hostel_id', hostelIds);
+        pendingDuesQuery = pendingDuesQuery.whereIn('mf.hostel_id', hostelIds);
       }
       const pendingDues = await pendingDuesQuery.first();
       pendingDuesCount = Number(pendingDues?.count || 0);
       pendingDuesAmount = Number(pendingDues?.total || 0);
     }
     const monthlyRentCollected = Number(feeCollection?.total || 0);
+
+    // Get unallocated students count (active status but no room assigned)
+    let unallocatedQuery = db('students')
+      .where('status', 1)
+      .whereNull('room_id')
+      .count('* as count');
+    if (hostelIds.length > 0) {
+      unallocatedQuery = unallocatedQuery.whereIn('hostel_id', hostelIds);
+    }
+    const unallocatedData = await unallocatedQuery.first();
+    const unallocatedCount = Number(unallocatedData?.count || 0);
 
     // Get left tenants (inactive students) count
     let leftTenantsQuery = db('students')
@@ -228,12 +249,15 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
 
     // Get today's rent, other income, and guest collection
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    let todayRentQuery = db('fee_payments')
-      .whereRaw('DATE(payment_date) = ?', [today])
-      .sum('amount as total')
+    let todayRentQuery = db('fee_payments as fp')
+      .join('students as s', 'fp.student_id', 's.student_id')
+      .whereNotNull('s.room_id')
+      .where('s.status', 1)
+      .whereRaw('DATE(fp.payment_date) = ?', [today])
+      .sum('fp.amount as total')
       .count('* as count');
     if (hostelIds.length > 0) {
-      todayRentQuery = todayRentQuery.whereIn('hostel_id', hostelIds);
+      todayRentQuery = todayRentQuery.whereIn('fp.hostel_id', hostelIds);
     }
     const todayRent = await todayRentQuery.first();
     const todayRentAmount = Number(todayRent?.total || 0);
@@ -264,11 +288,15 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
 
     const totalTodayAmount = todayRentAmount + todayOtherAmount + todayGuestAmount;
 
-    // Get today's split by payment mode
+    // Get breakdown of today's collections by mode
     let todaySplitQuery = db('fee_payments as fp')
-      .leftJoin('payment_modes as pm', 'fp.payment_mode_id', 'pm.payment_mode_id')
+      .join('payment_modes as pm', 'fp.payment_mode_id', 'pm.payment_mode_id')
+      .join('students as s', 'fp.student_id', 's.student_id')
+      .whereNotNull('s.room_id')
+      .where('s.status', 1)
       .whereRaw('DATE(fp.payment_date) = ?', [today])
-      .select('pm.payment_mode_name as mode', db.raw('SUM(fp.amount) as total'))
+      .select('pm.payment_mode_name as mode')
+      .sum('fp.amount as total')
       .groupBy('pm.payment_mode_name');
     if (hostelIds.length > 0) {
       todaySplitQuery = todaySplitQuery.whereIn('fp.hostel_id', hostelIds);
@@ -286,6 +314,7 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
 
     let newAdmissionsQuery = db('students')
       .where('status', 1)
+      .whereNotNull('room_id')
       .whereBetween('admission_date', [oneWeekAgoStr, todayStr])
       .count('* as count');
     if (hostelIds.length > 0) {
@@ -319,6 +348,7 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
         feeCollectionCount: Number(feeCollection?.count || 0),
         pendingDuesCount,
         pendingDuesAmount,
+        unallocatedCount,
         leftTenants: Number(leftTenants),
         prebookingsCount: Number(prebookingsCount),
         noticesCount: Number(noticesCount),
@@ -355,6 +385,8 @@ export const getIncomeReport = async (req: AuthRequest, res: Response) => {
         db.raw('SUM(fp.amount) as total_amount'),
         db.raw('COUNT(*) as payment_count')
       )
+      .whereNotNull('s.room_id')
+      .where('s.status', 1)
       .groupBy('month', 'pm.payment_mode_name')
       .orderBy('month', 'desc');
 
@@ -498,19 +530,22 @@ export const getProfitLoss = async (req: AuthRequest, res: Response) => {
     }
 
     // Get income by month
-    let incomeQuery = db('fee_payments')
-      .whereBetween('payment_date', [dateStart, dateEnd])
+    let incomeQuery = db('fee_payments as fp')
+      .join('students as s', 'fp.student_id', 's.student_id')
+      .whereNotNull('s.room_id')
+      .where('s.status', 1)
+      .whereBetween('fp.payment_date', [dateStart, dateEnd])
       .select(
-        db.raw('DATE_FORMAT(payment_date, "%Y-%m") as month'),
-        db.raw('SUM(amount) as total')
+        db.raw('DATE_FORMAT(fp.payment_date, "%Y-%m") as month'),
+        db.raw('SUM(fp.amount) as total')
       )
       .groupBy('month')
       .orderBy('month');
 
     if (hostelId && user?.role_id !== 2) {
-      incomeQuery = incomeQuery.where('hostel_id', hostelId);
+      incomeQuery = incomeQuery.where('fp.hostel_id', hostelId);
     } else if (hostelIds.length > 0) {
-      incomeQuery = incomeQuery.whereIn('hostel_id', hostelIds);
+      incomeQuery = incomeQuery.whereIn('fp.hostel_id', hostelIds);
     }
 
     const incomeByMonth = await incomeQuery;
@@ -707,42 +742,51 @@ export const getPaymentCollectionReport = async (req: AuthRequest, res: Response
     }
 
     // Get total collected
-    let collectedQuery = db('fee_payments')
-      .whereBetween('payment_date', [dateStart, dateEnd])
-      .sum('amount as total')
-      .count('* as count');
+    let collectedQuery = db('fee_payments as fp')
+      .join('students as s', 'fp.student_id', 's.student_id')
+      .whereNotNull('s.room_id')
+      .where('s.status', 1)
+      .whereBetween('fp.payment_date', [dateStart, dateEnd])
+      .sum('fp.amount as total');
 
     if (hostelId && user?.role_id !== 2) {
-      collectedQuery = collectedQuery.where('hostel_id', hostelId);
+      collectedQuery = collectedQuery.where('fp.hostel_id', hostelId);
     } else if (hostelIds.length > 0) {
-      collectedQuery = collectedQuery.whereIn('hostel_id', hostelIds);
+      collectedQuery = collectedQuery.whereIn('fp.hostel_id', hostelIds);
     }
 
     const collected = await collectedQuery.first();
 
-    // Get pending dues from monthly_fees
-    let pendingQuery = db('monthly_fees')
-      .whereIn('fee_status', ['Pending', 'Partially Paid', 'Overdue'])
-      .sum('balance as total')
-      .count('* as count');
-
-    if (hostelId && user?.role_id !== 2) {
-      pendingQuery = pendingQuery.where('hostel_id', hostelId);
-    } else if (hostelIds.length > 0) {
-      pendingQuery = pendingQuery.whereIn('hostel_id', hostelIds);
+    // Calculate pending dues amount safely (from monthly_fees table)
+    let totalDuesAmount = 0;
+    try {
+      let pendingQuery = db('monthly_fees as mf')
+        .join('students as s', 'mf.student_id', 's.student_id')
+        .whereNotNull('s.room_id')
+        .where('s.status', 1)
+        .whereIn('mf.fee_status', ['Pending', 'Partially Paid', 'Overdue'])
+        .sum('mf.balance as total');
+      
+      if (hostelId && user?.role_id !== 2) {
+        pendingQuery = pendingQuery.where('mf.hostel_id', hostelId);
+      } else if (hostelIds.length > 0) {
+        pendingQuery = pendingQuery.whereIn('mf.hostel_id', hostelIds);
+      }
+      const pendingData = await pendingQuery.first();
+      totalDuesAmount = Number(pendingData?.total || 0);
+    } catch (e) {
+      totalDuesAmount = 0;
     }
 
-    const pending = await pendingQuery.first();
-
-    // Get collection by payment mode
+    // Get collections grouped by payment mode
     let modeQuery = db('fee_payments as fp')
-      .leftJoin('payment_modes as pm', 'fp.payment_mode_id', 'pm.payment_mode_id')
+      .join('payment_modes as pm', 'fp.payment_mode_id', 'pm.payment_mode_id')
+      .join('students as s', 'fp.student_id', 's.student_id')
+      .whereNotNull('s.room_id')
+      .where('s.status', 1)
       .whereBetween('fp.payment_date', [dateStart, dateEnd])
-      .select(
-        'pm.payment_mode_name',
-        db.raw('SUM(fp.amount) as total'),
-        db.raw('COUNT(*) as count')
-      )
+      .select('pm.payment_mode_name as mode')
+      .sum('fp.amount as total')
       .groupBy('pm.payment_mode_name');
 
     if (hostelId && user?.role_id !== 2) {
@@ -758,19 +802,16 @@ export const getPaymentCollectionReport = async (req: AuthRequest, res: Response
       data: {
         collected: {
           total: Number(collected?.total || 0),
-          count: collected?.count || 0
         },
         pending: {
-          total: Number(pending?.total || 0),
-          count: pending?.count || 0
+          total: totalDuesAmount
         },
         collectionByMode: collectionByMode.map(item => ({
-          mode: item.payment_mode_name,
-          total: Number(item.total),
-          count: item.count
+          mode: item.mode,
+          total: Number(item.total)
         })),
-        collectionRate: (collected?.total && pending?.total)
-          ? ((collected.total / (collected.total + pending.total)) * 100).toFixed(2)
+        collectionRate: (collected?.total && totalDuesAmount)
+          ? ((Number(collected.total) / (Number(collected.total) + totalDuesAmount)) * 100).toFixed(2)
           : 0
       }
     });
@@ -830,7 +871,6 @@ export const getOwnerStats = async (req: AuthRequest, res: Response) => {
                 WHEN LOWER(rt.room_type_name) LIKE '%four%' OR LOWER(rt.room_type_name) LIKE '%4%' THEN 4
                 WHEN LOWER(rt.room_type_name) LIKE '%five%' OR LOWER(rt.room_type_name) LIKE '%5%' THEN 5
                 WHEN LOWER(rt.room_type_name) LIKE '%six%' OR LOWER(rt.room_type_name) LIKE '%6%' THEN 6
-                WHEN LOWER(rt.room_type_name) LIKE '%seven%' OR LOWER(rt.room_type_name) LIKE '%7%' THEN 7
                 WHEN LOWER(rt.room_type_name) LIKE '%eight%' OR LOWER(rt.room_type_name) LIKE '%8%' THEN 8
                 WHEN LOWER(rt.room_type_name) LIKE '%dormitory%' THEN 10
                 ELSE 0
@@ -974,12 +1014,16 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
     const feeMonthStr = `${targetYear}-${String(targetMonth).padStart(2, '0')}`;
 
     // ── 1. Fee Collection for the month (from fee_payments) ──
-    let feeQuery = db('fee_payments')
-      .whereBetween('payment_date', [monthStart, monthEnd])
-      .sum('amount as total')
+    let feeQuery = db('fee_payments as fp')
+      .join('students as s', 'fp.student_id', 's.student_id')
+      .whereNotNull('s.room_id')
+      .where('s.status', 1)
+      .whereBetween('fp.payment_date', [monthStart, monthEnd])
+      .sum('fp.amount as total')
       .count('* as count');
+    
     if (hostelIds.length > 0) {
-      feeQuery = feeQuery.whereIn('hostel_id', hostelIds);
+      feeQuery = feeQuery.whereIn('fp.hostel_id', hostelIds);
     }
     const feeResult = await feeQuery.first();
     const feeCollection = Number(feeResult?.total || 0);
@@ -1012,8 +1056,6 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
 
     // ── 2c. Admission fee collection (one-time fees paid during this month) ──
     let admissionFeeCollection = 0;
-    let admissionFeeCount = 0;
-    // Per-student admission fee stats (ALL active students, not just this month)
     let admissionStats = {
       totalStudents: 0,
       paidStudents: 0,
@@ -1029,21 +1071,20 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
           this.where('admission_status', 1)
             .orWhere('admission_status', 'Paid');
         })
-        .sum('admission_fee as total')
-        .count('* as count');
+        .sum('admission_fee as total');
       if (hostelIds.length > 0) {
         admissionFeeQuery = admissionFeeQuery.whereIn('hostel_id', hostelIds);
       }
       const admissionFeeResult = await admissionFeeQuery.first();
       admissionFeeCollection = Number(admissionFeeResult?.total || 0);
-      admissionFeeCount = Number(admissionFeeResult?.count || 0);
 
-      // Per-student breakdown (all active students with a non-zero admission_fee set)
-      let statsQuery = db('students')
-        .where('status', 1) // active students
+      // Per-student breakdown (all active and allocated students with a non-zero admission_fee set)
+      let breakdownQuery = db('students')
+        .where('status', 1)
+        .whereNotNull('room_id')
         .where('admission_fee', '>', 0)
         .select(
-          db.raw('COUNT(*) as total_students'),
+          db.raw('COUNT(student_id) as total_students'),
           db.raw('SUM(admission_fee) as total_expected'),
           db.raw(`SUM(CASE WHEN admission_status = 1 OR admission_status = 'Paid' THEN admission_fee ELSE 0 END) as total_paid`),
           db.raw(`SUM(CASE WHEN admission_status = 1 OR admission_status = 'Paid' THEN 1 ELSE 0 END) as paid_count`),
@@ -1051,9 +1092,9 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
           db.raw(`SUM(CASE WHEN admission_status != 1 AND admission_status != 'Paid' THEN admission_fee ELSE 0 END) as total_pending`)
         );
       if (hostelIds.length > 0) {
-        statsQuery = statsQuery.whereIn('hostel_id', hostelIds);
+        breakdownQuery = breakdownQuery.whereIn('hostel_id', hostelIds);
       }
-      const statsResult = await statsQuery.first();
+      const statsResult = await breakdownQuery.first();
       if (statsResult) {
         admissionStats = {
           totalStudents: Number(statsResult.total_students || 0),
@@ -1136,12 +1177,15 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
     let totalRentDue = 0;
     let totalRentPending = 0;
     if (await tableExists('monthly_fees')) {
-      let monthlyFeeQuery = db('monthly_fees')
-        .where('fee_month', feeMonthStr)
-        .sum('total_due as total_due')
-        .sum('balance as total_pending');
+      let monthlyFeeQuery = db('monthly_fees as mf')
+        .join('students as s', 'mf.student_id', 's.student_id')
+        .whereNotNull('s.room_id')
+        .where('s.status', 1)
+        .where('mf.fee_month', feeMonthStr)
+        .sum('mf.total_due as total_due')
+        .sum('mf.balance as total_pending');
       if (hostelIds.length > 0) {
-        monthlyFeeQuery = monthlyFeeQuery.whereIn('hostel_id', hostelIds);
+        monthlyFeeQuery = monthlyFeeQuery.whereIn('mf.hostel_id', hostelIds);
       }
       const monthlyFeeResult = await monthlyFeeQuery.first();
       totalRentDue = Number(monthlyFeeResult?.total_due || 0);
@@ -1160,10 +1204,13 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
       const tEnd = `${tMonthStr}-${String(tLastDay).padStart(2, '0')}`;
 
       // Fee collection
-      let tFeeQ = db('fee_payments')
-        .whereBetween('payment_date', [tStart, tEnd])
-        .sum('amount as total');
-      if (hostelIds.length > 0) tFeeQ = tFeeQ.whereIn('hostel_id', hostelIds);
+      let tFeeQ = db('fee_payments as fp')
+        .join('students as s', 'fp.student_id', 's.student_id')
+        .whereNotNull('s.room_id')
+        .where('s.status', 1)
+        .whereBetween('fp.payment_date', [tStart, tEnd])
+        .sum('fp.amount as total');
+      if (hostelIds.length > 0) tFeeQ = tFeeQ.whereIn('fp.hostel_id', hostelIds);
       const tFee = await tFeeQ.first();
 
       // Other income
