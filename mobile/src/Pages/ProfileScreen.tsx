@@ -95,7 +95,7 @@ const ProfileScreen = ({ navigation }: any) => {
     };
 
     const handleSelectHostel = async (hostelId: number) => {
-        if (hostelId === user?.hostel_id) {
+        if (Number(hostelId) === Number(user?.hostel_id)) {
             setSelectorVisible(false);
             return;
         }

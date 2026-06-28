@@ -910,7 +910,7 @@ const styles = StyleSheet.create({
     createBtnText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
 
     // Modal
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+    modalOverlay: { flex: 1, backgroundColor: 'transparent', justifyContent: 'flex-end' },
     modalSheet: {
         backgroundColor: '#FFF',
         borderTopLeftRadius: 24,

@@ -76,7 +76,7 @@ export const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: an
     return (
         <Modal transparent visible={visible || shouldRender} animationType="none" statusBarTranslucent onRequestClose={onClose}>
             <View style={{ flex: 1 }}>
-                <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.5)', opacity }]}>
+                <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'transparent', opacity }]}>
                     <Pressable style={{ flex: 1 }} onPress={onClose} />
                 </Animated.View>
                 <Animated.View style={[

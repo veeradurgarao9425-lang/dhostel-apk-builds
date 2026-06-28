@@ -55,7 +55,7 @@ const CITY_PINCODE_PREFIXES: Record<string, string[]> = {
 
 export const AddHostelScreen = ({ navigation, route }: any) => {
     const { theme, isDark } = useTheme();
-    const { user, updateTokenAndUser } = useAuth();
+    const { user, updateTokenAndUser, loadHostels } = useAuth();
     const insets = useSafeAreaInsets();
     const [loading, setLoading] = useState(false);
     const [isKeyboardVisible, setKeyboardVisible] = useState(false);
@@ -213,6 +213,8 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
                             await updateTokenAndUser(token, { hostel_id: newHostelId, hostel_name: activeHostelName });
                         }
                     }
+
+                    await loadHostels();
 
                     Toast.show({
                         type: 'success',
@@ -792,7 +794,7 @@ const styles = StyleSheet.create({
     },
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
+        backgroundColor: 'transparent',
         justifyContent: 'flex-end',
     },
     modalContent: {

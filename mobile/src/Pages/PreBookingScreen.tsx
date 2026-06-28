@@ -181,7 +181,7 @@ const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: any) => {
     return (
         <Modal transparent visible={visible} animationType="none" statusBarTranslucent onRequestClose={onClose}>
             <View style={{ flex: 1, justifyContent: 'flex-end' }}>
-                <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#000', opacity: backdropOpacity }]}>
+                <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'transparent', opacity: backdropOpacity }]}>
                     <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} />
                 </Animated.View>
                 <Animated.View style={[
@@ -607,7 +607,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     submitButtonText: { color: '#FFF', fontWeight: '700', fontSize: 15 },
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+    modalOverlay: { flex: 1, backgroundColor: 'transparent', justifyContent: 'flex-end' },
     sheet: { position: 'absolute', bottom: 0, left: 0, right: 0, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 8 },
     sheetHandle: { width: 40, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, alignSelf: 'center', marginBottom: 12 },
     sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },

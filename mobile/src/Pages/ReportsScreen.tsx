@@ -604,7 +604,7 @@ const R = StyleSheet.create({
     trendCell: { flex: 1, fontSize: 12, fontWeight: '600', textAlign: 'right' },
     footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 16 },
     footerTxt: { fontSize: 11, fontWeight: '600', color: '#94A3B8' },
-    backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+    backdrop: { flex: 1, backgroundColor: 'transparent', justifyContent: 'flex-end' },
     sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 32 },
     handle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: '#CBD5E1', marginBottom: 16 },
     sheetTitle: { fontSize: 18, fontWeight: '800' },

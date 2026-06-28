@@ -50,7 +50,7 @@ export const HostelDetailsScreen = () => {
     };
 
     const handleSwitchHostel = async (hostelId: number) => {
-        if (hostelId === user?.hostel_id) return;
+        if (Number(hostelId) === Number(user?.hostel_id)) return;
         try {
             setSwitchingId(hostelId);
             const res = await api.put('/auth/active-hostel', { hostel_id: hostelId });
@@ -148,9 +148,9 @@ useEffect(() => {
                                     {selectedHostelDetails.hostel_type || 'Co-Living'}
                                 </Text>
                             </View>
-                            <View style={[styles.statusBadgeInline, { backgroundColor: (selectedHostelDetails.hostel_id === user?.hostel_id) ? theme.success + '15' : 'rgba(148, 163, 184, 0.15)' }]}>
-                                <Text style={[styles.statusBadgeTextInline, { color: (selectedHostelDetails.hostel_id === user?.hostel_id) ? theme.success : theme.textSecondary }]}>
-                                    {(selectedHostelDetails.hostel_id === user?.hostel_id) ? 'Active' : 'Inactive'}
+                            <View style={[styles.statusBadgeInline, { backgroundColor: (Number(selectedHostelDetails.hostel_id) === Number(user?.hostel_id)) ? theme.success + '15' : 'rgba(148, 163, 184, 0.15)' }]}>
+                                <Text style={[styles.statusBadgeTextInline, { color: (Number(selectedHostelDetails.hostel_id) === Number(user?.hostel_id)) ? theme.success : theme.textSecondary }]}>
+                                    {(Number(selectedHostelDetails.hostel_id) === Number(user?.hostel_id)) ? 'Active' : 'Inactive'}
                                 </Text>
                             </View>
                         </View>
@@ -276,15 +276,15 @@ useEffect(() => {
                         style={[
                             styles.activateHostelBtn,
                             {
-                                backgroundColor: (selectedHostelDetails.hostel_id === user?.hostel_id) ? theme.success : theme.primary,
-                                opacity: (selectedHostelDetails.hostel_id === user?.hostel_id) ? 0.8 : 1
+                                backgroundColor: (Number(selectedHostelDetails.hostel_id) === Number(user?.hostel_id)) ? theme.success : theme.primary,
+                                opacity: (Number(selectedHostelDetails.hostel_id) === Number(user?.hostel_id)) ? 0.8 : 1
                             }
                         ]}
-                        disabled={selectedHostelDetails.hostel_id === user?.hostel_id}
+                        disabled={Number(selectedHostelDetails.hostel_id) === Number(user?.hostel_id)}
                         onPress={() => handleSwitchHostel(selectedHostelDetails.hostel_id)}
                     >
                         <Text style={styles.activateHostelBtnText}>
-                            {(selectedHostelDetails.hostel_id === user?.hostel_id) ? '✓ Current Active Hostel' : 'Switch & Activate Hostel'}
+                            {(Number(selectedHostelDetails.hostel_id) === Number(user?.hostel_id)) ? '✓ Current Active Hostel' : 'Switch & Activate Hostel'}
                         </Text>
                     </TouchableOpacity>
                 )}

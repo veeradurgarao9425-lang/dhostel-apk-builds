@@ -18,6 +18,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { SkeletonList } from '../components/ui/SkeletonCard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SPACING } from '../theme/index';
+import { Plus } from 'lucide-react-native';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -263,7 +264,10 @@ export default function StaffScreen() {
                             </View>
                         </View>
                     )}
-                    contentContainerStyle={s.listContent}
+                    contentContainerStyle={[
+                        s.listContent,
+                        staffList.length === 0 && { flexGrow: 1, justifyContent: 'center' }
+                    ]}
                     showsVerticalScrollIndicator={false}
                     ListEmptyComponent={
                         <EmptyState
@@ -285,9 +289,9 @@ export default function StaffScreen() {
             <TouchableOpacity
                 style={[s.fab, { backgroundColor: theme.primary }]}
                 onPress={() => navigation.navigate('AddStaff')}
-                activeOpacity={0.8}
+                activeOpacity={0.85}
             >
-                <Ionicons name="add" color="#FFF" size={30} />
+                <Plus color="#FFF" size={26} strokeWidth={3.5} />
             </TouchableOpacity>
         </View>
     );
@@ -383,7 +387,11 @@ const s = StyleSheet.create({
         borderWidth: 1, borderColor: '#F1F5F9'
     },
 
-    fab: { position: 'absolute', bottom: 30, right: 20, width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', elevation: 8 },
+    fab: {
+        position: 'absolute', bottom: 45, right: 24, width: 50, height: 50, borderRadius: 25,
+        justifyContent: 'center', alignItems: 'center', elevation: 5,
+        shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 3,
+    },
 
     emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: 80 },
     emptyText: { fontSize: 14, color: '#94A3B8', fontWeight: '600' },

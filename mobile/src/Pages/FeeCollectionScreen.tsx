@@ -480,7 +480,7 @@ const UnusedCollectModal = ({
 };
 
 const modal = StyleSheet.create({
-    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+    overlay: { flex: 1, backgroundColor: 'transparent', justifyContent: 'flex-end' },
     sheet: {
         backgroundColor: '#FFFFFF',
         borderTopLeftRadius: 24, borderTopRightRadius: 24,

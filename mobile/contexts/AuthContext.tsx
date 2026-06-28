@@ -291,7 +291,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return undefined;
     }
 
-    const currentIndex = activeHostels.findIndex(h => h.hostel_id === user?.hostel_id);
+    const currentIndex = activeHostels.findIndex(h => Number(h.hostel_id) === Number(user?.hostel_id));
     const nextIndex = (currentIndex + 1) % activeHostels.length;
     const nextHostel = activeHostels[nextIndex];
 

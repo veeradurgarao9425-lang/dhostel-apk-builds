@@ -74,7 +74,7 @@ const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: any) => {
     return (
         <Modal transparent visible={visible} animationType="none" statusBarTranslucent onRequestClose={onClose}>
             <View style={{ flex: 1, justifyContent: 'flex-end' }}>
-                <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#000', opacity: backdropOpacity }]}>
+                <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'transparent', opacity: backdropOpacity }]}>
                     <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} />
                 </Animated.View>
                 <Animated.View style={[

@@ -349,7 +349,10 @@ export const ExpenseScreen = ({ navigation }: any) => {
                             </TouchableOpacity>
                         );
                     }}
-                    contentContainerStyle={styles.listContentContainer}
+                    contentContainerStyle={[
+                        styles.listContentContainer,
+                        expenses.length === 0 && { flexGrow: 1, justifyContent: 'center' }
+                    ]}
                     showsVerticalScrollIndicator={false}
                     refreshControl={
                         <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); setPage(1); setHasMore(true); fetchExpenses(1, true); }} />

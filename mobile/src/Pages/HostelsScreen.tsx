@@ -79,7 +79,7 @@ export const HostelsScreen = () => {
     }, []);
 
     const handleSwitchHostel = async (hostelId: number) => {
-        if (hostelId === user?.hostel_id) return;
+        if (Number(hostelId) === Number(user?.hostel_id)) return;
         try {
             setSwitchingId(hostelId);
             const res = await api.put('/auth/active-hostel', { hostel_id: hostelId });
@@ -99,7 +99,7 @@ export const HostelsScreen = () => {
 
     const handleQuickAddRoom = async (hostelId: number, hostelName: string) => {
         try {
-            if (hostelId !== user?.hostel_id) {
+            if (Number(hostelId) !== Number(user?.hostel_id)) {
                 setSwitchingId(hostelId);
                 const res = await api.put('/auth/active-hostel', { hostel_id: hostelId });
                 if (res.data?.success) {
@@ -183,7 +183,7 @@ export const HostelsScreen = () => {
                     />
                 ) : (
                     hostels.map((h: any) => {
-                        const isActive = h.hostel_id === user?.hostel_id;
+                        const isActive = Number(h.hostel_id) === Number(user?.hostel_id);
                         const isSwitching = switchingId === h.hostel_id;
 
                         // Color theme based on hostel type

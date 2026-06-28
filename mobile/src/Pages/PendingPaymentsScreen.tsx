@@ -790,7 +790,7 @@ const card = StyleSheet.create({
 const rm = StyleSheet.create({
     backdrop: {
         position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-        backgroundColor: 'rgba(0,0,0,0.45)',
+        backgroundColor: 'transparent',
     },
     sheet: {
         position: 'absolute', bottom: 0, left: 0, right: 0,

@@ -162,7 +162,10 @@ export default function NoticesScreen({ navigation }: any) {
                 <ScrollView
                     style={styles.content}
                     showsVerticalScrollIndicator={false}
-                    contentContainerStyle={styles.scrollContent}
+                    contentContainerStyle={[
+                        styles.scrollContent,
+                        notices.length === 0 && { flexGrow: 1, justifyContent: 'center' }
+                    ]}
                     refreshControl={
                         <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchNotices(true); }} tintColor="#D97706" />
                     }

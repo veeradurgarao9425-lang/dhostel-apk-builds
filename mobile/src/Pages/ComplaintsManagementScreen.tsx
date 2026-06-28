@@ -16,6 +16,7 @@ export default function ComplaintsManagementScreen({ navigation }: any) {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [complaints, setComplaints] = useState<any[]>([]);
+    const [updatingId, setUpdatingId] = useState<number | null>(null);
 
     const fetchComplaints = useCallback(async (isRefresh = false) => {
         if (!user?.hostel_id) return;
@@ -39,14 +40,17 @@ export default function ComplaintsManagementScreen({ navigation }: any) {
     }, [fetchComplaints]);
 
     const updateStatus = async (complaintId: number, status: string) => {
+        setUpdatingId(complaintId);
         try {
             const res = await api.put(`/complaints/${complaintId}/status`, { status });
             if (res.data.success) {
                 showSuccessToast('Updated', `Complaint marked as ${status}`);
-                fetchComplaints();
+                await fetchComplaints();
             }
         } catch (e: any) {
             Alert.alert('Error', e.response?.data?.error || 'Failed to update status.');
+        } finally {
+            setUpdatingId(null);
         }
     };
 
@@ -58,11 +62,14 @@ export default function ComplaintsManagementScreen({ navigation }: any) {
                 <SkeletonCardList count={4} />
             ) : (
                 <ScrollView 
-                    contentContainerStyle={styles.scrollContent}
+                    contentContainerStyle={[
+                        styles.scrollContent,
+                        complaints.length === 0 && { flexGrow: 1, justifyContent: 'center' }
+                    ]}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchComplaints(true)} tintColor="#7C3AED" />}
                 >
                     {complaints.length === 0 ? (
-                        <EmptyState icon="construct-outline" title="No Complaints" message="There are no active complaints from tenants." />
+                        <EmptyState icon="construct-outline" title="No Complaints" subtitle="There are no active complaints from tenants." />
                     ) : (
                         complaints.map((c) => (
                             <View key={c.complaint_id} style={styles.card}>
@@ -85,13 +92,21 @@ export default function ComplaintsManagementScreen({ navigation }: any) {
 
                                 <View style={styles.actionsRow}>
                                     {c.status !== 'In Progress' && c.status !== 'Resolved' && (
-                                        <TouchableOpacity style={[styles.btn, { backgroundColor: '#F59E0B' }]} onPress={() => updateStatus(c.complaint_id, 'In Progress')}>
-                                            <Text style={styles.btnText}>Mark In Progress</Text>
+                                        <TouchableOpacity 
+                                            style={[styles.btn, { backgroundColor: '#F59E0B' }, updatingId === c.complaint_id && { opacity: 0.7 }]} 
+                                            onPress={() => updateStatus(c.complaint_id, 'In Progress')}
+                                            disabled={updatingId !== null}
+                                        >
+                                            {updatingId === c.complaint_id ? <ActivityIndicator size="small" color="#FFF" /> : <Text style={styles.btnText}>Mark In Progress</Text>}
                                         </TouchableOpacity>
                                     )}
                                     {c.status !== 'Resolved' && (
-                                        <TouchableOpacity style={[styles.btn, { backgroundColor: '#10B981' }]} onPress={() => updateStatus(c.complaint_id, 'Resolved')}>
-                                            <Text style={styles.btnText}>Mark Resolved</Text>
+                                        <TouchableOpacity 
+                                            style={[styles.btn, { backgroundColor: '#10B981' }, updatingId === c.complaint_id && { opacity: 0.7 }]} 
+                                            onPress={() => updateStatus(c.complaint_id, 'Resolved')}
+                                            disabled={updatingId !== null}
+                                        >
+                                            {updatingId === c.complaint_id ? <ActivityIndicator size="small" color="#FFF" /> : <Text style={styles.btnText}>Mark Resolved</Text>}
                                         </TouchableOpacity>
                                     )}
                                 </View>
@@ -110,22 +125,26 @@ const styles = StyleSheet.create({
     scrollContent: { padding: 16, paddingBottom: 40 },
     card: {
         backgroundColor: '#FFF',
-        borderRadius: 16,
-        padding: 16,
-        marginBottom: 16,
+        borderRadius: 20,
+        padding: 20,
+        marginBottom: 18,
         borderWidth: 1,
         borderColor: '#E2E8F0',
-        elevation: 2,
+        elevation: 3,
+        shadowColor: '#7C3AED',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
     },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
     title: { fontSize: 16, fontWeight: '700', color: '#1E293B', marginBottom: 2 },
-    tenantName: { fontSize: 13, color: '#7C3AED', fontWeight: '600', marginBottom: 2 },
-    category: { fontSize: 13, color: '#64748B', fontWeight: '500' },
+    tenantName: { fontSize: 14, color: '#7C3AED', fontWeight: '700', marginBottom: 4 },
+    category: { fontSize: 13, color: '#475569', fontWeight: '600', backgroundColor: '#F1F5F9', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, alignSelf: 'flex-start', marginTop: 4 },
     statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
     statusText: { fontSize: 12, fontWeight: '700' },
     description: { fontSize: 14, color: '#475569', marginVertical: 8, lineHeight: 20 },
     date: { fontSize: 12, color: '#94A3B8', marginBottom: 12 },
     actionsRow: { flexDirection: 'row', gap: 8, justifyContent: 'flex-end', marginTop: 8 },
-    btn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
+    btn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, minWidth: 120, alignItems: 'center', justifyContent: 'center' },
     btnText: { color: '#FFF', fontSize: 13, fontWeight: '600' }
 });
