@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, RefreshControl, ActivityIndicator, Modal, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -66,6 +66,18 @@ const CardWave = ({ color }: { color: string }) => (
     </View>
 );
 
+// ── Skeleton Loader Component ──────────────────────────────────────────────────
+const Skeleton = ({ style, isDark }: { style?: any, isDark?: boolean }) => {
+    const anim = useRef(new Animated.Value(0.3)).current;
+    useEffect(() => {
+        Animated.loop(Animated.sequence([
+            Animated.timing(anim, { toValue: 0.7, duration: 800, useNativeDriver: true }),
+            Animated.timing(anim, { toValue: 0.3, duration: 800, useNativeDriver: true })
+        ])).start();
+    }, []);
+    return <Animated.View style={[{ backgroundColor: isDark ? '#334155' : '#E2E8F0', borderRadius: 16, opacity: anim }, style, { borderWidth: 0, elevation: 0, shadowOpacity: 0 }]} />;
+};
+
 // ── Animated Report Card ──────────────────────────────────────────────────────
 const ReportCard = ({ report, onDownload, onView, exporting, isDark }: any) => {
     const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -118,6 +130,7 @@ export default function ReportsScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [exporting, setExporting] = useState<string | null>(null);
     const [showExcelPicker, setShowExcelPicker] = useState(false);
+    const [downloadSelectModal, setDownloadSelectModal] = useState(false);
 
     // -- Filter State --
     const [filterMode, setFilterMode] = useState<'month' | 'custom'>('month');
@@ -316,29 +329,44 @@ export default function ReportsScreen() {
                     showsVerticalScrollIndicator={false}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.primary]} />}
                 >
-                    <View style={[R.topCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#F1F5F9', borderWidth: 1, overflow: 'hidden' }]}>
-                        <CardWave color={netProfit >= 0 ? '#10B981' : '#EF4444'} />
-                        <View style={R.topCardLeft}>
-                            <Text style={R.topCardLabel}>Net Profit</Text>
-                            <Text style={[R.topCardVal, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>
-                                {netProfit < 0 ? '-' : ''}{'\u20b9'}{fmt(Math.abs(netProfit))}
-                            </Text>
-                            <View style={[R.badge, { backgroundColor: netProfit >= 0 ? '#DCFCE7' : '#FEE2E2' }]}>
-                                <Ionicons name={netProfit >= 0 ? "chevron-up" : "chevron-down"} size={12} color={netProfit >= 0 ? "#16A34A" : "#DC2626"} />
-                                <Text style={[R.badgeTxt, { color: netProfit >= 0 ? "#16A34A" : "#DC2626" }]}>
-                                    20% vs last month
-                                </Text>
+                    {loading && !refreshing ? (
+                        <>
+                            <Skeleton style={[R.topCard, { height: 100 }]} isDark={isDark} />
+                            <View style={R.gridRow}>
+                                {[1, 2, 3, 4].map(i => <Skeleton key={i} style={[R.gridItem, { height: 110 }]} isDark={isDark} />)}
                             </View>
-                        </View>
-                        <View style={R.divider} />
-                        <View style={R.topCardRight}>
-                            <Text style={R.topCardLabel}>Collection Rate</Text>
-                            <ProgressCircle value={collectionRate} size={70} strokeWidth={6} color="#4F46E5" isDark={isDark} />
-                            <Text style={R.subLabel}>of total collection</Text>
-                        </View>
-                    </View>
+                            <Skeleton style={[R.mainDlBtn, { height: 56, marginHorizontal: 16 }]} isDark={isDark} />
 
-                    <View style={R.gridRow}>
+                            <View style={R.secRow}>
+                                <Text style={[R.secTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>All Reports</Text>
+                                <View style={R.liveBadge}>
+                                    <View style={R.liveDot} />
+                                    <Text style={R.liveTxt}>Loading...</Text>
+                                </View>
+                            </View>
+                            <View style={[R.reportList, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', padding: 16, gap: 16 }]}>
+                                {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} style={{ height: 64, borderRadius: 16 }} isDark={isDark} />)}
+                            </View>
+                        </>
+                    ) : (
+                        <>
+                            <View style={[R.topCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#F1F5F9', borderWidth: 1, overflow: 'hidden' }]}>
+                                <CardWave color={netProfit >= 0 ? '#10B981' : '#EF4444'} />
+                                <View style={R.topCardLeft}>
+                                    <Text style={R.topCardLabel}>Net Profit</Text>
+                                    <Text style={[R.topCardVal, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>
+                                        {netProfit < 0 ? '-' : ''}{'\u20b9'}{fmt(Math.abs(netProfit))}
+                                    </Text>
+                                </View>
+                                <View style={R.divider} />
+                                <View style={R.topCardRight}>
+                                    <Text style={R.topCardLabel}>Collection Rate</Text>
+                                    <ProgressCircle value={collectionRate} size={70} strokeWidth={6} color="#4F46E5" isDark={isDark} />
+                                    <Text style={R.subLabel}>of total collection</Text>
+                                </View>
+                            </View>
+
+                            <View style={R.gridRow}>
                         {[
                             { label: 'Collected', val: `₹${fmt(totalRent)}`, sub: 'Rent collected', c: '#10B981', i: 'wallet-outline', bg: '#D1FAE5' },
                             { label: 'Pending', val: `₹${fmt(pending)}`, sub: 'Dues outstanding', c: '#F59E0B', i: 'time-outline', bg: '#FEF3C7' },
@@ -362,11 +390,13 @@ export default function ReportsScreen() {
                         ))}
                     </View>
 
-                    <TouchableOpacity style={R.mainDlBtn} onPress={() => setShowExcelPicker(true)} activeOpacity={0.8}>
+                    {/* Download Full Report Button */}
+                    <TouchableOpacity style={R.mainDlBtn} onPress={() => setDownloadSelectModal(true)} activeOpacity={0.8}>
                         <Ionicons name="download-outline" size={20} color="#4F46E5" />
                         <Text style={R.mainDlBtnTxt}>Download Full Report (Excel)</Text>
                     </TouchableOpacity>
 
+                    {/* All Reports */}
                     <View style={R.secRow}>
                         <Text style={[R.secTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>All Reports</Text>
                         <View style={R.liveBadge}>
@@ -383,6 +413,8 @@ export default function ReportsScreen() {
                             </View>
                         ))}
                     </View>
+                        </>
+                    )}
                 </ScrollView>
             </View>
 
@@ -404,6 +436,32 @@ export default function ReportsScreen() {
                             <View style={{ flex: 1, marginLeft: 10 }}>
                                 <Text style={[R.fTitle, { color: theme.textPrimary }]}>Custom Date Range</Text>
                                 <Text style={R.fSub}>E.g., 12 Jun - 18 Jun</Text>
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+                </TouchableOpacity>
+            </Modal>
+
+            {/* Download Selection Centered Modal */}
+            <Modal visible={downloadSelectModal} transparent animationType="fade" onRequestClose={() => setDownloadSelectModal(false)}>
+                <TouchableOpacity style={[R.modalOverlay, { justifyContent: 'center', alignItems: 'center' }]} activeOpacity={1} onPress={() => setDownloadSelectModal(false)}>
+                    <View style={[R.dlModalBox, { backgroundColor: theme.cardBg }]}>
+                        <Text style={{ fontSize: 16, fontWeight: '800', marginBottom: 20, color: theme.textPrimary, textAlign: 'center' }}>Download Full Report</Text>
+                        <TouchableOpacity style={[R.filterOpt, { borderBottomColor: isDark ? '#334155' : '#E2E8F0', borderBottomWidth: 1 }]} 
+                            onPress={() => { setDownloadSelectModal(false); handleDownloadExcel('full_excel'); }}>
+                            <Ionicons name="cloud-download-outline" size={18} color={theme.primary} />
+                            <View style={{ flex: 1, marginLeft: 10 }}>
+                                <Text style={[R.fTitle, { color: theme.textPrimary }]}>Current Filtered Data</Text>
+                                <Text style={R.fSub}>{periodLabel}</Text>
+                            </View>
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity style={R.filterOpt} 
+                            onPress={() => { setDownloadSelectModal(false); setShowExcelPicker(true); }}>
+                            <Ionicons name="calendar-number-outline" size={18} color={theme.primary} />
+                            <View style={{ flex: 1, marginLeft: 10 }}>
+                                <Text style={[R.fTitle, { color: theme.textPrimary }]}>Custom Date Range</Text>
+                                <Text style={R.fSub}>Select any date range</Text>
                             </View>
                         </TouchableOpacity>
                     </View>
@@ -475,7 +533,7 @@ const R = StyleSheet.create({
     },
     topCard: {
         flexDirection: 'row',
-        borderRadius: 20, padding: 14, marginHorizontal: 16, marginBottom: 12,
+        borderRadius: 20, padding: 10, marginHorizontal: 16, marginBottom: 12,
         alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 3,
     },
     topCardLeft: { flex: 1, paddingRight: 10, justifyContent: 'center' },
@@ -490,15 +548,15 @@ const R = StyleSheet.create({
     gridItem: {
         width: '47%',
         marginHorizontal: '1.5%',
-        marginBottom: 12,
-        borderRadius: 16, padding: 14, alignItems: 'flex-start',
+        marginBottom: 10,
+        borderRadius: 16, padding: 10, alignItems: 'flex-start',
         shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
     },
-    gridIconBg: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-    gridArrow: { width: 26, height: 26, borderRadius: 13, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-    gridLabel: { fontSize: 11, fontWeight: '700', marginBottom: 6 },
-    gridVal: { fontSize: 18, fontWeight: '800', marginBottom: 4 },
-    gridSub: { fontSize: 9, color: '#64748B', fontWeight: '500' },
+    gridIconBg: { width: 32, height: 32, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+    gridArrow: { width: 22, height: 22, borderRadius: 11, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+    gridLabel: { fontSize: 10, fontWeight: '700', marginBottom: 4 },
+    gridVal: { fontSize: 16, fontWeight: '800', marginBottom: 2 },
+    gridSub: { fontSize: 8, color: '#64748B', fontWeight: '500' },
     linearCard: {
         marginHorizontal: 16, borderRadius: 16, padding: 16, marginBottom: 16,
         shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
@@ -529,7 +587,15 @@ const R = StyleSheet.create({
     actionBtn: { padding: 4 },
     sep: { height: 1, marginLeft: 68 },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.15)', justifyContent: 'flex-start', alignItems: 'flex-end', paddingTop: 90, paddingRight: 16 },
-    dropdownMenu: { width: 220, borderRadius: 16, padding: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 5 },
+    dropdownMenu: {
+        position: 'absolute', top: 90, right: 16,
+        borderRadius: 16, padding: 8, width: 220,
+        shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8,
+    },
+    dlModalBox: {
+        borderRadius: 20, padding: 24, width: '85%', maxWidth: 340,
+        shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8,
+    },
     filterOpt: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 6 },
     fTitle: { fontSize: 13, fontWeight: '700' },
     fSub: { fontSize: 10, color: '#64748B', marginTop: 2, fontWeight: '600' },
