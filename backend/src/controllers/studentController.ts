@@ -59,7 +59,8 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
     if (search) {
       const searchTerm = `%${search}%`;
       query = query.where(function () {
-        this.where('s.first_name', 'like', searchTerm)
+        this.whereRaw('CONCAT_WS(" ", s.first_name, s.last_name) LIKE ?', [searchTerm])
+          .orWhere('s.first_name', 'like', searchTerm)
           .orWhere('s.last_name', 'like', searchTerm)
           .orWhere('s.phone', 'like', searchTerm)
           .orWhere('r.room_number', 'like', searchTerm);

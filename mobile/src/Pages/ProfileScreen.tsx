@@ -22,7 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useConfirmation } from '../../contexts/ConfirmationContext';
 
 const ProfileScreen = ({ navigation }: any) => {
-    const { signOut, user, updateTokenAndUser } = useAuth();
+    const { user, signOut, updateTokenAndUser, hostels: contextHostels } = useAuth();
     const { theme, isDark } = useTheme();
     const { t } = useTranslation();
     const { showError, showSuccess, showApiError, showInfo } = useToast();
@@ -189,7 +189,7 @@ const ProfileScreen = ({ navigation }: any) => {
 
     const roleLabel = user?.role_id === 1 ? t('profile.administrator', 'Administrator') : t('profile.hostelOwner', 'Hostel Owner');
 
-    const totalHostels = stats?.hostelsCount ?? hostelsList?.length ?? 0;
+    const totalHostels = stats?.hostelsCount ?? contextHostels?.length ?? 0;
     const totalTenants = stats?.totalStudents ?? stats?.tenantsCount ?? 0;
     const occupiedBeds = stats?.occupiedBeds ?? stats?.rooms?.occupied_beds ?? 0;
     const totalBeds = stats?.totalBeds ?? stats?.rooms?.total_beds ?? 0;
@@ -428,13 +428,29 @@ const ProfileScreen = ({ navigation }: any) => {
                     ))}
                 </View>
 
-                {/* ── SIGN OUT ── */}
+                {/* ── SETTINGS ── */}
+                <TouchableOpacity 
+                    style={[styles.logoutBtn, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0', marginBottom: 12 }]} 
+                    onPress={() => navigation.navigate('Settings')} 
+                    activeOpacity={0.85}
+                >
+                    <View style={[styles.logoutIconBox, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                        <Ionicons name="settings-outline" size={20} color={theme.textPrimary} />
+                    </View>
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                        <Text style={[styles.logoutTitle, { color: theme.textPrimary }]}>{t('more.settings', 'Settings')}</Text>
+                        <Text style={styles.logoutSub}>{t('more.appSettingsSub', 'App configuration, Fonts')}</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
+                </TouchableOpacity>
+
+                {/* ── LOG OUT ── */}
                 <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.85}>
                     <View style={styles.logoutIconBox}>
                         <Ionicons name="log-out-outline" size={20} color="#EF4444" />
                     </View>
                     <View style={{ flex: 1, marginLeft: 12 }}>
-                        <Text style={styles.logoutTitle}>{t('profile.signOut', 'Logout')}</Text>
+                        <Text style={styles.logoutTitle}>{t('more.logOut', 'Log Out')}</Text>
                         <Text style={styles.logoutSub}>{t('profile.signOutDesc', 'Sign out from your account')}</Text>
                     </View>
                     <Ionicons name="chevron-forward" size={16} color="#EF4444" />
@@ -480,7 +496,7 @@ const ProfileScreen = ({ navigation }: any) => {
                         ) : (
                             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 50 }}>
                                 {hostelsList.map((h: any) => {
-                                    const isActive = h.hostel_id === user?.hostel_id;
+                                    const isActive = Number(h.hostel_id) === Number(user?.hostel_id);
                                     return (
                                         <TouchableOpacity
                                             key={h.hostel_id}

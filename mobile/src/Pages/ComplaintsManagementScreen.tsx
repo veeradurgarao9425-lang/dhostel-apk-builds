@@ -6,6 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '../components/AppHeader';
 import { EmptyState } from '../components/ui/EmptyState';
+import { SkeletonCardList } from '../components/ui/SkeletonCard';
 import api from '../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { showErrorToast, showSuccessToast } from '../hooks/Toastconfig';
@@ -54,9 +55,7 @@ export default function ComplaintsManagementScreen({ navigation }: any) {
             <AppHeader title="Complaints Management" onBack={() => navigation.goBack()} />
             
             {loading ? (
-                <View style={styles.center}>
-                    <ActivityIndicator size="large" color="#7C3AED" />
-                </View>
+                <SkeletonCardList count={4} />
             ) : (
                 <ScrollView 
                     contentContainerStyle={styles.scrollContent}

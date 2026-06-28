@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AppHeader } from '../components/AppHeader';
 import { EmptyState } from '../components/ui/EmptyState';
-import { SkeletonList } from '../components/ui/SkeletonCard';
+import { SkeletonList, SkeletonCardList } from '../components/ui/SkeletonCard';
 import { DangerModal } from '../components/ui/DangerModal';
 import { useToast } from '../context/ToastContext';
 import api from '../services/api';
@@ -130,7 +130,7 @@ export default function NoticesManagementScreen({ navigation }: any) {
             />
 
             {loading ? (
-                <SkeletonList count={4} />
+                <SkeletonCardList count={4} />
             ) : (
                 <ScrollView
                     contentContainerStyle={styles.scrollContent}

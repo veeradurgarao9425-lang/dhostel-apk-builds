@@ -219,7 +219,7 @@ export default function HomeScreen() {
 
             const upcomingVacates = studentsRes.data?.success
                 ? (studentsRes.data.data || [])
-                    .filter((s: any) => s.status === 1 && s.vacate_notice_date !== null && s.vacate_notice_date !== undefined)
+                    .filter((s: any) => s.vacate_notice_date !== null && s.vacate_notice_date !== undefined)
                     .sort((a: any, b: any) => a.vacate_notice_date.localeCompare(b.vacate_notice_date))
                     .slice(0, 3)
                     .map((s: any) => {

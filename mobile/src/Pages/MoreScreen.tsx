@@ -99,6 +99,14 @@ export default function MoreScreen() {
                     route: 'Rooms',
                 },
                 {
+                    label: t('more.reportsAnalytics'),
+                    subtitle: t('more.reportsAnalyticsSub'),
+                    icon: 'bar-chart',
+                    iconColor: '#059669',
+                    iconBg: '#D1FAE5',
+                    route: 'Reports',
+                },
+                {
                     label: t('more.vacateNotices'),
                     subtitle: t('more.vacateNoticesSub'),
                     icon: 'calendar-outline',
@@ -197,14 +205,6 @@ export default function MoreScreen() {
                     iconBg: '#CFFAFE',
                     route: 'Reminders',
                 },
-                {
-                    label: t('more.reportsAnalytics'),
-                    subtitle: t('more.reportsAnalyticsSub'),
-                    icon: 'bar-chart',
-                    iconColor: '#059669',
-                    iconBg: '#D1FAE5',
-                    route: 'Reports',
-                },
             ],
         },
         {
@@ -219,13 +219,12 @@ export default function MoreScreen() {
                     route: 'Profile',
                 },
                 {
-                    label: t('more.appSettings'),
+                    label: t('more.settings', 'Settings'),
                     subtitle: t('more.appSettingsSub'),
                     icon: 'settings',
                     iconColor: '#64748B',
                     iconBg: '#F1F5F9',
                     route: 'Settings',
-                    comingSoon: true,
                 },
                 {
                     label: 'Test UI Components',
@@ -618,7 +617,7 @@ export default function MoreScreen() {
                         ) : (
                             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 50 }}>
                                 {hostels.map((h: any) => {
-                                    const isActive = h.hostel_id === user?.hostel_id;
+                                    const isActive = Number(h.hostel_id) === Number(user?.hostel_id);
                                     return (
                                         <TouchableOpacity
                                             key={h.hostel_id}

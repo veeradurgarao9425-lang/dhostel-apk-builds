@@ -18,9 +18,7 @@ export const EmptyState = ({ icon, title, subtitle, actionLabel, onAction, iconC
 
     return (
         <View style={S.container}>
-            <View style={[S.iconBox, { backgroundColor: primary + '15' }]}>
-                <Ionicons name={icon as any} size={64} color={primary} />
-            </View>
+
             <Text style={[S.title, { color: isDark ? '#F8FAFC' : '#1E293B' }]}>{title}</Text>
             <Text style={[S.subtitle, { color: isDark ? '#94A3B8' : '#64748B' }]}>{subtitle}</Text>
             
@@ -44,14 +42,7 @@ const S = StyleSheet.create({
         alignItems: 'center',
         padding: 32,
     },
-    iconBox: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 24,
-    },
+
     title: {
         fontSize: 22,
         fontWeight: '700',

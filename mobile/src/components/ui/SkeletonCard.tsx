@@ -52,18 +52,23 @@ export const SkeletonListItem: React.FC = () => (
 );
 
 // ─── Card Skeleton ────────────────────────────────────────────────────────────
-export const SkeletonCard: React.FC = () => (
-  <View style={styles.card}>
+export const SkeletonCard: React.FC<{ style?: ViewStyle }> = ({ style }) => (
+  <View style={[styles.card, style]}>
     <View style={styles.cardHeader}>
-      <Shimmer width={36} height={36} borderRadius={RADIUS.sm} />
+      <Shimmer width={56} height={56} borderRadius={RADIUS.md} />
       <View style={{ flex: 1, marginLeft: SPACING.md }}>
-        <Shimmer height={14} width="70%" style={{ marginBottom: SPACING.sm }} />
-        <Shimmer height={11} width="50%" />
+        <Shimmer height={18} width="80%" style={{ marginBottom: SPACING.sm }} />
+        <Shimmer height={14} width="50%" style={{ marginBottom: SPACING.sm }} />
       </View>
     </View>
-    <Shimmer height={1} style={{ marginVertical: SPACING.md }} />
-    <Shimmer height={11} width="85%" style={{ marginBottom: SPACING.sm }} />
-    <Shimmer height={11} width="65%" />
+    <Shimmer height={1} style={{ marginVertical: SPACING.lg }} />
+    <Shimmer height={14} width="95%" style={{ marginBottom: SPACING.sm }} />
+    <Shimmer height={14} width="75%" style={{ marginBottom: SPACING.md }} />
+    
+    <View style={{ flexDirection: 'row', gap: 12, marginTop: SPACING.sm }}>
+      <Shimmer height={36} style={{ flex: 1 }} borderRadius={RADIUS.md} />
+      <Shimmer height={36} style={{ flex: 1 }} borderRadius={RADIUS.md} />
+    </View>
   </View>
 );
 
@@ -72,6 +77,15 @@ export const SkeletonList: React.FC<{ count?: number }> = ({ count = 5 }) => (
   <View style={styles.skeletonList}>
     {Array.from({ length: count }).map((_, i) => (
       <SkeletonListItem key={i} />
+    ))}
+  </View>
+);
+
+// ─── Full Page Skeleton for Large Cards ───────────────────────────────────────
+export const SkeletonCardList: React.FC<{ count?: number }> = ({ count = 3 }) => (
+  <View style={styles.skeletonList}>
+    {Array.from({ length: count }).map((_, i) => (
+      <SkeletonCard key={i} />
     ))}
   </View>
 );

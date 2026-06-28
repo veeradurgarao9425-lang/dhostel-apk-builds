@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
     View,
     Text,
@@ -8,6 +8,9 @@ import {
     TextInput,
     StatusBar,
     RefreshControl,
+    ActivityIndicator,
+    Animated,
+    Platform
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,6 +31,17 @@ export default function BulkDeleteScreen() {
     const [dangerModal, setDangerModal] = useState(false);
 
     const [activeTab, setActiveTab] = useState<'rooms' | 'expenses'>('rooms');
+    const [containerWidth, setContainerWidth] = useState(0);
+    const tabAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        Animated.spring(tabAnim, {
+            toValue: activeTab === 'rooms' ? 0 : 1,
+            useNativeDriver: false,
+            tension: 80,
+            friction: 12,
+        }).start();
+    }, [activeTab]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [deleting, setDeleting] = useState(false);
@@ -100,7 +114,7 @@ export default function BulkDeleteScreen() {
     const filteredRooms = useMemo(() => {
         if (!search) return rooms;
         const q = search.toLowerCase();
-        return rooms.filter(r => 
+        return rooms.filter(r =>
             r.room_number?.toString().includes(q) ||
             r.room_type_name?.toLowerCase().includes(q) ||
             (r.floor_number !== undefined && `floor ${r.floor_number}`.includes(q))
@@ -110,7 +124,7 @@ export default function BulkDeleteScreen() {
     const filteredExpenses = useMemo(() => {
         if (!search) return expenses;
         const q = search.toLowerCase();
-        return expenses.filter(e => 
+        return expenses.filter(e =>
             e.category_name?.toLowerCase().includes(q) ||
             e.description?.toLowerCase().includes(q) ||
             e.amount?.toString().includes(q) ||
@@ -143,7 +157,7 @@ export default function BulkDeleteScreen() {
     const isAllSelected = useMemo(() => {
         const currentFiltered = activeTab === 'rooms' ? filteredRooms : filteredExpenses;
         if (currentFiltered.length === 0) return false;
-        
+
         const currentSelected = activeTab === 'rooms' ? selectedRooms : selectedExpenses;
         return currentFiltered.every(item => {
             const id = activeTab === 'rooms' ? item.room_id.toString() : item.expense_id.toString();
@@ -237,8 +251,8 @@ export default function BulkDeleteScreen() {
             <TouchableOpacity
                 style={[
                     styles.card,
-                    { 
-                        backgroundColor: theme.cardBg, 
+                    {
+                        backgroundColor: theme.cardBg,
                         borderColor: isSelected ? theme.primary : (isDark ? '#334155' : '#F1F5F9')
                     }
                 ]}
@@ -268,7 +282,7 @@ export default function BulkDeleteScreen() {
                             </Text>
                         </View>
                     </View>
-                    
+
                     <Text style={[styles.cardSubtitle, { color: theme.textSecondary, fontSize: fontSize - 2 }]}>
                         {item.room_type_name || 'Standard'} Room • Floor {item.floor_number ?? '0'}
                     </Text>
@@ -292,8 +306,8 @@ export default function BulkDeleteScreen() {
             <TouchableOpacity
                 style={[
                     styles.card,
-                    { 
-                        backgroundColor: theme.cardBg, 
+                    {
+                        backgroundColor: theme.cardBg,
                         borderColor: isSelected ? theme.primary : (isDark ? '#334155' : '#F1F5F9')
                     }
                 ]}
@@ -348,38 +362,59 @@ export default function BulkDeleteScreen() {
         <View style={[styles.container, { backgroundColor: theme.background }]}>
             <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-            <AppHeader 
+            <AppHeader
                 title="Bulk Delete"
                 subtitle={`Batch remove rooms or expenses from your database`}
+                alignLeft={true}
             />
 
-            {/* Premium Tab Control */}
-            <View style={[styles.tabBar, { borderBottomColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
+            {/* Animated Tab Control */}
+            <View
+                style={[styles.animatedTabBar, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
+                onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
+            >
+                {containerWidth > 0 && (
+                    <Animated.View
+                        style={[
+                            styles.animatedTabPill,
+                            {
+                                width: (containerWidth - 8) / 2,
+                                backgroundColor: theme.primary,
+                                transform: [{
+                                    translateX: tabAnim.interpolate({
+                                        inputRange: [0, 1],
+                                        outputRange: [0, (containerWidth - 8) / 2]
+                                    })
+                                }]
+                            }
+                        ]}
+                    />
+                )}
                 <TouchableOpacity
-                    style={[styles.tabButton, activeTab === 'rooms' && { borderBottomColor: theme.primary }]}
+                    style={styles.animatedTabBtn}
                     onPress={() => { setActiveTab('rooms'); setSearch(''); }}
-                    activeOpacity={0.7}
+                    activeOpacity={0.8}
                 >
-                    <Ionicons name="bed-outline" size={18} color={activeTab === 'rooms' ? theme.primary : theme.textSecondary} />
+                    <Ionicons name="bed-outline" size={18} color={activeTab === 'rooms' ? '#FFF' : theme.textSecondary} />
                     <Text style={[
-                        styles.tabText, 
-                        { color: activeTab === 'rooms' ? theme.primary : theme.textSecondary, fontSize },
-                        activeTab === 'rooms' && styles.activeTabText
+                        styles.animatedTabText,
+                        { color: activeTab === 'rooms' ? '#FFF' : theme.textSecondary, fontSize },
+                        activeTab === 'rooms' && { fontWeight: '800' }
                     ]}>
                         Rooms ({rooms.length})
                     </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                    style={[styles.tabButton, activeTab === 'expenses' && { borderBottomColor: theme.primary }]}
+                    style={styles.animatedTabBtn}
                     onPress={() => { setActiveTab('expenses'); setSearch(''); }}
-                    activeOpacity={0.7}
+                    activeOpacity={0.8}
                 >
-                    <Ionicons name="cash-outline" size={18} color={activeTab === 'expenses' ? theme.primary : theme.textSecondary} />
+                    <Ionicons name="cash-outline" size={18} color={activeTab === 'expenses' ? '#FFF' : theme.textSecondary} />
                     <Text style={[
-                        styles.tabText, 
-                        { color: activeTab === 'expenses' ? theme.primary : theme.textSecondary, fontSize },
-                        activeTab === 'expenses' && styles.activeTabText
+                        styles.animatedTabText,
+                        { color: activeTab === 'expenses' ? '#FFF' : theme.textSecondary, fontSize },
+                        activeTab === 'expenses' && { fontWeight: '800' }
                     ]}>
                         Expenses ({expenses.length})
                     </Text>
@@ -455,9 +490,10 @@ export default function BulkDeleteScreen() {
             {/* Sticky Action Footer */}
             <View style={[
                 styles.stickyFooter,
-                { 
-                    backgroundColor: isDark ? '#1E293B' : '#FFF', 
-                    borderTopColor: isDark ? '#334155' : '#F1F5F9'
+                {
+                    backgroundColor: isDark ? '#1E293B' : '#FFF',
+                    borderTopColor: isDark ? '#334155' : '#F1F5F9',
+                    paddingBottom: Platform.OS === 'ios' ? 40 : 24
                 }
             ]}>
                 <TouchableOpacity
@@ -498,27 +534,35 @@ export default function BulkDeleteScreen() {
 const styles = StyleSheet.create({
     container: { flex: 1 },
     centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    
-    // Tab controls
-    tabBar: {
+
+    // Animated Tab controls
+    animatedTabBar: {
         flexDirection: 'row',
-        borderBottomWidth: 1,
+        marginHorizontal: 16,
+        marginTop: 16,
+        padding: 4,
+        borderRadius: 16,
+        borderWidth: 1,
+        position: 'relative'
     },
-    tabButton: {
+    animatedTabPill: {
+        position: 'absolute',
+        top: 4,
+        bottom: 4,
+        left: 4,
+        borderRadius: 12,
+    },
+    animatedTabBtn: {
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 14,
-        borderBottomWidth: 3,
-        borderBottomColor: 'transparent',
+        paddingVertical: 12,
         gap: 8,
+        zIndex: 1,
     },
-    tabText: {
+    animatedTabText: {
         fontWeight: '600',
-    },
-    activeTabText: {
-        fontWeight: '800',
     },
 
     // Search bar
@@ -563,7 +607,7 @@ const styles = StyleSheet.create({
     // List & cards
     listContent: {
         padding: 16,
-        paddingBottom: 100,
+        paddingBottom: 120,
     },
     card: {
         flexDirection: 'row',
@@ -660,7 +704,8 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         paddingHorizontal: 16,
-        paddingVertical: 14,
+        paddingTop: 14,
+        paddingBottom: 40,
         borderTopWidth: 1,
         elevation: 10,
         shadowColor: '#000',

@@ -53,83 +53,89 @@ export function TestUIModal({ visible, onClose }: { visible: boolean; onClose: (
                     <ScrollView style={S.scrollContent} showsVerticalScrollIndicator={false}>
                         <Text style={[S.sectionTitle, { color: theme.textSecondary }]}>Premium Pickers (v1.1)</Text>
                         
-                        <TouchableOpacity style={[S.demoBtn, { borderColor: primary }]} onPress={() => setShowSingleDate(true)}>
-                            <Ionicons name="calendar-outline" size={20} color={primary} />
-                            <Text style={[S.demoBtnTxt, { color: primary }]}>Single Date Picker</Text>
-                        </TouchableOpacity>
+                        <View style={S.gridContainer}>
+                            <TouchableOpacity style={[S.demoBtn, { borderColor: primary }]} onPress={() => setShowSingleDate(true)}>
+                                <Ionicons name="calendar-outline" size={28} color={primary} />
+                                <Text style={[S.demoBtnTxt, { color: primary }]}>Single Date</Text>
+                            </TouchableOpacity>
 
-                        <TouchableOpacity style={[S.demoBtn, { borderColor: primary }]} onPress={() => setShowMonthYear(true)}>
-                            <Ionicons name="calendar-sharp" size={20} color={primary} />
-                            <Text style={[S.demoBtnTxt, { color: primary }]}>Month & Year Picker</Text>
-                        </TouchableOpacity>
+                            <TouchableOpacity style={[S.demoBtn, { borderColor: primary }]} onPress={() => setShowMonthYear(true)}>
+                                <Ionicons name="calendar-sharp" size={28} color={primary} />
+                                <Text style={[S.demoBtnTxt, { color: primary }]}>Month & Year</Text>
+                            </TouchableOpacity>
 
-                        <TouchableOpacity style={[S.demoBtn, { borderColor: primary }]} onPress={() => setShowTimePicker(true)}>
-                            <Ionicons name="time-outline" size={20} color={primary} />
-                            <Text style={[S.demoBtnTxt, { color: primary }]}>Time Picker</Text>
-                        </TouchableOpacity>
+                            <TouchableOpacity style={[S.demoBtn, { borderColor: primary }]} onPress={() => setShowTimePicker(true)}>
+                                <Ionicons name="time-outline" size={28} color={primary} />
+                                <Text style={[S.demoBtnTxt, { color: primary }]}>Time Picker</Text>
+                            </TouchableOpacity>
 
-                        <TouchableOpacity style={[S.demoBtn, { borderColor: primary }]} onPress={() => setShowDateTimePicker(true)}>
-                            <Ionicons name="stopwatch-outline" size={20} color={primary} />
-                            <Text style={[S.demoBtnTxt, { color: primary }]}>Date & Time Picker</Text>
-                        </TouchableOpacity>
+                            <TouchableOpacity style={[S.demoBtn, { borderColor: primary }]} onPress={() => setShowDateTimePicker(true)}>
+                                <Ionicons name="stopwatch-outline" size={28} color={primary} />
+                                <Text style={[S.demoBtnTxt, { color: primary }]}>Date & Time</Text>
+                            </TouchableOpacity>
 
-                        <TouchableOpacity style={[S.demoBtn, { borderColor: primary }]} onPress={() => setShowRangePicker(true)}>
-                            <Ionicons name="calendar-number-outline" size={20} color={primary} />
-                            <Text style={[S.demoBtnTxt, { color: primary }]}>Date Range Picker</Text>
-                        </TouchableOpacity>
+                            <TouchableOpacity style={[S.demoBtn, { borderColor: primary }]} onPress={() => setShowRangePicker(true)}>
+                                <Ionicons name="calendar-number-outline" size={28} color={primary} />
+                                <Text style={[S.demoBtnTxt, { color: primary }]}>Date Range</Text>
+                            </TouchableOpacity>
+                        </View>
 
-                        <Text style={[S.sectionTitle, { color: theme.textSecondary, marginTop: 24 }]}>Interactive Modals</Text>
+                        <Text style={[S.sectionTitle, { color: theme.textSecondary }]}>Interactive Modals</Text>
 
-                        <TouchableOpacity style={[S.demoBtn, { borderColor: primary }]} onPress={() => setShowSelectionModal(true)}>
-                            <Ionicons name="list-outline" size={20} color={primary} />
-                            <Text style={[S.demoBtnTxt, { color: primary }]}>Selection List Modal</Text>
-                        </TouchableOpacity>
-                        
-                        <TouchableOpacity style={[S.demoBtn, { borderColor: primary }]} onPress={() => setShowActionSheet(true)}>
-                            <Ionicons name="menu-outline" size={20} color={primary} />
-                            <Text style={[S.demoBtnTxt, { color: primary }]}>Action Sheet Bottom</Text>
-                        </TouchableOpacity>
+                        <View style={S.gridContainer}>
+                            <TouchableOpacity style={[S.demoBtn, { borderColor: primary }]} onPress={() => setShowSelectionModal(true)}>
+                                <Ionicons name="list-outline" size={28} color={primary} />
+                                <Text style={[S.demoBtnTxt, { color: primary }]}>Selection List</Text>
+                            </TouchableOpacity>
+                            
+                            <TouchableOpacity style={[S.demoBtn, { borderColor: primary }]} onPress={() => setShowActionSheet(true)}>
+                                <Ionicons name="menu-outline" size={28} color={primary} />
+                                <Text style={[S.demoBtnTxt, { color: primary }]}>Action Sheet</Text>
+                            </TouchableOpacity>
 
-                        <TouchableOpacity style={[S.demoBtn, { borderColor: '#DC2626' }]} onPress={() => setShowDangerModal(true)}>
-                            <Ionicons name="warning-outline" size={20} color="#DC2626" />
-                            <Text style={[S.demoBtnTxt, { color: '#DC2626' }]}>Danger Confirm Modal</Text>
-                        </TouchableOpacity>
+                            <TouchableOpacity style={[S.demoBtn, { borderColor: '#DC2626' }]} onPress={() => setShowDangerModal(true)}>
+                                <Ionicons name="warning-outline" size={28} color="#DC2626" />
+                                <Text style={[S.demoBtnTxt, { color: '#DC2626' }]}>Danger Confirm</Text>
+                            </TouchableOpacity>
+                        </View>
 
-                        <Text style={[S.sectionTitle, { color: theme.textSecondary, marginTop: 24 }]}>Network & Feedback</Text>
+                        <Text style={[S.sectionTitle, { color: theme.textSecondary }]}>Network & Feedback</Text>
 
-                        <TouchableOpacity style={[S.demoBtn, { borderColor: '#F59E0B' }]} onPress={simulateBanner}>
-                            <Ionicons name="wifi-outline" size={20} color="#F59E0B" />
-                            <Text style={[S.demoBtnTxt, { color: '#F59E0B' }]}>Simulate Offline Banner</Text>
-                        </TouchableOpacity>
+                        <View style={S.gridContainer}>
+                            <TouchableOpacity style={[S.demoBtn, { borderColor: '#F59E0B' }]} onPress={simulateBanner}>
+                                <Ionicons name="flash-outline" size={28} color="#F59E0B" />
+                                <Text style={[S.demoBtnTxt, { color: '#F59E0B' }]}>Network Banner</Text>
+                            </TouchableOpacity>
 
-                        <TouchableOpacity style={[S.demoBtn, { borderColor: '#DC2626' }]} onPress={simulateScreen}>
-                            <Ionicons name="cloud-offline-outline" size={20} color="#DC2626" />
-                            <Text style={[S.demoBtnTxt, { color: '#DC2626' }]}>Simulate Maintenance Screen</Text>
-                        </TouchableOpacity>
-                        
-                        <TouchableOpacity style={[S.demoBtn, { borderColor: '#10B981' }]} onPress={() => {
-                            Toast.show({
-                                type: 'success',
-                                text1: 'Success Action',
-                                text2: 'This is a premium modern toast message!',
-                                visibilityTime: 3000,
-                            });
-                        }}>
-                            <Ionicons name="checkmark-circle-outline" size={20} color="#10B981" />
-                            <Text style={[S.demoBtnTxt, { color: '#10B981' }]}>Test Success Toast</Text>
-                        </TouchableOpacity>
+                            <TouchableOpacity style={[S.demoBtn, { borderColor: '#DC2626' }]} onPress={simulateScreen}>
+                                <Ionicons name="cloud-offline-outline" size={28} color="#DC2626" />
+                                <Text style={[S.demoBtnTxt, { color: '#DC2626' }]}>Offline Screen</Text>
+                            </TouchableOpacity>
+                            
+                            <TouchableOpacity style={[S.demoBtn, { borderColor: '#10B981' }]} onPress={() => Toast.show({ type: 'success', text1: 'Success', text2: 'Operation completed normally' })}>
+                                <Ionicons name="checkmark-circle-outline" size={28} color="#10B981" />
+                                <Text style={[S.demoBtnTxt, { color: '#10B981' }]}>Success Toast</Text>
+                            </TouchableOpacity>
+                        </View>
 
-                        <Text style={[S.sectionTitle, { color: theme.textSecondary, marginTop: 24 }]}>Full Page Overlays</Text>
+                        <Text style={[S.sectionTitle, { color: theme.textSecondary }]}>Complex Screens</Text>
 
-                        <TouchableOpacity style={[S.demoBtn, { borderColor: primary }]} onPress={() => setShowSearchUI(true)}>
-                            <Ionicons name="search-outline" size={20} color={primary} />
-                            <Text style={[S.demoBtnTxt, { color: primary }]}>Full Screen Search UI</Text>
-                        </TouchableOpacity>
+                        <View style={S.gridContainer}>
+                            <TouchableOpacity style={[S.demoBtn, { borderColor: '#8B5CF6' }]} onPress={() => setShowSearchUI(true)}>
+                                <Ionicons name="search-outline" size={28} color="#8B5CF6" />
+                                <Text style={[S.demoBtnTxt, { color: '#8B5CF6' }]}>Search Screen</Text>
+                            </TouchableOpacity>
 
-                        <TouchableOpacity style={[S.demoBtn, { borderColor: primary }]} onPress={() => setShowNotificationsUI(true)}>
-                            <Ionicons name="notifications-outline" size={20} color={primary} />
-                            <Text style={[S.demoBtnTxt, { color: primary }]}>Notifications Center</Text>
-                        </TouchableOpacity>
+                            <TouchableOpacity style={[S.demoBtn, { borderColor: '#3B82F6' }]} onPress={() => setShowNotificationsUI(true)}>
+                                <Ionicons name="notifications-outline" size={28} color="#3B82F6" />
+                                <Text style={[S.demoBtnTxt, { color: '#3B82F6' }]}>Notifications</Text>
+                            </TouchableOpacity>
+                            
+                            <TouchableOpacity style={[S.demoBtn, { borderColor: '#64748B' }]} onPress={() => setShowEmptyState(true)}>
+                                <Ionicons name="file-tray-outline" size={28} color="#64748B" />
+                                <Text style={[S.demoBtnTxt, { color: '#64748B' }]}>Empty State</Text>
+                            </TouchableOpacity>
+                        </View>
 
                         <Text style={[S.sectionTitle, { color: theme.textSecondary, marginTop: 24 }]}>Cards & States</Text>
 
@@ -169,7 +175,7 @@ export function TestUIModal({ visible, onClose }: { visible: boolean; onClose: (
                 visible={showSelectionModal} 
                 onClose={() => setShowSelectionModal(false)} 
                 title="Select Category"
-                options={[{id:'1',label:'Rent'},{id:'2',label:'Maintenance'},{id:'3',label:'Electricity'}]}
+                items={[{id:'1',label:'Rent'},{id:'2',label:'Maintenance'},{id:'3',label:'Electricity'}]}
                 onSelect={() => setShowSelectionModal(false)} 
             />
 
@@ -233,13 +239,12 @@ const S = StyleSheet.create({
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(15, 23, 42, 0.4)',
-        justifyContent: 'flex-end',
+        justifyContent: 'flex-start',
     },
     modalContent: {
-        borderTopLeftRadius: 28,
-        borderTopRightRadius: 28,
-        padding: 24,
-        maxHeight: '90%',
+        flex: 1,
+        padding: 20,
+        paddingTop: 50,
     },
     modalHeader: {
         flexDirection: 'row',
@@ -248,22 +253,23 @@ const S = StyleSheet.create({
         marginBottom: 20,
     },
     modalTitle: {
-        fontSize: 20,
+        fontSize: 24,
         fontWeight: '800',
     },
     closeBtn: {
-        padding: 4,
-        backgroundColor: 'rgba(148, 163, 184, 0.1)',
+        padding: 6,
+        backgroundColor: 'rgba(148, 163, 184, 0.15)',
         borderRadius: 20,
     },
     scrollContent: {
-        paddingBottom: 20,
+        paddingBottom: 40,
     },
     sectionTitle: {
-        fontSize: 14,
-        fontWeight: '700',
+        fontSize: 15,
+        fontWeight: '800',
         textTransform: 'uppercase',
         letterSpacing: 0.5,
+        marginTop: 20,
         marginBottom: 16,
     },
     demoSubtitle: {
@@ -271,18 +277,27 @@ const S = StyleSheet.create({
         fontWeight: '600',
         marginBottom: 10,
     },
-    demoBtn: {
+    gridContainer: {
         flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        gap: 12,
+    },
+    demoBtn: {
+        width: '48%',
         alignItems: 'center',
-        padding: 14,
+        justifyContent: 'center',
+        paddingVertical: 20,
+        paddingHorizontal: 12,
         borderWidth: 1.5,
-        borderRadius: 12,
-        marginBottom: 12,
+        borderRadius: 16,
         backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        marginBottom: 4,
     },
     demoBtnTxt: {
-        fontSize: 15,
+        fontSize: 13,
         fontWeight: '700',
-        marginLeft: 10,
+        marginTop: 10,
+        textAlign: 'center',
     },
 });

@@ -41,6 +41,7 @@ import { FullScreenLoader } from '../components/FullScreenLoader';
 const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: any) => {
     const { theme } = useTheme();
     const anim = useRef(new Animated.Value(0)).current;
+    const insets = useSafeAreaInsets();
 
     useEffect(() => {
         if (visible) {
@@ -78,7 +79,7 @@ const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: any) => {
                 </Animated.View>
                 <Animated.View style={[
                     styles.sheet,
-                    { maxHeight, backgroundColor: theme.cardBg || '#FFF', transform: [{ translateY: sheetTranslateY }] }
+                    { maxHeight, backgroundColor: theme.cardBg || '#FFF', transform: [{ translateY: sheetTranslateY }], paddingBottom: insets.bottom > 0 ? insets.bottom : 24 }
                 ]}>
                     {children}
                 </Animated.View>
@@ -245,6 +246,7 @@ const Selector = ({ label, options, selected, onSelect }: any) => {
 // ─── Simple options drawer (gender, proof, relation) ─────────────────────────
 const OptionsDrawer = ({ visible, title, data, selectedId, onSelect, onClose, keyExtractor, labelExtractor, searchable }: any) => {
     const { theme, isDark } = useTheme();
+    const insets = useSafeAreaInsets();
     const [search, setSearch] = React.useState('');
     const filtered = React.useMemo(() => {
         if (!searchable || !search) return data;

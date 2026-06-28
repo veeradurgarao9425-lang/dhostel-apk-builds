@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { AppHeader } from '../components/AppHeader';
 import { EmptyState } from '../components/ui/EmptyState';
-import { SkeletonList } from '../components/ui/SkeletonCard';
+import { SkeletonList, SkeletonCardList } from '../components/ui/SkeletonCard';
 import { useToast } from '../context/ToastContext';
 import api from '../services/api';
 import { useAuth } from '../../contexts/AuthContext';
@@ -83,7 +83,7 @@ export default function RequestsManagementScreen({ navigation }: any) {
             </View>
 
             {loading ? (
-                <SkeletonList count={4} />
+                <SkeletonCardList count={4} />
             ) : (
                 <ScrollView 
                     contentContainerStyle={styles.scrollContent}
