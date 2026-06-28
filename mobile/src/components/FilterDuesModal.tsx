@@ -8,6 +8,9 @@ import { CustomMonthYearPicker } from './ui/pickers/CustomMonthYearPicker';
 import { CustomTimePicker } from './ui/pickers/CustomTimePicker';
 import { CustomDateTimePicker } from './ui/pickers/CustomDateTimePicker';
 import { SelectionModal } from './ui/SelectionModal';
+import { SearchUI } from './ui/SearchScreen';
+import { NotificationsScreen } from './ui/NotificationsScreen';
+import { useNetwork } from './ui/NetworkManager';
 import Toast from 'react-native-toast-message';
 
 export interface FilterDuesProps {
@@ -31,6 +34,11 @@ export function FilterDuesModal({ visible, onClose, onApply }: FilterDuesProps) 
     const [showTimePicker, setShowTimePicker] = useState(false);
     const [showDateTimePicker, setShowDateTimePicker] = useState(false);
     const [showSelectionModal, setShowSelectionModal] = useState(false);
+    const [showSearchUI, setShowSearchUI] = useState(false);
+    const [showNotificationsUI, setShowNotificationsUI] = useState(false);
+    
+    // We can extract simulateBanner to simulate network changes
+    const { simulateBanner } = useNetwork();
     
     const [minAmount, setMinAmount] = useState('');
     const [maxAmount, setMaxAmount] = useState('');
@@ -152,6 +160,21 @@ export function FilterDuesModal({ visible, onClose, onApply }: FilterDuesProps) 
                                         <Ionicons name="list" size={16} color={primary} />
                                         <Text style={[S.demoBtnText, { color: primary }]}>Demo Room Selection</Text>
                                     </TouchableOpacity>
+                                    <TouchableOpacity style={S.demoBtn} onPress={() => setShowSearchUI(true)}>
+                                        <Ionicons name="search" size={16} color={primary} />
+                                        <Text style={[S.demoBtnText, { color: primary }]}>Demo Search UI</Text>
+                                    </TouchableOpacity>
+                                </View>
+                                
+                                <View style={S.demoRow}>
+                                    <TouchableOpacity style={S.demoBtn} onPress={() => setShowNotificationsUI(true)}>
+                                        <Ionicons name="notifications" size={16} color={primary} />
+                                        <Text style={[S.demoBtnText, { color: primary }]}>Demo Notifications UI</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={S.demoBtn} onPress={() => simulateBanner('syncing')}>
+                                        <Ionicons name="wifi" size={16} color={primary} />
+                                        <Text style={[S.demoBtnText, { color: primary }]}>Simulate Network Sync</Text>
+                                    </TouchableOpacity>
                                 </View>
                             </View>
 
@@ -266,6 +289,16 @@ export function FilterDuesModal({ visible, onClose, onApply }: FilterDuesProps) 
                     { id: '105', label: 'Room 105', subLabel: 'Available' },
                 ]}
                 selectedId="103"
+            />
+            
+            <SearchUI 
+                visible={showSearchUI}
+                onClose={() => setShowSearchUI(false)}
+            />
+
+            <NotificationsScreen 
+                visible={showNotificationsUI}
+                onClose={() => setShowNotificationsUI(false)}
             />
         </>
     );

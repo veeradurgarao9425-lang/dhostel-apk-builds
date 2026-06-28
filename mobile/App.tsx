@@ -6,7 +6,7 @@ import AppNavigator from './src/navigation/AppNavigator';
 import Toast, { BaseToast, ErrorToast } from 'react-native-toast-message';
 import { HostelChatbot } from './src/components/HostelChatbot';
 import { ToastProvider } from './src/context/ToastContext';
-import { OfflineFallback } from './src/components/OfflineFallback';
+import { NetworkManager } from './src/components/ui/NetworkManager';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { queryClient } from './src/lib/queryClient';
 import { CustomToast, ToastVariant } from './src/components/ui/CustomToast';
@@ -69,11 +69,11 @@ export default function App() {
             <ConfirmationProvider>
             <ToastProvider>
               <SafeAreaProvider style={styles.container}>
-                <OfflineFallback>
+                <NetworkManager>
                   <AppNavigator
                     onRouteChange={(routeName: string) => setCurrentRoute(routeName)}
                   />
-                </OfflineFallback>
+                </NetworkManager>
                 {showChatbot && <HostelChatbot />}
                 <ThemedToast />
               </SafeAreaProvider>
