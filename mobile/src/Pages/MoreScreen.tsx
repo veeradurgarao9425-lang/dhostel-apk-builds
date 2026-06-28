@@ -509,6 +509,61 @@ export default function MoreScreen() {
                     </View>
                 )}
 
+                {/* ── PREMIUM UPGRADE BANNER ──────────────────────────── */}
+                {!searchQuery && (
+                    <TouchableOpacity
+                        activeOpacity={0.88}
+                        onPress={() => navigation.navigate('PremiumSubscription')}
+                        style={{
+                            marginHorizontal: 16,
+                            marginBottom: 16,
+                            borderRadius: 18,
+                            overflow: 'hidden',
+                            shadowColor: '#7C3AED',
+                            shadowOffset: { width: 0, height: 4 },
+                            shadowOpacity: 0.35,
+                            shadowRadius: 12,
+                            elevation: 7,
+                        }}
+                    >
+                        <LinearGradient
+                            colors={['#3B0764', '#6B21A8', '#9333EA']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                paddingHorizontal: 16,
+                                paddingVertical: 14,
+                                gap: 14,
+                            }}
+                        >
+                            <LinearGradient
+                                colors={['#FBBF24', '#D97706']}
+                                style={{
+                                    width: 46,
+                                    height: 46,
+                                    borderRadius: 23,
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                }}
+                            >
+                                <Ionicons name="diamond" size={22} color="#FFF" />
+                            </LinearGradient>
+                            <View style={{ flex: 1 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                                    <Text style={{ fontSize: 15, fontWeight: '800', color: '#FFF' }}>Go Premium</Text>
+                                    <View style={{ backgroundColor: '#FBBF24', borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2 }}>
+                                        <Text style={{ fontSize: 10, fontWeight: '800', color: '#1A0533' }}>₹10/month</Text>
+                                    </View>
+                                </View>
+                                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)' }}>Unlock reminders, reports, QR payments & more</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
+                        </LinearGradient>
+                    </TouchableOpacity>
+                )}
+
                 {/* Empty State */}
                 {isListEmpty && (
                     <View style={s.emptyState}>
@@ -603,7 +658,7 @@ export default function MoreScreen() {
                                 style={s.modalCloseBtn}
                                 onPress={() => setSelectorVisible(false)}
                             >
-                                <Ionicons name="close" size={22} color={theme.textPrimary} />
+                                <Text style={{ color: theme.primary, fontSize: 15, fontWeight: '700' }}>Close</Text>
                             </TouchableOpacity>
                         </View>
 
@@ -616,6 +671,23 @@ export default function MoreScreen() {
                             </View>
                         ) : (
                             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 50 }}>
+                                <View style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    backgroundColor: theme.isDark ? 'rgba(79, 70, 229, 0.12)' : '#F0F9FF',
+                                    borderColor: theme.isDark ? 'rgba(79, 70, 229, 0.25)' : '#E0F2FE',
+                                    borderWidth: 1,
+                                    padding: 12,
+                                    borderRadius: 14,
+                                    marginBottom: 16,
+                                    gap: 8,
+                                }}>
+                                    <Ionicons name="information-circle-outline" size={18} color={theme.primary} />
+                                    <Text style={{ flex: 1, color: theme.textSecondary, fontSize: 12, fontWeight: '600', lineHeight: 16 }}>
+                                        Note: Switch between your hostels here. You can manage or add new hostels from the Hostels page under settings.
+                                    </Text>
+                                </View>
+
                                 {hostels.map((h: any) => {
                                     const isActive = h.hostel_id && user?.hostel_id && (Number(h.hostel_id) === Number(user.hostel_id));
                                     return (
@@ -934,7 +1006,16 @@ const s = StyleSheet.create({
         borderTopRightRadius: 28,
         paddingHorizontal: 20,
         paddingTop: 20,
-        maxHeight: '75%',
+        maxHeight: '85%',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 10,
+        elevation: 12,
+        borderTopWidth: 1,
+        borderLeftWidth: 1,
+        borderRightWidth: 1,
+        borderColor: 'rgba(148, 163, 184, 0.15)',
     },
     modalHeader: {
         flexDirection: 'row',

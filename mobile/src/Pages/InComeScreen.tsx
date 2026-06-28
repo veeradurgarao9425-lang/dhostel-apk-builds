@@ -7,9 +7,12 @@ import {
     TouchableOpacity,
     TextInput,
     StatusBar,
+    ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Plus, Search, Calendar, ChevronDown } from 'lucide-react-native';
+import { Plus, Search, Calendar, ChevronDown, Download } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { downloadAndSaveFile } from '../utils/fileDownloader';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
@@ -19,14 +22,39 @@ import { HeaderNotification } from '../components/HeaderNotification';
 import { AppHeader } from '../components/AppHeader';
 import { EmptyState } from '../components/ui/EmptyState';
 import { SkeletonList } from '../components/ui/SkeletonCard';
+import { FullScreenLoader } from '../components/FullScreenLoader';
 
 export const IncomeScreen = ({ navigation }: any) => {
     const { user } = useAuth();
     const { theme } = useTheme();
+    const { showApiError, showError } = useToast();
     const [search, setSearch] = useState('');
     const [incomes, setIncomes] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'Day' | 'Week' | 'Month'>('Day');
+    const [isExporting, setIsExporting] = useState(false);
+
+    const handleExport = async () => {
+        setIsExporting(true);
+        try {
+            const token = await AsyncStorage.getItem('token');
+            if (!token) {
+                showError('Authentication token not found. Please log in again.');
+                return;
+            }
+
+            const baseURL = (api.defaults.baseURL || 'https://dhostel-backend.onrender.com/api').replace(/\/$/, '');
+            const exportUrl = `${baseURL}/income/export?token=${encodeURIComponent(token)}&all=true`;
+            const filename = `Income_Report_${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+            await downloadAndSaveFile(exportUrl, filename, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        } catch (error) {
+            console.error(error);
+            showApiError(error, 'Failed to export income report');
+        } finally {
+            setIsExporting(false);
+        }
+    };
 
     const [error, setError] = useState(false);
     const fetchIncomes = async () => {
@@ -169,10 +197,33 @@ export const IncomeScreen = ({ navigation }: any) => {
 
     return (
         <View style={styles.container}>
+            <FullScreenLoader visible={isExporting} />
             <StatusBar barStyle="light-content" />
             <AppHeader 
                 title="Financial Insights" 
-                rightComponent={<ProfileMenu />}
+                rightComponent={
+                    <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+                        <TouchableOpacity 
+                            onPress={handleExport} 
+                            disabled={isExporting} 
+                            style={{ 
+                                width: 38, 
+                                height: 38, 
+                                borderRadius: 19, 
+                                backgroundColor: 'rgba(255,255,255,0.15)', 
+                                justifyContent: 'center', 
+                                alignItems: 'center' 
+                            }}
+                        >
+                            {isExporting ? (
+                                <ActivityIndicator size="small" color="#FFF" />
+                            ) : (
+                                <Download color="#FFF" size={18} />
+                            )}
+                        </TouchableOpacity>
+                        <ProfileMenu />
+                    </View>
+                }
             >
                 {renderTabs()}
             </AppHeader>

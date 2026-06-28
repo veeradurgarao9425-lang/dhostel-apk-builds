@@ -13,6 +13,8 @@ import api from '../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useToast } from '../context/ToastContext';
+import { FullScreenLoader } from '../components/FullScreenLoader';
+import { useRefresh } from '../../contexts/RefreshContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { toLocalDateStr as toLocalDateString } from '../utils/dateUtils';
 import { AppHeader } from '../components/AppHeader';
@@ -34,6 +36,7 @@ export default function CollectedPaymentsScreen() {
     const route = useRoute<any>();
     const { theme, isDark } = useTheme();
     const { showError, showSuccess, showApiError } = useToast();
+    const { refreshCounter } = useRefresh();
 
     // -- Filter State --
     const [filterMode, setFilterMode] = useState<'month' | 'custom'>('month');
@@ -146,7 +149,7 @@ export default function CollectedPaymentsScreen() {
         setPage(1);
         setHasMore(true);
         load(1, true);
-    }, [load]);
+    }, [load, refreshCounter]);
 
     let periodLabel = '';
     if (filterMode === 'month') {
@@ -326,6 +329,7 @@ export default function CollectedPaymentsScreen() {
 
     return (
         <View style={s.root}>
+            <FullScreenLoader visible={isExporting} />
             <StatusBar barStyle="light-content" />
 
             {/* HEADER */}
@@ -399,7 +403,7 @@ export default function CollectedPaymentsScreen() {
                                             <Text style={s.totalCollectedValue}>₹{total.toLocaleString('en-IN')}</Text>
                                             <Text style={s.totalCollectedSub}>From {transactionsCount} payment{transactionsCount !== 1 ? 's' : ''}</Text>
                                         </View>
-                                        <TouchableOpacity onPress={() => load(1, false)} style={s.refreshBtn} activeOpacity={0.7}>
+                                        <TouchableOpacity onPress={() => load(1, true)} style={s.refreshBtn} activeOpacity={0.7}>
                                             <Ionicons name="refresh" size={18} color="#059669" />
                                         </TouchableOpacity>
                                     </View>
@@ -438,62 +442,69 @@ export default function CollectedPaymentsScreen() {
                 />
             )}
 
-            {/* Export Modal */}
+            {/* Export Modal (Bottom Sheet Drawer) */}
             <Modal
                 visible={showExportModal}
                 transparent
-                animationType="fade"
+                animationType="slide"
                 onRequestClose={() => setShowExportModal(false)}
             >
                 <View style={s.modalOverlay}>
-                    <View style={s.modalContent}>
-                        <View style={s.modalHeader}>
-                            <Text style={s.modalTitle}>Export Income Report</Text>
+                    <TouchableOpacity
+                        style={StyleSheet.absoluteFillObject}
+                        activeOpacity={1}
+                        onPress={() => setShowExportModal(false)}
+                    />
+                    <View style={[s.bottomSheetContent, { backgroundColor: theme.cardBg }]}>
+                        <View style={s.bottomSheetHeader}>
+                            <Text style={[s.bottomSheetTitle, { color: theme.textPrimary }]}>Export Income Report</Text>
                             <TouchableOpacity onPress={() => setShowExportModal(false)}>
-                                <X size={24} color="#64748B" />
+                                <Text style={{ color: theme.primary, fontSize: 15, fontWeight: '700' }}>Close</Text>
                             </TouchableOpacity>
                         </View>
 
-                        <Text style={s.modalLabel}>Select Date Range</Text>
-                        <Text style={s.modalSubLabel}>All transactions in this range will be exported</Text>
+                        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 30 }} showsVerticalScrollIndicator={false}>
+                            <Text style={[s.modalLabel, { color: theme.textSecondary }]}>Select Date Range</Text>
+                            <Text style={[s.modalSubLabel, { color: '#94A3B8' }]}>All transactions in this range will be exported</Text>
 
-                        <View style={s.dateInputs}>
-                            <TouchableOpacity style={s.dateInput} onPress={() => setStartDatePickerVisible(true)}>
-                                <Ionicons name="calendar-outline" size={18} color="#64748B" />
-                                <Text style={s.dateInputText}>
-                                    {exportStart.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                </Text>
-                            </TouchableOpacity>
-                            <Text style={{ color: '#94A3B8', fontWeight: '700' }}>→</Text>
-                            <TouchableOpacity style={s.dateInput} onPress={() => setEndDatePickerVisible(true)}>
-                                <Ionicons name="calendar-outline" size={18} color="#64748B" />
-                                <Text style={s.dateInputText}>
-                                    {exportEnd.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
+                            <View style={s.dateInputs}>
+                                <TouchableOpacity style={[s.dateInput, { backgroundColor: theme.isDark ? '#334155' : '#F1F5F9', borderColor: theme.isDark ? '#475569' : '#E2E8F0' }]} onPress={() => setStartDatePickerVisible(true)}>
+                                    <Ionicons name="calendar-outline" size={18} color="#64748B" />
+                                    <Text style={[s.dateInputText, { color: theme.textPrimary }]}>
+                                        {exportStart.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                    </Text>
+                                </TouchableOpacity>
 
-                        {exportStart > exportEnd && (
-                            <Text style={s.exportWarning}>⚠️ Start date must be before end date</Text>
-                        )}
+                                <TouchableOpacity style={[s.dateInput, { backgroundColor: theme.isDark ? '#334155' : '#F1F5F9', borderColor: theme.isDark ? '#475569' : '#E2E8F0' }]} onPress={() => setEndDatePickerVisible(true)}>
+                                    <Ionicons name="calendar-outline" size={18} color="#64748B" />
+                                    <Text style={[s.dateInputText, { color: theme.textPrimary }]}>
+                                        {exportEnd.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
 
-                        <TouchableOpacity
-                            style={[
-                                s.exportConfirmBtn,
-                                (isExporting || exportStart > exportEnd) && s.exportConfirmBtnDisabled
-                            ]}
-                            onPress={handleExport}
-                            disabled={isExporting || exportStart > exportEnd}
-                        >
-                            {isExporting ? (
-                                <ActivityIndicator color="#FFF" size="small" />
-                            ) : (
-                                <>
-                                    <Text style={s.exportConfirmText}>Download Excel (All Data)</Text>
-                                    <Download size={18} color="#FFF" />
-                                </>
+                            {exportStart > exportEnd && (
+                                <Text style={s.exportWarning}>⚠️ Start date must be before end date</Text>
                             )}
-                        </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[
+                                    s.exportConfirmBtn,
+                                    { backgroundColor: (isExporting || exportStart > exportEnd) ? '#94A3B8' : theme.primary }
+                                ]}
+                                onPress={handleExport}
+                                disabled={isExporting || exportStart > exportEnd}
+                            >
+                                {isExporting ? (
+                                    <ActivityIndicator color="#FFF" size="small" />
+                                ) : (
+                                    <>
+                                        <Text style={s.exportConfirmText}>Download Excel (All Data)</Text>
+                                        <Download size={18} color="#FFF" />
+                                    </>
+                                )}
+                            </TouchableOpacity>
+                        </ScrollView>
                     </View>
                 </View>
             </Modal>
@@ -984,11 +995,22 @@ const s = StyleSheet.create({
 
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
+        backgroundColor: 'transparent',
         justifyContent: 'center',
         padding: 20,
     },
-    modalContent: { backgroundColor: '#FFF', borderRadius: 24, padding: 24 },
+    modalContent: { 
+        backgroundColor: '#FFF', 
+        borderRadius: 24, 
+        padding: 24,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        elevation: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(148, 163, 184, 0.15)',
+    },
     modalHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -1029,5 +1051,34 @@ const s = StyleSheet.create({
     listContentContainer: {
         padding: 16,
         paddingBottom: 120,
+    },
+    bottomSheetContent: {
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        maxHeight: '75%',
+        paddingBottom: 24,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 10,
+        elevation: 12,
+        borderTopWidth: 1,
+        borderLeftWidth: 1,
+        borderRightWidth: 1,
+        borderColor: 'rgba(148, 163, 184, 0.15)',
+    },
+    bottomSheetHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingVertical: 18,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F1F5F9',
+    },
+    bottomSheetTitle: {
+        fontSize: 16,
+        fontWeight: '900',
+        color: '#000000',
     },
 });

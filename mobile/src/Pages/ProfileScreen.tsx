@@ -482,7 +482,7 @@ const ProfileScreen = ({ navigation }: any) => {
                                 style={styles.modalCloseBtn}
                                 onPress={() => setSelectorVisible(false)}
                             >
-                                <Ionicons name="close" size={22} color={theme.textPrimary} />
+                                <Text style={{ color: theme.primary, fontSize: 15, fontWeight: '700' }}>Close</Text>
                             </TouchableOpacity>
                         </View>
 
@@ -495,6 +495,23 @@ const ProfileScreen = ({ navigation }: any) => {
                             </View>
                         ) : (
                             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 50 }}>
+                                <View style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    backgroundColor: theme.isDark ? 'rgba(79, 70, 229, 0.12)' : '#F0F9FF',
+                                    borderColor: theme.isDark ? 'rgba(79, 70, 229, 0.25)' : '#E0F2FE',
+                                    borderWidth: 1,
+                                    padding: 12,
+                                    borderRadius: 14,
+                                    marginBottom: 16,
+                                    gap: 8,
+                                }}>
+                                    <Ionicons name="information-circle-outline" size={18} color={theme.primary} />
+                                    <Text style={{ flex: 1, color: theme.textSecondary, fontSize: 12, fontWeight: '600', lineHeight: 16 }}>
+                                        Note: Switch between your hostels here. You can manage or add new hostels from the Hostels page under settings.
+                                    </Text>
+                                </View>
+
                                 {hostelsList.map((h: any) => {
                                     const isActive = Number(h.hostel_id) === Number(user?.hostel_id);
                                     return (
@@ -505,12 +522,7 @@ const ProfileScreen = ({ navigation }: any) => {
                                                 isActive && styles.hostelItemActive,
                                                 isActive ? {
                                                     borderColor: theme.primary,
-                                                    backgroundColor: isDark ? 'rgba(124, 58, 237, 0.15)' : 'rgba(124, 58, 237, 0.08)',
-                                                    shadowColor: theme.primary,
-                                                    shadowOffset: { width: 0, height: 4 },
-                                                    shadowOpacity: 0.15,
-                                                    shadowRadius: 8,
-                                                    elevation: 4,
+                                                    backgroundColor: isDark ? 'rgba(124, 58, 237, 0.2)' : '#F5F3FF',
                                                 } : {
                                                     borderColor: isDark ? '#334155' : '#E2E8F0',
                                                     backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
@@ -1068,12 +1080,16 @@ const styles = StyleSheet.create({
         borderTopRightRadius: 28,
         paddingHorizontal: 20,
         paddingTop: 20,
-        maxHeight: '75%',
-        elevation: 10,
+        maxHeight: '85%',
         shadowColor: '#000',
-        shadowOpacity: 0.15,
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.08,
         shadowRadius: 10,
-        shadowOffset: { width: 0, height: -3 },
+        elevation: 12,
+        borderTopWidth: 1,
+        borderLeftWidth: 1,
+        borderRightWidth: 1,
+        borderColor: 'rgba(148, 163, 184, 0.15)',
     },
     modalHeader: {
         flexDirection: 'row',

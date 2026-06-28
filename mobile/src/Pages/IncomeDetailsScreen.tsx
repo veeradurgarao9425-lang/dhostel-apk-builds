@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
-    ScrollView, StatusBar, ActivityIndicator, Dimensions, Linking, Modal, Platform, Animated
+    ScrollView, StatusBar, ActivityIndicator, Dimensions, Linking, Modal, Platform, Animated, RefreshControl
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,6 +18,10 @@ import * as Sharing from 'expo-sharing';
 import { SuccessModal } from '../components/SuccessModal';
 import { useToast } from '../context/ToastContext';
 import { downloadAndSaveFile } from '../utils/fileDownloader';
+import { FullScreenLoader } from '../components/FullScreenLoader';
+
+import { CustomMonthYearPicker } from '../components/ui/pickers/CustomMonthYearPicker';
+import { CustomDateRangePicker } from '../components/ui/pickers/CustomDateRangePicker';
 
 const { width, height } = Dimensions.get('window');
 type Period = 'day' | 'week' | 'month';
@@ -69,6 +73,14 @@ export default function IncomeDetailsScreen() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [data, setData] = useState<any>(null);
+    const [visibleCount, setVisibleCount] = useState(10);
+
+    const [showWeekSelectorModal, setShowWeekSelectorModal] = useState(false);
+    const [showMonthPicker, setShowMonthPicker] = useState(false);
+    const [showCustomPicker, setShowCustomPicker] = useState(false);
+    const [datePickerMode, setDatePickerMode] = useState<'day' | 'week'>('day');
+    const [customRangeStart, setCustomRangeStart] = useState<Date | null>(null);
+    const [customRangeEnd, setCustomRangeEnd] = useState<Date | null>(null);
 
     const [showExportModal, setShowExportModal] = useState(false);
     const [exportStart, setExportStart] = useState(() => {
@@ -112,6 +124,10 @@ export default function IncomeDetailsScreen() {
         });
     };
 
+    const handleMailOption = () => {
+        Linking.openURL('mailto:support@dhostel.com?subject=DHostel%20Earnings%20Feedback');
+    };
+
     const handleExport = async () => {
         if (exportStart > exportEnd) {
             showError('Start date must be before end date.');
@@ -133,27 +149,9 @@ export default function IncomeDetailsScreen() {
             const exportUrl = `${baseURL}/income/export?startDate=${startStr}&endDate=${endStr}&token=${encodeURIComponent(token)}&all=true`;
 
             const filename = `income_report_${startStr}_to_${endStr}.xlsx`;
-            const fileUri = `${FileSystem.documentDirectory}${filename}`;
 
-            const downloadResult = await FileSystem.downloadAsync(exportUrl, fileUri);
-            
             setShowExportModal(false);
-
-            if (downloadResult.status === 200) {
-                // File is already in documentDirectory — share directly (no re-copy)
-                const canShare = await Sharing.isAvailableAsync();
-                if (canShare) {
-                    await Sharing.shareAsync(downloadResult.uri, {
-                        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                        dialogTitle: `Open ${filename}`,
-                        UTI: 'com.microsoft.excel.xlsx',
-                    });
-                } else {
-                    showSuccess(`File saved as:\n${filename}`);
-                }
-            } else {
-                showError(`Server returned status code ${downloadResult.status}`);
-            }
+            await downloadAndSaveFile(exportUrl, filename, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         } catch (error: any) {
             console.error(error);
             showApiError(error, 'Failed to export data');
@@ -165,10 +163,18 @@ export default function IncomeDetailsScreen() {
     const load = useCallback(async () => {
         setLoading(true);
         setError(null);
+        setVisibleCount(10);
         try {
-            const dateStr = toLocalDateString(refDate);
+            const params: Record<string, any> = {};
+            if (customRangeStart && customRangeEnd) {
+                params.startDate = toLocalDateString(customRangeStart);
+                params.endDate = toLocalDateString(customRangeEnd);
+            } else {
+                params.type = period;
+                params.date = toLocalDateString(refDate);
+            }
             const res = await api.get('/income/analytics', {
-                params: { type: period, date: dateStr },
+                params,
                 timeout: 15000,
             });
 
@@ -189,9 +195,24 @@ export default function IncomeDetailsScreen() {
         } finally {
             setLoading(false);
         }
-    }, [period, refDate]);
+    }, [period, refDate, customRangeStart, customRangeEnd]);
 
     useEffect(() => { load(); }, [load]);
+
+    const handleConfirmMonth = (date: Date) => {
+        setCustomRangeStart(null);
+        setCustomRangeEnd(null);
+        setPeriod('month');
+        setRefDate(date);
+        setShowMonthPicker(false);
+    };
+
+    const handleConfirmCustomRange = (start: Date, end: Date) => {
+        setCustomRangeStart(start);
+        setCustomRangeEnd(end);
+        setPeriod('month');
+        setShowCustomPicker(false);
+    };
 
     const shiftDate = (dir: -1 | 1) => {
         const d = new Date(refDate);
@@ -225,6 +246,7 @@ export default function IncomeDetailsScreen() {
     };
 
     const transactionsList = data?.transactions ?? [];
+    const allTransactions = [...transactionsList].sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
     
     // Filter transactions into separate categories
     const rentTransactions = transactionsList.filter((t: any) => t.type === 'Rent');
@@ -364,7 +386,10 @@ export default function IncomeDetailsScreen() {
         return label;
     };
 
-    const getPeriodDropdownText = () => {
+    const getPeriodLabel = () => {
+        if (customRangeStart && customRangeEnd) {
+            return `Custom: ${customRangeStart.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} - ${customRangeEnd.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+        }
         if (period === 'day') {
             const today = new Date();
             const yesterday = new Date(today);
@@ -375,7 +400,7 @@ export default function IncomeDetailsScreen() {
             if (refDate.toDateString() === yesterday.toDateString()) {
                 return `Yesterday: ${refDate.getDate()} ${refDate.toLocaleDateString('en-IN', { month: 'short' })}`;
             }
-            return refDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+            return refDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
         }
         if (period === 'week') {
             const start = new Date(refDate);
@@ -388,7 +413,7 @@ export default function IncomeDetailsScreen() {
             const fmt = (d: Date) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
             return `${fmt(start)} - ${fmt(end)}`;
         }
-        return refDate.toLocaleDateString('en-IN', { month: 'long' });
+        return refDate.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
     };
 
     const renderBarChart = () => {
@@ -438,28 +463,134 @@ export default function IncomeDetailsScreen() {
             </View>
         );
     };
+    const renderSkeletonRows = () => {
+        return (
+            <View style={[s.flatCard, { padding: 16 }]}>
+                {[1, 2, 3, 4].map((key) => (
+                    <View key={key} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: key === 4 ? 0 : 1, borderBottomColor: theme.isDark ? '#334155' : '#F1F5F9', gap: 12 }}>
+                        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: theme.isDark ? '#334155' : '#E2E8F0' }} />
+                        <View style={{ flex: 1, gap: 6 }}>
+                            <View style={{ width: '60%', height: 14, backgroundColor: theme.isDark ? '#334155' : '#E2E8F0', borderRadius: 4 }} />
+                            <View style={{ width: '40%', height: 10, backgroundColor: theme.isDark ? '#334155' : '#E2E8F0', borderRadius: 4 }} />
+                        </View>
+                        <View style={{ width: 50, height: 14, backgroundColor: theme.isDark ? '#334155' : '#E2E8F0', borderRadius: 4 }} />
+                    </View>
+                ))}
+            </View>
+        );
+    };
+
+    const renderTransactionRow = (tx: any, index: number) => {
+        let iconBg = '#EDE9FE'; // Admission (indigo/purple)
+        let iconColor = '#7C3AED';
+        let iconChar = 'A';
+        let targetScreen = 'TenantTransactions';
+        let targetParams: any = { studentId: tx.student_id, studentName: tx.title };
+
+        if (tx.type === 'Rent') {
+            iconBg = '#DCFCE7'; // Rent (green)
+            iconColor = '#15803D';
+            iconChar = 'R';
+            targetScreen = 'TenantTransactions';
+            targetParams = { studentId: tx.student_id, studentName: tx.title };
+        } else if (tx.type === 'Guest') {
+            iconBg = '#F3E5F5'; // Guest (purple)
+            iconColor = '#6B21A8';
+            iconChar = 'G';
+            targetScreen = 'Guests';
+            targetParams = {};
+        } else if (tx.type === 'Other') {
+            iconBg = '#FFEDD5'; // Other (orange)
+            iconColor = '#C2410C';
+            iconChar = 'O';
+            targetScreen = 'Income'; 
+            targetParams = {};
+        }
+
+        return (
+            <TouchableOpacity
+                key={tx.id ?? index}
+                style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    padding: 14,
+                    borderRadius: 16,
+                    borderWidth: 1,
+                    marginBottom: 10,
+                    backgroundColor: theme.cardBg,
+                    borderColor: theme.isDark ? 'rgba(255,255,255,0.08)' : '#F1F5F9',
+                    shadowColor: theme.isDark ? '#000' : '#475569',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.05,
+                    shadowRadius: 6,
+                    elevation: 2,
+                }}
+                onPress={() => {
+                    if (targetScreen === 'TenantTransactions' && !tx.student_id) return;
+                    navigation.navigate(targetScreen as any, targetParams);
+                }}
+                activeOpacity={0.7}
+            >
+                <View style={[s.avatarCircle, { backgroundColor: iconBg }]}>
+                    <Text style={[s.avatarText, { color: iconColor }]}>{iconChar}</Text>
+                </View>
+                
+                <View style={s.txDetails}>
+                    <Text style={[s.txTitleText, { color: theme.textPrimary }]} numberOfLines={1}>
+                        {tx.title}
+                    </Text>
+                    <Text style={[s.txSubText, { color: theme.textSecondary }]}>
+                        {new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · {tx.subtitle || tx.type}
+                    </Text>
+                </View>
+
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={[s.txAmountText, { color: theme.textPrimary }]}>
+                        ₹{tx.amount.toLocaleString('en-IN')}
+                    </Text>
+                    <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
+                </View>
+            </TouchableOpacity>
+        );
+    };
 
     return (
         <View style={s.root}>
+            <FullScreenLoader visible={isExporting} />
             <StatusBar barStyle="light-content" />
 
-            {/* ── HEADER (MATCHING APP GRADIENT) ────────────────────────── */}
             <AppHeader
                 title="Earnings"
                 rightComponent={
-                    <TouchableOpacity 
-                        onPress={() => setShowExportModal(true)} 
-                        style={{
-                            width: 40,
-                            height: 40,
-                            borderRadius: 20,
-                            backgroundColor: 'rgba(255, 255, 255, 0.18)',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                        }}
-                    >
-                        <Download size={20} color="#FFF" />
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                        <TouchableOpacity 
+                            onPress={handleMailOption} 
+                            style={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: 20,
+                                backgroundColor: 'rgba(255, 255, 255, 0.18)',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                            }}
+                        >
+                            <Ionicons name="mail-outline" size={20} color="#FFF" />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity 
+                            onPress={() => setShowExportModal(true)} 
+                            style={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: 20,
+                                backgroundColor: 'rgba(255, 255, 255, 0.18)',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                            }}
+                        >
+                            <Download size={20} color="#FFF" />
+                        </TouchableOpacity>
+                    </View>
                 }
             >
                 {/* Outlined Period tab selectors */}
@@ -473,6 +604,8 @@ export default function IncomeDetailsScreen() {
                                     setData(null);
                                     setError(null);
                                     setPeriod(p);
+                                    setCustomRangeStart(null);
+                                    setCustomRangeEnd(null);
                                 }
                             }}
                         >
@@ -482,30 +615,72 @@ export default function IncomeDetailsScreen() {
                         </TouchableOpacity>
                     ))}
                 </View>
+
+                {/* Direct Filters based on active Tab */}
+                {period === 'month' ? (
+                    <View style={{ flexDirection: 'row', gap: 12, justifyContent: 'center', marginTop: 10, marginBottom: 4 }}>
+                        <TouchableOpacity style={s.topFilterBtn} onPress={() => setShowMonthPicker(true)} activeOpacity={0.8}>
+                            <Ionicons name="calendar-outline" size={14} color="#FFF" />
+                            <Text style={s.topFilterTxt}>{getPeriodLabel()}</Text>
+                            <Ionicons name="chevron-down" size={12} color="#FFF" style={{ marginLeft: 2 }} />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={s.topFilterBtn} onPress={() => setShowCustomPicker(true)} activeOpacity={0.8}>
+                            <Ionicons name="swap-horizontal-outline" size={14} color="#FFF" />
+                            <Text style={s.topFilterTxt}>{customRangeStart && customRangeEnd ? 'Custom Active' : 'Custom Range'}</Text>
+                            <Ionicons name="chevron-down" size={12} color="#FFF" style={{ marginLeft: 2 }} />
+                        </TouchableOpacity>
+                    </View>
+                ) : (
+                    <View style={{ marginTop: 10, marginBottom: 4, alignItems: 'center' }}>
+                        <TouchableOpacity 
+                            style={s.topFilterBtn} 
+                            onPress={() => {
+                                if (period === 'day') {
+                                    setDatePickerMode('day');
+                                    setDatePickerVisible(true);
+                                } else if (period === 'week') {
+                                    setShowWeekSelectorModal(true);
+                                }
+                            }} 
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons name="calendar-outline" size={14} color="#FFF" />
+                            <Text style={s.topFilterTxt}>{getPeriodLabel()}</Text>
+                            <Ionicons name="chevron-down" size={12} color="#FFF" style={{ marginLeft: 2 }} />
+                        </TouchableOpacity>
+                    </View>
+                )}
             </AppHeader>
 
             {/* BODY */}
-            <ScrollView contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
+            <ScrollView 
+                contentContainerStyle={s.scrollContent} 
+                showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={loading}
+                        onRefresh={load}
+                        colors={[theme.primary]}
+                        tintColor={theme.primary}
+                    />
+                }
+            >
                 
                 {/* DATE PERIOD NAV CARD */}
                 <View style={s.periodNavCard}>
-                    <TouchableOpacity
-                        style={s.periodDropdown}
-                        onPress={() => {
-                            if (period === 'day') {
-                                setDatePickerVisible(true);
-                            } else {
-                                setShowSelectorModal(true);
-                            }
-                        }}
-                        activeOpacity={0.8}
-                    >
-                        <Text style={s.periodDropdownText}>{getPeriodDropdownText()}</Text>
-                        <Ionicons name="chevron-down" size={14} color="#475569" style={{ marginLeft: 4 }} />
-                    </TouchableOpacity>
+                    <View style={{ marginBottom: 4 }}>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: theme.textSecondary, textAlign: 'center', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                            {customRangeStart && customRangeEnd ? 'Custom Period Revenue' : `${period.toUpperCase()}LY REVENUE`}
+                        </Text>
+                    </View>
 
                     <View style={s.amountNavRow}>
-                        <TouchableOpacity onPress={() => shiftDate(-1)} style={s.navArrowBtn}>
+                        <TouchableOpacity 
+                            onPress={() => shiftDate(-1)} 
+                            style={[s.navArrowBtn, (customRangeStart && customRangeEnd) && { opacity: 0.25 }]}
+                            disabled={!!(customRangeStart && customRangeEnd)}
+                        >
                             <Ionicons name="chevron-back" size={24} color="#000000" />
                         </TouchableOpacity>
 
@@ -517,8 +692,8 @@ export default function IncomeDetailsScreen() {
 
                         <TouchableOpacity
                             onPress={() => { if (canGoForward()) shiftDate(1); }}
-                            style={[s.navArrowBtn, !canGoForward() && { opacity: 0.25 }]}
-                            disabled={!canGoForward()}
+                            style={[s.navArrowBtn, (!canGoForward() || (customRangeStart && customRangeEnd)) && { opacity: 0.25 }]}
+                            disabled={!canGoForward() || !!(customRangeStart && customRangeEnd)}
                         >
                             <Ionicons name="chevron-forward" size={24} color="#000000" />
                         </TouchableOpacity>
@@ -556,212 +731,83 @@ export default function IncomeDetailsScreen() {
                     </View>
                 )}
 
-                {/* SEGREGATED TRANSACTION CARDS */}
-                {!loading && (
-                    <View style={s.cardsWrapper}>
-                        
-                        {/* Rent Collections Card */}
-                        {(rentTransactions.length > 0 || (guestTransactions.length === 0 && otherTransactions.length === 0 && admissionTransactions.length === 0)) && (
-                            <View style={s.flatCard}>
-                                <View style={s.cardHeaderRow}>
-                                    <Text style={s.cardHeaderTitle}>
-                                        {period === 'day' ? 'Daily Rent Collections' : period === 'week' ? 'Weekly Rent Collections' : 'Monthly Rent Collections'}
-                                    </Text>
-                                    <Text style={s.cardHeaderTotal}>₹{rentTotal.toLocaleString('en-IN')}</Text>
-                                </View>
-                                <View style={s.cardBody}>
-                                    {rentTransactions.length > 0 ? (
-                                        rentTransactions.map((tx: any, index: number) => (
-                                            <TouchableOpacity
-                                                key={tx.id ?? index}
-                                                style={[s.transactionRow, index === rentTransactions.length - 1 && { borderBottomWidth: 0 }]}
-                                                onPress={() => {
-                                                    if (tx.student_id) {
-                                                        navigation.navigate('TenantTransactions', { studentId: tx.student_id, studentName: tx.title });
-                                                    }
-                                                }}
-                                                activeOpacity={0.7}
-                                            >
-                                                <View style={s.avatarCircle}>
-                                                    <Text style={s.avatarText}>{(tx.title || 'S')[0]}</Text>
-                                                </View>
-                                                <View style={s.txDetails}>
-                                                    <Text style={s.txTitleText} numberOfLines={1}>{tx.title}</Text>
-                                                    <Text style={s.txSubText}>{new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · {tx.subtitle}</Text>
-                                                </View>
-                                                <Text style={s.txAmountText}>₹{tx.amount.toLocaleString('en-IN')}</Text>
-                                            </TouchableOpacity>
-                                        ))
-                                    ) : (
-                                        <Text style={s.emptyTransactionsText}>No rent collections recorded for this period</Text>
-                                    )}
-                                </View>
+                {/* TRANSACTION CARD CONTAINER */}
+                <View style={s.cardsWrapper}>
+                    {loading ? (
+                        renderSkeletonRows()
+                    ) : allTransactions.length > 0 ? (
+                        <View>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, paddingHorizontal: 4 }}>
+                                <Text style={{ fontSize: 16, fontWeight: '800', color: theme.textPrimary }}>Recent Transactions</Text>
+                                <TouchableOpacity onPress={() => navigation.navigate('AllTransactions', { transactions: allTransactions })}>
+                                    <Text style={{ color: theme.primary, fontWeight: '800', fontSize: 13 }}>View All</Text>
+                                </TouchableOpacity>
                             </View>
-                        )}
+                            
+                            {allTransactions.slice(0, 5).map((tx, index) => renderTransactionRow(tx, index))}
 
-                        {/* Guest Collections Card */}
-                        {guestTransactions.length > 0 && (
-                            <View style={[s.flatCard, { marginTop: 16 }]}>
-                                <View style={s.cardHeaderRow}>
-                                    <Text style={s.cardHeaderTitle}>Guest Stay Collections</Text>
-                                    <Text style={s.cardHeaderTotal}>₹{guestTotal.toLocaleString('en-IN')}</Text>
-                                </View>
-                                <View style={s.cardBody}>
-                                    {guestTransactions.map((tx: any, index: number) => (
-                                        <TouchableOpacity
-                                            key={tx.id ?? index}
-                                            style={[s.transactionRow, index === guestTransactions.length - 1 && { borderBottomWidth: 0 }]}
-                                            onPress={() => {
-                                                navigation.navigate('Guests');
-                                            }}
-                                            activeOpacity={0.7}
-                                        >
-                                            <View style={[s.avatarCircle, { backgroundColor: '#F3E5F5' }]}>
-                                                <Text style={[s.avatarText, { color: '#4A148C' }]}>{(tx.title || 'G')[0]}</Text>
-                                            </View>
-                                            <View style={s.txDetails}>
-                                                <Text style={s.txTitleText} numberOfLines={1}>{tx.title}</Text>
-                                                <Text style={s.txSubText}>
-                                                    {new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · {tx.subtitle}
-                                                    {tx.description ? ` · ${tx.description}` : ''}
-                                                </Text>
-                                            </View>
-                                            <Text style={s.txAmountText}>₹{tx.amount.toLocaleString('en-IN')}</Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </View>
-                            </View>
-                        )}
-
-                        {/* Admission Collections Card */}
-                        {admissionTransactions.length > 0 && (
-                            <View style={[s.flatCard, { marginTop: 16 }]}>
-                                <View style={s.cardHeaderRow}>
-                                    <Text style={s.cardHeaderTitle}>Admission Collections</Text>
-                                    <Text style={s.cardHeaderTotal}>₹{admissionTotal.toLocaleString('en-IN')}</Text>
-                                </View>
-                                <View style={s.cardBody}>
-                                    {admissionTransactions.map((tx: any, index: number) => (
-                                        <TouchableOpacity
-                                            key={tx.id ?? index}
-                                            style={[s.transactionRow, index === admissionTransactions.length - 1 && { borderBottomWidth: 0 }]}
-                                            onPress={() => {
-                                                if (tx.student_id) {
-                                                    navigation.navigate('TenantTransactions', { studentId: tx.student_id, studentName: tx.title });
-                                                }
-                                            }}
-                                            activeOpacity={0.7}
-                                        >
-                                            <View style={[s.avatarCircle, { backgroundColor: '#EDE9FE' }]}>
-                                                <Text style={[s.avatarText, { color: '#7C3AED' }]}>{(tx.title || 'A')[0]}</Text>
-                                            </View>
-                                            <View style={s.txDetails}>
-                                                <Text style={s.txTitleText} numberOfLines={1}>{tx.title}</Text>
-                                                <Text style={s.txSubText}>
-                                                    {new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · {tx.subtitle}
-                                                </Text>
-                                            </View>
-                                            <Text style={s.txAmountText}>₹{tx.amount.toLocaleString('en-IN')}</Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </View>
-                            </View>
-                        )}
-
-                        {/* Other / Indirect Income Card */}
-                        {otherTransactions.length > 0 && (
-                            <View style={[s.flatCard, { marginTop: 16 }]}>
-                                <View style={s.cardHeaderRow}>
-                                    <Text style={s.cardHeaderTitle}>Other / Indirect Income</Text>
-                                    <Text style={s.cardHeaderTotal}>₹{otherTotal.toLocaleString('en-IN')}</Text>
-                                </View>
-                                <View style={s.cardBody}>
-                                    {otherTransactions.map((tx: any, index: number) => (
-                                        <View
-                                            key={tx.id ?? index}
-                                            style={[s.transactionRow, index === otherTransactions.length - 1 && { borderBottomWidth: 0 }]}
-                                        >
-                                            <View style={[s.avatarCircle, { backgroundColor: '#E3F2FD' }]}>
-                                                <Text style={[s.avatarText, { color: '#1565C0' }]}>{(tx.title || 'O')[0]}</Text>
-                                            </View>
-                                            <View style={s.txDetails}>
-                                                <Text style={s.txTitleText} numberOfLines={1}>{tx.title}</Text>
-                                                <Text style={s.txSubText}>
-                                                    {new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · {tx.subtitle}
-                                                    {tx.description ? ` · ${tx.description}` : ''}
-                                                </Text>
-                                            </View>
-                                            <Text style={s.txAmountText}>₹{tx.amount.toLocaleString('en-IN')}</Text>
-                                        </View>
-                                    ))}
-                                </View>
-                            </View>
-                        )}
-
-                    </View>
-                )}
+                            {allTransactions.length > 5 && (
+                                <TouchableOpacity 
+                                    style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        padding: 14,
+                                        borderRadius: 16,
+                                        borderWidth: 1,
+                                        marginTop: 4,
+                                        backgroundColor: theme.cardBg,
+                                        borderColor: theme.isDark ? 'rgba(255,255,255,0.08)' : '#F1F5F9',
+                                        shadowColor: theme.isDark ? '#000' : '#475569',
+                                        shadowOffset: { width: 0, height: 2 },
+                                        shadowOpacity: 0.05,
+                                        shadowRadius: 6,
+                                        elevation: 2,
+                                        gap: 6
+                                    }}
+                                    onPress={() => navigation.navigate('AllTransactions', { transactions: allTransactions })}
+                                >
+                                    <Text style={{ color: theme.primary, fontWeight: '800', fontSize: 14 }}>View All Transactions ({allTransactions.length})</Text>
+                                    <Ionicons name="arrow-forward" size={16} color={theme.primary} />
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    ) : (
+                        <View style={[s.flatCard, { padding: 30, alignItems: 'center' }]}>
+                            <Text style={{ color: theme.textSecondary, fontWeight: '600' }}>No transactions recorded for this period</Text>
+                        </View>
+                    )}
+                </View>
 
                 <View style={{ height: 60 }} />
             </ScrollView>
 
-            {/* BOTTOM SHEET SELECT DROPDOWN MODAL */}
+            {/* WEEK SELECTOR DRAWER MODAL */}
             <Modal
-                visible={showSelectorModal}
+                visible={showWeekSelectorModal}
                 transparent
                 animationType="slide"
-                onRequestClose={() => setShowSelectorModal(false)}
+                onRequestClose={() => setShowWeekSelectorModal(false)}
             >
                 <View style={s.modalOverlay}>
                     <TouchableOpacity
-                        style={s.modalDismissOverlay}
+                        style={StyleSheet.absoluteFillObject}
                         activeOpacity={1}
-                        onPress={() => setShowSelectorModal(false)}
+                        onPress={() => setShowWeekSelectorModal(false)}
                     />
-                    <View style={s.bottomSheetContent}>
+                    <View style={[s.bottomSheetContent, { backgroundColor: theme.cardBg }]}>
                         <View style={s.bottomSheetHeader}>
-                            <Text style={s.bottomSheetTitle}>
-                                {period === 'month' ? 'Select month' : 'Select week'}
-                            </Text>
-                            <TouchableOpacity onPress={() => setShowSelectorModal(false)} style={s.closeCircle}>
-                                <X size={20} color="#1E293B" />
+                            <Text style={[s.bottomSheetTitle, { color: theme.textPrimary }]}>Select week</Text>
+                            <TouchableOpacity onPress={() => setShowWeekSelectorModal(false)} style={s.closeCircle}>
+                                <Ionicons name="close" size={20} color={theme.textPrimary} />
                             </TouchableOpacity>
                         </View>
 
                         <ScrollView contentContainerStyle={s.bottomSheetScroll} showsVerticalScrollIndicator={false}>
-                            {period === 'month' && getMonthsList().map((d, index) => {
-                                const isCurrent = isCurrentMonth(d);
-                                const isSelected = isSelectedMonth(d);
-                                const label = d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
-
-                                return (
-                                    <TouchableOpacity
-                                        key={index}
-                                        style={[s.bottomSheetItem, isSelected && s.bottomSheetItemSelected]}
-                                        onPress={() => {
-                                            setRefDate(d);
-                                            setShowSelectorModal(false);
-                                        }}
-                                    >
-                                        <Text style={[s.bottomSheetItemText, isSelected && s.bottomSheetItemTextSelected]}>
-                                            {label}
-                                        </Text>
-                                        {isCurrent && (
-                                            <View style={[s.currentMonthBadge, { backgroundColor: theme.primary }]}>
-                                                <Text style={s.currentMonthBadgeText}>This month</Text>
-                                            </View>
-                                        )}
-                                        {isSelected && !isCurrent && (
-                                            <Ionicons name="checkmark-circle" size={20} color={theme.primary} />
-                                        )}
-                                    </TouchableOpacity>
-                                );
-                            })}
-
-                            {period === 'week' && getWeekRanges().map((w, index) => {
+                            {getWeekRanges().map((w, index) => {
                                 const isCurrent = isCurrentWeek(w.start);
                                 const isSelected = isSelectedWeek(w.start, w.end);
                                 const label = getWeekRangeLabel(w.start, w.end);
-                                const yearLabel = w.start.getFullYear();
 
                                 return (
                                     <TouchableOpacity
@@ -769,11 +815,13 @@ export default function IncomeDetailsScreen() {
                                         style={[s.bottomSheetItem, isSelected && s.bottomSheetItemSelected]}
                                         onPress={() => {
                                             setRefDate(w.start);
-                                            setShowSelectorModal(false);
+                                            setCustomRangeStart(null);
+                                            setCustomRangeEnd(null);
+                                            setShowWeekSelectorModal(false);
                                         }}
                                     >
-                                        <Text style={[s.bottomSheetItemText, isSelected && s.bottomSheetItemTextSelected]}>
-                                            {label} {yearLabel}
+                                        <Text style={[s.bottomSheetItemText, isSelected && s.bottomSheetItemTextSelected, { color: theme.textPrimary }]}>
+                                            {label}
                                         </Text>
                                         {isCurrent && (
                                             <View style={[s.currentMonthBadge, { backgroundColor: theme.primary }]}>
@@ -791,62 +839,102 @@ export default function IncomeDetailsScreen() {
                 </View>
             </Modal>
 
+            <CustomMonthYearPicker
+                visible={showMonthPicker}
+                onClose={() => setShowMonthPicker(false)}
+                onConfirm={handleConfirmMonth}
+                initialDate={refDate}
+            />
+
+            <CustomDateRangePicker
+                visible={showCustomPicker}
+                onClose={() => setShowCustomPicker(false)}
+                onConfirm={handleConfirmCustomRange}
+                initialStart={customRangeStart || undefined}
+                initialEnd={customRangeEnd || undefined}
+                restrictMonth={refDate}
+            />
+
             {/* DATE EXPORT MODAL */}
             <Modal
                 visible={showExportModal}
-                transparent
-                animationType="fade"
+                transparent={true}
+                animationType="slide"
                 onRequestClose={() => setShowExportModal(false)}
             >
-                <View style={s.exportOverlay}>
-                    <View style={s.exportModalContent}>
-                        <View style={s.exportModalHeader}>
-                            <Text style={s.exportModalTitle}>Export Income Report</Text>
+                <View style={s.modalOverlay}>
+                    <TouchableOpacity
+                        style={StyleSheet.absoluteFillObject}
+                        activeOpacity={1}
+                        onPress={() => setShowExportModal(false)}
+                    />
+                    <View style={[s.bottomSheetContent, { backgroundColor: theme.cardBg }]}>
+                        <View style={s.bottomSheetHeader}>
+                            <Text style={[s.bottomSheetTitle, { color: theme.textPrimary }]}>Export Income Report</Text>
                             <TouchableOpacity onPress={() => setShowExportModal(false)}>
-                                <X size={24} color="#64748B" />
+                                <Text style={{ color: theme.primary, fontSize: 15, fontWeight: '700' }}>Close</Text>
                             </TouchableOpacity>
                         </View>
 
-                        <Text style={s.exportLabel}>Select Date Range</Text>
-                        <Text style={s.exportSubLabel}>Export data formats in Excel spreadsheet</Text>
+                        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 30 }} showsVerticalScrollIndicator={false}>
+                            <Text style={[s.exportLabel, { color: theme.textSecondary }]}>Select Date Range</Text>
+                            <Text style={{ fontSize: 12, color: '#94A3B8', marginBottom: 16 }}>All transactions in this range will be exported</Text>
 
-                        <View style={s.exportInputsRow}>
-                            <TouchableOpacity style={s.exportDateInput} onPress={() => setStartDatePickerVisible(true)}>
-                                <Ionicons name="calendar-outline" size={16} color="#64748B" />
-                                <Text style={s.exportDateInputText}>
-                                    {exportStart.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                </Text>
-                            </TouchableOpacity>
-                            <Text style={{ color: '#94A3B8', fontWeight: '800' }}>→</Text>
-                            <TouchableOpacity style={s.exportDateInput} onPress={() => setEndDatePickerVisible(true)}>
-                                <Ionicons name="calendar-outline" size={16} color="#64748B" />
-                                <Text style={s.exportDateInputText}>
-                                    {exportEnd.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
+                            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
+                                <TouchableOpacity 
+                                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: theme.isDark ? '#334155' : '#F8FAFC', borderWidth: 1, borderColor: theme.isDark ? '#475569' : '#E2E8F0', padding: 12, borderRadius: 12, gap: 8 }} 
+                                    onPress={() => setStartDatePickerVisible(true)}
+                                >
+                                    <Ionicons name="calendar-outline" size={18} color="#64748B" />
+                                    <View>
+                                        <Text style={{ fontSize: 10, color: '#94A3B8' }}>Start Date</Text>
+                                        <Text style={{ fontSize: 13, fontWeight: '700', color: theme.textPrimary, marginTop: 2 }}>
+                                            {exportStart.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                        </Text>
+                                    </View>
+                                </TouchableOpacity>
 
-                        {exportStart > exportEnd && (
-                            <Text style={s.exportWarningText}>⚠️ Start date must be before end date</Text>
-                        )}
+                                <TouchableOpacity 
+                                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: theme.isDark ? '#334155' : '#F8FAFC', borderWidth: 1, borderColor: theme.isDark ? '#475569' : '#E2E8F0', padding: 12, borderRadius: 12, gap: 8 }} 
+                                    onPress={() => setEndDatePickerVisible(true)}
+                                >
+                                    <Ionicons name="calendar-outline" size={18} color="#64748B" />
+                                    <View>
+                                        <Text style={{ fontSize: 10, color: '#94A3B8' }}>End Date</Text>
+                                        <Text style={{ fontSize: 13, fontWeight: '700', color: theme.textPrimary, marginTop: 2 }}>
+                                            {exportEnd.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                        </Text>
+                                    </View>
+                                </TouchableOpacity>
+                            </View>
 
-                        <TouchableOpacity
-                            style={[
-                                s.exportConfirmBtn,
-                                (isExporting || exportStart > exportEnd) && s.exportConfirmBtnDisabled
-                            ]}
-                            onPress={handleExport}
-                            disabled={isExporting || exportStart > exportEnd}
-                        >
-                            {isExporting ? (
-                                <ActivityIndicator color="#FFF" size="small" />
-                            ) : (
-                                <>
-                                    <Text style={s.exportConfirmText}>Download Excel File</Text>
-                                    <Download size={18} color="#FFF" />
-                                </>
+                            {exportStart > exportEnd && (
+                                <Text style={{ color: '#EF4444', fontSize: 12, fontWeight: '700', marginBottom: 16 }}>⚠️ Start date must be before end date</Text>
                             )}
-                        </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={{
+                                    backgroundColor: (isExporting || exportStart > exportEnd) ? '#94A3B8' : theme.primary,
+                                    borderRadius: 16,
+                                    paddingVertical: 14,
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    flexDirection: 'row',
+                                    gap: 8,
+                                }}
+                                onPress={handleExport}
+                                disabled={isExporting || exportStart > exportEnd}
+                            >
+                                {isExporting ? (
+                                    <ActivityIndicator color="#FFF" size="small" />
+                                ) : (
+                                    <>
+                                        <Text style={{ color: '#FFF', fontSize: 15, fontWeight: '700' }}>Download Excel Report</Text>
+                                        <Download size={18} color="#FFF" />
+                                    </>
+                                )}
+                            </TouchableOpacity>
+                        </ScrollView>
                     </View>
                 </View>
             </Modal>
@@ -879,8 +967,16 @@ export default function IncomeDetailsScreen() {
                 mode="date"
                 date={refDate}
                 onConfirm={(date) => {
-                    setRefDate(date);
                     setDatePickerVisible(false);
+                    setCustomRangeStart(null);
+                    setCustomRangeEnd(null);
+                    if (datePickerMode === 'day') {
+                        setPeriod('day');
+                        setRefDate(date);
+                    } else {
+                        setPeriod('week');
+                        setRefDate(date);
+                    }
                 }}
                 onCancel={() => setDatePickerVisible(false)}
             />
@@ -1282,6 +1378,15 @@ const s = StyleSheet.create({
         borderTopRightRadius: 24,
         maxHeight: height * 0.65,
         paddingBottom: 24,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 10,
+        elevation: 12,
+        borderTopWidth: 1,
+        borderLeftWidth: 1,
+        borderRightWidth: 1,
+        borderColor: 'rgba(148, 163, 184, 0.15)',
     },
     bottomSheetHeader: {
         flexDirection: 'row',
@@ -1344,7 +1449,7 @@ const s = StyleSheet.create({
     // ── DATE EXPORT MODAL ──────────────────────────────────────────────────
     exportOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
+        backgroundColor: 'transparent',
         justifyContent: 'center',
         padding: 20,
     },
@@ -1352,6 +1457,13 @@ const s = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         borderRadius: 20,
         padding: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        elevation: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(148, 163, 184, 0.15)',
     },
     exportModalHeader: {
         flexDirection: 'row',
@@ -1507,5 +1619,91 @@ const s = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 13,
         fontWeight: '800',
+    },
+    topFilterBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        gap: 6,
+        alignSelf: 'center',
+        marginTop: 12,
+        marginBottom: 8,
+    },
+    topFilterTxt: {
+        color: '#FFF',
+        fontSize: 13,
+        fontWeight: '700',
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'transparent',
+        justifyContent: 'flex-end',
+    },
+    modalSheet: {
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+        paddingHorizontal: 20,
+        paddingTop: 20,
+        maxHeight: '80%',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 10,
+        elevation: 12,
+        borderTopWidth: 1,
+        borderLeftWidth: 1,
+        borderRightWidth: 1,
+        borderColor: 'rgba(148, 163, 184, 0.15)',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20,
+        paddingBottom: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(148, 163, 184, 0.15)',
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '800',
+    },
+    modalCloseBtn: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    filterOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        borderRadius: 16,
+        marginBottom: 12,
+        borderWidth: 1,
+    },
+    filterOptionIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 14,
+    },
+    filterOptionText: {
+        flex: 1,
+    },
+    filterOptionTitle: {
+        fontSize: 15,
+        fontWeight: '700',
+    },
+    filterOptionSub: {
+        fontSize: 11,
+        marginTop: 2,
     },
 });

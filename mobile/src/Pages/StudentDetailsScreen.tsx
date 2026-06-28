@@ -428,28 +428,31 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
         <View style={styles.container}>
             <StatusBar barStyle="light-content" />
 
-            <AppHeader 
-                title="Tenant Details"
-                style={{ paddingTop: 50, paddingBottom: 15 }}
-                rightComponent={
-                    <View style={styles.headerActions}>
-                        <TouchableOpacity
-                            style={styles.actionButton}
-                            onPress={() => navigation.navigate('AddStudent', { student, isEdit: true })}
-                        >
-                            <Edit color="#FFFFFF" size={20} />
-                        </TouchableOpacity>
-                        <HeaderNotification navigation={navigation} />
-                        <ProfileMenu />
-                    </View>
-                }
-            />
+            <View pointerEvents={payModalVisible ? 'none' : 'auto'}>
+                <AppHeader 
+                    title="Tenant Details"
+                    style={{ paddingTop: 50, paddingBottom: 15 }}
+                    rightComponent={
+                        <View style={styles.headerActions}>
+                            <TouchableOpacity
+                                style={styles.actionButton}
+                                onPress={() => navigation.navigate('AddStudent', { student, isEdit: true })}
+                            >
+                                <Edit color="#FFFFFF" size={20} />
+                            </TouchableOpacity>
+                            <HeaderNotification navigation={navigation} />
+                            <ProfileMenu />
+                        </View>
+                    }
+                />
+            </View>
 
             <ScrollView
                 style={styles.content}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
                 overScrollMode="never"
+                pointerEvents={payModalVisible ? 'none' : 'auto'}
             >
                 {loading || !student ? (
                     <View style={styles.loadingContainer}>

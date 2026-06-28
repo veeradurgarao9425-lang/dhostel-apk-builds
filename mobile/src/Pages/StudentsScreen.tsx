@@ -257,7 +257,7 @@ export default function StudentsScreen({ navigation, route }: any) {
     const { theme, isDark } = useTheme();
     const { showApiError, showSuccess } = useToast();
     const { t } = useTranslation();
-    const { refreshCounter } = useRefresh();
+    const { refreshCounter, refreshPayload } = useRefresh();
 
 
     const [allStudents, setAllStudents] = useState<any[]>([]);
@@ -410,9 +410,9 @@ export default function StudentsScreen({ navigation, route }: any) {
         }
         setPage(1);
         setHasMore(true);
-        fetchPage(1, true);
+        fetchPage(1, false); // Change to false to show the loading screen/skeleton immediately
         fetchCounts();
-    }, [refreshCounter]);
+    }, [refreshCounter, refreshPayload]);
 
     // ── Fetch Counts ──────────────────────────────────────────────────────
     const fetchCounts = async () => {

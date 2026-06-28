@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView, SafeAreaView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../../contexts/ThemeContext';
@@ -18,25 +18,59 @@ export interface DateRange {
 export interface CustomDateRangePickerProps {
     visible: boolean;
     onClose: () => void;
-    onConfirm: (range: DateRange) => void;
-    initialRange?: DateRange;
+    onConfirm: (start: Date, end: Date) => void;
+    initialStart?: Date;
+    initialEnd?: Date;
+    restrictMonth?: Date;
 }
 
-export function CustomDateRangePicker({ visible, onClose, onConfirm, initialRange }: CustomDateRangePickerProps) {
+export function CustomDateRangePicker({ 
+    visible, onClose, onConfirm, initialStart, initialEnd, restrictMonth 
+}: CustomDateRangePickerProps) {
     const { theme } = useTheme();
     const primary = theme?.primary || '#8B291A';
     const primarySoft = primary + '25'; // slightly darker for better visibility
 
-    const [currentDate, setCurrentDate] = useState(initialRange?.start || new Date());
+    const [currentDate, setCurrentDate] = useState(restrictMonth || initialStart || new Date());
     const [range, setRange] = useState<DateRange>({
-        start: initialRange?.start || null,
-        end: initialRange?.end || null,
+        start: initialStart || null,
+        end: initialEnd || null,
     });
+
+    useEffect(() => {
+        if (visible) {
+            const start = restrictMonth || initialStart || new Date();
+            setCurrentDate(start);
+            
+            // If restrictMonth is active, clamp range start/end to be within that month,
+            // or reset them to null if they are in a different month to prevent mismatches.
+            if (restrictMonth) {
+                const targetYear = restrictMonth.getFullYear();
+                const targetMonth = restrictMonth.getMonth();
+                
+                const isWithinMonth = (d: Date | null) => {
+                    if (!d) return false;
+                    return d.getFullYear() === targetYear && d.getMonth() === targetMonth;
+                };
+                
+                setRange({
+                    start: isWithinMonth(initialStart || null) ? (initialStart || null) : null,
+                    end: isWithinMonth(initialEnd || null) ? (initialEnd || null) : null,
+                });
+            } else {
+                setRange({
+                    start: initialStart || null,
+                    end: initialEnd || null,
+                });
+            }
+        }
+    }, [visible, restrictMonth, initialStart, initialEnd]);
 
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
 
     const changeMonth = (offset: number) => {
+        if (restrictMonth) return;
         setCurrentDate(new Date(year, month + offset, 1));
     };
 
@@ -99,13 +133,21 @@ export function CustomDateRangePicker({ visible, onClose, onConfirm, initialRang
                     <ScrollView style={{ paddingHorizontal: 20 }}>
                         {/* Month Selector */}
                         <View style={S.monthSelector}>
-                            <TouchableOpacity onPress={() => changeMonth(-1)}>
-                                <Ionicons name="chevron-back" size={24} color="#64748B" />
-                            </TouchableOpacity>
+                            {!restrictMonth ? (
+                                <TouchableOpacity onPress={() => changeMonth(-1)}>
+                                    <Ionicons name="chevron-back" size={24} color="#64748B" />
+                                </TouchableOpacity>
+                            ) : (
+                                <View style={{ width: 24 }} />
+                            )}
                             <Text style={S.monthText}>{MONTHS[month]} {year}</Text>
-                            <TouchableOpacity onPress={() => changeMonth(1)}>
-                                <Ionicons name="chevron-forward" size={24} color="#64748B" />
-                            </TouchableOpacity>
+                            {!restrictMonth ? (
+                                <TouchableOpacity onPress={() => changeMonth(1)}>
+                                    <Ionicons name="chevron-forward" size={24} color="#64748B" />
+                                </TouchableOpacity>
+                            ) : (
+                                <View style={{ width: 24 }} />
+                            )}
                         </View>
 
                         {/* Days Header */}
@@ -168,7 +210,7 @@ export function CustomDateRangePicker({ visible, onClose, onConfirm, initialRang
                     <View style={S.footer}>
                         <TouchableOpacity 
                             style={[S.confirmBtn, { backgroundColor: primary }]} 
-                            onPress={() => onConfirm(range)}
+                            onPress={() => { if (range.start && range.end) onConfirm(range.start, range.end); }}
                         >
                             <Text style={S.confirmBtnText}>Confirm</Text>
                         </TouchableOpacity>

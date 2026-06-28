@@ -642,6 +642,7 @@ export default function OverviewScreen() {
                 onConfirm={(s: Date, e: Date) => { setFilterMode('custom'); setCustomStart(s); setCustomEnd(e); setShowCustomPicker(false); }}
                 initialStart={customStart}
                 initialEnd={customEnd}
+                restrictMonth={filterMode === 'month' ? statsMonth : undefined}
             />
         </View>
     );

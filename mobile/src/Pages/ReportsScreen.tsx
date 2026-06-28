@@ -501,6 +501,7 @@ export default function ReportsScreen() {
                 onConfirm={(s: Date, e: Date) => { setFilterMode('custom'); setCustomStart(s); setCustomEnd(e); setShowCustomPicker(false); loadData(); }}
                 initialStart={customStart}
                 initialEnd={customEnd}
+                restrictMonth={filterMode === 'month' ? statsMonth : undefined}
             />
 
             <CustomDateRangePicker
@@ -512,6 +513,7 @@ export default function ReportsScreen() {
                 }}
                 initialStart={customStart}
                 initialEnd={customEnd}
+                restrictMonth={filterMode === 'month' ? statsMonth : undefined}
             />
 
             {!!exporting && (

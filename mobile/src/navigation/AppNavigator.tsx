@@ -36,6 +36,7 @@ import ReceiptScreen         from '../Pages/ReciptScreen';
 import PrivacyPolicyScreen   from '../Pages/PrivacyPolicyScreen';
 import IncomeScreen          from '../Pages/InComeScreen';
 import IncomeDetailsScreen   from '../Pages/IncomeDetailsScreen';
+import AllTransactionsScreen from '../Pages/AllTransactionsScreen';
 import AddIncomeScreen       from '../Pages/AddIncomeScreen';
 import PlaceholderScreen     from '../Pages/PlaceholderScreen';
 import BulkDeleteScreen      from '../Pages/BulkDeleteScreen';
@@ -56,6 +57,7 @@ import CollectedPaymentsScreen from '../Pages/CollectedPaymentsScreen';
 import OverviewScreen        from '../Pages/OverviewScreen';
 import PendingPaymentsScreen from '../Pages/PendingPaymentsScreen';
 import DownloadReceiptsScreen from '../Pages/DownloadReceiptsScreen';
+import PremiumSubscriptionScreen from '../Pages/PremiumSubscriptionScreen';
 
 // ── Ecosystem screens ────────────────────────────────────────────────────────
 import ComplaintsManagementScreen from '../Pages/ComplaintsManagementScreen';
@@ -193,6 +195,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen name="Receipt"        component={ReceiptScreen}        />
                     <Stack.Screen name="Income"         component={IncomeScreen}         />
                     <Stack.Screen name="IncomeDetails"  component={IncomeDetailsScreen}  />
+                    <Stack.Screen name="AllTransactions" component={AllTransactionsScreen} />
                     <Stack.Screen name="CollectedPayments" component={CollectedPaymentsScreen} />
                     <Stack.Screen name="DownloadReceipts" component={DownloadReceiptsScreen} />
                     <Stack.Screen
@@ -248,6 +251,9 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                         component={PlaceholderScreen}
                         initialParams={{ title: 'Theme Settings' }}
                     />
+
+                    {/* Premium Subscription */}
+                    <Stack.Screen name="PremiumSubscription" component={PremiumSubscriptionScreen} />
 
                     {/* Coming Soon */}
                     <Stack.Screen name="ComingSoon" component={ComingSoonScreen} />

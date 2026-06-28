@@ -33,7 +33,8 @@
           "icon": "./assets/notification-logo.png",
           "color": "#8B291A"
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "extra": {
       "eas": {
