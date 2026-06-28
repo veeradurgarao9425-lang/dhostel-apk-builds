@@ -14,6 +14,8 @@ import api from '../services/api';
 import { HeaderNotification } from '../components/HeaderNotification';
 import { ProfileMenu } from '../components/ProfileMenu';
 import { PaymentDrawer } from '../components/PaymentDrawer';
+import { SkeletonCard } from '../components/ui/SkeletonCard';
+import { useRefresh } from '../../contexts/RefreshContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useToast } from '../context/ToastContext';
 import { toLocalDateStr } from '../utils/dateUtils';
@@ -503,16 +505,13 @@ export default function PendingPaymentsScreen() {
                 />
                 {/* Summary skeleton */}
                 <View style={s.summaryRow}>
-                    {[0, 1].map(i => (
-                        <View key={i} style={[s.summaryCard, { backgroundColor: isDark ? '#1E293B' : '#FFF', flex: 1 }]}>
-                            <ActivityIndicator color={theme.primary} />
-                        </View>
-                    ))}
+                    <SkeletonCard style={{ flex: 1, height: 110 }} />
+                    <SkeletonCard style={{ flex: 1, height: 110 }} />
                 </View>
                 {/* List skeleton */}
-                <View style={{ paddingHorizontal: 16, gap: 10 }}>
+                <View style={{ paddingHorizontal: 16, gap: 12 }}>
                     {[0, 1, 2].map(i => (
-                        <View key={i} style={[s.skeletonCard, { backgroundColor: isDark ? '#1E293B' : '#FFF' }]} />
+                        <SkeletonCard key={i} />
                     ))}
                 </View>
             </View>
@@ -876,21 +875,22 @@ const s = StyleSheet.create({
     // ── Summary ──
     summaryRow: {
         flexDirection: 'row',
-        gap: 12,
         paddingHorizontal: 16,
-        paddingTop: 4,
+        paddingTop: 12,
         paddingBottom: 8,
+        gap: 12,
     },
     summaryCard: {
         flex: 1,
-        borderRadius: 20,
+        borderRadius: 18,
         padding: 12,
+        position: 'relative',
+        overflow: 'hidden',
         elevation: 4,
         shadowColor: '#000',
         shadowOpacity: 0.06,
         shadowRadius: 24,
         shadowOffset: { width: 0, height: 8 },
-        overflow: 'hidden',
         minHeight: 85,
     },
     summaryCardTop: {
@@ -936,7 +936,7 @@ const s = StyleSheet.create({
         alignItems: 'center',
         gap: 8,
         paddingHorizontal: 16,
-        marginBottom: 20,
+        marginBottom: 10,
     },
     searchBox: {
         flex: 1,

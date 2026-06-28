@@ -104,9 +104,9 @@ export const notificationService = {
           } else {
             navigate('Students');
           }
-        } else if (data.type === 'Payment Due' || data.type === 'General') {
-          navigate('FinanceTab', { mode: 'Rent' });
-        } else if (data.type === 'System Alert') {
+        } else if (title.includes('payment') || title.includes('collect') || data?.type === 'success') {
+          navigate('FeeManagement');
+        } else if (title.includes('tenant') || title.includes('admission')) {
           navigate('Rooms');
         }
       }

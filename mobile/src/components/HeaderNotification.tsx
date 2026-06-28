@@ -19,8 +19,8 @@ export const HeaderNotification = ({ navigation }: { navigation?: any }) => {
         setShowNotif(false);
 
         // Navigation logic based on type/content
-        if (notif.type === 'payment' || notif.title.includes('Payment')) {
-            nav.navigate('FinanceTab', { mode: 'Rent', statusFilter: 'Unpaid' });
+        if (notif.title.includes('payment') || notif.title.includes('collect')) {
+            nav.navigate('PendingPayments');
         } else if (notif.type === 'admission' || notif.title.includes('Admission')) {
             if (notif.data && notif.data.id) {
                 nav.navigate('StudentDetails', { studentId: notif.data.id });
@@ -28,9 +28,9 @@ export const HeaderNotification = ({ navigation }: { navigation?: any }) => {
                 nav.navigate('Students');
             }
         } else if (notif.type === 'expense' || notif.title.includes('Expense')) {
-            nav.navigate('FinanceTab', { mode: 'Expense' });
-        } else if (notif.type === 'income' || notif.title.includes('Income')) {
-            nav.navigate('FinanceTab', { mode: 'Rent' });
+            nav.navigate('Expenses');
+        } else if (notif.type === 'success') {
+            nav.navigate('FeeManagement');
         } else {
             // Default fallback
             nav.navigate('Notifications');

@@ -44,7 +44,6 @@ import PreBookingScreen      from '../Pages/PreBookingScreen';
 import NoticesScreen         from '../Pages/NoticesScreen';
 import ReportsScreen         from '../Pages/ReportsScreen';
 import ComingSoonScreen      from '../Pages/ComingSoonScreen';
-import FinanceScreen         from '../Pages/FinanceScreen';
 import StaffScreen           from '../Pages/StaffScreen';
 import AddStaffScreen        from '../Pages/AddStaffScreen';
 import StaffPaymentsScreen   from '../Pages/StaffPaymentsScreen';
@@ -183,10 +182,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
 
                     {/* Reminders & Transactions */}
                     <Stack.Screen name="Reminders"          component={RemindersScreen}       />
-                    <Stack.Screen name="TenantTransactions" component={TenantTransactionsScreen} />
 
-                    {/* Finance & Fees */}
-                    <Stack.Screen name="FinanceTab"      component={FinanceScreen}         />
                     <Stack.Screen name="PendingPayments" component={PendingPaymentsScreen} />
                     <Stack.Screen name="PendingTab"      component={PendingPaymentsScreen} />
                     <Stack.Screen name="OverviewTab"     component={OverviewScreen}        />

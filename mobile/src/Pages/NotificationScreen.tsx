@@ -57,40 +57,23 @@ export const NotificationScreen = () => {
         refreshNotifications();
     };
 
-    // Get color theme for each notification category
+    // Get icon for each notification category
     const getBadgeStyle = (notif: Notification) => {
         const title = notif.title.toLowerCase();
+        let Icon = Bell;
         
         if (title.includes('payment') || title.includes('collect') || notif.type === 'success') {
-            return {
-                bgColor: '#E6F4EA', // Emerald tint
-                iconColor: '#137333',
-                Icon: CheckCircle2
-            };
+            Icon = CheckCircle2;
         } else if (title.includes('admission') || title.includes('tenant') || notif.type === 'info') {
-            return {
-                bgColor: '#E8F0FE', // Google Blue tint
-                iconColor: '#1A73E8',
-                Icon: UserPlus
-            };
-        } else if (title.includes('notice') || title.includes('publish')) {
-            return {
-                bgColor: '#F3E8FF', // Purple tint
-                iconColor: '#7C3AED',
-                Icon: Bell
-            };
+            Icon = UserPlus;
         } else if (title.includes('expense') || title.includes('due') || notif.type === 'warning') {
-            return {
-                bgColor: '#FCE8E6', // Red/Amber tint
-                iconColor: '#C5221F',
-                Icon: AlertTriangle
-            };
+            Icon = AlertTriangle;
         }
         
         return {
-            bgColor: '#F1F3F4',
-            iconColor: '#5F6368',
-            Icon: Bell
+            bgColor: '#8B291A' + '15', // primary light
+            iconColor: '#8B291A', // primary
+            Icon
         };
     };
 
@@ -103,7 +86,7 @@ export const NotificationScreen = () => {
 
         // Smart navigation based on payload structure and titles
         if (title.includes('payment') || title.includes('collect') || type === 'success') {
-            navigation.navigate('FinanceTab', { mode: 'Rent' });
+            navigation.navigate('FeeManagement');
         } else if (title.includes('admission') || title.includes('tenant') || type === 'info') {
             if (data && (data.id || data.student_id)) {
                 navigation.navigate('StudentDetails', { studentId: data.id || data.student_id });
@@ -115,7 +98,7 @@ export const NotificationScreen = () => {
         } else if (title.includes('notice') || title.includes('publish')) {
             navigation.navigate('Notices');
         } else if (type === 'warning' && title.includes('expense')) {
-            navigation.navigate('FinanceTab', { mode: 'Expense' });
+            navigation.navigate('Expenses');
         } else {
             navigation.navigate('HomeTab');
         }
@@ -128,7 +111,8 @@ export const NotificationScreen = () => {
                 rightElement={
                     notifications.some(n => !n.read) ? (
                         <TouchableOpacity onPress={markAllAsRead} style={styles.markReadButton}>
-                            <Text style={styles.markReadText}>Mark all read</Text>
+                            <CheckCircle2 size={16} color="#FFF" />
+                            <Text style={styles.markReadText}>Mark All Read</Text>
                         </TouchableOpacity>
                     ) : null
                 }
@@ -218,7 +202,7 @@ const styles = StyleSheet.create({
         alignItems: 'center'
     },
     unreadItem: {
-        backgroundColor: '#F0F7FF', // Soft modern blue tint for unread items
+        backgroundColor: '#8B291A08', // very subtle primary tint
     },
     row: { flexDirection: 'row', alignItems: 'center', width: '100%' },
     iconContainer: {
@@ -248,15 +232,21 @@ const styles = StyleSheet.create({
         backgroundColor: '#3B82F6', // iOS/Slack style blue unread dot
     },
     markReadButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
         paddingVertical: 6,
         paddingHorizontal: 12,
-        borderRadius: 6,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        borderRadius: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.3)',
     },
     markReadText: {
         color: '#FFFFFF',
         fontSize: 12,
-        fontWeight: '600'
+        fontWeight: '700',
+        textTransform: 'uppercase',
     },
     bottomSpacing: { height: 60 },
 });

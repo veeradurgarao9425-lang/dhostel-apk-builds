@@ -83,7 +83,7 @@ const ProfileScreen = ({ navigation }: any) => {
         setSelectorVisible(true);
         setLoadingHostels(true);
         try {
-            const res = await api.get('/hostels');
+            const res = await api.get('/hostels?my_hostels=true');
             if (res.data?.success) {
                 setHostelsList(res.data.data || []);
             }

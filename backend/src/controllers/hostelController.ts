@@ -184,15 +184,13 @@ export const getAllHostels = async (req: AuthRequest, res: Response) => {
       )
       .where({ 'h.is_active': 1 });
 
-    // Filter by my_hostels if requested from mobile apps, or if they are an owner
-    if (req.query.my_hostels === 'true') {
-      if (req.user?.role_id === 1 || req.user?.role_id === 2) {
-        query = query.where({ 'h.owner_id': req.user.user_id });
-      } else {
-        query = query.where({ 'h.hostel_id': req.user?.hostel_id });
-      }
-    } else if (req.user?.role_id === 2) {
+    // Security filter: If they are an owner, they must only see their own hostels
+    if (req.user?.role_id === 2) {
       query = query.where({ 'h.owner_id': req.user.user_id });
+    } else if (req.query.my_hostels === 'true' && req.user?.role_id === 1) {
+      query = query.where({ 'h.owner_id': req.user.user_id });
+    } else if (req.query.my_hostels === 'true') {
+      query = query.where({ 'h.hostel_id': req.user?.hostel_id });
     }
 
     const hostels = await query.orderBy('h.created_at', 'desc');

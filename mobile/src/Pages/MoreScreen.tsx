@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { useConfirmation } from '../../contexts/ConfirmationContext';
 import { useToast } from '../context/ToastContext';
 import * as Clipboard from 'expo-clipboard';
+import { TestUIModal } from '../components/TestUIModal';
 
 // ─── Menu item definition ─────────────────────────────────────────────────────
 interface MenuItem {
@@ -32,6 +33,7 @@ export default function MoreScreen() {
     const navigation = useNavigation<any>();
     const { user, signOut, updateTokenAndUser, hostels: authHostels, loadHostels } = useAuth();
     const confirm = useConfirmation();
+    const [testUiVisible, setTestUiVisible] = useState(false);
 
     useEffect(() => {
         if (authHostels.length === 0) {
@@ -217,13 +219,22 @@ export default function MoreScreen() {
                     route: 'Profile',
                 },
                 {
-                    label: t('more.settings'),
-                    subtitle: t('more.settingsSub'),
+                    label: t('more.appSettings'),
+                    subtitle: t('more.appSettingsSub'),
                     icon: 'settings',
-                    iconColor: '#374151',
-                    iconBg: '#F9FAFB',
+                    iconColor: '#64748B',
+                    iconBg: '#F1F5F9',
                     route: 'Settings',
+                    comingSoon: true,
                 },
+                {
+                    label: 'Test UI Components',
+                    subtitle: 'Preview all UI elements',
+                    icon: 'color-palette',
+                    iconColor: '#EC4899',
+                    iconBg: '#FCE7F3',
+                    route: 'TestUI',
+                }
             ],
         },
     ], [t]);
@@ -297,8 +308,18 @@ export default function MoreScreen() {
     };
 
     const handlePress = (item: MenuItem) => {
-        if (item.comingSoon) return;
-        navigation.navigate(item.route, item.routeParams);
+        if (item.comingSoon) {
+            return;
+        }
+
+        if (item.route === 'TestUI') {
+            setTestUiVisible(true);
+            return;
+        }
+
+        if (item.route) {
+            navigation.navigate(item.route, item.routeParams);
+        }
     };
 
     const handleLogout = () => {
@@ -701,6 +722,8 @@ export default function MoreScreen() {
                     </View>
                 </View>
             </Modal>
+
+            <TestUIModal visible={testUiVisible} onClose={() => setTestUiVisible(false)} />
         </View>
     );
 }

@@ -30,7 +30,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../contexts/ThemeContext';
 import { ProfileMenu } from '../components/ProfileMenu';
 import { SkeletonDetails } from '../components/ui/SkeletonDetails';
-import { SkeletonList } from '../components/ui/SkeletonList';
+import { SkeletonList } from '../components/ui/SkeletonCard';
 import { HeaderNotification } from '../components/HeaderNotification';
 import { AppHeader } from '../components/AppHeader';
 import { useFocusEffect } from '@react-navigation/native';
