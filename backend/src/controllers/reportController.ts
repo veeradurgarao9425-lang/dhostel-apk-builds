@@ -1056,6 +1056,7 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
 
     // ── 2c. Admission fee collection (one-time fees paid during this month) ──
     let admissionFeeCollection = 0;
+    let admissionFeeCount = 0;
     let admissionStats = {
       totalStudents: 0,
       paidStudents: 0,
@@ -1071,12 +1072,14 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
           this.where('admission_status', 1)
             .orWhere('admission_status', 'Paid');
         })
-        .sum('admission_fee as total');
+        .sum('admission_fee as total')
+        .count('student_id as count');
       if (hostelIds.length > 0) {
         admissionFeeQuery = admissionFeeQuery.whereIn('hostel_id', hostelIds);
       }
       const admissionFeeResult = await admissionFeeQuery.first();
       admissionFeeCollection = Number(admissionFeeResult?.total || 0);
+      admissionFeeCount = Number(admissionFeeResult?.count || 0);
 
       // Per-student breakdown (all active and allocated students with a non-zero admission_fee set)
       let breakdownQuery = db('students')
@@ -1107,6 +1110,7 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
       }
     } catch (e) {
       admissionFeeCollection = 0;
+      admissionFeeCount = 0;
     }
 
     const totalIncome = feeCollection + otherIncome + admissionFeeCollection;

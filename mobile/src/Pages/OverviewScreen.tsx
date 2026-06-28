@@ -153,7 +153,7 @@ export default function OverviewScreen() {
             setRefreshing(false);
             setBackgroundLoading(false);
         }
-    }, [monthStr]);
+    }, [getQueryDates]);
 
     useFocusEffect(useCallback(() => { fetchData(true); }, [fetchData]));
 

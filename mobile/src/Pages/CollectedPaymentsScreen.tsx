@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
-    FlatList, StatusBar, Dimensions, Linking, Modal, TextInput, RefreshControl
+    FlatList, StatusBar, Dimensions, Linking, Modal, TextInput, RefreshControl,
+    ActivityIndicator
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -20,6 +21,8 @@ import * as Sharing from 'expo-sharing';
 import { downloadAndSaveFile } from '../utils/fileDownloader';
 import { SkeletonList } from '../components/ui/SkeletonCard';
 import { LoadMoreFooter } from '../components/ui/LoadMoreFooter';
+import { CustomDateRangePicker } from '../components/ui/pickers/CustomDateRangePicker';
+import { CustomMonthYearPicker } from '../components/ui/pickers/CustomMonthYearPicker';
 
 const { width } = Dimensions.get('window');
 
@@ -29,8 +32,18 @@ const { width } = Dimensions.get('window');
 export default function CollectedPaymentsScreen() {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
-    const { theme } = useTheme();
+    const { theme, isDark } = useTheme();
     const { showError, showSuccess, showApiError } = useToast();
+
+    // -- Filter State --
+    const [filterMode, setFilterMode] = useState<'month' | 'custom'>('month');
+    const [statsMonth, setStatsMonth] = useState(new Date());
+    const [customStart, setCustomStart] = useState(() => { const d = new Date(); d.setDate(1); return d; });
+    const [customEnd, setCustomEnd] = useState(new Date());
+
+    const [filterSelectModal, setFilterSelectModal] = useState(false);
+    const [showMonthPicker, setShowMonthPicker] = useState(false);
+    const [showCustomPicker, setShowCustomPicker] = useState(false);
 
     const [refDate, setRefDate] = useState(new Date());
     const [loading, setLoading] = useState(false);
@@ -72,13 +85,19 @@ export default function CollectedPaymentsScreen() {
             setLoadingMore(true);
         }
         try {
-            const dateStr = toLocalDateString(refDate);
             const params: Record<string, any> = {
-                type: 'month',
-                date: dateStr,
                 page: pageNum,
                 limit: 20   // Increased from 10 to 20 for faster loading
             };
+
+            if (filterMode === 'month') {
+                params.type = 'month';
+                params.date = toLocalDateString(statsMonth);
+            } else {
+                params.startDate = toLocalDateString(customStart);
+                params.endDate = toLocalDateString(customEnd);
+            }
+
             if (debouncedSearchQuery) {
                 params.search = debouncedSearchQuery;
             }
@@ -121,13 +140,20 @@ export default function CollectedPaymentsScreen() {
             setLoading(false);
             setLoadingMore(false);
         }
-    }, [refDate, debouncedSearchQuery]);
+    }, [filterMode, statsMonth, customStart, customEnd, debouncedSearchQuery]);
 
     useEffect(() => {
         setPage(1);
         setHasMore(true);
         load(1, true);
     }, [load]);
+
+    let periodLabel = '';
+    if (filterMode === 'month') {
+        periodLabel = statsMonth.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+    } else {
+        periodLabel = `${customStart.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} - ${customEnd.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+    }
 
     const shiftMonth = (dir: -1 | 1) => {
         const d = new Date(refDate);
@@ -161,27 +187,9 @@ export default function CollectedPaymentsScreen() {
             const exportUrl = `${baseURL}/income/export?startDate=${startStr}&endDate=${endStr}&token=${encodeURIComponent(token)}&all=true`;
 
             const filename = `payments_report_${startStr}_to_${endStr}.xlsx`;
-            const fileUri = `${FileSystem.documentDirectory}${filename}`;
-
-            const downloadResult = await FileSystem.downloadAsync(exportUrl, fileUri);
 
             setShowExportModal(false);
-
-            if (downloadResult.status === 200) {
-                // File is already in documentDirectory — share it directly (no copy needed)
-                const canShare = await Sharing.isAvailableAsync();
-                if (canShare) {
-                    await Sharing.shareAsync(downloadResult.uri, {
-                        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                        dialogTitle: `Open ${filename}`,
-                        UTI: 'com.microsoft.excel.xlsx',
-                    });
-                } else {
-                    Alert.alert('Downloaded', `File saved as:\n${filename}`);
-                }
-            } else {
-                showError(`Server returned status code ${downloadResult.status}`);
-            }
+            await downloadAndSaveFile(exportUrl, filename, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         } catch (error) {
             console.error(error);
             showApiError(error, 'Failed to export data');
@@ -208,6 +216,7 @@ export default function CollectedPaymentsScreen() {
 
         const isRent = item.type === 'Rent';
         const isGuest = item.type === 'Guest';
+        const isAdmission = item.type === 'Admission';
         
         let accentColor = '#F59E0B'; // Amber for Other
         let textColor = '#D97706';
@@ -224,6 +233,11 @@ export default function CollectedPaymentsScreen() {
             textColor = '#4338CA';
             bgAvatar = '#E0E7FF';
             iconName = 'people';
+        } else if (isAdmission) {
+            accentColor = '#8B5CF6'; // Purple for Admission
+            textColor = '#6D28D9';
+            bgAvatar = '#F5F3FF';
+            iconName = 'school';
         }
 
         return (
@@ -254,6 +268,11 @@ export default function CollectedPaymentsScreen() {
                             {isGuest && (
                                 <View style={[s.roomBadge, { backgroundColor: bgAvatar }]}>
                                     <Text style={[s.roomBadgeText, { color: textColor }]}>Guest</Text>
+                                </View>
+                            )}
+                            {isAdmission && (
+                                <View style={[s.roomBadge, { backgroundColor: bgAvatar }]}>
+                                    <Text style={[s.roomBadgeText, { color: textColor }]}>Admission Fee</Text>
                                 </View>
                             )}
                         </View>
@@ -318,7 +337,13 @@ export default function CollectedPaymentsScreen() {
                         <Download color="#FFF" size={20} />
                     </TouchableOpacity>
                 }
-            />
+            >
+                <TouchableOpacity style={s.topFilterBtn} onPress={() => setFilterSelectModal(true)} activeOpacity={0.8}>
+                    <Ionicons name="calendar-outline" size={14} color="#FFF" />
+                    <Text style={s.topFilterTxt}>{periodLabel}</Text>
+                    <Ionicons name="chevron-down" size={12} color="#FFF" />
+                </TouchableOpacity>
+            </AppHeader>
 
             {/* BODY */}
             {loading ? (
@@ -381,7 +406,7 @@ export default function CollectedPaymentsScreen() {
                                 </View>
                             )}
 
-                            {/* Search Bar + Month Filter */}
+                            {/* Search Bar */}
                             <View style={s.searchBarContainer}>
                                 <Ionicons name="search" size={18} color="#94A3B8" />
                                 <TextInput
@@ -391,41 +416,6 @@ export default function CollectedPaymentsScreen() {
                                     onChangeText={setSearchQuery}
                                     placeholderTextColor="#94A3B8"
                                 />
-                            </View>
-
-                            {/* Month Navigation Bar */}
-                            <View style={s.monthNavBar}>
-                                <TouchableOpacity
-                                    style={s.monthNavArrow}
-                                    onPress={() => shiftMonth(-1)}
-                                    activeOpacity={0.7}
-                                >
-                                    <Ionicons name="chevron-back" size={18} color="#059669" />
-                                </TouchableOpacity>
-
-                                <TouchableOpacity
-                                    style={s.monthNavLabel}
-                                    onPress={() => setDatePickerVisible(true)}
-                                    activeOpacity={0.8}
-                                >
-                                    <Ionicons name="calendar-outline" size={14} color="#059669" />
-                                    <Text style={s.monthNavLabelText}>
-                                        {refDate.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
-                                    </Text>
-                                    <Ionicons name="chevron-down" size={13} color="#059669" />
-                                </TouchableOpacity>
-
-                                <TouchableOpacity
-                                    style={[
-                                        s.monthNavArrow,
-                                        !canGoForward() && { opacity: 0.3 },
-                                    ]}
-                                    onPress={() => canGoForward() && shiftMonth(1)}
-                                    disabled={!canGoForward()}
-                                    activeOpacity={0.7}
-                                >
-                                    <Ionicons name="chevron-forward" size={18} color="#059669" />
-                                </TouchableOpacity>
                             </View>
                         </View>
                     }
@@ -530,15 +520,43 @@ export default function CollectedPaymentsScreen() {
                 }}
                 onCancel={() => setEndDatePickerVisible(false)}
             />
-            <DateTimePickerModal
-                isVisible={isDatePickerVisible}
-                mode="date"
-                date={refDate}
-                onConfirm={(date) => {
-                    setRefDate(date);
-                    setDatePickerVisible(false);
-                }}
-                onCancel={() => setDatePickerVisible(false)}
+            <Modal visible={filterSelectModal} transparent animationType="fade" onRequestClose={() => setFilterSelectModal(false)}>
+                <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setFilterSelectModal(false)}>
+                    <View style={[s.dropdownMenu, { backgroundColor: theme.cardBg || '#FFF' }]}>
+                        <TouchableOpacity style={[s.filterOpt, { borderBottomColor: isDark ? '#334155' : '#E2E8F0', borderBottomWidth: 1 }]}
+                            onPress={() => { setFilterSelectModal(false); setShowMonthPicker(true); }}>
+                            <Ionicons name="calendar-outline" size={18} color={theme.primary} />
+                            <View style={{ flex: 1, marginLeft: 10 }}>
+                                <Text style={[s.fTitle, { color: theme.textPrimary }]}>Specific Month</Text>
+                                <Text style={s.fSub}>E.g., June 2026</Text>
+                            </View>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={s.filterOpt}
+                            onPress={() => { setFilterSelectModal(false); setShowCustomPicker(true); }}>
+                            <Ionicons name="calendar-number-outline" size={18} color={theme.primary} />
+                            <View style={{ flex: 1, marginLeft: 10 }}>
+                                <Text style={[s.fTitle, { color: theme.textPrimary }]}>Custom Date Range</Text>
+                                <Text style={s.fSub}>E.g., 12 Jun - 18 Jun</Text>
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+                </TouchableOpacity>
+            </Modal>
+
+            <CustomMonthYearPicker
+                visible={showMonthPicker}
+                onClose={() => setShowMonthPicker(false)}
+                onSelect={(d) => { setFilterMode('month'); setStatsMonth(d); setShowMonthPicker(false); }}
+                initialDate={statsMonth}
+            />
+
+            <CustomDateRangePicker
+                visible={showCustomPicker}
+                onClose={() => setShowCustomPicker(false)}
+                onConfirm={(st: Date, ed: Date) => { setFilterMode('custom'); setCustomStart(st); setCustomEnd(ed); setShowCustomPicker(false); }}
+                initialStart={customStart}
+                initialEnd={customEnd}
             />
         </View>
     );
@@ -546,6 +564,23 @@ export default function CollectedPaymentsScreen() {
 
 const s = StyleSheet.create({
     root: { flex: 1, backgroundColor: '#F8FAFC' },
+    topFilterBtn: {
+        flexDirection: 'row', alignItems: 'center', gap: 6,
+        alignSelf: 'center',
+        marginTop: 8,
+        paddingHorizontal: 10, paddingVertical: 6,
+        borderRadius: 8,
+        borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)',
+    },
+    topFilterTxt: { color: '#FFF', fontSize: 11, fontWeight: '700' },
+    dropdownMenu: {
+        position: 'absolute', top: 90, right: 16,
+        borderRadius: 16, padding: 8, width: 220,
+        shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8,
+    },
+    filterOpt: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 6 },
+    fTitle: { fontSize: 13, fontWeight: '700' },
+    fSub: { fontSize: 10, color: '#64748B', marginTop: 2, fontWeight: '600' },
 
     header: {
         paddingTop: 54,

@@ -383,36 +383,50 @@ export const safeGetDateString = (d: any): string => {
 // Get income analytics for breakdown charts
 export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
   try {
-    const { type, date, page, limit, search } = req.query; // type: 'day' | 'week' | 'month', date: 'YYYY-MM-DD'
+    const { type, date, startDate: queryStartDate, endDate: queryEndDate, page, limit, search } = req.query; // type: 'day' | 'week' | 'month', date: 'YYYY-MM-DD'
     const user = req.user;
     const hostelId = user?.hostel_id;
 
-    if (!date) return res.status(400).json({ success: false, error: 'Date is required' });
-
-    const dateStr = date as string;
-    const parts = dateStr.split('-');
-    const year = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10);
-    const day = parseInt(parts[2], 10);
-
     let startDate: string, endDate: string;
+    let year = new Date().getFullYear();
+    let month = new Date().getMonth() + 1;
+    let day = new Date().getDate();
 
-    if (type === 'day') {
-      startDate = `${dateStr} 00:00:00`;
-      endDate = `${dateStr} 23:59:59`;
-    } else if (type === 'week') {
-      endDate = `${dateStr} 23:59:59`;
-      const d = new Date(year, month - 1, day);
-      d.setDate(d.getDate() - 6);
-      const dy = d.getFullYear();
-      const dm = String(d.getMonth() + 1).padStart(2, '0');
-      const dd = String(d.getDate()).padStart(2, '0');
-      startDate = `${dy}-${dm}-${dd} 00:00:00`;
+    if (queryStartDate && queryEndDate) {
+      startDate = `${queryStartDate} 00:00:00`;
+      endDate = `${queryEndDate} 23:59:59`;
+      const parts = (queryStartDate as string).split('-');
+      if (parts.length >= 3) {
+        year = parseInt(parts[0], 10);
+        month = parseInt(parts[1], 10);
+        day = parseInt(parts[2], 10);
+      }
     } else {
-      // Current month
-      startDate = `${year}-${String(month).padStart(2, '0')}-01 00:00:00`;
-      const lastDay = new Date(year, month, 0).getDate();
-      endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')} 23:59:59`;
+      if (!date) return res.status(400).json({ success: false, error: 'Date is required' });
+
+      const dateStr = date as string;
+      const parts = dateStr.split('-');
+      year = parseInt(parts[0], 10);
+      month = parseInt(parts[1], 10);
+      day = parseInt(parts[2], 10);
+
+      if (type === 'day') {
+        startDate = `${dateStr} 00:00:00`;
+        endDate = `${dateStr} 23:59:59`;
+      } else if (type === 'week') {
+        endDate = `${dateStr} 23:59:59`;
+        const d = new Date(year, month - 1, day);
+        d.setDate(d.getDate() - 6);
+        const dy = d.getFullYear();
+        const dm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        startDate = `${dy}-${dm}-${dd} 00:00:00`;
+      } else {
+        // Current month
+        startDate = `${year}-${String(month).padStart(2, '0')}-01 00:00:00`;
+        const lastDay = new Date(year, month, 0).getDate();
+        endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')} 23:59:59`;
+      }
     }
 
     // 1. Fetch Income records

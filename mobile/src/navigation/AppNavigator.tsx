@@ -182,6 +182,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
 
                     {/* Reminders & Transactions */}
                     <Stack.Screen name="Reminders"          component={RemindersScreen}       />
+                    <Stack.Screen name="TenantTransactions" component={TenantTransactionsScreen} />
 
                     <Stack.Screen name="PendingPayments" component={PendingPaymentsScreen} />
                     <Stack.Screen name="PendingTab"      component={PendingPaymentsScreen} />

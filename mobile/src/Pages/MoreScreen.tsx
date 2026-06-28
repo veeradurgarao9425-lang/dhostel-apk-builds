@@ -362,20 +362,6 @@ export default function MoreScreen() {
 
     return (
         <View style={[s.root, { backgroundColor: theme.background }]}>
-            {!isDark && (
-                <Image
-                    source={require('../../assets/pattern_bg.jpg')}
-                    style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        opacity: 0.85,
-                    }}
-                    resizeMode="cover"
-                />
-            )}
             <StatusBar barStyle="light-content" />
 
             {/* Header */}
