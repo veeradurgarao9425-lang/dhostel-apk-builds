@@ -1,12 +1,15 @@
-import React, { useState, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity, StatusBar,
-    FlatList, Linking, Modal,
-    RefreshControl, ActivityIndicator, Alert,
+    FlatList, Linking, Modal, Image, ImageBackground,
+    RefreshControl, ActivityIndicator, Alert, TextInput,
+    Dimensions,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import Svg, { Path } from 'react-native-svg';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import api from '../services/api';
 import Toast from 'react-native-toast-message';
 import { HeaderNotification } from '../components/HeaderNotification';
@@ -14,11 +17,14 @@ import { ProfileMenu } from '../components/ProfileMenu';
 import { PaymentDrawer } from '../components/PaymentDrawer';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useToast } from '../context/ToastContext';
-import { AppHeader } from '../components/AppHeader';
 import { toLocalDateStr } from '../utils/dateUtils';
+import { AppHeader } from '../components/AppHeader';
 import { useTranslation } from 'react-i18next';
+import { FilterDuesModal } from '../components/FilterDuesModal';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+const { width } = Dimensions.get('window');
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 interface DueTenant {
     id: number;
     name: string;
@@ -40,12 +46,16 @@ interface DueTenant {
 
 const sf = (v: any): number => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
 
-// ─── Avatar color by name ─────────────────────────────────────────────────────
-const AVATAR_COLORS = ['#7C3AED', '#2563EB', '#DC2626', '#D97706', '#059669', '#0891B2', '#7C3AED'];
-const avatarColor = (name: string) => AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length];
-
-// ─── Sort options ─────────────────────────────────────────────────────────────
-type SortType = 'amount' | 'room' | 'overdue';
+// ─── Avatar palette ───────────────────────────────────────────────────────────
+const AVATAR_PALETTES = [
+    { bg: '#EDE9FE', text: '#7C3AED' },
+    { bg: '#DBEAFE', text: '#2563EB' },
+    { bg: '#FEE2E2', text: '#DC2626' },
+    { bg: '#FEF3C7', text: '#D97706' },
+    { bg: '#DCFCE7', text: '#059669' },
+    { bg: '#E0F2FE', text: '#0891B2' },
+];
+const avatarPalette = (name: string) => AVATAR_PALETTES[name.charCodeAt(0) % AVATAR_PALETTES.length];
 
 // ─── Remind Modal ─────────────────────────────────────────────────────────────
 const RemindModal = ({ visible, tenant, onClose }: {
@@ -55,8 +65,11 @@ const RemindModal = ({ visible, tenant, onClose }: {
 }) => {
     const { showError } = useToast();
     const { t } = useTranslation();
+    const { theme, isDark } = useTheme();
 
     if (!tenant) return null;
+
+    const palette = avatarPalette(tenant.name);
 
     const callTenant = () => {
         onClose();
@@ -70,7 +83,7 @@ const RemindModal = ({ visible, tenant, onClose }: {
         const msg = t('pendingDues.verificationMsg', {
             name: tenant.name.split(' ')[0],
             amount: tenant.dueAmount.toLocaleString('en-IN'),
-            month: tenant.feeMonth
+            month: tenant.feeMonth,
         });
         Linking.openURL(`whatsapp://send?phone=91${tenant.phone}&text=${encodeURIComponent(msg)}`);
     };
@@ -78,149 +91,197 @@ const RemindModal = ({ visible, tenant, onClose }: {
     return (
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
             <TouchableOpacity style={rm.backdrop} activeOpacity={1} onPress={onClose} />
-            <View style={rm.sheet}>
-                <View style={rm.handle} />
-                {/* Header */}
+            <View style={[rm.sheet, { backgroundColor: theme.cardBg }]}>
+                <View style={[rm.handle, { backgroundColor: isDark ? '#475569' : '#CBD5E1' }]} />
                 <View style={rm.header}>
-                    <View style={[rm.avatarCircle, { backgroundColor: avatarColor(tenant.name) + '20' }]}>
-                        <Text style={[rm.avatarText, { color: avatarColor(tenant.name) }]}>
+                    <View style={[rm.avatarCircle, { backgroundColor: palette.bg }]}>
+                        <Text style={[rm.avatarText, { color: palette.text }]}>
                             {tenant.name[0].toUpperCase()}
                         </Text>
                     </View>
                     <View style={{ flex: 1 }}>
-                        <Text style={rm.tenantName}>{tenant.name}</Text>
-                        <Text style={rm.tenantRoom}>{t('rooms.room')} {tenant.room} · ₹{tenant.dueAmount.toLocaleString('en-IN')} {t('fees.pending').toLowerCase()}</Text>
+                        <Text style={[rm.tenantName, { color: theme.textPrimary }]}>{tenant.name}</Text>
+                        <Text style={[rm.tenantRoom, { color: theme.textSecondary }]}>
+                            {t('rooms.room')} {tenant.room} · ₹{tenant.dueAmount.toLocaleString('en-IN')} {t('fees.pending').toLowerCase()}
+                        </Text>
                     </View>
-                    <TouchableOpacity onPress={onClose} style={rm.closeBtn}>
-                        <Ionicons name="close" size={18} color="#64748B" />
+                    <TouchableOpacity onPress={onClose} style={[rm.closeBtn, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                        <Ionicons name="close" size={18} color={theme.textSecondary} />
                     </TouchableOpacity>
                 </View>
 
-                <Text style={rm.subtitle}>{t('pendingDues.remindTenant')}</Text>
+                <Text style={[rm.subtitle, { color: theme.textSecondary }]}>{t('pendingDues.remindTenant')}</Text>
 
-                {/* Options */}
-                <TouchableOpacity style={rm.option} onPress={callTenant} activeOpacity={0.8}>
-                    <View style={[rm.optionIcon, { backgroundColor: '#DCFCE7' }]}>
+                <TouchableOpacity style={[rm.option, { borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]} onPress={callTenant} activeOpacity={0.8}>
+                    <View style={[rm.optionIcon, { backgroundColor: isDark ? '#14532D' : '#DCFCE7' }]}>
                         <Ionicons name="call" size={22} color="#16A34A" />
                     </View>
                     <View style={{ flex: 1 }}>
-                        <Text style={rm.optionLabel}>{t('pendingDues.callTenant')}</Text>
-                        <Text style={rm.optionSub}>{t('pendingDues.directlyDial', { phone: tenant.phone || '' })}</Text>
+                        <Text style={[rm.optionLabel, { color: theme.textPrimary }]}>{t('pendingDues.callTenant')}</Text>
+                        <Text style={[rm.optionSub, { color: theme.textSecondary }]}>{t('pendingDues.directlyDial', { phone: tenant.phone || '' })}</Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
+                    <Ionicons name="chevron-forward" size={16} color={isDark ? '#475569' : '#CBD5E1'} />
                 </TouchableOpacity>
 
-                <TouchableOpacity style={rm.option} onPress={whatsappRemind} activeOpacity={0.8}>
-                    <View style={[rm.optionIcon, { backgroundColor: '#DCFCE7' }]}>
+                <TouchableOpacity style={[rm.option, { borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]} onPress={whatsappRemind} activeOpacity={0.8}>
+                    <View style={[rm.optionIcon, { backgroundColor: isDark ? '#14532D' : '#DCFCE7' }]}>
                         <Ionicons name="logo-whatsapp" size={22} color="#22C55E" />
                     </View>
                     <View style={{ flex: 1 }}>
-                        <Text style={rm.optionLabel}>{t('pendingDues.whatsappReminder')}</Text>
-                        <Text style={rm.optionSub}>{t('pendingDues.sendPaymentReminder')}</Text>
+                        <Text style={[rm.optionLabel, { color: theme.textPrimary }]}>{t('pendingDues.whatsappReminder')}</Text>
+                        <Text style={[rm.optionSub, { color: theme.textSecondary }]}>{t('pendingDues.sendPaymentReminder')}</Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
+                    <Ionicons name="chevron-forward" size={16} color={isDark ? '#475569' : '#CBD5E1'} />
                 </TouchableOpacity>
 
-                <View style={rm.spacer} />
+                <View style={{ height: 32 }} />
             </View>
         </Modal>
     );
 };
 
-// ─── CollectDrawer is now shared ─────────────────────────────────────────────
-// Removed: the inline CollectDrawer (120 lines) was identical to the one in
-// FinanceScreen.tsx. Both screens now import PaymentDrawer from components/.
-
-
-// ─── Tenant Card ──────────────────────────────────────────────────────────────
-const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect }: {
+// ─── Tenant Due Card (matches reference image exactly) ────────────────────────
+const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect, isDark, theme, fontSize }: {
     item: DueTenant;
     themeColor: string;
     onRemind: (t: DueTenant) => void;
     onCollect: (t: DueTenant) => void;
+    isDark: boolean;
+    theme: any;
+    fontSize: number;
 }) => {
-    const { theme, fontSize, isDark } = useTheme();
     const { t } = useTranslation();
+    const palette = avatarPalette(item.name);
     const accentColor = item.isOverdue ? '#DC2626' : '#D97706';
-    const accentBg    = item.isOverdue ? '#FEE2E2' : '#FEF3C7';
-    const tagLabel    = item.isOverdue
-        ? `${item.daysOverdue}d ${t('fees.overdue').toLowerCase()}`
-        : `${t('overview.due')}: ${item.dueDate}`;
+    const tagLabel = item.isOverdue
+        ? `${item.daysOverdue}d overdue`
+        : `Due: ${item.dueDate}`;
+
+    const statusText = item.paidAmount > 0 ? 'PARTIAL' : 'PENDING';
+    const statusColor = item.paidAmount > 0 ? '#F59E0B' : accentColor;
+    const isDarkBg = isDark ? '#1E293B' : '#FFF';
 
     return (
-        <View style={[tc.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#EDE9FE', borderWidth: isDark ? 1 : 0 }]}>
-            <View style={[tc.accentBar, { backgroundColor: accentColor }]} />
-            <View style={tc.inner}>
-                {/* Header Row: Avatar + Info + Amount */}
-                <View style={tc.rowHeader}>
-                    <View style={[tc.avatar, { backgroundColor: avatarColor(item.name) + '18' }]}>
-                        <Text style={[tc.avatarTxt, { color: avatarColor(item.name) }]}>
+        <View style={[card.wrap, {
+            backgroundColor: isDarkBg,
+            borderColor: '#ECECEC',
+            shadowColor: '#000',
+        }]}>
+            {/* Left accent bar */}
+            <View style={[card.accentBar, { backgroundColor: accentColor }]} />
+
+            <View style={card.body}>
+                <SkylineDecoration />
+                {/* ── Top row: Avatar | Name+Room | Badge ── */}
+                <View style={card.topRow}>
+                    {/* Avatar */}
+                    <View style={[card.avatar, { backgroundColor: palette.bg }]}>
+                        <Text style={[card.avatarTxt, { color: palette.text }]}>
                             {item.name[0].toUpperCase()}
                         </Text>
                     </View>
-                    
-                    <View style={tc.infoCol}>
-                        <Text style={[tc.name, { fontSize: fontSize, color: theme.textPrimary }]}>{item.name}</Text>
-                        <Text style={[tc.roomText, { fontSize: fontSize - 2, color: theme.textSecondary }]}>{t('rooms.room')} {item.room} · {item.feeMonth}</Text>
-                        
-                        <View style={[tc.statusBadge, { backgroundColor: accentBg }]}>
-                            <Ionicons name="time-outline" size={11} color={accentColor} />
-                            <Text style={[tc.statusText, { color: accentColor }]}>{tagLabel}</Text>
+
+                    {/* Info */}
+                    <View style={card.infoCol}>
+                        <Text style={[card.name, { color: isDark ? '#F8FAFC' : '#1F2937', fontSize: fontSize + 1 }]} numberOfLines={1}>
+                            {item.name}
+                        </Text>
+                        <Text style={[card.roomTxt, { color: '#6B7280', fontSize: fontSize - 2 }]} numberOfLines={1}>
+                            Room {item.room} · {item.feeMonth}
+                        </Text>
+                    </View>
+
+                    {/* Right: Badge */}
+                    <View style={{ alignItems: 'flex-end', justifyContent: 'center' }}>
+                        <View style={[card.badge, { backgroundColor: item.isOverdue ? '#FEF2F2' : '#FFFBEB' }]}>
+                            <Ionicons name="time-outline" size={12} color={accentColor} />
+                            <Text style={[card.badgeTxt, { color: accentColor }]}>{tagLabel}</Text>
+                        </View>
+                    </View>
+                </View>
+
+                {/* ── Divider ── */}
+                <View style={[card.divider, { backgroundColor: '#ECECEC' }]} />
+
+                {/* ── Bottom row: Stats | Actions ── */}
+                <View style={card.bottomRow}>
+                    {/* Totals */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, justifyContent: 'space-between' }}>
+                        <View style={card.statCol}>
+                            <Text style={[card.statLabel, { color: '#6B7280' }]} numberOfLines={1}>Total</Text>
+                            <Text style={[card.statVal, { color: isDark ? '#F8FAFC' : '#1F2937' }]} numberOfLines={1}>
+                                ₹{item.totalAmount.toLocaleString('en-IN')}
+                            </Text>
+                        </View>
+                        <View style={card.statCol}>
+                            <Text style={[card.statLabel, { color: '#10B981' }]} numberOfLines={1}>Paid</Text>
+                            <Text style={[card.statVal, { color: '#10B981' }]} numberOfLines={1}>
+                                ₹{item.paidAmount.toLocaleString('en-IN')}
+                            </Text>
+                        </View>
+                        <View style={card.statCol}>
+                            <Text style={[card.statLabel, { color: accentColor }]} numberOfLines={1}>Due</Text>
+                            <Text style={[card.statVal, { color: accentColor, fontSize: fontSize + 2 }]} numberOfLines={1}>
+                                ₹{item.dueAmount.toLocaleString('en-IN')}
+                            </Text>
                         </View>
                     </View>
 
-                    <View style={tc.amountCol}>
-                        <Text style={[tc.amountLabel, { fontSize: fontSize - 5, color: theme.textSecondary }]}>{t('fees.pending')}</Text>
-                        <Text style={[tc.amountVal, { color: accentColor, fontSize: fontSize + 4 }]}>
-                            ₹{item.dueAmount.toLocaleString('en-IN')}
-                        </Text>
-                    </View>
-                </View>
+                    {/* Spacer */}
+                    <View style={{ width: 16 }} />
 
-                {/* Columns Block */}
-                <View style={[tc.columnsBlock, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC' }]}>
-                    <View style={tc.colItem}>
-                        <Text style={[tc.colLabel, { fontSize: fontSize - 6 }]}>{t('common.total')}</Text>
-                        <Text style={[tc.colValue, { color: theme.textPrimary, fontSize: fontSize - 2 }]}>₹{item.totalAmount.toLocaleString('en-IN')}</Text>
-                    </View>
-                    <View style={[tc.colDivider, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]} />
-                    <View style={tc.colItem}>
-                        <Text style={[tc.colLabel, { color: '#059669', fontSize: fontSize - 6 }]}>{t('fees.paid')}</Text>
-                        <Text style={[tc.colValue, { color: '#059669', fontSize: fontSize - 2 }]}>₹{item.paidAmount.toLocaleString('en-IN')}</Text>
-                    </View>
-                    <View style={[tc.colDivider, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]} />
-                    <View style={tc.colItem}>
-                        <Text style={[tc.colLabel, { color: accentColor, fontSize: fontSize - 6 }]}>{t('fees.pending')}</Text>
-                        <Text style={[tc.colValue, { color: accentColor, fontSize: fontSize - 2 }]}>₹{item.dueAmount.toLocaleString('en-IN')}</Text>
-                    </View>
-                </View>
+                    {/* Action buttons */}
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                        <TouchableOpacity
+                            style={[card.iconBtn, { borderColor: theme.primary, backgroundColor: '#FFFFFF', borderWidth: 1.5 }]}
+                            onPress={() => onRemind(item)}
+                            activeOpacity={0.75}
+                        >
+                            <Ionicons name="notifications" size={18} color={theme.primary} />
+                        </TouchableOpacity>
 
-                {/* Divider */}
-                <View style={[tc.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
-
-                {/* Action buttons */}
-                <View style={tc.actions}>
-                    <TouchableOpacity
-                        style={[tc.remindBtn, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
-                        onPress={() => onRemind(item)}
-                        activeOpacity={0.8}
-                    >
-                        <Ionicons name="notifications-outline" size={15} color={isDark ? '#94A3B8' : '#475569'} />
-                        <Text style={[tc.remindText, { fontSize: fontSize - 2, color: theme.textPrimary }]}>{t('pendingDues.remind')}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[tc.collectBtn, { backgroundColor: themeColor }]}
-                        onPress={() => onCollect(item)}
-                        activeOpacity={0.85}
-                    >
-                        <Ionicons name="checkmark-circle-outline" size={15} color="#FFF" />
-                        <Text style={[tc.collectText, { fontSize: fontSize - 2, color: '#FFF' }]}>{t('pendingDues.collect')}</Text>
-                    </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[card.iconBtn, { backgroundColor: theme.primary, borderWidth: 0 }]}
+                            onPress={() => onCollect(item)}
+                            activeOpacity={0.75}
+                        >
+                            <MaterialCommunityIcons name="currency-inr" size={18} color="#FFFFFF" />
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </View>
         </View>
     );
 });
+
+// ─── Skyline SVG decoration ───────────────────────────────────────────────────
+const SkylineDecoration = () => (
+    <View style={{ position: 'absolute', bottom: 0, right: 0, left: 0, height: 60, opacity: 0.04 }} pointerEvents="none">
+        <Svg width="100%" height="100%" viewBox="0 0 400 60" preserveAspectRatio="none">
+            <Path fill="#1F2937" d="M0,60 L0,50 L20,50 L20,60 M20,60 L20,30 L60,30 L60,60 M60,60 L60,20 L90,20 L90,60 M90,60 L90,40 L120,40 L120,60 M120,60 L120,10 L160,10 L160,60 M160,60 L160,25 L190,25 L190,60 M190,60 L190,45 L220,45 L220,60 M220,60 L220,15 L260,15 L260,60 M260,60 L260,5 L310,5 L310,60 M310,60 L310,35 L340,35 L340,60 M340,60 L340,25 L380,25 L380,60 M380,60 L380,40 L400,40 L400,60" />
+        </Svg>
+    </View>
+);
+
+// ─── Wave SVG decoration (pure View-based) ────────────────────────────────────
+const WaveDecoration = ({ color }: { color: string }) => (
+    <View style={wave.container} pointerEvents="none">
+        <Svg width="100%" height="100%" viewBox="0 0 100 40" preserveAspectRatio="none">
+            {/* Background wave */}
+            <Path
+                d="M0,40 Q25,5 55,20 T100,5 L100,40 Z"
+                fill={color}
+                opacity={0.08}
+            />
+            {/* Foreground wave */}
+            <Path
+                d="M0,40 Q30,20 60,30 T100,15 L100,40 Z"
+                fill={color}
+                opacity={0.12}
+            />
+        </Svg>
+    </View>
+);
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function PendingPaymentsScreen() {
@@ -228,20 +289,29 @@ export default function PendingPaymentsScreen() {
     const { theme, fontSize, isDark } = useTheme();
     const { t } = useTranslation();
     const { showSuccess, showError } = useToast();
+    const insets = useSafeAreaInsets();
 
-    const [tenants, setTenants]     = useState<DueTenant[]>([]);
-    const [loading, setLoading]     = useState(true);
+    const [tenants, setTenants] = useState<DueTenant[]>([]);
+    const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [remindTarget, setRemindTarget] = useState<DueTenant | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
 
     const [page, setPage] = useState(1);
     const [loadingMore, setLoadingMore] = useState(false);
     const [hasMore, setHasMore] = useState(true);
+    
+    // Filter Modal state
+    const [filterModalVisible, setFilterModalVisible] = useState(false);
+    const handleApplyFilters = (filters: any) => {
+        // Just log for now, full integration of filter params later
+        console.log('Applied filters:', filters);
+    };
     const [totalPending, setTotalPending] = useState(0);
     const [partialPaid, setPartialPaid] = useState(0);
     const [totalDefaulters, setTotalDefaulters] = useState(0);
 
-    // Modal / Collect Drawer States
+    // Collect Drawer
     const [collectModalVisible, setCollectModalVisible] = useState(false);
     const [selectedFee, setSelectedFee] = useState<any>(null);
     const [payAmount, setPayAmount] = useState('');
@@ -258,7 +328,7 @@ export default function PendingPaymentsScreen() {
     const modesLoadedRef = useRef(false);
     const isFirstLoadRef = useRef(true);
 
-    // ── Fetch data ───────────────────────────────────────────────────────────
+    // ── Fetch ────────────────────────────────────────────────────────────────
     const load = useCallback(async (pageNum = 1, isSilent = false) => {
         try {
             if (pageNum === 1) {
@@ -267,28 +337,19 @@ export default function PendingPaymentsScreen() {
                 setLoadingMore(true);
             }
 
-            // Fetch payment modes if empty
             if (!modesLoadedRef.current) {
                 const modesRes = await api.get('/monthly-fees/payment-modes').catch(() => null);
                 if (modesRes?.data?.success) {
                     const modes = modesRes.data.data;
                     setPaymentModes(modes);
                     const first = modes[0];
-                    if (first) {
-                        setPayModeId((first.payment_mode_id || first.id)?.toString() || '1');
-                    }
+                    if (first) setPayModeId((first.payment_mode_id || first.id)?.toString() || '1');
                     modesLoadedRef.current = true;
                 }
             }
 
-            // Let request failures propagate to the catch block so the user sees an
-            // error toast instead of a silent (and misleading) "All clear" empty state.
             const res: any = await api.get('/monthly-fees/summary', {
-                params: {
-                    onlyPending: 'true',
-                    page: pageNum,
-                    limit: 10
-                }
+                params: { onlyPending: 'true', page: pageNum, limit: 10 },
             });
             if (!res.data.success) throw new Error(res.data?.error || 'Failed to load dues');
 
@@ -297,8 +358,8 @@ export default function PendingPaymentsScreen() {
 
             const pending: DueTenant[] = fees.map(f => {
                 const total = sf(f.total_amount || f.total_due || f.monthly_rent || 0);
-                const paid  = sf(f.amount_paid || f.paid_amount || 0);
-                const due   = Math.max(0, total - paid);
+                const paid = sf(f.amount_paid || f.paid_amount || 0);
+                const due = Math.max(0, total - paid);
 
                 const dueDateObj = f.due_date ? new Date(f.due_date) : new Date();
                 dueDateObj.setHours(0, 0, 0, 0);
@@ -330,12 +391,10 @@ export default function PendingPaymentsScreen() {
             });
 
             setHasMore(res.data.data?.hasMore ?? (pending.length === 10));
-
             setTenants(prev => {
                 if (pageNum === 1) return pending;
                 const existingIds = new Set(prev.map(t => t.id));
-                const unique = pending.filter(t => !existingIds.has(t.id));
-                return [...prev, ...unique];
+                return [...prev, ...pending.filter(t => !existingIds.has(t.id))];
             });
 
             const summaryObj = res.data.data?.summary;
@@ -360,10 +419,8 @@ export default function PendingPaymentsScreen() {
         load(1, false);
     }, [load]));
 
-    const sortedTenants = tenants;
-
-    // ── Handlers ────────────────────────────────────────────────────────────
-    const handleRemind  = useCallback((t: DueTenant) => setRemindTarget(t), []);
+    // ── Handlers ─────────────────────────────────────────────────────────────
+    const handleRemind = useCallback((t: DueTenant) => setRemindTarget(t), []);
     const handleCollect = useCallback((t: DueTenant) => {
         setSelectedFee(t);
         setPayAmount(t.dueAmount.toString());
@@ -379,7 +436,6 @@ export default function PendingPaymentsScreen() {
             Alert.alert('Invalid Amount', 'Please enter a valid amount'); return;
         }
         if (!selectedFee) return;
-
         try {
             setPayLoading(true);
             const payload: any = {
@@ -393,9 +449,7 @@ export default function PendingPaymentsScreen() {
                 transaction_id: payTransactionId || null,
                 fee_month: selectedFee.feeMonth,
             };
-
             const res = await api.post('/monthly-fees/record-payment', payload);
-
             if (res.data.success) {
                 setCollectModalVisible(false);
                 showSuccess(`₹${payAmount} recorded for ${selectedFee.name}`, 'Payment Collected!');
@@ -406,57 +460,69 @@ export default function PendingPaymentsScreen() {
         } catch (e: any) {
             const errData = e.response?.data;
             const errDetail = errData?.details || errData?.error || e.message;
-            console.error('Collect error:', errData || e.message);
             Alert.alert('Payment Failed', errDetail || 'Could not record payment. Try again.');
         } finally {
             setPayLoading(false);
         }
     }, [payAmount, payDate, payModeId, payNotes, payTransactionId, payDueDate, selectedFee, load]);
 
-    const keyExtractor  = useCallback((item: DueTenant) => `due-${item.id}`, []);
-    const renderItem    = useCallback(({ item }: { item: DueTenant }) => (
-        <TenantDueCard item={item} themeColor={theme.primary} onRemind={handleRemind} onCollect={handleCollect} />
-    ), [theme.primary, handleRemind, handleCollect]);
+    // ── Filtered list ─────────────────────────────────────────────────────────
+    const filteredTenants = searchQuery.trim()
+        ? tenants.filter(t =>
+            t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            t.room.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+        : tenants;
 
-    // ── Skeleton ─────────────────────────────────────────────────────────────
+    const keyExtractor = useCallback((item: DueTenant) => `due-${item.id}`, []);
+    const renderItem = useCallback(({ item }: { item: DueTenant }) => (
+        <TenantDueCard
+            item={item}
+            themeColor={theme.primary}
+            onRemind={handleRemind}
+            onCollect={handleCollect}
+            isDark={isDark}
+            theme={theme}
+            fontSize={fontSize}
+        />
+    ), [theme, isDark, fontSize, handleRemind, handleCollect]);
+
+    // ── LOADING SKELETON ──────────────────────────────────────────────────────
     if (loading) {
         return (
-            <View style={s.root}>
+            <View style={[s.root, { backgroundColor: theme.background }]}>
                 <StatusBar barStyle="light-content" />
+                {/* ── Header ── */}
                 <AppHeader
                     title={t('pendingDues.title')}
-                    subtitle={t('pendingDues.loadingDues')}
+                    subtitle={t('pendingDues.subtitle')}
                     showBack={navigation.canGoBack()}
                     rightComponent={
-                        <View style={s.headerActions}>
-                            <HeaderNotification navigation={navigation} />
-                            <ProfileMenu />
+                        <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+                            <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: isDark ? '#334155' : '#E2E8F0' }} />
+                            <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: isDark ? '#334155' : '#E2E8F0' }} />
                         </View>
                     }
                 />
-
-                {/* Skeleton for Floating Dashboard */}
-                <View style={s.summaryContainer}>
-                    <View style={s.cardsRow}>
-                        <View style={[s.smallCard, { height: 100, opacity: 0.6, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center' }]}>
-                            <ActivityIndicator size="small" color={theme.primary} />
+                {/* Summary skeleton */}
+                <View style={s.summaryRow}>
+                    {[0, 1].map(i => (
+                        <View key={i} style={[s.summaryCard, { backgroundColor: isDark ? '#1E293B' : '#FFF', flex: 1 }]}>
+                            <ActivityIndicator color={theme.primary} />
                         </View>
-                        <View style={[s.smallCard, { height: 100, opacity: 0.6, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center' }]}>
-                            <ActivityIndicator size="small" color={theme.primary} />
-                        </View>
-                    </View>
+                    ))}
                 </View>
-
-                {/* Skeleton for List Cards */}
-                <View style={{ paddingHorizontal: 16, gap: 12, flex: 1 }}>
-                    {[1, 2].map(i => (
-                        <View key={i} style={{ height: 140, backgroundColor: '#FFF', borderRadius: 20, opacity: 0.5, borderWidth: 1, borderColor: '#EDE9FE' }} />
+                {/* List skeleton */}
+                <View style={{ paddingHorizontal: 16, gap: 10 }}>
+                    {[0, 1, 2].map(i => (
+                        <View key={i} style={[s.skeletonCard, { backgroundColor: isDark ? '#1E293B' : '#FFF' }]} />
                     ))}
                 </View>
             </View>
         );
     }
 
+    // ── MAIN RENDER ───────────────────────────────────────────────────────────
     return (
         <View style={[s.root, { backgroundColor: theme.background }]}>
             <StatusBar barStyle="light-content" />
@@ -467,101 +533,151 @@ export default function PendingPaymentsScreen() {
                 subtitle={t('pendingDues.subtitle')}
                 showBack={navigation.canGoBack()}
                 rightComponent={
-                    <View style={s.headerActions}>
+                    <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
                         <HeaderNotification navigation={navigation} />
                         <ProfileMenu />
                     </View>
                 }
             />
 
-            {/* ── Premium Floating Dashboard (Side-by-Side Cards) ── */}
-            <View style={s.summaryContainer}>
-                <View style={s.cardsRow}>
-                    {/* Card 1: Outstanding Dues */}
-                    <View style={[s.smallCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F8FAFC', borderWidth: 1, borderRadius: 20, padding: 16, elevation: 3, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } }]}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                            <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: '#FEE2E2', justifyContent: 'center', alignItems: 'center' }}>
-                                <Ionicons name="alert-circle" size={22} color="#DC2626" />
-                            </View>
-                            <TouchableOpacity onPress={() => load(1, false)} activeOpacity={0.7} style={{ backgroundColor: '#F1F5F9', padding: 6, borderRadius: 12 }}>
-                                <Ionicons name="refresh" size={14} color="#64748B" />
-                            </TouchableOpacity>
+            {/* ── Fixed Summary Cards ──────────────────────────────────── */}
+            <View style={s.summaryRow}>
+                {/* Card 1: Outstanding Dues */}
+                <View style={[s.summaryCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#FCA5A5', borderWidth: 1 }]}>
+                    <View style={s.summaryCardTop}>
+                        <View style={[s.summaryIconWrap, { backgroundColor: '#FEF2F2' }]}>
+                            <MaterialCommunityIcons name="file-document-arrow-right-outline" size={24} color="#EF4444" />
                         </View>
-                        <Text style={{ fontSize: fontSize - 2, color: theme.textSecondary, fontWeight: '600', marginBottom: 4 }}>
-                            {t('pendingDues.outstandingDues')}
-                        </Text>
-                        <Text style={{ fontSize: fontSize + 10, fontWeight: '900', color: theme.textPrimary }}>
-                            ₹{totalPending.toLocaleString('en-IN')}
-                        </Text>
+                        <TouchableOpacity
+                            style={[s.summaryArrowBtn, { backgroundColor: '#FFF0F0', borderColor: '#FCA5A5' }]}
+                            onPress={() => load(1, false)}
+                            activeOpacity={0.7}
+                        >
+                            <Ionicons name="arrow-forward" size={12} color="#EF4444" />
+                        </TouchableOpacity>
                     </View>
+                    <Text style={[s.summaryLabel, { color: '#EF4444' }]}>
+                        {t('pendingDues.outstandingDues')}
+                    </Text>
+                    <Text style={[s.summaryAmount, { color: isDark ? '#F8FAFC' : '#1F2937' }]}>
+                        ₹{totalPending.toLocaleString('en-IN')}
+                    </Text>
+                    <Text style={[s.summaryFooter, { color: isDark ? '#CBD5E1' : '#6B7280' }]}>
+                        {totalDefaulters} {t('pendingDues.defaulters')}
+                    </Text>
+                    <WaveDecoration color="#EF4444" />
+                </View>
 
-                    {/* Card 2: Partial Paid */}
-                    <View style={[s.smallCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F8FAFC', borderWidth: 1, borderRadius: 20, padding: 16, elevation: 3, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } }]}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                            <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: '#FEF3C7', justifyContent: 'center', alignItems: 'center' }}>
-                                <Ionicons name="hourglass" size={22} color="#D97706" />
-                            </View>
+                {/* Card 2: Partial Paid */}
+                <View style={[s.summaryCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#FCD34D', borderWidth: 1 }]}>
+                    <View style={s.summaryCardTop}>
+                        <View style={[s.summaryIconWrap, { backgroundColor: '#FFFBEB' }]}>
+                            <Ionicons name="hourglass" size={24} color="#F59E0B" />
                         </View>
-                        <Text style={{ fontSize: fontSize - 2, color: theme.textSecondary, fontWeight: '600', marginBottom: 4 }}>
-                            {t('pendingDues.partialPaid')}
-                        </Text>
-                        <Text style={{ fontSize: fontSize + 10, fontWeight: '900', color: theme.textPrimary }}>
-                            ₹{partialPaid.toLocaleString('en-IN')}
-                        </Text>
+                        <TouchableOpacity
+                            style={[s.summaryArrowBtn, { backgroundColor: '#FFFBEB', borderColor: '#FCD34D' }]}
+                            activeOpacity={0.7}
+                        >
+                            <Ionicons name="arrow-forward" size={12} color="#F59E0B" />
+                        </TouchableOpacity>
                     </View>
+                    <Text style={[s.summaryLabel, { color: '#F59E0B' }]}>
+                        {t('pendingDues.partialPaid')}
+                    </Text>
+                    <Text style={[s.summaryAmount, { color: isDark ? '#F8FAFC' : '#1F2937' }]}>
+                        ₹{partialPaid.toLocaleString('en-IN')}
+                    </Text>
+                    <Text style={[s.summaryFooter, { color: isDark ? '#CBD5E1' : '#6B7280' }]}>
+                        {t('pendingDues.duesCollectedPartially')}
+                    </Text>
+                    <WaveDecoration color="#F59E0B" />
                 </View>
             </View>
 
-            {/* ── List ── */}
-            {sortedTenants.length === 0 ? (
-                <View style={s.emptyWrap}>
-                    <Text style={{ fontSize: 52, marginBottom: 12 }}>🎉</Text>
-                    <Text style={[s.emptyTitle, { fontSize: fontSize + 6, color: theme.textPrimary }]}>{t('pendingDues.allClear')}</Text>
-                    <Text style={[s.emptySub, { fontSize: fontSize - 1, color: theme.textSecondary }]}>{t('pendingDues.noPendingPayments')}</Text>
+            {/* ── Fixed Search + Filter ─────────────────────────────────── */}
+            <View style={s.searchRow}>
+                <View style={[s.searchBox, {
+                    backgroundColor: isDark ? '#1E293B' : '#FFF',
+                    borderColor: isDark ? '#334155' : '#ECECEC',
+                }]}>
+                    <Ionicons name="search-outline" size={18} color={isDark ? '#64748B' : '#94A3B8'} />
+                    <TextInput
+                        style={[s.searchInput, { color: isDark ? '#F8FAFC' : '#1F2937' }]}
+                        placeholder="Search tenant or room..."
+                        placeholderTextColor={isDark ? '#475569' : '#94A3B8'}
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                    />
+                    {searchQuery.length > 0 && (
+                        <TouchableOpacity onPress={() => setSearchQuery('')} style={{ padding: 4 }}>
+                            <Ionicons name="close-circle" size={18} color={isDark ? '#475569' : '#94A3B8'} />
+                        </TouchableOpacity>
+                    )}
                 </View>
-            ) : (
-                <FlatList
-                    data={sortedTenants}
-                    keyExtractor={keyExtractor}
-                    renderItem={renderItem}
-                    contentContainerStyle={s.listContent}
-                    showsVerticalScrollIndicator={false}
-                    refreshControl={
-                        <RefreshControl
-                            refreshing={refreshing}
-                            onRefresh={() => { setRefreshing(true); setPage(1); setHasMore(true); load(1, true); }}
-                            tintColor="#7C3AED"
-                        />
-                    }
-                    onEndReached={() => {
-                        if (loadingMore || !hasMore) return;
-                        setPage(prev => {
-                            const next = prev + 1;
-                            load(next, false);
-                            return next;
-                        });
-                    }}
-                    onEndReachedThreshold={0.4}
-                    ListFooterComponent={
-                        loadingMore ? (
-                            <ActivityIndicator size="small" color="#7C3AED" style={{ marginVertical: 20 }} />
-                        ) : !hasMore && sortedTenants.length > 0 ? (
-                            <View style={{ alignItems: 'center', marginVertical: 20 }}>
-                                <Text style={{ color: '#94A3B8', fontSize: 12, fontWeight: '600' }}>{t('pendingDues.allDuesLoaded')}</Text>
-                            </View>
-                        ) : null
-                    }
-                />
-            )}
 
-            {/* ── Remind modal ── */}
+                <TouchableOpacity
+                    style={[s.filterBtn, { backgroundColor: theme.primary, shadowColor: theme.primary }]}
+                    activeOpacity={0.7}
+                    onPress={() => setFilterModalVisible(true)}
+                >
+                    <Ionicons name="filter" size={16} color="#FFFFFF" />
+                    <Text style={[s.filterTxt]}>
+                        Filter
+                    </Text>
+                </TouchableOpacity>
+            </View>
+
+            <FlatList
+                data={filteredTenants}
+                keyExtractor={keyExtractor}
+                renderItem={renderItem}
+                contentContainerStyle={{ paddingBottom: 120, paddingTop: 2 }}
+                showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={() => { setRefreshing(true); setPage(1); setHasMore(true); load(1, true); }}
+                        tintColor={theme.primary}
+                        progressViewOffset={20}
+                    />
+                }
+                onEndReached={() => {
+                    if (loadingMore || !hasMore) return;
+                    setPage(prev => { const next = prev + 1; load(next, false); return next; });
+                }}
+                onEndReachedThreshold={0.4}
+                ListEmptyComponent={
+                    <View style={s.emptyWrap}>
+                        <Text style={{ fontSize: 52, marginBottom: 12 }}>🎉</Text>
+                        <Text style={[s.emptyTitle, { color: isDark ? '#F8FAFC' : '#1E293B' }]}>
+                            {t('pendingDues.allClear')}
+                        </Text>
+                        <Text style={[s.emptySub, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+                            {t('pendingDues.noPendingPayments')}
+                        </Text>
+                    </View>
+                }
+                ListFooterComponent={
+                    loadingMore ? (
+                        <ActivityIndicator size="small" color={theme.primary} style={{ marginVertical: 20 }} />
+                    ) : !hasMore && filteredTenants.length > 0 ? (
+                        <View style={{ alignItems: 'center', marginVertical: 20 }}>
+                            <Text style={{ color: '#94A3B8', fontSize: 12, fontWeight: '600' }}>
+                                {t('pendingDues.allDuesLoaded')}
+                            </Text>
+                        </View>
+                    ) : null
+                }
+            />
+
+            {/* ── Remind Modal ──────────────────────────────────────────────── */}
             <RemindModal
                 visible={!!remindTarget}
                 tenant={remindTarget}
                 onClose={() => setRemindTarget(null)}
             />
 
-            {/* ── Collect drawer (shared PaymentDrawer component) ── */}
+            {/* ── Collect Drawer ────────────────────────────────────────────── */}
             <PaymentDrawer
                 visible={collectModalVisible}
                 onClose={() => setCollectModalVisible(false)}
@@ -577,126 +693,101 @@ export default function PendingPaymentsScreen() {
                 onConfirm={handleCollectRent}
                 themeColor={theme.primary}
             />
+            
+            <FilterDuesModal 
+                visible={filterModalVisible}
+                onClose={() => setFilterModalVisible(false)}
+                onApply={handleApplyFilters}
+            />
         </View>
     );
 }
 
-// ─── Card styles ──────────────────────────────────────────────────────────────
-const tc = StyleSheet.create({
-    card: {
-        backgroundColor: '#FFF',
-        borderRadius: 20,
+// ─── Wave decoration styles ───────────────────────────────────────────────────
+const wave = StyleSheet.create({
+    container: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 60,
+        borderBottomLeftRadius: 20,
+        borderBottomRightRadius: 20,
+        overflow: 'hidden',
+    }
+});
+
+// ─── Tenant card styles ───────────────────────────────────────────────────────
+const card = StyleSheet.create({
+    wrap: {
+        flexDirection: 'row',
         marginHorizontal: 16,
         marginBottom: 12,
+        borderRadius: 22,
+        borderWidth: 1,
         overflow: 'hidden',
         elevation: 3,
-        shadowColor: '#7C3AED',
-        shadowOpacity: 0.08,
-        shadowRadius: 10,
-        shadowOffset: { width: 0, height: 4 },
-        borderWidth: 1.2,
-        borderColor: '#EDE9FE',
-        flexDirection: 'row',
+        shadowOpacity: 0.06,
+        shadowRadius: 24,
+        shadowOffset: { width: 0, height: 8 },
     },
     accentBar: {
-        width: 5,
+        width: 4,
+        borderTopLeftRadius: 22,
+        borderBottomLeftRadius: 22,
     },
-    inner: { padding: 16, flex: 1 },
-    rowHeader: {
+    body: {
+        flex: 1,
+        paddingHorizontal: 20,
+        paddingTop: 20,
+        paddingBottom: 20,
+        position: 'relative',
+    },
+    topRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
+        gap: 16,
+        marginBottom: 16,
     },
     avatar: {
         width: 46,
         height: 46,
-        borderRadius: 16,
+        borderRadius: 23,
         alignItems: 'center',
         justifyContent: 'center',
     },
     avatarTxt: { fontSize: 18, fontWeight: '900' },
-    infoCol: { flex: 1 },
-    name: { fontSize: 15, fontWeight: '800', color: '#1E293B', marginBottom: 2 },
-    roomText: { fontSize: 12, color: '#64748B', fontWeight: '600', marginBottom: 4 },
-    statusBadge: {
+    infoCol: { flex: 1, justifyContent: 'center' },
+    name: { fontSize: 16, fontWeight: '800', marginBottom: 2 },
+    roomTxt: { fontSize: 12, fontWeight: '600' },
+    badge: {
         flexDirection: 'row',
         alignItems: 'center',
         alignSelf: 'flex-start',
         gap: 4,
-        borderRadius: 8,
         paddingHorizontal: 8,
-        paddingVertical: 3,
+        paddingVertical: 4,
+        borderRadius: 8,
     },
-    statusText: { fontSize: 10, fontWeight: '800' },
+    badgeTxt: { fontSize: 11, fontWeight: '700' },
     
-    amountCol: {
-        alignItems: 'flex-end',
-        justifyContent: 'center',
-    },
-    amountLabel: { fontSize: 9, color: '#94A3B8', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
-    amountVal: { fontSize: 18, fontWeight: '900' },
+    divider: { height: 1, marginBottom: 16 },
 
-    divider: {
-        height: 1,
-        backgroundColor: '#F1F5F9',
-        marginVertical: 10,
-    },
-    columnsBlock: {
+    bottomRow: {
         flexDirection: 'row',
-        borderRadius: 12,
-        paddingVertical: 10,
-        paddingHorizontal: 14,
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginTop: 12,
-    },
-    colItem: {
-        flex: 1,
         alignItems: 'center',
     },
-    colLabel: {
-        fontSize: 8,
-        color: '#94A3B8',
-        fontWeight: '800',
-        textTransform: 'uppercase',
-    },
-    colValue: {
-        fontSize: 12,
-        fontWeight: '800',
-        marginTop: 2,
-    },
-    colDivider: {
-        width: 1,
-        height: 24,
-    },
+    statCol: { alignItems: 'flex-start', flex: 1 },
+    statLabel: { fontSize: 11, fontWeight: '600', textTransform: 'capitalize', marginBottom: 2 },
+    statVal: { fontSize: 14, fontWeight: '800' },
 
-    actions: {
-        flexDirection: 'row',
-        gap: 10,
-    },
-    remindBtn: {
-        flex: 1,
-        flexDirection: 'row',
+    iconBtn: {
+        width: 40,
+        height: 40,
+        borderRadius: 16,
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 6,
-        paddingVertical: 9,
-        borderRadius: 10,
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
-        backgroundColor: '#F8FAFC',
     },
-    remindText: { fontSize: 12, fontWeight: '600', color: '#475569' },
-    collectBtn: {
-        flex: 1.2,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 6,
-        paddingVertical: 9,
-        borderRadius: 10,
-    },
-    collectText: { fontSize: 12, fontWeight: '600', color: '#FFF' },
 });
 
 // ─── Remind Modal styles ──────────────────────────────────────────────────────
@@ -707,14 +798,12 @@ const rm = StyleSheet.create({
     },
     sheet: {
         position: 'absolute', bottom: 0, left: 0, right: 0,
-        backgroundColor: '#FFF',
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         paddingBottom: 36,
     },
     handle: {
         width: 36, height: 4, borderRadius: 2,
-        backgroundColor: '#CBD5E1',
         alignSelf: 'center', marginTop: 12, marginBottom: 16,
     },
     header: {
@@ -726,144 +815,180 @@ const rm = StyleSheet.create({
         alignItems: 'center', justifyContent: 'center',
     },
     avatarText: { fontSize: 18, fontWeight: '900' },
-    tenantName: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
-    tenantRoom: { fontSize: 12, color: '#64748B', fontWeight: '600' },
+    tenantName: { fontSize: 15, fontWeight: '800' },
+    tenantRoom: { fontSize: 12, fontWeight: '600' },
     closeBtn: {
         width: 32, height: 32, borderRadius: 16,
-        backgroundColor: '#F1F5F9',
         alignItems: 'center', justifyContent: 'center',
     },
     subtitle: {
-        fontSize: 12, color: '#94A3B8', fontWeight: '600',
+        fontSize: 12, fontWeight: '600',
         paddingHorizontal: 20, marginBottom: 12, marginTop: 8,
     },
     option: {
         flexDirection: 'row', alignItems: 'center', gap: 14,
         paddingHorizontal: 20, paddingVertical: 14,
-        borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+        borderBottomWidth: 1,
     },
     optionIcon: {
         width: 46, height: 46, borderRadius: 14,
         alignItems: 'center', justifyContent: 'center',
     },
-    optionLabel: { fontSize: 14, fontWeight: '700', color: '#1E293B', marginBottom: 2 },
-    optionSub: { fontSize: 12, color: '#94A3B8', fontWeight: '500' },
-    spacer: { height: 8 },
+    optionLabel: { fontSize: 14, fontWeight: '700', marginBottom: 2 },
+    optionSub: { fontSize: 12, fontWeight: '500' },
 });
 
-// ─── Main Screen styles ───────────────────────────────────────────────────────
+// ─── Main screen styles ───────────────────────────────────────────────────────
 const s = StyleSheet.create({
-    root: { flex: 1, backgroundColor: '#F3F0FA' },
+    root: { flex: 1 },
 
-    header: {
-        paddingHorizontal: 20,
-        paddingTop: 50,
-        paddingBottom: 40,
-        borderBottomLeftRadius: 32,
-        borderBottomRightRadius: 32,
+    // ── Hero ──
+    hero: {
+        paddingBottom: 8,
+        position: 'relative',
+        overflow: 'hidden',
     },
-    headerRow: {
+    heroBg: {
+        position: 'absolute',
+        top: 0, left: 0, right: 0,
+        height: 140,
+        backgroundColor: '#FFF4EC',
+        // The warm hostel-ish pastel background tint
+    },
+    heroContent: {
         flexDirection: 'row',
+        alignItems: 'flex-start',
+        marginTop: 8,
+    },
+    heroTitle: {
+        fontSize: 26,
+        fontWeight: '900',
+        letterSpacing: -0.5,
+    },
+    heroSub: {
+        fontSize: 13,
+        fontWeight: '500',
+        marginTop: 2,
+    },
+    heroActions: {
+        flexDirection: 'row',
+        gap: 10,
         alignItems: 'center',
-        justifyContent: 'space-between',
     },
-    headerTitle: { fontSize: 24, fontWeight: '900', color: '#FFF' },
-    headerSub: { fontSize: 12, color: 'rgba(255,255,255,0.8)', fontWeight: '600', marginTop: 2 },
-    headerActions: { flexDirection: 'row', gap: 12 },
-    
-    summaryContainer: {
-        marginTop: 16,
-        marginHorizontal: 16,
-        gap: 12,
-        marginBottom: 12,
-    },
-    cardsRow: {
+
+    // ── Summary ──
+    summaryRow: {
         flexDirection: 'row',
         gap: 12,
-        justifyContent: 'space-between',
-        width: '100%',
+        paddingHorizontal: 16,
+        paddingTop: 4,
+        paddingBottom: 8,
     },
-    smallCard: {
+    summaryCard: {
         flex: 1,
-        backgroundColor: '#FFF',
-        borderRadius: 16,
-        padding: 14,
-        borderWidth: 1,
-        borderColor: '#EDE9FE',
-        elevation: 2,
+        borderRadius: 20,
+        padding: 12,
+        elevation: 4,
         shadowColor: '#000',
-        shadowOpacity: 0.03,
-        shadowRadius: 4,
-        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 24,
+        shadowOffset: { width: 0, height: 8 },
+        overflow: 'hidden',
+        minHeight: 85,
     },
-    cardHeaderRow: {
+    summaryCardTop: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: 8,
     },
-    iconCircle: {
-        width: 34,
-        height: 34,
-        borderRadius: 17,
+    summaryIconWrap: {
+        width: 32,
+        height: 32,
+        borderRadius: 10,
         alignItems: 'center',
         justifyContent: 'center',
     },
-    smallRefreshBtn: {
+    summaryArrowBtn: {
         width: 24,
         height: 24,
         borderRadius: 12,
-        backgroundColor: '#F1F5F9',
+        borderWidth: 1,
         alignItems: 'center',
         justifyContent: 'center',
     },
-    cardLabel: {
-        fontSize: 11,
+    summaryLabel: {
+        fontSize: 12,
         fontWeight: '700',
-        color: '#64748B',
-        marginBottom: 4,
+        marginBottom: 2,
     },
-    cardValue: {
-        fontSize: 16,
+    summaryAmount: {
+        fontSize: 20,
         fontWeight: '900',
         marginBottom: 2,
     },
-    cardSubText: {
-        fontSize: 10,
-        color: '#94A3B8',
-        fontWeight: '500',
+    summaryFooter: {
+        fontSize: 11,
+        fontWeight: '700',
+        zIndex: 2,
     },
 
-    listContent: { paddingTop: 16, paddingBottom: 160 },
+    // ── Search + Filter ──
+    searchRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingHorizontal: 16,
+        marginBottom: 20,
+    },
+    searchBox: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#ECECEC',
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 4 },
+        backgroundColor: '#FFF',
+    },
+    searchInput: {
+        flex: 1,
+        fontSize: 14,
+        fontWeight: '500',
+        padding: 0,
+        height: 20,
+    },
+    filterBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderRadius: 16,
+        elevation: 2,
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 4 },
+    },
+    filterTxt: { fontSize: 13, fontWeight: '700', color: '#FFFFFF' },
 
-    emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 80 },
-    emptyTitle: { fontSize: 20, fontWeight: '800', color: '#1E293B', marginBottom: 4 },
-    emptySub: { fontSize: 13, color: '#94A3B8', fontWeight: '500' },
-});
+    // ── Empty ──
+    emptyWrap: { alignItems: 'center', justifyContent: 'center', paddingVertical: 80 },
+    emptyTitle: { fontSize: 20, fontWeight: '800', marginBottom: 4 },
+    emptySub: { fontSize: 13, fontWeight: '500' },
 
-const S = StyleSheet.create({
-    modalRoot: { flex: 1 },
-    modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 0 },
-    modalOverlay: { flex: 1, justifyContent: 'flex-end', zIndex: 1 },
-    drawerContent: { backgroundColor: '#FFF', borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 20, paddingBottom: 0, maxHeight: '90%' },
-    drawerHandle: { width: 40, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 16 },
-    drawerHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-    drawerTitle: { fontSize: 18, fontWeight: '900', color: '#1E293B' },
-    infoSummary: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, backgroundColor: '#F8FAFC', padding: 14, borderRadius: 14 },
-    summaryName: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
-    summaryRoom: { fontSize: 12, color: '#94A3B8', fontWeight: '600', marginTop: 2 },
-    summaryAmtBox: { alignItems: 'flex-end' },
-    summaryAmtLabel: { fontSize: 9, fontWeight: '800', color: '#94A3B8', letterSpacing: 0.5, marginBottom: 2 },
-    summaryAmt: { fontSize: 20, fontWeight: '900', color: '#EF4444' },
-    label: { fontSize: 12, fontWeight: '700', color: '#64748B', marginBottom: 6, marginTop: 12 },
-    inputField: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 13, fontSize: 15, color: '#1E293B', fontWeight: '600' },
-    row: { flexDirection: 'row' },
-    dateField: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 12, gap: 8 },
-    dateTextLabel: { fontSize: 13, fontWeight: '600', color: '#1E293B' },
-    modeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    modeChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#FFF' },
-    modeText: { fontSize: 12, fontWeight: '700', color: '#64748B' },
-    submitBtn: { height: 52, borderRadius: 14, justifyContent: 'center', alignItems: 'center', minHeight: 52 },
-    submitLoadingRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    submitBtnText: { color: '#FFF', fontWeight: '800', fontSize: 14, letterSpacing: 0.8 },
+    // ── Skeleton ──
+    skeletonCard: {
+        height: 120,
+        borderRadius: 16,
+        marginBottom: 10,
+        opacity: 0.5,
+    },
 });

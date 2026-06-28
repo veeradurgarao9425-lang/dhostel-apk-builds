@@ -397,95 +397,95 @@ export default function MoreScreen() {
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: 110, paddingTop: 16 }}
             >
-                        {/* Active Hostel Selection Card */}
-                        {!isListEmpty && !searchQuery && (
-                            <View>
-                                <TouchableOpacity
-                                    style={[
-                                        s.activeHostelCard,
-                                        {
-                                            backgroundColor: theme.cardBg,
-                                            borderColor: isDark ? '#334155' : '#E2E8F0',
+                {/* Active Hostel Selection Card */}
+                {!isListEmpty && !searchQuery && (
+                    <View>
+                        <TouchableOpacity
+                            style={[
+                                s.activeHostelCard,
+                                {
+                                    backgroundColor: theme.cardBg,
+                                    borderColor: isDark ? '#334155' : '#E2E8F0',
+                                }
+                            ]}
+                            onPress={openHostelSelector}
+                            activeOpacity={0.8}
+                        >
+                            <View style={s.activeHostelLeft}>
+                                <View style={[s.activeHostelIconContainer, { backgroundColor: isDark ? 'rgba(124, 58, 237, 0.15)' : theme.primary + '12' }]}>
+                                    <Ionicons name="business" size={20} color={theme.primary} />
+                                </View>
+                                <View style={s.activeHostelTextWrap}>
+                                    <Text style={[s.activeHostelLabel, { color: theme.textSecondary, fontSize: fontSize - 4 }]}>{t('more.activeHostel')}</Text>
+                                    <Text style={[s.activeHostelName, { color: theme.textPrimary, fontSize: fontSize - 1 }]} numberOfLines={1}>
+                                        {user?.hostel_name || t('more.noActiveHostel')}
+                                    </Text>
+                                    {(() => {
+                                        const hCode = authHostels.find((h: any) => h.hostel_id === user?.hostel_id)?.hostel_code;
+                                        if (hCode) {
+                                            return (
+                                                <TouchableOpacity
+                                                    onPress={(e) => {
+                                                        e.stopPropagation();
+                                                        handleCopyCode(hCode, 'active');
+                                                    }}
+                                                    style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}
+                                                    activeOpacity={0.7}
+                                                >
+                                                    <Text style={{ fontSize: fontSize - 3, color: copiedActiveCode ? '#10B981' : theme.primary, fontWeight: '700' }}>
+                                                        {copiedActiveCode ? 'Copied!' : `Code: ${hCode}`}
+                                                    </Text>
+                                                    <Ionicons
+                                                        name={copiedActiveCode ? "checkmark-circle" : "copy-outline"}
+                                                        size={12}
+                                                        color={copiedActiveCode ? '#10B981' : theme.primary}
+                                                    />
+                                                </TouchableOpacity>
+                                            );
                                         }
-                                    ]}
-                                    onPress={openHostelSelector}
-                                    activeOpacity={0.8}
-                                >
-                                    <View style={s.activeHostelLeft}>
-                                        <View style={[s.activeHostelIconContainer, { backgroundColor: isDark ? 'rgba(124, 58, 237, 0.15)' : theme.primary + '12' }]}>
-                                            <Ionicons name="business" size={20} color={theme.primary} />
-                                        </View>
-                                        <View style={s.activeHostelTextWrap}>
-                                            <Text style={[s.activeHostelLabel, { color: theme.textSecondary, fontSize: fontSize - 4 }]}>{t('more.activeHostel')}</Text>
-                                            <Text style={[s.activeHostelName, { color: theme.textPrimary, fontSize: fontSize - 1 }]} numberOfLines={1}>
-                                                {user?.hostel_name || t('more.noActiveHostel')}
-                                            </Text>
-                                            {(() => {
-                                                const hCode = authHostels.find((h: any) => h.hostel_id === user?.hostel_id)?.hostel_code;
-                                                if (hCode) {
-                                                    return (
-                                                        <TouchableOpacity
-                                                            onPress={(e) => {
-                                                                e.stopPropagation();
-                                                                handleCopyCode(hCode, 'active');
-                                                            }}
-                                                            style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}
-                                                            activeOpacity={0.7}
-                                                        >
-                                                            <Text style={{ fontSize: fontSize - 3, color: copiedActiveCode ? '#10B981' : theme.primary, fontWeight: '700' }}>
-                                                                {copiedActiveCode ? 'Copied!' : `Code: ${hCode}`}
-                                                            </Text>
-                                                            <Ionicons 
-                                                                name={copiedActiveCode ? "checkmark-circle" : "copy-outline"} 
-                                                                size={12} 
-                                                                color={copiedActiveCode ? '#10B981' : theme.primary} 
-                                                            />
-                                                        </TouchableOpacity>
-                                                    );
-                                                }
-                                                return null;
-                                            })()}
-                                        </View>
-                                    </View>
-                                    <View style={[s.activeHostelSwitchBtn, { backgroundColor: theme.primary }]}>
-                                        <Text style={s.activeHostelSwitchText}>{t('more.switch')}</Text>
-                                        <Ionicons name="swap-horizontal" size={12} color="#FFF" />
-                                    </View>
-                                </TouchableOpacity>
+                                        return null;
+                                    })()}
+                                </View>
+                            </View>
+                            <View style={[s.activeHostelSwitchBtn, { backgroundColor: theme.primary }]}>
+                                <Text style={s.activeHostelSwitchText}>{t('more.switch')}</Text>
+                                <Ionicons name="swap-horizontal" size={12} color="#FFF" />
+                            </View>
+                        </TouchableOpacity>
 
-                                {/* Hostel Connection Code Block - Show only for Owners (role_id !== 1) */}
-                                {user?.role_id !== 1 && authHostels.find((h: any) => h.hostel_id === user?.hostel_id)?.hostel_code && (
-                                    <View style={[s.codeCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
-                                        <View style={s.codeCardHeader}>
-                                            <Ionicons name="key" size={16} color={theme.primary} />
-                                            <Text style={[s.codeCardTitle, { color: theme.textPrimary }]}>Hostel Connection Code</Text>
-                                        </View>
-                                        <TouchableOpacity 
-                                            style={[s.codeBox, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9' }]}
-                                            onPress={() => {
-                                                const hCode = authHostels.find((h: any) => h.hostel_id === user?.hostel_id)?.hostel_code;
-                                                if (hCode) handleCopyCode(hCode, 'card');
-                                            }}
-                                            activeOpacity={0.7}
-                                        >
-                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                                <Text style={{ fontSize: 28, fontWeight: '800', letterSpacing: 4, color: copiedCardCode ? '#10B981' : theme.primary }}>
-                                                    {authHostels.find((h: any) => h.hostel_id === user?.hostel_id)?.hostel_code}
-                                                </Text>
-                                                <Ionicons 
-                                                    name={copiedCardCode ? "checkmark-circle" : "copy-outline"} 
-                                                    size={20} 
-                                                    color={copiedCardCode ? '#10B981' : theme.primary} 
-                                                />
-                                            </View>
-                                            <Text style={{ fontSize: 12, color: copiedCardCode ? '#10B981' : theme.textSecondary, marginTop: 6, textAlign: 'center', fontWeight: copiedCardCode ? '700' : '400' }}>
-                                                {copiedCardCode ? 'Code copied to clipboard!' : 'Tap code to copy and share with your tenants.'}
-                                            </Text>
-                                        </TouchableOpacity>
+                        {/* Hostel Connection Code Block - Show only for Owners (role_id !== 1) */}
+                        {user?.role_id !== 1 && authHostels.find((h: any) => h.hostel_id === user?.hostel_id)?.hostel_code && (
+                            <View style={[s.codeCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                                <View style={s.codeCardHeader}>
+                                    <Ionicons name="key" size={16} color={theme.primary} />
+                                    <Text style={[s.codeCardTitle, { color: theme.textPrimary }]}>Hostel Connection Code</Text>
+                                </View>
+                                <TouchableOpacity
+                                    style={[s.codeBox, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9' }]}
+                                    onPress={() => {
+                                        const hCode = authHostels.find((h: any) => h.hostel_id === user?.hostel_id)?.hostel_code;
+                                        if (hCode) handleCopyCode(hCode, 'card');
+                                    }}
+                                    activeOpacity={0.7}
+                                >
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                        <Text style={{ fontSize: 28, fontWeight: '800', letterSpacing: 4, color: copiedCardCode ? '#10B981' : theme.primary }}>
+                                            {authHostels.find((h: any) => h.hostel_id === user?.hostel_id)?.hostel_code}
+                                        </Text>
+                                        <Ionicons
+                                            name={copiedCardCode ? "checkmark-circle" : "copy-outline"}
+                                            size={20}
+                                            color={copiedCardCode ? '#10B981' : theme.primary}
+                                        />
                                     </View>
-                                )}
+                                    <Text style={{ fontSize: 12, color: copiedCardCode ? '#10B981' : theme.textSecondary, marginTop: 6, textAlign: 'center', fontWeight: copiedCardCode ? '700' : '400' }}>
+                                        {copiedCardCode ? 'Code copied to clipboard!' : 'Tap code to copy and share with your tenants.'}
+                                    </Text>
+                                </TouchableOpacity>
                             </View>
                         )}
+                    </View>
+                )}
 
                 {/* Empty State */}
                 {isListEmpty && (
@@ -617,10 +617,10 @@ export default function MoreScreen() {
                                                 s.hostelItemIconContainer,
                                                 { backgroundColor: isActive ? theme.primary : (isDark ? '#334155' : '#F1F5F9') }
                                             ]}>
-                                                <Ionicons 
-                                                    name="business" 
-                                                    size={20} 
-                                                    color={isActive ? '#FFFFFF' : theme.textSecondary} 
+                                                <Ionicons
+                                                    name="business"
+                                                    size={20}
+                                                    color={isActive ? '#FFFFFF' : theme.textSecondary}
                                                 />
                                             </View>
 
@@ -632,21 +632,21 @@ export default function MoreScreen() {
                                                     {h.hostel_type && (
                                                         <View style={[
                                                             s.hostelTypeBadge,
-                                                            { 
-                                                                backgroundColor: h.hostel_type === 'Boys' 
-                                                                    ? 'rgba(59, 130, 246, 0.15)' 
-                                                                    : h.hostel_type === 'Girls' 
-                                                                        ? 'rgba(236, 72, 153, 0.15)' 
-                                                                        : 'rgba(16, 185, 129, 0.15)' 
+                                                            {
+                                                                backgroundColor: h.hostel_type === 'Boys'
+                                                                    ? 'rgba(59, 130, 246, 0.15)'
+                                                                    : h.hostel_type === 'Girls'
+                                                                        ? 'rgba(236, 72, 153, 0.15)'
+                                                                        : 'rgba(16, 185, 129, 0.15)'
                                                             }
                                                         ]}>
                                                             <Text style={[
                                                                 s.hostelTypeBadgeText,
-                                                                { 
-                                                                    color: h.hostel_type === 'Boys' 
-                                                                        ? '#3B82F6' 
-                                                                        : h.hostel_type === 'Girls' 
-                                                                            ? '#EC4899' 
+                                                                {
+                                                                    color: h.hostel_type === 'Boys'
+                                                                        ? '#3B82F6'
+                                                                        : h.hostel_type === 'Girls'
+                                                                            ? '#EC4899'
                                                                             : '#10B981'
                                                                 }
                                                             ]}>

@@ -28,8 +28,8 @@ const TABS = [
     {
         label: 'More',
         route: 'MoreTab',
-        activeIcon: 'menu' as const,
-        inactiveIcon: 'menu-outline' as const,
+        activeIcon: 'apps' as const,
+        inactiveIcon: 'apps-outline' as const,
     },
 ];
 

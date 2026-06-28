@@ -9,6 +9,7 @@ import { ToastProvider } from './src/context/ToastContext';
 import { OfflineFallback } from './src/components/OfflineFallback';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { queryClient } from './src/lib/queryClient';
+import { CustomToast, ToastVariant } from './src/components/ui/CustomToast';
 
 import './src/i18n';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
@@ -19,146 +20,33 @@ import { ConfirmationProvider } from './contexts/ConfirmationContext';
 const ThemedToast = () => {
   const { theme, isDark } = useTheme();
 
+  const renderToast = (variant: ToastVariant, props: any) => (
+    <CustomToast 
+      variant={variant}
+      title={props.text1 || ''}
+      message={props.text2 || ''}
+      progress={props.props?.progress}
+      onAction={props.props?.onAction}
+      onClose={() => Toast.hide()}
+    />
+  );
+
   const toastConfig = {
-    success: (props: any) => (
-      <BaseToast
-        {...props}
-        style={{
-          borderLeftColor: theme.success,
-          borderLeftWidth: 6,
-          backgroundColor: theme.cardBg,
-          minHeight: 75,
-          height: 'auto',
-          width: '92%',
-          borderRadius: 12,
-          paddingVertical: 10,
-          borderWidth: isDark ? 1 : 0,
-          borderColor: isDark ? '#334155' : '#E2E8F0',
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 8,
-          elevation: 4
-        }}
-        contentContainerStyle={{ paddingHorizontal: 16 }}
-        text1Style={{
-          fontSize: 15,
-          fontWeight: '700',
-          color: theme.textPrimary
-        }}
-        text2Style={{
-          fontSize: 12,
-          fontWeight: '500',
-          color: theme.textSecondary
-        }}
-        text2NumberOfLines={3}
-      />
-    ),
-    error: (props: any) => (
-      <ErrorToast
-        {...props}
-        style={{
-          borderLeftColor: theme.error,
-          borderLeftWidth: 6,
-          backgroundColor: theme.cardBg,
-          minHeight: 75,
-          height: 'auto',
-          width: '92%',
-          borderRadius: 12,
-          paddingVertical: 10,
-          borderWidth: isDark ? 1 : 0,
-          borderColor: isDark ? '#334155' : '#E2E8F0',
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 8,
-          elevation: 4
-        }}
-        contentContainerStyle={{ paddingHorizontal: 16 }}
-        text1Style={{
-          fontSize: 15,
-          fontWeight: '700',
-          color: theme.textPrimary
-        }}
-        text2Style={{
-          fontSize: 12,
-          fontWeight: '500',
-          color: theme.textSecondary
-        }}
-        text2NumberOfLines={3}
-      />
-    ),
-    warning: (props: any) => (
-      <BaseToast
-        {...props}
-        style={{
-          borderLeftColor: theme.warning || '#F59E0B',
-          borderLeftWidth: 6,
-          backgroundColor: theme.cardBg,
-          minHeight: 75,
-          height: 'auto',
-          width: '92%',
-          borderRadius: 12,
-          paddingVertical: 10,
-          borderWidth: isDark ? 1 : 0,
-          borderColor: isDark ? '#334155' : '#E2E8F0',
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 8,
-          elevation: 4
-        }}
-        contentContainerStyle={{ paddingHorizontal: 16 }}
-        text1Style={{
-          fontSize: 15,
-          fontWeight: '700',
-          color: theme.textPrimary
-        }}
-        text2Style={{
-          fontSize: 12,
-          fontWeight: '500',
-          color: theme.textSecondary
-        }}
-        text2NumberOfLines={3}
-      />
-    ),
-    info: (props: any) => (
-      <BaseToast
-        {...props}
-        style={{
-          borderLeftColor: theme.primary,
-          borderLeftWidth: 6,
-          backgroundColor: theme.cardBg,
-          minHeight: 75,
-          height: 'auto',
-          width: '92%',
-          borderRadius: 12,
-          paddingVertical: 10,
-          borderWidth: isDark ? 1 : 0,
-          borderColor: isDark ? '#334155' : '#E2E8F0',
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 8,
-          elevation: 4
-        }}
-        contentContainerStyle={{ paddingHorizontal: 16 }}
-        text1Style={{
-          fontSize: 15,
-          fontWeight: '700',
-          color: theme.textPrimary
-        }}
-        text2Style={{
-          fontSize: 12,
-          fontWeight: '500',
-          color: theme.textSecondary
-        }}
-        text2NumberOfLines={3}
-      />
-    )
+    success: (props: any) => renderToast('success', props),
+    error: (props: any) => renderToast('error', props),
+    warning: (props: any) => renderToast('warning', props),
+    info: (props: any) => renderToast('info', props),
+    payment: (props: any) => renderToast('payment', props),
+    online: (props: any) => renderToast('online', props),
+    offline: (props: any) => renderToast('offline', props),
+    expense: (props: any) => renderToast('expense', props),
+    notice: (props: any) => renderToast('notice', props),
+    lowBalance: (props: any) => renderToast('lowBalance', props),
+    saving: (props: any) => renderToast('saving', props),
+    downloading: (props: any) => renderToast('downloading', props),
   };
 
-  return <Toast config={toastConfig} />;
+  return <Toast config={toastConfig} position="top" topOffset={50} />;
 };
 
 export default function App() {

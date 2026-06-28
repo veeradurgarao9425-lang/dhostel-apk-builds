@@ -16,12 +16,14 @@
 import React, { useState } from 'react';
 import {
     View, Text, StyleSheet, Modal, TouchableOpacity,
-    TextInput, ScrollView, ActivityIndicator,
+    TextInput, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform, ImageBackground
 } from 'react-native';
 import { X, Calendar } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { toLocalDateStr } from '../utils/dateUtils';
 import { FullScreenLoader } from './FullScreenLoader';
+import { CardWatermark } from './ui/CardWatermark';
 
 export interface PaymentDrawerProps {
     visible: boolean;
@@ -84,13 +86,18 @@ export function PaymentDrawer({
             <FullScreenLoader visible={payLoading} />
 
             <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-            <View style={S.modalRoot}>
-                <View style={S.modalOverlay}>
+                <KeyboardAvoidingView 
+                    style={S.modalRoot} 
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                >
+                    <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
                     <View style={S.drawerContent}>
+                        {/* Beautiful building watermark background */}
+                        <CardWatermark opacity={0.06} color={themeColor} />
 
                         {/* Header */}
                         <View style={S.drawerHeader}>
-                            <Text style={S.drawerTitle}>Record Payment</Text>
+                            <Text style={S.drawerTitle}>Pay Due Amount</Text>
                             <TouchableOpacity
                                 onPress={onClose}
                                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -100,28 +107,20 @@ export function PaymentDrawer({
                         </View>
 
                         {/* Summary banner */}
-                        {selectedFee && (
-                            <View style={S.infoSummary}>
-                                <View>
-                                    <Text style={S.summaryName}>
-                                        {selectedFee.full_name || `${selectedFee.first_name || ''} ${selectedFee.last_name || ''}`.trim() || 'Tenant'}
-                                    </Text>
-                                    <Text style={S.summaryRoom}>Room {selectedFee.room_number || selectedFee.room || 'N/A'}</Text>
-                                </View>
-                                <View style={[S.summaryAmtBox, { backgroundColor: themeColor + '15' }]}>
-                                    <Text style={S.summaryAmtLabel}>DUE</Text>
-                                    <Text style={[S.summaryAmt, { color: themeColor }]}>
-                                        ₹{(() => {
-                                            const rawDue = selectedFee.dueAmount ?? selectedFee.balance ?? selectedFee.total_due ?? selectedFee.due;
-                                            if (rawDue !== undefined && rawDue !== null) {
-                                                return parseFloat(rawDue.toString()).toLocaleString('en-IN');
-                                            }
-                                            return payAmount || '0';
-                                        })()}
-                                    </Text>
-                                </View>
-                            </View>
-                        )}
+                        <View style={[S.infoSummary, { backgroundColor: themeColor + '10' }]}>
+                            <Text style={[S.summaryAmtLabel, { color: themeColor }]}>Total Due</Text>
+                            <Text style={S.summaryAmt}>
+                                ₹{(() => {
+                                    if (selectedFee) {
+                                        const rawDue = selectedFee.dueAmount ?? selectedFee.balance ?? selectedFee.total_due ?? selectedFee.due;
+                                        if (rawDue !== undefined && rawDue !== null) {
+                                            return parseFloat(rawDue.toString()).toLocaleString('en-IN');
+                                        }
+                                    }
+                                    return payAmount || '0';
+                                })()}
+                            </Text>
+                        </View>
 
                         <ScrollView
                             showsVerticalScrollIndicator={false}
@@ -163,24 +162,37 @@ export function PaymentDrawer({
                             </View>
 
                             {/* Payment Mode */}
-                            <Text style={S.label}>Payment Mode</Text>
-                            <View style={S.modeRow}>
-                                {paymentModes.map((m: any) => {
+                            <Text style={S.label}>Payment Method</Text>
+                            <View style={S.modeList}>
+                                {paymentModes.map((m: any, index: number) => {
                                     const mId = (m.payment_mode_id || m.id)?.toString();
                                     const mName = m.payment_mode_name || m.name || 'Cash';
                                     const active = payModeId === mId;
+                                    
+                                    // Determine icon based on name
+                                    let iconName = 'cash-outline';
+                                    const nLower = mName.toLowerCase();
+                                    if (nLower.includes('upi')) iconName = 'scan-outline';
+                                    else if (nLower.includes('card')) iconName = 'card-outline';
+                                    else if (nLower.includes('bank')) iconName = 'business-outline';
+                                    else if (nLower.includes('wallet')) iconName = 'wallet-outline';
+
                                     return (
                                         <TouchableOpacity
                                             key={mId}
                                             style={[
-                                                S.modeChip,
-                                                active && { backgroundColor: themeColor, borderColor: themeColor },
+                                                S.modeItem,
+                                                index !== paymentModes.length - 1 && S.modeItemBorder
                                             ]}
                                             onPress={() => setPayModeId(mId)}
                                         >
-                                            <Text style={[S.modeText, active && { color: '#FFF' }]}>
-                                                {mName}
-                                            </Text>
+                                            <View style={S.modeLeft}>
+                                                <Ionicons name={iconName as any} size={20} color="#64748B" />
+                                                <Text style={S.modeItemText}>{mName}</Text>
+                                            </View>
+                                            <View style={[S.radioCircle, active && { borderColor: themeColor }]}>
+                                                {active && <View style={[S.radioInner, { backgroundColor: themeColor }]} />}
+                                            </View>
                                         </TouchableOpacity>
                                     );
                                 })}
@@ -253,14 +265,13 @@ export function PaymentDrawer({
                                         <Text style={S.submitBtnText}>Processing...</Text>
                                     </View>
                                 ) : (
-                                    <Text style={S.submitBtnText}>CONFIRM PAYMENT</Text>
+                                    <Text style={S.submitBtnText}>Proceed to Pay</Text>
                                 )}
                             </TouchableOpacity>
                             <View style={{ height: 40 }} />
                         </ScrollView>
                     </View>
-                </View>
-            </View>
+                </KeyboardAvoidingView>
 
             <DateTimePickerModal
                 isVisible={isDatePickerVisible}
@@ -285,25 +296,23 @@ export function PaymentDrawer({
 const S = StyleSheet.create({
     modalRoot: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.45)',
+        backgroundColor: 'transparent',
         justifyContent: 'flex-end',
-    },
-    modalOverlay: {
-        // kept for compatibility — content aligns to bottom via modalRoot
     },
     drawerContent: {
         backgroundColor: '#FFFFFF',
         borderTopLeftRadius: 28,
         borderTopRightRadius: 28,
         width: '100%',
-        maxHeight: '85%',
+        maxHeight: '90%',
         paddingHorizontal: 20,
-        paddingBottom: 40,
+        paddingBottom: Platform.OS === 'ios' ? 40 : 20,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: -4 },
         shadowOpacity: 0.15,
         shadowRadius: 12,
         elevation: 5,
+        overflow: 'hidden',
     },
     drawerHeader: {
         flexDirection: 'row',
@@ -315,7 +324,7 @@ const S = StyleSheet.create({
         marginBottom: 4,
     },
     drawerTitle: {
-        fontSize: 17,
+        fontSize: 18,
         fontWeight: '800',
         color: '#0F172A',
     },
@@ -323,32 +332,19 @@ const S = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        backgroundColor: '#F8FAFC',
         borderRadius: 14,
-        paddingHorizontal: 14,
-        paddingVertical: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 16,
         marginBottom: 8,
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
-    },
-    summaryName: { fontSize: 14, fontWeight: '800', color: '#1E293B' },
-    summaryRoom: { fontSize: 11, color: '#94A3B8', marginTop: 2 },
-    summaryAmtBox: {
-        alignItems: 'flex-end',
-        backgroundColor: '#F0F9FF',
-        borderRadius: 10,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
     },
     summaryAmtLabel: {
-        fontSize: 9,
+        fontSize: 15,
         fontWeight: '800',
-        color: '#94A3B8',
-        textTransform: 'uppercase',
     },
     summaryAmt: {
-        fontSize: 18,
+        fontSize: 20,
         fontWeight: '900',
+        color: '#0F172A',
     },
     label: {
         fontSize: 12,
@@ -379,24 +375,47 @@ const S = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 12,
     },
-    dateTextLabel: { fontSize: 13, color: '#334155', fontWeight: '600' },
-    modeRow: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-    },
-    modeChip: {
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        borderRadius: 20,
-        backgroundColor: '#F1F5F9',
-        borderWidth: 1.5,
+    modeList: {
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
         borderColor: '#E2E8F0',
+        borderRadius: 16,
+        overflow: 'hidden',
     },
-    modeText: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: '#64748B',
+    modeItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 16,
+        paddingHorizontal: 16,
+    },
+    modeItemBorder: {
+        borderBottomWidth: 1,
+        borderBottomColor: '#F1F5F9',
+    },
+    modeLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    modeItemText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#475569',
+    },
+    radioCircle: {
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        borderWidth: 2,
+        borderColor: '#CBD5E1',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    radioInner: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
     },
     submitBtn: {
         borderRadius: 14,
