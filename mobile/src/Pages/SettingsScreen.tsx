@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, TextInput, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, TextInput, ActivityIndicator } from 'react-native';
 import { AppHeader } from '../components/AppHeader';
 import { Card } from '../components/Card';
 import { Bell, Shield, ChevronRight, ChevronDown, Lock, Eye, EyeOff } from 'lucide-react-native';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useToast } from '../context/ToastContext';
 import { useTranslation } from 'react-i18next';
 import api from '../services/api';
 
 export const SettingsScreen = ({ navigation }: any) => {
     const { theme, isDark, fontSize } = useTheme();
     const { t } = useTranslation();
+    const { showError, showSuccess, showApiError } = useToast();
 
     // Local state for toggles
     const [notifications, setNotifications] = useState(true);
@@ -62,15 +64,15 @@ export const SettingsScreen = ({ navigation }: any) => {
 
     const handleChangePassword = async () => {
         if (!currentPassword || !newPassword || !confirmPassword) {
-            Alert.alert(t('common.error', 'Error'), t('settings.passwordRequired', 'Please fill in all fields'));
+            showError(t('settings.passwordRequired', 'Please fill in all fields'));
             return;
         }
         if (newPassword !== confirmPassword) {
-            Alert.alert(t('common.error', 'Error'), t('settings.passwordMismatch', 'Passwords do not match'));
+            showError(t('settings.passwordMismatch', 'Passwords do not match'));
             return;
         }
         if (newPassword.length < 6) {
-            Alert.alert(t('common.error', 'Error'), t('settings.passwordTooShort', 'Password must be at least 6 characters'));
+            showError(t('settings.passwordTooShort', 'Password must be at least 6 characters'));
             return;
         }
         try {
@@ -80,17 +82,17 @@ export const SettingsScreen = ({ navigation }: any) => {
                 newPassword,
             });
             if (response.data.success) {
-                Alert.alert(t('common.success', 'Success'), t('settings.passwordChanged', 'Password updated successfully'));
+                showSuccess(t('settings.passwordChanged', 'Password updated successfully'));
                 setCurrentPassword('');
                 setNewPassword('');
                 setConfirmPassword('');
                 setShowPasswordFields(false);
             } else {
-                Alert.alert(t('common.error', 'Error'), response.data.error || t('common.error', 'Error'));
+                showError(response.data.error || t('common.error', 'Error updating password'));
             }
         } catch (error: any) {
             console.error('Change password error:', error);
-            Alert.alert(t('common.error', 'Error'), error.response?.data?.error || t('common.error', 'Error'));
+            showApiError(error, 'Failed to update password');
         } finally {
             setPasswordLoading(false);
         }

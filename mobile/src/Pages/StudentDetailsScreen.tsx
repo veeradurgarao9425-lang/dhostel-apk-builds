@@ -25,10 +25,12 @@ import {
 } from 'lucide-react-native';
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import api from '../services/api';
-import Toast from 'react-native-toast-message';
+import { useToast } from '../context/ToastContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../contexts/ThemeContext';
 import { ProfileMenu } from '../components/ProfileMenu';
+import { SkeletonDetails } from '../components/ui/SkeletonDetails';
+import { SkeletonList } from '../components/ui/SkeletonList';
 import { HeaderNotification } from '../components/HeaderNotification';
 import { AppHeader } from '../components/AppHeader';
 import { useFocusEffect } from '@react-navigation/native';
@@ -80,6 +82,7 @@ const PaymentHistoryItem = React.memo(({ payment, student, onPress }: { payment:
 const StudentDetailsScreen = ({ route, navigation }: any) => {
     const { studentId } = route.params || {};
     const { theme, isDark } = useTheme();
+    const { showError, showSuccess, showApiError } = useToast();
     const confirm = useConfirmation();
 
     // Core student data (loaded immediately)
@@ -143,7 +146,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
     // ── Fetch core student info only (fast) ───────────────────────────────
     const fetchStudentDetails = useCallback(async () => {
         if (!studentId) {
-            Alert.alert('Error', 'No student ID provided');
+            showError('No student ID provided');
             navigation.goBack();
             return;
         }
@@ -183,10 +186,10 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
         } catch (error: any) {
             console.error('Error fetching student details:', error);
             if (error.response?.status === 404) {
-                Alert.alert('Not Found', 'Student details not found.');
+                showError('Student details not found.');
                 navigation.goBack();
             } else {
-                Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to fetch student details' });
+                showApiError(error, 'Failed to fetch student details');
             }
         } finally {
             setLoading(false);
@@ -301,15 +304,11 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                     });
                     if (res.data.success) {
                         setStudent((prev: any) => ({ ...prev, status: nextStatus }));
-                        Toast.show({
-                            type: 'success',
-                            text1: currentStatus === 2 ? 'Checked In Successfully!' : currentStatus === 3 ? 'Application Approved!' : `Marked as ${nextStatus === 1 ? 'Active' : 'Inactive'}`,
-                            text2: `${student.first_name} is now ${nextStatus === 1 ? 'active' : 'inactive'}.`
-                        });
+                        showSuccess(`${student.first_name} is now ${nextStatus === 1 ? 'active' : 'inactive'}.`);
                         fetchStudentDetails(); // refresh details to sync billing fee histories
                     }
                 } catch (e: any) {
-                    Alert.alert('Error', e.response?.data?.error || 'Failed to update status');
+                    showApiError(e, 'Failed to update status');
                 } finally {
                     setStatusLoading(false);
                 }
@@ -320,7 +319,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
     // ── Schedule Vacancy Notice ───────────────────────────────────────────
     const handleSetVacancyNotice = useCallback(async () => {
         if (!noticeDate) {
-            Alert.alert('Invalid Date', 'Please select a vacating date.');
+            showError('Please select a vacating date.');
             return;
         }
         try {
@@ -330,12 +329,12 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                 vacate_notice_reason: noticeReason || null
             });
             if (res.data.success) {
-                Toast.show({ type: 'success', text1: 'Vacancy Notice Scheduled', text2: `Tenant vacating on ${noticeDate}` });
+                showSuccess(`Tenant vacating on ${noticeDate}`);
                 setNoticeModalVisible(false);
                 fetchStudentDetails();
             }
         } catch (e: any) {
-            Alert.alert('Error', e.response?.data?.error || 'Failed to set vacancy notice');
+            showApiError(e, 'Failed to set vacancy notice');
         } finally {
             setNoticeSubmitLoading(false);
         }
@@ -357,11 +356,11 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                         vacate_notice_reason: null
                     });
                     if (res.data.success) {
-                        Toast.show({ type: 'success', text1: 'Vacancy Notice Cancelled' });
+                        showSuccess('Vacancy Notice Cancelled');
                         fetchStudentDetails();
                     }
                 } catch (e: any) {
-                    Alert.alert('Error', e.response?.data?.error || 'Failed to clear vacancy notice');
+                    showApiError(e, 'Failed to clear vacancy notice');
                 } finally {
                     setLoading(false);
                 }
@@ -371,8 +370,8 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
 
     // ── Submit payment ─────────────────────────────────────────────────────
     const handleRecordPayment = useCallback(async () => {
-        if (!payAmount || isNaN(parseFloat(payAmount))) {
-            Alert.alert('Invalid Amount', 'Please enter a valid amount.');
+        if (!payAmount || isNaN(Number(payAmount)) || Number(payAmount) <= 0) {
+            showError('Please enter a valid amount.');
             return;
         }
 
@@ -406,7 +405,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
 
             const response = await api.post('/monthly-fees/record-payment', payload);
             if (response.data.success) {
-                Toast.show({ type: 'success', text1: 'Success', text2: 'Payment recorded successfully!' });
+                showSuccess('Payment recorded successfully!');
                 setPayModalVisible(false);
                 setPayAmount('');
                 setPayNotes('');
@@ -418,7 +417,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
             }
         } catch (error: any) {
             console.error('Payment error:', error);
-            Alert.alert('Error', error.response?.data?.error || 'Failed to record payment');
+            showApiError(error, 'Failed to record payment');
         } finally {
             setPayLoading(false);
         }
@@ -454,8 +453,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
             >
                 {loading || !student ? (
                     <View style={styles.loadingContainer}>
-                        <ActivityIndicator size="large" color={theme.primary} />
-                        <Text style={{ marginTop: 10, color: '#64748B' }}>Loading student details...</Text>
+                        <SkeletonDetails />
                     </View>
                 ) : (
                     <>
@@ -572,11 +570,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                                 }
                                             });
                                         } else {
-                                            Toast.show({
-                                                type: 'info',
-                                                text1: 'No receipts',
-                                                text2: 'No payments recorded yet.'
-                                            });
+                                            showError('No payments recorded yet.');
                                         }
                                     }}
                                     activeOpacity={0.7}
@@ -996,7 +990,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                 {/* ── Payment History (deferred render) ────────────────── */}
                                 <Text style={styles.sectionTitle}>Payment History</Text>
                                 {historyLoading ? (
-                                    <ActivityIndicator size="small" color="#94A3B8" style={{ marginVertical: 20 }} />
+                                    <SkeletonList count={2} />
                                 ) : paymentHistory.length > 0 ? (
                                     paymentHistory.map((payment: any, index: number) => (
                                         <PaymentHistoryItem

@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
-    FlatList, StatusBar, ActivityIndicator, Dimensions, Linking, Modal, Alert, TextInput, RefreshControl
+    FlatList, StatusBar, Dimensions, Linking, Modal, TextInput, RefreshControl
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,12 +11,15 @@ import { Ionicons } from '@expo/vector-icons';
 import api from '../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useToast } from '../context/ToastContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { toLocalDateStr as toLocalDateString } from '../utils/dateUtils';
 import { AppHeader } from '../components/AppHeader';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { downloadAndSaveFile } from '../utils/fileDownloader';
+import { SkeletonList } from '../components/ui/SkeletonCard';
+import { LoadMoreFooter } from '../components/ui/LoadMoreFooter';
 
 const { width } = Dimensions.get('window');
 
@@ -27,6 +30,7 @@ export default function CollectedPaymentsScreen() {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
     const { theme } = useTheme();
+    const { showError, showSuccess, showApiError } = useToast();
 
     const [refDate, setRefDate] = useState(new Date());
     const [loading, setLoading] = useState(false);
@@ -138,7 +142,7 @@ export default function CollectedPaymentsScreen() {
 
     const handleExport = async () => {
         if (exportStart > exportEnd) {
-            Alert.alert('Invalid Range', 'Start date must be before end date.');
+            showError('Start date must be before end date.');
             return;
         }
 
@@ -149,7 +153,7 @@ export default function CollectedPaymentsScreen() {
             const token = await AsyncStorage.getItem('token');
 
             if (!token) {
-                Alert.alert('Error', 'Authentication token not found. Please log in again.');
+                showError('Authentication token not found. Please log in again.');
                 return;
             }
 
@@ -176,11 +180,11 @@ export default function CollectedPaymentsScreen() {
                     Alert.alert('Downloaded', `File saved as:\n${filename}`);
                 }
             } else {
-                Alert.alert('Error', `Server returned status code ${downloadResult.status}`);
+                showError(`Server returned status code ${downloadResult.status}`);
             }
         } catch (error) {
             console.error(error);
-            Alert.alert('Error', 'Failed to export data');
+            showApiError(error, 'Failed to export data');
         } finally {
             setIsExporting(false);
         }
@@ -318,15 +322,7 @@ export default function CollectedPaymentsScreen() {
 
             {/* BODY */}
             {loading ? (
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', gap: 16 }}>
-                    <ActivityIndicator size="large" color="#059669" />
-                    <View style={{ alignItems: 'center', gap: 4 }}>
-                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#334155' }}>Loading payments...</Text>
-                        <Text style={{ fontSize: 12, color: '#94A3B8', textAlign: 'center', paddingHorizontal: 40 }}>
-                            This may take a moment on first load
-                        </Text>
-                    </View>
-                </View>
+                <SkeletonList count={6} />
             ) : (
                 <FlatList
                     style={{ flex: 1 }}

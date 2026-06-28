@@ -8,18 +8,19 @@ import {
     TouchableOpacity,
     TextInput,
     StatusBar,
-    ActivityIndicator,
     RefreshControl,
-    Alert
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Plus, Search, Calendar, ChevronDown, Tag, X, Edit3, Trash2 } from 'lucide-react-native';
 import { AppHeader } from '../components/AppHeader';
 import { EmptyState } from '../components/ui/EmptyState';
+import { SkeletonList } from '../components/ui/SkeletonCard';
+import { DangerModal } from '../components/ui/DangerModal';
+import { LoadMoreFooter } from '../components/ui/LoadMoreFooter';
 import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../context/ToastContext';
 import api from '../services/api';
-import Toast from 'react-native-toast-message';
 import { ProfileMenu } from '../components/ProfileMenu';
 import { useTheme } from '../../contexts/ThemeContext';
 import { HeaderNotification } from '../components/HeaderNotification';
@@ -48,6 +49,10 @@ const getCatColor = (name: string) => CAT_COLORS[name] || '#64748B';
 export const ExpenseScreen = ({ navigation }: any) => {
     const { user } = useAuth();
     const { theme, isDark } = useTheme();
+    const { showApiError, showSuccess, showToast } = useToast();
+    const [dangerModal, setDangerModal] = useState<{ visible: boolean; expense: any | null }>({
+        visible: false, expense: null,
+    });
     const [search, setSearch] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [expenses, setExpenses] = useState<any[]>([]);
@@ -111,12 +116,7 @@ export const ExpenseScreen = ({ navigation }: any) => {
                 setMonthExpensesTotal(response.data.monthExpensesTotal || 0);
             }
         } catch (error) {
-            console.error('Error fetching expenses:', error);
-            Toast.show({
-                type: 'error',
-                text1: 'Error',
-                text2: 'Failed to fetch expenses',
-            });
+            showApiError(error, 'Failed to fetch expenses');
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -126,46 +126,24 @@ export const ExpenseScreen = ({ navigation }: any) => {
     };
 
     const handleDelete = (expense: any) => {
-        Alert.alert(
-            'Delete Expense',
-            `Are you sure you want to delete this expense of ₹${parseFloat(expense.amount || 0).toLocaleString('en-IN')}?`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            setLoading(true);
-                            const response = await api.delete(`/expenses/${expense.expense_id}`);
-                            if (response.data.success) {
-                                Toast.show({
-                                    type: 'success',
-                                    text1: 'Success',
-                                    text2: 'Expense deleted successfully',
-                                });
-                                fetchExpenses(1, true);
-                            } else {
-                                Toast.show({
-                                    type: 'error',
-                                    text1: 'Error',
-                                    text2: response.data.message || 'Failed to delete expense',
-                                });
-                            }
-                        } catch (error) {
-                            console.error('Error deleting expense:', error);
-                            Toast.show({
-                                type: 'error',
-                                text1: 'Error',
-                                text2: 'Failed to delete expense',
-                            });
-                        } finally {
-                            setLoading(false);
-                        }
-                    }
-                }
-            ]
-        );
+        setDangerModal({ visible: true, expense });
+    };
+
+    const handleDeleteConfirm = async () => {
+        const { expense } = dangerModal;
+        setDangerModal(p => ({ ...p, visible: false }));
+        if (!expense) return;
+        try {
+            const response = await api.delete(`/expenses/${expense.expense_id}`);
+            if (response.data.success) {
+                showSuccess('Expense deleted successfully.');
+                fetchExpenses(1, true);
+            } else {
+                showToast({ type: 'error', message: response.data.message || 'Failed to delete expense' });
+            }
+        } catch (error) {
+            showApiError(error, 'Failed to delete expense');
+        }
     };
 
     useEffect(() => {
@@ -284,11 +262,8 @@ export const ExpenseScreen = ({ navigation }: any) => {
                 </View>
             </View>
 
-            {/* Expense List */}
             {loading ? (
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                    <ActivityIndicator size="large" color={theme.primary} />
-                </View>
+                <SkeletonList count={5} />
             ) : (
                 <FlatList
                     data={expenses}
@@ -301,7 +276,7 @@ export const ExpenseScreen = ({ navigation }: any) => {
                                 style={[styles.premiumCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}
                                 onPress={() => {
                                     if (expense.is_wage) {
-                                        Toast.show({ type: 'info', text1: 'Staff Wage', text2: 'Manage this from Staff → Payments.' });
+                                        showToast({ type: 'info', message: 'Manage this from Staff → Payments.' });
                                         return;
                                     }
                                     navigation.navigate('ExpenseDetails', { expense });
@@ -402,13 +377,7 @@ export const ExpenseScreen = ({ navigation }: any) => {
                         />
                     }
                     ListFooterComponent={
-                        loadingMore ? (
-                            <ActivityIndicator size="small" color={theme.primary} style={{ marginVertical: 20 }} />
-                        ) : !hasMore && expenses.length > 0 ? (
-                            <View style={{ alignItems: 'center', marginVertical: 20 }}>
-                                <Text style={{ color: '#94A3B8', fontSize: 12, fontWeight: '600' }}>All expenses loaded</Text>
-                            </View>
-                        ) : null
+                        <LoadMoreFooter loading={loadingMore} hasMore={hasMore} total={expenses.length} noun="expenses" />
                     }
                 />
             )}
@@ -429,6 +398,15 @@ export const ExpenseScreen = ({ navigation }: any) => {
                 maximumDate={new Date()}
                 onConfirm={handleConfirmDate}
                 onCancel={() => setDatePickerVisibility(false)}
+            />
+
+            <DangerModal
+                visible={dangerModal.visible}
+                title="Delete Expense?"
+                message={`Delete this ₹${parseFloat(dangerModal.expense?.amount || 0).toLocaleString('en-IN')} expense? This cannot be undone.`}
+                confirmText="Delete"
+                onCancel={() => setDangerModal(p => ({ ...p, visible: false }))}
+                onConfirm={handleDeleteConfirm}
             />
         </View>
     );

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
-    StatusBar, ScrollView, Platform, Alert, TextInput,
+    StatusBar, ScrollView, Platform, TextInput,
     Modal, ActivityIndicator
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -12,6 +12,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import api from '../services/api';
 import { useTranslation } from 'react-i18next';
 import { useConfirmation } from '../../contexts/ConfirmationContext';
+import { useToast } from '../context/ToastContext';
 import * as Clipboard from 'expo-clipboard';
 
 // ─── Menu item definition ─────────────────────────────────────────────────────
@@ -278,12 +279,13 @@ export default function MoreScreen() {
                 const { token, hostel_name } = res.data.data;
                 await updateTokenAndUser(token, { hostel_id: hostelId, hostel_name });
                 setSelectorVisible(false);
+                showSuccess(`Switched to ${hostel_name}`);
             } else {
-                Alert.alert(t('common.error'), res.data?.error || 'Failed to switch active hostel');
+                showError(res.data?.error || 'Failed to switch active hostel');
             }
         } catch (err: any) {
             console.error('Switch active hostel error:', err);
-            Alert.alert(t('common.error'), err.response?.data?.error || 'An error occurred while switching hostels.');
+            showApiError(err, 'An error occurred while switching hostels.');
         } finally {
             setSwitching(false);
         }

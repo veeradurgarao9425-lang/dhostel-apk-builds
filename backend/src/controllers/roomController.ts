@@ -42,7 +42,15 @@ export const getRooms = async (req: AuthRequest, res: Response) => {
       .select(
         'r.*',
         'rt.room_type_name as room_type_name',
+        'rt.description as room_type_description',
         'h.hostel_name'
+      )
+      .select(
+        db.raw(`(
+          SELECT COUNT(*)
+          FROM students
+          WHERE students.room_id = r.room_id AND students.status = 1
+        ) as occupied_count`)
       );
 
 
@@ -66,7 +74,7 @@ export const getRooms = async (req: AuthRequest, res: Response) => {
 
 
     // Parse amenities JSON or CSV and calculate available_beds
-    const roomsWithParsedAmenities = await Promise.all(rooms.map(async (room) => {
+    const roomsWithParsedAmenities = rooms.map((room) => {
       let amenitiesArray = [];
 
       if (room.amenities) {
@@ -79,40 +87,32 @@ export const getRooms = async (req: AuthRequest, res: Response) => {
         }
       }
 
-      // Get room type details to extract capacity
-      const roomType = await db('room_types')
-        .where({ room_type_id: room.room_type_id })
-        .first();
-
-      // Calculate available_beds from students table
-      // Count active students with this room_id
-      const studentCount = await db('students')
-        .where('room_id', room.room_id)
-        .where('status', 1)
-        .count('* as count')
-        .first();
-
-      const occupiedCount = studentCount?.count ? parseInt(studentCount.count as any) : (room.occupied_beds || 0);
+      const occupiedCount = room.occupied_count !== undefined && room.occupied_count !== null 
+          ? parseInt(room.occupied_count as string) 
+          : (room.occupied_beds || 0);
 
       // Get total capacity: Prioritize DB column, fall back to calculation
       const totalCapacity = (room.capacity && room.capacity > 0)
         ? room.capacity
-        : (roomType
-          ? getCapacityFromRoomTypeName(roomType.room_type_name, roomType.description || null)
+        : (room.room_type_name
+          ? getCapacityFromRoomTypeName(room.room_type_name, room.room_type_description || null)
           : (room.room_type_id || 0));
 
       // Calculate available beds: Total Capacity - Occupied
       const availableBeds = Math.max(0, totalCapacity - occupiedCount);
 
+      // Clean up the temporary select properties we don't want returned directly
+      const { occupied_count, room_type_description, ...restRoom } = room;
+
       return {
-        ...room,
+        ...restRoom,
         amenities: amenitiesArray,
         available_beds: availableBeds,
         occupied_beds: occupiedCount,
         capacity: totalCapacity, // For StudentsPage expectations
         total_capacity: totalCapacity // For RoomsPage expectations
       };
-    }));
+    });
 
     res.json({
       success: true,

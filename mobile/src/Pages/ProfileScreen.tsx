@@ -6,7 +6,6 @@ import {
     ScrollView,
     TouchableOpacity,
     StatusBar,
-    Alert,
     Modal,
     ActivityIndicator,
     TextInput,
@@ -16,15 +15,17 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useTranslation } from 'react-i18next';
+import { useToast } from '../context/ToastContext';
 import api from '../services/api';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useConfirmation } from '../../contexts/ConfirmationContext';
 
 const ProfileScreen = ({ navigation }: any) => {
-    const { signOut, user, cycleHostels, updateTokenAndUser } = useAuth();
+    const { signOut, user, updateTokenAndUser } = useAuth();
     const { theme, isDark } = useTheme();
     const { t } = useTranslation();
+    const { showError, showSuccess, showApiError, showInfo } = useToast();
     const insets = useSafeAreaInsets();
     const confirm = useConfirmation();
     const [stats, setStats] = useState<any>(null);
@@ -106,13 +107,13 @@ const ProfileScreen = ({ navigation }: any) => {
                 await updateTokenAndUser(token, { hostel_id: hostelId, hostel_name });
                 setSelectorVisible(false);
                 fetchStats(); // refresh stats for new active hostel
-                Alert.alert(t('profile.hostelSwitched', 'Hostel Switched'), t('profile.hostelSwitchedMsg', { name: hostel_name }));
+                showSuccess(t('profile.hostelSwitchedMsg', { name: hostel_name }), t('profile.hostelSwitched', 'Hostel Switched'));
             } else {
-                Alert.alert(t('common.error', 'Error'), res.data?.error || 'Failed to switch active hostel');
+                showError(res.data?.error || 'Failed to switch active hostel');
             }
         } catch (err: any) {
             console.error('Switch active hostel error:', err);
-            Alert.alert(t('common.error', 'Error'), err.response?.data?.error || 'An error occurred while switching hostels.');
+            showApiError(err, 'An error occurred while switching hostels.');
         } finally {
             setSwitching(false);
         }
@@ -129,19 +130,19 @@ const ProfileScreen = ({ navigation }: any) => {
 
     const handleSaveProfile = async () => {
         if (!editForm.full_name.trim()) {
-            Alert.alert(t('common.error', 'Error'), t('profile.nameRequired', 'Full Name is required.'));
+            showError(t('profile.nameRequired', 'Full Name is required.'));
             return;
         }
         if (!editForm.phone.trim()) {
-            Alert.alert(t('common.error', 'Error'), t('profile.phoneRequired', 'Phone Number is required.'));
+            showError(t('profile.phoneRequired', 'Phone Number is required.'));
             return;
         }
         if (!/^\d{10}$/.test(editForm.phone.trim())) {
-            Alert.alert(t('common.error', 'Error'), t('profile.phoneLength', 'Phone Number must be exactly 10 digits.'));
+            showError(t('profile.phoneLength', 'Phone Number must be exactly 10 digits.'));
             return;
         }
         if (editForm.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editForm.email.trim())) {
-            Alert.alert(t('common.error', 'Error'), t('profile.invalidEmail', 'Please enter a valid email address.'));
+            showError(t('profile.invalidEmail', 'Please enter a valid email address.'));
             return;
         }
 
@@ -159,13 +160,13 @@ const ProfileScreen = ({ navigation }: any) => {
                     phone: editForm.phone.trim(),
                 });
                 setEditModalVisible(false);
-                Alert.alert(t('common.success', 'Success'), t('profile.profileUpdated', 'Profile updated successfully!'));
+                showSuccess(t('profile.profileUpdated', 'Profile updated successfully!'));
             } else {
-                Alert.alert(t('common.error', 'Error'), res.data?.error || 'Failed to update profile.');
+                showError(res.data?.error || 'Failed to update profile.');
             }
         } catch (err: any) {
             console.error('Update profile error:', err);
-            Alert.alert(t('common.error', 'Error'), err.response?.data?.error || 'An error occurred while updating profile.');
+            showApiError(err, 'An error occurred while updating profile.');
         } finally {
             setSavingProfile(false);
         }
@@ -235,7 +236,7 @@ const ProfileScreen = ({ navigation }: any) => {
                         </LinearGradient>
                         <TouchableOpacity 
                             style={styles.cameraBadge} 
-                            onPress={() => Alert.alert(t('profile.photoTitle', 'Profile Photo'), t('profile.photoMsg', 'Upload profile photo feature coming soon!'))}
+                            onPress={() => showInfo(t('profile.photoMsg', 'Upload profile photo feature coming soon!'), t('profile.photoTitle', 'Profile Photo'))}
                             activeOpacity={0.8}
                         >
                             <Ionicons name="camera" size={12} color="#7C3AED" />
@@ -416,7 +417,7 @@ const ProfileScreen = ({ navigation }: any) => {
                         { icon: 'business', label: t('profile.manageHostels', 'Hostels'), color: '#7C3AED', bg: '#EDE9FE', onPress: () => navigation.navigate('Hostels') },
                         { icon: 'bar-chart', label: t('profile.reports', 'Reports'), color: '#0284C7', bg: '#E0F2FE', onPress: () => navigation.navigate('Reports') },
                         { icon: 'medal', label: t('profile.subscription', 'Subscription'), color: '#D97706', bg: '#FEF3C7', onPress: () => navigation.navigate('ComingSoon') },
-                        { icon: 'headset', label: t('profile.support', 'Support'), color: '#EF4444', bg: '#FEE2E2', onPress: () => Alert.alert(t('profile.helpSupport', 'Help & Support'), '📧 hello.hostix@gmail.com\n📞 +91 98765 43210\n\nAvailable 24/7') },
+                        { icon: 'headset', label: t('profile.support', 'Support'), color: '#EF4444', bg: '#FEE2E2', onPress: () => showInfo('📧 hello.hostix@gmail.com\n📞 +91 98765 43210\n\nAvailable 24/7', t('profile.helpSupport', 'Help & Support')) },
                     ].map((item, i) => (
                         <TouchableOpacity key={i} style={styles.manageItem} onPress={item.onPress} activeOpacity={0.7}>
                             <View style={[styles.manageIconBox, { backgroundColor: item.bg }]}>

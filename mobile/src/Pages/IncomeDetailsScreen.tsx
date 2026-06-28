@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
-    ScrollView, StatusBar, ActivityIndicator, Dimensions, Linking, Modal, Alert, Platform, Animated
+    ScrollView, StatusBar, ActivityIndicator, Dimensions, Linking, Modal, Platform, Animated
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,6 +16,7 @@ import { AppHeader } from '../components/AppHeader';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { SuccessModal } from '../components/SuccessModal';
+import { useToast } from '../context/ToastContext';
 import { downloadAndSaveFile } from '../utils/fileDownloader';
 
 const { width, height } = Dimensions.get('window');
@@ -57,6 +58,8 @@ function getDateLabel(period: Period, date: Date): string {
 }
 
 export default function IncomeDetailsScreen() {
+    const { theme, isDark } = useTheme();
+    const { showError, showSuccess, showApiError } = useToast();
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
     const initialPeriod: Period = route.params?.period || 'month';
@@ -84,7 +87,6 @@ export default function IncomeDetailsScreen() {
     const [successModalVisible, setSuccessModalVisible] = useState(false);
     const [downloadedFileUri, setDownloadedFileUri] = useState<string | null>(null);
 
-    const { theme } = useTheme();
 
     const [avgModalVisible, setAvgModalVisible] = useState(false);
     const [scaleAnim] = useState(new Animated.Value(0));
@@ -112,7 +114,7 @@ export default function IncomeDetailsScreen() {
 
     const handleExport = async () => {
         if (exportStart > exportEnd) {
-            Alert.alert('Invalid Range', 'Start date must be before end date.');
+            showError('Start date must be before end date.');
             return;
         }
 
@@ -123,7 +125,7 @@ export default function IncomeDetailsScreen() {
             const token = await AsyncStorage.getItem('token');
 
             if (!token) {
-                Alert.alert('Error', 'Authentication token not found. Please log in again.');
+                showError('Authentication token not found. Please log in again.');
                 return;
             }
 
@@ -147,14 +149,14 @@ export default function IncomeDetailsScreen() {
                         UTI: 'com.microsoft.excel.xlsx',
                     });
                 } else {
-                    Alert.alert('Downloaded', `File saved as:\n${filename}`);
+                    showSuccess(`File saved as:\n${filename}`);
                 }
             } else {
-                Alert.alert('Error', `Server returned status code ${downloadResult.status}`);
+                showError(`Server returned status code ${downloadResult.status}`);
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            Alert.alert('Error', 'Failed to export data');
+            showApiError(error, 'Failed to export data');
         } finally {
             setIsExporting(false);
         }

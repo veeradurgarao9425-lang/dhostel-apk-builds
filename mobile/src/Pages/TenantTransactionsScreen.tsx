@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
-import Toast from 'react-native-toast-message';
 import api from '../services/api';
+import { useToast } from '../context/ToastContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { AppHeader } from '../components/AppHeader';
+import { SkeletonList } from '../components/ui/SkeletonCard';
+import { EmptyState } from '../components/ui/EmptyState';
 
 interface PaymentTransaction {
     payment_id: number;
@@ -24,6 +26,7 @@ export default function TenantTransactionsScreen() {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
     const { theme } = useTheme();
+    const { showApiError } = useToast();
 
     const { studentId, studentName } = route.params || {};
 
@@ -42,7 +45,7 @@ export default function TenantTransactionsScreen() {
             }
         } catch (e) {
             console.error('Fetch tenant transactions error:', e);
-            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to fetch transaction history' });
+            showApiError(e, 'Failed to fetch transaction history');
         } finally {
             setLoading(false);
         }
@@ -114,7 +117,7 @@ export default function TenantTransactionsScreen() {
             <AppHeader title="Tenant Transactions" />
 
             {loading ? (
-                <ActivityIndicator size="large" color="#10B981" style={{ marginTop: 40 }} />
+                <SkeletonList count={5} />
             ) : (
                 <View style={styles.content}>
                     {/* Top Student Card Summary */}
@@ -152,10 +155,11 @@ export default function TenantTransactionsScreen() {
                         contentContainerStyle={styles.listContent}
                         showsVerticalScrollIndicator={false}
                         ListEmptyComponent={
-                            <View style={styles.emptyWrap}>
-                                <Text style={{ fontSize: 48, marginBottom: 8 }}>💸</Text>
-                                <Text style={styles.emptyText}>No payments recorded yet</Text>
-                            </View>
+                            <EmptyState
+                                icon="card-outline"
+                                title="No Payments Yet"
+                                subtitle="No payment transactions recorded for this tenant."
+                            />
                         }
                     />
                 </View>

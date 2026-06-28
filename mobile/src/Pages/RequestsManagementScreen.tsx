@@ -1,16 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity,
-    ActivityIndicator, Alert, RefreshControl
+    RefreshControl
 } from 'react-native';
 import { AppHeader } from '../components/AppHeader';
 import { EmptyState } from '../components/ui/EmptyState';
+import { SkeletonList } from '../components/ui/SkeletonCard';
+import { useToast } from '../context/ToastContext';
 import api from '../services/api';
 import { useAuth } from '../../contexts/AuthContext';
-import { showErrorToast, showSuccessToast } from '../hooks/Toastconfig';
 
 export default function RequestsManagementScreen({ navigation }: any) {
     const { user } = useAuth();
+    const { showApiError, showSuccess, showError } = useToast();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [activeTab, setActiveTab] = useState<'Leaves' | 'Visitors'>('Leaves');
@@ -34,7 +36,7 @@ export default function RequestsManagementScreen({ navigation }: any) {
             }
         } catch (e) {
             console.error('Failed to fetch requests:', e);
-            showErrorToast('Error', 'Failed to load requests.');
+            showApiError(e, 'Failed to load requests.');
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -53,11 +55,11 @@ export default function RequestsManagementScreen({ navigation }: any) {
                 
             const res = await api.put(endpoint, { status });
             if (res.data.success) {
-                showSuccessToast('Updated', `${type === 'leave' ? 'Leave' : 'Visitor'} request marked as ${status}`);
+                showSuccess(`${type === 'leave' ? 'Leave' : 'Visitor'} request marked as ${status}.`);
                 fetchData(true);
             }
         } catch (e: any) {
-            Alert.alert('Error', e.response?.data?.error || 'Failed to update status.');
+            showApiError(e, 'Failed to update status.');
         }
     };
 
@@ -81,9 +83,7 @@ export default function RequestsManagementScreen({ navigation }: any) {
             </View>
 
             {loading ? (
-                <View style={styles.center}>
-                    <ActivityIndicator size="large" color="#7C3AED" />
-                </View>
+                <SkeletonList count={4} />
             ) : (
                 <ScrollView 
                     contentContainerStyle={styles.scrollContent}
@@ -91,7 +91,7 @@ export default function RequestsManagementScreen({ navigation }: any) {
                 >
                     {activeTab === 'Leaves' ? (
                         leaves.length === 0 ? (
-                            <EmptyState icon="briefcase-outline" title="No Leave Requests" message="No pending leave requests." />
+                            <EmptyState icon="briefcase-outline" title="No Leave Requests" subtitle="No pending leave requests." />
                         ) : (
                             leaves.map(req => (
                                 <View key={req.leave_id} style={styles.card}>
@@ -126,7 +126,7 @@ export default function RequestsManagementScreen({ navigation }: any) {
                         )
                     ) : (
                         visitors.length === 0 ? (
-                            <EmptyState icon="people-outline" title="No Visitor Requests" message="No pending visitor passes." />
+                            <EmptyState icon="people-outline" title="No Visitor Requests" subtitle="No pending visitor passes." />
                         ) : (
                             visitors.map(req => (
                                 <View key={req.visitor_id} style={styles.card}>

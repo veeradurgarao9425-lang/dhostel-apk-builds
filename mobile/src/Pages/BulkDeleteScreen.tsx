@@ -5,8 +5,6 @@ import {
     StyleSheet,
     FlatList,
     TouchableOpacity,
-    Alert,
-    ActivityIndicator,
     TextInput,
     StatusBar,
     RefreshControl,
@@ -15,13 +13,19 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useToast } from '../context/ToastContext';
 import api from '../services/api';
-import { showSuccessToast, showErrorToast } from '../hooks/Toastconfig';
 import { AppHeader } from '../components/AppHeader';
+import { EmptyState } from '../components/ui/EmptyState';
+import { SkeletonList } from '../components/ui/SkeletonCard';
+import { DangerModal } from '../components/ui/DangerModal';
 
 export default function BulkDeleteScreen() {
     const navigation = useNavigation<any>();
     const { theme, isDark, fontSize } = useTheme();
+    const { showApiError, showSuccess, showError } = useToast();
+
+    const [dangerModal, setDangerModal] = useState(false);
 
     const [activeTab, setActiveTab] = useState<'rooms' | 'expenses'>('rooms');
     const [loading, setLoading] = useState(true);
@@ -47,7 +51,7 @@ export default function BulkDeleteScreen() {
             }
         } catch (e: any) {
             console.error('Failed to fetch rooms:', e);
-            showErrorToast('Error', 'Failed to load rooms.');
+            showApiError(e, 'Failed to load rooms.');
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -64,7 +68,7 @@ export default function BulkDeleteScreen() {
             }
         } catch (e: any) {
             console.error('Failed to fetch expenses:', e);
-            showErrorToast('Error', 'Failed to load expenses.');
+            showApiError(e, 'Failed to load expenses.');
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -175,68 +179,48 @@ export default function BulkDeleteScreen() {
     const handleBulkDelete = () => {
         const count = activeTab === 'rooms' ? selectedRooms.size : selectedExpenses.size;
         if (count === 0) return;
+        setDangerModal(true);
+    };
 
-        Alert.alert(
-            `Delete ${count} Selected Item${count > 1 ? 's' : ''}?`,
-            `Are you sure you want to permanently delete the selected ${count} ${activeTab}? This action cannot be undone.`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: `Delete Selected`,
-                    style: 'destructive',
-                    onPress: async () => {
-                        setDeleting(true);
-                        const selectedIds = Array.from(activeTab === 'rooms' ? selectedRooms : selectedExpenses);
-                        let successCount = 0;
-                        let failCount = 0;
-                        let lastError = '';
+    const handleBulkDeleteConfirm = async () => {
+        const count = activeTab === 'rooms' ? selectedRooms.size : selectedExpenses.size;
+        setDangerModal(false);
+        setDeleting(true);
+        const selectedIds = Array.from(activeTab === 'rooms' ? selectedRooms : selectedExpenses);
+        let successCount = 0;
+        let failCount = 0;
 
-                        for (const id of selectedIds) {
-                            try {
-                                const url = activeTab === 'rooms' ? `/rooms/${id}` : `/expenses/${id}`;
-                                const response = await api.delete(url);
-                                if (response.data.success) {
-                                    successCount++;
-                                } else {
-                                    failCount++;
-                                    lastError = response.data.message || 'Deletion rejected by server';
-                                }
-                            } catch (err: any) {
-                                failCount++;
-                                lastError = err.response?.data?.error || err.response?.data?.message || err.message || 'Server error';
-                                console.error(`Error deleting item ${id}:`, err);
-                            }
-                        }
-
-                        setDeleting(false);
-
-                        if (successCount > 0) {
-                            showSuccessToast(
-                                `${activeTab === 'rooms' ? 'Rooms' : 'Expenses'} Deleted`,
-                                `Successfully deleted ${successCount} item(s).`
-                            );
-                        }
-
-                        if (failCount > 0) {
-                            Alert.alert(
-                                'Deletions Completed with Warnings',
-                                `Successfully deleted: ${successCount} item(s).\nFailed to delete: ${failCount} item(s).\n\nLast Error: ${lastError}`,
-                                [{ text: 'OK' }]
-                            );
-                        }
-
-                        // Reset selections & reload
-                        if (activeTab === 'rooms') {
-                            setSelectedRooms(new Set());
-                            fetchRooms();
-                        } else {
-                            setSelectedExpenses(new Set());
-                            fetchExpenses();
-                        }
-                    }
+        for (const id of selectedIds) {
+            try {
+                const url = activeTab === 'rooms' ? `/rooms/${id}` : `/expenses/${id}`;
+                const response = await api.delete(url);
+                if (response.data.success) {
+                    successCount++;
+                } else {
+                    failCount++;
                 }
-            ]
-        );
+            } catch (err: any) {
+                failCount++;
+                console.error(`Error deleting item ${id}:`, err);
+            }
+        }
+
+        setDeleting(false);
+
+        if (successCount > 0) {
+            showSuccess(`Successfully deleted ${successCount} item(s).`);
+        }
+        if (failCount > 0) {
+            showError(`${failCount} item(s) could not be deleted.`);
+        }
+
+        if (activeTab === 'rooms') {
+            setSelectedRooms(new Set());
+            fetchRooms();
+        } else {
+            setSelectedExpenses(new Set());
+            fetchExpenses();
+        }
     };
 
     // Render List Card
@@ -447,12 +431,7 @@ export default function BulkDeleteScreen() {
 
             {/* Main Content List */}
             {loading ? (
-                <View style={styles.centerContainer}>
-                    <ActivityIndicator size="large" color={theme.primary} />
-                    <Text style={{ marginTop: 12, color: theme.textSecondary, fontWeight: '500', fontSize }}>
-                        Loading data...
-                    </Text>
-                </View>
+                <SkeletonList count={6} />
             ) : (
                 <FlatList
                     data={activeList}
@@ -464,17 +443,11 @@ export default function BulkDeleteScreen() {
                         <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={theme.primary} />
                     }
                     ListEmptyComponent={
-                        <View style={styles.emptyState}>
-                            <View style={[styles.emptyIconWrap, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC' }]}>
-                                <Ionicons name={activeTab === 'rooms' ? 'bed-outline' : 'cash-outline'} size={40} color={theme.textSecondary} />
-                            </View>
-                            <Text style={[styles.emptyTitle, { color: theme.textPrimary, fontSize: fontSize + 1 }]}>
-                                No {activeTab} found
-                            </Text>
-                            <Text style={[styles.emptySubtitle, { color: theme.textSecondary, fontSize: fontSize - 2 }]}>
-                                {search ? 'Try adjusting your search filters.' : `There are no ${activeTab} available in your database.`}
-                            </Text>
-                        </View>
+                        <EmptyState
+                            icon={activeTab === 'rooms' ? 'bed-outline' : 'cash-outline'}
+                            title={`No ${activeTab} found`}
+                            subtitle={search ? 'Try adjusting your search filters.' : `There are no ${activeTab} available in your database.`}
+                        />
                     }
                 />
             )}
@@ -509,6 +482,15 @@ export default function BulkDeleteScreen() {
                     )}
                 </TouchableOpacity>
             </View>
+
+            <DangerModal
+                visible={dangerModal}
+                title={`Delete ${activeTab === 'rooms' ? selectedRooms.size : selectedExpenses.size} Item(s)?`}
+                message={`Permanently delete all selected ${activeTab}? This cannot be undone.`}
+                confirmText="Delete"
+                onCancel={() => setDangerModal(false)}
+                onConfirm={handleBulkDeleteConfirm}
+            />
         </View>
     );
 }

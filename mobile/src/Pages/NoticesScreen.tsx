@@ -7,10 +7,8 @@ import {
     TouchableOpacity,
     StatusBar,
     ActivityIndicator,
-    Alert,
     RefreshControl,
 } from 'react-native';
-import Toast from 'react-native-toast-message';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
     Calendar, Trash2, User, ChevronRight, AlertTriangle
@@ -18,9 +16,13 @@ import {
 import { AppHeader } from '../components/AppHeader';
 import { EmptyState } from '../components/ui/EmptyState';
 import api from '../services/api';
-import { showErrorToast, showSuccessToast } from '../hooks/Toastconfig';
+import { useToast } from '../context/ToastContext';
+import { useConfirmation } from '../../contexts/ConfirmationContext';
+import { SkeletonList } from '../components/ui/SkeletonCard';
 
 export default function NoticesScreen({ navigation }: any) {
+    const { showError, showSuccess, showApiError } = useToast();
+    const confirm = useConfirmation();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [notices, setNotices] = useState<any[]>([]);
@@ -40,7 +42,7 @@ export default function NoticesScreen({ navigation }: any) {
             }
         } catch (e: any) {
             console.error('Failed to fetch vacate notices:', e);
-            showErrorToast('Error', 'Failed to load vacancy notices.');
+            showApiError(e, 'Failed to load vacancy notices.');
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -52,31 +54,27 @@ export default function NoticesScreen({ navigation }: any) {
     }, [fetchNotices]);
 
     const handleCancelNotice = (student: any) => {
-        Alert.alert(
-            'Cancel Vacate Notice?',
-            `Are you sure you want to clear the vacate schedule for ${student.first_name} ${student.last_name || ''}?`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Yes, Clear Notice',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            const res = await api.put(`/students/${student.student_id}`, {
-                                vacate_notice_date: null,
-                                vacate_notice_reason: null
-                            });
-                            if (res.data.success) {
-                                showSuccessToast('Notice Cleared', 'Vacate date removed.');
-                                fetchNotices();
-                            }
-                        } catch (e: any) {
-                            Alert.alert('Error', e.response?.data?.error || 'Failed to clear vacate notice.');
-                        }
+        confirm({
+            title: 'Cancel Vacate Notice?',
+            message: `Are you sure you want to clear the vacate schedule for ${student.first_name} ${student.last_name || ''}?`,
+            confirmText: 'Yes, Clear Notice',
+            cancelText: 'Cancel',
+            variant: 'danger',
+            onConfirm: async () => {
+                try {
+                    const res = await api.put(`/students/${student.student_id}`, {
+                        vacate_notice_date: null,
+                        vacate_notice_reason: null
+                    });
+                    if (res.data.success) {
+                        showSuccess('Vacate date removed.', 'Notice Cleared');
+                        fetchNotices();
                     }
+                } catch (e: any) {
+                    showApiError(e, 'Failed to clear vacate notice.');
                 }
-            ]
-        );
+            }
+        });
     };
 
     const getDaysLeftText = (dateStr: string) => {
@@ -107,8 +105,7 @@ export default function NoticesScreen({ navigation }: any) {
 
             {loading ? (
                 <View style={styles.centerContainer}>
-                    <ActivityIndicator size="large" color="#D97706" />
-                    <Text style={{ marginTop: 12, color: '#64748B', fontWeight: '500' }}>Loading vacancy schedules...</Text>
+                    <SkeletonList count={5} />
                 </View>
             ) : (
                 <ScrollView
@@ -121,7 +118,7 @@ export default function NoticesScreen({ navigation }: any) {
                 >
                     {notices.length === 0 ? (
                         <EmptyState
-                            variant="noData"
+                            icon="calendar-outline"
                             title="No Vacate Dates Scheduled"
                             subtitle="You can schedule checkout notices directly from a student's profile details."
                         />

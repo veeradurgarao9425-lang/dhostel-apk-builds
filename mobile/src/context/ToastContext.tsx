@@ -46,6 +46,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       text1: title ?? titleMap[type],
       text2: message,
       visibilityTime: duration ?? defaultDuration,
+      autoHide: true,
       position: 'bottom',
       bottomOffset: 100, // Above tab bar (60px) + safe margin
     });

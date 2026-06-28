@@ -6,7 +6,6 @@ import {
     ScrollView,
     TouchableOpacity,
     ActivityIndicator,
-    Alert,
     StatusBar
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -15,6 +14,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import api from '../services/api';
 import { AppHeader } from '../components/AppHeader';
+import { useToast } from '../context/ToastContext';
 import * as Clipboard from 'expo-clipboard';
 
 export const HostelDetailsScreen = () => {
@@ -22,6 +22,7 @@ export const HostelDetailsScreen = () => {
     const route = useRoute<any>();
     const { user, updateTokenAndUser } = useAuth();
     const { theme, isDark } = useTheme();
+    const { showError, showApiError } = useToast();
 
     const { hostel, hostelId } = route.params || {};
     const [selectedHostelDetails, setSelectedHostelDetails] = useState<any>(hostel);
@@ -57,11 +58,11 @@ export const HostelDetailsScreen = () => {
                 const { token, hostel_name } = res.data.data;
                 await updateTokenAndUser(token, { hostel_id: hostelId, hostel_name });
             } else {
-                Alert.alert('Error', res.data?.error || 'Failed to switch active hostel');
+                showError(res.data?.error || 'Failed to switch active hostel');
             }
         } catch (err: any) {
             console.error('Switch active hostel error:', err);
-            Alert.alert('Error', err.response?.data?.error || 'An error occurred while switching hostels.');
+            showApiError(err, 'An error occurred while switching hostels.');
         } finally {
             setSwitchingId(null);
         }

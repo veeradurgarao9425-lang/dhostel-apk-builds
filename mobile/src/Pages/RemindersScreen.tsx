@@ -1,20 +1,23 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity,
-    StatusBar, ActivityIndicator, LayoutAnimation, Platform, UIManager,
+    StatusBar, LayoutAnimation, Platform, UIManager,
     Alert, Modal, ScrollView, RefreshControl, Keyboard, KeyboardAvoidingView
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import Toast from 'react-native-toast-message';
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import api from '../services/api';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useToast } from '../context/ToastContext';
 import { ProfileMenu } from '../components/ProfileMenu';
 import { FormInput } from '../components/FormComponents';
 import { AppHeader } from '../components/AppHeader';
 import { FullScreenLoader } from '../components/FullScreenLoader';
+import { EmptyState } from '../components/ui/EmptyState';
+import { SkeletonList } from '../components/ui/SkeletonCard';
+import { DangerModal } from '../components/ui/DangerModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SPACING } from '../theme/index';
 
@@ -62,12 +65,16 @@ const PRIORITY_COLORS: Record<string, { text: string; bg: string }> = {
 export default function RemindersScreen() {
     const navigation = useNavigation<any>();
     const { theme } = useTheme();
+    const { showApiError, showSuccess, showError } = useToast();
 
     const [reminders, setReminders] = useState<Reminder[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
+    const [dangerModal, setDangerModal] = useState<{ visible: boolean; remId: number | null }>({
+        visible: false, remId: null,
+    });
 
     // Form states
     const [title, setTitle] = useState('');
@@ -99,7 +106,7 @@ export default function RemindersScreen() {
             }
         } catch (e) {
             console.error('Fetch reminders error:', e);
-            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to load reminders' });
+            if (!isSilent) showApiError(e, 'Failed to load reminders');
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -134,7 +141,7 @@ export default function RemindersScreen() {
 
     const handleSaveReminder = async () => {
         if (!title || !date) {
-            Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please add the required fields and try again.' });
+            showError('Please add the required fields and try again.');
             return;
         }
 
@@ -152,21 +159,21 @@ export default function RemindersScreen() {
             if (editingReminder) {
                 const res = await api.put(`/reminders/${editingReminder.reminder_id}`, payload);
                 if (res.data.success) {
-                    Toast.show({ type: 'success', text1: '✓ Updated', text2: 'Reminder updated successfully' });
+                    showSuccess('Reminder updated successfully.');
                     setIsModalVisible(false);
                     fetchReminders(true);
                 }
             } else {
                 const res = await api.post('/reminders', payload);
                 if (res.data.success) {
-                    Toast.show({ type: 'success', text1: '✓ Saved', text2: 'Reminder created successfully' });
+                    showSuccess('Reminder created successfully.');
                     setIsModalVisible(false);
                     fetchReminders(true);
                 }
             }
         } catch (e: any) {
             console.error('Save reminder error:', e);
-            Alert.alert('Error', e.response?.data?.error || 'Failed to save reminder');
+            showApiError(e, 'Failed to save reminder');
         } finally {
             setSubmitLoading(false);
         }
@@ -179,38 +186,32 @@ export default function RemindersScreen() {
             if (res.data.success) {
                 LayoutAnimation.easeInEaseOut();
                 setReminders(prev => prev.map(r => r.reminder_id === rem.reminder_id ? { ...r, status: nextStatus } : r));
-                Toast.show({ type: 'success', text1: nextStatus === 'COMPLETED' ? 'Marked Completed ✓' : 'Marked Pending' });
+                showSuccess(nextStatus === 'COMPLETED' ? 'Marked as completed.' : 'Marked as pending.');
             }
         } catch (e) {
             console.error(e);
-            Alert.alert('Error', 'Failed to update reminder status');
+            showError('Failed to update reminder status');
         }
     };
 
     const handleDeleteReminder = (remId: number) => {
-        Alert.alert(
-            'Delete Reminder',
-            'Are you sure you want to delete this reminder?',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            const res = await api.delete(`/reminders/${remId}`);
-                            if (res.data.success) {
-                                LayoutAnimation.easeInEaseOut();
-                                setReminders(prev => prev.filter(r => r.reminder_id !== remId));
-                                Toast.show({ type: 'success', text1: 'Deleted successfully' });
-                            }
-                        } catch (e) {
-                            Alert.alert('Error', 'Failed to delete reminder');
-                        }
-                    }
-                }
-            ]
-        );
+        setDangerModal({ visible: true, remId });
+    };
+
+    const handleDeleteConfirm = async () => {
+        const { remId } = dangerModal;
+        setDangerModal(p => ({ ...p, visible: false }));
+        if (!remId) return;
+        try {
+            const res = await api.delete(`/reminders/${remId}`);
+            if (res.data.success) {
+                LayoutAnimation.easeInEaseOut();
+                setReminders(prev => prev.filter(r => r.reminder_id !== remId));
+                showSuccess('Reminder deleted.');
+            }
+        } catch (e) {
+            showError('Failed to delete reminder');
+        }
     };
 
     // Calculate metrics
@@ -324,7 +325,7 @@ export default function RemindersScreen() {
 
             {/* List */}
             {loading ? (
-                <ActivityIndicator size="large" color="#7C3AED" style={{ marginTop: 40 }} />
+                <SkeletonList count={5} />
             ) : (
                 <FlatList
                     data={reminders}
@@ -340,11 +341,13 @@ export default function RemindersScreen() {
                         />
                     }
                     ListEmptyComponent={
-                        <View style={s.emptyWrap}>
-                            <Text style={{ fontSize: 50, marginBottom: 10 }}>🔔</Text>
-                            <Text style={s.emptyText}>No reminders set yet</Text>
-                            <Text style={s.emptySub}>Add reminders to track rent, bills, or tasks.</Text>
-                        </View>
+                        <EmptyState
+                            icon="alarm-outline"
+                            title="No Reminders Set"
+                            subtitle="Add reminders to track rent, bills, or tasks."
+                            actionLabel="Add Reminder"
+                            onAction={handleOpenCreate}
+                        />
                     }
                 />
             )}
@@ -447,6 +450,15 @@ export default function RemindersScreen() {
                 mode="date"
                 onConfirm={(d) => { setDate(d.toISOString().split('T')[0]); setDatePickerVisible(false); }}
                 onCancel={() => setDatePickerVisible(false)}
+            />
+
+            <DangerModal
+                visible={dangerModal.visible}
+                title="Delete Reminder?"
+                message="Are you sure you want to delete this reminder? This action cannot be undone."
+                confirmText="Delete"
+                onCancel={() => setDangerModal(p => ({ ...p, visible: false }))}
+                onConfirm={handleDeleteConfirm}
             />
         </View>
     );

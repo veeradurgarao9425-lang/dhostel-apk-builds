@@ -1,7 +1,7 @@
 {
     "common": {
         "dashboard": "Dashboard",
-        "students": "Students",
+        "students": "Tenants",
         "rooms": "Rooms",
         "fees": "Fee Management",
         "expenses": "Expenses",
@@ -26,14 +26,14 @@
         "total": "Total"
     },
     "students": {
-        "title": "All Students",
-        "totalStudents": "Total",
-        "addStudent": "Add Student",
+        "title": "All Tenants",
+        "totalStudents": "Total Tenants",
+        "addStudent": "Add Tenant",
         "manualEntry": "Manual Entry",
         "generateQR": "Generate QR Code",
         "qrDescription": "Let students register themselves",
         "active": "Active",
-        "inactive": "Inactive",
+        "inactive": "Left",
         "prebooked": "Pre-Booked",
         "qrSignups": "QR Signups",
         "qrSignup": "QR Signup",
@@ -413,7 +413,7 @@
         "title": "My PGs",
         "addHostel": "Add PG",
         "active": "Active",
-        "inactive": "Inactive",
+        "inactive": "Left",
         "rooms": "Rooms",
         "tenants": "Tenants"
     },

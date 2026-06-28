@@ -11,7 +11,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import api from '../services/api';
-import Toast from 'react-native-toast-message';
 import { HeaderNotification } from '../components/HeaderNotification';
 import { ProfileMenu } from '../components/ProfileMenu';
 import { PaymentDrawer } from '../components/PaymentDrawer';
@@ -288,7 +287,7 @@ export default function PendingPaymentsScreen() {
     const navigation = useNavigation<any>();
     const { theme, fontSize, isDark } = useTheme();
     const { t } = useTranslation();
-    const { showSuccess, showError } = useToast();
+    const { showSuccess, showError, showApiError } = useToast();
     const insets = useSafeAreaInsets();
 
     const [tenants, setTenants] = useState<DueTenant[]>([]);
@@ -403,8 +402,8 @@ export default function PendingPaymentsScreen() {
                 setPartialPaid(summaryObj.partial_paid_sum || 0);
                 setTotalDefaulters(summaryObj.pending || 0);
             }
-        } catch {
-            Toast.show({ type: 'error', text1: t('pendingDues.failedLoadDues') });
+        } catch (e: any) {
+            showApiError(e, t('pendingDues.failedLoadDues'));
         } finally {
             isFirstLoadRef.current = false;
             setLoading(false);
@@ -433,7 +432,7 @@ export default function PendingPaymentsScreen() {
 
     const handleCollectRent = useCallback(async () => {
         if (!payAmount || parseFloat(payAmount) <= 0) {
-            Alert.alert('Invalid Amount', 'Please enter a valid amount'); return;
+            showError('Please enter a valid amount'); return;
         }
         if (!selectedFee) return;
         try {
@@ -458,13 +457,11 @@ export default function PendingPaymentsScreen() {
                 showError(res.data.error || 'Payment was not saved.');
             }
         } catch (e: any) {
-            const errData = e.response?.data;
-            const errDetail = errData?.details || errData?.error || e.message;
-            Alert.alert('Payment Failed', errDetail || 'Could not record payment. Try again.');
+            showApiError(e, 'Could not record payment. Try again.');
         } finally {
             setPayLoading(false);
         }
-    }, [payAmount, payDate, payModeId, payNotes, payTransactionId, payDueDate, selectedFee, load]);
+    }, [payAmount, payDate, payModeId, payNotes, payTransactionId, payDueDate, selectedFee, load, showSuccess, showError, showApiError]);
 
     // ── Filtered list ─────────────────────────────────────────────────────────
     const filteredTenants = searchQuery.trim()

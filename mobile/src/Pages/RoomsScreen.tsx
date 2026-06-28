@@ -13,7 +13,6 @@ import {
     RefreshControl,
     Dimensions,
     ScrollView,
-    ActivityIndicator,
 } from 'react-native';
 import { Plus, Search, X } from 'lucide-react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -99,9 +98,9 @@ export default function RoomsScreen({ navigation, route }: any) {
     // ── Fetch rooms ──────────────────────────────────────────────────────────
     const fetchRooms = useCallback(async (isRefresh = false) => {
         try {
-            if (!isRefresh) {
+            if (rooms.length === 0 && !isRefresh) {
                 setLoading(true);
-            } else if (rooms.length > 0) {
+            } else if (!isRefresh) {
                 setBackgroundLoading(true);
             }
             const response = await api.get('/rooms?limit=200');

@@ -7,18 +7,18 @@ import {
     TouchableOpacity,
     TextInput,
     StatusBar,
-    ActivityIndicator
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Plus, Search, Calendar, ChevronDown } from 'lucide-react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../services/api';
-import Toast from 'react-native-toast-message';
+import { useToast } from '../context/ToastContext';
 import { ProfileMenu } from '../components/ProfileMenu';
 import { useTheme } from '../../contexts/ThemeContext';
 import { HeaderNotification } from '../components/HeaderNotification';
 import { AppHeader } from '../components/AppHeader';
 import { EmptyState } from '../components/ui/EmptyState';
+import { SkeletonList } from '../components/ui/SkeletonCard';
 
 export const IncomeScreen = ({ navigation }: any) => {
     const { user } = useAuth();
@@ -117,7 +117,7 @@ export const IncomeScreen = ({ navigation }: any) => {
                 <Text style={styles.sectionHeader}>Recent Collections</Text>
                 {sortedDays.length === 0 && (
                     <EmptyState
-                        variant="noData"
+                        icon="wallet-outline"
                         title="No Collections Yet"
                         subtitle="Tap the + button to record your first income entry."
                         actionLabel="Add Income"
@@ -178,9 +178,7 @@ export const IncomeScreen = ({ navigation }: any) => {
             </AppHeader>
 
             {loading ? (
-                <View style={styles.loader}>
-                    <ActivityIndicator size="large" color={theme.primary} />
-                </View>
+                <SkeletonList count={5} />
             ) : error ? (
                 <View style={styles.errorContainer}>
                     <Text style={styles.errorTitle}>Oops! Failed to load data</Text>

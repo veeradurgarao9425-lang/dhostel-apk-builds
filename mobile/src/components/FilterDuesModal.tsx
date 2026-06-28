@@ -11,6 +11,11 @@ import { SelectionModal } from './ui/SelectionModal';
 import { SearchUI } from './ui/SearchScreen';
 import { NotificationsScreen } from './ui/NotificationsScreen';
 import { useNetwork } from './ui/NetworkManager';
+import { SkeletonCard, SkeletonLoader } from './ui/SkeletonLoader';
+import { EmptyState } from './ui/EmptyState';
+import { ActionSheet } from './ui/ActionSheet';
+import { DangerModal } from './ui/DangerModal';
+import { StatCard } from './ui/StatCard';
 import Toast from 'react-native-toast-message';
 
 export interface FilterDuesProps {
@@ -20,7 +25,7 @@ export interface FilterDuesProps {
 }
 
 export function FilterDuesModal({ visible, onClose, onApply }: FilterDuesProps) {
-    const { theme } = useTheme();
+    const { theme, isDark } = useTheme();
     const primary = theme?.primary || '#8B291A';
     
     const [status, setStatus] = useState('All');
@@ -37,8 +42,13 @@ export function FilterDuesModal({ visible, onClose, onApply }: FilterDuesProps) 
     const [showSearchUI, setShowSearchUI] = useState(false);
     const [showNotificationsUI, setShowNotificationsUI] = useState(false);
     
-    // We can extract simulateBanner to simulate network changes
-    const { simulateBanner } = useNetwork();
+    // States for Premium Components Demo
+    const [showActionSheet, setShowActionSheet] = useState(false);
+    const [showDangerModal, setShowDangerModal] = useState(false);
+    const [showEmptyState, setShowEmptyState] = useState(false);
+    
+    // We can extract simulateBanner and simulateScreen to test network changes
+    const { simulateBanner, simulateScreen } = useNetwork();
     
     const [minAmount, setMinAmount] = useState('');
     const [maxAmount, setMaxAmount] = useState('');
@@ -106,6 +116,51 @@ export function FilterDuesModal({ visible, onClose, onApply }: FilterDuesProps) 
                         </View>
 
                         <ScrollView showsVerticalScrollIndicator={false} style={S.scrollBody}>
+                            <View style={{ marginTop: 20, padding: 16, backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderRadius: 16, borderWidth: 1, borderColor: isDark ? '#334155' : '#E2E8F0' }}>
+                                <Text style={{ fontSize: 16, fontWeight: '700', color: primary, marginBottom: 12 }}>Premium UI Demos</Text>
+                                
+                                <View style={S.demoRow}>
+                                    <TouchableOpacity style={S.demoBtn} onPress={() => setShowActionSheet(true)}>
+                                        <Ionicons name="ellipsis-vertical" size={16} color={primary} />
+                                        <Text style={[S.demoBtnText, { color: primary }]}>Action Sheet</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={S.demoBtn} onPress={() => setShowDangerModal(true)}>
+                                        <Ionicons name="warning" size={16} color={primary} />
+                                        <Text style={[S.demoBtnText, { color: primary }]}>Danger Modal</Text>
+                                    </TouchableOpacity>
+                                </View>
+                                
+                                <View style={S.demoRow}>
+                                    <TouchableOpacity style={S.demoBtn} onPress={() => setShowEmptyState(!showEmptyState)}>
+                                        <Ionicons name="document-outline" size={16} color={primary} />
+                                        <Text style={[S.demoBtnText, { color: primary }]}>Toggle Empty State</Text>
+                                    </TouchableOpacity>
+                                </View>
+
+                                {/* Stat Cards Demo */}
+                                <Text style={{ fontSize: 13, fontWeight: '600', color: isDark ? '#94A3B8' : '#64748B', marginTop: 16, marginBottom: 8 }}>Stat Cards Demo</Text>
+                                <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
+                                    <StatCard title="Total Dues" value="₹45,200" icon="wallet" trend={{ value: '+12%', isPositive: true }} />
+                                    <StatCard title="Occupied" value="45/50" icon="bed" trend={{ value: '-2%', isPositive: false }} iconColor="#3B82F6" />
+                                </View>
+
+                                {/* Skeleton Loaders Demo */}
+                                <Text style={{ fontSize: 13, fontWeight: '600', color: isDark ? '#94A3B8' : '#64748B', marginBottom: 8 }}>Skeleton Loaders Demo</Text>
+                                <SkeletonCard />
+                                
+                                {showEmptyState && (
+                                    <View style={{ height: 350, backgroundColor: isDark ? '#0F172A' : '#FFFFFF', borderRadius: 16, overflow: 'hidden', marginTop: 12 }}>
+                                        <EmptyState 
+                                            icon="receipt-outline"
+                                            title="No Pending Dues"
+                                            subtitle="Awesome! All students have cleared their dues for this month."
+                                            actionLabel="Send Receipts"
+                                            onAction={() => Toast.show({ type: 'success', text1: 'Receipts Sent!' })}
+                                        />
+                                    </View>
+                                )}
+                            </View>
+
                             {/* Status Section */}
                             <Text style={S.sectionTitle}>Status</Text>
                             <View style={S.pillRow}>
@@ -173,7 +228,37 @@ export function FilterDuesModal({ visible, onClose, onApply }: FilterDuesProps) 
                                     </TouchableOpacity>
                                     <TouchableOpacity style={S.demoBtn} onPress={() => simulateBanner('syncing')}>
                                         <Ionicons name="wifi" size={16} color={primary} />
-                                        <Text style={[S.demoBtnText, { color: primary }]}>Simulate Network Sync</Text>
+                                        <Text style={[S.demoBtnText, { color: primary }]}>Banner: Syncing</Text>
+                                    </TouchableOpacity>
+                                </View>
+                                <View style={S.demoRow}>
+                                    <TouchableOpacity style={S.demoBtn} onPress={() => simulateScreen('OFFLINE')}>
+                                        <Ionicons name="cloud-offline" size={16} color={primary} />
+                                        <Text style={[S.demoBtnText, { color: primary }]}>Screen: Offline</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={S.demoBtn} onPress={() => simulateScreen('RECONNECTING')}>
+                                        <Ionicons name="sync" size={16} color={primary} />
+                                        <Text style={[S.demoBtnText, { color: primary }]}>Screen: Reconnecting</Text>
+                                    </TouchableOpacity>
+                                </View>
+                                <View style={S.demoRow}>
+                                    <TouchableOpacity style={S.demoBtn} onPress={() => simulateScreen('POOR_CONNECTION')}>
+                                        <Ionicons name="wifi-outline" size={16} color={primary} />
+                                        <Text style={[S.demoBtnText, { color: primary }]}>Screen: Poor Conn</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={S.demoBtn} onPress={() => simulateScreen('SLOW_NETWORK')}>
+                                        <Ionicons name="speedometer-outline" size={16} color={primary} />
+                                        <Text style={[S.demoBtnText, { color: primary }]}>Screen: Slow Net</Text>
+                                    </TouchableOpacity>
+                                </View>
+                                <View style={S.demoRow}>
+                                    <TouchableOpacity style={S.demoBtn} onPress={() => simulateScreen('SYNCING')}>
+                                        <Ionicons name="sync-circle-outline" size={16} color={primary} />
+                                        <Text style={[S.demoBtnText, { color: primary }]}>Screen: Sync Data</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={S.demoBtn} onPress={() => simulateScreen('MAINTENANCE')}>
+                                        <Ionicons name="settings-outline" size={16} color={primary} />
+                                        <Text style={[S.demoBtnText, { color: primary }]}>Screen: Maintenance</Text>
                                     </TouchableOpacity>
                                 </View>
                             </View>
@@ -299,6 +384,30 @@ export function FilterDuesModal({ visible, onClose, onApply }: FilterDuesProps) 
             <NotificationsScreen 
                 visible={showNotificationsUI}
                 onClose={() => setShowNotificationsUI(false)}
+            />
+
+            <ActionSheet 
+                visible={showActionSheet}
+                onClose={() => setShowActionSheet(false)}
+                title="Student Actions"
+                options={[
+                    { id: '1', label: 'Edit Profile', icon: 'pencil', onPress: () => {} },
+                    { id: '2', label: 'Share Details', icon: 'share-social', onPress: () => {} },
+                    { id: '3', label: 'Download Receipt', icon: 'download', onPress: () => {} },
+                    { id: '4', label: 'Delete Student', icon: 'trash', isDanger: true, onPress: () => setShowDangerModal(true) },
+                ]}
+            />
+
+            <DangerModal 
+                visible={showDangerModal}
+                title="Delete Student?"
+                message="Are you absolutely sure you want to delete this student? This action cannot be undone and will erase all their records."
+                confirmText="Yes, Delete"
+                onCancel={() => setShowDangerModal(false)}
+                onConfirm={() => {
+                    setShowDangerModal(false);
+                    Toast.show({ type: 'success', text1: 'Student Deleted Successfully' });
+                }}
             />
         </>
     );

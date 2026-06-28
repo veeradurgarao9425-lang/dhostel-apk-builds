@@ -673,7 +673,7 @@ export default function StudentsScreen({ navigation, route }: any) {
                         }
                         ListEmptyComponent={
                             <EmptyState
-                                variant={debouncedSearch ? 'noResults' : 'noStudents'}
+                                icon={debouncedSearch ? 'search' : 'people'}
                                 title={debouncedSearch ? t('students.noResults') : t('students.noStudents')}
                                 subtitle={
                                     debouncedSearch

@@ -1,23 +1,21 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity,
-    StatusBar, ActivityIndicator, LayoutAnimation, Platform, UIManager,
-    Alert, Linking, Modal, ScrollView, Animated, SectionList, Keyboard, KeyboardAvoidingView
+    StatusBar, LayoutAnimation, Platform, UIManager,
+    Linking, ScrollView, SectionList
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import Toast from 'react-native-toast-message';
-import DateTimePickerModal from "react-native-modal-datetime-picker";
 import api from '../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useToast } from '../context/ToastContext';
 import { HeaderNotification } from '../components/HeaderNotification';
 import { ProfileMenu } from '../components/ProfileMenu';
 import { AppHeader } from '../components/AppHeader';
 import { useConfirmation } from '../../contexts/ConfirmationContext';
-import { FullScreenLoader } from '../components/FullScreenLoader';
 import { EmptyState } from '../components/ui/EmptyState';
+import { SkeletonList } from '../components/ui/SkeletonCard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SPACING } from '../theme/index';
 
@@ -101,6 +99,7 @@ export default function StaffScreen() {
     const { theme } = useTheme();
     const { user } = useAuth();
     const confirm = useConfirmation();
+    const { showApiError, showSuccess, showError } = useToast();
 
     const [staffList, setStaffList] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -115,8 +114,7 @@ export default function StaffScreen() {
                 setStaffList(res.data.data);
             }
         } catch (e) {
-            console.error('Error fetching staff:', e);
-            Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to fetch staff list' });
+            showApiError(e, 'Failed to fetch staff list');
         } finally {
             setLoading(false);
         }
@@ -187,10 +185,10 @@ export default function StaffScreen() {
                     const res = await api.put(`/staff/${item.staff_id}`, { status: nextStatus });
                     if (res.data.success) {
                         fetchStaff(true);
-                        Toast.show({ type: 'success', text1: 'Status Updated successfully' });
+                        showSuccess('Status updated successfully.');
                     }
                 } catch (e) {
-                    Alert.alert('Error', 'Failed to update status');
+                    showError('Failed to update status');
                 }
             }
         });
@@ -248,7 +246,7 @@ export default function StaffScreen() {
 
             {/* Content List */}
             {loading ? (
-                <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 40 }} />
+                <SkeletonList count={6} />
             ) : (
                 <SectionList
                     sections={groupedStaff}

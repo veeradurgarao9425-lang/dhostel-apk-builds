@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { Header } from '../components/Header';
 import { Card } from '../components/Card';
 import { EmptyState } from '../components/ui/EmptyState';
+import { SkeletonList } from '../components/ui/SkeletonCard';
 import { Bell, CreditCard, UserPlus, AlertTriangle, CheckCircle2, ChevronRight, MessageSquareCode } from 'lucide-react-native';
 import { useNotifications, Notification } from '../hooks/useNotifications';
 import { useNavigation } from '@react-navigation/native';
@@ -133,9 +134,7 @@ export const NotificationScreen = () => {
                 }
             />
             {loading && notifications.length === 0 ? (
-                <View style={styles.centerContainer}>
-                    <ActivityIndicator size="large" color="#FF6B6B" />
-                </View>
+                <SkeletonList count={6} />
             ) : (
                 <ScrollView
                     style={styles.content}
@@ -144,7 +143,7 @@ export const NotificationScreen = () => {
                 >
                     {notifications.length === 0 ? (
                         <EmptyState
-                            variant="noData"
+                            icon="notifications-off-outline"
                             title="All caught up!"
                             subtitle="No new notifications. We'll let you know when important updates arrive."
                         />

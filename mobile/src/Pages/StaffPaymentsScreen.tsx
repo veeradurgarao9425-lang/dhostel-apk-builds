@@ -1,16 +1,17 @@
 import React, { useState, useCallback } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar,
-    ActivityIndicator, RefreshControl, Modal, TextInput, Alert, KeyboardAvoidingView, Platform,
+    RefreshControl, Modal, TextInput, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
-import Toast from 'react-native-toast-message';
 import api from '../services/api';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useToast } from '../context/ToastContext';
 import { AppHeader } from '../components/AppHeader';
 import { EmptyState } from '../components/ui/EmptyState';
+import { SkeletonList } from '../components/ui/SkeletonCard';
 import { useConfirmation } from '../../contexts/ConfirmationContext';
 
 const todayStr = () => new Date().toISOString().split('T')[0];
@@ -23,6 +24,7 @@ const fmtDate = (d?: string) => {
 export default function StaffPaymentsScreen({ navigation, route }: any) {
     const { theme, isDark } = useTheme();
     const confirm = useConfirmation();
+    const { showApiError, showSuccess, showError } = useToast();
     const staffId = route.params?.staffId;
     const staffName = route.params?.staffName || 'Staff';
 
@@ -61,11 +63,11 @@ export default function StaffPaymentsScreen({ navigation, route }: any) {
 
     const handleSave = async () => {
         if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
-            Toast.show({ type: 'error', text1: 'Invalid amount', text2: 'Enter a valid payment amount.' });
+            showError('Enter a valid payment amount.');
             return;
         }
         if (days && (isNaN(Number(days)) || Number(days) < 1)) {
-            Toast.show({ type: 'error', text1: 'Invalid days', text2: 'Days worked must be a positive number.' });
+            showError('Days worked must be a positive number.');
             return;
         }
         setSaving(true);
@@ -77,13 +79,13 @@ export default function StaffPaymentsScreen({ navigation, route }: any) {
                 note: note.trim() || null,
             });
             if (res.data?.success) {
-                Toast.show({ type: 'success', text1: 'Recorded', text2: 'Payment saved successfully!' });
+                showSuccess('Payment saved successfully!');
                 setModalVisible(false);
                 resetForm();
                 fetchPayments(true);
             }
         } catch (error: any) {
-            Alert.alert('Error', error.response?.data?.error || 'Failed to record payment.');
+            showApiError(error, 'Failed to record payment.');
         } finally {
             setSaving(false);
         }
@@ -101,7 +103,7 @@ export default function StaffPaymentsScreen({ navigation, route }: any) {
                     await api.delete(`/staff/payments/${p.payment_id}`);
                     fetchPayments(true);
                 } catch {
-                    Alert.alert('Error', 'Failed to delete payment.');
+                    showError('Failed to delete payment.');
                 }
             }
         });
@@ -143,7 +145,7 @@ export default function StaffPaymentsScreen({ navigation, route }: any) {
             </View>
 
             {loading ? (
-                <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 40 }} />
+                <SkeletonList count={4} />
             ) : (
                 <FlatList
                     data={payments}
@@ -154,7 +156,7 @@ export default function StaffPaymentsScreen({ navigation, route }: any) {
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchPayments(true); }} tintColor={theme.primary} />}
                     ListEmptyComponent={
                         <EmptyState
-                            variant="noData"
+                            icon="cash-outline"
                             title="No Payments Yet"
                             subtitle={`Record wage payments made to ${staffName}.`}
                             actionLabel="Record Payment"

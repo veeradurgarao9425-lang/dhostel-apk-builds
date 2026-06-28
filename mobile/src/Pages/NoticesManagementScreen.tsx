@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity,
-    ActivityIndicator, Alert, TextInput, KeyboardAvoidingView, Platform, Modal, RefreshControl
+    TextInput, KeyboardAvoidingView, Platform, Modal, RefreshControl
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AppHeader } from '../components/AppHeader';
 import { EmptyState } from '../components/ui/EmptyState';
+import { SkeletonList } from '../components/ui/SkeletonCard';
+import { DangerModal } from '../components/ui/DangerModal';
+import { useToast } from '../context/ToastContext';
 import api from '../services/api';
 import { useAuth } from '../../contexts/AuthContext';
-import { showErrorToast, showSuccessToast } from '../hooks/Toastconfig';
 
 const NOTICE_TYPES = ['General', 'Important', 'Maintenance', 'Food'] as const;
 type NoticeType = typeof NOTICE_TYPES[number];
@@ -23,6 +25,7 @@ const TYPE_CONFIG: Record<NoticeType, { emoji: string; color: string; bg: string
 
 export default function NoticesManagementScreen({ navigation }: any) {
     const { user } = useAuth();
+    const { showSuccess, showApiError, showError } = useToast();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [notices, setNotices] = useState<any[]>([]);
@@ -31,6 +34,9 @@ export default function NoticesManagementScreen({ navigation }: any) {
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
     const [noticeType, setNoticeType] = useState<NoticeType>('General');
+    const [dangerModal, setDangerModal] = useState<{ visible: boolean; notice: any | null }>({
+        visible: false, notice: null,
+    });
 
     const fetchNotices = useCallback(async (isRefresh = false) => {
         if (!isRefresh) setLoading(true);
@@ -41,7 +47,7 @@ export default function NoticesManagementScreen({ navigation }: any) {
             }
         } catch (e) {
             console.error('Failed to fetch notices:', e);
-            showErrorToast('Error', 'Failed to load notices.');
+            showError('Failed to load notices.');
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -54,7 +60,7 @@ export default function NoticesManagementScreen({ navigation }: any) {
 
     const handleCreate = async () => {
         if (!title.trim() || !content.trim()) {
-            Alert.alert('Required', 'Title and content are required.');
+            showError('Title and content are required.');
             return;
         }
         setSaving(true);
@@ -65,46 +71,40 @@ export default function NoticesManagementScreen({ navigation }: any) {
                 notice_type: noticeType,
             });
             if (res.data.success) {
-                showSuccessToast('Posted', 'Notice sent to all tenants!');
+                showSuccess('Notice sent to all tenants!');
                 setModalVisible(false);
                 setTitle('');
                 setContent('');
                 setNoticeType('General');
                 fetchNotices(true);
             } else {
-                Alert.alert('Error', res.data.error || 'Failed to post notice.');
+                showError(res.data.error || 'Failed to post notice.');
             }
         } catch (e: any) {
             console.error('Failed to create notice:', e);
-            Alert.alert('Error', e.response?.data?.error || 'Network error.');
+            showApiError(e, 'Network error.');
         } finally {
             setSaving(false);
         }
     };
 
     const handleDelete = (notice: any) => {
-        Alert.alert(
-            'Delete Notice?',
-            `Delete "${notice.title}"? Tenants will no longer see this.`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            const res = await api.delete(`/notices/${notice.notice_id}`);
-                            if (res.data.success) {
-                                showSuccessToast('Deleted', 'Notice removed.');
-                                fetchNotices(true);
-                            }
-                        } catch (e: any) {
-                            Alert.alert('Error', e.response?.data?.error || 'Failed to delete.');
-                        }
-                    }
-                }
-            ]
-        );
+        setDangerModal({ visible: true, notice });
+    };
+
+    const handleDeleteConfirm = async () => {
+        const { notice } = dangerModal;
+        setDangerModal(p => ({ ...p, visible: false }));
+        if (!notice) return;
+        try {
+            const res = await api.delete(`/notices/${notice.notice_id}`);
+            if (res.data.success) {
+                showSuccess('Notice removed.');
+                fetchNotices(true);
+            }
+        } catch (e: any) {
+            showApiError(e, 'Failed to delete notice.');
+        }
     };
 
     const timeAgo = (dateStr: string) => {
@@ -130,9 +130,7 @@ export default function NoticesManagementScreen({ navigation }: any) {
             />
 
             {loading ? (
-                <View style={styles.center}>
-                    <ActivityIndicator size="large" color="#7C3AED" />
-                </View>
+                <SkeletonList count={4} />
             ) : (
                 <ScrollView
                     contentContainerStyle={styles.scrollContent}
@@ -143,7 +141,9 @@ export default function NoticesManagementScreen({ navigation }: any) {
                         <EmptyState
                             icon="megaphone-outline"
                             title="No Notices Yet"
-                            message="Post your first announcement — tenants will see it instantly in their app."
+                            subtitle="Post your first announcement — tenants will see it instantly in their app."
+                            actionLabel="Post Notice"
+                            onAction={() => setModalVisible(true)}
                         />
                     ) : (
                         notices.map((n) => {
@@ -250,6 +250,15 @@ export default function NoticesManagementScreen({ navigation }: any) {
                     </View>
                 </KeyboardAvoidingView>
             </Modal>
+
+            <DangerModal
+                visible={dangerModal.visible}
+                title="Delete Notice?"
+                message={`Delete "${dangerModal.notice?.title || 'this notice'}"? Tenants will no longer see it.`}
+                confirmText="Delete"
+                onCancel={() => setDangerModal(p => ({ ...p, visible: false }))}
+                onConfirm={handleDeleteConfirm}
+            />
         </View>
     );
 }

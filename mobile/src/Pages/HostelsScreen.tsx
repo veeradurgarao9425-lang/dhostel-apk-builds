@@ -6,7 +6,6 @@ import {
     ScrollView,
     TouchableOpacity,
     ActivityIndicator,
-    Alert,
     RefreshControl,
     Modal,
     TouchableWithoutFeedback
@@ -19,12 +18,14 @@ import { useTheme } from '../../contexts/ThemeContext';
 import api from '../services/api';
 import { AppHeader } from '../components/AppHeader';
 import { EmptyState } from '../components/ui/EmptyState';
+import { useToast } from '../context/ToastContext';
 import * as Clipboard from 'expo-clipboard';
 
 export const HostelsScreen = () => {
     const navigation = useNavigation<any>();
     const { user, updateTokenAndUser } = useAuth();
     const { theme, isDark, fontSize } = useTheme();
+    const { showError, showApiError } = useToast();
 
     const [hostels, setHostels] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -51,9 +52,9 @@ export const HostelsScreen = () => {
             if (res.data?.success) {
                 setHostels(res.data.data || []);
             }
-        } catch (e) {
+        } catch (e: any) {
             console.error('Failed to fetch hostels:', e);
-            Alert.alert('Error', 'Failed to load hostels list.');
+            showApiError(e, 'Failed to load hostels list.');
         } finally {
             setLoading(false);
         }
@@ -86,11 +87,11 @@ export const HostelsScreen = () => {
                 const { token, hostel_name } = res.data.data;
                 await updateTokenAndUser(token, { hostel_id: hostelId, hostel_name });
             } else {
-                Alert.alert('Error', res.data?.error || 'Failed to switch active hostel');
+                showError(res.data?.error || 'Failed to switch active hostel');
             }
         } catch (err: any) {
             console.error('Switch active hostel error:', err);
-            Alert.alert('Error', err.response?.data?.error || 'An error occurred while switching hostels.');
+            showApiError(err, 'An error occurred while switching hostels.');
         } finally {
             setSwitchingId(null);
         }
@@ -105,14 +106,14 @@ export const HostelsScreen = () => {
                     const { token } = res.data.data;
                     await updateTokenAndUser(token, { hostel_id: hostelId, hostel_name: hostelName });
                 } else {
-                    Alert.alert('Error', res.data?.error || 'Failed to switch active hostel');
+                    showError(res.data?.error || 'Failed to switch active hostel');
                     return;
                 }
             }
             navigation.navigate('AddRoom');
         } catch (err: any) {
             console.error('Quick Add Room error:', err);
-            Alert.alert('Error', err.response?.data?.error || 'Failed to switch hostel for adding room.');
+            showApiError(err, 'Failed to switch hostel for adding room.');
         } finally {
             setSwitchingId(null);
         }
@@ -127,7 +128,7 @@ export const HostelsScreen = () => {
                     const { token } = res.data.data;
                     await updateTokenAndUser(token, { hostel_id: hostelId, hostel_name: hostelName });
                 } else {
-                    Alert.alert('Error', res.data?.error || 'Failed to switch active hostel');
+                    showError(res.data?.error || 'Failed to switch active hostel');
                     return;
                 }
             }
@@ -138,7 +139,7 @@ export const HostelsScreen = () => {
             }, 100);
         } catch (err: any) {
             console.error('Quick Reports error:', err);
-            Alert.alert('Error', err.response?.data?.error || 'Failed to switch hostel for viewing reports.');
+            showApiError(err, 'Failed to switch hostel for viewing reports.');
         } finally {
             setSwitchingId(null);
         }

@@ -35,6 +35,7 @@ import {
 import api from '../services/api';
 import { useNavigation } from '@react-navigation/native';
 import { AppHeader } from '../components/AppHeader';
+import { SkeletonDetails } from '../components/ui/SkeletonDetails';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Badge } from '../components/Badge';
 
@@ -213,8 +214,15 @@ export const RoomDetailsScreen = ({ route }: any) => {
     // ── Loading / Error states ───────────────────────────────────────────────
     if (loading) {
         return (
-            <View style={[styles.center, { backgroundColor: isDark ? theme.background : '#F4F6FF' }]}>
-                <ActivityIndicator size="large" color="#7C3AED" />
+            <View style={[styles.container, { backgroundColor: isDark ? theme.background : '#F4F6FF' }]}>
+                <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+                <AppHeader
+                    title="Room Details"
+                    subtitle="Loading..."
+                />
+                <View style={{ padding: 16, flex: 1 }}>
+                    <SkeletonDetails />
+                </View>
             </View>
         );
     }

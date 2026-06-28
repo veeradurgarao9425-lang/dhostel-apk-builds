@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity,
-    StatusBar, ActivityIndicator, RefreshControl, Alert,
+    StatusBar, RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Plus } from 'lucide-react-native';
@@ -10,8 +10,11 @@ import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { toLocalDateStr } from '../utils/dateUtils';
 import api from '../services/api';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useToast } from '../context/ToastContext';
 import { AppHeader } from '../components/AppHeader';
 import { EmptyState } from '../components/ui/EmptyState';
+import { SkeletonList } from '../components/ui/SkeletonCard';
+import { DangerModal } from '../components/ui/DangerModal';
 
 const fmtDate = (d?: string) => {
     if (!d) return '—';
@@ -35,6 +38,12 @@ export default function GuestsScreen() {
     const [showDatePicker, setShowDatePicker] = useState(false);
 
     const isMounted = useRef(false);
+    const { showApiError, showSuccess } = useToast();
+
+    // DangerModal state
+    const [dangerModal, setDangerModal] = useState<{ visible: boolean; guest: any | null; mode: 'checkout' | 'delete' }>({
+        visible: false, guest: null, mode: 'delete'
+    });
 
     const fetchGuests = useCallback(async (silent = false) => {
         try {
@@ -49,7 +58,7 @@ export default function GuestsScreen() {
                 setSummary(res.data.summary || { count: 0, totalCollected: 0 });
             }
         } catch (e) {
-            console.error('Fetch guests error:', e);
+            if (!silent) showApiError(e, 'Failed to load guests');
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -74,38 +83,29 @@ export default function GuestsScreen() {
     }, [dateFilter, fetchGuests]);
 
     const handleCheckout = (guest: any) => {
-        Alert.alert('Check Out Guest', `Mark ${guest.full_name} as checked out?`, [
-            { text: 'Cancel', style: 'cancel' },
-            {
-                text: 'Check Out',
-                onPress: async () => {
-                    try {
-                        await api.post(`/guests/${guest.guest_id}/checkout`);
-                        fetchGuests(true);
-                    } catch {
-                        Alert.alert('Error', 'Failed to check out guest.');
-                    }
-                },
-            },
-        ]);
+        setDangerModal({ visible: true, guest, mode: 'checkout' });
     };
 
     const handleDelete = (guest: any) => {
-        Alert.alert('Delete Guest', `Remove ${guest.full_name}'s record?`, [
-            { text: 'Cancel', style: 'cancel' },
-            {
-                text: 'Delete',
-                style: 'destructive',
-                onPress: async () => {
-                    try {
-                        await api.delete(`/guests/${guest.guest_id}`);
-                        fetchGuests(true);
-                    } catch {
-                        Alert.alert('Error', 'Failed to delete guest.');
-                    }
-                },
-            },
-        ]);
+        setDangerModal({ visible: true, guest, mode: 'delete' });
+    };
+
+    const handleDangerConfirm = async () => {
+        const { guest, mode } = dangerModal;
+        setDangerModal(p => ({ ...p, visible: false }));
+        if (!guest) return;
+        try {
+            if (mode === 'checkout') {
+                await api.post(`/guests/${guest.guest_id}/checkout`);
+                showSuccess('Guest checked out successfully.');
+            } else {
+                await api.delete(`/guests/${guest.guest_id}`);
+                showSuccess('Guest record deleted.');
+            }
+            fetchGuests(true);
+        } catch (e) {
+            showApiError(e, mode === 'checkout' ? 'Failed to check out guest' : 'Failed to delete guest');
+        }
     };
 
     const filtered = search.trim()
@@ -223,7 +223,7 @@ export default function GuestsScreen() {
             </View>
 
             {loading ? (
-                <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 40 }} />
+                <SkeletonList count={5} />
             ) : (
                 <FlatList
                     data={filtered}
@@ -267,6 +267,19 @@ export default function GuestsScreen() {
                 date={dateFilter || new Date()}
                 onConfirm={(d) => { setDateFilter(d); setShowDatePicker(false); }}
                 onCancel={() => setShowDatePicker(false)}
+            />
+
+            <DangerModal
+                visible={dangerModal.visible}
+                title={dangerModal.mode === 'checkout' ? 'Check Out Guest?' : 'Delete Guest?'}
+                message={
+                    dangerModal.mode === 'checkout'
+                        ? `Mark ${dangerModal.guest?.full_name || 'this guest'} as checked out?`
+                        : `Remove ${dangerModal.guest?.full_name || 'this guest'}'s record? This cannot be undone.`
+                }
+                confirmText={dangerModal.mode === 'checkout' ? 'Check Out' : 'Delete'}
+                onCancel={() => setDangerModal(p => ({ ...p, visible: false }))}
+                onConfirm={handleDangerConfirm}
             />
         </View>
     );

@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, RefreshControl, ActivityIndicator, Alert, Modal, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, RefreshControl, ActivityIndicator, Modal, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -16,6 +16,7 @@ import { AppHeader } from '../components/AppHeader';
 import { ProfileMenu } from '../components/ProfileMenu';
 import { buildReportHtml } from '../utils/reportHtml';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useToast } from '../context/ToastContext';
 
 const fmt = (n: number) => n.toLocaleString('en-IN');
 
@@ -66,6 +67,7 @@ export default function ReportsScreen() {
     const navigation = useNavigation<any>();
     const { theme, isDark } = useTheme();
     const { user } = useAuth();
+    const { showError, showSuccess, showApiError } = useToast();
 
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
@@ -245,7 +247,7 @@ export default function ReportsScreen() {
             const { uri } = await Print.printToFileAsync({ html });
             await downloadAndSaveFile(uri, `report_${periodLabel.replace(/\s+/g, '_')}.pdf`, 'application/pdf', true);
         } catch (e: any) {
-            Alert.alert('Export Failed', e?.message || 'Could not generate PDF.');
+            showApiError(e, 'Could not generate PDF.');
         } finally { setExporting(null); }
     };
 
@@ -256,11 +258,11 @@ export default function ReportsScreen() {
     };
 
     const handleDoExcelDownload = async () => {
-        if (excelStart > excelEnd) { Alert.alert('Invalid Range', 'Start date must be before end date.'); return; }
+        if (excelStart > excelEnd) { showError('Start date must be before end date.'); return; }
         setExcelRangeModal(false); setExporting('excel');
         try {
             const token = await AsyncStorage.getItem('token');
-            if (!token) { Alert.alert('Error', 'Authentication token not found.'); return; }
+            if (!token) { showError('Authentication token not found.'); return; }
             const startStr = toLocalDateStr(excelStart); const endStr = toLocalDateStr(excelEnd);
             const base = api.defaults.baseURL?.replace(/\/$/, '') || '';
             const url = `${base}/reports/download/excel?startDate=${startStr}&endDate=${endStr}&token=${encodeURIComponent(token)}`;
@@ -268,7 +270,6 @@ export default function ReportsScreen() {
             const destUri = `${FileSystem.documentDirectory}${filename}`;
             const result = await FileSystem.downloadAsync(url, destUri);
             if (result.status === 200) {
-                // File is already saved — share directly, no re-copy
                 const canShare = await Sharing.isAvailableAsync();
                 if (canShare) {
                     await Sharing.shareAsync(result.uri, {
@@ -277,22 +278,22 @@ export default function ReportsScreen() {
                         UTI: 'com.microsoft.excel.xlsx',
                     });
                 } else {
-                    Alert.alert('Downloaded', `Saved as:\n${filename}`);
+                    showSuccess(`File saved as: ${filename}`);
                 }
-            } else Alert.alert('Download Failed', `Server returned ${result.status}`);
-        } catch (e: any) { Alert.alert('Export Failed', e?.message || 'Could not download Excel.'); }
+            } else showError(`Download failed — server returned ${result.status}`);
+        } catch (e: any) { showApiError(e, 'Could not download Excel report.'); }
         finally { setExporting(null); }
     };
 
     const handleEmailExcel = async () => {
-        if (excelStart > excelEnd) { Alert.alert('Invalid Range', 'Start date must be before end date.'); return; }
+        if (excelStart > excelEnd) { showError('Start date must be before end date.'); return; }
         setExcelRangeModal(false); setExporting('email');
         try {
             const startStr = toLocalDateStr(excelStart); const endStr = toLocalDateStr(excelEnd);
             const res = await api.post(`/reports/email-excel?startDate=${startStr}&endDate=${endStr}`);
-            if (res.data?.success) Alert.alert('Report Sent', res.data.message || `Emailed to ${user?.email}.`);
+            if (res.data?.success) showSuccess(res.data.message || `Report emailed to ${user?.email}.`);
             else throw new Error(res.data?.error || 'Could not send report.');
-        } catch (e: any) { Alert.alert('Email Failed', e?.response?.data?.error || e?.message || 'Please try again.'); }
+        } catch (e: any) { showApiError(e, 'Failed to email report.'); }
         finally { setExporting(null); }
     };
 
