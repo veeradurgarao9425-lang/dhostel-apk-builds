@@ -380,7 +380,7 @@ export const downloadPDFReport = async (req: AuthRequest, res: Response) => {
 // Generate Excel Report
 export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
   try {
-    const { month, startDate, endDate } = req.query;
+    const { month, startDate, endDate, reportType } = req.query;
     const user = req.user;
 
     let startDateStr: string;
@@ -970,8 +970,23 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
     expenseSheet.getColumn('G').width = 20;
     expenseSheet.getColumn('H').width = 25;
 
+    if (reportType && reportType !== 'full_excel') {
+      const sheetsToKeep: string[] = [];
+      if (reportType === 'collection' || reportType === 'dues') sheetsToKeep.push('Fee Payments');
+      if (reportType === 'expenses') sheetsToKeep.push('Expenses');
+      if (reportType === 'occupancy') sheetsToKeep.push('Rooms & Occupancy');
+      if (reportType === 'tenants') sheetsToKeep.push('Tenants');
+      
+      if (sheetsToKeep.length > 0) {
+        const idsToRemove = workbook.worksheets
+          .filter(sheet => !sheetsToKeep.includes(sheet.name))
+          .map(sheet => sheet.id);
+        idsToRemove.forEach(id => workbook.removeWorksheet(id));
+      }
+    }
+
     // Set response headers
-    const filename = `Hostel_Financial_Report_${startDate && endDate ? `${startDateStr}_to_${endDateStr}` : `${monthName}_${year}`}.xlsx`;
+    const filename = `${reportType !== 'full_excel' ? reportType + '_' : ''}Hostel_Financial_Report_${startDate && endDate ? `${startDateStr}_to_${endDateStr}` : `${monthName}_${year}`}.xlsx`;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 

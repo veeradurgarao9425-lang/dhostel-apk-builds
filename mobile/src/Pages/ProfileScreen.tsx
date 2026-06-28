@@ -1060,7 +1060,7 @@ const styles = StyleSheet.create({
     // Bottom Drawer Modals
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(15, 23, 42, 0.4)',
+        backgroundColor: 'transparent',
         justifyContent: 'flex-end',
     },
     modalSheet: {

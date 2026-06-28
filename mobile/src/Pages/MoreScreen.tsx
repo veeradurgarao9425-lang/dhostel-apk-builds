@@ -362,6 +362,20 @@ export default function MoreScreen() {
 
     return (
         <View style={[s.root, { backgroundColor: theme.background }]}>
+            {!isDark && (
+                <Image
+                    source={require('../../assets/pattern_bg.jpg')}
+                    style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        opacity: 0.85,
+                    }}
+                    resizeMode="cover"
+                />
+            )}
             <StatusBar barStyle="light-content" />
 
             {/* Header */}
@@ -428,26 +442,11 @@ export default function MoreScreen() {
                                 {
                                     backgroundColor: theme.cardBg,
                                     borderColor: isDark ? '#334155' : '#E2E8F0',
-                                    overflow: 'hidden',
                                 }
                             ]}
                             onPress={openHostelSelector}
                             activeOpacity={0.8}
                         >
-                            {!isDark && (
-                                <Image
-                                    source={require('../../assets/pattern_bg.jpg')}
-                                    style={{
-                                        position: 'absolute',
-                                        top: 0,
-                                        left: 0,
-                                        right: 0,
-                                        bottom: 0,
-                                        opacity: 0.12,
-                                    }}
-                                    resizeMode="cover"
-                                />
-                            )}
                             <View style={s.activeHostelLeft}>
                                 <View style={[s.activeHostelIconContainer, { backgroundColor: isDark ? 'rgba(124, 58, 237, 0.15)' : theme.primary + '12' }]}>
                                     <Ionicons name="business" size={20} color={theme.primary} />
@@ -492,21 +491,7 @@ export default function MoreScreen() {
 
                         {/* Hostel Connection Code Block - Show only for Owners (role_id !== 1) */}
                         {user?.role_id !== 1 && authHostels.find((h: any) => h.hostel_id === user?.hostel_id)?.hostel_code && (
-                            <View style={[s.codeCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#E2E8F0', overflow: 'hidden' }]}>
-                                {!isDark && (
-                                    <Image
-                                        source={require('../../assets/pattern_bg.jpg')}
-                                        style={{
-                                            position: 'absolute',
-                                            top: 0,
-                                            left: 0,
-                                            right: 0,
-                                            bottom: 0,
-                                            opacity: 0.12,
-                                        }}
-                                        resizeMode="cover"
-                                    />
-                                )}
+                            <View style={[s.codeCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
                                 <View style={s.codeCardHeader}>
                                     <Ionicons name="key" size={16} color={theme.primary} />
                                     <Text style={[s.codeCardTitle, { color: theme.textPrimary }]}>Hostel Connection Code</Text>
