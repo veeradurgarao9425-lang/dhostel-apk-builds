@@ -43,10 +43,12 @@ api.interceptors.response.use(
     if (status === 401 && !isHandling401) {
       isHandling401 = true;
       try {
-        await AsyncStorage.multiRemove(['token', 'user']);
-        delete api.defaults.headers.common['Authorization'];
-        // @ts-ignore
-        navigate('Login');
+        const token = await AsyncStorage.getItem('token');
+        if (token !== 'mock-test-token-123') {
+          await AsyncStorage.multiRemove(['token', 'user']);
+          delete api.defaults.headers.common['Authorization'];
+          // AuthContext automatically watches for token/user removal to swap stacks
+        }
       } finally {
         isHandling401 = false;
       }

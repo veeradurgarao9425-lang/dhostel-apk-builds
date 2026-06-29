@@ -138,8 +138,10 @@ export default function LoginScreen({ navigation }: any) {
   const [otpSent, setOtpSent]       = useState(false);
   const [otp, setOtp]               = useState<string[]>(['', '', '', '', '', '']);
   const [hideOtp, setHideOtp]       = useState(false);
-  const [countdown, setCountdown]   = useState(30);
+  const [countdown, setCountdown]   = useState(120);
   const [verifyLoading, setVerifyLoading] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [otpError, setOtpError] = useState(false);
 
   const inputRefs = useRef<Array<TextInput | null>>([]);
 
@@ -154,16 +156,19 @@ export default function LoginScreen({ navigation }: any) {
   // ── Send OTP ──────────────────────────────────────────────────────────────
   const handleSendOtp = async () => {
     const val = email.trim();
-    if (!val) { showError('Please enter your email or mobile number'); return; }
+    if (!val) { 
+      setEmailError('Please enter your email address'); 
+      return; 
+    }
     
-    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
-    const isPhone = /^[6-9]\d{9}$/.test(val);
+    const isEmail = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(val);
     
-    if (!isEmail && !isPhone) {
-      showError('Please enter a valid email address or 10-digit mobile number');
+    if (!isEmail) {
+      setEmailError('Please enter a valid email address');
       return;
     }
 
+    setEmailError('');
     setSendLoading(true);
     const res = await signInOtp(val);
     setSendLoading(false);
@@ -172,7 +177,7 @@ export default function LoginScreen({ navigation }: any) {
     } else {
       showSuccess('OTP sent successfully!');
       setOtpSent(true);
-      setCountdown(30);
+      setCountdown(120);
       setOtp(['', '', '', '', '', '']);
       setTimeout(() => inputRefs.current[0]?.focus(), 300);
     }
@@ -184,6 +189,7 @@ export default function LoginScreen({ navigation }: any) {
     const next = [...otp];
     next[index] = digit;
     setOtp(next);
+    setOtpError(false);
     if (digit && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
@@ -203,7 +209,7 @@ export default function LoginScreen({ navigation }: any) {
     setSendLoading(false);
     if (!res.error) {
       showSuccess('OTP resent successfully!');
-      setCountdown(30);
+      setCountdown(120);
       setOtp(['', '', '', '', '', '']);
       setTimeout(() => inputRefs.current[0]?.focus(), 300);
     } else {
@@ -220,7 +226,9 @@ export default function LoginScreen({ navigation }: any) {
     setVerifyLoading(false);
     if (res.error) {
       showError(res.error);
+      setOtpError(true);
     } else {
+      setOtpError(false);
       showSuccess('Logged in successfully!');
       if (res.isNewUser) {
         navigation.replace('RegistrationScreen', { identifier: res.data?.identifier, hostel_id: res.data?.hostel_id });
@@ -297,19 +305,20 @@ export default function LoginScreen({ navigation }: any) {
           {/* ── Phase 1: Email Input (shown when OTP not sent yet) ── */}
           {!otpSent ? (
             <>
-              <View style={s.emailCard}>
+              <View style={[s.emailCard, emailError ? { borderColor: '#EF4444' } : null]}>
                 <MailIcon />
                 <TextInput
                   style={s.emailInput}
                   placeholder="example@gmail.com"
                   placeholderTextColor={HINT_COLOR}
                   value={email}
-                  onChangeText={t => setEmail(t)}
+                  onChangeText={t => { setEmail(t); setEmailError(''); }}
                   autoCapitalize="none"
                   keyboardType="email-address"
                   autoCorrect={false}
                 />
               </View>
+              {emailError ? <Text style={{ color: '#EF4444', fontSize: 13, marginBottom: 14, marginLeft: 4 }}>{emailError}</Text> : null}
 
               <TouchableOpacity
                 style={[s.mainBtn, (!email.trim() || sendLoading) && { opacity: 0.7 }]}
@@ -359,7 +368,12 @@ export default function LoginScreen({ navigation }: any) {
                   <TextInput
                     key={i}
                     ref={ref => { inputRefs.current[i] = ref; }}
-                    style={[s.otpBox, digit ? s.otpBoxFilled : null, i === 0 && !digit ? s.otpBoxActive : null]}
+                    style={[
+                      s.otpBox, 
+                      digit ? s.otpBoxFilled : null, 
+                      i === 0 && !digit ? s.otpBoxActive : null,
+                      otpError ? { borderColor: '#EF4444', backgroundColor: '#FEE2E2' } : null
+                    ]}
                     value={hideOtp && digit ? '•' : digit}
                     onChangeText={val => handleOtpChange(val, i)}
                     onKeyPress={e => handleOtpKeyPress(e, i)}
@@ -448,7 +462,7 @@ const s = StyleSheet.create({
 
   welcomeBack: { color: BLUE, fontSize: 15, fontWeight: '700', marginBottom: 6, marginTop: 4 },
   bigTitle: { color: TEXT_DARK, fontSize: 26, fontWeight: '800', lineHeight: 34, marginBottom: 10, letterSpacing: -0.5 },
-  subtitle: { color: TEXT_MID, fontSize: 13, lineHeight: 20, marginBottom: 18 },
+  subtitle: { color: TEXT_DARK, fontSize: 14, fontWeight: '500', lineHeight: 20, marginBottom: 18, opacity: 0.85 },
 
   // Hostel name card (matched to image)
   hostelCard: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16, padding: 14, borderWidth: 1.2, borderColor: BORDER, borderRadius: 12, backgroundColor: WHITE },

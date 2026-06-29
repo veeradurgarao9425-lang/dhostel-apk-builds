@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
+import Svg, { Path } from 'react-native-svg';
 import {
   Bell,
   AlignLeft,
@@ -152,100 +153,66 @@ export default function HomeScreen({ navigation }: any) {
   const lastPayment = recentPayments.length > 0 ? recentPayments[0] : null;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* ── Top Header Bar ────────────────────────────────────────────────── */}
-      <View style={styles.headerBar}>
-        <View style={styles.headerLeft}>
-          <TouchableOpacity style={styles.menuBtn} onPress={() => navigation.navigate('More')}>
-            <AlignLeft size={22} color="#1E3A8A" />
-          </TouchableOpacity>
-          <View style={styles.greetingBox}>
-            <Text style={styles.greetingText}>Good Morning,</Text>
-            <Text style={styles.nameText}>{user?.name || 'Veera Durgarao'}</Text>
-            <Text style={styles.welcomeText}>Welcome back! Have a great day ahead.</Text>
-          </View>
-        </View>
-
-        <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.bellBtn} onPress={() => navigation.navigate('Notifications')}>
-            <Bell size={20} color="#1E3A8A" />
-            {unread > 0 && (
-              <View style={styles.badgeContainer}>
-                <Text style={styles.badgeText}>{unread}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.avatarBtn} onPress={() => navigation.navigate('Profile')}>
-            <Text style={styles.avatarText}>{initials}</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
+    <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
+      <SafeAreaView style={{ backgroundColor: '#2245D4' }} edges={['top']} />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />}
       >
-        {/* ── Total Due Card ────────────────────────────────────────────────── */}
-        <LinearGradient
-          colors={['#2563EB', '#1E3A8A']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.dueCard}
-        >
-          <View style={styles.dueContent}>
-            <View style={styles.dueLeft}>
-              <Text style={styles.dueLabel}>Total Due</Text>
-              <Text style={styles.dueAmount}>₹ {dueAmount.toLocaleString('en-IN')}</Text>
-
-              <View style={styles.pendingRow}>
-                <Calendar size={12} color="#93C5FD" />
-                <Text style={styles.pendingText}>2 Months Pending</Text>
+        {/* ── Blue Header Bar ──────────────────────────────────────── */}
+        <View style={{ backgroundColor: '#2245D4', borderBottomLeftRadius: 32, borderBottomRightRadius: 32, paddingBottom: 36 }}>
+          <View style={styles.headerBar}>
+            <View style={styles.headerLeft}>
+              <View style={styles.greetingBox}>
+                <Text style={[styles.greetingText, { color: 'rgba(255,255,255,0.85)' }]}>Good Morning,</Text>
+                <Text style={[styles.nameText, { color: '#fff' }]}>{user?.name || 'Veera Durgarao'}</Text>
+                <Text style={[styles.welcomeText, { color: 'rgba(255,255,255,0.7)' }]}>Welcome back! Have a great day ahead.</Text>
               </View>
+            </View>
 
-              <TouchableOpacity style={styles.viewBtn} onPress={() => navigation.navigate('Dues')}>
-                <Text style={styles.viewBtnText}>View Details</Text>
-                <ArrowRight size={14} color="#1E3A8A" style={{marginLeft: 4}} />
+            <View style={styles.headerRight}>
+              <TouchableOpacity style={styles.bellBtn} onPress={() => navigation.navigate('Notifications')}>
+                <Bell size={20} color="#2245D4" />
+                {unread > 0 && (
+                  <View style={styles.badgeContainer}>
+                    <Text style={styles.badgeText}>{unread}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.avatarBtn} onPress={() => navigation.navigate('Profile')}>
+                <Text style={styles.avatarText}>{initials}</Text>
               </TouchableOpacity>
             </View>
-
-            <View style={styles.dueRight}>
-              <View style={styles.walletIllustration}>
-                 <Wallet size={64} color="#BFDBFE" strokeWidth={1.5} />
-                 <View style={styles.coinBadge}>
-                   <Text style={{color: '#1E3A8A', fontWeight: '900', fontSize: 16}}>₹</Text>
-                 </View>
-              </View>
-            </View>
           </View>
-        </LinearGradient>
+        </View>
 
-        {/* ── Sub Cards: Next Due & Last Payment ────────────────────────────── */}
-        <View style={styles.subCardsRow}>
-          <View style={styles.subCard}>
-             <View style={[styles.subCardIcon, { backgroundColor: '#EFF6FF' }]}>
-               <Calendar size={20} color="#3B82F6" />
-             </View>
-             <View style={styles.subCardInfo}>
-               <Text style={styles.subCardLabel}>Next Due Date</Text>
-               <Text style={styles.subCardValue}>05 May 2025</Text>
-               <Text style={styles.subCardSubText}>in 8 days</Text>
-             </View>
+        {/* ── Total Due Card (Compact) ───────────────────────────────────────── */}
+        <View style={styles.compactDueCard}>
+          <View style={styles.compactDueRow}>
+            <View style={styles.compactIconBox}>
+              <Wallet size={22} color="#0346F2" />
+            </View>
+            <View style={styles.compactDueInfo}>
+              <Text style={styles.compactDueLabel}>Total Due</Text>
+              <Text style={styles.compactDueAmount}>₹ {dueAmount.toLocaleString('en-IN')}</Text>
+            </View>
+            <TouchableOpacity style={styles.compactViewBtn} onPress={() => navigation.navigate('Dues')}>
+              <Text style={styles.compactViewText}>Pay Now</Text>
+            </TouchableOpacity>
           </View>
           
-          <View style={styles.subCard}>
-             <View style={[styles.subCardIcon, { backgroundColor: '#EFF6FF' }]}>
-               <FileText size={20} color="#3B82F6" />
-             </View>
-             <View style={styles.subCardInfo}>
-               <Text style={styles.subCardLabel}>Last Payment</Text>
-               <Text style={styles.subCardValue}>₹ {lastPayment ? lastPayment.amount.toLocaleString('en-IN') : '13,000'}</Text>
-               <Text style={[styles.subCardSubText, {color: '#6B7280'}]}>Paid on {lastPayment ? lastPayment.paidOn : '05 Apr 2025'}</Text>
-             </View>
-             <TouchableOpacity style={styles.viewAllMiniBtn} onPress={() => navigation.navigate('Dues')}>
-                <Text style={styles.viewAllMiniText}>View All</Text>
-                <ArrowRight size={12} color="#3B82F6" />
-             </TouchableOpacity>
+          <View style={styles.compactDueDivider} />
+          
+          <View style={styles.compactDueFooter}>
+            <View style={styles.compactFooterItem}>
+              <Calendar size={14} color="rgba(255,255,255,0.85)" />
+              <Text style={styles.compactFooterText}>2 Months Pending</Text>
+            </View>
+            <TouchableOpacity onPress={() => navigation.navigate('Dues')} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Text style={styles.compactFooterLink}>View Details</Text>
+              <ArrowRight size={14} color="rgba(255,255,255,0.9)" />
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -258,21 +225,18 @@ export default function HomeScreen({ navigation }: any) {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.menuCard}>
+        <View style={{ marginHorizontal: spacing.xl }}>
           {menuItems.length > 0 ? (
             menuItems.map((item, i) => (
-              <MealRow
-                key={item.meal}
-                meal={item.meal}
-                items={item.items}
-                isLast={i === menuItems.length - 1}
-              />
+              <View key={item.meal} style={styles.mealCardStandalone}>
+                <MealRow meal={item.meal} items={item.items} isLast={true} />
+              </View>
             ))
           ) : (
             <>
-              <MealRow meal="Morning" items="Idli, Sambar, Chutney" isLast={false} />
-              <MealRow meal="Lunch" items="Rice, Dal, Sambar, Curd" isLast={false} />
-              <MealRow meal="Dinner" items="Roti, Mix Veg, Salad" isLast={true} />
+              <View style={styles.mealCardStandalone}><MealRow meal="Morning" items="Idli, Sambar, Chutney" isLast={true} /></View>
+              <View style={styles.mealCardStandalone}><MealRow meal="Lunch" items="Rice, Dal, Sambar, Curd" isLast={true} /></View>
+              <View style={styles.mealCardStandalone}><MealRow meal="Dinner" items="Roti, Mix Veg, Salad" isLast={true} /></View>
             </>
           )}
         </View>
@@ -356,7 +320,7 @@ export default function HomeScreen({ navigation }: any) {
 
         <View style={{height: 40}} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -398,86 +362,61 @@ const styles = StyleSheet.create({
   badgeText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
   avatarBtn: {
     width: 44, height: 44, borderRadius: 22,
-    backgroundColor: '#1E3A8A',
+    backgroundColor: '#fff',
     alignItems: 'center', justifyContent: 'center',
+    ...shadow.subtle,
   },
-  avatarText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  avatarText: { color: '#2245D4', fontWeight: '800', fontSize: 15 },
 
-  // Total Due Card
-  dueCard: {
+  // Compact Blue Card
+  compactDueCard: {
     marginHorizontal: spacing.xl,
-    marginTop: 16,
-    borderRadius: 24,
-    padding: 24,
+    marginTop: -28,
+    borderRadius: 16,
+    backgroundColor: '#0346F2',
+    padding: 16,
     ...shadow.card,
     shadowColor: '#1D4ED8',
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.35,
+    zIndex: 10,
   },
-  dueContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  dueLeft: { flex: 1 },
-  dueLabel: { fontSize: 14, color: 'rgba(255,255,255,0.85)', fontWeight: '500' },
-  dueAmount: { fontSize: 38, fontWeight: '800', color: '#fff', marginTop: 4, marginBottom: 8, letterSpacing: -0.5 },
-  pendingRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 20 },
-  pendingText: { fontSize: 13, color: 'rgba(255,255,255,0.9)', fontWeight: '500' },
-  viewBtn: {
-    backgroundColor: '#fff',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 100,
+  compactDueRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  viewBtnText: { color: '#1E3A8A', fontWeight: '700', fontSize: 13 },
-  dueRight: { justifyContent: 'center', alignItems: 'center', paddingLeft: 10, position: 'relative' },
-  walletIllustration: {
-    width: 90, height: 90,
-    borderRadius: 45,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  coinBadge: {
-    position: 'absolute', bottom: 5, right: 0,
-    width: 28, height: 28, borderRadius: 14,
-    backgroundColor: '#FDE047',
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: '#1E3A8A',
-  },
-
-  // Sub Cards
-  subCardsRow: {
-    flexDirection: 'row',
-    marginHorizontal: spacing.xl,
-    marginTop: 12,
-    gap: 12,
-  },
-  subCard: {
-    flex: 1,
+  compactIconBox: {
+    width: 44, height: 44, borderRadius: 22,
     backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    gap: 12,
-    ...shadow.subtle,
-    position: 'relative',
-  },
-  subCardIcon: {
-    width: 36, height: 36, borderRadius: 18,
     alignItems: 'center', justifyContent: 'center',
   },
-  subCardInfo: { flex: 1, width: '100%' },
-  subCardLabel: { fontSize: 12, color: '#64748B', fontWeight: '500' },
-  subCardValue: { fontSize: 15, color: '#0F172A', fontWeight: '700', marginTop: 4 },
-  subCardSubText: { fontSize: 11, color: '#3B82F6', fontWeight: '600', marginTop: 2 },
-  viewAllMiniBtn: {
-    position: 'absolute', top: 16, right: 16,
-    flexDirection: 'row', alignItems: 'center', gap: 2,
+  compactDueInfo: {
+    flex: 1,
+    marginLeft: 14,
   },
-  viewAllMiniText: { fontSize: 11, color: '#3B82F6', fontWeight: '600' },
+  compactDueLabel: { fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: '500' },
+  compactDueAmount: { fontSize: 24, fontWeight: '800', color: '#fff', marginTop: 2, letterSpacing: -0.5 },
+  compactViewBtn: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 100,
+  },
+  compactViewText: { color: '#0346F2', fontWeight: '800', fontSize: 13 },
+  compactDueDivider: {
+    height: 1, backgroundColor: 'rgba(255,255,255,0.15)',
+    marginVertical: 14,
+  },
+  compactDueFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  compactFooterItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+  },
+  compactFooterText: { fontSize: 13, color: 'rgba(255,255,255,0.9)', fontWeight: '500' },
+  compactFooterLink: { fontSize: 13, color: '#fff', fontWeight: '700' },
 
   // Section Headers
   sectionHeader: {
@@ -490,6 +429,13 @@ const styles = StyleSheet.create({
   seeAllText: { fontSize: 14, color: '#1E3A8A', fontWeight: '700' },
 
   // Meal Cards
+  mealCardStandalone: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    marginBottom: 12,
+    ...shadow.subtle,
+  },
   menuCard: {
     marginHorizontal: spacing.xl,
     borderRadius: 20,

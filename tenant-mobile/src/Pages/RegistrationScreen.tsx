@@ -264,7 +264,7 @@ export default function RegistrationScreen({ route, navigation }: any) {
       if (!firstName.trim() || firstName.trim().length < 3) newErrors.firstName = 'First name must be at least 3 characters.';
       
       if (!emailAddress.trim()) newErrors.emailAddress = 'Email is required.';
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress)) newErrors.emailAddress = 'Enter a valid email address.';
+      else if (!/^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(emailAddress)) newErrors.emailAddress = 'Enter a valid email address.';
       
       if (!phone.trim()) newErrors.phone = 'Mobile number is required.';
       else if (!/^[6-9]/.test(phone)) newErrors.phone = 'Mobile number must start with 6, 7, 8, or 9.';
@@ -311,14 +311,19 @@ export default function RegistrationScreen({ route, navigation }: any) {
     return null;
   };
 
+  const [stepLoading, setStepLoading] = useState(false);
+
   const handleNext = () => {
     const msg = validateStep(step);
     if (msg) {
       showError(msg);
       return;
     }
-    setErrors({});
-    setStep(s => Math.min(s + 1, 3));
+    setStepLoading(true);
+    setTimeout(() => {
+      setStepLoading(false);
+      setStep(prev => prev + 1);
+    }, 400);
   };
 
   const handleBack = () => {
@@ -424,6 +429,17 @@ export default function RegistrationScreen({ route, navigation }: any) {
       <Stepper step={step} />
 
       {/* ── Content ── */}
+      {(loading || stepLoading) && (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.8)', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }]}>
+          <View style={{ backgroundColor: WHITE, padding: 24, borderRadius: 16, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 }}>
+            <ActivityIndicator size="large" color={BLUE} />
+            <Text style={{ marginTop: 12, fontWeight: '600', color: TEXT_DARK }}>
+              {loading ? 'Creating account...' : 'Please wait...'}
+            </Text>
+          </View>
+        </View>
+      )}
+      
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           contentContainerStyle={[st.scrollContent, { paddingBottom: isKeyboardVisible ? 240 : 120 }]}
@@ -467,7 +483,7 @@ export default function RegistrationScreen({ route, navigation }: any) {
                   onChangeText={(t: string) => { setEmailAddress(t); setErrors(p => ({...p, emailAddress: ''})); }}
                   onBlur={() => {
                     if (!emailAddress.trim()) setErrors(p => ({...p, emailAddress: 'Email is required.'}));
-                    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress)) {
+                    else if (!/^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(emailAddress)) {
                       setErrors(p => ({...p, emailAddress: 'Enter a valid email address.'}));
                     }
                   }}
@@ -605,7 +621,11 @@ export default function RegistrationScreen({ route, navigation }: any) {
                   <Field label={`${idProofType} Number`} required error={errors.idProofNumber}>
                     <InputRow
                       icon={CreditCard}
-                      placeholder={`Enter ${idProofType} number`}
+                      placeholder={
+                        idProofType === 'Aadhaar' ? 'e.g. 123456789012' : 
+                        idProofType === 'PAN' ? 'e.g. ABCDE1234F' : 
+                        `Enter ${idProofType} number`
+                      }
                       value={idProofNumber}
                       onChangeText={(t: string) => { 
                         let clean = t;
@@ -650,7 +670,7 @@ export default function RegistrationScreen({ route, navigation }: any) {
                   
                   {/* ID Document upload */}
                   <Text style={st.docSectionLabel}>
-                    ID Document <Text style={{ color: DANGER }}>*</Text>
+                    {idProofType ? `${idProofType} Document` : 'ID Document'} <Text style={{ color: DANGER }}>*</Text>
                   </Text>
                   <View style={st.docRow}>
                     <DocBox
@@ -674,17 +694,19 @@ export default function RegistrationScreen({ route, navigation }: any) {
                 </>
               ) : null}
 
-              <Field label="Address" required error={errors.permanentAddress}>
-                <InputRow
-                  icon={MapPin}
-                  placeholder="Enter your full address"
-                  value={permanentAddress}
-                  onChangeText={(t: string) => { setPermanentAddress(t); setErrors(p => ({...p, permanentAddress: ''})) }}
-                  onBlur={() => { if (!permanentAddress.trim()) setErrors(p => ({...p, permanentAddress: 'Address is required.'})); }}
-                  multiline
-                  error={!!errors.permanentAddress}
-                />
-              </Field>
+              <View style={{ marginTop: 12 }}>
+                <Field label="Address" required error={errors.permanentAddress}>
+                  <InputRow
+                    icon={MapPin}
+                    placeholder="Enter your full address"
+                    value={permanentAddress}
+                    onChangeText={(t: string) => { setPermanentAddress(t); setErrors(p => ({...p, permanentAddress: ''})) }}
+                    onBlur={() => { if (!permanentAddress.trim()) setErrors(p => ({...p, permanentAddress: 'Address is required.'})); }}
+                    multiline
+                    error={!!errors.permanentAddress}
+                  />
+                </Field>
+              </View>
             </View>
           )}
 
@@ -760,7 +782,7 @@ const st = StyleSheet.create({
     backgroundColor: BLUE_SOFT,
     alignItems: 'center', justifyContent: 'center',
   },
-  topTitle: { flex: 1, alignItems: 'center' },
+  topTitle: { flex: 1, alignItems: 'center', marginTop: 12 },
   titleText: { fontSize: 17, fontWeight: '800', color: TEXT_DARK, letterSpacing: -0.3 },
   titleSub: { fontSize: 12, color: TEXT_MID, marginTop: 1 },
 

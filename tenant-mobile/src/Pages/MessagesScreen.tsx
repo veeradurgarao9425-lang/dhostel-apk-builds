@@ -1,210 +1,253 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView } from 'react-native';
+import {
+  StyleSheet, Text, View, TouchableOpacity, FlatList,
+  TextInput, StatusBar, Dimensions,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, SlidersHorizontal, Bell } from 'lucide-react-native';
-import { colors, spacing, radius, font, shadow } from '../theme';
-import { sampleMessages, MessageItem } from '../data/tenantContent';
+import Svg, { Path } from 'react-native-svg';
+import { Search, Bell, Plus, MessageCircle } from 'lucide-react-native';
+import { useAuth } from '../context/AuthContext';
 
-type FilterTab = 'All' | 'Admin' | 'Support' | 'System';
+const { width: W } = Dimensions.get('window');
+const BLUE  = '#2245D4';
+const WHITE = '#FFFFFF';
 
-const FILTER_TABS: FilterTab[] = ['All', 'Admin', 'Support', 'System'];
+const ROOM_ACCENTS = ['#2245D4', '#F97316', '#16A34A', '#A855F7', '#EF4444'];
+const ROOM_BGETS   = ['#EEF4FF', '#FFF7ED', '#F0FDF4', '#FDF4FF', '#FFF1F2'];
 
-function MessageCard({ msg }: { msg: MessageItem }) {
-  const initials = msg.from.slice(0, 2).toUpperCase();
+const ALL_ROOMS = [
+  {
+    id: '1', room: '101', members: 4,
+    memberNames: ['Veera Durgarao', 'Rahul Kumar', 'Anil Reddy', 'Surya Teja'],
+    lastSender: 'Durgarao', lastMsg: 'The key is attached on the down stairs 🔑',
+    time: '9:41 AM', unread: 3,
+  },
+];
+
+function AvatarStack({ names, accent }: { names: string[]; accent: string }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+      {names.slice(0, 3).map((n, i) => (
+        <View
+          key={i}
+          style={{
+            width: 24, height: 24, borderRadius: 12,
+            backgroundColor: accent,
+            alignItems: 'center', justifyContent: 'center',
+            marginLeft: i === 0 ? 0 : -8,
+            borderWidth: 2, borderColor: WHITE,
+            zIndex: 10 - i,
+          }}
+        >
+          <Text style={{ color: WHITE, fontSize: 8, fontWeight: '800' }}>{n.charAt(0)}</Text>
+        </View>
+      ))}
+      {names.length > 3 && (
+        <View style={{
+          width: 24, height: 24, borderRadius: 12,
+          backgroundColor: '#E2E8F0',
+          alignItems: 'center', justifyContent: 'center',
+          marginLeft: -8, borderWidth: 2, borderColor: WHITE,
+        }}>
+          <Text style={{ color: '#64748B', fontSize: 8, fontWeight: '700' }}>+{names.length - 3}</Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+function RoomCard({ item, idx, onPress }: any) {
+  const accent = ROOM_ACCENTS[idx % ROOM_ACCENTS.length];
+  const bg     = ROOM_BGETS[idx % ROOM_BGETS.length];
 
   return (
-    <TouchableOpacity style={styles.msgCard} activeOpacity={0.75}>
-      {/* Avatar */}
-      <View style={[styles.avatar, { backgroundColor: msg.avatarColor }]}>
-        <Text style={styles.avatarText}>{initials}</Text>
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.78}>
+      {/* Icon */}
+      <View style={[styles.cardIcon, { backgroundColor: bg }]}>
+        <Text style={[styles.cardIconNum, { color: accent }]}>{item.room}</Text>
+        <Text style={[styles.cardIconLbl, { color: accent }]}>Room</Text>
       </View>
 
-      {/* Content */}
-      <View style={styles.msgContent}>
-        <View style={styles.msgTopRow}>
-          <Text style={styles.msgTitle} numberOfLines={1}>{msg.title}</Text>
-          <Text style={styles.msgTime}>{msg.time}</Text>
+      {/* Info */}
+      <View style={styles.cardBody}>
+        <View style={styles.cardTop}>
+          <Text style={styles.cardTitle}>Room {item.room}</Text>
+          <Text style={[styles.cardTime, item.unread > 0 && { color: accent, fontWeight: '700' }]}>
+            {item.time}
+          </Text>
         </View>
-        <Text style={styles.msgBody} numberOfLines={2}>{msg.body}</Text>
+        <Text style={styles.cardMsg} numberOfLines={1}>
+          <Text style={{ fontWeight: '600', color: '#475569' }}>{item.lastSender}: </Text>
+          {item.lastMsg}
+        </Text>
+        <View style={styles.cardBottom}>
+          <AvatarStack names={item.memberNames} accent={accent} />
+          <Text style={styles.cardMembers}>{item.members} members</Text>
+          {item.unread > 0 && (
+            <View style={[styles.badge, { backgroundColor: accent }]}>
+              <Text style={styles.badgeText}>{item.unread > 99 ? '99+' : item.unread}</Text>
+            </View>
+          )}
+        </View>
       </View>
-
-      {/* Unread dot */}
-      {!msg.read && <View style={styles.unreadDot} />}
     </TouchableOpacity>
   );
 }
 
 export default function MessagesScreen({ navigation }: any) {
-  const [activeFilter, setActiveFilter] = useState<FilterTab>('All');
+  const { user } = useAuth();
+  const [search, setSearch] = useState('');
 
-  const filtered = sampleMessages.filter((m) => {
-    if (activeFilter === 'All') return true;
-    return m.fromType === activeFilter;
-  });
+  const initials = (user?.name || 'VD').split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase();
+
+  const filtered = search.trim()
+    ? ALL_ROOMS.filter(r =>
+        r.room.includes(search) ||
+        r.lastMsg.toLowerCase().includes(search.toLowerCase()) ||
+        r.lastSender.toLowerCase().includes(search.toLowerCase())
+      )
+    : ALL_ROOMS;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* ── White Header ─────────────────────────────────────────────────────────── */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Messages</Text>
-        <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.headerIconBtn} activeOpacity={0.7}>
-            <Search size={20} color={colors.text} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.headerIconBtn} activeOpacity={0.7}>
-            <SlidersHorizontal size={20} color={colors.text} />
-          </TouchableOpacity>
-        </View>
-      </View>
+    <View style={styles.root}>
+      <StatusBar barStyle="light-content" backgroundColor={BLUE} />
 
-      {/* ── Filter tabs ────────────────────────────────────────────────────────── */}
-      <View style={styles.filterRow}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
-          {FILTER_TABS.map((tab) => (
-            <TouchableOpacity
-              key={tab}
-              style={[styles.filterTab, activeFilter === tab && styles.filterTabActive]}
-              onPress={() => setActiveFilter(tab)}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.filterTabText, activeFilter === tab && styles.filterTabTextActive]}>
-                {tab}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* ── Message list ───────────────────────────────────────────────────────── */}
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
-      >
-        {filtered.length === 0 ? (
-          <View style={styles.empty}>
-            <View style={styles.emptyIconWrap}>
-              <Bell size={32} color={colors.textSubtle} />
+      {/* ── Blue Header ─────────────────────────────────────────────────── */}
+      <View style={{ backgroundColor: BLUE }}>
+        <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
+          <View style={styles.header}>
+            <View>
+              <Text style={styles.headerTitle}>Chats</Text>
+              <Text style={styles.headerSub}>{ALL_ROOMS.length} room groups</Text>
             </View>
-            <Text style={styles.emptyTitle}>No messages</Text>
-            <Text style={styles.emptyBody}>Messages from your hostel will appear here.</Text>
+            <View style={styles.headerRight}>
+              <TouchableOpacity style={styles.hBtn} onPress={() => navigation.navigate('Notifications')}>
+                <Bell size={20} color={WHITE} />
+                <View style={styles.hBadge}><Text style={styles.hBadgeText}>3</Text></View>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.hAvatar} onPress={() => navigation.navigate('Profile')}>
+                <Text style={styles.hAvatarText}>{initials}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        ) : (
-          filtered.map((msg) => <MessageCard key={msg.id} msg={msg} />)
+        </SafeAreaView>
+
+        {/* Curve bottom */}
+        <Svg width={W} height={24} viewBox={`0 0 ${W} 24`} preserveAspectRatio="none">
+          <Path d={`M0,0 Q${W / 2},24 ${W},0 L${W},24 L0,24 Z`} fill="#F1F5F9" />
+        </Svg>
+      </View>
+
+      {/* ── Search ──────────────────────────────────────────────────────── */}
+      <View style={styles.searchWrap}>
+        <Search size={18} color="#94A3B8" />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search rooms..."
+          placeholderTextColor="#94A3B8"
+          value={search}
+          onChangeText={setSearch}
+        />
+      </View>
+
+      {/* ── Room List ───────────────────────────────────────────────────── */}
+      <FlatList
+        data={filtered}
+        keyExtractor={item => item.id}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 120, gap: 12 }}
+        renderItem={({ item, index }) => (
+          <RoomCard
+            item={item}
+            idx={index}
+            onPress={() => navigation.navigate('ChatScreen', { room: item })}
+          />
         )}
-      </ScrollView>
-    </SafeAreaView>
+        ListEmptyComponent={
+          <View style={styles.empty}>
+            <MessageCircle size={40} color="#CBD5E1" />
+            <Text style={styles.emptyText}>No rooms found</Text>
+          </View>
+        }
+      />
+
+    </View>
   );
 }
 
-// ── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  root: { flex: 1, backgroundColor: '#F1F5F9' },
 
-  // ── Header ──────────────────────────────────────────────────────────────────
+  // Header
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing['2xl'],
-    paddingTop: 4,
-    paddingBottom: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-    minHeight: 64,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8,
   },
-  headerTitle: { fontSize: font.h2, fontWeight: '700', color: colors.text, letterSpacing: -0.3 },
-  headerActions: { flexDirection: 'row', gap: spacing.sm },
-  headerIconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.bg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+  headerTitle: { color: WHITE, fontSize: 22, fontWeight: '800' },
+  headerSub: { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 2 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  hBtn: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center', justifyContent: 'center',
   },
+  hBadge: {
+    position: 'absolute', top: -2, right: -2,
+    width: 16, height: 16, borderRadius: 8,
+    backgroundColor: '#EF4444',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: BLUE,
+  },
+  hBadgeText: { color: WHITE, fontSize: 9, fontWeight: '800' },
+  hAvatar: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: 'rgba(255,255,255,0.5)',
+  },
+  hAvatarText: { color: WHITE, fontWeight: '800', fontSize: 14 },
 
-  // ── Filter tabs ─────────────────────────────────────────────────────────────
-  filterRow: { paddingVertical: spacing.md },
-  filterScroll: { paddingHorizontal: spacing['2xl'], gap: spacing.sm },
-  filterTab: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
+  // Search
+  searchWrap: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: WHITE, borderRadius: 14,
+    marginHorizontal: 16, marginVertical: 14,
+    paddingHorizontal: 14, height: 44,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 6, elevation: 3,
   },
-  filterTabActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  filterTabText: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
-  filterTabTextActive: { color: '#fff' },
+  searchInput: { flex: 1, fontSize: 14, color: '#0F172A' },
 
-  // ── List ────────────────────────────────────────────────────────────────────
-  listContent: { paddingHorizontal: spacing['2xl'], paddingBottom: 120, gap: spacing.sm },
+  // Card
+  card: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
+    backgroundColor: WHITE, borderRadius: 18, padding: 14,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 6, elevation: 3,
+  },
+  cardIcon: {
+    width: 56, height: 56, borderRadius: 16,
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  cardIconNum: { fontSize: 18, fontWeight: '900' },
+  cardIconLbl: { fontSize: 9, fontWeight: '600', marginTop: -2 },
+  cardBody: { flex: 1 },
+  cardTop: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    marginBottom: 3,
+  },
+  cardTitle: { fontSize: 15, fontWeight: '700', color: '#0F172A' },
+  cardTime: { fontSize: 11, color: '#94A3B8', fontWeight: '500' },
+  cardMsg: { fontSize: 13, color: '#64748B', marginBottom: 8, lineHeight: 18 },
+  cardBottom: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  cardMembers: { fontSize: 11, color: '#94A3B8', flex: 1 },
+  badge: {
+    minWidth: 20, height: 20, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5,
+  },
+  badgeText: { color: WHITE, fontSize: 10, fontWeight: '800' },
 
-  // ── Message Card ────────────────────────────────────────────────────────────
-  msgCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    padding: spacing.xl,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadow.card,
-  },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  avatarText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  msgContent: { flex: 1 },
-  msgTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 4,
-  },
-  msgTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.text,
-    flex: 1,
-    marginRight: spacing.sm,
-  },
-  msgTime: { fontSize: 11, color: colors.textSubtle, fontWeight: '600' },
-  msgBody: { fontSize: 13, color: colors.textMuted, lineHeight: 19 },
-  unreadDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: colors.danger,
-    flexShrink: 0,
-    marginTop: 6,
-  },
-
-  // ── Empty state ─────────────────────────────────────────────────────────────
-  empty: { alignItems: 'center', paddingTop: 80, gap: spacing.md },
-  emptyIconWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
-  emptyBody: { fontSize: 14, color: colors.textMuted, textAlign: 'center' },
+  // Empty
+  empty: { alignItems: 'center', paddingTop: 60, gap: 12 },
+  emptyText: { fontSize: 15, color: '#94A3B8', fontWeight: '500' },
 });

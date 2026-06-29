@@ -117,7 +117,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
     
     // --- Test Mode Bypass ---
-    if (emailOrPhone === 'veeradurgarao@gmail.com' || emailOrPhone === '6303359425') {
+    if (emailOrPhone === 'veeradurgarao840@gmail.com' || emailOrPhone === '6303359435') {
       return { error: null, message: 'OTP sent (Test Mode)' };
     }
     // ------------------------
@@ -143,13 +143,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     // --- Test Mode Bypass ---
-    if (emailOrPhone === 'veeradurgarao@gmail.com' || emailOrPhone === '6303359425') {
+    if (emailOrPhone === 'veeradurgarao840@gmail.com' || emailOrPhone === '6303359435') {
       const mockToken = 'mock-test-token-123';
       const mockUser: TenantUser = {
         id: 9999,
-        name: 'Test Tenant',
-        email: 'veeradurgarao@gmail.com',
-        phone: '6303359425',
+        name: 'Veera Durgarao',
+        email: 'veeradurgarao840@gmail.com',
+        phone: '6303359435',
         hostel_id: connectedHostel.hostel_id,
         is_allocated: true,
         room_number: 'A-101',
@@ -223,6 +223,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // so the UI reflects owner actions (e.g. room allocation) without re-login.
   const refreshUser = async () => {
     try {
+      // --- Test Mode Bypass ---
+      const token = await AsyncStorage.getItem('token');
+      if (token === 'mock-test-token-123') return;
+      // ------------------------
+
       const response = await api.get('/auth/tenant/me');
       const fresh = response.data?.data;
       if (!fresh) return;
@@ -248,8 +253,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         await AsyncStorage.setItem('token', token);
       }
       setUser(prev => {
-        if (!prev) return null;
-        const newUser = { ...prev, ...updatedFields };
+        const newUser = { ...(prev || {}), ...updatedFields } as TenantUser;
         AsyncStorage.setItem('user', JSON.stringify(newUser)).catch(console.error);
         return newUser;
       });
