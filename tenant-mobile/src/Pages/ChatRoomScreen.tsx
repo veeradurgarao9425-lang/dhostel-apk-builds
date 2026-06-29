@@ -265,9 +265,7 @@ const renderContent = () => {
     </>
   );
 }
-    </View>
-  );
-}
+
 
 const styles = StyleSheet.create({
   header: {
