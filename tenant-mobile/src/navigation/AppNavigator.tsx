@@ -12,12 +12,16 @@ import { colors } from '../theme';
 import { HostelKeyScreen } from '../Pages/HostelKeyScreen';
 import LoginScreen from '../Pages/LoginScreen';
 import RegistrationScreen from '../Pages/RegistrationScreen';
+import HelpScreen from '../Pages/HelpScreen';
 
 // Main tabs
 import HomeScreen from '../Pages/HomeScreen';
-import DuesScreen from '../Pages/DuesScreen';
 import ExpensesScreen from '../Pages/ExpensesScreen';
 import NoticesScreen from '../Pages/NoticesScreen';
+import MessagesScreen from '../Pages/MessagesScreen';
+
+// Stack screens
+import DuesScreen from '../Pages/DuesScreen';
 import ProfileScreen from '../Pages/ProfileScreen';
 
 // Stack screens (navigated to from tabs / quick actions)
@@ -30,7 +34,6 @@ import PaymentScreen from '../Pages/PaymentScreen';
 import MoreScreen from '../Pages/MoreScreen';
 import ServicesScreen from '../Pages/ServicesScreen';
 import FullMenuScreen from '../Pages/FullMenuScreen';
-import MessagesScreen from '../Pages/MessagesScreen';
 import AddExpenseScreen from '../Pages/AddExpenseScreen';
 import SettingsScreen from '../Pages/SettingsScreen';
 
@@ -45,6 +48,7 @@ const navTheme = {
 const ConnectStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="HostelKey" component={HostelKeyScreen} />
+    <Stack.Screen name="HelpScreen" component={HelpScreen} />
   </Stack.Navigator>
 );
 
@@ -52,6 +56,7 @@ const AuthStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="Login" component={LoginScreen} />
     <Stack.Screen name="RegistrationScreen" component={RegistrationScreen} />
+    <Stack.Screen name="HelpScreen" component={HelpScreen} />
   </Stack.Navigator>
 );
 
@@ -62,10 +67,9 @@ const MainTabs = () => (
     screenOptions={{ headerShown: false }}
   >
     <Tab.Screen name="Home" component={HomeScreen} />
-    <Tab.Screen name="Dues" component={DuesScreen} />
+    <Tab.Screen name="Messages" component={MessagesScreen} />
     <Tab.Screen name="Expenses" component={ExpensesScreen} />
     <Tab.Screen name="Notices" component={NoticesScreen} />
-    <Tab.Screen name="Profile" component={ProfileScreen} />
   </Tab.Navigator>
 );
 
@@ -83,18 +87,20 @@ export default function AppNavigator() {
           <>
             <Stack.Screen name="Main" component={MainTabs} />
             {/* Stack screens accessible from any tab */}
+            <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen name="Dues" component={DuesScreen} />
             <Stack.Screen name="RoomInfo" component={RoomInfoScreen} />
             <Stack.Screen name="Complaints" component={ComplaintsScreen} />
             <Stack.Screen name="Documents" component={DocumentsScreen} />
             <Stack.Screen name="Splits" component={SplitsScreen} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
-            <Stack.Screen name="Messages" component={MessagesScreen} />
             <Stack.Screen name="Payments" component={PaymentScreen} />
             <Stack.Screen name="More" component={MoreScreen} />
             <Stack.Screen name="Services" component={ServicesScreen} />
             <Stack.Screen name="FullMenu" component={FullMenuScreen} />
             <Stack.Screen name="Settings" component={SettingsScreen} />
             <Stack.Screen name="AddExpense" component={AddExpenseScreen} />
+            <Stack.Screen name="HelpScreen" component={HelpScreen} />
           </>
         ) : connectedHostel ? (
           <Stack.Screen name="Auth" component={AuthStack} />

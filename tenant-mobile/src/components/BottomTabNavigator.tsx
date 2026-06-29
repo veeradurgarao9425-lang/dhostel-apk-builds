@@ -1,13 +1,13 @@
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Home, FileText, PieChart, Megaphone, User } from 'lucide-react-native';
+import { Home, MessageCircle, PieChart, Megaphone, User } from 'lucide-react-native';
 import { colors, shadow, radius } from '../theme/index';
 
-// ── 5-tab configuration ───────────────────────────────────────────────────────
+// ── 4-tab configuration ───────────────────────────────────────────────────────
 const TABS = [
   { label: 'Home',     route: 'Home',     Icon: Home     },
-  { label: 'Due',      route: 'Dues',     Icon: FileText  },
+  { label: 'Messages', route: 'Messages', Icon: MessageCircle  },
   { label: 'Expenses', route: 'Expenses', Icon: PieChart  },
   { label: 'Notices',  route: 'Notices',  Icon: Megaphone },
 ];

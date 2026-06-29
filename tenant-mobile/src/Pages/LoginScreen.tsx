@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import Svg, { Path, Rect, Circle, Line, Polyline, G } from 'react-native-svg';
+import { useToast } from '../context/ToastContext';
 
 const { width } = Dimensions.get('window');
 
@@ -127,11 +128,11 @@ const EyeIcon = () => (
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function LoginScreen({ navigation }: any) {
   const { signInOtp, verifyOtp, connectedHostel, disconnectHostel } = useAuth();
+  const { showError, showSuccess } = useToast();
 
   // Phase 1: email entry
   const [email, setEmail]         = useState('');
   const [sendLoading, setSendLoading] = useState(false);
-  const [sendError, setSendError]   = useState('');
 
   // Phase 2: OTP entry (shown below after OTP sent)
   const [otpSent, setOtpSent]       = useState(false);
@@ -139,7 +140,6 @@ export default function LoginScreen({ navigation }: any) {
   const [hideOtp, setHideOtp]       = useState(false);
   const [countdown, setCountdown]   = useState(30);
   const [verifyLoading, setVerifyLoading] = useState(false);
-  const [verifyError, setVerifyError]     = useState('');
 
   const inputRefs = useRef<Array<TextInput | null>>([]);
 
@@ -153,18 +153,27 @@ export default function LoginScreen({ navigation }: any) {
 
   // ── Send OTP ──────────────────────────────────────────────────────────────
   const handleSendOtp = async () => {
-    if (!email.trim()) { setSendError('Please enter your email address'); return; }
+    const val = email.trim();
+    if (!val) { showError('Please enter your email or mobile number'); return; }
+    
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+    const isPhone = /^[6-9]\d{9}$/.test(val);
+    
+    if (!isEmail && !isPhone) {
+      showError('Please enter a valid email address or 10-digit mobile number');
+      return;
+    }
+
     setSendLoading(true);
-    setSendError('');
-    const res = await signInOtp(email.trim());
+    const res = await signInOtp(val);
     setSendLoading(false);
     if (res.error) {
-      setSendError(res.error);
+      showError(res.error);
     } else {
+      showSuccess('OTP sent successfully!');
       setOtpSent(true);
       setCountdown(30);
       setOtp(['', '', '', '', '', '']);
-      setVerifyError('');
       setTimeout(() => inputRefs.current[0]?.focus(), 300);
     }
   };
@@ -193,24 +202,29 @@ export default function LoginScreen({ navigation }: any) {
     const res = await signInOtp(email.trim());
     setSendLoading(false);
     if (!res.error) {
+      showSuccess('OTP resent successfully!');
       setCountdown(30);
       setOtp(['', '', '', '', '', '']);
       setTimeout(() => inputRefs.current[0]?.focus(), 300);
+    } else {
+      showError(res.error);
     }
   };
 
   // ── Verify OTP ────────────────────────────────────────────────────────────
   const handleVerify = async () => {
     const code = otp.join('');
-    if (code.length < 6) { setVerifyError('Please enter all 6 digits'); return; }
+    if (code.length < 6) { showError('Please enter all 6 digits'); return; }
     setVerifyLoading(true);
-    setVerifyError('');
     const res = await verifyOtp(email.trim(), code);
     setVerifyLoading(false);
     if (res.error) {
-      setVerifyError(res.error);
-    } else if (res.isNewUser) {
-      navigation.replace('RegistrationScreen', { identifier: res.data?.identifier, hostel_id: res.data?.hostel_id });
+      showError(res.error);
+    } else {
+      showSuccess('Logged in successfully!');
+      if (res.isNewUser) {
+        navigation.replace('RegistrationScreen', { identifier: res.data?.identifier, hostel_id: res.data?.hostel_id });
+      }
     }
     // else: AuthContext swaps stack automatically
   };
@@ -227,7 +241,7 @@ export default function LoginScreen({ navigation }: any) {
         <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
           <View style={s.topRow}>
             <View />
-            <TouchableOpacity style={s.helpBtn} activeOpacity={0.7}>
+            <TouchableOpacity style={s.helpBtn} activeOpacity={0.7} onPress={() => navigation.navigate('HelpScreen')}>
               <Text style={s.helpText}>Need help?</Text>
               <HeadphoneIcon />
             </TouchableOpacity>
@@ -266,7 +280,7 @@ export default function LoginScreen({ navigation }: any) {
                 <Text style={s.hostelLabel}>Connected to</Text>
                 <Text style={s.hostelName}>{connectedHostel.hostel_name}</Text>
                 <Text style={s.locationText}>
-                  {[connectedHostel.address, connectedHostel.city, connectedHostel.state].filter(Boolean).join(', ') || '-'}
+                  {[connectedHostel.address, connectedHostel.city, connectedHostel.state].filter(Boolean).join(', ') || 'NA'}
                 </Text>
               </View>
               <View style={s.hostelCardRight}>
@@ -290,13 +304,12 @@ export default function LoginScreen({ navigation }: any) {
                   placeholder="example@gmail.com"
                   placeholderTextColor={HINT_COLOR}
                   value={email}
-                  onChangeText={t => { setEmail(t); setSendError(''); }}
+                  onChangeText={t => setEmail(t)}
                   autoCapitalize="none"
                   keyboardType="email-address"
                   autoCorrect={false}
                 />
               </View>
-              {sendError ? <Text style={s.errorText}>{sendError}</Text> : null}
 
               <TouchableOpacity
                 style={[s.mainBtn, (!email.trim() || sendLoading) && { opacity: 0.7 }]}
@@ -323,7 +336,7 @@ export default function LoginScreen({ navigation }: any) {
                   <Text style={s.emailLabel}>Email Address</Text>
                   <Text style={s.emailValue}>{email}</Text>
                 </View>
-                <TouchableOpacity onPress={() => { setOtpSent(false); setOtp(['','','','','','']); setVerifyError(''); }} activeOpacity={0.7}>
+                <TouchableOpacity onPress={() => { setOtpSent(false); setOtp(['','','','','','']); }} activeOpacity={0.7}>
                   <Text style={s.editLink}>Edit</Text>
                 </TouchableOpacity>
               </View>
@@ -334,7 +347,7 @@ export default function LoginScreen({ navigation }: any) {
                 <View style={s.otpHeaderRight}>
                   <TouchableOpacity onPress={handleResend} disabled={countdown > 0} activeOpacity={0.7}>
                     <Text style={[s.resendText, countdown > 0 && s.resendDisabled]}>
-                      Resend OTP ({countdownStr})
+                      {countdown > 0 ? `Resend OTP (${countdownStr})` : 'Resend OTP'}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -368,13 +381,13 @@ export default function LoginScreen({ navigation }: any) {
               {/* Sent confirmation banner */}
               <View style={s.sentBanner}>
                 <ShieldCheck size={20} color={BLUE} />
-                <Text style={s.sentBannerText}>
-                  We've sent a 6-digit code to{' '}
-                  <Text style={s.sentBannerEmail}>{email}</Text>
-                </Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.sentBannerText}>
+                    We've sent a 6-digit code to
+                  </Text>
+                  <Text style={s.sentBannerEmail} numberOfLines={1} adjustsFontSizeToFit>{email}</Text>
+                </View>
               </View>
-
-              {verifyError ? <Text style={s.errorText}>{verifyError}</Text> : null}
 
               {/* Verify button */}
               <TouchableOpacity
@@ -420,7 +433,7 @@ const s = StyleSheet.create({
 
   // Header
   headerSection: { backgroundColor: BLUE },
-  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 8, paddingBottom: 4 },
+  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 24, paddingBottom: 4 },
   helpBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   helpText: { color: WHITE, fontSize: 14, fontWeight: '500' },
   logoSection: { alignItems: 'center', paddingTop: 18, paddingBottom: 28 },
@@ -482,10 +495,10 @@ const s = StyleSheet.create({
   sentBanner: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     backgroundColor: LIGHT_BLUE_BG, borderRadius: 12,
-    padding: 14, marginBottom: 16,
+    paddingHorizontal: 14, paddingVertical: 12, marginBottom: 16,
   },
-  sentBannerText: { flex: 1, color: TEXT_DARK, fontSize: 13, lineHeight: 20 },
-  sentBannerEmail: { color: BLUE, fontWeight: '700' },
+  sentBannerText: { color: TEXT_DARK, fontSize: 13, lineHeight: 18 },
+  sentBannerEmail: { color: BLUE, fontWeight: '700', fontSize: 14, marginTop: 2 },
 
   // Button
   mainBtn: {

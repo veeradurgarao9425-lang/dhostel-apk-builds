@@ -80,7 +80,7 @@ const Field = ({ label, required, error, children }: any) => (
 );
 
 // ─── Input row with icon ───────────────────────────────────────────────────────
-const InputRow = ({ icon: Icon, placeholder, value, onChangeText, keyboardType, editable = true, multiline = false, maxLength, error }: any) => (
+const InputRow = ({ icon: Icon, placeholder, value, onChangeText, onBlur, keyboardType, editable = true, multiline = false, maxLength, error }: any) => (
   <View style={[st.inputRow, !editable && st.inputDisabled, error && { borderColor: DANGER, borderWidth: 1.5 }, multiline && { height: 88, alignItems: 'flex-start', paddingVertical: 12 }]}>
     <Icon size={18} color={error ? DANGER : TEXT_HINT} style={{ marginTop: multiline ? 2 : 0 }} />
     <TextInput
@@ -89,6 +89,7 @@ const InputRow = ({ icon: Icon, placeholder, value, onChangeText, keyboardType, 
       placeholderTextColor={error ? '#FCA5A5' : TEXT_HINT}
       value={value}
       onChangeText={onChangeText}
+      onBlur={onBlur}
       keyboardType={keyboardType}
       editable={editable}
       multiline={multiline}
@@ -115,13 +116,13 @@ const PhotoUpload = ({ uri, onCapture, label = 'Add Photo' }: any) => {
       { text: 'Camera', onPress: async () => {
         const perm = await ImagePicker.requestCameraPermissionsAsync();
         if (!perm.granted) { Alert.alert('Permission needed', 'Allow camera access.'); return; }
-        const res = await ImagePicker.launchCameraAsync({ quality: 0.8, allowsEditing: true, aspect: [1, 1] });
+        const res = await ImagePicker.launchCameraAsync({ quality: 0.8, aspect: [1, 1] });
         if (!res.canceled) onCapture(res.assets[0].uri);
       }},
       { text: 'Gallery', onPress: async () => {
         const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (!perm.granted) { Alert.alert('Permission needed', 'Allow media access.'); return; }
-        const res = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, allowsEditing: true, aspect: [1, 1] });
+        const res = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, aspect: [1, 1] });
         if (!res.canceled) onCapture(res.assets[0].uri);
       }},
       { text: 'Cancel', style: 'cancel' }
@@ -143,7 +144,7 @@ const PhotoUpload = ({ uri, onCapture, label = 'Add Photo' }: any) => {
 };
 
 // ─── ID Document Upload Box ────────────────────────────────────────────────────
-const DocBox = ({ label, uri, onCapture, onRemove }: any) => {
+const DocBox = ({ label, uri, onCapture, onRemove, error }: any) => {
   const pick = () => {
     Alert.alert('Upload Document', 'Choose an option', [
       { text: 'Camera', onPress: async () => {
@@ -162,20 +163,50 @@ const DocBox = ({ label, uri, onCapture, onRemove }: any) => {
     ]);
   };
   return (
-    <TouchableOpacity style={st.docBox} onPress={pick} activeOpacity={0.8}>
-      {uri ? (
-        <View style={StyleSheet.absoluteFill}>
-          <Image source={{ uri }} style={st.docImg} resizeMode="cover" />
-          <TouchableOpacity style={st.docRemove} onPress={onRemove}><Text style={{ color: WHITE, fontSize: 10, fontWeight: '700' }}>✕</Text></TouchableOpacity>
+    <View style={{ flex: 1 }}>
+      <TouchableOpacity style={[st.docBox, error && { borderColor: DANGER, backgroundColor: '#FEE2E2' }]} onPress={pick} activeOpacity={0.8}>
+        {uri ? (
+          <View style={StyleSheet.absoluteFill}>
+            <Image source={{ uri }} style={st.docImg} resizeMode="cover" />
+            <TouchableOpacity style={st.docRemove} onPress={onRemove}><Text style={{ color: WHITE, fontSize: 10, fontWeight: '700' }}>✕</Text></TouchableOpacity>
+          </View>
+        ) : (
+          <>
+            <View style={[st.docIconCircle, error && { backgroundColor: DANGER }]}><Upload size={18} color={error ? WHITE : BLUE} /></View>
+            <Text style={[st.docLabel, error && { color: DANGER }]}>{label}</Text>
+            <Text style={[st.docSub, error && { color: DANGER }]}>Tap to upload</Text>
+          </>
+        )}
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+// ─── Modal Options Drawer ───────────────────────────────────────────────────────
+const OptionsDrawer = ({ visible, title, data, selectedItem, onSelect, onClose }: any) => {
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'transparent' }}>
+        <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1} />
+        <View style={{ backgroundColor: WHITE, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40, maxHeight: '80%' }}>
+          <View style={{ width: 40, height: 4, backgroundColor: BORDER, borderRadius: 2, alignSelf: 'center', marginBottom: 16 }} />
+          <Text style={{ fontSize: 18, fontWeight: '800', color: TEXT_DARK, marginBottom: 16 }}>{title}</Text>
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {data.map((item: string) => (
+              <TouchableOpacity
+                key={item}
+                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: BG }}
+                onPress={() => { onSelect(item); onClose(); }}
+                activeOpacity={0.7}
+              >
+                <Text style={{ fontSize: 16, color: selectedItem === item ? BLUE : TEXT_DARK, fontWeight: selectedItem === item ? '700' : '500' }}>{item}</Text>
+                {selectedItem === item && <Check size={20} color={BLUE} />}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </View>
-      ) : (
-        <>
-          <View style={st.docIconCircle}><Upload size={18} color={BLUE} /></View>
-          <Text style={st.docLabel}>{label}</Text>
-          <Text style={st.docSub}>Tap to upload</Text>
-        </>
-      )}
-    </TouchableOpacity>
+      </View>
+    </Modal>
   );
 };
 
@@ -194,6 +225,7 @@ export default function RegistrationScreen({ route, navigation }: any) {
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [firstName, setFirstName]       = useState('');
   const [lastName, setLastName]         = useState('');
+  const [emailAddress, setEmailAddress] = useState(isEmail ? identifier : '');
   const [phone, setPhone]               = useState(isEmail ? '' : identifier);
   const ID_PROOF_TYPES = ['Aadhaar', 'PAN', 'Driving License', 'Voter ID', 'Passport'];
 
@@ -206,7 +238,7 @@ export default function RegistrationScreen({ route, navigation }: any) {
   const [genderOpen, setGenderOpen]   = useState(false);
 
   // ── Step 3 – Verification ──
-  const [idProofType, setIdProofType]             = useState('Aadhaar');
+  const [idProofType, setIdProofType]             = useState('');
   const [idProofTypeOpen, setIdProofTypeOpen]     = useState(false);
   const [idProofNumber, setIdProofNumber]         = useState('');
   const [permanentAddress, setPermanentAddress]   = useState('');
@@ -229,8 +261,11 @@ export default function RegistrationScreen({ route, navigation }: any) {
   const validateStep = (s: number): string | null => {
     const newErrors: Record<string, string> = {};
     if (s === 1) {
-      if (!profilePhoto) newErrors.profilePhoto = 'Profile photo is required.';
       if (!firstName.trim() || firstName.trim().length < 3) newErrors.firstName = 'First name must be at least 3 characters.';
+      
+      if (!emailAddress.trim()) newErrors.emailAddress = 'Email is required.';
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress)) newErrors.emailAddress = 'Enter a valid email address.';
+      
       if (!phone.trim()) newErrors.phone = 'Mobile number is required.';
       else if (!/^[6-9]/.test(phone)) newErrors.phone = 'Mobile number must start with 6, 7, 8, or 9.';
       else if (phone.trim().length !== 10) newErrors.phone = 'Mobile number must be exactly 10 digits.';
@@ -238,16 +273,36 @@ export default function RegistrationScreen({ route, navigation }: any) {
     if (s === 2) {
       if (!gender) newErrors.gender = 'Please select your gender.';
       if (!dateOfBirth) newErrors.dateOfBirth = 'Date of birth is required.';
-      if (guardianPhone.trim() && guardianPhone.trim().length < 10) newErrors.guardianPhone = 'A valid guardian phone number is required.';
+      if (guardianPhone.trim()) {
+        if (!/^[6-9]/.test(guardianPhone)) newErrors.guardianPhone = 'Must start with 6, 7, 8, or 9.';
+        else if (guardianPhone.trim().length !== 10) newErrors.guardianPhone = 'Must be exactly 10 digits.';
+      }
     }
     if (s === 3) {
-      if (!idProofNumber.trim()) newErrors.idProofNumber = `${idProofType} number is required.`;
-      else if (idProofType === 'Aadhaar' && (idProofNumber.length !== 12 || !/^\d+$/.test(idProofNumber))) newErrors.idProofNumber = 'Aadhaar must be exactly 12 digits.';
-      else if (idProofType === 'PAN' && idProofNumber.length !== 10) newErrors.idProofNumber = 'PAN must be exactly 10 characters.';
-      
       if (!permanentAddress.trim()) newErrors.permanentAddress = 'Address is required.';
-      if (!aadhaarFront) newErrors.docFront = 'Front side of ID document is required.';
-      if (!aadhaarBack) newErrors.docBack = 'Back side of ID document is required.';
+      if (!idProofType) {
+        newErrors.idProofType = 'Please select ID Proof Type.';
+      } else if (!idProofNumber.trim()) {
+        newErrors.idProofNumber = `${idProofType} number is required.`;
+      } else {
+        if (idProofType === 'Aadhaar') {
+          if (idProofNumber.length !== 12 || !/^\d+$/.test(idProofNumber)) newErrors.idProofNumber = 'Aadhaar must be exactly 12 digits.';
+        } else if (idProofType === 'PAN') {
+          if (idProofNumber.length !== 10) newErrors.idProofNumber = 'PAN must be exactly 10 characters.';
+          else if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i.test(idProofNumber)) newErrors.idProofNumber = 'Invalid PAN format. Must be like ABCDE1234F';
+        } else if (idProofType === 'Driving License') {
+          if (idProofNumber.length < 10) newErrors.idProofNumber = 'Driving License must be at least 10 characters.';
+        } else if (idProofType === 'Voter ID') {
+          if (idProofNumber.length < 10) newErrors.idProofNumber = 'Voter ID must be at least 10 characters.';
+        } else if (idProofType === 'Passport') {
+          if (idProofNumber.length < 8) newErrors.idProofNumber = 'Passport must be at least 8 characters.';
+        }
+      }
+      
+      if (idProofType) {
+        if (!aadhaarFront) newErrors.docFront = 'Front side of ID document is required.';
+        if (!aadhaarBack) newErrors.docBack = 'Back side of ID document is required.';
+      }
     }
     setErrors(newErrors);
     
@@ -268,8 +323,15 @@ export default function RegistrationScreen({ route, navigation }: any) {
 
   const handleBack = () => {
     setErrors({});
-    if (step === 1) navigation.goBack();
-    else setStep(s => s - 1);
+    if (step === 1) {
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        navigation.replace('LoginScreen');
+      }
+    } else {
+      setStep(s => s - 1);
+    }
   };
 
   const handleRegister = async () => {
@@ -282,17 +344,17 @@ export default function RegistrationScreen({ route, navigation }: any) {
     setErrors({});
 
     // ── Test Mode bypass ──
-    const testEmail = 'veeradurgarao@gmail.com';
-    const testPhone = '6303359425';
+    const testEmail = 'veeradurgarao840@gmail.com';
+    const testPhone = '6303359435';
     if (
       identifier === testEmail || identifier === testPhone ||
-      phone === testPhone
+      emailAddress === testEmail || phone === testPhone
     ) {
       setTimeout(async () => {
         await updateTokenAndUser('mock-test-token-123', {
           id: 9999,
-          name: `${firstName} ${lastName}`.trim(),
-          email: isEmail ? identifier : testEmail,
+          name: `${firstName} ${lastName}`.trim() || 'Veera Durgarao',
+          email: emailAddress || testEmail,
           phone: phone || testPhone,
           hostel_id,
           is_allocated: false,
@@ -313,13 +375,13 @@ export default function RegistrationScreen({ route, navigation }: any) {
         first_name: firstName,
         last_name: lastName,
         phone,
-        email: isEmail ? identifier : '',
+        email: emailAddress,
         gender,
         date_of_birth: dateOfBirth,
         guardian_name: guardianName,
         guardian_phone: guardianPhone,
         permanent_address: permanentAddress,
-        id_proof_type: 'Aadhaar',
+        id_proof_type: idProofType,
         id_proof_number: idProofNumber,
       });
 
@@ -328,10 +390,10 @@ export default function RegistrationScreen({ route, navigation }: any) {
         await updateTokenAndUser(token, tenant);
         await refreshUser();
       } else {
-        setError(response.data?.error || 'Registration failed.');
+        showError(response.data?.error || 'Registration failed.');
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || err.message || 'Network error');
+      showError(err.response?.data?.error || err.message || 'Network error');
     } finally {
       setLoading(false);
     }
@@ -344,9 +406,13 @@ export default function RegistrationScreen({ route, navigation }: any) {
 
       {/* ── Top bar ── */}
       <View style={st.topBar}>
-        <TouchableOpacity onPress={handleBack} style={st.backBtn} disabled={loading} activeOpacity={0.7}>
-          <ArrowLeft size={20} color={BLUE} />
-        </TouchableOpacity>
+        {step > 1 ? (
+          <TouchableOpacity onPress={handleBack} style={st.backBtn} disabled={loading} activeOpacity={0.7}>
+            <ArrowLeft size={20} color={BLUE} />
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 36 }} />
+        )}
         <View style={st.topTitle}>
           <Text style={st.titleText}>Create Your Account</Text>
           <Text style={st.titleSub}>Complete your profile to continue.</Text>
@@ -381,27 +447,62 @@ export default function RegistrationScreen({ route, navigation }: any) {
               <View style={st.photoCenterWrap}>
                 <PhotoUpload
                   uri={profilePhoto}
-                  onCapture={setProfilePhoto}
-                  label="Add Photo"
-                  sublabel="Optional"
+                  onCapture={(uri: string) => { setProfilePhoto(uri); setErrors(p => ({...p, profilePhoto: ''})); }}
+                  label="Add Profile Photo"
                 />
+                {errors.profilePhoto ? <Text style={st.fieldErr}>{errors.profilePhoto}</Text> : null}
               </View>
 
-              <Field label="First Name" required>
-                <InputRow icon={User} placeholder="Enter first name" value={firstName} onChangeText={setFirstName} />
+              <Field label="First Name" required error={errors.firstName}>
+                <InputRow icon={User} placeholder="Enter first name" value={firstName} onChangeText={(t: string) => { setFirstName(t.replace(/[^a-zA-Z\s]/g, '')); setErrors(p => ({...p, firstName: ''})); }} onBlur={() => { if (!firstName.trim()) setErrors(p => ({...p, firstName: 'First name is required.'})); else if (firstName.trim().length < 3) setErrors(p => ({...p, firstName: 'First name must be at least 3 characters.'})); }} error={!!errors.firstName} />
               </Field>
-              <Field label="Last Name" required>
-                <InputRow icon={User} placeholder="Enter last name" value={lastName} onChangeText={setLastName} />
+              <Field label="Last Name">
+                <InputRow icon={User} placeholder="Enter last name" value={lastName} onChangeText={(t: string) => setLastName(t.replace(/[^a-zA-Z\s]/g, ''))} />
               </Field>
-              <Field label="Mobile Number" required>
+              <Field label="Email Address" required error={errors.emailAddress}>
+                <InputRow
+                  icon={Mail}
+                  placeholder="Enter email address"
+                  value={emailAddress}
+                  onChangeText={(t: string) => { setEmailAddress(t); setErrors(p => ({...p, emailAddress: ''})); }}
+                  onBlur={() => {
+                    if (!emailAddress.trim()) setErrors(p => ({...p, emailAddress: 'Email is required.'}));
+                    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress)) {
+                      setErrors(p => ({...p, emailAddress: 'Enter a valid email address.'}));
+                    }
+                  }}
+                  keyboardType="email-address"
+                  editable={!isEmail}
+                  error={!!errors.emailAddress}
+                />
+              </Field>
+              <Field label="Mobile Number" required error={errors.phone}>
                 <InputRow
                   icon={Phone}
                   placeholder="Enter 10-digit mobile number"
                   value={phone}
-                  onChangeText={setPhone}
+                  onChangeText={(t: string) => { 
+                    const val = t.replace(/\D/g, '').slice(0, 10);
+                    setPhone(val); 
+                    if (val.length > 0 && !/^[6-9]/.test(val)) {
+                      setErrors(p => ({...p, phone: 'Mobile number must start with 6, 7, 8, or 9.'}));
+                    } else {
+                      setErrors(p => ({...p, phone: ''}));
+                    }
+                  }}
+                  onBlur={() => {
+                    if (!phone.trim()) {
+                      setErrors(p => ({...p, phone: 'Mobile number is required.'}));
+                    } else if (!/^[6-9]/.test(phone)) {
+                      setErrors(p => ({...p, phone: 'Mobile number must start with 6, 7, 8, or 9.'}));
+                    } else if (phone.length !== 10) {
+                      setErrors(p => ({...p, phone: 'Mobile number must be exactly 10 digits.'}));
+                    }
+                  }}
                   keyboardType="phone-pad"
                   editable={isEmail}
                   maxLength={10}
+                  error={!!errors.phone}
                 />
               </Field>
             </View>
@@ -418,31 +519,24 @@ export default function RegistrationScreen({ route, navigation }: any) {
                 </View>
               </View>
 
-              <Field label="Gender" required>
+              <Field label="Gender" required error={errors.gender}>
                 <SelectRow
                   icon={User}
                   value={gender}
                   placeholder="Select gender"
-                  onPress={() => setGenderOpen(!genderOpen)}
+                  onPress={() => setGenderOpen(true)}
                 />
-                {genderOpen && (
-                  <View style={st.dropdown}>
-                    {['Male', 'Female', 'Other'].map(g => (
-                      <TouchableOpacity
-                        key={g}
-                        style={[st.dropItem, gender === g && st.dropItemActive]}
-                        onPress={() => { setGender(g); setGenderOpen(false); }}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={[st.dropItemText, gender === g && { color: BLUE, fontWeight: '700' }]}>{g}</Text>
-                        {gender === g && <Check size={16} color={BLUE} />}
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
+                <OptionsDrawer 
+                  visible={genderOpen} 
+                  title="Select Gender" 
+                  data={['Male', 'Female', 'Other']} 
+                  selectedItem={gender} 
+                  onSelect={(v: string) => { setGender(v); setErrors(p => ({...p, gender: ''})); }} 
+                  onClose={() => setGenderOpen(false)} 
+                />
               </Field>
 
-              <Field label="Date of Birth" required>
+              <Field label="Date of Birth" required error={errors.dateOfBirth}>
                 <SelectRow
                   icon={Calendar}
                   value={dateOfBirth || ''}
@@ -456,22 +550,24 @@ export default function RegistrationScreen({ route, navigation }: any) {
                   onConfirm={(date) => {
                     setDateOfBirth(date.toISOString().split('T')[0]);
                     setShowDatePicker(false);
+                    setErrors(p => ({...p, dateOfBirth: ''}));
                   }}
                   onCancel={() => setShowDatePicker(false)}
                 />
               </Field>
 
               <Field label="Guardian Name">
-                <InputRow icon={User} placeholder="Enter guardian name" value={guardianName} onChangeText={setGuardianName} />
+                <InputRow icon={User} placeholder="Enter guardian name" value={guardianName} onChangeText={(t: string) => setGuardianName(t.replace(/[^a-zA-Z\s]/g, ''))} />
               </Field>
-              <Field label="Guardian Mobile Number">
+              <Field label="Guardian Mobile Number" error={errors.guardianPhone}>
                 <InputRow
                   icon={Phone}
                   placeholder="Enter 10-digit mobile number"
                   value={guardianPhone}
-                  onChangeText={setGuardianPhone}
+                  onChangeText={(t: string) => { setGuardianPhone(t.replace(/\D/g, '').slice(0, 10)); setErrors(p => ({...p, guardianPhone: ''})); }}
                   keyboardType="phone-pad"
                   maxLength={10}
+                  error={!!errors.guardianPhone}
                 />
               </Field>
             </View>
@@ -488,70 +584,107 @@ export default function RegistrationScreen({ route, navigation }: any) {
                 </View>
               </View>
 
-              <Field label="ID Proof Type" required>
-                <SelectRow icon={Shield} value={idProofType} placeholder="Select ID Type" onPress={() => setIdProofTypeOpen(!idProofTypeOpen)} />
-                {idProofTypeOpen && (
-                  <View style={st.dropdown}>
-                    {ID_PROOF_TYPES.map(type => (
-                      <TouchableOpacity
-                        key={type}
-                        style={[st.dropItem, idProofType === type && st.dropItemActive]}
-                        onPress={() => { setIdProofType(type); setIdProofTypeOpen(false); }}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={[st.dropItemText, idProofType === type && { color: BLUE, fontWeight: '700' }]}>{type}</Text>
-                        {idProofType === type && <Check size={16} color={BLUE} />}
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-              </Field>
-
-              <Field label={`${idProofType} Number`} required error={errors.idProofNumber}>
-                <InputRow
-                  icon={CreditCard}
-                  placeholder={`Enter ${idProofType} number`}
-                  value={idProofNumber}
-                  onChangeText={(t: string) => { setIdProofNumber(t); setErrors(p => ({...p, idProofNumber: ''})) }}
-                  keyboardType={idProofType === 'Aadhaar' ? 'number-pad' : 'default'}
-                  autoCapitalize={idProofType === 'PAN' ? 'characters' : 'none'}
-                  error={!!errors.idProofNumber}
+              <Field label="ID Proof Type" required error={errors.idProofType}>
+                <SelectRow icon={Shield} value={idProofType} placeholder="Select ID Type" onPress={() => setIdProofTypeOpen(true)} />
+                <OptionsDrawer 
+                  visible={idProofTypeOpen} 
+                  title="Select ID Proof Type" 
+                  data={ID_PROOF_TYPES} 
+                  selectedItem={idProofType} 
+                  onSelect={(v: string) => { 
+                    setIdProofType(v); 
+                    setIdProofNumber('');
+                    setErrors(p => ({...p, idProofType: '', idProofNumber: ''})); 
+                  }} 
+                  onClose={() => setIdProofTypeOpen(false)} 
                 />
               </Field>
-              
+
+              {idProofType ? (
+                <>
+                  <Field label={`${idProofType} Number`} required error={errors.idProofNumber}>
+                    <InputRow
+                      icon={CreditCard}
+                      placeholder={`Enter ${idProofType} number`}
+                      value={idProofNumber}
+                      onChangeText={(t: string) => { 
+                        let clean = t;
+                        if (idProofType === 'Aadhaar') clean = t.replace(/\D/g, '').slice(0, 12);
+                        else if (idProofType === 'PAN') clean = t.toUpperCase().slice(0, 10);
+                        else if (idProofType === 'Driving License') clean = t.toUpperCase().slice(0, 16);
+                        else if (idProofType === 'Voter ID') clean = t.toUpperCase().slice(0, 10);
+                        else if (idProofType === 'Passport') clean = t.toUpperCase().slice(0, 8);
+                        setIdProofNumber(clean); 
+                        
+                        if (idProofType === 'Aadhaar' && clean.length > 0 && !/^\d+$/.test(clean)) {
+                          setErrors(p => ({...p, idProofNumber: 'Aadhaar must contain only digits.'}));
+                        } else if (idProofType === 'PAN' && clean.length > 0 && !/^[A-Z0-9]+$/.test(clean)) {
+                          setErrors(p => ({...p, idProofNumber: 'PAN must be alphanumeric.'}));
+                        } else {
+                          setErrors(p => ({...p, idProofNumber: ''})); 
+                        }
+                      }}
+                      onBlur={() => {
+                        if (!idProofNumber.trim()) {
+                          setErrors(p => ({...p, idProofNumber: `${idProofType} number is required.`}));
+                        } else {
+                          if (idProofType === 'Aadhaar') {
+                            if (idProofNumber.length !== 12) setErrors(p => ({...p, idProofNumber: 'Aadhaar must be exactly 12 digits.'}));
+                          } else if (idProofType === 'PAN') {
+                            if (idProofNumber.length !== 10) setErrors(p => ({...p, idProofNumber: 'PAN must be exactly 10 characters.'}));
+                            else if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i.test(idProofNumber)) setErrors(p => ({...p, idProofNumber: 'Invalid PAN format. Must be like ABCDE1234F'}));
+                          } else if (idProofType === 'Driving License') {
+                            if (idProofNumber.length < 10) setErrors(p => ({...p, idProofNumber: 'Driving License must be at least 10 characters.'}));
+                          } else if (idProofType === 'Voter ID') {
+                            if (idProofNumber.length < 10) setErrors(p => ({...p, idProofNumber: 'Voter ID must be at least 10 characters.'}));
+                          } else if (idProofType === 'Passport') {
+                            if (idProofNumber.length < 8) setErrors(p => ({...p, idProofNumber: 'Passport must be at least 8 characters.'}));
+                          }
+                        }
+                      }}
+                      keyboardType={idProofType === 'Aadhaar' ? 'number-pad' : 'default'}
+                      autoCapitalize={idProofType === 'PAN' || idProofType === 'Driving License' || idProofType === 'Voter ID' || idProofType === 'Passport' ? 'characters' : 'none'}
+                      error={!!errors.idProofNumber}
+                    />
+                  </Field>
+                  
+                  {/* ID Document upload */}
+                  <Text style={st.docSectionLabel}>
+                    ID Document <Text style={{ color: DANGER }}>*</Text>
+                  </Text>
+                  <View style={st.docRow}>
+                    <DocBox
+                      label="Front Side"
+                      uri={aadhaarFront}
+                      onCapture={(uri: string) => { setAadhaarFront(uri); setErrors(p => ({...p, docFront: ''})) }}
+                      onRemove={() => setAadhaarFront(null)}
+                      error={!!errors.docFront}
+                    />
+                    <DocBox
+                      label="Back Side"
+                      uri={aadhaarBack}
+                      onCapture={(uri: string) => { setAadhaarBack(uri); setErrors(p => ({...p, docBack: ''})) }}
+                      onRemove={() => setAadhaarBack(null)}
+                      error={!!errors.docBack}
+                    />
+                  </View>
+                  {(errors.docFront || errors.docBack) && (
+                    <Text style={[st.fieldErr, { marginTop: 8, marginBottom: 16 }]}>Both sides of the ID document are required.</Text>
+                  )}
+                </>
+              ) : null}
+
               <Field label="Address" required error={errors.permanentAddress}>
                 <InputRow
                   icon={MapPin}
                   placeholder="Enter your full address"
                   value={permanentAddress}
                   onChangeText={(t: string) => { setPermanentAddress(t); setErrors(p => ({...p, permanentAddress: ''})) }}
+                  onBlur={() => { if (!permanentAddress.trim()) setErrors(p => ({...p, permanentAddress: 'Address is required.'})); }}
                   multiline
                   error={!!errors.permanentAddress}
                 />
               </Field>
-
-              {/* ID Document upload */}
-              <Text style={st.docSectionLabel}>ID Document *</Text>
-              <View style={st.docRow}>
-                <View style={{ flex: 1 }}>
-                  <DocBox
-                    label="Front Side"
-                    uri={aadhaarFront}
-                    onCapture={(uri: string) => { setAadhaarFront(uri); setErrors(p => ({...p, docFront: ''})) }}
-                    onRemove={() => setAadhaarFront(null)}
-                  />
-                  {errors.docFront ? <Text style={st.fieldErr}>{errors.docFront}</Text> : null}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <DocBox
-                    label="Back Side"
-                    uri={aadhaarBack}
-                    onCapture={(uri: string) => { setAadhaarBack(uri); setErrors(p => ({...p, docBack: ''})) }}
-                    onRemove={() => setAadhaarBack(null)}
-                  />
-                  {errors.docBack ? <Text style={st.fieldErr}>{errors.docBack}</Text> : null}
-                </View>
-              </View>
             </View>
           )}
 

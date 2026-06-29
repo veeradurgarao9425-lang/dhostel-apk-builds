@@ -16,7 +16,7 @@ import {
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
-import Svg, {
+import {
   Path,
   Rect,
   Circle,
@@ -24,6 +24,7 @@ import Svg, {
   Polyline,
   G,
 } from 'react-native-svg';
+import { useToast } from '../context/ToastContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -134,6 +135,7 @@ export const HostelKeyScreen = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigation = useNavigation<any>();
   const { connectHostel } = useAuth();
+  const { showError, showSuccess } = useToast();
 
   useFocusEffect(
     useCallback(() => {
@@ -143,16 +145,16 @@ export const HostelKeyScreen = () => {
 
   const handleConnect = async () => {
     if (key.length < 3) {
-      Alert.alert('Invalid Key', 'Please enter a valid Portal Key.');
+      showError('Please enter a valid Portal Key.');
       return;
     }
     setIsLoading(true);
     const { error, data } = await connectHostel(key.toUpperCase());
     setIsLoading(false);
     if (error) {
-      Alert.alert('Connection Failed', error);
+      showError(error);
     } else {
-      Alert.alert('Connected!', `Successfully connected to ${data?.hostel_name}.`);
+      showSuccess(`Successfully connected to ${data?.hostel_name}.`);
     }
   };
 
@@ -166,7 +168,7 @@ export const HostelKeyScreen = () => {
         <SafeAreaView edges={['top']} style={styles.safeTop}>
           <View style={styles.topRow}>
             <View />
-            <TouchableOpacity style={styles.helpBtn} activeOpacity={0.7}>
+            <TouchableOpacity style={styles.helpBtn} activeOpacity={0.7} onPress={() => navigation.navigate('HelpScreen')}>
               <Text style={styles.helpText}>Need help?</Text>
               <HeadphoneIcon />
             </TouchableOpacity>
@@ -315,7 +317,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingTop: 24,
     paddingBottom: 4,
   },
   helpBtn: {
