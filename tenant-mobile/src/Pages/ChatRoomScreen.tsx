@@ -2,9 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity,
   TextInput, KeyboardAvoidingView, Platform, StatusBar,
-  Dimensions, Animated, FlatList, Keyboard, ActivityIndicator
+  Dimensions, Animated, FlatList, Keyboard
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ArrowLeft, MoreVertical, Send,
   Paperclip, Smile, CheckCheck, Mic, Camera, MessageCircle
@@ -80,37 +80,7 @@ export default function ChatRoomScreen() {
   const { messages, sendMessage, isConnected, sendTyping, stopTyping } = useChat();
   const navigation = useNavigation<any>();
 
-  const [text, setText] = useState('');
-  const flatRef = useRef<FlatList>(null);
-  const scale = useRef(new Animated.Value(1)).current;
-
-  // We handle the back button by going back to the previous screen.
-  const handleBack = () => {
-    navigation.goBack();
-  };
-
-  const handleSend = () => {
-    const t = text.trim();
-    if (!t) return;
-
-    Animated.sequence([
-      Animated.timing(scale, { toValue: 0.85, duration: 80, useNativeDriver: true }),
-      Animated.timing(scale, { toValue: 1,    duration: 100, useNativeDriver: true }),
-    ]).start();
-
-    sendMessage(t);
-    setText('');
-    stopTyping();
-  };
-
-  const handleTextChange = (val: string) => {
-    setText(val);
-    if (val.length > 0) {
-      sendTyping();
-    } else {
-      stopTyping();
-    }
-  };
+  // Content handlers are moved below into renderContent()
 
   if (!user?.room_id) {
     return (
@@ -157,7 +127,7 @@ export default function ChatRoomScreen() {
     <View style={{ flex: 1, backgroundColor: WA_BG }}>
       <StatusBar barStyle="light-content" backgroundColor={BLUE} />
 
-      {/* Header */}
+      {/* Header - Always fixed at the top */}
       <View style={{ backgroundColor: BLUE }}>
         <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
           <View style={styles.header}>
@@ -173,7 +143,6 @@ export default function ChatRoomScreen() {
               </View>
             </View>
             <View style={{ flexDirection: 'row', gap: 16 }}>
-              {/* Call buttons removed as per request */}
               <TouchableOpacity>
                 <MoreVertical size={24} color={WHITE} />
               </TouchableOpacity>
@@ -182,63 +151,120 @@ export default function ChatRoomScreen() {
         </SafeAreaView>
       </View>
 
-      <KeyboardAvoidingView 
-        style={{ flex: 1 }} 
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-      >
-        <FlatList
-          ref={flatRef}
-          data={messages}
-          keyExtractor={(item) => item.id.toString()}
-          inverted
-          contentContainerStyle={{ padding: 16, gap: 12 }}
-          showsVerticalScrollIndicator={false}
-          renderItem={({ item, index }) => {
-            const nextItem = messages[index + 1];
-            const showName = !nextItem || nextItem.sender_id !== item.sender_id;
-            return <Bubble msg={item} showName={showName} />;
-          }}
-        />
+      {/* Main Content Area */}
+      {Platform.OS === 'ios' ? (
+        <KeyboardAvoidingView 
+          style={{ flex: 1 }} 
+          behavior="padding"
+          keyboardVerticalOffset={insets.top + 48} // approximate header height
+        >
+          {renderContent()}
+        </KeyboardAvoidingView>
+      ) : (
+        <View style={{ flex: 1 }}>
+          {renderContent()}
+        </View>
+      )}
+    </View>
+  );
+}
 
-        {/* Input Bar */}
-        <SafeAreaView edges={['bottom']} style={{ backgroundColor: 'transparent' }}>
-          <View style={styles.inputWrap}>
-            <View style={styles.inputBox}>
-              <TouchableOpacity style={styles.iconBtn}>
-                <Smile size={24} color="#64748B" />
-              </TouchableOpacity>
-              <TextInput
-                style={styles.input}
-                placeholder="Message"
-                placeholderTextColor="#94A3B8"
-                value={text}
-                onChangeText={handleTextChange}
-                multiline
-                maxLength={1000}
-              />
-              <TouchableOpacity style={styles.iconBtn}>
-                <Paperclip size={22} color="#64748B" />
-              </TouchableOpacity>
-              {!text && (
-                <TouchableOpacity style={[styles.iconBtn, { marginLeft: 4 }]}>
-                  <Camera size={22} color="#64748B" />
-                </TouchableOpacity>
-              )}
-            </View>
+// Extract content to avoid duplication
+const renderContent = () => {
+  const { messages, sendMessage, sendTyping, stopTyping } = useChat();
+  const [text, setText] = useState('');
+  const flatRef = useRef<FlatList>(null);
+  const scale = useRef(new Animated.Value(1)).current;
+  const insets = useSafeAreaInsets();
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
 
-            <Animated.View style={{ transform: [{ scale }] }}>
-              <TouchableOpacity style={styles.sendBtn} onPress={text ? handleSend : () => {}}>
-                {text ? (
-                  <Send size={20} color={WHITE} style={{ marginLeft: 2 }} />
-                ) : (
-                  <Mic size={22} color={WHITE} />
-                )}
-              </TouchableOpacity>
-            </Animated.View>
-          </View>
-        </SafeAreaView>
-      </KeyboardAvoidingView>
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    
+    const showSub = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
+    
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  const handleSend = () => {
+    const t = text.trim();
+    if (!t) return;
+    Animated.sequence([
+      Animated.timing(scale, { toValue: 0.85, duration: 80, useNativeDriver: true }),
+      Animated.timing(scale, { toValue: 1,    duration: 100, useNativeDriver: true }),
+    ]).start();
+    sendMessage(t);
+    setText('');
+    stopTyping();
+  };
+
+  const handleTextChange = (val: string) => {
+    setText(val);
+    if (val.length > 0) sendTyping();
+    else stopTyping();
+  };
+
+  const safeBottom = Math.min(insets.bottom, 40);
+  const bottomPadding = keyboardVisible ? 8 : Math.max(safeBottom, 8);
+
+  return (
+    <>
+      <FlatList
+        ref={flatRef}
+        data={messages}
+        style={{ flex: 1 }}
+        keyExtractor={(item) => item.id.toString()}
+        inverted
+        contentContainerStyle={{ padding: 16, gap: 12, flexGrow: 1, justifyContent: 'flex-end' }}
+        showsVerticalScrollIndicator={false}
+        renderItem={({ item, index }) => {
+          const nextItem = messages[index + 1];
+          const showName = !nextItem || nextItem.sender_id !== item.sender_id;
+          return <Bubble msg={item} showName={showName} />;
+        }}
+      />
+      <View style={[styles.inputWrap, { paddingBottom: bottomPadding }]}>
+        <View style={styles.inputBox}>
+          <TouchableOpacity style={styles.iconBtn}>
+            <Smile size={24} color="#64748B" />
+          </TouchableOpacity>
+          <TextInput
+            style={styles.input}
+            placeholder="Message"
+            placeholderTextColor="#94A3B8"
+            value={text}
+            onChangeText={handleTextChange}
+            multiline
+            maxLength={1000}
+          />
+          <TouchableOpacity style={styles.iconBtn}>
+            <Paperclip size={22} color="#64748B" />
+          </TouchableOpacity>
+          {!text && (
+            <TouchableOpacity style={[styles.iconBtn, { marginLeft: 4 }]}>
+              <Camera size={22} color="#64748B" />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <Animated.View style={{ transform: [{ scale }], marginBottom: 4 }}>
+          <TouchableOpacity style={styles.sendBtn} onPress={text ? handleSend : () => {}}>
+            {text ? (
+              <Send size={20} color={WHITE} style={{ marginLeft: 2 }} />
+            ) : (
+              <Mic size={22} color={WHITE} />
+            )}
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
+    </>
+  );
+}
     </View>
   );
 }

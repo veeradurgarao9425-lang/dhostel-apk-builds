@@ -173,6 +173,14 @@ async function patchDatabaseSchema() {
           console.log('[schema-patch] adding reason to fee_payments...');
           await db.raw("ALTER TABLE fee_payments ADD COLUMN reason VARCHAR(255) NULL");
         }
+        if (!columnNames.includes('verification_status')) {
+          console.log('[schema-patch] adding verification_status to fee_payments...');
+          await db.raw("ALTER TABLE fee_payments ADD COLUMN verification_status VARCHAR(50) DEFAULT 'Verified'");
+        }
+        if (!columnNames.includes('proof_url')) {
+          console.log('[schema-patch] adding proof_url to fee_payments...');
+          await db.raw("ALTER TABLE fee_payments ADD COLUMN proof_url TEXT NULL");
+        }
       }
     } catch (e: any) {
       console.error('[schema-patch] Error updating fee_payments columns:', e.message);
@@ -586,6 +594,14 @@ async function patchDatabaseSchema() {
     try {
       if (tableNamesLower.includes('expense_categories')) {
         console.log('[schema-patch] Ensuring default expense categories exist...');
+        const [columns] = await db.raw("SHOW COLUMNS FROM expense_categories");
+        const expColNames = (columns as any[]).map(col => col.Field.toLowerCase());
+        
+        if (!expColNames.includes('description')) {
+           console.log('[schema-patch] adding description to expense_categories...');
+           await db.raw("ALTER TABLE expense_categories ADD COLUMN description TEXT NULL");
+        }
+
         const categories = await db('expense_categories').select('category_name');
         const categoryNames = categories.map((c: any) => c.category_name.toLowerCase());
         
