@@ -154,6 +154,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         hostel_id: connectedHostel.hostel_id,
         is_allocated: true,
         room_number: 'A-101',
+        room_id: 1, // Added for mock chat
+        status: 1, // Active tenant
         monthly_rent: 5000,
         outstanding_due: 0,
       };

@@ -79,6 +79,11 @@ export default function ChatRoomScreen() {
   const { user } = useAuth();
   const { messages, sendMessage, isConnected, sendTyping, stopTyping } = useChat();
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
+
+  const handleBack = () => {
+    navigation.goBack();
+  };
 
   // Content handlers are moved below into renderContent()
 
@@ -152,19 +157,13 @@ export default function ChatRoomScreen() {
       </View>
 
       {/* Main Content Area */}
-      {Platform.OS === 'ios' ? (
-        <KeyboardAvoidingView 
-          style={{ flex: 1 }} 
-          behavior="padding"
-          keyboardVerticalOffset={insets.top + 48} // approximate header height
-        >
-          {renderContent()}
-        </KeyboardAvoidingView>
-      ) : (
-        <View style={{ flex: 1 }}>
-          {renderContent()}
-        </View>
-      )}
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }} 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 48 : 0}
+      >
+        {renderContent()}
+      </KeyboardAvoidingView>
     </View>
   );
 }
