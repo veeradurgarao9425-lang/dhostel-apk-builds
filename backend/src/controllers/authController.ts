@@ -888,6 +888,9 @@ export const authController = {
         data: {
           hostel_id: hostel.hostel_id,
           hostel_name: hostel.hostel_name,
+          city: hostel.city,
+          state: hostel.state,
+          address: hostel.address,
         }
       });
     } catch (error) {
@@ -1000,7 +1003,7 @@ export const authController = {
 
   async tenantRegister(req: Request, res: Response) {
     try {
-      const { identifier, hostel_id, first_name, last_name, phone, email, gender, guardian_name, guardian_phone, guardian_relation, permanent_address, id_proof_type, id_proof_number } = req.body;
+      const { identifier, hostel_id, first_name, last_name, phone, email, gender, date_of_birth, guardian_name, guardian_phone, guardian_relation, permanent_address, id_proof_type, id_proof_number } = req.body;
       
       if (!identifier || !hostel_id || !first_name || !gender) {
         return res.status(400).json({ success: false, error: 'Missing required fields' });
@@ -1048,6 +1051,7 @@ export const authController = {
         permanent_address: permanent_address || null,
         id_proof_type: id_proof_type || null,
         id_proof_number: id_proof_number || null,
+        date_of_birth: date_of_birth || null,
         admission_date,
         status: 3, // QR Register / Pending Status
         created_at: new Date()

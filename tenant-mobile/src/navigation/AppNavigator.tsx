@@ -11,7 +11,6 @@ import { colors } from '../theme';
 // Auth / onboarding
 import { HostelKeyScreen } from '../Pages/HostelKeyScreen';
 import LoginScreen from '../Pages/LoginScreen';
-import OTPScreen from '../Pages/OTPScreen';
 import RegistrationScreen from '../Pages/RegistrationScreen';
 
 // Main tabs
@@ -52,7 +51,6 @@ const ConnectStack = () => (
 const AuthStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="Login" component={LoginScreen} />
-    <Stack.Screen name="OTP" component={OTPScreen} />
     <Stack.Screen name="RegistrationScreen" component={RegistrationScreen} />
   </Stack.Navigator>
 );

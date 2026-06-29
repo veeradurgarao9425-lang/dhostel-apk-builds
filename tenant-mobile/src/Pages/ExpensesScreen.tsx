@@ -17,6 +17,8 @@ import { sampleExpenses, ExpenseRecord, ExpenseCategory } from '../data/tenantCo
 import api from '../services/api';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const HEADER_COLOR = colors.primary;
+const SAMPLE_EXPENSES = sampleExpenses;
 
 // ── Category config ───────────────────────────────────────────────────────────
 const CAT: Record<string, { icon: any; color: string; bg: string; label: string }> = {

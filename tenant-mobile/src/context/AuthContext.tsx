@@ -24,6 +24,9 @@ type TenantUser = {
 type ConnectedHostel = {
   hostel_id: number;
   hostel_name: string;
+  city?: string;
+  state?: string;
+  address?: string;
 };
 
 type AuthContextType = {
@@ -112,6 +115,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (!connectedHostel?.hostel_id) {
       return { error: 'Please connect to a hostel first.' };
     }
+    
+    // --- Test Mode Bypass ---
+    if (emailOrPhone === 'veeradurgarao@gmail.com' || emailOrPhone === '6303359425') {
+      return { error: null, message: 'OTP sent (Test Mode)' };
+    }
+    // ------------------------
+
     try {
       const response = await api.post('/auth/tenant/send-otp', { 
         identifier: emailOrPhone,
@@ -131,6 +141,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (!connectedHostel?.hostel_id) {
       return { error: 'Please connect to a hostel first.' };
     }
+
+    // --- Test Mode Bypass ---
+    if (emailOrPhone === 'veeradurgarao@gmail.com' || emailOrPhone === '6303359425') {
+      const mockToken = 'mock-test-token-123';
+      const mockUser: TenantUser = {
+        id: 9999,
+        name: 'Test Tenant',
+        email: 'veeradurgarao@gmail.com',
+        phone: '6303359425',
+        hostel_id: connectedHostel.hostel_id,
+        is_allocated: true,
+        room_number: 'A-101',
+        monthly_rent: 5000,
+        outstanding_due: 0,
+      };
+      
+      api.defaults.headers.common['Authorization'] = `Bearer ${mockToken}`;
+      setUser(mockUser);
+      await AsyncStorage.setItem('token', mockToken);
+      await AsyncStorage.setItem('user', JSON.stringify(mockUser));
+      return { error: null, user: mockUser };
+    }
+    // ------------------------
+
     try {
       const response = await api.post('/auth/tenant/verify-otp', { 
         identifier: emailOrPhone, 

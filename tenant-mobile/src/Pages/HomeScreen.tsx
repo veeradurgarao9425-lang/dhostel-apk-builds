@@ -24,6 +24,8 @@ import { useAuth } from '../context/AuthContext';
 import { colors, radius, spacing, shadow } from '../theme';
 import { sampleNotifications } from '../data/tenantContent';
 
+import api from '../services/api';
+
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // ── Quick Access config ────────────────────────────────────────────────────────
@@ -35,12 +37,30 @@ const QUICK_ACTIONS = [
   { icon: MoreHorizontal, label: 'More', screen: 'More', iconBg: colors.primarySoft, iconColor: colors.primary },
 ];
 
+const MealRow = ({ meal, items, isLast }: { meal: string; items: string; isLast: boolean }) => {
+  let icon = <Sun size={18} color={colors.warning} />;
+  if (meal === 'Lunch') icon = <Utensils size={18} color={colors.danger} />;
+  if (meal === 'Snacks') icon = <Utensils size={18} color={colors.primary} />;
+  if (meal === 'Dinner') icon = <Moon size={18} color={colors.info} />;
+
+  return (
+    <View style={[styles.mealRow, isLast && { borderBottomWidth: 0 }]}>
+      <View style={styles.mealLeft}>
+        {icon}
+        <Text style={styles.mealNameText}>{meal}</Text>
+      </View>
+      <Text style={styles.mealItemsText} numberOfLines={2}>{items}</Text>
+    </View>
+  );
+};
+
 export default function HomeScreen({ navigation }: any) {
   const { user, refreshUser } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
   const [recentNotice, setRecentNotice] = useState<any>(null);
   const [recentPayments, setRecentPayments] = useState<any[]>([]);
-  const [menuItems, setMenuItems] = useState<any[]>(todayMenu);
+  const [menuItems, setMenuItems] = useState<any[]>([]);
+  const [dueAmount, setDueAmount] = useState<number>(0);
 
   const fetchData = async () => {
     try {
@@ -68,7 +88,9 @@ export default function HomeScreen({ navigation }: any) {
         const fees = feesRes.value.data.data;
         // Flatten payments
         let allPayments: any[] = [];
+        let sum = 0;
         fees.forEach((f: any) => {
+          sum += Number(f.total_amount || 0) - Number(f.paid_amount || 0);
           f.payments?.forEach((p: any) => {
             allPayments.push({
               id: p.payment_id,
@@ -79,6 +101,7 @@ export default function HomeScreen({ navigation }: any) {
             });
           });
         });
+        setDueAmount(sum > 0 ? sum : 0);
         // Sort by paidOn desc
         allPayments.sort((a, b) => new Date(b.paidOn).getTime() - new Date(a.paidOn).getTime());
         setRecentPayments(allPayments.slice(0, 3));
@@ -303,6 +326,36 @@ const styles = StyleSheet.create({
   seeAllText: { fontSize: 14, color: '#7B3A2A', fontWeight: '700' },
 
   // Meal Cards
+  menuCard: {
+    marginHorizontal: spacing.xl,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    ...shadow.card,
+  },
+  mealRow: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderSoft,
+  },
+  mealLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  mealNameText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  mealItemsText: {
+    fontSize: 13,
+    color: colors.textMuted,
+    paddingLeft: 26,
+    lineHeight: 18,
+  },
   mealCard: {
     marginHorizontal: spacing.xl,
     borderRadius: 20,
