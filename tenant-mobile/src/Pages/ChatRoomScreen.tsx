@@ -159,30 +159,41 @@ export default function ChatRoomScreen() {
       {/* Main Content Area */}
       <KeyboardAvoidingView 
         style={{ flex: 1 }} 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 48 : 0}
       >
-        {renderContent()}
+        <ChatContent />
       </KeyboardAvoidingView>
     </View>
   );
 }
 
 // Extract content to avoid duplication
-const renderContent = () => {
+const ChatContent = () => {
   const { messages, sendMessage, sendTyping, stopTyping } = useChat();
   const [text, setText] = useState('');
   const flatRef = useRef<FlatList>(null);
   const scale = useRef(new Animated.Value(1)).current;
   const insets = useSafeAreaInsets();
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
     
-    const showSub = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
-    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardVisible(true);
+      if (Platform.OS === 'android') {
+        setKeyboardHeight(e.endCoordinates.height);
+      }
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardVisible(false);
+      if (Platform.OS === 'android') {
+        setKeyboardHeight(0);
+      }
+    });
     
     return () => {
       showSub.remove();
@@ -209,7 +220,12 @@ const renderContent = () => {
   };
 
   const safeBottom = Math.min(insets.bottom, 40);
-  const bottomPadding = keyboardVisible ? 8 : Math.max(safeBottom, 8);
+  
+  // For Android, if OS resize fails, we manually add keyboardHeight.
+  // We apply extra padding only if keyboardVisible is true.
+  const bottomPadding = Platform.OS === 'ios' 
+    ? (keyboardVisible ? 8 : Math.max(safeBottom, 8))
+    : (keyboardVisible ? (keyboardHeight || 8) : Math.max(safeBottom, 8));
 
   return (
     <>

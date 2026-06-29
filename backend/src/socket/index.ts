@@ -101,6 +101,26 @@ export const setupSocket = (httpServer: HttpServer) => {
     socket.on('send_message', async (data: { text: string, type?: string, mediaUrl?: string, thumbnail?: string, duration?: number, replyId?: number }) => {
       if (!user.room_id) return;
       
+      if (user.user_id === 9999) {
+        // Mock user bypass: just emit to the room without database insert
+        const mockMessage = {
+          id: Date.now(),
+          room_id: user.room_id,
+          sender_id: user.user_id,
+          message_type: data.type || 'text',
+          message: data.text,
+          media_url: data.mediaUrl || null,
+          thumbnail: data.thumbnail || null,
+          duration: data.duration || null,
+          reply_message_id: data.replyId || null,
+          created_at: new Date().toISOString(),
+          first_name: 'Veera',
+          last_name: 'Durgarao'
+        };
+        io.to(`room_${user.room_id}`).emit('new_message', mockMessage);
+        return;
+      }
+
       try {
         const [msgId] = await db('chat_messages').insert({
           room_id: user.room_id,
