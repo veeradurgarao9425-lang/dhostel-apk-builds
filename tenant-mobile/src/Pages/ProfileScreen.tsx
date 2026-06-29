@@ -34,10 +34,10 @@ function MenuRow({ label, onPress, isLast = false }: MenuRowProps) {
 export default function ProfileScreen({ navigation }: any) {
   const { user, connectedHostel, signOut, logoutLoading } = useAuth();
 
-  const name = user?.name || 'Aarav Mehta';
+  const name = user?.name || 'Guest';
   const initials = name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase();
-  const roomNumber = user?.room_number || '203';
-  const tenantId = 'TN2034';
+  const roomNumber = user?.room_number ? `Room ${user.room_number}` : 'Not Assigned';
+  const tenantId = user?.id ? `TN${user.id}` : 'N/A';
 
   const confirmLogout = () =>
     Alert.alert('Log out', 'Are you sure you want to log out?', [
@@ -68,7 +68,7 @@ export default function ProfileScreen({ navigation }: any) {
               <Text style={styles.avatarText}>{initials}</Text>
             </View>
             <Text style={styles.profileName}>{name}</Text>
-            <Text style={styles.profileSub}>Room {roomNumber}, Block A</Text>
+            <Text style={styles.profileSub}>{roomNumber}</Text>
             <View style={styles.tenantIdPill}>
               <Text style={styles.tenantIdText}>Tenant ID: {tenantId}</Text>
             </View>

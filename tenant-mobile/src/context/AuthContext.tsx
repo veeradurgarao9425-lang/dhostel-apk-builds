@@ -15,6 +15,7 @@ type TenantUser = {
   gender?: string;
   status?: number;
   is_allocated?: boolean;
+  room_id?: number | null;
   room_number?: string | null;
   monthly_rent?: number | null;
   outstanding_due?: number;

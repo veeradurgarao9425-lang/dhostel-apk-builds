@@ -1017,6 +1017,7 @@ export const authController = {
             email: tenant.email,
             phone: tenant.phone,
             room: tenant.room_number || 'N/A',
+            room_id: tenant.room_id || null,
             hostel_id: tenant.hostel_id
           }
         }
@@ -1106,6 +1107,7 @@ export const authController = {
             email: finalEmail || identifier,
             phone: finalPhone,
             room: 'Pending',
+            room_id: null,
             hostel_id
           }
         }
@@ -1179,6 +1181,7 @@ export const authController = {
           gender: tenant.gender,
           status,
           is_allocated: isAllocated,
+          room_id: tenant.room_id || null,
           room_number: tenant.room_number || null,
           monthly_rent: tenant.monthly_rent ?? tenant.rent_per_bed ?? null,
           outstanding_due: Number(dueRow?.total_balance || 0),
