@@ -1,253 +1,266 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
-  StyleSheet, Text, View, TouchableOpacity, FlatList,
-  TextInput, StatusBar, Dimensions,
+  StyleSheet, Text, View, TouchableOpacity,
+  TextInput, KeyboardAvoidingView, Platform, StatusBar,
+  Dimensions, Animated, FlatList, Keyboard, ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Path } from 'react-native-svg';
-import { Search, Bell, Plus, MessageCircle } from 'lucide-react-native';
+import {
+  ArrowLeft, MoreVertical, Send,
+  Paperclip, Smile, CheckCheck, Mic, Camera
+} from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
+import { useChat, Message } from '../context/ChatContext';
+import { useNavigation } from '@react-navigation/native';
 
 const { width: W } = Dimensions.get('window');
 const BLUE  = '#2245D4';
 const WHITE = '#FFFFFF';
+const WA_BG = '#EFE6DD'; 
+const MY_BUBBLE = '#E3F2FD'; 
 
-const ROOM_ACCENTS = ['#2245D4', '#F97316', '#16A34A', '#A855F7', '#EF4444'];
-const ROOM_BGETS   = ['#EEF4FF', '#FFF7ED', '#F0FDF4', '#FDF4FF', '#FFF1F2'];
+const MEMBER_COLORS: Record<string, string> = {
+  Durgarao : '#2245D4',
+  Rahul    : '#F97316',
+  Anil     : '#16A34A',
+  Surya    : '#A855F7',
+  Priya    : '#EC4899',
+  Admin    : '#EF4444',
+  You      : '#2245D4',
+};
 
-const ALL_ROOMS = [
-  {
-    id: '1', room: '101', members: 4,
-    memberNames: ['Veera Durgarao', 'Rahul Kumar', 'Anil Reddy', 'Surya Teja'],
-    lastSender: 'Durgarao', lastMsg: 'The key is attached on the down stairs 🔑',
-    time: '9:41 AM', unread: 3,
-  },
-];
+function getColor(name: string) {
+  return MEMBER_COLORS[name] ?? '#64748B';
+}
 
-function AvatarStack({ names, accent }: { names: string[]; accent: string }) {
+function Bubble({ msg, showName }: { msg: Message; showName: boolean }) {
+  const { user } = useAuth();
+  const mine = msg.sender_id === user?.id;
+
+  const formattedTime = new Date(msg.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  const senderName = mine ? 'You' : `${msg.first_name || ''} ${msg.last_name || ''}`.trim();
+
+  if (mine) {
+    return (
+      <View style={[styles.row, styles.rowRight]}>
+        <View style={styles.bubbleMe}>
+          <Text style={styles.textBase}>{msg.message}</Text>
+          <View style={styles.metaMe}>
+            <Text style={styles.timeText}>{formattedTime}</Text>
+            {msg.read_at ? (
+               <CheckCheck size={14} color="#53BDEB" />
+            ) : (
+               <CheckCheck size={14} color="#94A3B8" />
+            )}
+          </View>
+        </View>
+      </View>
+    );
+  }
+
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-      {names.slice(0, 3).map((n, i) => (
-        <View
-          key={i}
-          style={{
-            width: 24, height: 24, borderRadius: 12,
-            backgroundColor: accent,
-            alignItems: 'center', justifyContent: 'center',
-            marginLeft: i === 0 ? 0 : -8,
-            borderWidth: 2, borderColor: WHITE,
-            zIndex: 10 - i,
-          }}
-        >
-          <Text style={{ color: WHITE, fontSize: 8, fontWeight: '800' }}>{n.charAt(0)}</Text>
+    <View style={[styles.row, styles.rowLeft]}>
+      <View style={styles.bubbleThem}>
+        {showName && (
+          <Text style={[styles.senderName, { color: getColor(senderName) }]}>
+            {senderName}
+          </Text>
+        )}
+        <Text style={styles.textBase}>{msg.message}</Text>
+        <View style={styles.metaThem}>
+          <Text style={styles.timeText}>{formattedTime}</Text>
         </View>
-      ))}
-      {names.length > 3 && (
-        <View style={{
-          width: 24, height: 24, borderRadius: 12,
-          backgroundColor: '#E2E8F0',
-          alignItems: 'center', justifyContent: 'center',
-          marginLeft: -8, borderWidth: 2, borderColor: WHITE,
-        }}>
-          <Text style={{ color: '#64748B', fontSize: 8, fontWeight: '700' }}>+{names.length - 3}</Text>
-        </View>
-      )}
+      </View>
     </View>
   );
 }
 
-function RoomCard({ item, idx, onPress }: any) {
-  const accent = ROOM_ACCENTS[idx % ROOM_ACCENTS.length];
-  const bg     = ROOM_BGETS[idx % ROOM_BGETS.length];
-
-  return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.78}>
-      {/* Icon */}
-      <View style={[styles.cardIcon, { backgroundColor: bg }]}>
-        <Text style={[styles.cardIconNum, { color: accent }]}>{item.room}</Text>
-        <Text style={[styles.cardIconLbl, { color: accent }]}>Room</Text>
-      </View>
-
-      {/* Info */}
-      <View style={styles.cardBody}>
-        <View style={styles.cardTop}>
-          <Text style={styles.cardTitle}>Room {item.room}</Text>
-          <Text style={[styles.cardTime, item.unread > 0 && { color: accent, fontWeight: '700' }]}>
-            {item.time}
-          </Text>
-        </View>
-        <Text style={styles.cardMsg} numberOfLines={1}>
-          <Text style={{ fontWeight: '600', color: '#475569' }}>{item.lastSender}: </Text>
-          {item.lastMsg}
-        </Text>
-        <View style={styles.cardBottom}>
-          <AvatarStack names={item.memberNames} accent={accent} />
-          <Text style={styles.cardMembers}>{item.members} members</Text>
-          {item.unread > 0 && (
-            <View style={[styles.badge, { backgroundColor: accent }]}>
-              <Text style={styles.badgeText}>{item.unread > 99 ? '99+' : item.unread}</Text>
-            </View>
-          )}
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-}
-
-export default function MessagesScreen({ navigation }: any) {
+export default function MessagesScreen() {
   const { user } = useAuth();
-  const [search, setSearch] = useState('');
+  const { messages, sendMessage, isConnected, sendTyping, stopTyping } = useChat();
+  const navigation = useNavigation<any>();
 
-  const initials = (user?.name || 'VD').split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase();
+  const [text, setText] = useState('');
+  const flatRef = useRef<FlatList>(null);
+  const scale = useRef(new Animated.Value(1)).current;
 
-  const filtered = search.trim()
-    ? ALL_ROOMS.filter(r =>
-        r.room.includes(search) ||
-        r.lastMsg.toLowerCase().includes(search.toLowerCase()) ||
-        r.lastSender.toLowerCase().includes(search.toLowerCase())
-      )
-    : ALL_ROOMS;
+  // We are in the Messages tab. The tab bar is visible by default.
+  // We handle the back button by going back to Home.
+  const handleBack = () => {
+    navigation.navigate('Home');
+  };
+
+  const handleSend = () => {
+    const t = text.trim();
+    if (!t) return;
+
+    Animated.sequence([
+      Animated.timing(scale, { toValue: 0.85, duration: 80, useNativeDriver: true }),
+      Animated.timing(scale, { toValue: 1,    duration: 100, useNativeDriver: true }),
+    ]).start();
+
+    sendMessage(t);
+    setText('');
+    stopTyping();
+  };
+
+  const handleTextChange = (val: string) => {
+    setText(val);
+    if (val.length > 0) {
+      sendTyping();
+    } else {
+      stopTyping();
+    }
+  };
+
+  if (!user?.room_id) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ color: '#64748B', fontSize: 16 }}>You are not assigned to any room.</Text>
+      </View>
+    );
+  }
 
   return (
-    <View style={styles.root}>
+    <View style={{ flex: 1, backgroundColor: WA_BG }}>
       <StatusBar barStyle="light-content" backgroundColor={BLUE} />
 
-      {/* ── Blue Header ─────────────────────────────────────────────────── */}
+      {/* Header */}
       <View style={{ backgroundColor: BLUE }}>
         <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
           <View style={styles.header}>
-            <View>
-              <Text style={styles.headerTitle}>Chats</Text>
-              <Text style={styles.headerSub}>{ALL_ROOMS.length} room groups</Text>
-            </View>
-            <View style={styles.headerRight}>
-              <TouchableOpacity style={styles.hBtn} onPress={() => navigation.navigate('Notifications')}>
-                <Bell size={20} color={WHITE} />
-                <View style={styles.hBadge}><Text style={styles.hBadgeText}>3</Text></View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <TouchableOpacity onPress={handleBack} style={{ padding: 4 }}>
+                <ArrowLeft size={24} color={WHITE} />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.hAvatar} onPress={() => navigation.navigate('Profile')}>
-                <Text style={styles.hAvatarText}>{initials}</Text>
+              <View>
+                <Text style={styles.headerTitle}>Room {user.room_number || 'Chat'}</Text>
+                <Text style={styles.headerSub}>
+                  {isConnected ? 'Online' : 'Connecting...'}
+                </Text>
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 16 }}>
+              {/* Call buttons removed as per request */}
+              <TouchableOpacity>
+                <MoreVertical size={24} color={WHITE} />
               </TouchableOpacity>
             </View>
           </View>
         </SafeAreaView>
-
-        {/* Curve bottom */}
-        <Svg width={W} height={24} viewBox={`0 0 ${W} 24`} preserveAspectRatio="none">
-          <Path d={`M0,0 Q${W / 2},24 ${W},0 L${W},24 L0,24 Z`} fill="#F1F5F9" />
-        </Svg>
       </View>
 
-      {/* ── Search ──────────────────────────────────────────────────────── */}
-      <View style={styles.searchWrap}>
-        <Search size={18} color="#94A3B8" />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search rooms..."
-          placeholderTextColor="#94A3B8"
-          value={search}
-          onChangeText={setSearch}
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }} 
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <FlatList
+          ref={flatRef}
+          data={messages}
+          keyExtractor={(item) => item.id.toString()}
+          inverted
+          contentContainerStyle={{ padding: 16, gap: 12 }}
+          showsVerticalScrollIndicator={false}
+          renderItem={({ item, index }) => {
+            const nextItem = messages[index + 1];
+            const showName = !nextItem || nextItem.sender_id !== item.sender_id;
+            return <Bubble msg={item} showName={showName} />;
+          }}
         />
-      </View>
 
-      {/* ── Room List ───────────────────────────────────────────────────── */}
-      <FlatList
-        data={filtered}
-        keyExtractor={item => item.id}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 120, gap: 12 }}
-        renderItem={({ item, index }) => (
-          <RoomCard
-            item={item}
-            idx={index}
-            onPress={() => navigation.navigate('ChatScreen', { room: item })}
-          />
-        )}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <MessageCircle size={40} color="#CBD5E1" />
-            <Text style={styles.emptyText}>No rooms found</Text>
+        {/* Input Bar */}
+        <SafeAreaView edges={['bottom']} style={{ backgroundColor: 'transparent' }}>
+          <View style={styles.inputWrap}>
+            <View style={styles.inputBox}>
+              <TouchableOpacity style={styles.iconBtn}>
+                <Smile size={24} color="#64748B" />
+              </TouchableOpacity>
+              <TextInput
+                style={styles.input}
+                placeholder="Message"
+                placeholderTextColor="#94A3B8"
+                value={text}
+                onChangeText={handleTextChange}
+                multiline
+                maxLength={1000}
+              />
+              <TouchableOpacity style={styles.iconBtn}>
+                <Paperclip size={22} color="#64748B" />
+              </TouchableOpacity>
+              {!text && (
+                <TouchableOpacity style={[styles.iconBtn, { marginLeft: 4 }]}>
+                  <Camera size={22} color="#64748B" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <Animated.View style={{ transform: [{ scale }] }}>
+              <TouchableOpacity style={styles.sendBtn} onPress={text ? handleSend : () => {}}>
+                {text ? (
+                  <Send size={20} color={WHITE} style={{ marginLeft: 2 }} />
+                ) : (
+                  <Mic size={22} color={WHITE} />
+                )}
+              </TouchableOpacity>
+            </Animated.View>
           </View>
-        }
-      />
-
+        </SafeAreaView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F1F5F9' },
-
-  // Header
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8,
+    paddingHorizontal: 16, paddingVertical: 12,
   },
-  headerTitle: { color: WHITE, fontSize: 22, fontWeight: '800' },
-  headerSub: { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 2 },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  hBtn: {
-    width: 38, height: 38, borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+  headerTitle: { color: WHITE, fontSize: 18, fontWeight: '700' },
+  headerSub: { color: 'rgba(255,255,255,0.8)', fontSize: 12, marginTop: 2 },
+  
+  inputWrap: {
+    flexDirection: 'row', alignItems: 'flex-end', gap: 8,
+    paddingHorizontal: 8, paddingVertical: 8,
+  },
+  inputBox: {
+    flex: 1, flexDirection: 'row', alignItems: 'flex-end',
+    backgroundColor: WHITE, borderRadius: 24, paddingHorizontal: 12, paddingVertical: 8,
+    minHeight: 48, maxHeight: 120,
+  },
+  input: {
+    flex: 1, fontSize: 16, color: '#0F172A',
+    paddingTop: 4, paddingBottom: 4,
+    marginHorizontal: 8,
+  },
+  iconBtn: { padding: 4, justifyContent: 'center', alignItems: 'center', height: 32 },
+  sendBtn: {
+    width: 48, height: 48, borderRadius: 24,
+    backgroundColor: '#10B981', // WhatsApp green
     alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15, shadowRadius: 2, elevation: 2,
   },
-  hBadge: {
-    position: 'absolute', top: -2, right: -2,
-    width: 16, height: 16, borderRadius: 8,
-    backgroundColor: '#EF4444',
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: BLUE,
-  },
-  hBadgeText: { color: WHITE, fontSize: 9, fontWeight: '800' },
-  hAvatar: {
-    width: 38, height: 38, borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: 'rgba(255,255,255,0.5)',
-  },
-  hAvatarText: { color: WHITE, fontWeight: '800', fontSize: 14 },
 
-  // Search
-  searchWrap: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: WHITE, borderRadius: 14,
-    marginHorizontal: 16, marginVertical: 14,
-    paddingHorizontal: 14, height: 44,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06, shadowRadius: 6, elevation: 3,
+  row: { flexDirection: 'row', marginBottom: 2 },
+  rowLeft: { justifyContent: 'flex-start', paddingRight: 60 },
+  rowRight: { justifyContent: 'flex-end', paddingLeft: 60 },
+  
+  bubbleMe: {
+    backgroundColor: MY_BUBBLE, borderRadius: 16, borderTopRightRadius: 4,
+    paddingHorizontal: 12, paddingVertical: 8, minWidth: 80,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 1, elevation: 1,
   },
-  searchInput: { flex: 1, fontSize: 14, color: '#0F172A' },
-
-  // Card
-  card: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
-    backgroundColor: WHITE, borderRadius: 18, padding: 14,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06, shadowRadius: 6, elevation: 3,
+  bubbleThem: {
+    backgroundColor: WHITE, borderRadius: 16, borderTopLeftRadius: 4,
+    paddingHorizontal: 12, paddingVertical: 8, minWidth: 80,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 1, elevation: 1,
   },
-  cardIcon: {
-    width: 56, height: 56, borderRadius: 16,
-    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-  },
-  cardIconNum: { fontSize: 18, fontWeight: '900' },
-  cardIconLbl: { fontSize: 9, fontWeight: '600', marginTop: -2 },
-  cardBody: { flex: 1 },
-  cardTop: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    marginBottom: 3,
-  },
-  cardTitle: { fontSize: 15, fontWeight: '700', color: '#0F172A' },
-  cardTime: { fontSize: 11, color: '#94A3B8', fontWeight: '500' },
-  cardMsg: { fontSize: 13, color: '#64748B', marginBottom: 8, lineHeight: 18 },
-  cardBottom: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  cardMembers: { fontSize: 11, color: '#94A3B8', flex: 1 },
-  badge: {
-    minWidth: 20, height: 20, borderRadius: 10,
-    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5,
-  },
-  badgeText: { color: WHITE, fontSize: 10, fontWeight: '800' },
-
-  // Empty
-  empty: { alignItems: 'center', paddingTop: 60, gap: 12 },
-  emptyText: { fontSize: 15, color: '#94A3B8', fontWeight: '500' },
+  senderName: { fontSize: 13, fontWeight: '700', marginBottom: 2 },
+  textBase: { fontSize: 15, color: '#0F172A', lineHeight: 20 },
+  
+  metaMe: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginTop: 4 },
+  metaThem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginTop: 4 },
+  timeText: { fontSize: 11, color: '#94A3B8' },
 });

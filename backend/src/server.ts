@@ -1,13 +1,16 @@
 import express from 'express';
+import { createServer } from 'http';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
+import { setupSocket } from './socket/index.js';
 import authRoutes from './routes/auth.routes.js';
 import db from './config/database.js';
 import hostelRoutes from './routes/hostel.routes.js';
 import userRoutes from './routes/user.routes.js';
 import roomRoutes from './routes/roomRoutes.js';
 import studentRoutes from './routes/studentRoutes.js';
+import chatRoutes from './routes/chatRoutes.js';
 import feeRoutes from './routes/feeRoutes.js';
 import monthlyFeeRoutes from './routes/monthlyFeeRoutes.js';
 import incomeRoutes from './routes/incomeRoutes.js';
@@ -28,12 +31,16 @@ import messMenuRoutes from './routes/messMenuRoutes.js';
 import tenantExpenseRoutes from './routes/tenantExpenseRoutes.js';
 import { startMonthlyFeesGenerationJob } from './jobs/monthlyFeesGeneration.js';
 import { startGuestOverstayJob } from './jobs/guestOverstay.js';
+import { startChatResetJob } from './jobs/chatReset.js';
 import { sendNotificationToHostelOwner } from './utils/notification.js';
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
+const httpServer = createServer(app);
+setupSocket(httpServer);
+
 const PORT = parseInt(process.env.PORT || '8081', 10);
 const HOST = process.env.HOST || '0.0.0.0';
 const NODE_ENV = process.env.NODE_ENV || 'development';
@@ -80,6 +87,7 @@ app.use('/api/hostels', hostelRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/students', studentRoutes);
+app.use('/api/chat', chatRoutes);
 app.use('/api/fees', feeRoutes);
 app.use('/api/monthly-fees', monthlyFeeRoutes);
 app.use('/api/month-fees', monthlyFeeRoutes); // Alias for common typo
@@ -344,7 +352,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 });
 
 // Start server
-app.listen(PORT, HOST, () => {
+httpServer.listen(PORT, HOST, () => {
   const serverAddress = NODE_ENV === 'production'
     ? `Port ${PORT}`
     : `http://localhost:${PORT}`;
@@ -356,6 +364,7 @@ app.listen(PORT, HOST, () => {
   // Start cron jobs
   startMonthlyFeesGenerationJob();
   startGuestOverstayJob();
+  startChatResetJob();
   console.log(`⏰ Cron jobs initialized`);
 });
 

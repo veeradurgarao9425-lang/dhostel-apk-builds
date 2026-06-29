@@ -953,8 +953,14 @@ export const authController = {
       }
 
       const tenant = await db('students')
-        .select('students.*', 'rooms.room_number')
+        .select(
+          'students.*', 
+          'rooms.room_number', 
+          'rooms.is_available as room_active',
+          'hostel_master.is_active as hostel_active'
+        )
         .leftJoin('rooms', 'rooms.room_id', 'students.room_id')
+        .leftJoin('hostel_master', 'hostel_master.hostel_id', 'students.hostel_id')
         .where('students.hostel_id', hostel_id)
         .andWhere(function() {
           this.where('students.email', identifier).orWhere('students.phone', identifier);
@@ -965,11 +971,31 @@ export const authController = {
         return res.json({
           success: true,
           isNewUser: true,
-          data: {
-            identifier,
-            hostel_id
-          }
+          data: { identifier, hostel_id }
         });
+      }
+
+      // --- STRICT LOGIN VALIDATIONS ---
+      
+      // 1. Check if Hostel is Active
+      if (!tenant.hostel_active) {
+        return res.status(403).json({ success: false, error: 'This hostel is currently inactive. Contact administration.' });
+      }
+
+      // 2. Check if Tenant is Active (status = 1)
+      if (Number(tenant.status) !== 1) {
+        return res.status(403).json({ success: false, error: 'Your account is inactive or pending approval.' });
+      }
+
+      // 3. Check Room Assignment
+      if (!tenant.room_id) {
+        return res.status(403).json({ success: false, error: 'You are not assigned to any room. Contact hostel administration.' });
+      }
+
+      // 4. Check if Room is Active
+      // Assuming is_available serves as the room active flag or simply if room was deleted.
+      if (tenant.room_active === 0 || tenant.room_active === false) {
+        return res.status(403).json({ success: false, error: 'Your assigned room is currently inactive.' });
       }
 
       await db('otps').where('email', identifier).del();
@@ -1102,13 +1128,34 @@ export const authController = {
       }
 
       const tenant = await db('students')
-        .select('students.*', 'rooms.room_number', 'rooms.rent_per_bed')
+        .select(
+          'students.*', 
+          'rooms.room_number', 
+          'rooms.rent_per_bed',
+          'rooms.is_available as room_active',
+          'hostel_master.is_active as hostel_active'
+        )
         .leftJoin('rooms', 'rooms.room_id', 'students.room_id')
+        .leftJoin('hostel_master', 'hostel_master.hostel_id', 'students.hostel_id')
         .where('students.student_id', studentId)
         .first();
 
       if (!tenant) {
         return res.status(404).json({ success: false, error: 'Tenant not found' });
+      }
+
+      // --- STRICT LOGIN VALIDATIONS ---
+      if (!tenant.hostel_active) {
+        return res.status(403).json({ success: false, error: 'This hostel is currently inactive. Contact administration.' });
+      }
+      if (Number(tenant.status) !== 1) {
+        return res.status(403).json({ success: false, error: 'Your account is inactive or pending approval.' });
+      }
+      if (!tenant.room_id) {
+        return res.status(403).json({ success: false, error: 'You are not assigned to any room. Contact hostel administration.' });
+      }
+      if (tenant.room_active === 0 || tenant.room_active === false) {
+        return res.status(403).json({ success: false, error: 'Your assigned room is currently inactive.' });
       }
 
       const status = Number(tenant.status);

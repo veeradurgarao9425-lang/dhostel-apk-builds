@@ -2,6 +2,7 @@ import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { sendNotificationToHostelOwner } from '../utils/notification.js';
+import { kickUserFromRoomChat } from '../socket/index.js';
 
 // Helper function to convert ISO datetime string to date-only format (YYYY-MM-DD)
 const convertToDateOnly = (dateValue: any): string | null => {
@@ -656,6 +657,7 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
             .where({ room_id: oldRoomId })
             .decrement('occupied_beds', 1);
           console.log(`Decremented occupied_beds for room ${oldRoomId} when student ${studentId} became inactive`);
+          kickUserFromRoomChat(parseInt(studentId), oldRoomId);
         } catch (bedError: any) {
           console.error('Error decrementing room occupied_beds:', bedError);
         }
@@ -684,6 +686,7 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
             .where({ room_id: finalRoomId })
             .increment('occupied_beds', 1);
           console.log(`Student ${studentId} moved from room ${oldRoomId} to ${finalRoomId}`);
+          kickUserFromRoomChat(parseInt(studentId), oldRoomId);
         } catch (bedError: any) {
           console.error('Error updating room occupied_beds:', bedError);
         }
@@ -891,6 +894,8 @@ export const allocateRoom = async (req: AuthRequest, res: Response) => {
       await db('rooms')
         .where({ room_id: oldRoomId })
         .decrement('occupied_beds', 1);
+      
+      kickUserFromRoomChat(parseInt(studentId), oldRoomId);
     }
 
     // Update student with new room. Allocating a room activates the tenant —
