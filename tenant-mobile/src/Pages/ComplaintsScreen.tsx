@@ -3,7 +3,8 @@ import {
   StyleSheet, Text, TouchableOpacity, View, ScrollView, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { ArrowLeft, Plus, CheckCircle, Clock, AlertCircle, Trash2, Camera, X, Wrench, MoreHorizontal } from 'lucide-react-native';
 import { colors, radius, spacing, shadow } from '../theme';
 import { Complaint } from '../data/tenantContent';
 

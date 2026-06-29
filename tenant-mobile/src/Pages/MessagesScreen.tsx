@@ -7,7 +7,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ArrowLeft, MoreVertical, Send,
-  Paperclip, Smile, CheckCheck, Mic, Camera
+  Paperclip, Smile, CheckCheck, Mic, Camera, MessageCircle
 } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import { useChat, Message } from '../context/ChatContext';
@@ -115,8 +115,41 @@ export default function MessagesScreen() {
 
   if (!user?.room_id) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ color: '#64748B', fontSize: 16 }}>You are not assigned to any room.</Text>
+      <View style={{ flex: 1, backgroundColor: '#F1F5F9' }}>
+        <StatusBar barStyle="light-content" backgroundColor={BLUE} />
+        
+        {/* Header */}
+        <View style={{ backgroundColor: BLUE }}>
+          <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
+            <View style={styles.header}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <TouchableOpacity onPress={handleBack} style={{ padding: 4 }}>
+                  <ArrowLeft size={24} color={WHITE} />
+                </TouchableOpacity>
+                <View>
+                  <Text style={styles.headerTitle}>Messages</Text>
+                  <Text style={styles.headerSub}>Not Assigned</Text>
+                </View>
+              </View>
+            </View>
+          </SafeAreaView>
+        </View>
+
+        {/* Empty State */}
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
+          <View style={{
+            width: 80, height: 80, borderRadius: 40,
+            backgroundColor: 'rgba(34, 69, 212, 0.1)',
+            alignItems: 'center', justifyContent: 'center',
+            marginBottom: 20
+          }}>
+            <MessageCircle size={40} color={BLUE} />
+          </View>
+          <Text style={{ fontSize: 20, fontWeight: '700', color: '#0F172A', marginBottom: 8 }}>No Room Assigned</Text>
+          <Text style={{ fontSize: 15, color: '#64748B', textAlign: 'center', lineHeight: 22 }}>
+            You are currently not assigned to any room. You will automatically join your room's group chat once assigned.
+          </Text>
+        </View>
       </View>
     );
   }

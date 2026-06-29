@@ -1148,20 +1148,13 @@ export const authController = {
       if (!tenant.hostel_active) {
         return res.status(403).json({ success: false, error: 'This hostel is currently inactive. Contact administration.' });
       }
-      if (Number(tenant.status) !== 1) {
-        return res.status(403).json({ success: false, error: 'Your account is inactive or pending approval.' });
-      }
-      if (!tenant.room_id) {
-        return res.status(403).json({ success: false, error: 'You are not assigned to any room. Contact hostel administration.' });
-      }
-      if (tenant.room_active === 0 || tenant.room_active === false) {
-        return res.status(403).json({ success: false, error: 'Your assigned room is currently inactive.' });
-      }
+      // Instead of returning 403, just return a normal response with is_allocated: false
+      // so the frontend can display the 'Pending Approval' or 'Not Allocated' UI
+      // without spamming the console with 403 network errors during polling.
 
       const status = Number(tenant.status);
       // Allocated only once the owner has set a room AND marked the tenant active
-      // (status 3 = pending mobile registration awaiting owner action).
-      const isAllocated = tenant.room_id != null && status === 1;
+      const isAllocated = tenant.room_id != null && status === 1 && tenant.room_active !== 0;
 
       const dueRow = await db('monthly_fees')
         .where('student_id', studentId)

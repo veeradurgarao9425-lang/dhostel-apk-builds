@@ -1,95 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import {
-  StyleSheet, Text, TouchableOpacity, View, ScrollView,
+  StyleSheet, Text, TouchableOpacity, View, ScrollView, StatusBar
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import {
-  Search, SlidersHorizontal, Megaphone, Bell, AlertCircle,
-  Wrench, UtensilsCrossed, ArrowLeft,
+  Bell, AlertCircle, Wrench, UtensilsCrossed, ChevronRight, SlidersHorizontal
 } from 'lucide-react-native';
-import { colors, radius, spacing, font, shadow } from '../theme';
-import { sampleNotices, Notice } from '../data/tenantContent';
 import api from '../services/api';
+
+const BLUE = '#2245D4';
+const WHITE = '#FFFFFF';
 
 type FilterTab = 'All' | 'Important' | 'Maintenance' | 'Food';
 const FILTER_TABS: FilterTab[] = ['All', 'Important', 'Maintenance', 'Food'];
 
-const categoryMeta: Record<string, {
-  icon: any;
-  iconColor: string;
-  iconBg: string;
-  accentColor: string;
-  label: string;
-}> = {
-  Important: { icon: AlertCircle, iconColor: colors.danger, iconBg: colors.dangerSoft, accentColor: colors.danger, label: 'Important' },
-  Maintenance: { icon: Wrench, iconColor: colors.warning, iconBg: colors.warningSoft, accentColor: colors.warning, label: 'Maintenance' },
-  General: { icon: Bell, iconColor: colors.primary, iconBg: colors.primarySoft, accentColor: colors.primary, label: 'General' },
-  Food: { icon: UtensilsCrossed, iconColor: colors.success, iconBg: colors.successSoft, accentColor: colors.success, label: 'Food' },
+const categoryMeta: Record<string, { icon: any; iconColor: string; iconBg: string }> = {
+  Important: { icon: AlertCircle, iconColor: '#EF4444', iconBg: '#FEE2E2' },
+  Maintenance: { icon: Wrench, iconColor: '#F59E0B', iconBg: '#FEF3C7' },
+  General: { icon: Bell, iconColor: '#3B82F6', iconBg: '#EFF6FF' },
+  Food: { icon: UtensilsCrossed, iconColor: '#10B981', iconBg: '#D1FAE5' },
 };
-
-function timeAgo(dateStr: string): string {
-  const now = new Date();
-  const then = new Date(dateStr);
-  const diffMs = now.getTime() - then.getTime();
-  const diffH = Math.floor(diffMs / 3600000);
-  const diffD = Math.floor(diffMs / 86400000);
-  if (diffH < 1) return 'Just now';
-  if (diffH < 24) return `${diffH}h ago`;
-  return `${diffD}d ago`;
-}
-
-function groupNoticesByDate(notices: Notice[]) {
-  const now = new Date();
-  const todayStr = now.toISOString().split('T')[0];
-  const yesterday = new Date(now);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = yesterday.toISOString().split('T')[0];
-
-  return [
-    ...(notices.filter((n) => n.date === todayStr).length
-      ? [{ label: 'Today', items: notices.filter((n) => n.date === todayStr) }]
-      : []),
-    ...(notices.filter((n) => n.date === yesterdayStr).length
-      ? [{ label: 'Yesterday', items: notices.filter((n) => n.date === yesterdayStr) }]
-      : []),
-    ...(notices.filter((n) => n.date < yesterdayStr).length
-      ? [{ label: 'Earlier', items: notices.filter((n) => n.date < yesterdayStr) }]
-      : []),
-  ];
-}
-
-function NoticeRow({ notice, isLast }: { notice: Notice; isLast: boolean }) {
-  const meta = categoryMeta[notice.category] || categoryMeta['General'];
-  const Icon = meta.icon;
-
-  return (
-    <TouchableOpacity
-      style={[styles.noticeRow, !isLast && styles.noticeRowDivider]}
-      activeOpacity={0.72}
-    >
-      {/* Icon */}
-      <View style={[styles.noticeIcon, { backgroundColor: meta.iconBg }]}>
-        <Icon size={18} color={meta.iconColor} strokeWidth={1.5} />
-      </View>
-
-      {/* Content */}
-      <View style={{ flex: 1 }}>
-        <View style={styles.noticeTopRow}>
-          <Text style={styles.noticeTitle} numberOfLines={1}>{notice.title}</Text>
-          {notice.pinned && <View style={styles.unreadDot} />}
-        </View>
-        <Text style={styles.noticeText} numberOfLines={2}>{notice.body}</Text>
-        <Text style={styles.noticeTime}>{timeAgo(notice.date)}</Text>
-      </View>
-    </TouchableOpacity>
-  );
-}
 
 export default function NoticesScreen({ navigation }: any) {
   const [activeFilter, setActiveFilter] = useState<FilterTab>('All');
-  const [notices, setNotices] = useState<Notice[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [notices, setNotices] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchNotices = async () => {
@@ -102,66 +36,47 @@ export default function NoticesScreen({ navigation }: any) {
             body: n.content,
             category: n.notice_type || 'General',
             date: n.created_at.slice(0, 10),
-            pinned: false,
           }));
           setNotices(formatted);
         }
       } catch (err) {
         console.error('Failed to fetch notices:', err);
-      } finally {
-        setLoading(false);
       }
     };
     fetchNotices();
   }, []);
 
-  const displayNotices = notices.length > 0 ? notices : [];
-  const filtered = displayNotices.filter((n) =>
-    activeFilter === 'All' ? true : n.category === activeFilter
-  );
-  const grouped = groupNoticesByDate(filtered);
+  const filtered = notices.filter((n) => activeFilter === 'All' ? true : n.category === activeFilter);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* ── Gradient Header ─────────────────────────────────────────────── */}
-      <LinearGradient
-        colors={[colors.gradientStart, colors.gradientEnd]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.header}
-      >
-        <View style={styles.hCircle1} />
-        <View style={styles.hCircle2} />
-
-        <View style={styles.headerRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.headerEyebrow}>Announcements</Text>
-            <Text style={styles.headerTitle}>Notices</Text>
-          </View>
-          <View style={styles.headerActions}>
-            <View style={styles.backBtn} />
-            <TouchableOpacity style={styles.headerIconBtn} activeOpacity={0.75}>
-              <SlidersHorizontal size={18} color="#fff" />
+    <View style={styles.root}>
+      <StatusBar barStyle="light-content" backgroundColor={BLUE} />
+      
+      {/* ── Blue Header ─────────────────────────────────────────────────────────── */}
+      <View style={styles.headerWrap}>
+        <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
+          <View style={styles.header}>
+            <View>
+              <Text style={styles.headerGreeting}>Notices</Text>
+              <Text style={styles.headerSub}>Latest hostel announcements</Text>
+            </View>
+            <TouchableOpacity style={styles.hBtn}>
+              <SlidersHorizontal size={20} color={WHITE} />
             </TouchableOpacity>
           </View>
-        </View>
-      </LinearGradient>
+        </SafeAreaView>
+      </View>
 
-      {/* ── Filter tabs ─────────────────────────────────────────────────── */}
-      <View style={styles.filterWrapper}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterScroll}
-        >
+      {/* ── Filter Tabs ──────────────────────────────────────────────────────── */}
+      <View style={styles.filterScroll}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContainer}>
           {FILTER_TABS.map((tab) => (
             <TouchableOpacity
               key={tab}
-              style={[styles.filterTab, activeFilter === tab && styles.filterTabActive]}
+              style={[styles.filterChip, activeFilter === tab && styles.filterChipActive]}
               onPress={() => setActiveFilter(tab)}
-              activeOpacity={0.7}
             >
-              <Text style={[styles.filterTabText, activeFilter === tab && styles.filterTabTextActive]}>
+              <Text style={[styles.filterText, activeFilter === tab && styles.filterTextActive]}>
                 {tab}
               </Text>
             </TouchableOpacity>
@@ -169,156 +84,76 @@ export default function NoticesScreen({ navigation }: any) {
         </ScrollView>
       </View>
 
-      {/* ── List ────────────────────────────────────────────────────────── */}
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
-      >
-        {grouped.length === 0 ? (
-          <View style={styles.empty}>
-            <View style={styles.emptyIconWrap}>
-              <Megaphone size={28} color={colors.textSubtle} strokeWidth={1.5} />
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+        <View style={styles.noticesWrapper}>
+          {filtered.length > 0 ? (
+            filtered.map((notice) => {
+              const meta = categoryMeta[notice.category] || categoryMeta.General;
+              const Icon = meta.icon;
+              return (
+                <TouchableOpacity key={notice.id} style={styles.noticeCard} activeOpacity={0.7}>
+                  <View style={[styles.noticeIconWrap, { backgroundColor: meta.iconBg }]}>
+                    <Icon size={18} color={meta.iconColor} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.noticeTitle} numberOfLines={1}>{notice.title}</Text>
+                    <Text style={styles.noticeBody} numberOfLines={2}>{notice.body}</Text>
+                    <Text style={styles.noticeDate}>{notice.date}</Text>
+                  </View>
+                  <ChevronRight size={18} color="#CBD5E1" />
+                </TouchableOpacity>
+              );
+            })
+          ) : (
+            <View style={styles.emptyState}>
+              <Bell size={40} color="#94A3B8" />
+              <Text style={styles.emptyText}>No notices found in this category.</Text>
             </View>
-            <Text style={styles.emptyTitle}>No notices</Text>
-            <Text style={styles.emptyBody}>
-              Announcements from your hostel will appear here.
-            </Text>
-          </View>
-        ) : (
-          grouped.map(({ label, items }) => (
-            <View key={label}>
-              <Text style={styles.groupLabel}>{label}</Text>
-              <View style={styles.noticeCard}>
-                {items.map((notice, i) => (
-                  <NoticeRow
-                    key={notice.id}
-                    notice={notice}
-                    isLast={i === items.length - 1}
-                  />
-                ))}
-              </View>
-            </View>
-          ))
-        )}
+          )}
+        </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
-// ── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
-
-  // ── Header ────────────────────────────────────────────────────────────────
+  root: { flex: 1, backgroundColor: '#F8FAFC' },
+  headerWrap: { backgroundColor: BLUE, paddingBottom: 16 },
   header: {
-    paddingHorizontal: spacing.xl,
-    paddingTop: 12,
-    paddingBottom: 20,
-    overflow: 'hidden',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8,
   },
-  hCircle1: {
-    position: 'absolute', width: 130, height: 130, borderRadius: 65,
-    backgroundColor: 'rgba(255,255,255,0.07)', top: -40, right: -20,
-  },
-  hCircle2: {
-    position: 'absolute', width: 60, height: 60, borderRadius: 30,
-    backgroundColor: 'rgba(255,255,255,0.05)', bottom: 10, right: 80,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  headerEyebrow: { fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: '500' },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: '#fff', letterSpacing: -0.3, marginTop: 3 },
-  headerActions: { flexDirection: 'row', gap: spacing.sm },
-  headerIconBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+  headerGreeting: { color: WHITE, fontSize: 24, fontWeight: '800' },
+  headerSub: { color: 'rgba(255,255,255,0.8)', fontSize: 13, marginTop: 4, fontWeight: '500' },
+  hBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center', justifyContent: 'center',
   },
+  
+  filterScroll: { backgroundColor: '#F8FAFC', paddingVertical: 12 },
+  filterContainer: { paddingHorizontal: 16, gap: 10 },
+  filterChip: {
+    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
+    backgroundColor: WHITE, borderWidth: 1, borderColor: '#E2E8F0',
+  },
+  filterChipActive: { backgroundColor: BLUE, borderColor: BLUE },
+  filterText: { fontSize: 13, fontWeight: '600', color: '#64748B' },
+  filterTextActive: { color: WHITE },
 
-  // ── Filter ────────────────────────────────────────────────────────────────
-  filterWrapper: {
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  filterScroll: {
-    paddingHorizontal: spacing.xl,
-    paddingVertical: 12,
-    gap: spacing.sm,
-  },
-  filterTab: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surfaceAlt,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  filterTabActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  filterTabText: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
-  filterTabTextActive: { color: '#fff', fontWeight: '700' },
-
-  // ── List ──────────────────────────────────────────────────────────────────
-  listContent: { paddingHorizontal: spacing.xl, paddingBottom: 120, paddingTop: spacing.lg },
-
-  groupLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.textSubtle,
-    marginBottom: spacing.sm,
-    marginTop: spacing.sm,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-
-  // White rounded container (not individual cards)
+  noticesWrapper: { paddingHorizontal: 16, paddingTop: 12, gap: 12 },
   noticeCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius['2xl'],
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: 'hidden',
-    marginBottom: spacing.md,
-    ...shadow.card,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: WHITE, borderRadius: 16, padding: 16,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03, shadowRadius: 6, elevation: 1,
+    borderWidth: 1, borderColor: '#F1F5F9'
   },
-  noticeRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    padding: 16,
-  },
-  noticeRowDivider: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  noticeIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: radius.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  noticeTopRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 3 },
-  noticeTitle: { fontSize: 14, fontWeight: '700', color: colors.text, flex: 1 },
-  unreadDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.danger, flexShrink: 0 },
-  noticeText: { fontSize: 13, color: colors.textMuted, lineHeight: 18, marginBottom: 6 },
-  noticeTime: { fontSize: 11, color: colors.textSubtle, fontWeight: '500' },
+  noticeIconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  noticeTitle: { fontSize: 15, fontWeight: '700', color: '#0F172A', marginBottom: 4 },
+  noticeBody: { fontSize: 13, color: '#64748B', lineHeight: 18, marginBottom: 6 },
+  noticeDate: { fontSize: 11, color: '#94A3B8', fontWeight: '500' },
 
-  // ── Empty ─────────────────────────────────────────────────────────────────
-  empty: { alignItems: 'center', paddingTop: 80, gap: spacing.md },
-  emptyIconWrap: {
-    width: 64, height: 64, borderRadius: 32,
-    backgroundColor: colors.surface,
-    borderWidth: 1, borderColor: colors.border,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
-  emptyBody: { fontSize: 14, color: colors.textMuted, textAlign: 'center', paddingHorizontal: 40 },
+  emptyState: { alignItems: 'center', justifyContent: 'center', marginTop: 80, opacity: 0.7 },
+  emptyText: { marginTop: 16, fontSize: 15, color: '#64748B', fontWeight: '500' },
 });

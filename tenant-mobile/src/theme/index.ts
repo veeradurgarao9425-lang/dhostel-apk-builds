@@ -11,16 +11,17 @@ import { Platform, TextStyle, ViewStyle } from 'react-native';
 // ── Color Palette ─────────────────────────────────────────────────────────────
 export const colors = {
   // Brand — Warm Brown / Chocolate
-  primary: '#7B3A2A',          // Brand brown
-  primaryDark: '#5C2A1C',      // Gradient start / pressed state
-  primaryLight: '#9B5240',     // Gradient end / lighter variant
-  primarySoft: '#F5EDE9',      // Tinted surface — icon backgrounds, chips
-  primaryBorder: '#E8C5B5',    // Soft brown border
-  accent: '#A0522D',           // Secondary accent
+  // Brand — Blue
+  primary: '#2245D4',          // Brand blue
+  primaryDark: '#1E3A8A',      // Gradient start / pressed state
+  primaryLight: '#3B82F6',     // Gradient end / lighter variant
+  primarySoft: '#EEF2FF',      // Tinted surface — icon backgrounds, chips
+  primaryBorder: '#BFDBFE',    // Soft blue border
+  accent: '#F97316',           // Secondary accent (Orange for contrast)
 
   // Gradient — used on headers and primary buttons
-  gradientStart: '#5C2A1C',
-  gradientEnd: '#9B5240',
+  gradientStart: '#1E3A8A',
+  gradientEnd: '#2245D4',
 
   // Surfaces
   bg: '#FAFAFC',               // App background — near-white
@@ -99,7 +100,7 @@ export const shadow = {
   // Standard card shadow
   card: Platform.select<ViewStyle>({
     ios: {
-      shadowColor: '#7B3A2A',
+      shadowColor: '#2245D4',
       shadowOpacity: 0.06,
       shadowRadius: 12,
       shadowOffset: { width: 0, height: 2 },
@@ -110,7 +111,7 @@ export const shadow = {
   // Elevated — buttons, FAB, floating elements
   raised: Platform.select<ViewStyle>({
     ios: {
-      shadowColor: '#5C2A1C',
+      shadowColor: '#1E3A8A',
       shadowOpacity: 0.22,
       shadowRadius: 16,
       shadowOffset: { width: 0, height: 6 },

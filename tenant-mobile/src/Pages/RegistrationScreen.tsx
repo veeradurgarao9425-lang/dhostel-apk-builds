@@ -227,7 +227,20 @@ export default function RegistrationScreen({ route, navigation }: any) {
   const [lastName, setLastName]         = useState('');
   const [emailAddress, setEmailAddress] = useState(isEmail ? identifier : '');
   const [phone, setPhone]               = useState(isEmail ? '' : identifier);
-  const ID_PROOF_TYPES = ['Aadhaar', 'PAN', 'Driving License', 'Voter ID', 'Passport'];
+  
+  // ID Proof Types from Backend
+  const [idProofTypesList, setIdProofTypesList] = useState<any[]>([]);
+  useEffect(() => {
+    api.get('/id-proof-types')
+      .then(res => {
+        if (res.data?.success) {
+          setIdProofTypesList(res.data.data);
+        }
+      })
+      .catch(err => console.log('Failed to fetch ID proof types:', err));
+  }, []);
+  
+  const idProofOptions = [...idProofTypesList.map(t => t.name), 'Custom'];
 
   // ── Step 2 – Additional Info ──
   const [gender, setGender]           = useState('');
@@ -239,6 +252,7 @@ export default function RegistrationScreen({ route, navigation }: any) {
 
   // ── Step 3 – Verification ──
   const [idProofType, setIdProofType]             = useState('');
+  const [customIdProofType, setCustomIdProofType] = useState('');
   const [idProofTypeOpen, setIdProofTypeOpen]     = useState(false);
   const [idProofNumber, setIdProofNumber]         = useState('');
   const [permanentAddress, setPermanentAddress]   = useState('');
@@ -282,20 +296,25 @@ export default function RegistrationScreen({ route, navigation }: any) {
       if (!permanentAddress.trim()) newErrors.permanentAddress = 'Address is required.';
       if (!idProofType) {
         newErrors.idProofType = 'Please select ID Proof Type.';
+      } else if (idProofType === 'Custom' && !customIdProofType.trim()) {
+        newErrors.customIdProofType = 'Please enter ID proof name.';
       } else if (!idProofNumber.trim()) {
         newErrors.idProofNumber = `${idProofType} number is required.`;
       } else {
-        if (idProofType === 'Aadhaar') {
-          if (idProofNumber.length !== 12 || !/^\d+$/.test(idProofNumber)) newErrors.idProofNumber = 'Aadhaar must be exactly 12 digits.';
-        } else if (idProofType === 'PAN') {
-          if (idProofNumber.length !== 10) newErrors.idProofNumber = 'PAN must be exactly 10 characters.';
-          else if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i.test(idProofNumber)) newErrors.idProofNumber = 'Invalid PAN format. Must be like ABCDE1234F';
-        } else if (idProofType === 'Driving License') {
-          if (idProofNumber.length < 10) newErrors.idProofNumber = 'Driving License must be at least 10 characters.';
-        } else if (idProofType === 'Voter ID') {
-          if (idProofNumber.length < 10) newErrors.idProofNumber = 'Voter ID must be at least 10 characters.';
-        } else if (idProofType === 'Passport') {
-          if (idProofNumber.length < 8) newErrors.idProofNumber = 'Passport must be at least 8 characters.';
+        const selectedProof = idProofTypesList.find(t => t.name === idProofType);
+        if (selectedProof) {
+          if (selectedProof.min_length && idProofNumber.length < selectedProof.min_length) {
+            newErrors.idProofNumber = `${idProofType} must be at least ${selectedProof.min_length} characters.`;
+          } else if (selectedProof.max_length && idProofNumber.length > selectedProof.max_length) {
+            newErrors.idProofNumber = `${idProofType} must be at most ${selectedProof.max_length} characters.`;
+          } else if (selectedProof.regex_pattern) {
+            try {
+              const regex = new RegExp(selectedProof.regex_pattern, 'i');
+              if (!regex.test(idProofNumber)) {
+                newErrors.idProofNumber = `Invalid ${idProofType} format.`;
+              }
+            } catch (e) {}
+          }
         }
       }
       
@@ -348,31 +367,6 @@ export default function RegistrationScreen({ route, navigation }: any) {
     setLoading(true);
     setErrors({});
 
-    // ── Test Mode bypass ──
-    const testEmail = 'veeradurgarao840@gmail.com';
-    const testPhone = '6303359435';
-    if (
-      identifier === testEmail || identifier === testPhone ||
-      emailAddress === testEmail || phone === testPhone
-    ) {
-      setTimeout(async () => {
-        await updateTokenAndUser('mock-test-token-123', {
-          id: 9999,
-          name: `${firstName} ${lastName}`.trim() || 'Veera Durgarao',
-          email: emailAddress || testEmail,
-          phone: phone || testPhone,
-          hostel_id,
-          is_allocated: false,
-          room_number: null,
-          monthly_rent: 0,
-          outstanding_due: 0,
-        });
-        setLoading(false);
-      }, 800);
-      return;
-    }
-    // ─────────────────────
-
     try {
       const response = await api.post('/auth/tenant/register', {
         identifier,
@@ -386,7 +380,7 @@ export default function RegistrationScreen({ route, navigation }: any) {
         guardian_name: guardianName,
         guardian_phone: guardianPhone,
         permanent_address: permanentAddress,
-        id_proof_type: idProofType,
+        id_proof_type: idProofType === 'Custom' ? customIdProofType : (idProofTypesList.find(t => t.name === idProofType)?.id || idProofType),
         id_proof_number: idProofNumber,
       });
 
@@ -450,7 +444,6 @@ export default function RegistrationScreen({ route, navigation }: any) {
           {/* ────────────────── STEP 1: BASIC INFO ────────────────── */}
           {step === 1 && (
             <View style={st.formContainer}>
-              {/* Section header */}
               <View style={st.sectionHead}>
                 <View style={st.sectionIcon}><User size={20} color={BLUE} /></View>
                 <View>
@@ -459,7 +452,6 @@ export default function RegistrationScreen({ route, navigation }: any) {
                 </View>
               </View>
 
-              {/* Profile photo */}
               <View style={st.photoCenterWrap}>
                 <PhotoUpload
                   uri={profilePhoto}
@@ -605,7 +597,7 @@ export default function RegistrationScreen({ route, navigation }: any) {
                 <OptionsDrawer 
                   visible={idProofTypeOpen} 
                   title="Select ID Proof Type" 
-                  data={ID_PROOF_TYPES} 
+                  data={idProofOptions} 
                   selectedItem={idProofType} 
                   onSelect={(v: string) => { 
                     setIdProofType(v); 
@@ -615,6 +607,12 @@ export default function RegistrationScreen({ route, navigation }: any) {
                   onClose={() => setIdProofTypeOpen(false)} 
                 />
               </Field>
+
+              {idProofType === 'Custom' && (
+                <Field label="Custom ID Proof Name" required error={errors.customIdProofType}>
+                   <InputRow icon={FileText} placeholder="Enter ID Proof Name" value={customIdProofType} onChangeText={(t: string) => { setCustomIdProofType(t); setErrors(p => ({...p, customIdProofType: ''})); }} />
+                </Field>
+              )}
 
               {idProofType ? (
                 <>
