@@ -44,7 +44,7 @@ export const setupSocket = (httpServer: HttpServer) => {
         if (!tenant) return next(new Error('User not found'));
         if (Number(tenant.status) !== 1) return next(new Error('Account inactive'));
         if (!tenant.room_id) return next(new Error('No room assigned'));
-        if (tenant.is_available === 0) return next(new Error('Room inactive'));
+        // We do NOT check tenant.is_available === 0 because is_available=0 simply means the room is fully occupied!
 
         socket.data.user = {
           ...decoded,

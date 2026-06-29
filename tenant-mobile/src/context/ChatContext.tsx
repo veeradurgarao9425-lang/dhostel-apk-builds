@@ -5,7 +5,8 @@ import { useAuth } from './AuthContext';
 import { AppState, AppStateStatus } from 'react-native';
 
 // Using a similar base URL approach as API
-const SOCKET_URL = 'http://192.168.1.100:8081'; // In production, replace with actual socket server URL
+const BASE_URL = (process.env.EXPO_PUBLIC_API_URL as string | undefined) || 'https://dhostel-backend.onrender.com/api';
+const SOCKET_URL = BASE_URL.replace('/api', '');
 
 export type Message = {
   id: number;
