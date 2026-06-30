@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import {
   StyleSheet, Text, TouchableOpacity, View, ScrollView,
-  RefreshControl, ActivityIndicator,
+  RefreshControl, ActivityIndicator, Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,6 +9,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import {
   AlertCircle, CheckCircle2, Clock,
   Wallet, CreditCard, XCircle, RotateCcw,
+  Bell, ArrowRight
 } from 'lucide-react-native';
 
 import { useAuth } from '../context/AuthContext';
@@ -103,41 +104,73 @@ export default function DuesScreen({ navigation }: any) {
   const paidFees   = feeRecords.filter(f => f.fee_status === 'Fully Paid');
   const totalPaid  = paidFees.reduce((s, f) => s + f.paid_amount, 0);
 
+  const firstName = (user?.name || "Tenant").split(" ")[0];
+  const initials = (user?.name || "V")
+    .split(" ")
+    .map((w: string) => w[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* ── Premium Gradient Header ─────────────────────────────────────── */}
-      <LinearGradient
-        colors={[colors.gradientStart, colors.gradientEnd]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.header}
-      >
-        <View style={styles.hCircle1} />
-        <View style={styles.hCircle2} />
+      {/* ── BLUE HEADER SECTION ── */}
+      <View style={styles.headerSection}>
+        <SafeAreaView
+          edges={["top"]}
+          style={{ backgroundColor: "transparent" }}
+        >
+          <View style={styles.headerTop}>
+            <View style={{ flex: 1, marginRight: 12 }}>
+              <Text style={styles.headerGreeting}>
+                Hi, {firstName} <Text style={{ fontSize: 18 }}>👋</Text>
+              </Text>
+              <Text style={styles.headerSub}>Welcome Back!</Text>
+            </View>
+            <View style={styles.headerRight}>
+              <TouchableOpacity
+                style={styles.hBtn}
+                onPress={() => navigation.navigate("Notifications")}
+              >
+                <Bell size={24} color="#FFFFFF" strokeWidth={1.5} />
+                <View style={styles.notificationDot} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.hAvatar}
+                onPress={() => navigation.navigate("Profile")}
+              >
+                <Text style={styles.hAvatarText}>{initials}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </SafeAreaView>
+      </View>
 
-        <View style={styles.headerTitleBlock}>
-          <Text style={styles.headerEyebrow}>Dues & Payments</Text>
-          <Text style={styles.headerTitle}>Your Balance</Text>
-        </View>
+      {/* ── Total Due Overview Card ─────────────────────────────────────── */}
+      <View style={styles.section}>
+        <View style={styles.overviewCard}>
+          <View style={styles.overviewLeft}>
+            <Text style={styles.overviewLabel}>Total Due</Text>
+            <Text style={styles.overviewAmount}>
+              {formatCurrency(outstandingDue)}
+            </Text>
+            <Text style={styles.overviewDate}>
+              Months Due: {pendingFees.length}
+            </Text>
 
-        {/* 3-metric summary */}
-        <View style={styles.metricRow}>
-          <View style={styles.metricItem}>
-            <Text style={styles.metricValue}>{formatCurrency(outstandingDue)}</Text>
-            <Text style={styles.metricLabel}>Current Due</Text>
+            <TouchableOpacity
+              style={styles.overviewBtn}
+              onPress={() => navigation.navigate("Payments")}
+            >
+              <Text style={styles.overviewBtnText}>Pay Now</Text>
+              <ArrowRight size={16} color="#FFF" />
+            </TouchableOpacity>
           </View>
-          <View style={styles.metricDivider} />
-          <View style={styles.metricItem}>
-            <Text style={styles.metricValue}>{pendingFees.length}</Text>
-            <Text style={styles.metricLabel}>Months Due</Text>
-          </View>
-          <View style={styles.metricDivider} />
-          <View style={styles.metricItem}>
-            <Text style={styles.metricValue}>{formatCurrency(totalPaid)}</Text>
-            <Text style={styles.metricLabel}>Total Paid</Text>
+          <View style={styles.overviewRight}>
+            <Image source={require('../../assets/wallet_3d.png')} style={styles.walletImg} resizeMode="contain" />
           </View>
         </View>
-      </LinearGradient>
+      </View>
 
       {/* ── Tab Toggle ──────────────────────────────────────────────────── */}
       <View style={styles.tabContainer}>
@@ -350,40 +383,94 @@ export default function DuesScreen({ navigation }: any) {
 // ── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  scrollContent: { paddingBottom: 140, paddingTop: 4 },
 
-  // ── Header ────────────────────────────────────────────────────────────────
-  header: {
-    paddingHorizontal: spacing.xl,
+  headerSection: { backgroundColor: '#2245D4', paddingBottom: 16 },
+  headerTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 24,
-    overflow: 'hidden',
   },
-  hCircle1: {
-    position: 'absolute', width: 140, height: 140, borderRadius: 70,
-    backgroundColor: 'rgba(255,255,255,0.07)', top: -40, right: -20,
+  hAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 12,
   },
-  hCircle2: {
-    position: 'absolute', width: 70, height: 70, borderRadius: 35,
-    backgroundColor: 'rgba(255,255,255,0.05)', bottom: 20, right: 60,
+  hAvatarText: { color: '#FFFFFF', fontWeight: "700", fontSize: 16 },
+  headerGreeting: { fontSize: 18, fontWeight: "700", color: '#FFFFFF' },
+  headerSub: { fontSize: 13, color: "rgba(255,255,255,0.8)", marginTop: 2 },
+  headerRight: { flexDirection: "row", alignItems: "center" },
+  hBtn: {
+    padding: 8,
+    position: "relative",
   },
-  headerTitleBlock: {
-    marginBottom: 20,
+  notificationDot: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#EF4444",
+    borderWidth: 1.5,
+    borderColor: '#2245D4',
   },
-  headerEyebrow: { fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: '500' },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: '#fff', letterSpacing: -0.3 },
 
-  // Metric row
-  metricRow: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderRadius: radius['2xl'],
-    padding: 16,
+  section: { paddingHorizontal: 20, marginTop: 16, marginBottom: 16 },
+  overviewCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
   },
-  metricItem: { flex: 1, alignItems: 'center' },
-  metricValue: { fontSize: 16, fontWeight: '800', color: '#fff', letterSpacing: -0.3 },
-  metricLabel: { fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 3, fontWeight: '500' },
-  metricDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 4 },
+  overviewLeft: { flex: 1 },
+  overviewLabel: {
+    fontSize: 13,
+    color: colors.textSubtle,
+    fontWeight: "500",
+    marginBottom: 8,
+  },
+  overviewAmount: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#E11D48",
+    marginBottom: 8,
+  },
+  overviewDate: { fontSize: 12, color: colors.textSubtle, marginBottom: 16 },
+  overviewBtn: {
+    backgroundColor: '#2245D4',
+    alignSelf: "flex-start",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  overviewBtnText: { color: "#FFF", fontSize: 13, fontWeight: "600" },
+  overviewRight: {
+    width: 100,
+    height: 100,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  walletImg: {
+    width: 110,
+    height: 110,
+    position: "absolute",
+    right: -10,
+    bottom: -10,
+  },
 
   // ── Tabs ──────────────────────────────────────────────────────────────────
   tabContainer: {
