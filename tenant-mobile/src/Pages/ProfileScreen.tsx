@@ -91,7 +91,7 @@ export default function ProfileScreen({ navigation }: any) {
           />
           <MenuRow
             label="Help & Support"
-            onPress={() => navigation.navigate('Messages')}
+            onPress={() => navigation.navigate('HelpScreen')}
           />
           <MenuRow
             label="Settings"

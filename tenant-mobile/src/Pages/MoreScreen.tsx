@@ -13,8 +13,8 @@ const GRID_ITEMS = [
   { icon: PieChart,  label: 'Expenses',     screen: 'Expenses',   iconBg: '#DCFCE7', iconColor: '#16A34A' },
   { icon: Megaphone, label: 'Notices',      screen: 'Notices',    iconBg: '#EFF6FF', iconColor: '#3B82F6' },
   { icon: Wrench,    label: 'Complaints',   screen: 'Complaints', iconBg: '#FEF3C7', iconColor: '#F59E0B' },
-  { icon: User,      label: 'Profile',      screen: 'Profile',    iconBg: colors.primarySoft, iconColor: colors.primary },
-  { icon: HelpCircle,label: 'Help & Support', screen: 'Messages', iconBg: '#F3F4F6', iconColor: '#6B7280' },
+  { icon: User,       label: 'Profile', screen: 'Profile',    iconBg: colors.primarySoft, iconColor: colors.primary },
+  { icon: HelpCircle, label: 'Help',    screen: 'HelpScreen', iconBg: '#F3F4F6',           iconColor: '#6B7280' },
 ];
 
 export default function MoreScreen({ navigation }: any) {

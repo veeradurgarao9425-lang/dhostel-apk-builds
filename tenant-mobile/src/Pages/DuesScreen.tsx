@@ -7,8 +7,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import {
-  SlidersHorizontal, AlertCircle, CheckCircle2, Clock,
-  Wallet, CreditCard, ArrowLeft, XCircle, RotateCcw,
+  AlertCircle, CheckCircle2, Clock,
+  Wallet, CreditCard, XCircle, RotateCcw,
 } from 'lucide-react-native';
 
 import { useAuth } from '../context/AuthContext';
@@ -115,18 +115,9 @@ export default function DuesScreen({ navigation }: any) {
         <View style={styles.hCircle1} />
         <View style={styles.hCircle2} />
 
-        <View style={styles.headerRow}>
-          <TouchableOpacity
-            style={styles.backBtn}
-            onPress={() => navigation.goBack()}
-            activeOpacity={0.75}
-          >
-            <ArrowLeft size={20} color="#fff" />
-          </TouchableOpacity>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.headerEyebrow}>Dues & Payments</Text>
-            <Text style={styles.headerTitle}>Your Balance</Text>
-          </View>
+        <View style={styles.headerTitleBlock}>
+          <Text style={styles.headerEyebrow}>Dues & Payments</Text>
+          <Text style={styles.headerTitle}>Your Balance</Text>
         </View>
 
         {/* 3-metric summary */}
@@ -376,16 +367,8 @@ const styles = StyleSheet.create({
     position: 'absolute', width: 70, height: 70, borderRadius: 35,
     backgroundColor: 'rgba(255,255,255,0.05)', bottom: 20, right: 60,
   },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
+  headerTitleBlock: {
     marginBottom: 20,
-  },
-  backBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center', justifyContent: 'center',
   },
   headerEyebrow: { fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: '500' },
   headerTitle: { fontSize: 20, fontWeight: '700', color: '#fff', letterSpacing: -0.3 },

@@ -4,7 +4,6 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { AuthProvider } from './src/context/AuthContext';
 import { ToastProvider } from './src/context/ToastContext';
-import { ChatProvider } from './src/context/ChatContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { CustomToast, ToastVariant } from './src/components/ui/CustomToast';
 
@@ -42,12 +41,10 @@ export default function App() {
   return (
     <ToastProvider>
       <AuthProvider>
-        <ChatProvider>
           <SafeAreaProvider style={styles.container}>
             <AppNavigator />
             <ThemedToast />
           </SafeAreaProvider>
-        </ChatProvider>
       </AuthProvider>
     </ToastProvider>
   );

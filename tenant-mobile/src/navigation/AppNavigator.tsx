@@ -18,7 +18,6 @@ import HelpScreen from '../Pages/HelpScreen';
 import HomeScreen from '../Pages/HomeScreen';
 import ExpensesScreen from '../Pages/ExpensesScreen';
 import NoticesScreen from '../Pages/NoticesScreen';
-import MessagesScreen from '../Pages/MessagesScreen';
 
 // Stack screens
 import DuesScreen from '../Pages/DuesScreen';
@@ -36,7 +35,7 @@ import ServicesScreen from '../Pages/ServicesScreen';
 import FullMenuScreen from '../Pages/FullMenuScreen';
 import AddExpenseScreen from '../Pages/AddExpenseScreen';
 import SettingsScreen from '../Pages/SettingsScreen';
-import ChatRoomScreen from '../Pages/ChatRoomScreen';
+
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -61,14 +60,14 @@ const AuthStack = () => (
   </Stack.Navigator>
 );
 
-/** Bottom tab bar — 5 tabs: Home, Dues, Expenses, Notices, Profile */
+/** Bottom tab bar — 4 tabs: Home, Dues, Expenses, Notices */
 const MainTabs = () => (
   <Tab.Navigator
     tabBar={(props) => <BottomTabNavigator {...props} />}
     screenOptions={{ headerShown: false }}
   >
     <Tab.Screen name="Home" component={HomeScreen} />
-    <Tab.Screen name="Messages" component={MessagesScreen} />
+    <Tab.Screen name="Dues" component={DuesScreen} />
     <Tab.Screen name="Expenses" component={ExpensesScreen} />
     <Tab.Screen name="Notices" component={NoticesScreen} />
   </Tab.Navigator>
@@ -89,7 +88,6 @@ export default function AppNavigator() {
             <Stack.Screen name="Main" component={MainTabs} />
             {/* Stack screens accessible from any tab */}
             <Stack.Screen name="Profile" component={ProfileScreen} />
-            <Stack.Screen name="Dues" component={DuesScreen} />
             <Stack.Screen name="RoomInfo" component={RoomInfoScreen} />
             <Stack.Screen name="Complaints" component={ComplaintsScreen} />
             <Stack.Screen name="Documents" component={DocumentsScreen} />
@@ -102,7 +100,6 @@ export default function AppNavigator() {
             <Stack.Screen name="Settings" component={SettingsScreen} />
             <Stack.Screen name="AddExpense" component={AddExpenseScreen} />
             <Stack.Screen name="HelpScreen" component={HelpScreen} />
-            <Stack.Screen name="ChatRoom" component={ChatRoomScreen} />
           </>
         ) : connectedHostel ? (
           <Stack.Screen name="Auth" component={AuthStack} />

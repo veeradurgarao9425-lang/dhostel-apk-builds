@@ -6,7 +6,6 @@ import {
   View,
   ScrollView,
   RefreshControl,
-  Dimensions,
   StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,15 +13,24 @@ import { useFocusEffect } from '@react-navigation/native';
 import {
   Bell,
   Sun, Moon, Utensils,
-  ChevronRight, ArrowRight, Info, AlertCircle
+  ChevronRight, Wrench, Bell as BellIcon, DoorOpen,
 } from 'lucide-react-native';
 
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 
-const { width: W } = Dimensions.get('window');
 const BLUE  = '#2245D4';
 const WHITE = '#FFFFFF';
+
+function getDueStatus(dueDate: string | null, balance: number) {
+  if (balance <= 0) return { label: 'All Paid', sub: 'No dues pending', color: '#16A34A', bg: '#DCFCE7', border: '#BBF7D0' };
+  if (!dueDate)     return { label: `₹${balance.toLocaleString('en-IN')}`, sub: 'Rent pending', color: '#EF4444', bg: '#FEE2E2', border: '#FCA5A5' };
+  const diff = Math.ceil((new Date(dueDate).getTime() - Date.now()) / 86400000);
+  if (diff < 0) return { label: `₹${balance.toLocaleString('en-IN')}`, sub: `Overdue by ${Math.abs(diff)} day${Math.abs(diff) !== 1 ? 's' : ''}`, color: '#EF4444', bg: '#FEE2E2', border: '#FCA5A5' };
+  if (diff === 0) return { label: `₹${balance.toLocaleString('en-IN')}`, sub: 'Due today!', color: '#F97316', bg: '#FFF7ED', border: '#FED7AA' };
+  if (diff <= 7)  return { label: `₹${balance.toLocaleString('en-IN')}`, sub: `Due in ${diff} day${diff !== 1 ? 's' : ''}`, color: '#F97316', bg: '#FFF7ED', border: '#FED7AA' };
+  return { label: `₹${balance.toLocaleString('en-IN')}`, sub: `Due in ${diff} days`, color: BLUE, bg: '#EFF6FF', border: '#BFDBFE' };
+}
 
 const MealRow = ({ meal, items, isLast }: { meal: string; items: string; isLast: boolean }) => {
   let icon = <Sun size={20} color="#F59E0B" />;
@@ -55,6 +63,7 @@ export default function HomeScreen({ navigation }: any) {
   const [recentNotices, setRecentNotices] = useState<any[]>([]);
   const [menuItems, setMenuItems] = useState<any[]>([]);
   const [dueAmount, setDueAmount] = useState<number>(0);
+  const [rentDueDate, setRentDueDate] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
@@ -80,10 +89,16 @@ export default function HomeScreen({ navigation }: any) {
       if (feesRes.status === 'fulfilled' && feesRes.value.data?.success) {
         const fees = feesRes.value.data.data;
         let sum = 0;
+        let firstDueDate: string | null = null;
         fees.forEach((f: any) => {
-          sum += Number(f.total_amount || 0) - Number(f.paid_amount || 0);
+          const bal = Number(f.total_amount || 0) - Number(f.paid_amount || 0);
+          if (bal > 0) {
+            sum += bal;
+            if (!firstDueDate) firstDueDate = f.due_date || null;
+          }
         });
         setDueAmount(sum > 0 ? sum : 0);
+        setRentDueDate(firstDueDate);
       }
 
       if (menuRes.status === 'fulfilled' && menuRes.value.data?.success) {
@@ -151,27 +166,60 @@ export default function HomeScreen({ navigation }: any) {
         contentContainerStyle={{ paddingBottom: 100 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[BLUE]} />}
       >
-        {/* ── Quick Stats Bar ──────────────────────────────────────────────────────── */}
-        <View style={styles.statsBar}>
-          <TouchableOpacity style={styles.statBox} onPress={() => navigation.navigate('Dues')}>
-            <View style={[styles.statIcon, { backgroundColor: '#FEE2E2' }]}>
-              <AlertCircle size={20} color="#EF4444" />
-            </View>
-            <View>
-              <Text style={styles.statLabel}>Pending Dues</Text>
-              <Text style={styles.statValue}>₹{dueAmount}</Text>
-            </View>
-          </TouchableOpacity>
-          <View style={styles.statDivider} />
-          <TouchableOpacity style={styles.statBox} onPress={() => navigation.navigate('Complaints')}>
-            <View style={[styles.statIcon, { backgroundColor: '#EFF6FF' }]}>
-              <Info size={20} color="#3B82F6" />
-            </View>
-            <View>
-              <Text style={styles.statLabel}>Quick Help</Text>
-              <Text style={[styles.statValue, { fontSize: 15, color: '#3B82F6' }]}>Raise Issue</Text>
-            </View>
-          </TouchableOpacity>
+        {/* ── Rent Status Card ─────────────────────────────────────────────────── */}
+        {(() => {
+          const isAllocated = !!user?.is_allocated;
+          if (!isAllocated) {
+            return (
+              <View style={[styles.rentCard, { backgroundColor: '#F8FAFC', borderColor: '#E2E8F0' }]}>
+                <View style={[styles.rentDot, { backgroundColor: '#94A3B8' }]} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.rentLabel, { color: '#64748B' }]}>Room Not Assigned</Text>
+                  <Text style={styles.rentSub}>Dues will appear once your room is allocated</Text>
+                </View>
+              </View>
+            );
+          }
+          const s = getDueStatus(rentDueDate, dueAmount);
+          return (
+            <TouchableOpacity
+              style={[styles.rentCard, { backgroundColor: s.bg, borderColor: s.border }]}
+              onPress={() => navigation.navigate('Dues')}
+              activeOpacity={0.85}
+            >
+              <View style={[styles.rentDot, { backgroundColor: s.color }]} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.rentLabel, { color: s.color }]}>{s.label}</Text>
+                <Text style={styles.rentSub}>{s.sub}</Text>
+              </View>
+              {dueAmount > 0 && (
+                <View style={[styles.rentBadge, { backgroundColor: s.color }]}>
+                  <Text style={styles.rentBadgeText}>Pay</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          );
+        })()}
+
+        {/* ── Quick Actions ─────────────────────────────────────────────────────── */}
+        <View style={styles.quickRow}>
+          {[
+            { icon: Wrench,        label: 'Complaint', screen: 'Complaints', bg: '#FEF3C7', color: '#F59E0B' },
+            { icon: DoorOpen,      label: 'Room Info',  screen: 'RoomInfo',   bg: '#EFF6FF', color: BLUE },
+            { icon: BellIcon,      label: 'Alerts',      screen: 'Notifications', bg: '#DCFCE7', color: '#16A34A' },
+          ].map(({ icon: Icon, label, screen, bg, color }) => (
+            <TouchableOpacity
+              key={label}
+              style={styles.quickItem}
+              onPress={() => navigation.navigate(screen)}
+              activeOpacity={0.75}
+            >
+              <View style={[styles.quickIcon, { backgroundColor: bg }]}>
+                <Icon size={22} color={color} />
+              </View>
+              <Text style={styles.quickLabel}>{label}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
         {/* ── Today's Mess Menu ──────────────────────────────────────────────────────── */}
@@ -260,31 +308,38 @@ const styles = StyleSheet.create({
   },
   hAvatarText: { color: WHITE, fontWeight: '800', fontSize: 14 },
 
-  // Stats Bar
-  statsBar: {
-    flexDirection: 'row',
-    backgroundColor: WHITE,
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05, shadowRadius: 12, elevation: 3,
-    borderWidth: 1, borderColor: '#F1F5F9'
+  // Rent Status Card
+  rentCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    marginHorizontal: 16, marginTop: 16,
+    borderRadius: 16, padding: 16,
+    borderWidth: 1.5,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
   },
-  statBox: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+  rentDot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
+  rentLabel: { fontSize: 18, fontWeight: '800', letterSpacing: -0.3 },
+  rentSub: { fontSize: 12, color: '#64748B', marginTop: 2, fontWeight: '500' },
+  rentBadge: {
+    paddingHorizontal: 12, paddingVertical: 6,
+    borderRadius: 10,
   },
-  statIcon: {
-    width: 40, height: 40, borderRadius: 12,
-    alignItems: 'center', justifyContent: 'center'
+  rentBadgeText: { color: WHITE, fontSize: 13, fontWeight: '700' },
+
+  // Quick Actions
+  quickRow: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    marginHorizontal: 16, marginTop: 12, gap: 10,
   },
-  statLabel: { fontSize: 11, color: '#64748B', fontWeight: '500' },
-  statValue: { fontSize: 16, color: '#0F172A', fontWeight: '800', marginTop: 2 },
-  statDivider: { width: 1, backgroundColor: '#E2E8F0', marginHorizontal: 12 },
+  quickItem: {
+    flex: 1, alignItems: 'center', gap: 8,
+    backgroundColor: WHITE, borderRadius: 16, paddingVertical: 14,
+    borderWidth: 1, borderColor: '#F1F5F9',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04, shadowRadius: 4, elevation: 2,
+  },
+  quickIcon: { width: 46, height: 46, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  quickLabel: { fontSize: 12, fontWeight: '600', color: '#334155' },
 
   // Section
   section: { marginTop: 24, paddingHorizontal: 16 },

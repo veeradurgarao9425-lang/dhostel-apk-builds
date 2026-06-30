@@ -12,21 +12,22 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useChat, Message } from '../context/ChatContext';
 import { useNavigation } from '@react-navigation/native';
+import { EmojiKeyboard } from 'rn-emoji-keyboard';
 
 const { width: W } = Dimensions.get('window');
-const BLUE  = '#2245D4';
+const BLUE = '#2245D4';
 const WHITE = '#FFFFFF';
-const WA_BG = '#EFE6DD'; 
-const MY_BUBBLE = '#E3F2FD'; 
+const WA_BG = '#EFE6DD';
+const MY_BUBBLE = '#E3F2FD';
 
 const MEMBER_COLORS: Record<string, string> = {
-  Durgarao : '#2245D4',
-  Rahul    : '#F97316',
-  Anil     : '#16A34A',
-  Surya    : '#A855F7',
-  Priya    : '#EC4899',
-  Admin    : '#EF4444',
-  You      : '#2245D4',
+  Durgarao: '#2245D4',
+  Rahul: '#F97316',
+  Anil: '#16A34A',
+  Surya: '#A855F7',
+  Priya: '#EC4899',
+  Admin: '#EF4444',
+  You: '#2245D4',
 };
 
 function getColor(name: string) {
@@ -48,9 +49,9 @@ function Bubble({ msg, showName }: { msg: Message; showName: boolean }) {
           <View style={styles.metaMe}>
             <Text style={styles.timeText}>{formattedTime}</Text>
             {msg.read_at ? (
-               <CheckCheck size={14} color="#53BDEB" />
+              <CheckCheck size={16} color="#53BDEB" />
             ) : (
-               <CheckCheck size={14} color="#94A3B8" />
+              <CheckCheck size={16} color="#94A3B8" />
             )}
           </View>
         </View>
@@ -91,7 +92,7 @@ export default function ChatRoomScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: '#F1F5F9' }}>
         <StatusBar barStyle="light-content" backgroundColor={BLUE} />
-        
+
         {/* Header */}
         <View style={{ backgroundColor: BLUE }}>
           <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
@@ -157,8 +158,8 @@ export default function ChatRoomScreen() {
       </View>
 
       {/* Main Content Area */}
-      <KeyboardAvoidingView 
-        style={{ flex: 1 }} 
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 48 : 0}
       >
@@ -172,7 +173,9 @@ export default function ChatRoomScreen() {
 const ChatContent = () => {
   const { messages, sendMessage, sendTyping, stopTyping } = useChat();
   const [text, setText] = useState('');
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const flatRef = useRef<FlatList>(null);
+  const inputRef = useRef<TextInput>(null);
   const scale = useRef(new Animated.Value(1)).current;
   const insets = useSafeAreaInsets();
   const [keyboardVisible, setKeyboardVisible] = useState(false);
@@ -181,9 +184,10 @@ const ChatContent = () => {
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    
+
     const showSub = Keyboard.addListener(showEvent, (e) => {
       setKeyboardVisible(true);
+      setIsEmojiPickerOpen(false); // Close emoji picker when OS keyboard opens
       if (Platform.OS === 'android') {
         setKeyboardHeight(e.endCoordinates.height);
       }
@@ -194,7 +198,7 @@ const ChatContent = () => {
         setKeyboardHeight(0);
       }
     });
-    
+
     return () => {
       showSub.remove();
       hideSub.remove();
@@ -206,7 +210,7 @@ const ChatContent = () => {
     if (!t) return;
     Animated.sequence([
       Animated.timing(scale, { toValue: 0.85, duration: 80, useNativeDriver: true }),
-      Animated.timing(scale, { toValue: 1,    duration: 100, useNativeDriver: true }),
+      Animated.timing(scale, { toValue: 1, duration: 100, useNativeDriver: true }),
     ]).start();
     sendMessage(t);
     setText('');
@@ -219,13 +223,25 @@ const ChatContent = () => {
     else stopTyping();
   };
 
-  const safeBottom = Math.min(insets.bottom, 40);
-  
-  // For Android, if OS resize fails, we manually add keyboardHeight.
-  // We apply extra padding only if keyboardVisible is true.
-  const bottomPadding = Platform.OS === 'ios' 
-    ? (keyboardVisible ? 8 : Math.max(safeBottom, 8))
-    : (keyboardVisible ? (keyboardHeight || 8) : Math.max(safeBottom, 8));
+  const handleEmojiSelect = (emojiObject: any) => {
+    const emojiStr = emojiObject.code || emojiObject.emoji || emojiObject;
+    setText(prev => {
+      const newText = prev + emojiStr;
+      if (newText.length > 0) sendTyping();
+      else stopTyping();
+      return newText;
+    });
+  };
+
+  // Base padding when keyboard is CLOSED
+  const closedPadding = Math.max(insets.bottom, 55);
+
+  // Base padding when keyboard is OPEN
+  const openPadding = Platform.OS === 'ios' ? 40 : (keyboardHeight + 50);
+
+  const bottomPadding = keyboardVisible 
+    ? openPadding 
+    : (isEmojiPickerOpen ? 12 : closedPadding);
 
   return (
     <>
@@ -245,11 +261,22 @@ const ChatContent = () => {
       />
       <View style={[styles.inputWrap, { paddingBottom: bottomPadding }]}>
         <View style={styles.inputBox}>
-          <TouchableOpacity style={styles.iconBtn}>
-            <Smile size={24} color="#64748B" />
+          <TouchableOpacity style={styles.iconBtn} onPress={() => {
+            if (isEmojiPickerOpen) {
+              setIsEmojiPickerOpen(false);
+              inputRef.current?.focus();
+            } else {
+              if (keyboardVisible) Keyboard.dismiss();
+              // Short delay to let OS keyboard start hiding before showing emoji board
+              setTimeout(() => setIsEmojiPickerOpen(true), 50);
+            }
+          }}>
+            <Smile size={24} color={isEmojiPickerOpen ? "#10B981" : "#64748B"} />
           </TouchableOpacity>
           <TextInput
+            ref={inputRef}
             style={styles.input}
+            onFocus={() => setIsEmojiPickerOpen(false)}
             placeholder="Message"
             placeholderTextColor="#94A3B8"
             value={text}
@@ -267,8 +294,8 @@ const ChatContent = () => {
           )}
         </View>
 
-        <Animated.View style={{ transform: [{ scale }], marginBottom: 4 }}>
-          <TouchableOpacity style={styles.sendBtn} onPress={text ? handleSend : () => {}}>
+        <Animated.View style={{ transform: [{ scale }] }}>
+          <TouchableOpacity style={styles.sendBtn} onPress={text ? handleSend : () => { }}>
             {text ? (
               <Send size={20} color={WHITE} style={{ marginLeft: 2 }} />
             ) : (
@@ -277,6 +304,16 @@ const ChatContent = () => {
           </TouchableOpacity>
         </Animated.View>
       </View>
+
+      {isEmojiPickerOpen && (
+        <View style={{ height: keyboardHeight > 0 ? (openPadding - 12) : 300, backgroundColor: '#FFFFFF' }}>
+          <EmojiKeyboard
+            onEmojiSelected={handleEmojiSelect}
+            enableSearchBar={true}
+            categoryPosition="top"
+          />
+        </View>
+      )}
     </>
   );
 }
@@ -289,24 +326,24 @@ const styles = StyleSheet.create({
   },
   headerTitle: { color: WHITE, fontSize: 18, fontWeight: '700' },
   headerSub: { color: 'rgba(255,255,255,0.8)', fontSize: 12, marginTop: 2 },
-  
+
   inputWrap: {
     flexDirection: 'row', alignItems: 'flex-end', gap: 8,
     paddingHorizontal: 8, paddingVertical: 8,
   },
   inputBox: {
     flex: 1, flexDirection: 'row', alignItems: 'flex-end',
-    backgroundColor: WHITE, borderRadius: 24, paddingHorizontal: 12, paddingVertical: 8,
-    minHeight: 48, maxHeight: 120,
+    backgroundColor: WHITE, borderRadius: 25, paddingHorizontal: 12, paddingVertical: 8,
+    minHeight: 50, maxHeight: 120,
   },
   input: {
     flex: 1, fontSize: 16, color: '#0F172A',
     paddingTop: 4, paddingBottom: 4,
     marginHorizontal: 8,
   },
-  iconBtn: { padding: 4, justifyContent: 'center', alignItems: 'center', height: 32 },
+  iconBtn: { padding: 4, justifyContent: 'center', alignItems: 'center', height: 34 },
   sendBtn: {
-    width: 48, height: 48, borderRadius: 24,
+    width: 50, height: 50, borderRadius: 25,
     backgroundColor: '#10B981', // WhatsApp green
     alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
@@ -316,7 +353,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', marginBottom: 2 },
   rowLeft: { justifyContent: 'flex-start', paddingRight: 60 },
   rowRight: { justifyContent: 'flex-end', paddingLeft: 60 },
-  
+
   bubbleMe: {
     backgroundColor: MY_BUBBLE, borderRadius: 16, borderTopRightRadius: 4,
     paddingHorizontal: 12, paddingVertical: 8, minWidth: 80,
@@ -331,7 +368,7 @@ const styles = StyleSheet.create({
   },
   senderName: { fontSize: 13, fontWeight: '700', marginBottom: 2 },
   textBase: { fontSize: 15, color: '#0F172A', lineHeight: 20 },
-  
+
   metaMe: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginTop: 4 },
   metaThem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginTop: 4 },
   timeText: { fontSize: 11, color: '#94A3B8' },
