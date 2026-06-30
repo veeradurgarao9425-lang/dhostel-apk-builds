@@ -79,6 +79,41 @@ export default function StaffPaymentsScreen({ navigation, route }: any) {
                 note: note.trim() || null,
             });
             if (res.data?.success) {
+                // Background task: log this to global expenses
+                try {
+                    const catRes = await api.get('/expenses/categories');
+                    const cats = catRes.data?.data || [];
+                    let staffCat = cats.find((c: any) => 
+                        c.category_name.toLowerCase().includes('staff') || 
+                        c.category_name.toLowerCase().includes('salar')
+                    );
+                    
+                    let finalCatId = staffCat?.category_id;
+                    
+                    // If no category exists, try to create one or fallback
+                    if (!finalCatId) {
+                        try {
+                            const newCatRes = await api.post('/expenses/categories', { category_name: 'Staff Salary' });
+                            finalCatId = newCatRes.data?.data?.category_id || cats[0]?.category_id || 1;
+                        } catch (e) {
+                            finalCatId = cats[0]?.category_id || 1;
+                        }
+                    }
+
+                    await api.post('/expenses', {
+                        category_id: finalCatId,
+                        expense_date: payDate,
+                        amount: parseFloat(amount),
+                        payment_mode_id: 1, // Cash default
+                        vendor_name: staffName,
+                        description: `Staff Salary: ${staffName}${note.trim() ? ` - ${note.trim()}` : ''}`,
+                        bill_number: `STAFF-${res.data.data?.payment_id || Date.now()}`,
+                    });
+                } catch (expErr) {
+                    console.error('Failed to log staff expense:', expErr);
+                    // Silently fail expense logging so staff payment still succeeds
+                }
+
                 showSuccess('Payment saved successfully!');
                 setModalVisible(false);
                 resetForm();

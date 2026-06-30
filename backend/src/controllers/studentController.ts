@@ -405,13 +405,22 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
           .first();
 
         if (!existingFee) {
-          // Due date follows the hostel's preferred day-of-month (default 15th),
-          // mirroring the monthly cron so registration and cron stay consistent.
-          const hostel = await db('hostel_master').where('hostel_id', hostel_id).first();
-          const dueDateDay = hostel?.due_date_day || 15;
-          let dueDate = new Date(now.getFullYear(), now.getMonth(), dueDateDay);
-          if (dueDate.getDate() !== dueDateDay) {
-            dueDate = new Date(now.getFullYear(), now.getMonth() + 1, 0); // last day of short month
+          // Anniversary Billing: The first bill's due date is exactly their admission date.
+          // For the month string, we use the month of their admission.
+          const admissionDateObj = new Date(admission_date);
+          let dueDate = new Date(admissionDateObj);
+          
+          // Current month is used for the fee_month label, but we align due_date
+          // to match the exact day of admission.
+          const feeYear = now.getFullYear();
+          const feeMonth = now.getMonth();
+          
+          dueDate.setFullYear(feeYear);
+          dueDate.setMonth(feeMonth);
+          
+          // Handle overflow for short months (e.g. admitted 31st, current month has 30 days)
+          if (dueDate.getMonth() !== feeMonth) {
+            dueDate = new Date(feeYear, feeMonth + 1, 0); // last day of short month
           }
 
           await db('monthly_fees').insert({

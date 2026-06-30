@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, StatusBar,
-  Dimensions, Modal, Animated,
+  Dimensions, Modal, Animated, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
 import {
   ArrowLeft, Check, CalendarDays, ChevronDown, FileImage,
   ChevronRight, Utensils, Car, ShoppingBag, Receipt,
@@ -136,10 +137,10 @@ function CategoryItem({ cat, selected, onPress }: { cat: typeof CATEGORIES[0]; s
         { backgroundColor: cat.bg, transform: [{ scale }] },
         selected && { shadowColor: cat.color, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
       ]}>
-        <Icon size={26} color={cat.color} strokeWidth={2} />
+        <Icon size={24} color={cat.color} strokeWidth={2} />
         {selected && (
           <Animated.View style={[s.catCheckBadge, { backgroundColor: cat.color }]}>
-            <Check size={8} color={WHITE} strokeWidth={3} />
+            <Check size={10} color={WHITE} strokeWidth={3} />
           </Animated.View>
         )}
       </Animated.View>
@@ -184,6 +185,7 @@ export default function AddExpenseScreen({ navigation }: any) {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showAllCats, setShowAllCats] = useState(false);
+  const [receiptUri, setReceiptUri] = useState<string | null>(null);
 
   useEffect(() => {
     const d = new Date();
@@ -198,6 +200,17 @@ export default function AddExpenseScreen({ navigation }: any) {
     setShowSuccess(true);
   };
 
+  const handlePickReceipt = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.8,
+    });
+    if (!result.canceled) {
+      setReceiptUri(result.assets[0].uri);
+    }
+  };
+
   return (
     <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor={WHITE} />
@@ -205,16 +218,16 @@ export default function AddExpenseScreen({ navigation }: any) {
       {/* Header */}
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.headerBtn} activeOpacity={0.7}>
-          <ArrowLeft size={22} color={TEXT_DARK} strokeWidth={2} />
+          <ArrowLeft size={24} color={TEXT_DARK} strokeWidth={2.5} />
         </TouchableOpacity>
         <Text style={s.headerTitle}>Add Expense</Text>
-        <TouchableOpacity onPress={handleSave} style={[s.headerBtn, s.checkBtn]} activeOpacity={0.7}>
-          <Check size={18} color={BLUE} strokeWidth={2.5} />
-        </TouchableOpacity>
+        <View style={s.headerBtn} />
       </View>
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+
+
 
           {/* Amount */}
           <View style={s.amountContainer}>
@@ -245,11 +258,12 @@ export default function AddExpenseScreen({ navigation }: any) {
 
 
 
+
+
           {/* Category Grid */}
-          <View style={s.sectionHeaderRow}>
-            <Text style={[s.sectionLabel, { textTransform: 'none', fontSize: 15 }]}>Category</Text>
-          </View>
-          <View style={s.catGrid}>
+          <Text style={s.cardSectionLabel}>CATEGORY</Text>
+          <View style={s.catCard}>
+            <View style={s.catGrid}>
             {(showAllCats ? CATEGORIES : CATEGORIES.slice(0, 9)).map(cat => (
               <CategoryItem
                 key={cat.id} cat={cat}
@@ -266,13 +280,14 @@ export default function AddExpenseScreen({ navigation }: any) {
                 <Text style={s.catLabel} numberOfLines={1}>More</Text>
               </TouchableOpacity>
             ) : (
-              <TouchableOpacity style={s.catItem} activeOpacity={0.7}>
-                <View style={[s.catIconWrap, { backgroundColor: BG }]}>
+              <TouchableOpacity style={s.catItem} activeOpacity={0.7} onPress={() => navigation.navigate('AddCategory')}>
+                <View style={[s.catIconWrap, { backgroundColor: BG, borderWidth: 1, borderColor: '#D1D5DB' }]}>
                   <Plus size={24} color={TEXT_DARK} strokeWidth={2.5} />
                 </View>
                 <Text style={s.catLabel} numberOfLines={1}>Add</Text>
               </TouchableOpacity>
             )}
+            </View>
           </View>
 
           {/* Date & Time */}
@@ -306,22 +321,26 @@ export default function AddExpenseScreen({ navigation }: any) {
 
           {/* Note */}
           <Text style={[s.sectionLabel, { marginTop: 16 }]}>Note (Optional)</Text>
-          <View style={[s.inputCard, { height: 'auto', paddingVertical: 14, alignItems: 'flex-start' }]}>
+          <View style={s.noteCard}>
             <TextInput
-              style={[s.inputCardText, { minHeight: 36 }]}
+              style={s.noteInput}
               placeholder="Add a note..." placeholderTextColor={TEXT_LIGHT}
               value={note} onChangeText={setNote} multiline
             />
           </View>
 
           {/* Receipt */}
-          <TouchableOpacity style={s.receiptRow} activeOpacity={0.7}>
+          <TouchableOpacity style={s.receiptRow} activeOpacity={0.7} onPress={handlePickReceipt}>
             <View style={s.receiptIconWrap}>
-              <FileImage size={18} color={TEXT_MID} strokeWidth={1.8} />
+              {receiptUri ? (
+                <Image source={{ uri: receiptUri }} style={{ width: 38, height: 38, borderRadius: 10 }} />
+              ) : (
+                <FileImage size={18} color={TEXT_MID} strokeWidth={1.8} />
+              )}
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={s.receiptTitle}>Add Receipt</Text>
-              <Text style={s.receiptSub}>Optional · Upload an image</Text>
+              <Text style={s.receiptTitle}>{receiptUri ? 'Receipt Attached' : 'Add Receipt'}</Text>
+              <Text style={s.receiptSub}>{receiptUri ? 'Click to change image' : 'Optional · Upload an image'}</Text>
             </View>
             <ChevronRight size={16} color={TEXT_LIGHT} strokeWidth={2} />
           </TouchableOpacity>
@@ -333,7 +352,11 @@ export default function AddExpenseScreen({ navigation }: any) {
           >
             <Text style={s.saveBtnText}>Save Expense</Text>
           </TouchableOpacity>
-          <View style={{ height: 24 }} />
+          
+          <Text style={s.bottomInfoText}>All added expenses are securely recorded in your monthly ledger.</Text>
+          
+          <View style={{ height: 40 }} />
+
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -345,8 +368,8 @@ export default function AddExpenseScreen({ navigation }: any) {
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
 const COLS    = 4;
-const COL_GAP = 16;
-const TILE    = (width - 40 - COL_GAP * (COLS - 1)) / COLS;
+const COL_GAP = 12;
+const TILE    = (width - 40 - 32 - COL_GAP * (COLS - 1)) / COLS; // 40=scrollPad, 32=cardPad
 
 const s = StyleSheet.create({
   safe:   { flex: 1, backgroundColor: BG },
@@ -355,18 +378,17 @@ const s = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 12, backgroundColor: WHITE,
     borderBottomWidth: 1, borderBottomColor: BORDER,
   },
-  headerBtn:   { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  checkBtn:    { borderRadius: 10, backgroundColor: BLUE_SOFT },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: TEXT_DARK },
+  headerBtn:   { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginLeft: -8 },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: TEXT_DARK, flex: 1 },
 
-  scroll: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 },
+  scroll: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40, flexGrow: 1 },
 
   // Amount card
   amountContainer: { marginBottom: 12 },
   amountRow:   { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
   rupee:       { fontSize: 36, fontWeight: '800', color: TEXT_DARK, marginRight: 8 },
   amountInput: { fontSize: 44, fontWeight: '900', color: TEXT_DARK, flex: 1, padding: 0, includeFontPadding: false },
-  chipsRow:    { flexDirection: 'row', gap: 10, marginBottom: 24 },
+  chipsRow:    { flexDirection: 'row', gap: 10, marginBottom: 44 }, // 1 inch bottom gap
   chip:        { paddingVertical: 10, alignItems: 'center', borderRadius: 10, backgroundColor: WHITE, borderWidth: 1, borderColor: BORDER },
   chipActive:  { borderColor: BLUE, backgroundColor: BLUE_SOFT },
   chipText:    { fontSize: 13, fontWeight: '700', color: TEXT_MID },
@@ -374,15 +396,26 @@ const s = StyleSheet.create({
 
   sectionLabel: { fontSize: 12, fontWeight: '800', color: TEXT_DARK, textTransform: 'uppercase', letterSpacing: 0.5 },
 
-  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  cardSectionLabel: {
+    fontSize: 11, fontWeight: '800', color: '#9CA3AF',
+    textTransform: 'uppercase', letterSpacing: 1,
+    marginBottom: 10, marginLeft: 4, marginTop: 4,
+  },
 
-  // Category grid — 4 columns, match image
-  catGrid:   { flexDirection: 'row', flexWrap: 'wrap', gap: COL_GAP, marginBottom: 10 },
-  catItem:   { alignItems: 'center', gap: 8, width: TILE },
+  catCard: {
+    backgroundColor: WHITE, borderRadius: 24,
+    paddingVertical: 24, paddingHorizontal: 16,
+    marginBottom: 20,
+    shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 1,
+  },
+
+  // Category grid — exactly 4 columns inside the card
+  catGrid:   { flexDirection: 'row', flexWrap: 'wrap', gap: COL_GAP },
+  catItem:   { alignItems: 'center', width: TILE },
   catIconWrap: {
-    width: 64, height: 64, borderRadius: 20,
+    width: 56, height: 56, borderRadius: 16,
     alignItems: 'center', justifyContent: 'center',
-    position: 'relative',
+    position: 'relative', marginBottom: 8,
   },
   catCheckBadge: {
     position: 'absolute', bottom: -2, right: -2,
@@ -399,6 +432,13 @@ const s = StyleSheet.create({
     borderRadius: 13, paddingHorizontal: 14, height: 52,
   },
   inputCardText: { flex: 1, fontSize: 14, color: TEXT_DARK, fontWeight: '600' },
+
+  // Note Card
+  noteCard: {
+    backgroundColor: WHITE, borderWidth: 1, borderColor: BORDER,
+    borderRadius: 13, padding: 14, minHeight: 90,
+  },
+  noteInput: { fontSize: 14, color: TEXT_DARK, fontWeight: '500', flex: 1, textAlignVertical: 'top' },
 
   // Receipt row
   receiptRow: {
@@ -418,6 +458,8 @@ const s = StyleSheet.create({
   },
   saveBtnOff:  { backgroundColor: '#A0B4E8', shadowOpacity: 0 },
   saveBtnText: { color: WHITE, fontSize: 16, fontWeight: '800' },
+
+  bottomInfoText: { fontSize: 12, color: TEXT_LIGHT, textAlign: 'center', marginTop: 16, fontWeight: '500' },
 });
 
 // Bottom sheet

@@ -306,11 +306,12 @@ export default function PendingPaymentsScreen() {
     // Filter Modal state
     const [filterModalVisible, setFilterModalVisible] = useState(false);
     const [filterLoading, setFilterLoading] = useState(false);
+    const [activeFilters, setActiveFilters] = useState<any>({ status: 'All', datePreset: 'All Time', room: 'All' });
     const handleApplyFilters = async (filters: any) => {
         setFilterLoading(true);
+        setActiveFilters(filters);
         setPage(1);
         setHasMore(true);
-        console.log('Applied filters:', filters);
         await load(1, true);
         setFilterLoading(false);
     };
@@ -472,12 +473,41 @@ export default function PendingPaymentsScreen() {
     }, [payAmount, payDate, payModeId, payNotes, payTransactionId, payDueDate, selectedFee, load, showSuccess, showError, showApiError]);
 
     // ── Filtered list ─────────────────────────────────────────────────────────
-    const filteredTenants = searchQuery.trim()
-        ? tenants.filter(t =>
-            t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            t.room.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-        : tenants;
+    const filteredTenants = tenants.filter(t => {
+        // 1. Search filter
+        if (searchQuery.trim()) {
+            const matchesSearch = t.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                  t.room.toLowerCase().includes(searchQuery.toLowerCase());
+            if (!matchesSearch) return false;
+        }
+
+        // 2. Status filter
+        if (activeFilters.status !== 'All') {
+            if (activeFilters.status === 'Partial' && t.paidAmount === 0) return false;
+            if (activeFilters.status === 'Pending' && t.paidAmount > 0) return false;
+        }
+
+        // 3. Room filter
+        if (activeFilters.room !== 'All') {
+            if (activeFilters.room === 'Unallocated' && (t.room_number !== null && t.room !== 'N/A')) return false;
+            if (activeFilters.room === 'Has Room' && (t.room_number === null || t.room === 'N/A')) return false;
+            if (activeFilters.room !== 'Unallocated' && activeFilters.room !== 'Has Room' && t.room_number !== activeFilters.room) return false;
+        }
+        
+        // 4. Date Filter
+        if (activeFilters.datePreset !== 'All Time') {
+            const now = new Date();
+            const thisMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            const lastMonthDate = new Date(); lastMonthDate.setMonth(now.getMonth() - 1);
+            const lastMonthStr = `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth() + 1).padStart(2, '0')}`;
+            
+            if (activeFilters.datePreset === 'This Month' && t.feeMonth !== thisMonthStr) return false;
+            if (activeFilters.datePreset === 'Last Month' && t.feeMonth !== lastMonthStr) return false;
+            if (activeFilters.datePreset === 'Older' && (t.feeMonth === thisMonthStr || t.feeMonth === lastMonthStr)) return false;
+        }
+
+        return true;
+    });
 
     const keyExtractor = useCallback((item: DueTenant) => `due-${item.id}`, []);
     const renderItem = useCallback(({ item }: { item: DueTenant }) => (
@@ -551,13 +581,6 @@ export default function PendingPaymentsScreen() {
                         <View style={[s.summaryIconWrap, { backgroundColor: '#FEF2F2' }]}>
                             <MaterialCommunityIcons name="file-document-arrow-right-outline" size={24} color="#EF4444" />
                         </View>
-                        <TouchableOpacity
-                            style={[s.summaryArrowBtn, { backgroundColor: '#FFF0F0', borderColor: '#FCA5A5' }]}
-                            onPress={() => load(1, false)}
-                            activeOpacity={0.7}
-                        >
-                            <Ionicons name="arrow-forward" size={12} color="#EF4444" />
-                        </TouchableOpacity>
                     </View>
                     <Text style={[s.summaryLabel, { color: '#EF4444' }]}>
                         {t('pendingDues.outstandingDues')}
@@ -577,12 +600,6 @@ export default function PendingPaymentsScreen() {
                         <View style={[s.summaryIconWrap, { backgroundColor: '#FFFBEB' }]}>
                             <Ionicons name="hourglass" size={24} color="#F59E0B" />
                         </View>
-                        <TouchableOpacity
-                            style={[s.summaryArrowBtn, { backgroundColor: '#FFFBEB', borderColor: '#FCD34D' }]}
-                            activeOpacity={0.7}
-                        >
-                            <Ionicons name="arrow-forward" size={12} color="#F59E0B" />
-                        </TouchableOpacity>
                     </View>
                     <Text style={[s.summaryLabel, { color: '#F59E0B' }]}>
                         {t('pendingDues.partialPaid')}
@@ -625,9 +642,20 @@ export default function PendingPaymentsScreen() {
                 >
                     <Ionicons name="filter" size={16} color={theme.primary} />
                     <Text style={[s.filterTxt, { color: theme.primary }]}>
-                        Filter
+                        Filter {Object.values(activeFilters).filter(v => v !== 'All' && v !== 'All Time').length > 0 ? `(${Object.values(activeFilters).filter(v => v !== 'All' && v !== 'All Time').length})` : ''}
                     </Text>
                 </TouchableOpacity>
+            </View>
+
+            <View style={{ paddingHorizontal: 16, paddingBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={{ fontSize: 13, color: isDark ? '#94A3B8' : '#64748B', fontWeight: '600' }}>
+                    Showing {filteredTenants.length} student{filteredTenants.length !== 1 ? 's' : ''}
+                </Text>
+                {Object.values(activeFilters).some(v => v !== 'All' && v !== 'All Time') && (
+                    <TouchableOpacity onPress={() => setActiveFilters({ status: 'All', datePreset: 'All Time', room: 'All' })}>
+                        <Text style={{ fontSize: 12, color: theme.primary, fontWeight: '700' }}>Clear Filters</Text>
+                    </TouchableOpacity>
+                )}
             </View>
 
             <FlatList

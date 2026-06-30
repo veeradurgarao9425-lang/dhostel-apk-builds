@@ -131,7 +131,7 @@ export default function ExpensesScreen({ navigation }: any) {
       {/* Content */}
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={st.scroll}>
         {tab === 'Overview'   && <OverviewTab navigation={navigation} />}
-        {tab === 'Categories' && <CategoriesTab />}
+        {tab === 'Categories' && <CategoriesTab navigation={navigation} />}
         {tab === 'Analytics'  && <AnalyticsTab />}
       </ScrollView>
 
@@ -222,7 +222,7 @@ function OverviewTab({ navigation }: { navigation: any }) {
 }
 
 // ── Categories Tab ─────────────────────────────────────────────────────────────
-function CategoriesTab() {
+function CategoriesTab({ navigation }: { navigation: any }) {
   return (
     <>
       <View style={st.sectionHeader}>
@@ -251,7 +251,18 @@ function CategoriesTab() {
         {BREAKDOWN.map((seg, i) => {
           const Icon = seg.Icon;
           return (
-            <View key={seg.name} style={[st.catDetailRow, i < BREAKDOWN.length - 1 && st.rowDivider]}>
+            <TouchableOpacity 
+              key={seg.name} 
+              style={[st.catDetailRow, i < BREAKDOWN.length - 1 && st.rowDivider]}
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('CategoryDetail', {
+                categoryName: seg.name,
+                spent: seg.amount,
+                totalPct: seg.pct,
+                color: seg.color,
+                bg: seg.bg
+              })}
+            >
               <View style={[st.rowIcon, { backgroundColor: seg.bg }]}>
                 <Icon size={18} color={seg.color} strokeWidth={2} />
               </View>
@@ -267,7 +278,7 @@ function CategoriesTab() {
                   <View style={[st.barFill, { width: `${seg.pct}%` as any, backgroundColor: seg.color }]} />
                 </View>
               </View>
-            </View>
+            </TouchableOpacity>
           );
         })}
       </View>
@@ -281,24 +292,32 @@ function AnalyticsTab() {
 
   return (
     <>
-      {/* Top insight cards */}
-      <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
-        <View style={[st.insightCard, { flex: 1, backgroundColor: BLUE }]}>
-          <Text style={st.insightLabel}>This Month</Text>
-          <Text style={st.insightVal}>₹3,650</Text>
-          <View style={st.insightBadge}>
-            <TrendingUp size={11} color={WHITE} strokeWidth={2.5} />
-            <Text style={st.insightBadgeText}>+12% vs last</Text>
+      {/* Top insight Hero Card */}
+      <View style={st.heroAnalyticsCard}>
+        {/* Top: This Month */}
+        <View style={st.heroTop}>
+          <View>
+            <Text style={st.heroLabel}>Total Spend This Month</Text>
+            <Text style={st.heroAmount}>₹3,650</Text>
+          </View>
+          <View style={st.heroTrend}>
+            <TrendingUp size={16} color={WHITE} strokeWidth={3} />
+            <Text style={st.heroTrendText}>12%</Text>
           </View>
         </View>
-        <View style={{ flex: 1, gap: 10 }}>
-          <View style={[st.insightCard, { backgroundColor: '#EAF5EA', flex: 0 }]}>
-            <Text style={[st.insightLabel, { color: '#43A047' }]}>Daily Avg</Text>
-            <Text style={[st.insightVal, { color: '#43A047', fontSize: 18 }]}>₹118</Text>
+        
+        <View style={st.heroDivider} />
+        
+        {/* Bottom: Daily & 6M */}
+        <View style={st.heroBottom}>
+          <View style={st.heroStatCol}>
+            <Text style={st.heroStatLabel}>Daily Average</Text>
+            <Text style={st.heroStatVal}>₹118</Text>
           </View>
-          <View style={[st.insightCard, { backgroundColor: '#FFF3E0', flex: 0 }]}>
-            <Text style={[st.insightLabel, { color: '#FB8C00' }]}>6M Total</Text>
-            <Text style={[st.insightVal, { color: '#FB8C00', fontSize: 18 }]}>₹19.3k</Text>
+          <View style={st.heroStatLine} />
+          <View style={st.heroStatCol}>
+            <Text style={st.heroStatLabel}>Total (6 Months)</Text>
+            <Text style={st.heroStatVal}>₹22,150</Text>
           </View>
         </View>
       </View>
@@ -459,15 +478,23 @@ const st = StyleSheet.create({
   statLbl:     { fontSize: 11, color: TEXT_MID, fontWeight: '600' },
   statDivider: { width: 1, backgroundColor: '#C7D6FF', marginVertical: 2 },
 
-  // Analytics insight cards
-  insightCard: {
-    borderRadius: 16, padding: 14,
-    borderWidth: 1, borderColor: 'rgba(0,0,0,0.06)',
+  // Analytics Hero Card
+  heroAnalyticsCard: {
+    backgroundColor: BLUE,
+    borderRadius: 24, padding: 22, marginBottom: 24,
+    shadowColor: BLUE, shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.25, shadowRadius: 20, elevation: 8,
   },
-  insightLabel: { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginBottom: 4 },
-  insightVal:   { fontSize: 24, fontWeight: '900', color: WHITE, letterSpacing: -0.5, marginBottom: 8 },
-  insightBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, alignSelf: 'flex-start' },
-  insightBadgeText: { fontSize: 10, fontWeight: '700', color: WHITE },
+  heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 22 },
+  heroLabel: { fontSize: 13, color: 'rgba(255,255,255,0.8)', fontWeight: '600', marginBottom: 6 },
+  heroAmount: { fontSize: 38, color: WHITE, fontWeight: '900', letterSpacing: -1 },
+  heroTrend: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.2)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, gap: 4, marginTop: 4 },
+  heroTrendText: { fontSize: 13, color: WHITE, fontWeight: '700' },
+  heroDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.15)', marginBottom: 20 },
+  heroBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  heroStatCol: { flex: 1 },
+  heroStatLabel: { fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: '600', marginBottom: 4 },
+  heroStatVal: { fontSize: 18, color: WHITE, fontWeight: '700' },
+  heroStatLine: { width: 1, height: 30, backgroundColor: 'rgba(255,255,255,0.15)', marginHorizontal: 20 },
 
   chartLegendRow:  { flexDirection: 'row', gap: 16, marginTop: 12 },
   chartLegendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },

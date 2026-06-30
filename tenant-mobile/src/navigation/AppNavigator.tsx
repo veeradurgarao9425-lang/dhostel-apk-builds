@@ -33,7 +33,11 @@ import PaymentScreen from '../Pages/PaymentScreen';
 import MoreScreen from '../Pages/MoreScreen';
 import ServicesScreen from '../Pages/ServicesScreen';
 import FullMenuScreen from '../Pages/FullMenuScreen';
+import AnalyticsScreen from '../Pages/AnalyticsScreen';
 import AddExpenseScreen from '../Pages/AddExpenseScreen';
+import AddCategoryScreen from '../Pages/AddCategoryScreen';
+import CategoryDetailScreen from '../Pages/CategoryDetailScreen';
+import TransactionsListScreen from '../Pages/TransactionsListScreen';
 import AllExpensesScreen from '../Pages/AllExpensesScreen';
 import SettingsScreen from '../Pages/SettingsScreen';
 
@@ -99,8 +103,11 @@ export default function AppNavigator() {
             <Stack.Screen name="Services" component={ServicesScreen} />
             <Stack.Screen name="FullMenu" component={FullMenuScreen} />
             <Stack.Screen name="Settings" component={SettingsScreen} />
-            <Stack.Screen name="AddExpense" component={AddExpenseScreen} />
             <Stack.Screen name="AllExpenses" component={AllExpensesScreen} />
+            <Stack.Screen name="AddExpense" component={AddExpenseScreen} />
+            <Stack.Screen name="AddCategory" component={AddCategoryScreen} />
+            <Stack.Screen name="CategoryDetail" component={CategoryDetailScreen} />
+            <Stack.Screen name="TransactionsList" component={TransactionsListScreen} />
             <Stack.Screen name="HelpScreen" component={HelpScreen} />
           </>
         ) : connectedHostel ? (

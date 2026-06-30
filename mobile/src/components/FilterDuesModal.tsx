@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
+import api from '../services/api';
 
 export interface FilterDuesProps {
     visible: boolean;
@@ -16,6 +17,18 @@ export function FilterDuesModal({ visible, onClose, onApply }: FilterDuesProps) 
     const [status, setStatus] = useState('All');
     const [datePreset, setDatePreset] = useState('All Time');
     const [room, setRoom] = useState('All');
+    const [rooms, setRooms] = useState<any[]>([]);
+    const [loadingRooms, setLoadingRooms] = useState(false);
+
+    useEffect(() => {
+        if (visible && rooms.length === 0) {
+            setLoadingRooms(true);
+            api.get('/rooms')
+               .then(res => setRooms(res.data?.data || []))
+               .catch(err => console.error('Failed to load rooms', err))
+               .finally(() => setLoadingRooms(false));
+        }
+    }, [visible]);
 
     const handleApply = () => {
         onApply({ status, datePreset, room });
@@ -28,41 +41,14 @@ export function FilterDuesModal({ visible, onClose, onApply }: FilterDuesProps) 
         setRoom('All');
     };
 
-    const StatusPill = ({ label }: { label: string }) => {
-        const active = status === label;
-        return (
-            <TouchableOpacity 
-                style={[S.pill, active && { backgroundColor: isDark ? primary + '30' : primary + '15', borderColor: 'transparent' }, isDark && !active && { borderColor: '#334155' }]} 
-                onPress={() => setStatus(label)}
-            >
-                <Text style={[S.pillText, active && { color: primary, fontWeight: '600' }, isDark && !active && { color: '#CBD5E1' }]}>{label}</Text>
-            </TouchableOpacity>
-        );
-    };
-
-    const DatePill = ({ label }: { label: string }) => {
-        const active = datePreset === label;
-        return (
-            <TouchableOpacity 
-                style={[S.pill, active && { backgroundColor: isDark ? primary + '30' : primary + '15', borderColor: 'transparent' }, isDark && !active && { borderColor: '#334155' }]} 
-                onPress={() => setDatePreset(label)}
-            >
-                <Text style={[S.pillText, active && { color: primary, fontWeight: '600' }, isDark && !active && { color: '#CBD5E1' }]}>{label}</Text>
-            </TouchableOpacity>
-        );
-    };
-    
-    const RoomPill = ({ label }: { label: string }) => {
-        const active = room === label;
-        return (
-            <TouchableOpacity 
-                style={[S.pill, active && { backgroundColor: isDark ? primary + '30' : primary + '15', borderColor: 'transparent' }, isDark && !active && { borderColor: '#334155' }]} 
-                onPress={() => setRoom(label)}
-            >
-                <Text style={[S.pillText, active && { color: primary, fontWeight: '600' }, isDark && !active && { color: '#CBD5E1' }]}>{label}</Text>
-            </TouchableOpacity>
-        );
-    };
+    const Pill = ({ label, active, onPress }: any) => (
+        <TouchableOpacity 
+            style={[S.pill, active && { backgroundColor: isDark ? primary + '30' : primary + '15', borderColor: 'transparent' }, isDark && !active && { borderColor: '#334155' }]} 
+            onPress={onPress}
+        >
+            <Text style={[S.pillText, active && { color: primary, fontWeight: '600' }, isDark && !active && { color: '#CBD5E1' }]}>{label}</Text>
+        </TouchableOpacity>
+    );
 
     return (
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -80,26 +66,32 @@ export function FilterDuesModal({ visible, onClose, onApply }: FilterDuesProps) 
                         
                         <Text style={[S.sectionTitle, { color: theme.textSecondary }]}>Payment Status</Text>
                         <View style={S.pillContainer}>
-                            <StatusPill label="All" />
-                            <StatusPill label="Pending" />
-                            <StatusPill label="Partial" />
+                            {['All', 'Pending', 'Partial'].map(l => (
+                                <Pill key={l} label={l} active={status === l} onPress={() => setStatus(l)} />
+                            ))}
                         </View>
                         <View style={[S.divider, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]} />
 
                         <Text style={[S.sectionTitle, { color: theme.textSecondary }]}>Time Period</Text>
                         <View style={S.pillContainer}>
-                            <DatePill label="All Time" />
-                            <DatePill label="Last 3 Months" />
-                            <DatePill label="This Month" />
+                            {['All Time', 'This Month', 'Last Month', 'Older'].map(l => (
+                                <Pill key={l} label={l} active={datePreset === l} onPress={() => setDatePreset(l)} />
+                            ))}
                         </View>
                         <View style={[S.divider, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]} />
 
-                        <Text style={[S.sectionTitle, { color: theme.textSecondary }]}>Room Filter</Text>
-                        <View style={S.pillContainer}>
-                            <RoomPill label="All" />
-                            <RoomPill label="Has Room" />
-                            <RoomPill label="Unallocated" />
-                        </View>
+                        <Text style={[S.sectionTitle, { color: theme.textSecondary }]}>Specific Room Filter</Text>
+                        {loadingRooms ? (
+                            <ActivityIndicator size="small" color={primary} />
+                        ) : (
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={S.pillContainer}>
+                                <Pill label="All" active={room === 'All'} onPress={() => setRoom('All')} />
+                                <Pill label="Unallocated" active={room === 'Unallocated'} onPress={() => setRoom('Unallocated')} />
+                                {rooms.map(r => (
+                                    <Pill key={r.room_id} label={r.room_number} active={room === r.room_number} onPress={() => setRoom(r.room_number)} />
+                                ))}
+                            </ScrollView>
+                        )}
 
                     </ScrollView>
 
