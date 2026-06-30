@@ -40,7 +40,7 @@ export const CustomToast = ({ variant, title, message, progress, onAction, onClo
 
     return (
         <View style={S.container}>
-            <View style={S.leftBorder(config.color)} />
+            <View style={[S.leftBorder, { backgroundColor: config.color }]} />
             
             <View style={S.contentWrap}>
                 <View style={S.row}>
@@ -101,10 +101,9 @@ const S = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#F1F5F9',
     },
-    leftBorder: (color: string) => ({
+    leftBorder: {
         width: 4,
-        backgroundColor: color,
-    }),
+    },
     contentWrap: {
         flex: 1,
         paddingVertical: 12,

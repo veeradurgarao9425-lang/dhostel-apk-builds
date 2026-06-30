@@ -6,11 +6,13 @@ interface CardProps {
   children: React.ReactNode;
   style?: ViewStyle | ViewStyle[];
   noPadding?: boolean;
+  padded?: boolean;
 }
 
-export default function Card({ children, style, noPadding }: CardProps) {
+export default function Card({ children, style, noPadding, padded }: CardProps) {
+  const hasPadding = padded !== undefined ? padded : !noPadding;
   return (
-    <View style={[styles.card, !noPadding && styles.padding, style]}>
+    <View style={[styles.card, hasPadding && styles.padding, style]}>
       {children}
     </View>
   );

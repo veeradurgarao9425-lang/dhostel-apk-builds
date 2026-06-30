@@ -74,7 +74,8 @@ const MEALS = [
 ];
 
 export default function FullMenuScreen({ navigation }: any) {
-  const [activeTab, setActiveTab] = useState<TabKey>('Today');
+  const [selectedDay, setSelectedDay] = useState<string>('Mon');
+  const dayMenu = WEEK_MENU[selectedDay];
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ScrollView, StyleSheet, ViewStyle } from 'react-native';
+import { View, ScrollView, StyleSheet, ViewStyle, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing } from '../../theme';
 
@@ -8,9 +8,11 @@ interface ScreenProps {
   scroll?: boolean;
   style?: ViewStyle;
   contentStyle?: ViewStyle;
+  refreshing?: boolean;
+  onRefresh?: () => Promise<void> | void;
 }
 
-export default function Screen({ children, scroll = true, style, contentStyle }: ScreenProps) {
+export default function Screen({ children, scroll = true, style, contentStyle, refreshing, onRefresh }: ScreenProps) {
   if (scroll) {
     return (
       <SafeAreaView style={[styles.safe, style]} edges={['top']}>
@@ -18,6 +20,11 @@ export default function Screen({ children, scroll = true, style, contentStyle }:
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[styles.content, contentStyle]}
           keyboardShouldPersistTaps="handled"
+          refreshControl={
+            onRefresh ? (
+              <RefreshControl refreshing={refreshing || false} onRefresh={onRefresh} />
+            ) : undefined
+          }
         >
           {children}
         </ScrollView>

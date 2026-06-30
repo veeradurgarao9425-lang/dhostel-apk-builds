@@ -926,13 +926,18 @@ export const authController = {
       console.log(`[TENANT OTP] ${identifier} -> ${otp}`);
       // Send OTP via email if it's an email (or integrate SMS later if phone)
       if (identifier.includes('@')) {
-        await sendOtpEmail(identifier, otp);
+        try {
+          await sendOtpEmail(identifier, otp);
+        } catch (emailErr: any) {
+          console.error('Failed to send OTP email, but OTP was generated:', emailErr.message);
+          return res.status(500).json({ success: false, error: `Brevo Error: ${emailErr.message}` });
+        }
       }
 
       return res.json({ success: true, message: 'OTP sent successfully' });
-    } catch (error) {
+    } catch (error: any) {
       console.error('tenantSendOtp error:', error);
-      return res.status(500).json({ success: false, error: 'Internal server error' });
+      return res.status(500).json({ success: false, error: error.message || 'Internal server error' });
     }
   },
 

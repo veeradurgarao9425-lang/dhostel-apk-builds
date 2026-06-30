@@ -143,7 +143,7 @@ export default function SplitsScreen({ navigation }: any) {
             <Text style={styles.balName}>{b.member.id === YOU_ID ? 'You' : b.member.name}</Text>
             <View style={{ flex: 1 }} />
             {b.net === 0 ? (
-              <Pill label="settled" tone="neutral" />
+              <Pill label="settled" tone="default" />
             ) : b.net > 0 ? (
               <Text style={[styles.balAmt, { color: colors.success }]}>
                 gets {formatCurrency(b.net)}

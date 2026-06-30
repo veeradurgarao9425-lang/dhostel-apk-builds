@@ -34,6 +34,7 @@ import MoreScreen from '../Pages/MoreScreen';
 import ServicesScreen from '../Pages/ServicesScreen';
 import FullMenuScreen from '../Pages/FullMenuScreen';
 import AddExpenseScreen from '../Pages/AddExpenseScreen';
+import AllExpensesScreen from '../Pages/AllExpensesScreen';
 import SettingsScreen from '../Pages/SettingsScreen';
 
 
@@ -99,6 +100,7 @@ export default function AppNavigator() {
             <Stack.Screen name="FullMenu" component={FullMenuScreen} />
             <Stack.Screen name="Settings" component={SettingsScreen} />
             <Stack.Screen name="AddExpense" component={AddExpenseScreen} />
+            <Stack.Screen name="AllExpenses" component={AllExpensesScreen} />
             <Stack.Screen name="HelpScreen" component={HelpScreen} />
           </>
         ) : connectedHostel ? (

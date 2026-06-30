@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowLeft, Plus, CheckCircle, Clock, AlertCircle, Trash2, Camera, X, Wrench, MoreHorizontal } from 'lucide-react-native';
 import { colors, radius, spacing, shadow } from '../theme';
 import { Complaint } from '../data/tenantContent';
+import { useAuth } from '../context/AuthContext';
 
 type FilterTab = 'All' | 'Open' | 'Resolved';
 const FILTER_TABS: FilterTab[] = ['All', 'Open', 'Resolved'];
@@ -19,11 +20,20 @@ const COMPLAINTS = [
   { id: '4', title: 'Mess Food Issue', date: '10 May 2026, 08:00 PM', status: 'Resolved', category: 'Food', priority: 'High', note: 'Food was too spicy today.' },
 ];
 
-const statusConfig: Record<string, { bg: string; text: string }> = {
-  Open: { bg: '#FFF7ED', text: '#EA580C' }, // Orange
-  'In Progress': { bg: '#EFF6FF', text: '#3B82F6' }, // Blue (list)
-  Resolved: { bg: '#F0FDF4', text: '#16A34A' }, // Green
+const statusConfig: Record<string, { bg: string; text: string; border: string; label: string }> = {
+  Open: { bg: '#FFF7ED', text: '#EA580C', border: '#FED7AA', label: 'Open' },
+  'In Progress': { bg: '#EFF6FF', text: '#3B82F6', border: '#BFDBFE', label: 'In Progress' },
+  Resolved: { bg: '#F0FDF4', text: '#16A34A', border: '#BBF7D0', label: 'Resolved' },
 };
+
+const categories = [
+  { key: 'WiFi', icon: Wrench },
+  { key: 'Maintenance', icon: Wrench },
+  { key: 'Electrical', icon: Wrench },
+  { key: 'Food', icon: Wrench },
+];
+
+const relativeDay = (dateStr: string) => dateStr;
 
 // ── Detail View ───────────────────────────────────────────────────────────────
 function ComplaintDetailView({ complaint, onClose }: { complaint: any; onClose: () => void }) {
@@ -94,8 +104,10 @@ function ComplaintDetailView({ complaint, onClose }: { complaint: any; onClose: 
 
 // ── Main Screen ───────────────────────────────────────────────────────────────
 export default function ComplaintsScreen({ navigation }: any) {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<FilterTab>('All');
   const [selectedComplaint, setSelectedComplaint] = useState<any>(null);
+  const [showForm, setShowForm] = useState(false);
 
   if (selectedComplaint) {
     return <ComplaintDetailView complaint={selectedComplaint} onClose={() => setSelectedComplaint(null)} />;
@@ -220,11 +232,16 @@ const styles = StyleSheet.create({
 
   // Header
   header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.xl, paddingVertical: 14,
+    paddingHorizontal: spacing.xl, paddingVertical: 14, overflow: 'hidden'
   },
+  hCircle1: { position: 'absolute', width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(255,255,255,0.07)', top: -40, right: -20 },
+  hCircle2: { position: 'absolute', width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(255,255,255,0.05)', bottom: 10, right: 60 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerEyebrow: { fontSize: 13, color: 'rgba(255,255,255,0.8)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+  addBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
+  listContent: { padding: spacing.xl, paddingBottom: 100 },
 
   // Tabs
   tabWrapper: { paddingHorizontal: spacing.xl, paddingTop: 10, paddingBottom: 16 },
@@ -253,6 +270,19 @@ const styles = StyleSheet.create({
   complaintDate: { fontSize: 12, color: colors.textMuted, fontWeight: '500' },
   statusBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.sm },
   statusText: { fontSize: 11, fontWeight: '800' },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 8, marginTop: 16, textAlign: 'center' },
+  emptyBody: { fontSize: 14, color: colors.textSubtle, textAlign: 'center', lineHeight: 20 },
+  emptyIconWrap: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60 },
+  listCard: { backgroundColor: colors.surface, borderRadius: radius.xl, padding: 16, ...shadow.subtle },
+  listRow: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 12 },
+  listRowDivider: { borderBottomWidth: 1, borderBottomColor: colors.border },
+  catIconWrap: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  cardTitle: { fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 4 },
+  cardSub: { fontSize: 12, color: colors.textSubtle, marginBottom: 4 },
+  cardNote: { fontSize: 13, color: '#4B5563', lineHeight: 18 },
+  statusPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.pill, borderWidth: 1, alignSelf: 'flex-start' },
+  statusPillText: { fontSize: 11, fontWeight: '700' },
 
   // Detail View
   detailCard: {

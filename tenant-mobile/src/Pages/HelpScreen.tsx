@@ -254,6 +254,6 @@ const s = StyleSheet.create({
   backToTopicsText: { color: BLUE, fontWeight: '700', fontSize: 13 },
   faqCard: { backgroundColor: WHITE, borderRadius: 16, padding: 20, borderWidth: 1, borderColor: BORDER },
   faqQuestion: { fontSize: 14, fontWeight: '700', color: TEXT_DARK },
-  divider: { height: 1, backgroundColor: BORDER, my: 12, marginVertical: 12 },
+  divider: { height: 1, backgroundColor: BORDER, marginVertical: 12 },
   faqAnswer: { fontSize: 13, color: TEXT_MID, lineHeight: 20 }
 });
