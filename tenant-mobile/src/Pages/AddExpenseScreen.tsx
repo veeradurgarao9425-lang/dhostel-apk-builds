@@ -134,16 +134,41 @@ function CategoryItem({ cat, selected, onPress }: { cat: typeof CATEGORIES[0]; s
       <Animated.View style={[
         s.catIconWrap,
         { backgroundColor: cat.bg, transform: [{ scale }] },
-        selected && { borderWidth: 2.5, borderColor: cat.color },
+        selected && { shadowColor: cat.color, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
       ]}>
-        <Icon size={26} color={cat.color} strokeWidth={1.8} />
+        <Icon size={26} color={cat.color} strokeWidth={2} />
         {selected && (
-          <View style={[s.catCheckBadge, { backgroundColor: cat.color }]}>
+          <Animated.View style={[s.catCheckBadge, { backgroundColor: cat.color }]}>
             <Check size={8} color={WHITE} strokeWidth={3} />
-          </View>
+          </Animated.View>
         )}
       </Animated.View>
-      <Text style={[s.catLabel, selected && { color: cat.color, fontWeight: '700' }]}>{cat.id}</Text>
+      <Text style={[s.catLabel, selected && { color: cat.color, fontWeight: '800' }]} numberOfLines={1}>{cat.id}</Text>
+    </TouchableOpacity>
+  );
+}
+
+// ── Animated Chip ─────────────────────────────────────────────────────────────
+function AnimatedChip({ amount, selected, onPress }: { amount: string; selected: boolean; onPress: () => void }) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  const handlePress = () => {
+    Animated.sequence([
+      Animated.spring(scale, { toValue: 0.85, useNativeDriver: true, friction: 5, tension: 200 }),
+      Animated.spring(scale, { toValue: 1,    useNativeDriver: true, friction: 5, tension: 200 }),
+    ]).start();
+    onPress();
+  };
+
+  return (
+    <TouchableOpacity activeOpacity={0.9} onPress={handlePress} style={{ flex: 1 }}>
+      <Animated.View style={[
+        s.chip,
+        selected && s.chipActive,
+        { transform: [{ scale }] }
+      ]}>
+        <Text style={[s.chipText, selected && s.chipTextActive]}>₹{amount}</Text>
+      </Animated.View>
     </TouchableOpacity>
   );
 }
@@ -158,6 +183,7 @@ export default function AddExpenseScreen({ navigation }: any) {
   const [showPayPicker, setShowPayPicker] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showAllCats, setShowAllCats] = useState(false);
 
   useEffect(() => {
     const d = new Date();
@@ -191,8 +217,8 @@ export default function AddExpenseScreen({ navigation }: any) {
         <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
           {/* Amount */}
-          <View style={s.amountCard}>
-            <Text style={s.amountHint}>Enter amount</Text>
+          <View style={s.amountContainer}>
+            <Text style={[s.sectionLabel, { textTransform: 'none', fontSize: 15 }]}>Amount</Text>
             <View style={s.amountRow}>
               <Text style={s.rupee}>₹</Text>
               <TextInput
@@ -203,61 +229,50 @@ export default function AddExpenseScreen({ navigation }: any) {
                 placeholderTextColor="#CBD5E0" autoFocus
               />
             </View>
-            {/* Quick chips */}
-            <View style={s.chipsRow}>
-              {QUICK_AMOUNTS.map(q => (
-                <TouchableOpacity
-                  key={q}
-                  style={[s.chip, amount === String(q) && s.chipActive]}
-                  onPress={() => setAmount(String(q))} activeOpacity={0.7}
-                >
-                  <Text style={[s.chipText, amount === String(q) && s.chipTextActive]}>₹{q}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
           </View>
 
-          {/* Recent Categories quick row */}
-          <View style={s.recentRow}>
-            <Text style={s.sectionLabel}>Recent</Text>
-            <View style={s.recentCats}>
-              {RECENT_CATS.map(cid => {
-                const meta = CATEGORIES.find(c => c.id === cid)!;
-                const Icon = meta.Icon;
-                const active = category === cid;
-                return (
-                  <TouchableOpacity
-                    key={cid}
-                    style={[s.recentCatBtn, active && { borderColor: meta.color, backgroundColor: meta.bg }]}
-                    onPress={() => setCategory(cid)} activeOpacity={0.7}
-                  >
-                    <Icon size={16} color={meta.color} strokeWidth={2} />
-                    <Text style={[s.recentCatText, active && { color: meta.color }]}>{cid}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+          {/* Quick chips */}
+          <View style={s.chipsRow}>
+            {QUICK_AMOUNTS.map(q => (
+              <AnimatedChip
+                key={q}
+                amount={String(q)}
+                selected={amount === String(q)}
+                onPress={() => setAmount(String(q))}
+              />
+            ))}
           </View>
+
+
 
           {/* Category Grid */}
           <View style={s.sectionHeaderRow}>
-            <Text style={s.sectionLabel}>Category</Text>
+            <Text style={[s.sectionLabel, { textTransform: 'none', fontSize: 15 }]}>Category</Text>
           </View>
           <View style={s.catGrid}>
-            {CATEGORIES.map(cat => (
+            {(showAllCats ? CATEGORIES : CATEGORIES.slice(0, 9)).map(cat => (
               <CategoryItem
                 key={cat.id} cat={cat}
                 selected={category === cat.id}
                 onPress={() => setCategory(cat.id)}
               />
             ))}
-            {/* Add custom category */}
-            <TouchableOpacity style={s.catItem} activeOpacity={0.7}>
-              <View style={[s.catIconWrap, { backgroundColor: BG, borderWidth: 1.5, borderColor: BORDER, borderStyle: 'dashed' }]}>
-                <Plus size={22} color={TEXT_LIGHT} strokeWidth={2} />
-              </View>
-              <Text style={s.catLabel}>Add</Text>
-            </TouchableOpacity>
+            
+            {!showAllCats ? (
+              <TouchableOpacity style={s.catItem} activeOpacity={0.7} onPress={() => setShowAllCats(true)}>
+                <View style={[s.catIconWrap, { backgroundColor: BG }]}>
+                  <MoreHorizontal size={24} color={TEXT_DARK} strokeWidth={2.5} />
+                </View>
+                <Text style={s.catLabel} numberOfLines={1}>More</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={s.catItem} activeOpacity={0.7}>
+                <View style={[s.catIconWrap, { backgroundColor: BG }]}>
+                  <Plus size={24} color={TEXT_DARK} strokeWidth={2.5} />
+                </View>
+                <Text style={s.catLabel} numberOfLines={1}>Add</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Date & Time */}
@@ -329,7 +344,9 @@ export default function AddExpenseScreen({ navigation }: any) {
 }
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
-const ICON_WRAP = (width - 40 - 14 * 3) / 4; // 4 columns with gap 14
+const COLS    = 4;
+const COL_GAP = 16;
+const TILE    = (width - 40 - COL_GAP * (COLS - 1)) / COLS;
 
 const s = StyleSheet.create({
   safe:   { flex: 1, backgroundColor: BG },
@@ -345,51 +362,35 @@ const s = StyleSheet.create({
   scroll: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 },
 
   // Amount card
-  amountCard: {
-    backgroundColor: WHITE, borderRadius: 20, padding: 18,
-    borderWidth: 1.5, borderColor: BLUE,
-    marginBottom: 16,
-    shadowColor: BLUE, shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2,
-  },
-  amountHint:  { fontSize: 11, color: TEXT_LIGHT, fontWeight: '600', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
-  amountRow:   { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  rupee:       { fontSize: 32, fontWeight: '800', color: TEXT_DARK, marginRight: 6 },
+  amountContainer: { marginBottom: 12 },
+  amountRow:   { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
+  rupee:       { fontSize: 36, fontWeight: '800', color: TEXT_DARK, marginRight: 8 },
   amountInput: { fontSize: 44, fontWeight: '900', color: TEXT_DARK, flex: 1, padding: 0, includeFontPadding: false },
-  chipsRow:    { flexDirection: 'row', gap: 10 },
-  chip:        { flex: 1, paddingVertical: 9, alignItems: 'center', borderRadius: 10, backgroundColor: BG, borderWidth: 1, borderColor: BORDER },
+  chipsRow:    { flexDirection: 'row', gap: 10, marginBottom: 24 },
+  chip:        { paddingVertical: 10, alignItems: 'center', borderRadius: 10, backgroundColor: WHITE, borderWidth: 1, borderColor: BORDER },
   chipActive:  { borderColor: BLUE, backgroundColor: BLUE_SOFT },
-  chipText:    { fontSize: 13, fontWeight: '600', color: TEXT_MID },
-  chipTextActive: { color: BLUE, fontWeight: '700' },
+  chipText:    { fontSize: 13, fontWeight: '700', color: TEXT_MID },
+  chipTextActive: { color: BLUE, fontWeight: '800' },
 
-  // Recent cats
-  recentRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
   sectionLabel: { fontSize: 12, fontWeight: '800', color: TEXT_DARK, textTransform: 'uppercase', letterSpacing: 0.5 },
-  recentCats: { flex: 1, flexDirection: 'row', gap: 8 },
-  recentCatBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 12, paddingVertical: 7,
-    borderRadius: 20, backgroundColor: WHITE,
-    borderWidth: 1, borderColor: BORDER,
-  },
-  recentCatText: { fontSize: 12, fontWeight: '600', color: TEXT_MID },
 
-  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
 
-  // Category grid
-  catGrid:   { flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginBottom: 4 },
-  catItem:   { alignItems: 'center', gap: 6, width: ICON_WRAP },
+  // Category grid — 4 columns, match image
+  catGrid:   { flexDirection: 'row', flexWrap: 'wrap', gap: COL_GAP, marginBottom: 10 },
+  catItem:   { alignItems: 'center', gap: 8, width: TILE },
   catIconWrap: {
-    width: ICON_WRAP, height: ICON_WRAP, borderRadius: 18,
+    width: 64, height: 64, borderRadius: 20,
     alignItems: 'center', justifyContent: 'center',
     position: 'relative',
   },
   catCheckBadge: {
     position: 'absolute', bottom: -2, right: -2,
-    width: 16, height: 16, borderRadius: 8,
+    width: 18, height: 18, borderRadius: 9,
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 2, borderColor: WHITE,
   },
-  catLabel: { fontSize: 11, fontWeight: '600', color: TEXT_MID, textAlign: 'center' },
+  catLabel: { fontSize: 12, fontWeight: '600', color: TEXT_DARK, textAlign: 'center' },
 
   // Input cards
   inputCard: {
