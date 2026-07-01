@@ -426,49 +426,44 @@ function OverviewTab({ navigation, activeCategory, onToggleCategory, onSettleUp,
 
   return (
     <>
-      {/* ── 1. Summary card — white, clean ── */}
-      <View style={s.summaryCard}>
-        {/* Top row: amount left, donut right */}
-        <View style={s.summaryTop}>
-          <View style={{ flex: 1, justifyContent: 'center' }}>
-            <Text style={s.summaryLabel}>Total Spent</Text>
-            <Text style={s.summaryAmt}>₹{MONTH_TOTAL.toLocaleString('en-IN')}</Text>
-            {/* Trend badge */}
-            <View style={s.trendBadge}>
-              <TrendingUp size={12} color={DANGER} strokeWidth={3} />
-              <Text style={s.trendBadgeTxt}>↑ 12%</Text>
-              <Text style={s.trendBadgeSub}> vs last month</Text>
+      {/* ── 1. Total Spent hero card ── */}
+      <View style={s.heroCard}>
+        <View style={s.heroTop}>
+          <View>
+            <Text style={s.heroLabel}>Total Spent</Text>
+            <Text style={s.heroAmt}>₹{MONTH_TOTAL.toLocaleString('en-IN')}</Text>
+            <View style={s.trendRow}>
+              <TrendingUp size={14} color="rgba(255,255,255,0.8)" strokeWidth={2.5} />
+              <Text style={s.heroTrendTxt}>↑ 12% vs last month</Text>
             </View>
           </View>
           <Donut activeCategory={activeCategory} />
         </View>
 
-        <View style={s.summaryDivider} />
-
-        {/* Legend — 2-column grid */}
+        {/* Legend inside hero */}
+        <View style={s.heroDivider} />
         <View style={s.legendGrid}>
           {BREAKDOWN.map(seg => {
             const isActive = activeCategory === seg.name;
             return (
               <TouchableOpacity
                 key={seg.name}
-                style={[s.legendItem, isActive && { backgroundColor: seg.bg, borderRadius: 10 }]}
+                style={[s.legendItem, isActive && { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 10 }]}
                 onPress={() => onToggleCategory(seg.name)} activeOpacity={0.7}
               >
-                <View style={[s.legendDot, { backgroundColor: seg.color }]} />
+                <View style={[s.legendDot, { backgroundColor: isActive ? WHITE : seg.color }]} />
                 <View style={{ flex: 1 }}>
-                  <Text style={[s.legendName, isActive && { color: seg.color, fontWeight: '800' }]}>{seg.name}</Text>
+                  <Text style={[s.legendName, isActive && { color: WHITE, fontWeight: '800' }]}>{seg.name}</Text>
                   <Text style={s.legendAmt}>₹{seg.amount.toLocaleString('en-IN')}</Text>
                 </View>
-                <Text style={[s.legendPct, { color: isActive ? seg.color : TEXT_LIGHT }]}>{seg.pct}%</Text>
+                <Text style={s.legendPct}>{seg.pct}%</Text>
               </TouchableOpacity>
             );
           })}
         </View>
-
         {activeCategory && (
           <TouchableOpacity style={s.clearFilter} onPress={() => onToggleCategory(activeCategory)}>
-            <X size={11} color={BLUE} strokeWidth={3} />
+            <X size={12} color="rgba(255,255,255,0.8)" strokeWidth={3} />
             <Text style={s.clearFilterTxt}>Clear filter</Text>
           </TouchableOpacity>
         )}
