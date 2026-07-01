@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { LucideIcon } from 'lucide-react-native';
 import { colors, radius, spacing, font } from '../../theme';
 
@@ -7,10 +7,14 @@ export default function EmptyState({
   icon: Icon,
   title,
   message,
+  description,
+  action,
 }: {
-  icon: LucideIcon;
+  icon: any;
   title: string;
   message?: string;
+  description?: string;
+  action?: { label: string, onPress: () => void };
 }) {
   return (
     <View style={styles.wrap}>
@@ -18,7 +22,12 @@ export default function EmptyState({
         <Icon size={30} color={colors.primary} />
       </View>
       <Text style={styles.title}>{title}</Text>
-      {!!message && <Text style={styles.message}>{message}</Text>}
+      {!!(message || description) && <Text style={styles.message}>{message || description}</Text>}
+      {!!action && (
+        <TouchableOpacity style={styles.actionBtn} onPress={action.onPress} activeOpacity={0.8}>
+          <Text style={styles.actionBtnTxt}>{action.label}</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -42,4 +51,16 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     lineHeight: 21,
   },
+  actionBtn: {
+    marginTop: spacing.xl,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    backgroundColor: colors.primary,
+    borderRadius: radius.lg,
+  },
+  actionBtnTxt: {
+    color: colors.surface,
+    fontSize: font.small,
+    fontWeight: '700',
+  }
 });

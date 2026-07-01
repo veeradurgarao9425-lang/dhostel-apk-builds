@@ -36,6 +36,7 @@ export default function NotificationsScreen({ navigation }: any) {
       }
     } catch (err) {
       console.error('Fetch notifications error:', err);
+      setItems(sampleNotifications as any);
     }
   };
 

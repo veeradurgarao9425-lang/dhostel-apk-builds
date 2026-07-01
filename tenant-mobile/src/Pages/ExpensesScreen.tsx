@@ -479,7 +479,7 @@ export default function ExpensesScreen({ navigation }: any) {
           <OverviewTab
             navigation={navigation}
             activeCategory={activeCategory}
-            onToggleCategory={name => setActiveCategory(p => p === name ? null : name)}
+            onToggleCategory={(name: string) => setActiveCategory(p => p === name ? null : name)}
             onSettleUp={() => setShowSettle(true)}
             onReceiptOpen={setReceiptUri}
             budget={budget}

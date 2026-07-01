@@ -281,7 +281,7 @@ export default function UIShowcaseScreen({ navigation }: any) {
           <TouchableOpacity style={[styles.btn, { flex: 1, minWidth: '45%' }]} onPress={() => toast.showToast({ type: 'lowBalance' as any, message: 'Your wallet balance is low.', title: 'Low Balance' })}><Text style={styles.btnText}>9. Low Balance</Text></TouchableOpacity>
           <TouchableOpacity style={[styles.btn, { flex: 1, minWidth: '45%' }]} onPress={() => toast.showToast({ type: 'offline' as any, message: 'Some features may not be available.', title: 'You\'re Offline' })}><Text style={styles.btnText}>10. Offline</Text></TouchableOpacity>
           <TouchableOpacity style={[styles.btn, { flex: 1, minWidth: '45%' }]} onPress={() => toast.showToast({ type: 'saving' as any, message: 'Please wait a moment.', title: 'Saving Changes...' })}><Text style={styles.btnText}>11. Saving (Spinner)</Text></TouchableOpacity>
-          <TouchableOpacity style={[styles.btn, { flex: 1, minWidth: '45%' }]} onPress={() => toast.showToast({ type: 'downloading' as any, message: '', title: 'Downloading Invoice...', props: { progress: 32 } })}><Text style={styles.btnText}>12. Downloading (Progress)</Text></TouchableOpacity>
+          <TouchableOpacity style={[styles.btn, { flex: 1, minWidth: '45%' }]} onPress={() => toast.showToast({ type: 'downloading' as any, message: 'Progress: 32%', title: 'Downloading Invoice...' })}><Text style={styles.btnText}>12. Downloading (Progress)</Text></TouchableOpacity>
         </View>
 
         <Text style={[styles.sectionTitle, { marginTop: 24 }]}>PHASE 4: SEARCH UI</Text>

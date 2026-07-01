@@ -8,6 +8,8 @@ import {
   ChevronRight, SlidersHorizontal, Plus,
 } from 'lucide-react-native';
 import api from '../services/api';
+import { mockNotices } from '../data/dummyData';
+import { Phase3EmptyState } from '../components/UIComponents';
 
 const BLUE      = '#2245D4';
 const BLUE_SOFT = '#EEF3FF';
@@ -48,6 +50,14 @@ export default function NoticesScreen({ navigation }: any) {
         }
       } catch (err) {
         console.error('Failed to fetch notices:', err);
+        const formatted = mockNotices.map((n: any) => ({
+          id: String(n.notice_id),
+          title: n.title,
+          body: n.content,
+          category: n.notice_type || 'General',
+          date: n.created_at.slice(0, 10),
+        }));
+        setNotices(formatted);
       }
     };
     fetchNotices();
@@ -131,22 +141,11 @@ export default function NoticesScreen({ navigation }: any) {
               );
             })
           ) : (
-            <View style={styles.emptyState}>
-              <Bell size={40} color={TEXT_LIGHT} />
-              <Text style={styles.emptyText}>No notices found in this category.</Text>
-            </View>
+            <Phase3EmptyState variant="notices" onAction={() => {}} />
           )}
         </View>
       </ScrollView>
 
-      {/* ── FAB — Add Expense (Bills pre-selected) ── */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => navigation.navigate('AddExpense', { defaultCategory: 'Bills' })}
-        activeOpacity={0.85}
-      >
-        <Plus size={26} color={WHITE} strokeWidth={3} />
-      </TouchableOpacity>
     </View>
   );
 }
@@ -178,6 +177,4 @@ const styles = StyleSheet.create({
   noticeDate:     { fontSize: 11, color: TEXT_LIGHT, fontWeight: '500' },
   emptyState:     { alignItems: 'center', justifyContent: 'center', marginTop: 80, opacity: 0.7 },
   emptyText:      { marginTop: 16, fontSize: 15, color: TEXT_MID, fontWeight: '500' },
-
-  fab: { position: 'absolute', bottom: 100, right: 20, width: 52, height: 52, borderRadius: 26, backgroundColor: BLUE, alignItems: 'center', justifyContent: 'center', shadowColor: BLUE, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 8 },
 });

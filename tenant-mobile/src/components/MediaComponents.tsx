@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Dimensions } from 'react-native';
-import { FileText, Image as ImageIcon, CheckCircle, Download, Share2, Trash2, X, FileMinus, AlertTriangle, UploadCloud, File as FileIcon, Eye, Copy, Smartphone, Mail, Cloud, Edit2, MoreHorizontal } from 'lucide-react-native';
+import { FileText, Image as ImageIcon, CheckCircle, Download, Share2, Trash2, X, FileMinus, AlertTriangle, UploadCloud, File as FileIcon, Eye, Copy, Smartphone, Mail, Cloud, Edit2, MoreHorizontal, WifiOff } from 'lucide-react-native';
 import { Theme, PrimaryButton, SecondaryButton, BaseBottomSheet } from './UIComponents';
 
 const { width } = Dimensions.get('window');

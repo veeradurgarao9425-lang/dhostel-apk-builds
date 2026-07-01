@@ -38,7 +38,8 @@ import {
   Search, 
   X, 
   AlertTriangle, 
-  Layers
+  Layers,
+  FileText
 } from "lucide-react-native";
 
 import { useAuth } from "../context/AuthContext";
@@ -60,6 +61,7 @@ export default function HomeScreen({ navigation }: any) {
   const { user, refreshUser } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
   const [recentNotices, setRecentNotices] = useState<any[]>([]);
+  const [recentPayments, setRecentPayments] = useState<any[]>([]);
   const [dueAmount, setDueAmount] = useState<number>(0);
   const [rentDueDate, setRentDueDate] = useState<string | null>(null);
   // Mess skip state
@@ -102,15 +104,27 @@ export default function HomeScreen({ navigation }: any) {
         const fees = feesRes.value.data.data;
         let sum = 0;
         let firstDueDate: string | null = null;
+        const payments: any[] = [];
+        
         fees.forEach((f: any) => {
-          const bal = Number(f.total_amount || 0) - Number(f.paid_amount || 0);
+          const bal = Number(f.total_due || f.total_amount || 0) - Number(f.paid_amount || 0);
           if (bal > 0) {
             sum += bal;
             if (!firstDueDate) firstDueDate = f.due_date || null;
           }
+          if (f.payment_id && f.payment_amount) {
+            payments.push({
+              id: String(f.payment_id),
+              amount: f.payment_amount,
+              date: f.payment_date,
+              mode: f.payment_mode_name || 'Online'
+            });
+          }
         });
+        
         setDueAmount(sum > 0 ? sum : 0);
         setRentDueDate(firstDueDate);
+        setRecentPayments(payments.slice(0, 3)); // keep top 3
       }
     } catch (error) {
       console.error("Error fetching home data:", error);
@@ -185,7 +199,7 @@ export default function HomeScreen({ navigation }: any) {
     { id: 'complaints', name: 'Complaints', icon: AlertCircle, nav: 'Complaints', bg: '#FEE2E2', color: '#EF4444' },
 
     { id: 'documents', name: 'Documents', icon: FileSignature, nav: 'Documents', bg: '#F3E8FF', color: '#9333EA' },
-    { id: 'gatepass', name: 'Gate Pass', icon: Ticket, nav: 'GatePass', bg: '#FEF9C3', color: '#EAB308' },
+    { id: 'notes', name: 'Notes', icon: FileText, nav: 'NotesScreen', bg: '#FEF3C7', color: '#D97706' },
     { id: 'room', name: 'Room Info', icon: HomeIcon, nav: 'RoomInfo', bg: '#E0E7FF', color: '#4F46E5' },
     { id: 'splits', name: 'Splits', icon: Briefcase, nav: 'Splits', bg: '#FFE4E6', color: '#E11D48' },
   ];
@@ -241,17 +255,6 @@ export default function HomeScreen({ navigation }: any) {
           />
         }
       >
-        <TouchableOpacity 
-          style={{ marginHorizontal: 20, marginBottom: 16, backgroundColor: '#8B4513', padding: 16, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
-          onPress={() => navigation.navigate("UIShowcase")}
-          activeOpacity={0.8}
-        >
-          <View>
-            <Text style={{ color: '#FFF', fontSize: 18, fontWeight: '800', marginBottom: 4 }}>View All 24 UI Components</Text>
-            <Text style={{ color: '#FFDDC1', fontSize: 13, fontWeight: '500' }}>Tap here to see all modals & sheets</Text>
-          </View>
-          <Layers size={32} color="#FFF" />
-        </TouchableOpacity>
 
         {/* ── Total Due Overview Card ──────────────────────────────────────── */}
         <View style={styles.section}>
@@ -421,27 +424,24 @@ export default function HomeScreen({ navigation }: any) {
           </View>
 
           <View style={styles.activityCard}>
-            <View style={styles.activityItem}>
-              <View style={[styles.activityIconWrap, { backgroundColor: "#DCFCE7" }]}>
-                <CheckCircle2 size={18} color="#22C55E" />
+            {recentPayments.length > 0 ? (
+              recentPayments.map((p, index) => (
+                <View key={p.id} style={[styles.activityItem, index > 0 && { borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 16 }]}>
+                  <View style={[styles.activityIconWrap, { backgroundColor: "#DCFCE7" }]}>
+                    <CheckCircle2 size={18} color="#22C55E" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.activityTitle}>Payment received ({p.mode})</Text>
+                    <Text style={styles.activityDate}>{formatDate(p.date)}</Text>
+                  </View>
+                  <Text style={[styles.activityAmount, { color: "#22C55E" }]}>₹ {p.amount}</Text>
+                </View>
+              ))
+            ) : (
+              <View style={{ padding: 20, alignItems: 'center' }}>
+                <Text style={{ color: TEXT_MID, fontSize: 13, fontWeight: '500' }}>No recent activities found.</Text>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.activityTitle}>Payment of ₹2,500 received</Text>
-                <Text style={styles.activityDate}>05 Jul, 2025</Text>
-              </View>
-              <Text style={[styles.activityAmount, { color: "#22C55E" }]}>₹ 2,500</Text>
-            </View>
-
-            <View style={[styles.activityItem, { borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 16 }]}>
-              <View style={[styles.activityIconWrap, { backgroundColor: "#FFEDD5" }]}>
-                <Zap size={18} color="#F59E0B" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.activityTitle}>Electricity Bill</Text>
-                <Text style={styles.activityDate}>05 Jul, 2025</Text>
-              </View>
-              <Text style={styles.activityAmount}>₹ 2,450</Text>
-            </View>
+            )}
           </View>
         </View>
       </ScrollView>

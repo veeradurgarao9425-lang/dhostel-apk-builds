@@ -11,7 +11,7 @@ export interface BaseBottomSheetProps {
   visible: boolean;
   onClose: () => void;
   children: React.ReactNode;
-  height?: number | string;
+  height?: number | `${number}%` | 'auto';
   disableDrag?: boolean;
 }
 

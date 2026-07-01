@@ -33,7 +33,6 @@ import PaymentScreen from '../Pages/PaymentScreen';
 import MoreScreen from '../Pages/MoreScreen';
 import ServicesScreen from '../Pages/ServicesScreen';
 import FullMenuScreen from '../Pages/FullMenuScreen';
-import AnalyticsScreen from '../Pages/AnalyticsScreen';
 import AddExpenseScreen from '../Pages/AddExpenseScreen';
 import GatePassScreen from '../Pages/GatePassScreen';
 import AddCategoryScreen from '../Pages/AddCategoryScreen';

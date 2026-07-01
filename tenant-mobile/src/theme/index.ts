@@ -32,6 +32,7 @@ export const colors = {
   text:          '#202124',   // Primary text — near-black
   textMuted:     '#6B7280',   // Secondary text
   textSubtle:    '#9CA3AF',   // Placeholder / tertiary
+  textLight:     '#9CA3AF',   // Light text
   textOnPrimary: '#FFFFFF',   // Text on blue backgrounds
 
   // Borders / Dividers
@@ -40,6 +41,7 @@ export const colors = {
 
   // Semantic
   success:       '#16A34A',
+  successDark:   '#15803D',
   successSoft:   '#DCFCE7',
   successBorder: '#BBF7D0',
   warning:       '#F59E0B',

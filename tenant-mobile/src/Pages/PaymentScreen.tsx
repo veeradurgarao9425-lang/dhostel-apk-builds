@@ -5,11 +5,12 @@ import {
   Image, StatusBar
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Smartphone, Landmark, Banknote, ShieldCheck, Upload, CheckCircle2, Image as ImageIcon, Check } from 'lucide-react-native';
+import { ChevronLeft, Smartphone, Landmark, Banknote, ShieldCheck, Upload, CheckCircle2, Image as ImageIcon, Check, UploadCloud, FileImage, X } from 'lucide-react-native';
 
 import { useAuth } from '../context/AuthContext';
 import * as ImagePicker from 'expo-image-picker';
 import api from '../services/api';
+import { BaseSkeleton } from '../components/UIComponents';
 
 const BLUE      = '#2245D4';
 const BLUE_SOFT = '#EEF2FF';
@@ -56,7 +57,8 @@ export default function PaymentScreen({ navigation }: any) {
         ]);
         setSelectedMode(1);
       } finally {
-        setLoading(false);
+        // Adding a slight delay to allow the skeleton to be visible
+        setTimeout(() => setLoading(false), 800);
       }
     };
     fetchModes();
@@ -95,8 +97,28 @@ export default function PaymentScreen({ navigation }: any) {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: BG, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color={BLUE} />
+      <View style={{ flex: 1, backgroundColor: BG }}>
+        <StatusBar barStyle="light-content" backgroundColor={BLUE} />
+        <View style={s.headerSection}>
+          <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
+            <View style={s.headerTop}>
+              <View style={s.backBtnLight}>
+                <ChevronLeft size={28} color={WHITE} strokeWidth={3} />
+              </View>
+              <View style={{ flex: 1, marginLeft: 16 }}>
+                <BaseSkeleton width={120} height={24} opacity={0.6} />
+                <BaseSkeleton width={180} height={14} style={{ marginTop: 6 }} opacity={0.4} />
+              </View>
+            </View>
+          </SafeAreaView>
+        </View>
+        <View style={{ padding: 20 }}>
+          <BaseSkeleton width="100%" height={100} borderRadius={16} style={{ marginBottom: 24 }} />
+          <BaseSkeleton width={120} height={20} style={{ marginBottom: 12 }} />
+          <BaseSkeleton width="100%" height={60} borderRadius={16} style={{ marginBottom: 24 }} />
+          <BaseSkeleton width={120} height={20} style={{ marginBottom: 12 }} />
+          <BaseSkeleton width="100%" height={160} borderRadius={16} style={{ marginBottom: 24 }} />
+        </View>
       </View>
     );
   }
@@ -110,7 +132,7 @@ export default function PaymentScreen({ navigation }: any) {
         <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
           <View style={s.headerTop}>
             <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtnLight} activeOpacity={0.7}>
-              <ArrowLeft size={24} color={WHITE} strokeWidth={2.5} />
+              <ChevronLeft size={28} color={WHITE} strokeWidth={3} />
             </TouchableOpacity>
             <View style={{ flex: 1, marginLeft: 16 }}>
               <Text style={s.headerGreeting}>Pay Rent</Text>
@@ -125,11 +147,13 @@ export default function PaymentScreen({ navigation }: any) {
           
           {/* OUTSTANDING CARD */}
           <View style={s.outstandingCard}>
-            <Text style={s.outLbl}>TOTAL OUTSTANDING</Text>
-            <Text style={s.outVal}>₹{user?.outstanding_due || 0}</Text>
+            <View>
+              <Text style={s.outLbl}>TOTAL OUTSTANDING</Text>
+              <Text style={s.outVal}>₹{user?.outstanding_due || 0}</Text>
+            </View>
             {user?.next_due_date ? (
               <View style={s.dueBadge}>
-                <Text style={s.dueTxt}>Due on {new Date(user.next_due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</Text>
+                <Text style={s.dueTxt}>Due: {new Date(user.next_due_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</Text>
               </View>
             ) : null}
           </View>
@@ -165,18 +189,16 @@ export default function PaymentScreen({ navigation }: any) {
                   onPress={() => setSelectedMode(m.payment_mode_id)}
                   activeOpacity={0.7}
                 >
-                  <View style={[s.modeIconWrap, isSelected && { backgroundColor: BLUE }]}>
-                    {isUPI ? <Smartphone size={20} color={isSelected ? WHITE : BLUE} /> : 
-                     isCash ? <Banknote size={20} color={isSelected ? WHITE : BLUE} /> : 
-                     <Landmark size={20} color={isSelected ? WHITE : BLUE} />}
+                  <View style={[s.radioOuter, isSelected && { borderColor: BLUE }]}>
+                    {isSelected && <View style={[s.radioInner, { backgroundColor: BLUE }]} />}
                   </View>
                   <Text style={[s.modeText, isSelected && { color: BLUE, fontWeight: '800' }]}>{m.payment_mode_name}</Text>
                   
-                  {isSelected && (
-                    <View style={s.modeCheck}>
-                      <Check size={12} color={WHITE} strokeWidth={3} />
-                    </View>
-                  )}
+                  <View style={{ flex: 1, alignItems: 'flex-end' }}>
+                    {isUPI ? <Smartphone size={20} color={isSelected ? BLUE : TEXT_MID} /> : 
+                     isCash ? <Banknote size={20} color={isSelected ? BLUE : TEXT_MID} /> : 
+                     <Landmark size={20} color={isSelected ? BLUE : TEXT_MID} />}
+                  </View>
                 </TouchableOpacity>
               );
             })}
@@ -196,23 +218,28 @@ export default function PaymentScreen({ navigation }: any) {
 
           {/* SCREENSHOT UPLOAD */}
           <Text style={s.sectionLabel}>Payment Screenshot *</Text>
-          <TouchableOpacity style={[s.uploadBox, proofImage && s.uploadBoxSuccess]} onPress={pickImage} activeOpacity={0.7}>
+          <TouchableOpacity style={s.uploadBoxNew} onPress={pickImage} activeOpacity={0.7}>
             {proofImage ? (
-              <View style={s.uploadedState}>
-                <Image source={{ uri: proofImage.uri }} style={s.proofImgPreview} />
-                <View style={{ flex: 1, marginLeft: 16 }}>
-                  <Text style={s.uploadedText}>Image Attached</Text>
-                  <Text style={s.changeImageText}>Tap here to change</Text>
+              <View style={{ flexDirection: 'row', gap: 12, width: '100%' }}>
+                <View style={[s.largeImgBox, { width: 100, height: 100, flex: 0 }]}>
+                  <Image source={{ uri: proofImage.uri }} style={{ width: '100%', height: '100%', borderRadius: 16 }} />
+                  <TouchableOpacity 
+                    style={{ position: 'absolute', top: -8, right: -8, backgroundColor: '#EF4444', borderRadius: 12, padding: 4 }}
+                    onPress={() => setProofImage(null)}
+                  >
+                    <X size={14} color="#FFF" />
+                  </TouchableOpacity>
                 </View>
-                <CheckCircle2 size={24} color={SUCCESS} strokeWidth={2.5} />
+                <View style={{ flex: 1, justifyContent: 'center' }}>
+                  <Text style={s.uploadedText}>Screenshot Attached</Text>
+                  <Text style={s.changeImageText}>Tap to change</Text>
+                </View>
               </View>
             ) : (
-              <View style={s.uploadPrompt}>
-                <View style={s.uploadIconWrap}>
-                  <ImageIcon size={28} color={BLUE} strokeWidth={2} />
-                </View>
-                <Text style={s.uploadText}>Tap to attach screenshot</Text>
-                <Text style={s.uploadSubtext}>Required for verification (JPG, PNG)</Text>
+              <View style={{ alignItems: 'center' }}>
+                <UploadCloud size={40} color={BLUE} style={{ marginBottom: 12 }} />
+                <Text style={{ fontSize: 16, fontWeight: '700', color: TEXT_DARK }}>Tap to attach screenshot</Text>
+                <Text style={{ fontSize: 14, color: TEXT_MID, marginVertical: 8 }}>JPG, PNG up to 5MB</Text>
               </View>
             )}
           </TouchableOpacity>
@@ -249,11 +276,11 @@ const s = StyleSheet.create({
   
   scroll: { padding: 20, paddingTop: 20, paddingBottom: 40, flexGrow: 1 },
 
-  outstandingCard: { backgroundColor: '#F0FDF4', borderRadius: 24, padding: 24, alignItems: 'center', marginBottom: 24, borderWidth: 1, borderColor: '#DCFCE7' },
-  outLbl: { fontSize: 12, fontWeight: '800', color: '#16A34A', letterSpacing: 1, marginBottom: 8 },
-  outVal: { fontSize: 44, fontWeight: '900', color: TEXT_DARK, letterSpacing: -1 },
-  dueBadge: { backgroundColor: '#DCFCE7', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, marginTop: 12 },
-  dueTxt: { fontSize: 12, fontWeight: '700', color: '#16A34A' },
+  outstandingCard: { backgroundColor: WHITE, borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, borderWidth: 1, borderColor: BORDER },
+  outLbl: { fontSize: 11, fontWeight: '700', color: TEXT_LIGHT, letterSpacing: 1, marginBottom: 2 },
+  outVal: { fontSize: 22, fontWeight: '800', color: TEXT_DARK },
+  dueBadge: { backgroundColor: '#FEF2F2', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
+  dueTxt: { fontSize: 11, fontWeight: '700', color: '#EF4444' },
 
   amountContainer: { marginBottom: 24 },
   sectionLabel: { fontSize: 13, fontWeight: '800', color: TEXT_MID, marginBottom: 12, marginLeft: 4, letterSpacing: 0.5 },
@@ -261,27 +288,20 @@ const s = StyleSheet.create({
   rupee: { fontSize: 32, fontWeight: '800', color: TEXT_DARK, marginRight: 12 },
   amountInput: { fontSize: 36, fontWeight: '800', color: TEXT_DARK, flex: 1, padding: 0 },
 
-  modesGrid: { flexDirection: 'row', gap: 12, marginBottom: 24 },
-  modeCard: { flex: 1, backgroundColor: WHITE, borderRadius: 16, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: BORDER },
+  modesGrid: { gap: 12, marginBottom: 24 },
+  modeCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: WHITE, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: BORDER },
   modeCardSelected: { borderColor: BLUE, backgroundColor: BLUE_SOFT },
-  modeIconWrap: { width: 48, height: 48, borderRadius: 16, backgroundColor: BG, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  modeText: { fontSize: 12, fontWeight: '600', color: TEXT_MID, textAlign: 'center' },
-  modeCheck: { position: 'absolute', top: -6, right: -6, backgroundColor: BLUE, width: 22, height: 22, borderRadius: 11, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: WHITE },
+  radioOuter: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: '#CBD5E1', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  radioInner: { width: 10, height: 10, borderRadius: 5 },
+  modeText: { fontSize: 15, fontWeight: '600', color: TEXT_DARK },
 
   inputWrapper: { backgroundColor: WHITE, borderRadius: 16, borderWidth: 1, borderColor: BORDER, paddingHorizontal: 16, paddingVertical: 4, marginBottom: 24 },
   textInput: { fontSize: 15, color: TEXT_DARK, fontWeight: '600', height: 50 },
 
-  uploadBox: { backgroundColor: WHITE, borderRadius: 20, padding: 24, alignItems: 'center', borderWidth: 2, borderColor: BORDER, borderStyle: 'dashed', marginBottom: 24 },
-  uploadBoxSuccess: { borderStyle: 'solid', borderColor: '#DCFCE7', backgroundColor: '#F0FDF4', padding: 16 },
-  uploadPrompt: { alignItems: 'center' },
-  uploadIconWrap: { width: 64, height: 64, borderRadius: 32, backgroundColor: BLUE_SOFT, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  uploadText: { fontSize: 15, fontWeight: '700', color: TEXT_DARK, marginBottom: 4 },
-  uploadSubtext: { fontSize: 12, color: TEXT_MID },
-  
-  uploadedState: { flexDirection: 'row', alignItems: 'center', width: '100%' },
-  proofImgPreview: { width: 64, height: 64, borderRadius: 12 },
-  uploadedText: { fontSize: 15, fontWeight: '800', color: TEXT_DARK },
-  changeImageText: { fontSize: 13, color: '#16A34A', fontWeight: '600', marginTop: 4 },
+  uploadBoxNew: { borderWidth: 2, borderColor: BLUE, borderStyle: 'dashed', borderRadius: 16, padding: 24, alignItems: 'center', marginBottom: 24, backgroundColor: BLUE_SOFT },
+  largeImgBox: { height: 120, borderRadius: 16, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB' },
+  uploadedText: { fontSize: 16, fontWeight: '700', color: TEXT_DARK, marginBottom: 4 },
+  changeImageText: { fontSize: 14, color: BLUE, fontWeight: '600' },
 
   secureNotice: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 24, gap: 8, backgroundColor: '#F0FDF4', paddingVertical: 12, borderRadius: 12 },
   secureText: { fontSize: 12, fontWeight: '600', color: '#16A34A' },
