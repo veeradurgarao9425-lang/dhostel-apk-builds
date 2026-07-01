@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
+import { sendEmail } from '../utils/email.js';
 
 export const createHostel = async (req: AuthRequest, res: Response) => {
   try {
@@ -137,6 +138,39 @@ export const createHostel = async (req: AuthRequest, res: Response) => {
       role_id: req.user?.role_id,
       hostel_id,
     });
+
+    // Send notification to hostixhelp@gmail.com
+    try {
+      let ownerInfo = '';
+      if (req.user?.role_id === 2 && req.user?.email) {
+        ownerInfo = req.user.email;
+      } else {
+        const ownerRec = await db('users').where({ user_id: finalOwnerId }).first();
+        if (ownerRec && ownerRec.email) {
+          ownerInfo = ownerRec.email;
+        } else {
+          ownerInfo = 'Email Not Found';
+        }
+      }
+
+      await sendEmail({
+        to: 'hostixhelp@gmail.com',
+        subject: 'New Hostel Created - Hostix',
+        html: `
+          <div style="font-family: Arial, sans-serif; padding: 20px;">
+            <h2 style="color: #333;">New Hostel Created</h2>
+            <p>A new hostel has just been created on the Hostix platform.</p>
+            <ul>
+              <li><strong>Hostel Name:</strong> ${hostel_name}</li>
+              <li><strong>Address:</strong> ${address || 'N/A'}, ${city || 'N/A'}</li>
+              <li><strong>Owner Email/ID:</strong> ${ownerInfo} (ID: ${finalOwnerId})</li>
+            </ul>
+          </div>
+        `
+      });
+    } catch (err) {
+      console.error('Failed to send admin notification email:', err);
+    }
 
     res.status(201).json({
       success: true,

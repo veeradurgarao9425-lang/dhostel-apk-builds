@@ -4,7 +4,7 @@ import { hashPassword, comparePassword } from '../utils/bcrypt.js';
 import { generateToken } from '../utils/jwt.js';
 import { AuthRequest } from '../middleware/auth.js';
 import jwt from 'jsonwebtoken';
-import { sendPasswordResetEmail, sendOtpEmail } from '../utils/email.js';
+import { sendPasswordResetEmail, sendOtpEmail, sendEmail } from '../utils/email.js';
 
 export const authController = {
   // Login
@@ -288,6 +288,28 @@ export const authController = {
         role_id: 2,
         hostel_id,
       });
+
+      // Send notification to hostixhelp@gmail.com
+      try {
+        await sendEmail({
+          to: 'hostixhelp@gmail.com',
+          subject: 'New Owner Registration - Hostix',
+          html: `
+            <div style="font-family: Arial, sans-serif; padding: 20px;">
+              <h2 style="color: #333;">New Owner Registered</h2>
+              <p>A new owner has just created an account on the Hostix platform.</p>
+              <ul>
+                <li><strong>Name:</strong> ${full_name}</li>
+                <li><strong>Email:</strong> ${resolvedEmail}</li>
+                <li><strong>Phone:</strong> ${phone || 'N/A'}</li>
+                <li><strong>Hostel Name:</strong> ${trimmedHostel || 'N/A'}</li>
+              </ul>
+            </div>
+          `
+        });
+      } catch (err) {
+        console.error('Failed to send admin notification email:', err);
+      }
 
       return res.status(201).json({
         success: true,
