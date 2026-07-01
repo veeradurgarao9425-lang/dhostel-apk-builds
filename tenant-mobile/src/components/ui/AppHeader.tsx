@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+// Force Metro Reload
 import { Bell } from 'lucide-react-native';
 import { colors, spacing, font } from '../../theme';
 import Avatar from './Avatar';

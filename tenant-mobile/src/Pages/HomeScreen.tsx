@@ -33,6 +33,12 @@ import {
   Home as HomeIcon,
   Briefcase,
   Ticket,
+  Droplets, 
+  MapPin, 
+  Search, 
+  X, 
+  AlertTriangle, 
+  Layers
 } from "lucide-react-native";
 
 import { useAuth } from "../context/AuthContext";
@@ -201,6 +207,12 @@ export default function HomeScreen({ navigation }: any) {
             <View style={styles.headerRight}>
               <TouchableOpacity
                 style={styles.hBtn}
+                onPress={() => navigation.navigate("UIShowcase")}
+              >
+                <Layers size={22} color={WHITE} strokeWidth={2} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.hBtn}
                 onPress={() => navigation.navigate("Notifications")}
               >
                 <Bell size={24} color={WHITE} strokeWidth={1.5} />
@@ -229,6 +241,18 @@ export default function HomeScreen({ navigation }: any) {
           />
         }
       >
+        <TouchableOpacity 
+          style={{ marginHorizontal: 20, marginBottom: 16, backgroundColor: '#8B4513', padding: 16, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+          onPress={() => navigation.navigate("UIShowcase")}
+          activeOpacity={0.8}
+        >
+          <View>
+            <Text style={{ color: '#FFF', fontSize: 18, fontWeight: '800', marginBottom: 4 }}>View All 24 UI Components</Text>
+            <Text style={{ color: '#FFDDC1', fontSize: 13, fontWeight: '500' }}>Tap here to see all modals & sheets</Text>
+          </View>
+          <Layers size={32} color="#FFF" />
+        </TouchableOpacity>
+
         {/* ── Total Due Overview Card ──────────────────────────────────────── */}
         <View style={styles.section}>
           <View style={styles.overviewCard}>

@@ -41,7 +41,8 @@ import CategoryDetailScreen from '../Pages/CategoryDetailScreen';
 import TransactionsListScreen from '../Pages/TransactionsListScreen';
 import AllExpensesScreen from '../Pages/AllExpensesScreen';
 import SettingsScreen from '../Pages/SettingsScreen';
-
+import UIShowcaseScreen from '../Pages/UIShowcaseScreen';
+import SearchScreen from '../Pages/SearchScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -94,6 +95,8 @@ export default function AppNavigator() {
             <Stack.Screen name="Main" component={MainTabs} />
             {/* Stack screens accessible from any tab */}
             <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen name="UIShowcase" component={UIShowcaseScreen} />
+            <Stack.Screen name="Search" component={SearchScreen} />
             <Stack.Screen name="RoomInfo" component={RoomInfoScreen} />
             <Stack.Screen name="Complaints" component={ComplaintsScreen} />
             <Stack.Screen name="Documents" component={DocumentsScreen} />

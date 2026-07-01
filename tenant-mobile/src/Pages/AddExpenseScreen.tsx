@@ -52,7 +52,7 @@ function BottomPicker({ visible, data, selected, onSelect, onClose }: any) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(13,27,62,0.3)', justifyContent: 'flex-end' }}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}>
           <TouchableOpacity activeOpacity={1}>
             <View style={p.sheet}>
               <View style={p.handle} />
