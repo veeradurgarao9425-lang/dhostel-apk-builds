@@ -442,25 +442,29 @@ export default function ExpensesScreen({ navigation }: any) {
   const indicatorLeft = tabAnim.interpolate({ inputRange: [0, 1, 2], outputRange: [6, 6 + tabW, 6 + tabW * 2] });
 
   return (
-    <SafeAreaView style={s.safe} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={WHITE} />
-      <View style={s.header}>
-        <View>
-          <Text style={s.headerTitle}>Expenses</Text>
-          <TouchableOpacity activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-            <Text style={s.headerSub}>Jun 2025</Text>
-            <ChevronDown size={14} color={TEXT_MID} strokeWidth={3} />
-          </TouchableOpacity>
-        </View>
-        <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
-          <TouchableOpacity style={s.hBtn} onPress={() => setShowBudget(true)} activeOpacity={0.7}>
-            <ChevronDown size={14} color={BLUE} strokeWidth={2.5} />
-            <Text style={s.hBtnText}>Jun</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={s.hIcon} onPress={() => setShowExport(true)} activeOpacity={0.7}>
-            <Download size={18} color={BLUE} strokeWidth={2} />
-          </TouchableOpacity>
-        </View>
+    <View style={{ flex: 1, backgroundColor: BG }}>
+      <StatusBar barStyle="light-content" backgroundColor={BLUE} />
+      <View style={{ backgroundColor: BLUE, paddingBottom: 16 }}>
+        <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 12 }}>
+            <View>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: WHITE }}>My Expenses</Text>
+              <TouchableOpacity activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)' }}>Jun 2025</Text>
+                <ChevronDown size={14} color="rgba(255,255,255,0.8)" strokeWidth={3} />
+              </TouchableOpacity>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)' }} onPress={() => setShowBudget(true)} activeOpacity={0.7}>
+                <ChevronDown size={14} color={WHITE} strokeWidth={2.5} />
+                <Text style={{ fontSize: 13, fontWeight: '700', color: WHITE }}>Jun</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }} onPress={() => setShowExport(true)} activeOpacity={0.7}>
+                <Download size={18} color={WHITE} strokeWidth={2} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </SafeAreaView>
       </View>
 
       <View style={s.tabsOuter}>
@@ -508,7 +512,7 @@ export default function ExpensesScreen({ navigation }: any) {
       <SettleUpModal  visible={showSettle} onClose={() => setShowSettle(false)} />
       <ExportModal    visible={showExport} onClose={() => setShowExport(false)} />
       {receiptUri && <ReceiptModal uri={receiptUri} onClose={() => setReceiptUri(null)} />}
-    </SafeAreaView>
+    </View>
   );
 }
 

@@ -10,10 +10,10 @@ import { useAuth } from '../context/AuthContext';
 
 const { width } = Dimensions.get('window');
 
-// Brown Theme Constants
-const BROWN = '#8B4513';
-const BROWN_SOFT = '#F5DEB3';
-const BROWN_LIGHT = '#FFF8F0';
+// Theme Constants
+const BLUE = '#2245D4';
+const BLUE_SOFT = '#EEF3FF';
+const BLUE_LIGHT = '#F8FAFC';
 const WHITE = '#FFFFFF';
 const TEXT_DARK = '#1C1C1C';
 const TEXT_MID = '#6B7280';
@@ -58,7 +58,7 @@ function ComplaintDetailView({ complaint, onClose }: { complaint: any; onClose: 
           </TouchableOpacity>
           <Text style={s.headerTitleCenter}>Complaint Details</Text>
           <TouchableOpacity style={s.backBtnMinimal}>
-            <Edit2 size={22} color={BROWN} />
+            <Edit2 size={22} color={BLUE} />
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -196,7 +196,7 @@ function StepperForm({ visible, onClose }: { visible: boolean; onClose: () => vo
             {step === 1 && (
               <View style={s.stepContent}>
                 <View style={s.stepHero}>
-                  <View style={s.heroIconWrap}><ClipboardList size={36} color={BROWN} /></View>
+                  <View style={s.heroIconWrap}><ClipboardList size={36} color={BLUE} /></View>
                   <Text style={s.heroTitle}>Raise a Complaint</Text>
                   <Text style={s.heroSub}>Let us know what's not working so we can fix it.</Text>
                 </View>
@@ -265,7 +265,7 @@ function StepperForm({ visible, onClose }: { visible: boolean; onClose: () => vo
                   </View>
                 ) : (
                   <TouchableOpacity style={s.uploadArea} onPress={handleUpload} activeOpacity={0.7}>
-                    <UploadCloud size={28} color={BROWN} style={{ marginBottom: 8 }} />
+                    <UploadCloud size={28} color={BLUE} style={{ marginBottom: 8 }} />
                     <Text style={s.uploadTxt}>Tap to upload photo</Text>
                     <Text style={s.uploadSub}>PNG, JPG up to 5MB</Text>
                   </TouchableOpacity>
@@ -317,8 +317,8 @@ function StepperForm({ visible, onClose }: { visible: boolean; onClose: () => vo
           </ScrollView>
 
           <View style={[s.formFooter, { paddingBottom: Platform.OS === 'ios' ? 40 : 24 }]}>
-            <TouchableOpacity style={[s.btnBrown, { flex: 1, paddingVertical: 14 }]} onPress={step < 3 ? nextStep : onClose}>
-              <Text style={s.btnBrownTxt}>{step < 3 ? 'Next' : 'Submit'}</Text>
+            <TouchableOpacity style={[s.btnBlue, { flex: 1, paddingVertical: 14 }]} onPress={step < 3 ? nextStep : onClose}>
+              <Text style={s.btnBlueTxt}>{step < 3 ? 'Next' : 'Submit'}</Text>
             </TouchableOpacity>
           </View>
         </SafeAreaView>
@@ -331,8 +331,8 @@ function StepperForm({ visible, onClose }: { visible: boolean; onClose: () => vo
             <Text style={s.catTitle}>Select Category</Text>
             {categories.map(c => (
               <TouchableOpacity key={c} style={s.catOption} onPress={() => { setCategory(c); setShowCatPicker(false); }}>
-                <Text style={[s.catOptionTxt, category === c && { color: BROWN, fontWeight: '700' }]}>{c}</Text>
-                {category === c && <Check size={18} color={BROWN} />}
+                <Text style={[s.catOptionTxt, category === c && { color: BLUE, fontWeight: '700' }]}>{c}</Text>
+                {category === c && <Check size={18} color={BLUE} />}
               </TouchableOpacity>
             ))}
           </View>
@@ -419,7 +419,7 @@ export default function ComplaintsScreen({ navigation }: any) {
             />
           </View>
           <TouchableOpacity style={s.filterBtn} onPress={() => setShowFilterModal(true)}>
-            <Filter size={18} color={BROWN} />
+            <Filter size={18} color={BLUE} />
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -479,8 +479,8 @@ export default function ComplaintsScreen({ navigation }: any) {
             <Text style={s.catTitle}>Filter by Date</Text>
             {['Any time', 'Last 7 Days', 'This Month', 'Last Month'].map(d => (
               <TouchableOpacity key={d} style={s.catOption} onPress={() => { setDateFilter(d); setShowFilterModal(false); }}>
-                <Text style={[s.catOptionTxt, dateFilter === d && { color: BROWN, fontWeight: '700' }]}>{d}</Text>
-                {dateFilter === d && <Check size={18} color={BROWN} />}
+                <Text style={[s.catOptionTxt, dateFilter === d && { color: BLUE, fontWeight: '700' }]}>{d}</Text>
+                {dateFilter === d && <Check size={18} color={BLUE} />}
               </TouchableOpacity>
             ))}
           </View>
@@ -509,7 +509,7 @@ const s = StyleSheet.create({
   tabWrapper: { paddingHorizontal: 20, marginTop: 12, marginBottom: 8 },
   tabContainer: { flexDirection: 'row', backgroundColor: WHITE, borderRadius: 24, padding: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, borderWidth: 1, borderColor: '#F3F4F6' },
   tab: { flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 20 },
-  tabActive: { backgroundColor: BROWN },
+  tabActive: { backgroundColor: BLUE },
   tabText: { fontSize: 14, fontWeight: '700', color: TEXT_MID },
   tabTextActive: { color: WHITE },
 
@@ -523,12 +523,12 @@ const s = StyleSheet.create({
   statusPillTxt: { fontSize: 11, fontWeight: '800' },
 
   // FAB
-  fab: { position: 'absolute', bottom: 100, right: 24, width: 56, height: 56, borderRadius: 28, backgroundColor: BROWN, justifyContent: 'center', alignItems: 'center', shadowColor: BROWN, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
+  fab: { position: 'absolute', bottom: 100, right: 24, width: 56, height: 56, borderRadius: 28, backgroundColor: BLUE, justifyContent: 'center', alignItems: 'center', shadowColor: BLUE, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
 
   // Details View
   headerCenter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 12 },
   headerTitleCenter: { fontSize: 18, fontWeight: '800', color: TEXT_DARK },
-  detailTopBlock: { backgroundColor: BROWN_LIGHT, borderRadius: 20, padding: 24, marginBottom: 24 },
+  detailTopBlock: { backgroundColor: BLUE_LIGHT, borderRadius: 20, padding: 24, marginBottom: 24 },
   detailTitle: { fontSize: 18, fontWeight: '800', color: TEXT_DARK, flex: 1, paddingRight: 16 },
   detailDate: { fontSize: 12, color: TEXT_MID, marginTop: 8 },
   detailSection: { marginBottom: 24 },
@@ -538,10 +538,10 @@ const s = StyleSheet.create({
   largeImgBox: { flex: 1, height: 120, borderRadius: 16, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB' },
   
   bottomBar: { padding: 20, paddingBottom: Platform.OS === 'ios' ? 50 : 36, backgroundColor: WHITE, borderTopWidth: 1, borderTopColor: BORDER },
-  btnBrown: { backgroundColor: BROWN, paddingVertical: 16, borderRadius: 16, alignItems: 'center' },
-  btnBrownTxt: { color: WHITE, fontSize: 16, fontWeight: '700' },
-  btnOutlined: { borderWidth: 1, borderColor: BROWN, paddingVertical: 16, paddingHorizontal: 24, borderRadius: 16, alignItems: 'center', marginRight: 16 },
-  btnOutlinedTxt: { color: BROWN, fontSize: 16, fontWeight: '700' },
+  btnBlue: { backgroundColor: BLUE, paddingVertical: 16, borderRadius: 16, alignItems: 'center' },
+  btnBlueTxt: { color: WHITE, fontSize: 16, fontWeight: '700' },
+  btnOutlined: { borderWidth: 1, borderColor: BLUE, paddingVertical: 16, paddingHorizontal: 24, borderRadius: 16, alignItems: 'center', marginRight: 16 },
+  btnOutlinedTxt: { color: BLUE, fontSize: 16, fontWeight: '700' },
 
   // Stepper Modal
   modalOverlayFull: { flex: 1, backgroundColor: WHITE },
@@ -550,17 +550,17 @@ const s = StyleSheet.create({
   stepperWrap: { alignItems: 'center', marginVertical: 12, paddingHorizontal: 60 },
   stepLineWrap: { position: 'absolute', top: 14, left: 80, right: 80, flexDirection: 'row' },
   stepLine: { flex: 1, height: 2, backgroundColor: '#E5E7EB' },
-  stepLineActive: { backgroundColor: BROWN },
+  stepLineActive: { backgroundColor: BLUE },
   stepNodes: { flexDirection: 'row', justifyContent: 'space-between', width: '100%' },
   stepNode: { width: 30, height: 30, borderRadius: 15, backgroundColor: WHITE, borderWidth: 2, borderColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' },
-  stepNodeActive: { backgroundColor: BROWN, borderColor: BROWN },
+  stepNodeActive: { backgroundColor: BLUE, borderColor: BLUE },
   stepNodeTxt: { fontSize: 12, fontWeight: '800', color: TEXT_MID },
   stepNodeTxtActive: { color: WHITE },
 
   formBody: { padding: 24 },
   stepContent: { flex: 1 },
   stepHero: { alignItems: 'center', marginBottom: 32 },
-  heroIconWrap: { width: 80, height: 80, borderRadius: 24, backgroundColor: BROWN_LIGHT, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
+  heroIconWrap: { width: 80, height: 80, borderRadius: 24, backgroundColor: BLUE_LIGHT, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
   heroTitle: { fontSize: 20, fontWeight: '800', color: TEXT_DARK, marginBottom: 8 },
   heroSub: { fontSize: 14, color: TEXT_MID, textAlign: 'center' },
 
@@ -569,9 +569,9 @@ const s = StyleSheet.create({
   inputBoxStyle: { borderWidth: 1, borderColor: BORDER, borderRadius: 16, paddingHorizontal: 16, height: 56, fontSize: 15, color: TEXT_DARK },
   priorityRow: { flexDirection: 'row', gap: 12 },
   priorityBtn: { flex: 1, height: 48, borderRadius: 16, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F9FAFB' },
-  priorityBtnActive: { borderColor: BROWN, backgroundColor: WHITE, borderWidth: 1.5 },
+  priorityBtnActive: { borderColor: BLUE, backgroundColor: WHITE, borderWidth: 1.5 },
   priorityTxt: { fontSize: 14, fontWeight: '600', color: TEXT_MID },
-  priorityTxtActive: { color: BROWN },
+  priorityTxtActive: { color: BLUE },
   textAreaWrap: { borderWidth: 1, borderColor: BORDER, borderRadius: 16, backgroundColor: WHITE },
   textAreaStyle: { height: 120, padding: 16, fontSize: 15, color: TEXT_DARK },
   charCount: { position: 'absolute', bottom: 12, right: 16, fontSize: 12, color: TEXT_MID },

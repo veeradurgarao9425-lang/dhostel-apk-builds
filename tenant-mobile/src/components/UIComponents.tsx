@@ -595,7 +595,7 @@ export function Phase3EmptyState({ variant, onAction, onSecondaryAction }: { var
     <View style={eStyles.container}>
       <View style={eStyles.iconContainer}>
         <View style={eStyles.iconBg} />
-        <Icon size={48} color="#8B4513" style={{ position: 'absolute' }} />
+        <Icon size={48} color="#2245D4" style={{ position: 'absolute' }} />
         <View style={eStyles.bubble1} />
         <View style={eStyles.bubble2} />
       </View>
@@ -637,7 +637,7 @@ export function Phase3ErrorState({ variant, onAction, onSecondaryAction }: { var
     <View style={eStyles.container}>
       <View style={eStyles.iconContainer}>
         <View style={eStyles.iconBg} />
-        <Icon size={48} color="#8B4513" style={{ position: 'absolute' }} />
+        <Icon size={48} color="#2245D4" style={{ position: 'absolute' }} />
         <View style={eStyles.bubble1} />
         <View style={eStyles.bubble2} />
       </View>
@@ -660,15 +660,15 @@ export function Phase3ErrorState({ variant, onAction, onSecondaryAction }: { var
 const eStyles = StyleSheet.create({
   container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, backgroundColor: '#FFFFFF' },
   iconContainer: { width: 120, height: 120, alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
-  iconBg: { width: 90, height: 90, borderRadius: 45, backgroundColor: '#FFF7ED' },
-  bubble1: { position: 'absolute', top: 10, right: 10, width: 16, height: 16, borderRadius: 8, backgroundColor: '#FFEDD5' },
-  bubble2: { position: 'absolute', bottom: 15, left: 10, width: 12, height: 12, borderRadius: 6, backgroundColor: '#FFEDD5' },
+  iconBg: { width: 90, height: 90, borderRadius: 45, backgroundColor: '#EEF2FF' },
+  bubble1: { position: 'absolute', top: 10, right: 10, width: 16, height: 16, borderRadius: 8, backgroundColor: '#E0E7FF' },
+  bubble2: { position: 'absolute', bottom: 15, left: 10, width: 12, height: 12, borderRadius: 6, backgroundColor: '#E0E7FF' },
   title: { fontSize: 20, fontWeight: '800', color: '#0F172A', marginBottom: 12, textAlign: 'center' },
   desc: { fontSize: 15, color: '#64748B', textAlign: 'center', lineHeight: 22, marginBottom: 32, paddingHorizontal: 16 },
-  btn: { width: '100%', height: 52, backgroundColor: '#8B4513', borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  btn: { width: '100%', height: 52, backgroundColor: '#2245D4', borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   btnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
-  btnOutline: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#8B4513' },
-  btnTextOutline: { color: '#8B4513', fontSize: 16, fontWeight: '700' },
+  btnOutline: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#2245D4' },
+  btnTextOutline: { color: '#2245D4', fontSize: 16, fontWeight: '700' },
   textLink: { color: '#64748B', fontSize: 15, fontWeight: '600' },
 });
 
@@ -684,7 +684,7 @@ const filterStyles = StyleSheet.create({
   sectionTitle: { fontSize: 14, fontWeight: '800', color: '#0F172A', marginBottom: 12, marginTop: 24 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   chip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0' },
-  chipActive: { backgroundColor: '#8B4513', borderColor: '#8B4513' },
+  chipActive: { backgroundColor: '#2245D4', borderColor: '#2245D4' },
   chipText: { fontSize: 14, fontWeight: '600', color: '#475569' },
   chipTextActive: { color: '#FFF' },
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },

@@ -1,8 +1,8 @@
 import React, { useCallback, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, ScrollView, StatusBar, TextInput, FlatList } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, ScrollView, StatusBar, TextInput, FlatList, Animated, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { ChevronLeft, FileText, CheckCircle2, Wrench, Clock, Plus, Trash2 } from 'lucide-react-native';
+import { ChevronLeft, FileText, CheckCircle2, Wrench, Clock, Plus, Trash2, Home as HomeIcon } from 'lucide-react-native';
 
 import { useAuth } from '../context/AuthContext';
 
@@ -21,6 +21,20 @@ export default function RoomInfoScreen({ route, navigation }: any) {
   const initialTab = route?.params?.tab || 'Details';
   const [activeTab, setActiveTab] = useState(initialTab);
   const tabs = ['Details', 'Rent History', 'Maintenance', 'Notes'];
+  
+  const tabAnim = React.useRef(new Animated.Value(tabs.indexOf(initialTab) > -1 ? tabs.indexOf(initialTab) : 0)).current;
+  const { width } = Dimensions.get('window');
+  
+  const handleTab = (t: string) => {
+    Animated.spring(tabAnim, { toValue: tabs.indexOf(t), useNativeDriver: false, friction: 8 }).start();
+    setActiveTab(t);
+  };
+  
+  const tabW = width / 4;
+  const indicatorLeft = tabAnim.interpolate({
+    inputRange: [0, 1, 2, 3],
+    outputRange: [0, tabW, tabW * 2, tabW * 3]
+  });
   
   const [noteText, setNoteText] = useState('');
   const [isAddingNote, setIsAddingNote] = useState(false);
@@ -44,33 +58,45 @@ export default function RoomInfoScreen({ route, navigation }: any) {
 
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
-      <StatusBar barStyle="dark-content" backgroundColor={WHITE} />
+      <StatusBar barStyle="light-content" backgroundColor={BLUE} />
       
       {/* ── HEADER ── */}
-      <SafeAreaView edges={['top']} style={{ backgroundColor: WHITE }}>
-        <View style={s.headerCenter}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtnMinimal}>
-            <ChevronLeft size={28} color={TEXT_DARK} strokeWidth={3} />
-          </TouchableOpacity>
-          <Text style={s.headerTitleCenter}>Room Details</Text>
-          <View style={{ width: 40 }} />
-        </View>
+      <View style={{ backgroundColor: BLUE }}>
+        <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
+          <View style={s.headerCenter}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtnMinimal}>
+              <ChevronLeft size={28} color={WHITE} strokeWidth={3} />
+            </TouchableOpacity>
+            <Text style={s.headerTitleCenter}>Room Details</Text>
+            <View style={{ width: 40 }} />
+          </View>
+        </SafeAreaView>
+      </View>
 
-        {/* ── TABS ── */}
-        <View style={s.tabScroll}>
+      {/* ── TABS ── */}
+      <View style={s.tabScroll}>
           <View style={s.tabContainer}>
+            <Animated.View style={[s.tabIndicator, { left: indicatorLeft, width: tabW }]} />
             {tabs.map(t => (
-              <TouchableOpacity key={t} style={[s.tab, activeTab === t && s.activeTab]} onPress={() => setActiveTab(t)}>
+              <TouchableOpacity key={t} style={s.tab} onPress={() => handleTab(t)}>
                 <Text style={[s.tabTxt, activeTab === t && s.activeTabTxt]} numberOfLines={1}>{t}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
-      </SafeAreaView>
-
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
         {activeTab === 'Details' && (
           <>
+            {/* ── HERO ── */}
+            <View style={{ backgroundColor: BLUE, padding: 24, borderRadius: 20, marginBottom: 20, flexDirection: 'row', alignItems: 'center', shadowColor: BLUE, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 8 }}>
+              <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: 16, borderRadius: 32, marginRight: 20 }}>
+                <HomeIcon size={40} color={WHITE} strokeWidth={1.5} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 }}>Room Assigned</Text>
+                <Text style={{ fontSize: 32, color: WHITE, fontWeight: '800', marginTop: 4 }}>{user?.room_number || '201'}</Text>
+              </View>
+            </View>
             {/* Room Information */}
             <Text style={s.sectionLbl}>Room Information</Text>
             <View style={s.infoCard}>
@@ -200,12 +226,12 @@ export default function RoomInfoScreen({ route, navigation }: any) {
 const s = StyleSheet.create({
   headerCenter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12 },
   backBtnMinimal: { padding: 8, marginLeft: -8 },
-  headerTitleCenter: { fontSize: 18, fontWeight: '800', color: TEXT_DARK },
+  headerTitleCenter: { fontSize: 18, fontWeight: '800', color: WHITE },
   
-  tabScroll: { borderBottomWidth: 1, borderBottomColor: BORDER },
-  tabContainer: { flexDirection: 'row', width: '100%', paddingHorizontal: 4 },
-  tab: { flex: 1, paddingVertical: 14, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  activeTab: { borderBottomColor: BLUE },
+  tabScroll: { backgroundColor: WHITE, borderBottomWidth: 1, borderBottomColor: BORDER },
+  tabContainer: { flexDirection: 'row', width: '100%', position: 'relative' },
+  tabIndicator: { position: 'absolute', bottom: 0, height: 3, backgroundColor: BLUE, borderRadius: 3, zIndex: 2 },
+  tab: { flex: 1, paddingVertical: 14, alignItems: 'center' },
   tabTxt: { fontSize: 13, fontWeight: '600', color: TEXT_MID },
   activeTabTxt: { color: BLUE, fontWeight: '800' },
 

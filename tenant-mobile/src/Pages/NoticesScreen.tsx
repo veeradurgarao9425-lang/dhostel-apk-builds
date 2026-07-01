@@ -9,7 +9,7 @@ import {
 } from 'lucide-react-native';
 import api from '../services/api';
 import { mockNotices } from '../data/dummyData';
-import { Phase3EmptyState } from '../components/UIComponents';
+import { Phase3EmptyState, Phase3ErrorState } from '../components/UIComponents';
 
 const BLUE      = '#2245D4';
 const BLUE_SOFT = '#EEF3FF';
@@ -33,24 +33,16 @@ const categoryMeta: Record<string, { icon: any; iconColor: string; iconBg: strin
 export default function NoticesScreen({ navigation }: any) {
   const [activeFilter, setActiveFilter] = useState<FilterTab>('All');
   const [notices, setNotices]           = useState<any[]>([]);
+  const [loading, setLoading]           = useState<boolean>(true);
+  const [error, setError]               = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchNotices = async () => {
-      try {
-        const res = await api.get('/notices');
-        if (res.data.success) {
-          const formatted = res.data.data.map((n: any) => ({
-            id: String(n.notice_id),
-            title: n.title,
-            body: n.content,
-            category: n.notice_type || 'General',
-            date: n.created_at.slice(0, 10),
-          }));
-          setNotices(formatted);
-        }
-      } catch (err) {
-        console.error('Failed to fetch notices:', err);
-        const formatted = mockNotices.map((n: any) => ({
+  const fetchNotices = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await api.get('/notices');
+      if (res.data.success) {
+        const formatted = res.data.data.map((n: any) => ({
           id: String(n.notice_id),
           title: n.title,
           body: n.content,
@@ -59,7 +51,15 @@ export default function NoticesScreen({ navigation }: any) {
         }));
         setNotices(formatted);
       }
-    };
+    } catch (err) {
+      console.error('Failed to fetch notices:', err);
+      setError('Network error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchNotices();
   }, []);
 
@@ -122,7 +122,11 @@ export default function NoticesScreen({ navigation }: any) {
       {/* ── Notices List ── */}
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
         <View style={styles.noticesWrapper}>
-          {filtered.length > 0 ? (
+          {error ? (
+            <View style={{ marginTop: 60 }}>
+              <Phase3ErrorState variant="server" onAction={fetchNotices} />
+            </View>
+          ) : filtered.length > 0 ? (
             filtered.map(notice => {
               const meta = categoryMeta[notice.category] || categoryMeta.General;
               const Icon = meta.icon;
@@ -141,7 +145,7 @@ export default function NoticesScreen({ navigation }: any) {
               );
             })
           ) : (
-            <Phase3EmptyState variant="notices" onAction={() => {}} />
+            <Phase3EmptyState variant="notices" onAction={fetchNotices} />
           )}
         </View>
       </ScrollView>

@@ -1,24 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { ArrowLeft, Wallet, Megaphone, Wrench, BellRing, Bell } from 'lucide-react-native';
+import { StyleSheet, Text, TouchableOpacity, View, ScrollView, Image } from 'react-native';
+import { ArrowLeft, Wallet, Megaphone, Wrench, BellRing, Bell, Search, Filter } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Card, EmptyState } from '../components/ui';
 import { colors, radius, spacing, font } from '../theme';
-import { relativeDay } from '../utils/format';
 import { sampleNotifications, NotificationItem } from '../data/tenantContent';
 import api from '../services/api';
 
+const BLUE = "#2245D4";
+const BLUE_SOFT = "#EEF2FF";
+const WHITE = "#FFFFFF";
+const TEXT_DARK = "#1A1A1A";
+const TEXT_MID = "#666666";
+
+const TABS = ['All', 'Announcements', 'Payments', 'Others'];
+
 const typeMeta: Record<string, { icon: any; tint: string; soft: string }> = {
-  'Payment Due': { icon: Wallet, tint: colors.primary, soft: colors.primarySoft },
-  'Notice': { icon: Megaphone, tint: colors.info, soft: colors.infoSoft },
-  'Complaint': { icon: Wrench, tint: colors.warning, soft: colors.warningSoft },
-  'General': { icon: BellRing, tint: colors.textMuted, soft: '#F1F5F9' },
+  'due': { icon: Wallet, tint: '#E11D48', soft: '#FFE4E6' },
+  'payment': { icon: Wallet, tint: '#10B981', soft: '#D1FAE5' },
+  'notice': { icon: Megaphone, tint: BLUE, soft: BLUE_SOFT },
+  'complaint': { icon: Wrench, tint: '#F59E0B', soft: '#FEF3C7' },
+  'system': { icon: BellRing, tint: TEXT_MID, soft: '#F1F5F9' },
 };
 
 export default function NotificationsScreen({ navigation }: any) {
   const [items, setItems] = useState<any[]>([]);
-  const hasUnread = items.some((i) => !i.read);
+  const [activeTab, setActiveTab] = useState('All');
 
   const fetchNotifications = async () => {
     try {
@@ -28,7 +36,7 @@ export default function NotificationsScreen({ navigation }: any) {
           id: n.notification_id,
           title: n.title,
           body: n.message,
-          type: n.notification_type || 'General',
+          type: n.notification_type || 'system',
           date: n.created_at,
           read: !!n.is_read
         }));
@@ -36,7 +44,11 @@ export default function NotificationsScreen({ navigation }: any) {
       }
     } catch (err) {
       console.error('Fetch notifications error:', err);
-      setItems(sampleNotifications as any);
+      const samplesWithTime = sampleNotifications.map((n, i) => ({
+        ...n,
+        time: i === 0 ? "10:30 AM" : i === 1 ? "08:45 AM" : i === 2 ? "06:15 AM" : "Yesterday"
+      }));
+      setItems(samplesWithTime as any);
     }
   };
 
@@ -53,90 +65,290 @@ export default function NotificationsScreen({ navigation }: any) {
     }
   };
 
+  const filteredItems = items.filter(item => {
+    if (activeTab === 'All') return true;
+    if (activeTab === 'Announcements') return item.type === 'notice' || item.type === 'system';
+    if (activeTab === 'Payments') return item.type === 'due' || item.type === 'payment';
+    if (activeTab === 'Others') return item.type === 'complaint';
+    return true;
+  });
+
+  const groupedItems = filteredItems.reduce((acc, item) => {
+    let groupName = "Earlier";
+    if (item.date) {
+      const itemDate = new Date(item.date);
+      const today = new Date();
+      const yest = new Date(today);
+      yest.setDate(yest.getDate() - 1);
+      
+      const itemDateStr = itemDate.toISOString().split('T')[0];
+      const todayStr = today.toISOString().split('T')[0];
+      const yestStr = yest.toISOString().split('T')[0];
+
+      if (itemDateStr === todayStr) groupName = "Today";
+      else if (itemDateStr === yestStr) groupName = "Yesterday";
+      else groupName = itemDate.toLocaleDateString("en-GB", { day: 'numeric', month: 'short' });
+    }
+    
+    if (!acc[groupName]) acc[groupName] = [];
+    acc[groupName].push(item);
+    return acc;
+  }, {} as Record<string, any[]>);
+
+  const formatTime = (dateStr: string) => {
+    try {
+      if (dateStr.length <= 10) return "Yesterday";
+      return new Date(dateStr).toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return "09:00 AM";
+    }
+  };
+
+  const unreadCount = items.filter(i => !i.read).length;
+
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={10} style={styles.back}>
-          <ArrowLeft size={22} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Notifications</Text>
-        {hasUnread ? (
-          <TouchableOpacity onPress={markAllRead} hitSlop={10}>
-            <Text style={styles.markRead}>Mark all read</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={{ width: 22 }} />
-        )}
+    <View style={styles.safe}>
+      {/* Header Section */}
+      <View style={styles.headerSection}>
+        <SafeAreaView edges={['top']} style={{ backgroundColor: BLUE }}>
+          <View style={styles.header}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={10} style={styles.backBtn}>
+                <ArrowLeft size={24} color={WHITE} strokeWidth={2.5} />
+              </TouchableOpacity>
+              <View>
+                <Text style={styles.headerTitle}>Notifications</Text>
+                <Text style={styles.headerSub}>You have {unreadCount} unread</Text>
+              </View>
+            </View>
+            <TouchableOpacity style={styles.filterBtn}>
+              <Filter size={20} color={WHITE} strokeWidth={2.5} />
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
       </View>
 
-      <View style={styles.content}>
-        {items.length === 0 ? (
-          <Card>
-            <EmptyState
-              icon={Bell}
-              title="You're all caught up"
-              message="Rent reminders, notices and complaint updates will show up here."
-            />
-          </Card>
-        ) : (
-          items.map((n) => {
-            const meta = typeMeta[n.type] || typeMeta['General'];
-            const Icon = meta.icon;
+      {/* Tabs */}
+      <View style={styles.tabContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabScroll}>
+          {TABS.map(tab => {
+            const isActive = activeTab === tab;
             return (
-              <View key={n.id} style={[styles.row, !n.read && styles.rowUnread]}>
-                <View style={[styles.iconWrap, { backgroundColor: meta.soft }]}>
-                  <Icon size={18} color={meta.tint} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <View style={styles.titleRow}>
-                    <Text style={styles.title}>{n.title}</Text>
-                    {!n.read && <View style={styles.dot} />}
-                  </View>
-                  <Text style={styles.body}>{n.body}</Text>
-                  <Text style={styles.time}>{relativeDay(n.date)}</Text>
-                </View>
-              </View>
+              <TouchableOpacity
+                key={tab}
+                style={[styles.tab, isActive && styles.tabActive]}
+                onPress={() => setActiveTab(tab)}
+              >
+                <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{tab}</Text>
+              </TouchableOpacity>
             );
-          })
-        )}
+          })}
+        </ScrollView>
       </View>
-    </SafeAreaView>
+
+      {/* Content */}
+      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
+        {Object.keys(groupedItems).length === 0 ? (
+          <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 100 }}>
+            <Image source={require('../../assets/notfound.png')} style={{ width: 140, height: 140, opacity: 0.8 }} resizeMode="contain" />
+            <Text style={{ fontSize: 18, fontWeight: '800', color: TEXT_DARK, marginTop: 16 }}>You're all caught up</Text>
+            <Text style={{ fontSize: 14, color: TEXT_MID, marginTop: 8, textAlign: 'center', paddingHorizontal: 40 }}>No notifications match this filter.</Text>
+          </View>
+        ) : (
+          Object.entries(groupedItems).map(([groupDate, groupData]) => (
+            <View key={groupDate} style={styles.groupContainer}>
+              <Text style={styles.groupTitle}>{groupDate}</Text>
+              <View style={styles.groupList}>
+                {groupData.map((n, idx) => {
+                  const meta = typeMeta[n.type] || typeMeta['system'];
+                  const Icon = meta.icon;
+                  const displayTime = n.time || formatTime(n.date);
+
+                  return (
+                    <View key={n.id} style={[styles.card, idx !== groupData.length - 1 && styles.cardBorder]}>
+                      <View style={[styles.iconWrap, { backgroundColor: meta.soft }]}>
+                        <Icon size={20} color={meta.tint} />
+                      </View>
+                      <View style={styles.cardContent}>
+                        <View style={styles.cardHeader}>
+                          <Text style={styles.title} numberOfLines={1}>{n.title}</Text>
+                          <Text style={styles.time}>{displayTime}</Text>
+                        </View>
+                        <View style={styles.cardBodyRow}>
+                          <Text style={styles.body}>{n.body}</Text>
+                          {!n.read && <View style={styles.unreadDot} />}
+                        </View>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          ))
+        )}
+      </ScrollView>
+
+      {Object.keys(groupedItems).length > 0 && (
+        <View style={styles.footer}>
+          <TouchableOpacity style={styles.markReadBtn} onPress={markAllRead}>
+            <Text style={styles.markReadText}>Mark all as read</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
+  safe: { flex: 1, backgroundColor: '#FAF9F6' },
+  headerSection: {
+    backgroundColor: BLUE,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
-  back: { width: 22 },
-  headerTitle: { fontSize: font.h3, fontWeight: '700', color: colors.text },
-  markRead: { fontSize: font.small, fontWeight: '700', color: colors.primary },
-  content: { padding: spacing.lg, gap: spacing.sm },
-  row: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
+  backBtn: { width: 32 },
+  filterBtn: { width: 32, alignItems: 'flex-end' },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: WHITE },
+  headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
+  
+  // Tabs
+  tabContainer: {
+    marginBottom: 8,
+  },
+  tabScroll: {
+    paddingHorizontal: 20,
+    gap: 8,
+  },
+  tab: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: 'transparent',
+  },
+  tabActive: {
+    backgroundColor: BLUE,
+  },
+  tabText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: TEXT_MID,
+  },
+  tabTextActive: {
+    color: '#FFF',
+  },
+
+  // Groups
+  content: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  groupContainer: {
+    marginTop: 16,
+  },
+  groupTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: TEXT_DARK,
+    marginBottom: 12,
+  },
+  groupList: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderWidth: 1,
-    borderColor: colors.borderSoft,
+    borderColor: '#F1F5F9',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  rowUnread: { backgroundColor: '#FBFBFF', borderColor: colors.primaryBorder },
+
+  // Cards
+  card: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 16,
+    gap: 12,
+  },
+  cardBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
   iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  title: { fontSize: font.body, fontWeight: '700', color: colors.text, flexShrink: 1 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary },
-  body: { fontSize: font.small, color: colors.textMuted, marginTop: 2, lineHeight: 20 },
-  time: { fontSize: font.tiny, color: colors.textSubtle, marginTop: 6 },
+  cardContent: {
+    flex: 1,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  title: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: TEXT_DARK,
+    flex: 1,
+    marginRight: 8,
+  },
+  time: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: TEXT_MID,
+  },
+  cardBodyRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  body: {
+    fontSize: 13,
+    color: TEXT_MID,
+    lineHeight: 18,
+    flex: 1,
+    fontWeight: '500',
+  },
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#E11D48',
+    marginTop: 6,
+  },
+
+  // Footer
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#FAF9F6',
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  markReadBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+  },
+  markReadText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#A0522D', // Using brown for this link as seen in the image
+  },
 });

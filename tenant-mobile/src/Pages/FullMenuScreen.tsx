@@ -14,45 +14,48 @@ import { colors, radius, spacing, font, shadow } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 
+const BLUE = '#2245D4';
+const BLUE_DARK = '#1A36A8';
+
 // ── 7-day menu data ───────────────────────────────────────────────────────────
 type MealSlot = { items: string; time: string };
 type DayMenu = { breakfast: MealSlot; lunch: MealSlot; dinner: MealSlot };
 
 const WEEK_MENU: Record<string, DayMenu> = {
   Mon: {
-    breakfast: { items: 'Idli, Sambar, Chutney', time: '7:30 – 9:30 AM' },
-    lunch: { items: 'Rice, Dal, Veg Curry, Salad', time: '12:30 – 2:30 PM' },
-    dinner: { items: 'Chapathi, Paneer Curry, Pickle', time: '7:30 – 9:30 PM' },
+    breakfast: { items: 'Idli, Sambar, Chutney', time: '8:00 AM – 10:00 AM' },
+    lunch: { items: 'Rice, Dal, Veg Curry, Salad', time: '12:00 PM – 2:00 PM' },
+    dinner: { items: 'Chapathi, Paneer Curry, Pickle', time: '8:00 PM – 11:00 PM' },
   },
   Tue: {
-    breakfast: { items: 'Poha, Boiled Eggs, Tea/Coffee', time: '7:30 – 9:30 AM' },
-    lunch: { items: 'Curd Rice, Sambar, Papad', time: '12:30 – 2:30 PM' },
-    dinner: { items: 'Roti, Dal Fry, Jeera Rice', time: '7:30 – 9:30 PM' },
+    breakfast: { items: 'Poha, Boiled Eggs, Tea/Coffee', time: '8:00 AM – 10:00 AM' },
+    lunch: { items: 'Curd Rice, Sambar, Papad', time: '12:00 PM – 2:00 PM' },
+    dinner: { items: 'Roti, Dal Fry, Jeera Rice', time: '8:00 PM – 11:00 PM' },
   },
   Wed: {
-    breakfast: { items: 'Upma, Coconut Chutney, Juice', time: '7:30 – 9:30 AM' },
-    lunch: { items: 'Biryani, Raita, Papad', time: '12:30 – 2:30 PM' },
-    dinner: { items: 'Puri, Aloo Sabzi, Dal', time: '7:30 – 9:30 PM' },
+    breakfast: { items: 'Upma, Coconut Chutney, Juice', time: '8:00 AM – 10:00 AM' },
+    lunch: { items: 'Biryani, Raita, Papad', time: '12:00 PM – 2:00 PM' },
+    dinner: { items: 'Puri, Aloo Sabzi, Dal', time: '8:00 PM – 11:00 PM' },
   },
   Thu: {
-    breakfast: { items: 'Dosa, Sambar, Chutney', time: '7:30 – 9:30 AM' },
-    lunch: { items: 'Rice, Rasam, Fry, Salad', time: '12:30 – 2:30 PM' },
-    dinner: { items: 'Chapathi, Chana Masala, Rice', time: '7:30 – 9:30 PM' },
+    breakfast: { items: 'Dosa, Sambar, Chutney', time: '8:00 AM – 10:00 AM' },
+    lunch: { items: 'Rice, Rasam, Fry, Salad', time: '12:00 PM – 2:00 PM' },
+    dinner: { items: 'Chapathi, Chana Masala, Rice', time: '8:00 PM – 11:00 PM' },
   },
   Fri: {
-    breakfast: { items: 'Bread Toast, Omelette, Coffee', time: '7:30 – 9:30 AM' },
-    lunch: { items: 'Pulao, Dal Tadka, Raita', time: '12:30 – 2:30 PM' },
-    dinner: { items: 'Roti, Matar Paneer, Rice, Pickle', time: '7:30 – 9:30 PM' },
+    breakfast: { items: 'Bread Toast, Omelette, Coffee', time: '8:00 AM – 10:00 AM' },
+    lunch: { items: 'Pulao, Dal Tadka, Raita', time: '12:00 PM – 2:00 PM' },
+    dinner: { items: 'Roti, Matar Paneer, Rice, Pickle', time: '8:00 PM – 11:00 PM' },
   },
   Sat: {
-    breakfast: { items: 'Pongal, Vadai, Sambar', time: '7:30 – 9:30 AM' },
-    lunch: { items: 'Chicken Curry, Rice, Raita', time: '12:30 – 2:30 PM' },
-    dinner: { items: 'Naan, Butter Chicken / Paneer', time: '7:30 – 9:30 PM' },
+    breakfast: { items: 'Pongal, Vadai, Sambar', time: '8:00 AM – 10:00 AM' },
+    lunch: { items: 'Chicken Curry, Rice, Raita', time: '12:00 PM – 2:00 PM' },
+    dinner: { items: 'Naan, Butter Chicken / Paneer', time: '8:00 PM – 11:00 PM' },
   },
   Sun: {
-    breakfast: { items: 'Aloo Paratha, Curd, Pickle', time: '8:00 – 10:00 AM' },
-    lunch: { items: 'Special Biryani, Raita, Sweet', time: '12:30 – 2:30 PM' },
-    dinner: { items: 'Chapathi, Dal Makhani, Rice', time: '7:30 – 9:30 PM' },
+    breakfast: { items: 'Aloo Paratha, Curd, Pickle', time: '8:00 AM – 10:00 AM' },
+    lunch: { items: 'Special Biryani, Raita, Sweet', time: '12:00 PM – 2:00 PM' },
+    dinner: { items: 'Chapathi, Dal Makhani, Rice', time: '8:00 PM – 11:00 PM' },
   },
 };
 
@@ -80,7 +83,7 @@ export default function FullMenuScreen({ navigation }: any) {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <LinearGradient
-        colors={[colors.gradientStart, colors.gradientEnd]}
+        colors={[BLUE, BLUE_DARK]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.header}

@@ -12,7 +12,7 @@ import {
   Bell, ArrowRight, Plus,
 } from 'lucide-react-native';
 
-import { Phase3EmptyState } from '../components/UIComponents';
+import { Phase3EmptyState, Phase3ErrorState } from '../components/UIComponents';
 
 import { useAuth } from '../context/AuthContext';
 import { colors, radius, spacing, shadow } from '../theme';
@@ -78,6 +78,7 @@ export default function DuesScreen({ navigation }: any) {
   const [feeRecords, setFeeRecords]   = useState<FeeRecord[]>([]);
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState<string | null>(null);
+  const [filterYear, setFilterYear]   = useState<string>('All');
 
   const fetchFees = async () => {
     try {
@@ -106,6 +107,12 @@ export default function DuesScreen({ navigation }: any) {
   const isAllocated    = !!user?.is_allocated;
   const pendingFees    = feeRecords.filter(f => f.fee_status !== 'Fully Paid');
   const paidFees       = feeRecords.filter(f => f.fee_status === 'Fully Paid');
+  
+  const availableYears = ['All', ...Array.from(new Set(feeRecords.map(f => f.fee_month.split('-')[0])))].sort((a, b) => b.localeCompare(a));
+  
+  const filteredHistory = filterYear === 'All' 
+    ? feeRecords 
+    : feeRecords.filter(f => f.fee_month.startsWith(filterYear));
 
   const firstName = (user?.name || 'Tenant').split(' ')[0];
   const initials  = (user?.name || 'V')
@@ -142,14 +149,14 @@ export default function DuesScreen({ navigation }: any) {
       {/* ── Mini Cards ── */}
       <View style={styles.section}>
         <View style={{ flexDirection: 'row', gap: 12 }}>
-          <View style={[styles.overviewCard, { flex: 1, padding: 16, backgroundColor: BLUE_SOFT, borderColor: '#E0E7FF' }]}>
+          <View style={[styles.overviewCard, { flex: 1, padding: 16, backgroundColor: BLUE_SOFT, borderColor: '#E0E7FF', flexDirection: 'column', alignItems: 'flex-start' }]}>
             <Text style={[styles.overviewLabel, { color: TEXT_MID }]}>Current Rent</Text>
-            <Text style={[styles.overviewAmount, { color: BLUE_DARK, fontSize: 24, marginVertical: 4 }]}>{formatCurrency(user?.monthly_rent || 0)}</Text>
+            <Text style={[styles.overviewAmount, { color: BLUE_DARK, fontSize: 24, marginVertical: 4 }]} numberOfLines={1} adjustsFontSizeToFit>{formatCurrency(user?.monthly_rent || 0)}</Text>
             <Text style={[styles.overviewDate, { color: TEXT_MID }]}>/ month</Text>
           </View>
-          <View style={[styles.overviewCard, { flex: 1, padding: 16, backgroundColor: outstandingDue > 0 ? colors.dangerSoft : colors.successSoft, borderColor: outstandingDue > 0 ? '#FECACA' : '#DCFCE7' }]}>
+          <View style={[styles.overviewCard, { flex: 1, padding: 16, backgroundColor: outstandingDue > 0 ? colors.dangerSoft : colors.successSoft, borderColor: outstandingDue > 0 ? '#FECACA' : '#DCFCE7', flexDirection: 'column', alignItems: 'flex-start' }]}>
             <Text style={[styles.overviewLabel, { color: TEXT_MID }]}>Total Due</Text>
-            <Text style={[styles.overviewAmount, { color: TEXT_DARK, fontSize: 24, marginVertical: 4 }]}>{formatCurrency(outstandingDue)}</Text>
+            <Text style={[styles.overviewAmount, { color: TEXT_DARK, fontSize: 24, marginVertical: 4 }]} numberOfLines={1} adjustsFontSizeToFit>{formatCurrency(outstandingDue)}</Text>
             {outstandingDue > 0 ? (
               <TouchableOpacity onPress={() => navigation.navigate('Payments')}>
                 <Text style={{ color: colors.danger, fontWeight: '700', marginTop: 4 }}>Pay Now &rarr;</Text>
@@ -189,13 +196,8 @@ export default function DuesScreen({ navigation }: any) {
             <Text style={styles.loadingText}>Loading your fee records…</Text>
           </View>
         ) : error ? (
-          <View style={styles.errorWrap}>
-            <XCircle size={32} color={colors.danger} strokeWidth={1.5} />
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity style={styles.retryBtn} onPress={fetchFees}>
-              <RotateCcw size={14} color={BLUE} />
-              <Text style={styles.retryText}>Retry</Text>
-            </TouchableOpacity>
+          <View style={{ marginTop: 60 }}>
+            <Phase3ErrorState variant="server" onAction={fetchFees} />
           </View>
         ) : !isAllocated ? (
           <View style={styles.emptyWrap}>
@@ -205,7 +207,7 @@ export default function DuesScreen({ navigation }: any) {
           </View>
         ) : feeRecords.length === 0 ? (
           <View style={{ marginTop: 60 }}>
-            <Phase3EmptyState variant="dues" />
+            <Phase3EmptyState variant="dues" onAction={() => setActiveTab('Payment History')} />
           </View>
         ) : activeTab === 'This Month Details' ? (
           <>
@@ -272,9 +274,23 @@ export default function DuesScreen({ navigation }: any) {
           </>
         ) : (
           <>
-            <Text style={styles.groupLabel}>All Months</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.xl, marginTop: spacing.lg, marginBottom: spacing.md }}>
+              <Text style={[styles.groupLabel, { marginTop: 0, marginBottom: 0, paddingHorizontal: 0 }]}>All Months</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                {availableYears.map(year => (
+                  <TouchableOpacity
+                    key={year}
+                    onPress={() => setFilterYear(year)}
+                    style={[styles.filterChip, filterYear === year && styles.filterChipActive]}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.filterChipText, filterYear === year && styles.filterChipTextActive]}>{year}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
             <View style={styles.listCard}>
-              {feeRecords.map((fee, i) => {
+              {filteredHistory.length > 0 ? filteredHistory.map((fee, i) => {
                 const cfg = statusConfig[fee.fee_status] || statusConfig['Pending'];
                 return (
                   <View key={fee.fee_id} style={[styles.listRow, i < feeRecords.length - 1 && styles.listRowDivider]}>
@@ -300,7 +316,11 @@ export default function DuesScreen({ navigation }: any) {
                     </View>
                   </View>
                 );
-              })}
+              }) : (
+                <View style={{ padding: 30, alignItems: 'center' }}>
+                  <Text style={{ color: TEXT_MID, fontSize: 14 }}>No records found for this year.</Text>
+                </View>
+              )}
             </View>
           </>
         )}
@@ -322,14 +342,7 @@ export default function DuesScreen({ navigation }: any) {
         </View>
       )}
 
-      {/* ── FAB — Add Expense (Rent pre-selected) ── */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => navigation.navigate('AddExpense', { defaultCategory: 'Rent' })}
-        activeOpacity={0.85}
-      >
-        <Plus size={26} color={WHITE} strokeWidth={3} />
-      </TouchableOpacity>
+
     </View>
   );
 }
@@ -376,6 +389,10 @@ const styles = StyleSheet.create({
   emptyBody:     { fontSize: 14, color: TEXT_MID, textAlign: 'center', lineHeight: 20 },
 
   groupLabel: { fontSize: 11, fontWeight: '700', color: colors.textSubtle, paddingHorizontal: spacing.xl, marginBottom: spacing.md, marginTop: spacing.lg, letterSpacing: 0.8, textTransform: 'uppercase' },
+  filterChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: BG, borderWidth: 1, borderColor: colors.border },
+  filterChipActive: { backgroundColor: BLUE, borderColor: BLUE },
+  filterChipText: { fontSize: 12, fontWeight: '600', color: TEXT_MID },
+  filterChipTextActive: { color: WHITE },
   listCard:   { backgroundColor: WHITE, borderRadius: radius['2xl'], marginHorizontal: spacing.xl, borderWidth: 1, borderColor: colors.border, overflow: 'hidden', ...shadow.card },
   listRow:        { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: 16 },
   listRowDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },

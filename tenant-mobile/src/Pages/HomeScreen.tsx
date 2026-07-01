@@ -39,11 +39,13 @@ import {
   X, 
   AlertTriangle, 
   Layers,
-  FileText
+  FileText,
+  QrCode
 } from "lucide-react-native";
 
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
+import { mockWeeklyMenu } from "../data/dummyData";
 
 const { width } = Dimensions.get("window");
 
@@ -64,6 +66,8 @@ export default function HomeScreen({ navigation }: any) {
   const [recentPayments, setRecentPayments] = useState<any[]>([]);
   const [dueAmount, setDueAmount] = useState<number>(0);
   const [rentDueDate, setRentDueDate] = useState<string | null>(null);
+  const [totalRentAmount, setTotalRentAmount] = useState<number>(0);
+
   // Mess skip state
   const [skipped, setSkipped] = useState({ morning: false, lunch: false, dinner: false });
   const [currentMealIdx, setCurrentMealIdx] = useState(0);
@@ -104,9 +108,11 @@ export default function HomeScreen({ navigation }: any) {
         const fees = feesRes.value.data.data;
         let sum = 0;
         let firstDueDate: string | null = null;
+        let latestRent = 0;
         const payments: any[] = [];
         
         fees.forEach((f: any) => {
+          if (latestRent === 0) latestRent = Number(f.total_amount || f.monthly_rent || 0);
           const bal = Number(f.total_due || f.total_amount || 0) - Number(f.paid_amount || 0);
           if (bal > 0) {
             sum += bal;
@@ -124,6 +130,7 @@ export default function HomeScreen({ navigation }: any) {
         
         setDueAmount(sum > 0 ? sum : 0);
         setRentDueDate(firstDueDate);
+        setTotalRentAmount(latestRent);
         setRecentPayments(payments.slice(0, 3)); // keep top 3
       }
     } catch (error) {
@@ -187,10 +194,14 @@ export default function HomeScreen({ navigation }: any) {
   };
 
 
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const todayDay = days[new Date().getDay()];
+  const todayMenu = mockWeeklyMenu[todayDay as keyof typeof mockWeeklyMenu];
+
   const meals: { key: "morning" | "lunch" | "dinner"; title: string; sub: string; time: string; Icon: any; bg: string; iconBg: string; color: string }[] = [
-    { key: "morning", title: "Morning", sub: "Idli, Sambar, Chutney", time: "08:00 AM", Icon: Sun, bg: "#FFFBF5", iconBg: "#FFEDD5", color: "#F97316" },
-    { key: "lunch", title: "Lunch", sub: "Rice, Dal, Sambar, Curd", time: "01:00 PM", Icon: Utensils, bg: "#FFF5F5", iconBg: "#FFE4E6", color: "#F43F5E" },
-    { key: "dinner", title: "Dinner", sub: "Roti, Mix Veg, Salad", time: "08:00 PM", Icon: ConciergeBell, bg: "#F0FDF4", iconBg: "#DCFCE7", color: "#22C55E" },
+    { key: "morning", title: "Morning", sub: todayMenu.breakfast.items, time: "8:00 AM - 10:00 AM", Icon: Sun, bg: "#FFFBF5", iconBg: "#FFEDD5", color: "#F97316" },
+    { key: "lunch", title: "Lunch", sub: todayMenu.lunch.items, time: "12:00 PM - 2:00 PM", Icon: Utensils, bg: "#FFF1F2", iconBg: "#FFE4E6", color: "#E11D48" },
+    { key: "dinner", title: "Dinner", sub: todayMenu.dinner.items, time: "8:00 PM - 11:00 PM", Icon: ConciergeBell, bg: "#ECFDF5", iconBg: "#D1FAE5", color: "#059669" },
   ];
 
   const shortcuts = [
@@ -199,8 +210,9 @@ export default function HomeScreen({ navigation }: any) {
     { id: 'complaints', name: 'Complaints', icon: AlertCircle, nav: 'Complaints', bg: '#FEE2E2', color: '#EF4444' },
 
     { id: 'documents', name: 'Documents', icon: FileSignature, nav: 'Documents', bg: '#F3E8FF', color: '#9333EA' },
-    { id: 'notes', name: 'Notes', icon: FileText, nav: 'NotesScreen', bg: '#FEF3C7', color: '#D97706' },
+    { id: 'notes', name: 'Notes', icon: FileText, nav: 'Notes', bg: '#FEF3C7', color: '#D97706' },
     { id: 'room', name: 'Room Info', icon: HomeIcon, nav: 'RoomInfo', bg: '#E0E7FF', color: '#4F46E5' },
+    { id: 'gatepass', name: 'Gate Pass', icon: QrCode, nav: 'GatePass', bg: '#E0F2FE', color: '#0EA5E9' },
     { id: 'splits', name: 'Splits', icon: Briefcase, nav: 'Splits', bg: '#FFE4E6', color: '#E11D48' },
   ];
 
@@ -260,20 +272,35 @@ export default function HomeScreen({ navigation }: any) {
         <View style={styles.section}>
           <View style={styles.overviewCard}>
             <View style={styles.overviewLeft}>
-              <Text style={styles.overviewLabel}>Total Due</Text>
-              <Text style={styles.overviewAmount}>
-                ₹ {dueAmount.toLocaleString("en-IN")}
+              <Text style={styles.overviewLabel}>
+                {dueAmount > 0 ? "Total Due" : "Monthly Rent"}
               </Text>
-              <Text style={styles.overviewDate}>
-                Due Date: {rentDueDate ? formatDate(rentDueDate) : "N/A"}
+              <Text style={[styles.overviewAmount, dueAmount === 0 && { color: "#22C55E" }]}>
+                ₹ {dueAmount > 0 ? dueAmount.toLocaleString("en-IN") : (totalRentAmount || 5500).toLocaleString("en-IN")}
               </Text>
-              <TouchableOpacity
-                style={styles.overviewBtn}
-                onPress={() => navigation.navigate("Payments")}
-              >
-                <Text style={styles.overviewBtnText}>View Details</Text>
-                <ArrowRight size={16} color={WHITE} />
-              </TouchableOpacity>
+              {dueAmount > 0 ? (
+                <Text style={styles.overviewDate}>
+                  Due Date: {rentDueDate ? formatDate(rentDueDate) : "N/A"}
+                </Text>
+              ) : (
+                <Text style={styles.overviewDate}>
+                  Status: All clear this month!
+                </Text>
+              )}
+              {dueAmount > 0 ? (
+                <TouchableOpacity
+                  style={styles.overviewBtn}
+                  onPress={() => navigation.navigate("Payments")}
+                >
+                  <Text style={styles.overviewBtnText}>Pay Now</Text>
+                  <ArrowRight size={16} color={WHITE} />
+                </TouchableOpacity>
+              ) : (
+                <View style={[styles.overviewBtn, { backgroundColor: "#DCFCE7" }]}>
+                  <Check size={16} color="#22C55E" strokeWidth={3} />
+                  <Text style={[styles.overviewBtnText, { color: "#22C55E" }]}>Paid</Text>
+                </View>
+              )}
             </View>
             <View style={styles.overviewRight}>
               <Image
@@ -317,12 +344,15 @@ export default function HomeScreen({ navigation }: any) {
                       <Text style={[styles.menuTitle, isSkipped && { color: "#94A3B8", textDecorationLine: "line-through" }]}>
                         {activeMeal.title}
                       </Text>
-                      <Text style={[styles.menuSub, isSkipped && { color: "#94A3B8" }]} numberOfLines={1}>{activeMeal.sub}</Text>
+                      <Text style={[styles.menuSub, isSkipped && { color: "#94A3B8" }]} numberOfLines={2}>{activeMeal.sub}</Text>
                     </View>
                   </View>
 
                   <TouchableOpacity
-                    style={[styles.skipTickBtn, isSkipped && styles.skipTickBtnActive]}
+                    style={[
+                      styles.skipTickBtn, 
+                      isSkipped && { borderColor: activeMeal.color, backgroundColor: activeMeal.iconBg }
+                    ]}
                     onPress={(e) => {
                       e.stopPropagation();
                       handleMessSkip(activeMeal.key);
@@ -330,9 +360,9 @@ export default function HomeScreen({ navigation }: any) {
                     activeOpacity={0.7}
                   >
                     {isSkipped ? (
-                      <Check size={16} color="#F97316" strokeWidth={3} />
+                      <Check size={18} color={activeMeal.color} strokeWidth={4} />
                     ) : (
-                      <Check size={16} color="#D1D5DB" strokeWidth={3} />
+                      <Check size={18} color="#D1D5DB" strokeWidth={3} />
                     )}
                   </TouchableOpacity>
                 </View>
@@ -405,7 +435,7 @@ export default function HomeScreen({ navigation }: any) {
               return (
                 <TouchableOpacity key={sc.id} style={styles.shortcutItem} onPress={() => navigation.navigate(sc.nav)}>
                   <View style={[styles.shortcutIconBox, { backgroundColor: sc.bg }]}>
-                    <ShortcutIcon size={24} color={sc.color} />
+                    <ShortcutIcon size={22} color={sc.color} />
                   </View>
                   <Text style={styles.shortcutText}>{sc.name}</Text>
                 </TouchableOpacity>
@@ -482,24 +512,24 @@ const styles = StyleSheet.create({
 
   // Overview card
   overviewCard: {
-    backgroundColor: WHITE, borderRadius: 20, padding: 20,
+    backgroundColor: WHITE, borderRadius: 20, paddingVertical: 12, paddingHorizontal: 20,
     flexDirection: "row", alignItems: "center",
     shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05, shadowRadius: 10, elevation: 2,
     borderWidth: 1, borderColor: BORDER,
   },
-  overviewLeft: { flex: 1 },
-  overviewLabel: { fontSize: 13, color: TEXT_MID, fontWeight: "500", marginBottom: 8 },
-  overviewAmount: { fontSize: 28, fontWeight: "800", color: "#E11D48", marginBottom: 8 },
-  overviewDate: { fontSize: 12, color: TEXT_MID, marginBottom: 16 },
+  overviewLeft: { width: '60%' },
+  overviewLabel: { fontSize: 14, color: TEXT_MID, fontWeight: "700", marginBottom: 6 },
+  overviewAmount: { fontSize: 28, fontWeight: "900", color: "#E11D48", marginBottom: 6 },
+  overviewDate: { fontSize: 13, color: TEXT_MID, marginBottom: 16, fontWeight: "700" },
   overviewBtn: {
     backgroundColor: BLUE, alignSelf: "flex-start",
-    paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20,
+    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
     flexDirection: "row", alignItems: "center", gap: 6,
   },
-  overviewBtnText: { color: WHITE, fontSize: 13, fontWeight: "600" },
-  overviewRight: { width: 100, height: 100, justifyContent: "center", alignItems: "center" },
-  walletImg: { width: 110, height: 110, position: "absolute", right: -10, bottom: -10 },
+  overviewBtnText: { color: WHITE, fontSize: 13, fontWeight: "700" },
+  overviewRight: { width: '40%', height: 110, justifyContent: "center", alignItems: "center" },
+  walletImg: { width: 115, height: 115, position: "absolute", right: -5, bottom: -10 },
 
   // Message card
   messageCard: {
@@ -525,10 +555,10 @@ const styles = StyleSheet.create({
   shortcutGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, justifyContent: "space-between" },
   shortcutItem: { alignItems: "center", width: "22%", marginBottom: 12 },
   shortcutIconBox: {
-    width: 56, height: 56, borderRadius: 16,
+    width: 48, height: 48, borderRadius: 14,
     justifyContent: "center", alignItems: "center", marginBottom: 8,
   },
-  shortcutText: { fontSize: 12, color: TEXT_DARK, fontWeight: "500", textAlign: "center" },
+  shortcutText: { fontSize: 11, color: TEXT_DARK, fontWeight: "600", textAlign: "center" },
 
   // Activity card
   activityCard: {
@@ -548,13 +578,15 @@ const styles = StyleSheet.create({
 
   // Menu row
   menuIconWrap: { width: 46, height: 46, borderRadius: 12, justifyContent: "center", alignItems: "center" },
-  menuTitle: { fontSize: 14, fontWeight: "700", color: TEXT_DARK, marginBottom: 3 },
-  menuSub: { fontSize: 12, color: TEXT_MID },
+  menuTitle: { fontSize: 16, fontWeight: "800", color: TEXT_DARK, marginBottom: 3 },
+  menuSub: { fontSize: 14, color: TEXT_DARK, fontWeight: "600", lineHeight: 20 },
 
   // Next Meal card
   nextMealCard: {
     borderRadius: 20, padding: 16,
     borderWidth: 1, borderColor: BORDER,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08, shadowRadius: 12, elevation: 4,
   },
   nmHeader: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start",
