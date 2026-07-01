@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import {
   StyleSheet, Text, TouchableOpacity, View, ScrollView,
-  RefreshControl, ActivityIndicator, Image,
+  RefreshControl, ActivityIndicator, Image, StatusBar
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -114,16 +114,15 @@ export default function DuesScreen({ navigation }: any) {
     .toUpperCase();
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <View style={styles.safe}>
+      <StatusBar barStyle="light-content" backgroundColor={BLUE} />
       {/* ── BLUE HEADER ── */}
       <View style={styles.headerSection}>
         <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
           <View style={styles.headerTop}>
             <View style={{ flex: 1, marginRight: 12 }}>
-              <Text style={styles.headerGreeting}>
-                Hi, {firstName} <Text style={{ fontSize: 18 }}>👋</Text>
-              </Text>
-              <Text style={styles.headerSub}>Welcome Back!</Text>
+              <Text style={styles.headerGreeting}>My Dues</Text>
+              <Text style={styles.headerSub}>Manage your monthly rent and fees</Text>
             </View>
             <View style={styles.headerRight}>
               <TouchableOpacity style={styles.hBtn} onPress={() => navigation.navigate('Notifications')}>
@@ -327,7 +326,7 @@ export default function DuesScreen({ navigation }: any) {
       >
         <Plus size={26} color={WHITE} strokeWidth={3} />
       </TouchableOpacity>
-    </SafeAreaView>
+    </View>
   );
 }
 

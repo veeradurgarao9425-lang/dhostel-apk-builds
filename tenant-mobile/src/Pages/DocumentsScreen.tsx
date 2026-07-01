@@ -1,88 +1,110 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { FileText, FileCheck2, Receipt, IdCard, Download, File } from 'lucide-react-native';
+import { StyleSheet, Text, TouchableOpacity, View, ScrollView, StatusBar } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { FileText, FileCheck2, Receipt, IdCard, Download, File, ArrowLeft } from 'lucide-react-native';
 
 import { useAuth } from '../context/AuthContext';
-import { Screen, AppHeader, Card, EmptyState } from '../components/ui';
-import { colors, radius, spacing, font } from '../theme';
-import { formatDate } from '../utils/format';
 import { sampleDocuments, TenantDocument } from '../data/tenantContent';
 
+const BLUE      = '#2245D4';
+const BLUE_SOFT = '#EEF2FF';
+const WHITE     = '#FFFFFF';
+const TEXT_DARK = '#1A1A1A';
+const TEXT_MID  = '#666666';
+const TEXT_LIGHT= '#9CA3AF';
+const BG        = '#F8FAFD';
+const BORDER    = '#E2E8F0';
+const SUCCESS   = '#22C55E';
+const SUCCESS_SOFT= '#DCFCE7';
+
 const typeMeta: Record<TenantDocument['type'], { icon: any; tint: string; soft: string }> = {
-  Agreement: { icon: FileCheck2, tint: colors.primary, soft: colors.primarySoft },
-  Receipt: { icon: Receipt, tint: colors.success, soft: colors.successSoft },
-  KYC: { icon: IdCard, tint: colors.info, soft: colors.infoSoft },
-  Other: { icon: File, tint: colors.textMuted, soft: '#F1F5F9' },
+  Agreement: { icon: FileCheck2, tint: BLUE, soft: BLUE_SOFT },
+  Receipt: { icon: Receipt, tint: SUCCESS, soft: SUCCESS_SOFT },
+  KYC: { icon: IdCard, tint: '#D97706', soft: '#FEF3C7' },
+  Other: { icon: File, tint: TEXT_MID, soft: '#F1F5F9' },
 };
 
 export default function DocumentsScreen({ navigation }: any) {
-  const { user } = useAuth();
-
   return (
-    <Screen>
-      <AppHeader
-        eyebrow="Your records"
-        title="Documents"
-        name={user?.name}
-        onPressBell={() => navigation.navigate('Notifications')}
-        onPressAvatar={() => navigation.navigate('Profile')}
-      />
+    <View style={{ flex: 1, backgroundColor: BG }}>
+      <StatusBar barStyle="light-content" backgroundColor={BLUE} />
+      
+      {/* ── HEADER ── */}
+      <View style={s.headerSection}>
+        <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
+          <View style={s.headerTop}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtnLight} activeOpacity={0.7}>
+              <ArrowLeft size={24} color={WHITE} strokeWidth={2.5} />
+            </TouchableOpacity>
+            <View style={{ flex: 1, marginLeft: 16 }}>
+              <Text style={s.headerGreeting}>Documents</Text>
+              <Text style={s.headerSub}>KYC, agreements & receipts</Text>
+            </View>
+          </View>
+        </SafeAreaView>
+      </View>
 
-      {sampleDocuments.length === 0 ? (
-        <Card>
-          <EmptyState
-            icon={FileText}
-            title="No documents yet"
-            message="Your agreement, payment receipts and KYC will appear here to view and download."
-          />
-        </Card>
-      ) : (
-        <Card padded={false}>
-          {sampleDocuments.map((d, i) => {
-            const meta = typeMeta[d.type];
-            const Icon = meta.icon;
-            return (
-              <TouchableOpacity key={d.id} style={[styles.row, i > 0 && styles.divider]} activeOpacity={0.7}>
-                <View style={[styles.iconWrap, { backgroundColor: meta.soft }]}>
-                  <Icon size={20} color={meta.tint} />
+      <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+        {sampleDocuments.length === 0 ? (
+          <View style={s.emptyCard}>
+            <View style={s.emptyIconWrap}>
+              <FileText size={32} color={TEXT_MID} />
+            </View>
+            <Text style={s.emptyTitle}>No Documents Found</Text>
+            <Text style={s.emptySub}>Your rental agreement, payment receipts, and KYC documents will appear here once verified.</Text>
+          </View>
+        ) : (
+          <View style={s.listCard}>
+            {sampleDocuments.map((d, i) => {
+              const meta = typeMeta[d.type] || typeMeta.Other;
+              const Icon = meta.icon;
+              return (
+                <View key={d.id}>
+                  <TouchableOpacity style={s.row} activeOpacity={0.7}>
+                    <View style={[s.iconWrap, { backgroundColor: meta.soft }]}>
+                      <Icon size={22} color={meta.tint} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.nameTxt} numberOfLines={1}>{d.name}</Text>
+                      <Text style={s.metaTxt}>
+                        {d.type} • {new Date(d.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {d.sizeKb ? ` • ${d.sizeKb} KB` : ''}
+                      </Text>
+                    </View>
+                    <TouchableOpacity style={s.dlBtn} activeOpacity={0.7}>
+                      <Download size={18} color={BLUE} strokeWidth={2.5} />
+                    </TouchableOpacity>
+                  </TouchableOpacity>
+                  {i < sampleDocuments.length - 1 && <View style={s.divider} />}
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.name}>{d.name}</Text>
-                  <Text style={styles.meta}>
-                    {d.type} · {formatDate(d.date)}
-                    {d.sizeKb ? ` · ${d.sizeKb} KB` : ''}
-                  </Text>
-                </View>
-                <View style={styles.dlBtn}>
-                  <Download size={18} color={colors.primary} />
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </Card>
-      )}
-    </Screen>
+              );
+            })}
+          </View>
+        )}
+      </ScrollView>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.lg },
-  divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
-  iconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  name: { fontSize: font.body, fontWeight: '600', color: colors.text },
-  meta: { fontSize: font.small, color: colors.textMuted, marginTop: 2 },
-  dlBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: radius.sm,
-    backgroundColor: colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+const s = StyleSheet.create({
+  headerSection: { backgroundColor: BLUE, paddingBottom: 24, borderBottomLeftRadius: 32, borderBottomRightRadius: 32, shadowColor: BLUE, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8, zIndex: 10 },
+  headerTop: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 12 },
+  backBtnLight: { padding: 8, marginLeft: -8, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 12 },
+  headerGreeting: { fontSize: 22, fontWeight: '800', color: WHITE },
+  headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
+  
+  scroll: { padding: 20, paddingBottom: 60 },
+
+  emptyCard: { backgroundColor: WHITE, borderRadius: 24, padding: 32, alignItems: 'center', borderWidth: 1, borderColor: BORDER, borderStyle: 'dashed', marginTop: 20 },
+  emptyIconWrap: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: TEXT_DARK, marginBottom: 8 },
+  emptySub: { fontSize: 14, color: TEXT_MID, textAlign: 'center', lineHeight: 20 },
+
+  listCard: { backgroundColor: WHITE, borderRadius: 24, paddingHorizontal: 16, marginBottom: 24, borderWidth: 1, borderColor: BORDER, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 12, elevation: 2, marginTop: 10 },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16 },
+  iconWrap: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginRight: 16 },
+  nameTxt: { fontSize: 15, fontWeight: '700', color: TEXT_DARK, marginBottom: 4 },
+  metaTxt: { fontSize: 13, color: TEXT_MID, fontWeight: '500' },
+  dlBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: BLUE_SOFT, alignItems: 'center', justifyContent: 'center' },
+  divider: { height: 1, backgroundColor: BORDER, marginLeft: 64 },
 });

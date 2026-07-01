@@ -35,6 +35,7 @@ import ServicesScreen from '../Pages/ServicesScreen';
 import FullMenuScreen from '../Pages/FullMenuScreen';
 import AnalyticsScreen from '../Pages/AnalyticsScreen';
 import AddExpenseScreen from '../Pages/AddExpenseScreen';
+import GatePassScreen from '../Pages/GatePassScreen';
 import AddCategoryScreen from '../Pages/AddCategoryScreen';
 import CategoryDetailScreen from '../Pages/CategoryDetailScreen';
 import TransactionsListScreen from '../Pages/TransactionsListScreen';
@@ -105,6 +106,7 @@ export default function AppNavigator() {
             <Stack.Screen name="Settings" component={SettingsScreen} />
             <Stack.Screen name="AllExpenses" component={AllExpensesScreen} />
             <Stack.Screen name="AddExpense" component={AddExpenseScreen} />
+            <Stack.Screen name="GatePass" component={GatePassScreen} />
             <Stack.Screen name="AddCategory" component={AddCategoryScreen} />
             <Stack.Screen name="CategoryDetail" component={CategoryDetailScreen} />
             <Stack.Screen name="TransactionsList" component={TransactionsListScreen} />

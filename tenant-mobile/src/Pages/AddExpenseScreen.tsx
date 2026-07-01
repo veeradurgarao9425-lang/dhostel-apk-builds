@@ -10,7 +10,7 @@ import {
   ArrowLeft, Check, CalendarDays, ChevronDown, FileImage,
   ChevronRight, Utensils, Car, ShoppingBag, Receipt,
   Film, HeartPulse, MoreHorizontal, Coffee, Home,
-  Plane, Zap, Gift, BookOpen, Dumbbell, Dog, Plus, RefreshCw,
+  Plane, Zap, Gift, BookOpen, Dumbbell, Dog, Plus, RefreshCw, X, ChevronLeft,
 } from 'lucide-react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import Svg, { Circle, Path } from 'react-native-svg';
@@ -52,7 +52,7 @@ function BottomPicker({ visible, data, selected, onSelect, onClose }: any) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' }}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.2)', justifyContent: 'flex-end' }}>
           <TouchableOpacity activeOpacity={1}>
             <View style={p.sheet}>
               <View style={p.handle} />
@@ -181,7 +181,7 @@ export default function AddExpenseScreen({ navigation, route }: any) {
       <StatusBar barStyle="dark-content" backgroundColor={WHITE} />
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.headerBtn} activeOpacity={0.7}>
-          <ArrowLeft size={24} color={TEXT_DARK} strokeWidth={2.5} />
+          <ChevronLeft size={28} color={TEXT_DARK} strokeWidth={2.5} />
         </TouchableOpacity>
         <Text style={s.headerTitle}>Add Expense</Text>
         <View style={s.headerBtn} />
@@ -294,12 +294,12 @@ const s = StyleSheet.create({
   safe:   { flex: 1, backgroundColor: BG },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: WHITE, borderBottomWidth: 1, borderBottomColor: BORDER },
   headerBtn:   { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginLeft: -8 },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: TEXT_DARK, flex: 1 },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: TEXT_DARK, flex: 1, textAlign: 'center' },
   scroll: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40, flexGrow: 1 },
   amountContainer: { marginBottom: 12 },
   amountRow:   { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
   rupee:       { fontSize: 36, fontWeight: '800', color: TEXT_DARK, marginRight: 8 },
-  amountInput: { fontSize: 44, fontWeight: '900', color: TEXT_DARK, flex: 1, padding: 0, includeFontPadding: false },
+  amountInput: { fontSize: 44, fontWeight: '800', color: TEXT_DARK, flex: 1, padding: 0, includeFontPadding: false },
   chipsRow:    { flexDirection: 'row', gap: 10, marginBottom: 44 },
   chip:        { paddingVertical: 10, alignItems: 'center', borderRadius: 10, backgroundColor: WHITE, borderWidth: 1, borderColor: BORDER },
   chipActive:  { borderColor: BLUE, backgroundColor: BLUE_SOFT },
@@ -325,15 +325,15 @@ const s = StyleSheet.create({
   receiptIconWrap: { width: 38, height: 38, borderRadius: 10, backgroundColor: BG, alignItems: 'center', justifyContent: 'center' },
   receiptTitle: { fontSize: 14, fontWeight: '700', color: TEXT_DARK },
   receiptSub:   { fontSize: 11, color: TEXT_LIGHT, fontWeight: '500', marginTop: 2 },
-  saveBtn: { backgroundColor: BLUE, borderRadius: 16, height: 56, alignItems: 'center', justifyContent: 'center', marginTop: 24, shadowColor: BLUE, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 12, elevation: 6 },
+  saveBtn: { backgroundColor: BLUE, borderRadius: 24, paddingVertical: 18, alignItems: 'center', justifyContent: 'center', marginTop: 32, shadowColor: BLUE, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.25, shadowRadius: 10, elevation: 6 },
   saveBtnOff:  { backgroundColor: '#A0B4E8', shadowOpacity: 0 },
   saveBtnText: { color: WHITE, fontSize: 16, fontWeight: '800' },
   bottomInfoText: { fontSize: 12, color: TEXT_LIGHT, textAlign: 'center', marginTop: 16, fontWeight: '500' },
 });
 
 const p = StyleSheet.create({
-  sheet: { backgroundColor: WHITE, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 44 },
-  handle: { width: 36, height: 4, backgroundColor: BORDER, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
+  sheet: { backgroundColor: WHITE, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 44, shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 10 },
+  handle: { width: 40, height: 4, backgroundColor: BORDER, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
   sheetTitle: { fontSize: 16, fontWeight: '800', color: TEXT_DARK, marginBottom: 12 },
   sheetRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: BORDER },
   sheetRowActive: { backgroundColor: BLUE_SOFT, paddingHorizontal: 10, borderRadius: 10, borderBottomWidth: 0, marginBottom: 1 },
