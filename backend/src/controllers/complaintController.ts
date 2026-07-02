@@ -16,12 +16,18 @@ export const createComplaint = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
+    const files = (req as any).files as Express.Multer.File[] | undefined;
+    const image_urls = files && files.length > 0
+      ? JSON.stringify(files.map(f => `/uploads/${f.filename}`))
+      : null;
+
     const [complaint_id] = await db('complaints').insert({
       hostel_id,
       student_id,
       category,
       title,
       description: description || null,
+      image_urls,
       status: 'Open'
     });
 

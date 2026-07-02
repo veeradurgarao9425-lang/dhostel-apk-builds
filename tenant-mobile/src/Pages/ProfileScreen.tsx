@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View, ScrollView, StatusBar, Image } from 'react-native';
+import { Alert, StyleSheet, Text, TouchableOpacity, View, ScrollView, StatusBar, Image, Modal, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   User2, Lock, Bell, HelpCircle, MessageSquare, Info,
   LogOut, ChevronRight, CreditCard, Building2, BedDouble,
-  Settings, ArrowLeft, ShieldCheck, Mail, Phone,
+  Settings, ArrowLeft, ShieldCheck, Mail, Phone, Star,
 } from 'lucide-react-native';
 
 import { useAuth } from '../context/AuthContext';
 import { ConfirmationDialog } from '../components/UIComponents';
+import api from '../services/api';
 
 const BLUE      = '#2245D4';
 const BLUE_SOFT = '#EEF2FF';
@@ -22,16 +23,35 @@ const SUCCESS   = '#22C55E';
 const SUCCESS_BG= '#DCFCE7';
 
 export default function ProfileScreen({ navigation }: any) {
-  const { user, signOut } = useAuth();
+  const { user, signOut, updateTokenAndUser } = useAuth();
 
   const name = user?.name || 'Guest User';
   const initials = name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase();
   const roomNumber = user?.room_number ? `Room ${user.room_number}` : 'No Room Assigned';
 
   const [showLogout, setShowLogout] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
 
   const confirmLogout = () => {
     setShowLogout(true);
+  };
+
+  const saveProfile = async () => {
+    setEditSaving(true);
+    try {
+      const res = await api.put('/auth/tenant/profile', { name: editName, phone: editPhone });
+      if (res.data?.success) {
+        await updateTokenAndUser(undefined, { name: res.data.data.name, phone: res.data.data.phone });
+        setShowEdit(false);
+      }
+    } catch (e) {
+      console.error('Profile update failed:', e);
+    } finally {
+      setEditSaving(false);
+    }
   };
 
   return (
@@ -69,6 +89,13 @@ export default function ProfileScreen({ navigation }: any) {
             <View style={{ flex: 1, alignItems: 'flex-start' }}>
               <Text style={s.nameTxt} numberOfLines={1}>{name}</Text>
               <Text style={[s.roomTxt, { marginBottom: 0 }]}>{roomNumber}</Text>
+              <TouchableOpacity
+                style={{ marginTop: 10, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 10, borderWidth: 1, borderColor: BLUE, backgroundColor: BLUE_SOFT }}
+                onPress={() => { setShowEdit(true); setEditName(name); setEditPhone(user?.phone || ''); }}
+                activeOpacity={0.7}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '700', color: BLUE }}>Edit Profile</Text>
+              </TouchableOpacity>
             </View>
           </View>
           
@@ -136,6 +163,14 @@ export default function ProfileScreen({ navigation }: any) {
 
         <Text style={s.sectionLbl}>SUPPORT</Text>
         <View style={s.menuCard}>
+          <TouchableOpacity style={s.menuRow} activeOpacity={0.7} onPress={() => navigation.navigate('Rating')}>
+            <View style={[s.menuIconWrap, { backgroundColor: '#FFF7ED' }]}>
+              <Star size={20} color="#F59E0B" />
+            </View>
+            <Text style={s.menuTxt}>Rate Your Stay</Text>
+            <ChevronRight size={18} color={TEXT_LIGHT} />
+          </TouchableOpacity>
+          <View style={s.divider} />
           <TouchableOpacity style={s.menuRow} activeOpacity={0.7} onPress={() => navigation.navigate('HelpScreen')}>
             <View style={[s.menuIconWrap, { backgroundColor: '#E0F2FE' }]}>
               <HelpCircle size={20} color="#0284C7" />
@@ -154,14 +189,60 @@ export default function ProfileScreen({ navigation }: any) {
         <Text style={s.versionTxt}>Stayvix Mobile v2.0.0</Text>
       </ScrollView>
 
-      <ConfirmationDialog 
-        visible={showLogout} 
-        onClose={() => setShowLogout(false)} 
+      <ConfirmationDialog
+        visible={showLogout}
+        onClose={() => setShowLogout(false)}
         type="warning"
-        title="Log Out" 
+        title="Log Out"
         description="Are you sure you want to log out from your account?"
-        primaryAction={{ label: 'Log Out', onPress: signOut }} 
+        primaryAction={{ label: 'Log Out', onPress: signOut }}
       />
+
+      <Modal visible={showEdit} transparent animationType="slide" onRequestClose={() => setShowEdit(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+            <View style={{ backgroundColor: WHITE, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 28 }}>
+              <Text style={{ fontSize: 20, fontWeight: '800', color: TEXT_DARK, marginBottom: 24 }}>Edit Profile</Text>
+
+              <Text style={{ fontSize: 13, fontWeight: '700', color: TEXT_MID, marginBottom: 8 }}>Full Name</Text>
+              <TextInput
+                style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 14, paddingHorizontal: 16, height: 52, fontSize: 15, color: TEXT_DARK, marginBottom: 16 }}
+                value={editName}
+                onChangeText={setEditName}
+                placeholder="Your full name"
+                placeholderTextColor={TEXT_LIGHT}
+              />
+
+              <Text style={{ fontSize: 13, fontWeight: '700', color: TEXT_MID, marginBottom: 8 }}>Phone Number</Text>
+              <TextInput
+                style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 14, paddingHorizontal: 16, height: 52, fontSize: 15, color: TEXT_DARK, marginBottom: 28 }}
+                value={editPhone}
+                onChangeText={setEditPhone}
+                placeholder="10-digit mobile number"
+                placeholderTextColor={TEXT_LIGHT}
+                keyboardType="phone-pad"
+                maxLength={10}
+              />
+
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <TouchableOpacity
+                  style={{ flex: 1, height: 52, borderRadius: 14, borderWidth: 1, borderColor: BORDER, justifyContent: 'center', alignItems: 'center' }}
+                  onPress={() => setShowEdit(false)}
+                >
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: TEXT_MID }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{ flex: 1, height: 52, borderRadius: 14, backgroundColor: BLUE, justifyContent: 'center', alignItems: 'center', opacity: editSaving ? 0.6 : 1 }}
+                  onPress={saveProfile}
+                  disabled={editSaving}
+                >
+                  {editSaving ? <ActivityIndicator color={WHITE} /> : <Text style={{ fontSize: 15, fontWeight: '700', color: WHITE }}>Save</Text>}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authController } from '../controllers/authController.js';
+import { authController, updateTenantProfile } from '../controllers/authController.js';
 import { authMiddleware, isAdmin } from '../middleware/auth.js';
 
 const router = Router();
@@ -21,6 +21,7 @@ router.post('/tenant/send-otp', authController.tenantSendOtp);
 router.post('/tenant/verify-otp', authController.tenantVerifyOtp);
 router.post('/tenant/register', authController.tenantRegister);
 router.get('/tenant/me', authMiddleware, authController.tenantMe);
+router.put('/tenant/profile', authMiddleware, updateTenantProfile);
 
 // Protected routes
 router.get('/me', authMiddleware, authController.me);

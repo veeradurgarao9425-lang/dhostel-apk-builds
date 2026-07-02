@@ -35,6 +35,8 @@ import ServicesScreen from '../Pages/ServicesScreen';
 import FullMenuScreen from '../Pages/FullMenuScreen';
 import AddExpenseScreen from '../Pages/AddExpenseScreen';
 import GatePassScreen from '../Pages/GatePassScreen';
+import VisitorPassScreen from '../Pages/VisitorPassScreen';
+import RatingScreen from '../Pages/RatingScreen';
 import AddCategoryScreen from '../Pages/AddCategoryScreen';
 import CategoryDetailScreen from '../Pages/CategoryDetailScreen';
 import TransactionsListScreen from '../Pages/TransactionsListScreen';
@@ -113,6 +115,8 @@ export default function AppNavigator() {
             <Stack.Screen name="CategoryDetail" component={CategoryDetailScreen} />
             <Stack.Screen name="TransactionsList" component={TransactionsListScreen} />
             <Stack.Screen name="HelpScreen" component={HelpScreen} />
+            <Stack.Screen name="VisitorPass" component={VisitorPassScreen} />
+            <Stack.Screen name="Rating" component={RatingScreen} />
           </>
         ) : connectedHostel ? (
           <Stack.Screen name="Auth" component={AuthStack} />

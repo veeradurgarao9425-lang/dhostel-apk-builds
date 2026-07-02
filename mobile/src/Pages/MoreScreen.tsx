@@ -163,6 +163,14 @@ export default function MoreScreen() {
                     iconBg: '#DCFCE7',
                     route: 'PaymentVerification',
                 },
+                {
+                    label: 'Tenant Reviews',
+                    subtitle: 'View ratings from your tenants',
+                    icon: 'star-outline',
+                    iconColor: '#F59E0B',
+                    iconBg: '#FFFBEB',
+                    route: 'RatingsManagement',
+                },
             ],
         },
         {

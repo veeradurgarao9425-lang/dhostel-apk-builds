@@ -40,7 +40,8 @@ import {
   AlertTriangle, 
   Layers,
   FileText,
-  QrCode
+  QrCode,
+  User2
 } from "lucide-react-native";
 
 import { useAuth } from "../context/AuthContext";
@@ -245,6 +246,7 @@ export default function HomeScreen({ navigation }: any) {
     { id: 'room', name: 'Room Info', icon: HomeIcon, nav: 'RoomInfo', bg: '#E0E7FF', color: '#4F46E5' },
     { id: 'gatepass', name: 'Gate Pass', icon: QrCode, nav: 'GatePass', bg: '#E0F2FE', color: '#0EA5E9' },
     { id: 'splits', name: 'Splits', icon: Briefcase, nav: 'Splits', bg: '#FFE4E6', color: '#E11D48' },
+    { id: 'visitor', name: 'Visitor Pass', icon: User2, nav: 'VisitorPass', bg: '#E0E7FF', color: '#4F46E5' },
   ];
 
   return (

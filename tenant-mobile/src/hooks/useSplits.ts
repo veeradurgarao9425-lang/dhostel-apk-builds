@@ -1,12 +1,12 @@
 /**
- * "Splits" — roommate expense splitting, stored entirely on-device.
+ * "Splits" — roommate expense splitting.
  *
- * A tenant-to-tenant feature (independent of the owner): track shared costs
- * like groceries, water cans, WiFi and snacks, and see who owes whom. Fully
- * offline, persisted in AsyncStorage. No backend required.
+ * Syncs with the backend API (/splits endpoints) on load and mutations.
+ * Falls back to AsyncStorage when the backend is unavailable (offline-first).
  */
 import { useCallback, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import api from '../services/api';
 
 const STORAGE_KEY = 'splits_state_v1';
 export const YOU_ID = 'you';
@@ -26,12 +26,12 @@ export type SplitState = { members: Member[]; expenses: Expense[] };
 
 export type Balance = { member: Member; net: number }; // net > 0 → is owed; < 0 → owes
 
+const YOU_MEMBER: Member = { id: YOU_ID, name: 'You' };
+
 const initialState: SplitState = {
-  members: [{ id: YOU_ID, name: 'You' }],
+  members: [YOU_MEMBER],
   expenses: [],
 };
-
-const uid = () => `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
 
 /** Pure: net balance per member across all expenses (equal split per expense). */
 export function computeBalances(state: SplitState): Balance[] {
@@ -49,12 +49,44 @@ export function computeBalances(state: SplitState): Balance[] {
   return state.members.map((m) => ({ member: m, net: Math.round((net[m.id] || 0) * 100) / 100 }));
 }
 
+// Convert backend response to SplitState format
+const toSplitState = (data: any): SplitState => {
+  const backendMembers: Member[] = (data.members || []).map((m: any) => ({
+    id: m.member_id || m.id,
+    name: m.name,
+  }));
+  const allMembers = [YOU_MEMBER, ...backendMembers.filter(m => m.id !== YOU_ID)];
+
+  const backendExpenses: Expense[] = (data.expenses || []).map((e: any) => ({
+    id: e.expense_id || e.id,
+    title: e.title,
+    amount: parseFloat(e.amount),
+    paidById: e.paid_by_id || e.paidById || YOU_ID,
+    participantIds: e.participantIds || [],
+    date: e.expense_date || e.date || new Date().toISOString().slice(0, 10),
+  }));
+
+  return { members: allMembers, expenses: backendExpenses };
+};
+
 export function useSplits() {
   const [state, setState] = useState<SplitState>(initialState);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    (async () => {
+    const load = async () => {
+      try {
+        // Try backend first
+        const res = await api.get('/splits');
+        if (res.data?.success) {
+          const remoteState = toSplitState(res.data.data);
+          setState(remoteState);
+          AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(remoteState)).catch(() => {});
+          return;
+        }
+      } catch {
+        // Backend unavailable — fall back to local storage
+      }
       try {
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
         if (raw) {
@@ -62,64 +94,84 @@ export function useSplits() {
           if (parsed?.members?.length) setState(parsed);
         }
       } catch {
-        // ignore — start fresh
-      } finally {
-        setLoaded(true);
+        // start fresh
       }
-    })();
+    };
+    load().finally(() => setLoaded(true));
   }, []);
 
-  const persist = useCallback((next: SplitState) => {
+  const localPersist = useCallback((next: SplitState) => {
     setState(next);
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch(() => {});
   }, []);
 
-  const addMember = useCallback(
-    (name: string) => {
-      const clean = name.trim();
-      if (!clean) return;
-      const exists = state.members.some((m) => m.name.toLowerCase() === clean.toLowerCase());
-      if (exists) return;
-      persist({ ...state, members: [...state.members, { id: uid(), name: clean }] });
-    },
-    [state, persist],
-  );
+  const addMember = useCallback(async (name: string) => {
+    const clean = name.trim();
+    if (!clean) return;
+    const exists = state.members.some((m) => m.name.toLowerCase() === clean.toLowerCase());
+    if (exists) return;
+    try {
+      const res = await api.post('/splits/members', { name: clean });
+      const member_id = res.data?.data?.member_id || `${Date.now()}`;
+      localPersist({ ...state, members: [...state.members, { id: member_id, name: clean }] });
+    } catch {
+      // Fallback: local only
+      localPersist({ ...state, members: [...state.members, { id: `local-${Date.now()}`, name: clean }] });
+    }
+  }, [state, localPersist]);
 
-  const removeMember = useCallback(
-    (id: string) => {
-      if (id === YOU_ID) return;
-      persist({
-        members: state.members.filter((m) => m.id !== id),
-        expenses: state.expenses
-          .filter((e) => e.paidById !== id)
-          .map((e) => ({ ...e, participantIds: e.participantIds.filter((p) => p !== id) })),
+  const removeMember = useCallback(async (id: string) => {
+    if (id === YOU_ID) return;
+    try { await api.delete(`/splits/members/${id}`); } catch { /* ignore */ }
+    localPersist({
+      members: state.members.filter((m) => m.id !== id),
+      expenses: state.expenses
+        .filter((e) => e.paidById !== id)
+        .map((e) => ({ ...e, participantIds: e.participantIds.filter((p) => p !== id) })),
+    });
+  }, [state, localPersist]);
+
+  const addExpense = useCallback(async (input: { title: string; amount: number; paidById: string; participantIds: string[] }) => {
+    if (!input.title.trim() || input.amount <= 0 || input.participantIds.length === 0) return;
+    try {
+      const res = await api.post('/splits/expenses', {
+        title: input.title.trim(),
+        amount: input.amount,
+        paidById: input.paidById,
+        participantIds: input.participantIds,
       });
-    },
-    [state, persist],
-  );
-
-  const addExpense = useCallback(
-    (input: { title: string; amount: number; paidById: string; participantIds: string[] }) => {
-      if (!input.title.trim() || input.amount <= 0 || input.participantIds.length === 0) return;
+      const expense_id = res.data?.data?.expense_id || `local-${Date.now()}`;
       const expense: Expense = {
-        id: uid(),
+        id: expense_id,
         title: input.title.trim(),
         amount: input.amount,
         paidById: input.paidById,
         participantIds: input.participantIds,
         date: new Date().toISOString().slice(0, 10),
       };
-      persist({ ...state, expenses: [expense, ...state.expenses] });
-    },
-    [state, persist],
-  );
+      localPersist({ ...state, expenses: [expense, ...state.expenses] });
+    } catch {
+      const expense: Expense = {
+        id: `local-${Date.now()}`,
+        title: input.title.trim(),
+        amount: input.amount,
+        paidById: input.paidById,
+        participantIds: input.participantIds,
+        date: new Date().toISOString().slice(0, 10),
+      };
+      localPersist({ ...state, expenses: [expense, ...state.expenses] });
+    }
+  }, [state, localPersist]);
 
-  const removeExpense = useCallback(
-    (id: string) => persist({ ...state, expenses: state.expenses.filter((e) => e.id !== id) }),
-    [state, persist],
-  );
+  const removeExpense = useCallback(async (id: string) => {
+    try { await api.delete(`/splits/expenses/${id}`); } catch { /* ignore */ }
+    localPersist({ ...state, expenses: state.expenses.filter((e) => e.id !== id) });
+  }, [state, localPersist]);
 
-  const settleAll = useCallback(() => persist({ ...state, expenses: [] }), [state, persist]);
+  const settleAll = useCallback(async () => {
+    try { await api.post('/splits/settle'); } catch { /* ignore */ }
+    localPersist({ ...state, expenses: [] });
+  }, [state, localPersist]);
 
   return {
     loaded,

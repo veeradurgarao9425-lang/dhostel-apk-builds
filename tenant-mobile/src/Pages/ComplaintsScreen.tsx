@@ -318,11 +318,22 @@ function StepperForm({ visible, onClose, onSubmit, hostelId }: { visible: boolea
               onPress={step < 3 ? nextStep : async () => {
                 setSubmitting(true);
                 try {
-                  await api.post('/api/complaints/tenant', {
-                    hostel_id: hostelId,
-                    category,
-                    title,
-                    description: desc,
+                  const formData = new FormData();
+                  formData.append('hostel_id', String(hostelId));
+                  formData.append('category', category);
+                  formData.append('title', title);
+                  formData.append('description', desc);
+                  if (prefDate) formData.append('pref_date', prefDate);
+                  images.forEach((uri, i) => {
+                    const ext = uri.split('.').pop() || 'jpg';
+                    formData.append('images', {
+                      uri,
+                      name: `complaint-${i}.${ext}`,
+                      type: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
+                    } as any);
+                  });
+                  await api.post('/complaints/tenant', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
                   });
                   onSubmit();
                   onClose();
@@ -381,7 +392,7 @@ export default function ComplaintsScreen({ navigation }: any) {
   const fetchComplaints = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/api/complaints/tenant');
+      const res = await api.get('/complaints/tenant');
       setComplaints(res.data);
     } catch (e) {
       console.error('Failed to fetch complaints', e);

@@ -1223,3 +1223,42 @@ export const authController = {
   },
 };
 
+// ============================================
+// STANDALONE TENANT PROFILE UPDATE
+// ============================================
+
+export const updateTenantProfile = async (req: AuthRequest, res: Response) => {
+  try {
+    const student_id = req.user?.user_id;
+    const { name, phone, email } = req.body;
+    if (!student_id) return res.status(401).json({ success: false, error: 'Unauthorized' });
+
+    const updates: any = {};
+    if (name) {
+      updates.first_name = name.split(' ')[0];
+      updates.last_name = name.split(' ').slice(1).join(' ') || null;
+    }
+    if (phone) updates.phone = phone;
+    if (email) updates.email = email;
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ success: false, error: 'No fields to update' });
+    }
+
+    await db('students').where('student_id', student_id).update(updates);
+    const updated = await db('students').where('student_id', student_id).first();
+
+    res.json({
+      success: true,
+      data: {
+        name: `${updated.first_name} ${updated.last_name || ''}`.trim(),
+        phone: updated.phone,
+        email: updated.email,
+      },
+    });
+  } catch (error: any) {
+    console.error('Error updating tenant profile:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+};
+

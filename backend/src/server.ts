@@ -29,6 +29,9 @@ import complaintRoutes from './routes/complaintRoutes.js';
 import leaveVisitorRoutes from './routes/leaveVisitorRoutes.js';
 import messMenuRoutes from './routes/messMenuRoutes.js';
 import tenantExpenseRoutes from './routes/tenantExpenseRoutes.js';
+import splitsRoutes from './routes/splitsRoutes.js';
+import messSkipRoutes from './routes/messSkipRoutes.js';
+import ratingRoutes from './routes/ratingRoutes.js';
 import { startMonthlyFeesGenerationJob } from './jobs/monthlyFeesGeneration.js';
 import { startGuestOverstayJob } from './jobs/guestOverstay.js';
 import { startChatResetJob } from './jobs/chatReset.js';
@@ -106,6 +109,9 @@ app.use('/api/complaints', complaintRoutes);
 app.use('/api/requests', leaveVisitorRoutes);
 app.use('/api/mess-menu', messMenuRoutes);
 app.use('/api/tenant-expenses', tenantExpenseRoutes);
+app.use('/api/splits', splitsRoutes);
+app.use('/api/mess', messSkipRoutes);
+app.use('/api/ratings', ratingRoutes);
 
 // Public QR tenant signup (no auth) — supports optional roomId & bedId pre-fill
 app.get('/api/public/qr-signup', async (req, res) => {
