@@ -46,6 +46,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 import { mockWeeklyMenu } from "../data/dummyData";
+import { Phase3EmptyState } from '../components/UIComponents';
 
 const { width } = Dimensions.get("window");
 
@@ -257,7 +258,7 @@ export default function HomeScreen({ navigation }: any) {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 120, paddingTop: 10 }}
+        contentContainerStyle={{ paddingBottom: 160, paddingTop: 10 }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -468,8 +469,8 @@ export default function HomeScreen({ navigation }: any) {
                 </View>
               ))
             ) : (
-              <View style={{ padding: 20, alignItems: 'center' }}>
-                <Text style={{ color: TEXT_MID, fontSize: 13, fontWeight: '500' }}>No recent activities found.</Text>
+              <View style={{ paddingTop: 20 }}>
+                <Phase3EmptyState variant="activity" />
               </View>
             )}
           </View>

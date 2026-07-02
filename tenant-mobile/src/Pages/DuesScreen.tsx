@@ -108,6 +108,14 @@ export default function DuesScreen({ navigation }: any) {
   const pendingFees    = feeRecords.filter(f => f.fee_status !== 'Fully Paid');
   const paidFees       = feeRecords.filter(f => f.fee_status === 'Fully Paid');
   
+  const currentDate = new Date();
+  const currentMonthStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+  const thisMonthFee = feeRecords.find(f => f.fee_month === currentMonthStr);
+  const thisMonthDue = thisMonthFee ? thisMonthFee.balance : 0;
+  const thisMonthAmountDisplay = thisMonthDue > 0 ? thisMonthDue : (thisMonthFee?.total_due || user?.monthly_rent || 0);
+  
+  const totalPaidAmount = feeRecords.reduce((sum, f) => sum + (Number(f.paid_amount) || 0), 0);
+  
   const availableYears = ['All', ...Array.from(new Set(feeRecords.map(f => f.fee_month.split('-')[0])))].sort((a, b) => b.localeCompare(a));
   
   const filteredHistory = filterYear === 'All' 
@@ -149,20 +157,26 @@ export default function DuesScreen({ navigation }: any) {
       {/* ── Mini Cards ── */}
       <View style={styles.section}>
         <View style={{ flexDirection: 'row', gap: 12 }}>
-          <View style={[styles.overviewCard, { flex: 1, padding: 16, backgroundColor: BLUE_SOFT, borderColor: '#E0E7FF', flexDirection: 'column', alignItems: 'flex-start' }]}>
-            <Text style={[styles.overviewLabel, { color: TEXT_MID }]}>Current Rent</Text>
-            <Text style={[styles.overviewAmount, { color: BLUE_DARK, fontSize: 24, marginVertical: 4 }]} numberOfLines={1} adjustsFontSizeToFit>{formatCurrency(user?.monthly_rent || 0)}</Text>
-            <Text style={[styles.overviewDate, { color: TEXT_MID }]}>/ month</Text>
+          <View style={[styles.overviewCard, { flex: 1, padding: 16, backgroundColor: WHITE, borderWidth: 1, borderColor: BORDER, flexDirection: 'column', alignItems: 'flex-start' }]}>
+            <Text style={[styles.overviewLabel, { color: TEXT_MID }]}>This Month</Text>
+            <Text style={[styles.overviewAmount, { color: !thisMonthFee ? TEXT_MID : (thisMonthDue > 0 ? colors.danger : colors.success), fontSize: 24, marginVertical: 4 }]} numberOfLines={1} adjustsFontSizeToFit>{formatCurrency(thisMonthAmountDisplay)}</Text>
+            {!thisMonthFee ? (
+              <Text style={{ color: TEXT_MID, fontSize: 12, fontWeight: '600' }}>No dues yet</Text>
+            ) : thisMonthDue > 0 ? (
+              <Text style={{ color: colors.danger, fontSize: 12, fontWeight: '600' }}>Unpaid</Text>
+            ) : (
+              <Text style={{ color: colors.success, fontSize: 12, fontWeight: '600' }}>Paid</Text>
+            )}
           </View>
-          <View style={[styles.overviewCard, { flex: 1, padding: 16, backgroundColor: outstandingDue > 0 ? colors.dangerSoft : colors.successSoft, borderColor: outstandingDue > 0 ? '#FECACA' : '#DCFCE7', flexDirection: 'column', alignItems: 'flex-start' }]}>
-            <Text style={[styles.overviewLabel, { color: TEXT_MID }]}>Total Due</Text>
-            <Text style={[styles.overviewAmount, { color: TEXT_DARK, fontSize: 24, marginVertical: 4 }]} numberOfLines={1} adjustsFontSizeToFit>{formatCurrency(outstandingDue)}</Text>
+          <View style={[styles.overviewCard, { flex: 1, padding: 16, backgroundColor: WHITE, borderWidth: 1, borderColor: BORDER, flexDirection: 'column', alignItems: 'flex-start' }]}>
+            <Text style={[styles.overviewLabel, { color: TEXT_MID }]}>{outstandingDue > 0 ? 'Total Pending' : 'Total Paid'}</Text>
+            <Text style={[styles.overviewAmount, { color: outstandingDue > 0 ? colors.danger : colors.success, fontSize: 24, marginVertical: 4 }]} numberOfLines={1} adjustsFontSizeToFit>{formatCurrency(outstandingDue > 0 ? outstandingDue : totalPaidAmount)}</Text>
             {outstandingDue > 0 ? (
-              <TouchableOpacity onPress={() => navigation.navigate('Payments')}>
-                <Text style={{ color: colors.danger, fontWeight: '700', marginTop: 4 }}>Pay Now &rarr;</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Payments')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Text style={{ color: colors.danger, fontSize: 12, fontWeight: '700' }}>Pay Now &rarr;</Text>
               </TouchableOpacity>
             ) : (
-              <Text style={{ color: colors.success, fontWeight: '700', marginTop: 4 }}>All cleared</Text>
+              <Text style={{ color: colors.success, fontSize: 12, fontWeight: '600' }}>Up to date</Text>
             )}
           </View>
         </View>
@@ -210,8 +224,28 @@ export default function DuesScreen({ navigation }: any) {
             <Phase3EmptyState variant="dues" onAction={() => setActiveTab('Payment History')} />
           </View>
         ) : activeTab === 'This Month Details' ? (
-          <>
-            {pendingFees.length > 0 && (
+          <View style={{ paddingBottom: 20 }}>
+            {thisMonthFee && thisMonthFee.balance <= 0 && thisMonthFee.paid_amount > 0 && (
+              <View style={{ marginTop: 20, paddingHorizontal: 20 }}>
+                <View style={[styles.listCard, { marginTop: 0 }]}>
+                  <Text style={[styles.groupLabel, { paddingHorizontal: 0 }]}>This Month's Payment</Text>
+                  <View style={[styles.listRow, { borderBottomWidth: 0, paddingHorizontal: 0 }]}>
+                    <View style={[styles.listIconWrap, { backgroundColor: colors.successSoft }]}>
+                      <CheckCircle2 size={16} color={colors.success} strokeWidth={1.5} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.listTitle}>Rent Paid for {formatMonth(thisMonthFee.fee_month)}</Text>
+                      <Text style={styles.listSub}>{thisMonthFee.payments && thisMonthFee.payments[0] ? `Paid on ${formatDateStr(thisMonthFee.payments[0].payment_date)}` : 'Paid successfully'}</Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                      <Text style={[styles.listAmount, { color: colors.success }]}>{formatCurrency(thisMonthFee.paid_amount || thisMonthFee.total_due)}</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {pendingFees.length > 0 ? (
               <>
                 <Text style={styles.groupLabel}>Pending Dues</Text>
                 <View style={styles.listCard}>
@@ -226,7 +260,10 @@ export default function DuesScreen({ navigation }: any) {
                           <Text style={styles.listTitle}>{formatMonth(fee.fee_month)}</Text>
                           <Text style={styles.listSub}>{fee.due_date ? `Due: ${formatDateStr(fee.due_date)}` : 'Rent Due'}</Text>
                           {fee.paid_amount > 0 && (
-                            <Text style={[styles.listSub, { color: colors.success }]}>Partial paid: {formatCurrency(fee.paid_amount)}</Text>
+                            <Text style={[styles.listSub, { color: colors.success }]}>
+                              Partial paid: {formatCurrency(fee.paid_amount)}
+                              {fee.payments && fee.payments[0] ? ` on ${formatDateStr(fee.payments[0].payment_date)}` : ''}
+                            </Text>
                           )}
                         </View>
                         <View style={{ alignItems: 'flex-end', gap: 6 }}>
@@ -243,7 +280,11 @@ export default function DuesScreen({ navigation }: any) {
                   })}
                 </View>
               </>
-            )}
+            ) : (!thisMonthFee || thisMonthFee.balance > 0) ? (
+              <View style={{ marginTop: 20, marginBottom: 20, paddingHorizontal: 20 }}>
+                <Phase3EmptyState variant="dues" onAction={() => setActiveTab('Payment History')} />
+              </View>
+            ) : null}
             {paidFees.length > 0 && (
               <>
                 <Text style={styles.groupLabel}>Recently Paid</Text>
@@ -271,7 +312,7 @@ export default function DuesScreen({ navigation }: any) {
                 </View>
               </>
             )}
-          </>
+          </View>
         ) : (
           <>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.xl, marginTop: spacing.lg, marginBottom: spacing.md }}>

@@ -42,7 +42,6 @@ import AllExpensesScreen from '../Pages/AllExpensesScreen';
 import SettingsScreen from '../Pages/SettingsScreen';
 import UIShowcaseScreen from '../Pages/UIShowcaseScreen';
 import SearchScreen from '../Pages/SearchScreen';
-import NotesScreen from '../Pages/NotesScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -97,7 +96,6 @@ export default function AppNavigator() {
             <Stack.Screen name="Profile" component={ProfileScreen} />
             <Stack.Screen name="UIShowcase" component={UIShowcaseScreen} />
             <Stack.Screen name="Search" component={SearchScreen} />
-            <Stack.Screen name="Notes" component={NotesScreen} />
             <Stack.Screen name="RoomInfo" component={RoomInfoScreen} />
             <Stack.Screen name="Complaints" component={ComplaintsScreen} />
             <Stack.Screen name="Documents" component={DocumentsScreen} />

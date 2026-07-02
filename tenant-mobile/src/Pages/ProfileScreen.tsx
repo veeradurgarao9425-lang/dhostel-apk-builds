@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View, ScrollView, StatusBar, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -8,6 +8,7 @@ import {
 } from 'lucide-react-native';
 
 import { useAuth } from '../context/AuthContext';
+import { ConfirmationDialog } from '../components/UIComponents';
 
 const BLUE      = '#2245D4';
 const BLUE_SOFT = '#EEF2FF';
@@ -27,11 +28,11 @@ export default function ProfileScreen({ navigation }: any) {
   const initials = name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase();
   const roomNumber = user?.room_number ? `Room ${user.room_number}` : 'No Room Assigned';
 
-  const confirmLogout = () =>
-    Alert.alert('Log out', 'Are you sure you want to log out?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Log out', style: 'destructive', onPress: signOut },
-    ]);
+  const [showLogout, setShowLogout] = useState(false);
+
+  const confirmLogout = () => {
+    setShowLogout(true);
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
@@ -55,17 +56,21 @@ export default function ProfileScreen({ navigation }: any) {
         
         {/* ── PROFILE CARD ── */}
         <View style={s.profileCard}>
-          <View style={s.avatarWrap}>
-            <View style={s.avatarCircle}>
-              <Text style={s.avatarInitials}>{initials}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20, width: '100%' }}>
+            <View style={[s.avatarWrap, { marginBottom: 0, marginRight: 20 }]}>
+              <View style={s.avatarCircle}>
+                <Text style={s.avatarInitials}>{initials}</Text>
+              </View>
+              <View style={s.verifiedBadge}>
+                <ShieldCheck size={14} color={WHITE} strokeWidth={3} />
+              </View>
             </View>
-            <View style={s.verifiedBadge}>
-              <ShieldCheck size={14} color={WHITE} strokeWidth={3} />
+            
+            <View style={{ flex: 1, alignItems: 'flex-start' }}>
+              <Text style={s.nameTxt} numberOfLines={1}>{name}</Text>
+              <Text style={[s.roomTxt, { marginBottom: 0 }]}>{roomNumber}</Text>
             </View>
           </View>
-          
-          <Text style={s.nameTxt}>{name}</Text>
-          <Text style={s.roomTxt}>{roomNumber}</Text>
           
           <View style={s.contactRow}>
             <View style={s.contactPill}>
@@ -148,6 +153,15 @@ export default function ProfileScreen({ navigation }: any) {
 
         <Text style={s.versionTxt}>Stayvix Mobile v2.0.0</Text>
       </ScrollView>
+
+      <ConfirmationDialog 
+        visible={showLogout} 
+        onClose={() => setShowLogout(false)} 
+        type="warning"
+        title="Log Out" 
+        description="Are you sure you want to log out from your account?"
+        primaryAction={{ label: 'Log Out', onPress: signOut }} 
+      />
     </View>
   );
 }

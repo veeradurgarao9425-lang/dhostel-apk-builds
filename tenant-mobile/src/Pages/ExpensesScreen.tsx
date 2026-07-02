@@ -16,7 +16,7 @@ import {
   AlertTriangle, Edit3, Target, Edit2, SlidersHorizontal,
 } from 'lucide-react-native';
 
-import { FilterSheet } from '../components/UIComponents';
+import { FilterSheet, BaseBottomSheet, ConfirmationDialog } from '../components/UIComponents';
 
 const { width } = Dimensions.get('window');
 
@@ -314,57 +314,6 @@ function AddSavingsModal({ visible, currentSaved, onSave, onClose }: {
   );
 }
 
-// ── Settle Up Modal ───────────────────────────────────────────────────────────
-function SettleUpModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const [done, setDone] = useState<'paid' | 'received' | null>(null);
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={() => { setDone(null); onClose(); }}>
-      <TouchableOpacity style={StyleSheet.absoluteFill} onPress={() => { setDone(null); onClose(); }} activeOpacity={1}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}>
-          <TouchableOpacity activeOpacity={1}>
-            <View style={sm.sheet}>
-              <View style={sm.handle} />
-              {!done ? (
-                <>
-                  <Text style={sm.title}>Settle Up</Text>
-                  <Text style={sm.sub}>Confirm payment with your roommates</Text>
-                  <View style={sm.amtRow}>
-                    <View style={[sm.amtBox, { backgroundColor: DANGER_BG }]}>
-                      <Text style={sm.amtLabel}>You Owe</Text>
-                      <Text style={[sm.amtVal, { color: DANGER }]}>₹ 350</Text>
-                    </View>
-                    <View style={[sm.amtBox, { backgroundColor: SUCCESS_BG }]}>
-                      <Text style={sm.amtLabel}>Owed to You</Text>
-                      <Text style={[sm.amtVal, { color: SUCCESS }]}>₹ 120</Text>
-                    </View>
-                  </View>
-                  <TouchableOpacity style={[sm.btn, { backgroundColor: BLUE }]} onPress={() => setDone('paid')} activeOpacity={0.85}>
-                    <ArrowUpRight size={18} color={WHITE} strokeWidth={2.5} />
-                    <Text style={sm.btnTxt}>Mark ₹350 as Paid</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[sm.btn, { backgroundColor: WHITE, borderWidth: 1.5, borderColor: BLUE_BORDER }]} onPress={() => setDone('received')} activeOpacity={0.85}>
-                    <CheckCircle2 size={18} color={BLUE} strokeWidth={2.5} />
-                    <Text style={[sm.btnTxt, { color: BLUE }]}>Confirm ₹120 Received</Text>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <View style={{ alignItems: 'center', paddingVertical: 10 }}>
-                  <View style={sm.doneCircle}><CheckCircle2 size={36} color={SUCCESS} strokeWidth={1.5} /></View>
-                  <Text style={sm.doneTitle}>{done === 'paid' ? 'Payment Sent! 🎉' : 'Receipt Confirmed!'}</Text>
-                  <Text style={sm.doneSub}>{done === 'paid' ? 'Your roommates have been notified.' : 'Your balance has been updated.'}</Text>
-                  <TouchableOpacity style={[sm.btn, { backgroundColor: SUCCESS, marginTop: 8 }]} onPress={() => { setDone(null); onClose(); }}>
-                    <Text style={sm.btnTxt}>Done</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-          </TouchableOpacity>
-        </View>
-      </TouchableOpacity>
-    </Modal>
-  );
-}
-
 // ── Receipt Viewer Modal ──────────────────────────────────────────────────────
 function ReceiptModal({ uri, onClose }: { uri: string; onClose: () => void }) {
   return (
@@ -446,13 +395,12 @@ export default function ExpensesScreen({ navigation }: any) {
       <StatusBar barStyle="light-content" backgroundColor={BLUE} />
       <View style={{ backgroundColor: BLUE, paddingBottom: 16 }}>
         <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 12 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 12 }}>
             <View>
               <Text style={{ fontSize: 18, fontWeight: '700', color: WHITE }}>My Expenses</Text>
-              <TouchableOpacity activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)' }}>Jun 2025</Text>
-                <ChevronDown size={14} color="rgba(255,255,255,0.8)" strokeWidth={3} />
-              </TouchableOpacity>
+              <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 2 }}>
+                Track and manage your spending
+              </Text>
             </View>
             <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
               <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)' }} onPress={() => setShowBudget(true)} activeOpacity={0.7}>
@@ -509,7 +457,15 @@ export default function ExpensesScreen({ navigation }: any) {
       <SetBudgetModal visible={showBudget} currentBudget={budget} onSave={(val) => { setBudget(val); setShowBudget(false); }} onClose={() => setShowBudget(false)} />
       <SetGoalModal visible={showGoal} currentName={goalName} currentTarget={goalTarget} onSave={(name, target) => { setGoalName(name); setGoalTarget(target); setShowGoal(false); }} onClose={() => setShowGoal(false)} />
       <AddSavingsModal visible={showAddSavings} currentSaved={goalSaved} onSave={(val) => { setGoalSaved(goalSaved + val); setShowAddSavings(false); }} onClose={() => setShowAddSavings(false)} />
-      <SettleUpModal  visible={showSettle} onClose={() => setShowSettle(false)} />
+      <ConfirmationDialog
+          visible={showSettle}
+          onClose={() => setShowSettle(false)}
+          type="info"
+          title="Settle Balances"
+          description="Are you sure you want to mark your balances as settled?"
+          primaryAction={{ label: 'Confirm Settlement', onPress: () => setShowSettle(false) }}
+          secondaryAction={{ label: 'Cancel', onPress: () => setShowSettle(false) }}
+        />
       <ExportModal    visible={showExport} onClose={() => setShowExport(false)} />
       {receiptUri && <ReceiptModal uri={receiptUri} onClose={() => setReceiptUri(null)} />}
     </View>
@@ -680,12 +636,12 @@ function OverviewTab({
 
         <View style={s.splitAmtRow}>
           <View style={s.splitAmtBox}>
-            <Text style={s.splitAmtLabel}>You Owe</Text>
+            <Text style={s.splitAmtLabel}>To Pay</Text>
             <Text style={[s.splitAmtVal, { color: DANGER }]}>₹ 350</Text>
           </View>
           <View style={s.splitAmtDivider} />
           <View style={s.splitAmtBox}>
-            <Text style={s.splitAmtLabel}>Owed to You</Text>
+            <Text style={s.splitAmtLabel}>To Receive</Text>
             <Text style={[s.splitAmtVal, { color: SUCCESS }]}>₹ 120</Text>
           </View>
         </View>
@@ -778,7 +734,7 @@ function OverviewTab({
       {/* ── Completed Goals History ── */}
       <View style={{ marginTop: 24, marginBottom: 16 }}>
         <Text style={[s.sectionTitle, { paddingHorizontal: 0, marginBottom: 12 }]}>🏆 Past Achievements</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 24 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 90 }}>
           {[
             { id: 1, name: 'New Laptop', amt: '45,000', date: 'May 2025' },
             { id: 2, name: 'Goa Trip', amt: '12,000', date: 'Mar 2025' },
@@ -1021,7 +977,7 @@ function AnalyticsTab() {
 // ══════════════════════════════════════════════════════════════════════════════
 const s = StyleSheet.create({
   safe:   { flex: 1, backgroundColor: BG },
-  scroll: { paddingHorizontal: 16, paddingBottom: 140, paddingTop: 4 },
+  scroll: { paddingHorizontal: 16, paddingBottom: 220, paddingTop: 4 },
 
   // Header
   header:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4, backgroundColor: WHITE },
@@ -1047,7 +1003,7 @@ const s = StyleSheet.create({
   heroTop:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 },
   heroLabel:   { fontSize: 13, color: 'rgba(255,255,255,0.75)', fontWeight: '600', marginBottom: 6 },
   heroAmt:     { fontSize: 36, fontWeight: '900', color: WHITE, letterSpacing: -1.5, marginBottom: 6 },
-  trendRow:    { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  trendRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
   heroTrendTxt:{ fontSize: 12, color: 'rgba(255,255,255,0.8)', fontWeight: '600' },
   heroDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.15)', marginBottom: 14 },
   legendGrid:  { gap: 8 },
@@ -1116,7 +1072,7 @@ const s = StyleSheet.create({
 
   // Filter chips
   chipRow: { paddingVertical: 2, paddingRight: 16, gap: 8, alignItems: 'center' },
-  chip:    { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: WHITE, borderWidth: 1, borderColor: BORDER },
+  chip:    { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: WHITE, borderWidth: 1, borderColor: BORDER },
   chipActive: { backgroundColor: BLUE, borderColor: BLUE },
   chipTxt:    { fontSize: 12, fontWeight: '600', color: TEXT_LIGHT },
   chipTxtActive:{ color: WHITE, fontWeight: '700' },

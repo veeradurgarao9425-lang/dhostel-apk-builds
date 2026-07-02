@@ -573,7 +573,7 @@ export function CardSkeleton() {
 // ══════════════════════════════════════════════════════════════════════════════
 import { WifiOff, Server, Lock, Folder, CreditCard, FileText, Box, Bell, Speaker, RotateCcw, Settings, LogIn, ChevronRight } from 'lucide-react-native';
 
-export type EmptyStateVariant = 'dues' | 'expenses' | 'categories' | 'complaints' | 'notices' | 'search';
+export type EmptyStateVariant = 'dues' | 'expenses' | 'categories' | 'complaints' | 'notices' | 'search' | 'activity';
 export type ErrorStateVariant = 'offline' | 'server' | 'session' | 'nodata' | 'error';
 
 export function Phase3EmptyState({ variant, onAction, onSecondaryAction }: { variant: EmptyStateVariant, onAction?: () => void, onSecondaryAction?: () => void }) {
@@ -585,6 +585,7 @@ export function Phase3EmptyState({ variant, onAction, onSecondaryAction }: { var
       case 'complaints': return { icon: Bell, title: 'Everything Looks Good!', desc: 'No complaints have been raised yet.', btn: 'Raise Complaint', btnStyle: 'outline' };
       case 'notices': return { icon: Speaker, title: 'No Announcements', desc: 'There are no new notices at the moment.', btn: 'Refresh', btnStyle: 'outline' };
       case 'search': return { icon: Search, title: 'No Results Found', desc: "We couldn't find anything matching your search.", btn: 'Try Another Search', secondaryBtn: 'Clear Search' };
+      case 'activity': return { icon: Activity, title: 'No Activity Yet', desc: 'No recent activities found.' };
       default: return { icon: Box, title: 'Empty', desc: 'Nothing here.', btn: 'Go Back' };
     }
   };
@@ -658,7 +659,7 @@ export function Phase3ErrorState({ variant, onAction, onSecondaryAction }: { var
 }
 
 const eStyles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, backgroundColor: '#FFFFFF' },
+  container: { alignItems: 'center', justifyContent: 'center', padding: 32, backgroundColor: 'transparent' },
   iconContainer: { width: 120, height: 120, alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
   iconBg: { width: 90, height: 90, borderRadius: 45, backgroundColor: '#EEF2FF' },
   bubble1: { position: 'absolute', top: 10, right: 10, width: 16, height: 16, borderRadius: 8, backgroundColor: '#E0E7FF' },

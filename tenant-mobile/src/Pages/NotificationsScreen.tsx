@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, ScrollView, Image } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, ScrollView } from 'react-native';
 import { ArrowLeft, Wallet, Megaphone, Wrench, BellRing, Bell, Search, Filter } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -149,10 +149,12 @@ export default function NotificationsScreen({ navigation }: any) {
       {/* Content */}
       <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
         {Object.keys(groupedItems).length === 0 ? (
-          <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 100 }}>
-            <Image source={require('../../assets/notfound.png')} style={{ width: 140, height: 140, opacity: 0.8 }} resizeMode="contain" />
-            <Text style={{ fontSize: 18, fontWeight: '800', color: TEXT_DARK, marginTop: 16 }}>You're all caught up</Text>
-            <Text style={{ fontSize: 14, color: TEXT_MID, marginTop: 8, textAlign: 'center', paddingHorizontal: 40 }}>No notifications match this filter.</Text>
+          <View style={{ marginTop: 60 }}>
+            <EmptyState
+              icon={Bell}
+              title="You're all caught up"
+              message="No notifications match this filter."
+            />
           </View>
         ) : (
           Object.entries(groupedItems).map(([groupDate, groupData]) => (
@@ -218,6 +220,7 @@ const styles = StyleSheet.create({
   
   // Tabs
   tabContainer: {
+    marginTop: 16,
     marginBottom: 8,
   },
   tabScroll: {
