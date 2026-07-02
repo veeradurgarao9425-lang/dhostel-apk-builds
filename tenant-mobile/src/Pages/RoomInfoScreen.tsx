@@ -1,10 +1,11 @@
-import React, { useCallback, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, ScrollView, StatusBar, TextInput, FlatList, Animated, Dimensions } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View, ScrollView, StatusBar, TextInput, ActivityIndicator, Dimensions, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { ChevronLeft, FileText, CheckCircle2, Wrench, Clock, Plus, Trash2, Home as HomeIcon } from 'lucide-react-native';
+import { ChevronLeft, FileText, CheckCircle2, Wrench, Clock, Plus, Trash2, Home as HomeIcon, AlertCircle } from 'lucide-react-native';
 
 import { useAuth } from '../context/AuthContext';
+import api from '../services/api';
 
 const BLUE      = '#2245D4';
 const BLUE_SOFT = '#EEF2FF';
@@ -21,21 +22,21 @@ export default function RoomInfoScreen({ route, navigation }: any) {
   const initialTab = route?.params?.tab || 'Details';
   const [activeTab, setActiveTab] = useState(initialTab);
   const tabs = ['Details', 'Rent History', 'Maintenance', 'Notes'];
-  
+
   const tabAnim = React.useRef(new Animated.Value(tabs.indexOf(initialTab) > -1 ? tabs.indexOf(initialTab) : 0)).current;
   const { width } = Dimensions.get('window');
-  
+
   const handleTab = (t: string) => {
     Animated.spring(tabAnim, { toValue: tabs.indexOf(t), useNativeDriver: false, friction: 8 }).start();
     setActiveTab(t);
   };
-  
+
   const tabW = width / 4;
   const indicatorLeft = tabAnim.interpolate({
     inputRange: [0, 1, 2, 3],
     outputRange: [0, tabW, tabW * 2, tabW * 3]
   });
-  
+
   const [noteText, setNoteText] = useState('');
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [notes, setNotes] = useState([
@@ -43,11 +44,76 @@ export default function RoomInfoScreen({ route, navigation }: any) {
     { id: '2', text: 'Need to get the room key duplicated next week.', date: '01 May 2026' }
   ]);
 
+  const [room, setRoom] = useState<any>(null);
+  const [fees, setFees] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   useFocusEffect(
     useCallback(() => {
       refreshUser();
     }, []),
   );
+
+  useEffect(() => {
+    if (!user?.room_id) {
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [roomRes, feesRes] = await Promise.all([
+          api.get('/rooms/' + user.room_id),
+          api.get('/fees/my-fees'),
+        ]);
+        if (!cancelled) {
+          setRoom(roomRes.data);
+          setFees(Array.isArray(feesRes.data) ? feesRes.data : []);
+        }
+      } catch (err: any) {
+        if (!cancelled) {
+          setError(err?.response?.data?.message || 'Failed to load room data');
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    fetchData();
+    return () => { cancelled = true; };
+  }, [user?.room_id]);
+
+  const formatFeeMonth = (feeMonth: string) => {
+    if (!feeMonth) return '—';
+    // feeMonth may be "2026-04" or "April 2026" — normalise
+    const d = new Date(feeMonth);
+    if (isNaN(d.getTime())) return feeMonth;
+    return d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  };
+
+  const formatDueDate = (dateStr: string) => {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+  };
+
+  const feeStatusColor = (status: string) => {
+    if (!status) return TEXT_MID;
+    const s = status.toLowerCase();
+    if (s === 'paid') return SUCCESS;
+    if (s === 'overdue') return '#EF4444';
+    return '#F59E0B';
+  };
+
+  const feeStatusIcon = (status: string) => {
+    const s = (status || '').toLowerCase();
+    if (s === 'paid') return <CheckCircle2 size={24} color={SUCCESS} />;
+    if (s === 'overdue') return <AlertCircle size={24} color="#EF4444" />;
+    return <Clock size={24} color="#F59E0B" />;
+  };
 
   const addNote = () => {
     if (!noteText.trim()) return;
@@ -56,10 +122,61 @@ export default function RoomInfoScreen({ route, navigation }: any) {
     setIsAddingNote(false);
   };
 
+  // ── No room assigned ──────────────────────────────────────────────────────
+  if (!loading && !user?.room_id) {
+    return (
+      <View style={{ flex: 1, backgroundColor: BG }}>
+        <StatusBar barStyle="light-content" backgroundColor={BLUE} />
+        <View style={{ backgroundColor: BLUE }}>
+          <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
+            <View style={s.headerCenter}>
+              <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtnMinimal}>
+                <ChevronLeft size={28} color={WHITE} strokeWidth={3} />
+              </TouchableOpacity>
+              <Text style={s.headerTitleCenter}>Room Details</Text>
+              <View style={{ width: 40 }} />
+            </View>
+          </SafeAreaView>
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 }}>
+          <HomeIcon size={56} color={TEXT_LIGHT} strokeWidth={1.5} />
+          <Text style={{ fontSize: 18, fontWeight: '800', color: TEXT_DARK, marginTop: 20, textAlign: 'center' }}>No Room Assigned</Text>
+          <Text style={{ fontSize: 14, color: TEXT_MID, marginTop: 8, textAlign: 'center', lineHeight: 22 }}>
+            You have not been assigned a room yet. Please contact the hostel office.
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  // ── Loading ───────────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: BG }}>
+        <StatusBar barStyle="light-content" backgroundColor={BLUE} />
+        <View style={{ backgroundColor: BLUE }}>
+          <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
+            <View style={s.headerCenter}>
+              <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtnMinimal}>
+                <ChevronLeft size={28} color={WHITE} strokeWidth={3} />
+              </TouchableOpacity>
+              <Text style={s.headerTitleCenter}>Room Details</Text>
+              <View style={{ width: 40 }} />
+            </View>
+          </SafeAreaView>
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={BLUE} />
+          <Text style={{ color: TEXT_MID, marginTop: 12, fontSize: 14 }}>Loading room details…</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
       <StatusBar barStyle="light-content" backgroundColor={BLUE} />
-      
+
       {/* ── HEADER ── */}
       <View style={{ backgroundColor: BLUE }}>
         <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
@@ -75,15 +192,24 @@ export default function RoomInfoScreen({ route, navigation }: any) {
 
       {/* ── TABS ── */}
       <View style={s.tabScroll}>
-          <View style={s.tabContainer}>
-            <Animated.View style={[s.tabIndicator, { left: indicatorLeft, width: tabW }]} />
-            {tabs.map(t => (
-              <TouchableOpacity key={t} style={s.tab} onPress={() => handleTab(t)}>
-                <Text style={[s.tabTxt, activeTab === t && s.activeTabTxt]} numberOfLines={1}>{t}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+        <View style={s.tabContainer}>
+          <Animated.View style={[s.tabIndicator, { left: indicatorLeft, width: tabW }]} />
+          {tabs.map(t => (
+            <TouchableOpacity key={t} style={s.tab} onPress={() => handleTab(t)}>
+              <Text style={[s.tabTxt, activeTab === t && s.activeTabTxt]} numberOfLines={1}>{t}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
+      </View>
+
+      {/* ── ERROR BANNER ── */}
+      {error && (
+        <View style={{ backgroundColor: '#FEF2F2', borderBottomWidth: 1, borderBottomColor: '#FECACA', paddingHorizontal: 16, paddingVertical: 10, flexDirection: 'row', alignItems: 'center' }}>
+          <AlertCircle size={16} color="#EF4444" style={{ marginRight: 8 }} />
+          <Text style={{ color: '#EF4444', fontSize: 13, fontWeight: '600', flex: 1 }}>{error}</Text>
+        </View>
+      )}
+
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
         {activeTab === 'Details' && (
           <>
@@ -94,36 +220,40 @@ export default function RoomInfoScreen({ route, navigation }: any) {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 }}>Room Assigned</Text>
-                <Text style={{ fontSize: 32, color: WHITE, fontWeight: '800', marginTop: 4 }}>{user?.room_number || '201'}</Text>
+                <Text style={{ fontSize: 32, color: WHITE, fontWeight: '800', marginTop: 4 }}>{room?.room_number ?? user?.room_number ?? '—'}</Text>
               </View>
             </View>
+
             {/* Room Information */}
             <Text style={s.sectionLbl}>Room Information</Text>
             <View style={s.infoCard}>
-              <View style={s.detailRow}><Text style={s.detailLbl}>Room Number</Text><Text style={s.detailVal}>{user?.room_number || '201'}</Text></View>
-              <View style={s.detailRow}><Text style={s.detailLbl}>Block</Text><Text style={s.detailVal}>Block A</Text></View>
-              <View style={s.detailRow}><Text style={s.detailLbl}>Room Type</Text><Text style={s.detailVal}>Single Sharing</Text></View>
-              <View style={s.detailRow}><Text style={s.detailLbl}>Floor</Text><Text style={s.detailVal}>2nd Floor</Text></View>
-              <View style={s.detailRow}><Text style={s.detailLbl}>Area</Text><Text style={s.detailVal}>120 Sq.ft</Text></View>
-              <View style={s.detailRow}><Text style={s.detailLbl}>Status</Text><Text style={[s.detailVal, { color: SUCCESS }]}>Occupied</Text></View>
+              <View style={s.detailRow}><Text style={s.detailLbl}>Room Number</Text><Text style={s.detailVal}>{room?.room_number ?? '—'}</Text></View>
+              <View style={s.detailRow}><Text style={s.detailLbl}>Room Type</Text><Text style={s.detailVal}>{room?.room_type ?? '—'}</Text></View>
+              <View style={s.detailRow}><Text style={s.detailLbl}>Floor</Text><Text style={s.detailVal}>{room?.floor_number != null ? `${room.floor_number}` : '—'}</Text></View>
+              <View style={s.detailRow}><Text style={s.detailLbl}>Capacity</Text><Text style={s.detailVal}>{room?.capacity != null ? `${room.capacity} person${room.capacity !== 1 ? 's' : ''}` : '—'}</Text></View>
+              <View style={s.detailRow}><Text style={s.detailLbl}>Status</Text><Text style={[s.detailVal, { color: room?.status?.toLowerCase() === 'occupied' ? SUCCESS : TEXT_MID, textTransform: 'capitalize' }]}>{room?.status ?? '—'}</Text></View>
             </View>
 
             {/* Rent Information */}
             <Text style={s.sectionLbl}>Rent Information</Text>
             <View style={s.infoCard}>
-              <View style={s.detailRow}><Text style={s.detailLbl}>Monthly Rent</Text><Text style={s.detailVal}>₹ {user?.monthly_rent || '4,500'}</Text></View>
-              <View style={s.detailRow}><Text style={s.detailLbl}>Security Deposit</Text><Text style={s.detailVal}>₹ 8,000</Text></View>
-              <View style={s.detailRow}><Text style={s.detailLbl}>Maintenance Charge</Text><Text style={s.detailVal}>₹ 500</Text></View>
-              <View style={s.detailRow}><Text style={s.detailLbl}>Total (Monthly)</Text><Text style={s.detailVal}>₹ 5,000</Text></View>
+              <View style={s.detailRow}><Text style={s.detailLbl}>Monthly Rent</Text><Text style={s.detailVal}>₹ {room?.monthly_rent ?? user?.monthly_rent ?? '—'}</Text></View>
             </View>
 
-            {/* Other Information */}
-            <Text style={s.sectionLbl}>Other Information</Text>
-            <View style={s.infoCard}>
-              <View style={s.detailRow}><Text style={s.detailLbl}>Allotted Date</Text><Text style={s.detailVal}>01 Jan 2026</Text></View>
-              <View style={s.detailRow}><Text style={s.detailLbl}>Vacate Date</Text><Text style={s.detailVal}>-</Text></View>
-              <View style={s.detailRow}><Text style={s.detailLbl}>Next Review Date</Text><Text style={s.detailVal}>01 Jan 2027</Text></View>
-            </View>
+            {/* Amenities */}
+            {Array.isArray(room?.amenities) && room.amenities.length > 0 && (
+              <>
+                <Text style={s.sectionLbl}>Amenities</Text>
+                <View style={s.infoCard}>
+                  {room.amenities.map((amenity: string, idx: number) => (
+                    <View key={idx} style={s.detailRow}>
+                      <Text style={s.detailLbl}>{amenity}</Text>
+                      <CheckCircle2 size={16} color={SUCCESS} />
+                    </View>
+                  ))}
+                </View>
+              </>
+            )}
 
             {/* Tenant Information */}
             <Text style={s.sectionLbl}>Tenant Information</Text>
@@ -137,38 +267,39 @@ export default function RoomInfoScreen({ route, navigation }: any) {
 
         {activeTab === 'Rent History' && (
           <View style={{ paddingTop: 8 }}>
-            {[
-              { month: 'April 2026', amount: '₹ 4,500', status: 'Paid', date: '02 Apr' },
-              { month: 'March 2026', amount: '₹ 4,500', status: 'Paid', date: '01 Mar' },
-              { month: 'February 2026', amount: '₹ 4,500', status: 'Paid', date: '03 Feb' }
-            ].map((item, idx) => (
-              <View key={idx} style={s.historyCard}>
-                <View style={s.historyIcon}><CheckCircle2 size={24} color={SUCCESS} /></View>
-                <View style={{ flex: 1, marginLeft: 16 }}>
-                  <Text style={s.historyTitle}>{item.month}</Text>
-                  <Text style={s.historySub}>Paid on {item.date}</Text>
-                </View>
-                <Text style={s.historyAmount}>{item.amount}</Text>
+            {fees.length === 0 ? (
+              <View style={s.emptyState}>
+                <FileText size={40} color={TEXT_LIGHT} strokeWidth={1.5} />
+                <Text style={s.emptyTitle}>No Payment History</Text>
+                <Text style={s.emptySub}>Your rent payment records will appear here.</Text>
               </View>
-            ))}
+            ) : (
+              fees.map((fee, idx) => (
+                <View key={fee.fee_id ?? idx} style={s.historyCard}>
+                  <View style={[s.historyIcon, { backgroundColor: (fee.fee_status || '').toLowerCase() === 'paid' ? '#DCFCE7' : (fee.fee_status || '').toLowerCase() === 'overdue' ? '#FEE2E2' : '#FEF9C3' }]}>
+                    {feeStatusIcon(fee.fee_status)}
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 16 }}>
+                    <Text style={s.historyTitle}>{formatFeeMonth(fee.fee_month)}</Text>
+                    <Text style={s.historySub}>Due {formatDueDate(fee.due_date)}</Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={s.historyAmount}>₹ {fee.monthly_rent ?? '—'}</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: feeStatusColor(fee.fee_status), marginTop: 4, textTransform: 'capitalize' }}>{fee.fee_status ?? '—'}</Text>
+                  </View>
+                </View>
+              ))
+            )}
           </View>
         )}
 
         {activeTab === 'Maintenance' && (
           <View style={{ paddingTop: 8 }}>
-            {[
-              { title: 'Broken tap in bathroom', date: '10 May 2026', status: 'Resolved' },
-              { title: 'Fan regulator not working', date: '15 Mar 2026', status: 'Resolved' }
-            ].map((item, idx) => (
-              <View key={idx} style={s.historyCard}>
-                <View style={[s.historyIcon, { backgroundColor: '#F3F4F6' }]}><Wrench size={24} color={TEXT_MID} /></View>
-                <View style={{ flex: 1, marginLeft: 16 }}>
-                  <Text style={s.historyTitle}>{item.title}</Text>
-                  <Text style={s.historySub}>{item.date}</Text>
-                </View>
-                <View style={s.badgeResolved}><Text style={s.badgeResolvedTxt}>{item.status}</Text></View>
-              </View>
-            ))}
+            <View style={s.emptyState}>
+              <Wrench size={40} color={TEXT_LIGHT} strokeWidth={1.5} />
+              <Text style={s.emptyTitle}>No Maintenance Records</Text>
+              <Text style={s.emptySub}>Maintenance requests will be displayed here once available.</Text>
+            </View>
           </View>
         )}
 
@@ -181,9 +312,9 @@ export default function RoomInfoScreen({ route, navigation }: any) {
               </TouchableOpacity>
             ) : (
               <View style={s.noteInputCard}>
-                <TextInput 
-                  style={s.noteInput} 
-                  placeholder="Use notes to save Wi-Fi passwords, track shared grocery bills, or log room chores..." 
+                <TextInput
+                  style={s.noteInput}
+                  placeholder="Use notes to save Wi-Fi passwords, track shared grocery bills, or log room chores..."
                   placeholderTextColor={TEXT_LIGHT}
                   multiline
                   value={noteText}
@@ -227,7 +358,7 @@ const s = StyleSheet.create({
   headerCenter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12 },
   backBtnMinimal: { padding: 8, marginLeft: -8 },
   headerTitleCenter: { fontSize: 18, fontWeight: '800', color: WHITE },
-  
+
   tabScroll: { backgroundColor: WHITE, borderBottomWidth: 1, borderBottomColor: BORDER },
   tabContainer: { flexDirection: 'row', width: '100%', position: 'relative' },
   tabIndicator: { position: 'absolute', bottom: 0, height: 3, backgroundColor: BLUE, borderRadius: 3, zIndex: 2 },
@@ -236,22 +367,26 @@ const s = StyleSheet.create({
   activeTabTxt: { color: BLUE, fontWeight: '800' },
 
   scroll: { padding: 20, paddingBottom: 40 },
-  
+
   sectionLbl: { fontSize: 14, fontWeight: '800', color: TEXT_DARK, marginBottom: 12, marginLeft: 4 },
-  
+
   infoCard: { backgroundColor: WHITE, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 8, marginBottom: 24, borderWidth: 1, borderColor: BORDER },
   detailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12 },
   detailLbl: { fontSize: 14, color: TEXT_MID, fontWeight: '500' },
   detailVal: { fontSize: 14, color: TEXT_DARK, fontWeight: '600' },
-  
+
   historyCard: { backgroundColor: WHITE, borderRadius: 16, padding: 16, marginBottom: 16, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: BORDER },
   historyIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#DCFCE7', justifyContent: 'center', alignItems: 'center' },
   historyTitle: { fontSize: 15, fontWeight: '700', color: TEXT_DARK, marginBottom: 4 },
   historySub: { fontSize: 13, color: TEXT_MID },
   historyAmount: { fontSize: 16, fontWeight: '800', color: TEXT_DARK },
-  
+
   badgeResolved: { backgroundColor: '#F0FDF4', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: '#DCFCE7' },
   badgeResolvedTxt: { fontSize: 11, fontWeight: '700', color: SUCCESS },
+
+  emptyState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 48, paddingHorizontal: 24 },
+  emptyTitle: { fontSize: 17, fontWeight: '800', color: TEXT_DARK, marginTop: 16, textAlign: 'center' },
+  emptySub: { fontSize: 14, color: TEXT_MID, marginTop: 8, textAlign: 'center', lineHeight: 22 },
 
   addNewBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: BLUE_SOFT, borderRadius: 12, paddingVertical: 14, marginBottom: 24, borderWidth: 1, borderColor: BLUE, borderStyle: 'dashed' },
   addNewTxt: { color: BLUE, fontSize: 15, fontWeight: '700' },
@@ -262,7 +397,7 @@ const s = StyleSheet.create({
   cancelTxt: { fontSize: 14, color: TEXT_MID, fontWeight: '600' },
   addNoteBtn: { backgroundColor: BLUE, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
   addNoteTxt: { color: WHITE, fontSize: 13, fontWeight: '700', marginLeft: 6 },
-  
+
   noteCard: { backgroundColor: BLUE_SOFT, borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#E0E7FF' },
   noteTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   noteDate: { fontSize: 12, fontWeight: '600', color: BLUE },

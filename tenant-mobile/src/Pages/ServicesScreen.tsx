@@ -1,25 +1,48 @@
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { Utensils, Shirt, Sparkles, UserPlus, Coffee, Soup, Moon } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, Text, View, ActivityIndicator } from 'react-native';
+import { Wifi, Shirt, Car, Dumbbell, Star } from 'lucide-react-native';
 
 import { useAuth } from '../context/AuthContext';
-import { Screen, AppHeader, Card, SectionHeader } from '../components/ui';
+import { Screen, AppHeader, Card } from '../components/ui';
 import { colors, radius, spacing, font } from '../theme';
-import { sampleServices } from '../data/tenantContent';
+import api from '../services/api';
 
-const mealIcon: Record<string, any> = {
-  Breakfast: Coffee,
-  Lunch: Soup,
-  Dinner: Moon,
+const amenityIcon: Record<string, any> = {
+  wifi:    Wifi,
+  'wi-fi': Wifi,
+  laundry: Shirt,
+  parking: Car,
+  gym:     Dumbbell,
 };
-const facilityIcon: Record<string, any> = {
-  Laundry: Shirt,
-  Housekeeping: Sparkles,
-  'Visitor pass': UserPlus,
-};
+
+function getIcon(name: string) {
+  const key = name.toLowerCase();
+  for (const [k, Icon] of Object.entries(amenityIcon)) {
+    if (key.includes(k)) return Icon;
+  }
+  return Star;
+}
 
 export default function ServicesScreen({ navigation }: any) {
   const { user } = useAuth();
+  const [amenities, setAmenities] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.get('/amenities');
+        const data: any[] = res.data ?? res ?? [];
+        if (!cancelled) setAmenities(Array.isArray(data) ? data.filter(a => a.is_active !== false) : []);
+      } catch {
+        if (!cancelled) setAmenities([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   return (
     <Screen>
@@ -31,40 +54,41 @@ export default function ServicesScreen({ navigation }: any) {
         onPressAvatar={() => navigation.navigate('Profile')}
       />
 
-      {sampleServices.map((group, gi) => {
-        const isMess = group.category.toLowerCase().includes('mess');
-        return (
-          <View key={group.category}>
-            <SectionHeader title={group.category} />
-            <Card padded={false}>
-              {group.items.map((item, i) => {
-                const Icon =
-                  (isMess ? mealIcon[item.name] : facilityIcon[item.name]) || Utensils;
-                return (
-                  <View key={item.id} style={[styles.row, i > 0 && styles.divider]}>
-                    <View
-                      style={[
-                        styles.iconWrap,
-                        { backgroundColor: isMess ? colors.successSoft : colors.primarySoft },
-                      ]}
-                    >
-                      <Icon size={18} color={isMess ? colors.success : colors.primary} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.name}>{item.name}</Text>
-                      <Text style={styles.detail}>{item.detail}</Text>
-                    </View>
+      {loading ? (
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator color={colors.primary} size="large" />
+          <Text style={styles.loadingText}>Loading services…</Text>
+        </View>
+      ) : amenities.length === 0 ? (
+        <View style={styles.emptyWrap}>
+          <Text style={styles.emptyText}>No services listed by hostel</Text>
+        </View>
+      ) : (
+        <>
+          <Card padded={false}>
+            {amenities.map((amenity, i) => {
+              const Icon = getIcon(amenity.amenity_name ?? '');
+              return (
+                <View key={amenity.amenity_id ?? i} style={[styles.row, i > 0 && styles.divider]}>
+                  <View style={[styles.iconWrap, { backgroundColor: colors.primarySoft }]}>
+                    <Icon size={18} color={colors.primary} />
                   </View>
-                );
-              })}
-            </Card>
-          </View>
-        );
-      })}
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.name}>{amenity.amenity_name}</Text>
+                    {!!amenity.description && (
+                      <Text style={styles.detail}>{amenity.description}</Text>
+                    )}
+                  </View>
+                </View>
+              );
+            })}
+          </Card>
 
-      <Text style={styles.note}>
-        Menu and schedules are set by your hostel. Timings may vary on holidays.
-      </Text>
+          <Text style={styles.note}>
+            Amenities are managed by your hostel. Availability may vary.
+          </Text>
+        </>
+      )}
     </Screen>
   );
 }
@@ -79,7 +103,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  name: { fontSize: font.body, fontWeight: '600', color: colors.text },
-  detail: { fontSize: font.small, color: colors.textMuted, marginTop: 2, lineHeight: 19 },
-  note: { fontSize: font.small, color: colors.textSubtle, textAlign: 'center', marginTop: spacing.xl },
+  name:        { fontSize: font.body,  fontWeight: '600', color: colors.text },
+  detail:      { fontSize: font.small, color: colors.textMuted, marginTop: 2, lineHeight: 19 },
+  note:        { fontSize: font.small, color: colors.textSubtle, textAlign: 'center', marginTop: spacing.xl },
+  loadingWrap: { alignItems: 'center', paddingTop: 80, gap: spacing.md },
+  loadingText: { fontSize: font.small, color: colors.textMuted, marginTop: 8 },
+  emptyWrap:   { alignItems: 'center', paddingTop: 80 },
+  emptyText:   { fontSize: font.body,  color: colors.textMuted },
 });

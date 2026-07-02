@@ -151,9 +151,24 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
     }
     const monthlyExpenses = await expensesQuery.first();
 
+    // Get staff wages for the month (stored separately from expenses)
+    let staffWages = 0;
+    try {
+      let staffWagesQuery = db('staff_payments')
+        .whereBetween('payment_date', [monthStart, monthEnd])
+        .sum('amount as total');
+      if (hostelIds.length > 0) {
+        staffWagesQuery = staffWagesQuery.whereIn('hostel_id', hostelIds);
+      }
+      const staffWagesResult = await staffWagesQuery.first();
+      staffWages = Number(staffWagesResult?.total || 0);
+    } catch (e) {
+      // staff_payments table may not exist on all deployments
+    }
+
     // Calculate net profit
     const income = Number(totalMonthlyIncome);
-    const expenses = Number(monthlyExpenses?.total || 0);
+    const expenses = Number(monthlyExpenses?.total || 0) + staffWages;
     const netProfit = income - expenses;
 
     const hasMonthlyFees = await tableExists('monthly_fees');
@@ -568,6 +583,27 @@ export const getProfitLoss = async (req: AuthRequest, res: Response) => {
 
     const expensesByMonth = await expensesQuery;
 
+    // Get staff wages by month (stored separately from expenses)
+    let staffWagesByMonth: any[] = [];
+    try {
+      let staffWagesQuery = db('staff_payments')
+        .whereBetween('payment_date', [dateStart, dateEnd])
+        .select(
+          db.raw('DATE_FORMAT(payment_date, "%Y-%m") as month'),
+          db.raw('SUM(amount) as total')
+        )
+        .groupBy('month')
+        .orderBy('month');
+      if (hostelId && user?.role_id !== 2) {
+        staffWagesQuery = staffWagesQuery.where('hostel_id', hostelId);
+      } else if (hostelIds.length > 0) {
+        staffWagesQuery = staffWagesQuery.whereIn('hostel_id', hostelIds);
+      }
+      staffWagesByMonth = await staffWagesQuery;
+    } catch (e) {
+      // staff_payments table may not exist on all deployments
+    }
+
     // Merge income and expenses by month
     const monthsMap = new Map();
 
@@ -584,6 +620,20 @@ export const getProfitLoss = async (req: AuthRequest, res: Response) => {
       const existing = monthsMap.get(item.month);
       if (existing) {
         existing.expenses = Number(item.total);
+      } else {
+        monthsMap.set(item.month, {
+          month: item.month,
+          income: 0,
+          expenses: Number(item.total),
+          profit: 0
+        });
+      }
+    });
+
+    staffWagesByMonth.forEach(item => {
+      const existing = monthsMap.get(item.month);
+      if (existing) {
+        existing.expenses += Number(item.total);
       } else {
         monthsMap.set(item.month, {
           month: item.month,
@@ -1198,81 +1248,102 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
 
     // ── 5. 12-month trend (last 12 months including current) ──
     const trend: any[] = [];
+    const trendStartDate = new Date(targetYear, targetMonth - 12, 1);
+    const trendStartDateStr = `${trendStartDate.getFullYear()}-${String(trendStartDate.getMonth() + 1).padStart(2, '0')}-01`;
+
+    // Fee collection
+    let feeTrendQuery = db('fee_payments as fp')
+      .join('students as s', 'fp.student_id', 's.student_id')
+      .whereNotNull('s.room_id')
+      .where('s.status', 1)
+      .whereBetween('fp.payment_date', [trendStartDateStr, monthEnd])
+      .select(db.raw('DATE_FORMAT(fp.payment_date, "%Y-%m") as month'), db.raw('SUM(fp.amount) as total'))
+      .groupBy('month');
+    if (hostelIds.length > 0) feeTrendQuery = feeTrendQuery.whereIn('fp.hostel_id', hostelIds);
+    const feeTrendRes = await feeTrendQuery;
+    const feeTrendMap = new Map(feeTrendRes.map((item: any) => [item.month, Number(item.total || 0)]));
+
+    // Other income
+    let incTrendQuery = db('income')
+      .whereBetween('income_date', [trendStartDateStr, monthEnd])
+      .select(db.raw('DATE_FORMAT(income_date, "%Y-%m") as month'), db.raw('SUM(amount) as total'))
+      .groupBy('month');
+    if (hostelIds.length > 0) incTrendQuery = incTrendQuery.whereIn('hostel_id', hostelIds);
+    const incTrendRes = await incTrendQuery;
+    const incTrendMap = new Map(incTrendRes.map((item: any) => [item.month, Number(item.total || 0)]));
+
+    // Expenses
+    let expTrendQuery = db('expenses')
+      .whereBetween('expense_date', [trendStartDateStr, monthEnd])
+      .select(db.raw('DATE_FORMAT(expense_date, "%Y-%m") as month'), db.raw('SUM(amount) as total'))
+      .groupBy('month');
+    if (hostelIds.length > 0) expTrendQuery = expTrendQuery.whereIn('hostel_id', hostelIds);
+    const expTrendRes = await expTrendQuery;
+    const expTrendMap = new Map(expTrendRes.map((item: any) => [item.month, Number(item.total || 0)]));
+
+    // Guests
+    let guestTrendMap = new Map();
+    try {
+      let guestTrendQuery = db('guests')
+        .whereBetween('check_in_date', [trendStartDateStr, monthEnd])
+        .select(db.raw('DATE_FORMAT(check_in_date, "%Y-%m") as month'), db.raw('SUM(amount_paid) as total'))
+        .groupBy('month');
+      if (hostelIds.length > 0) guestTrendQuery = guestTrendQuery.whereIn('hostel_id', hostelIds);
+      const guestTrendRes = await guestTrendQuery;
+      guestTrendMap = new Map(guestTrendRes.map((item: any) => [item.month, Number(item.total || 0)]));
+    } catch(e) { console.error('[trend] guests query failed:', e); }
+
+    // Wages
+    let wagesTrendMap = new Map();
+    try {
+      let wagesTrendQuery = db('staff_payments')
+        .whereBetween('payment_date', [trendStartDateStr, monthEnd])
+        .select(db.raw('DATE_FORMAT(payment_date, "%Y-%m") as month'), db.raw('SUM(amount) as total'))
+        .groupBy('month');
+      if (hostelIds.length > 0) wagesTrendQuery = wagesTrendQuery.whereIn('hostel_id', hostelIds);
+      const wagesTrendRes = await wagesTrendQuery;
+      wagesTrendMap = new Map(wagesTrendRes.map((item: any) => [item.month, Number(item.total || 0)]));
+    } catch(e) { console.error('[trend] staff_payments query failed:', e); }
+
+    // Admissions
+    let admissionTrendMap = new Map();
+    try {
+      let admissionTrendQuery = db('students')
+        .whereBetween('admission_date', [trendStartDateStr, monthEnd])
+        .where(function() {
+          this.where('admission_status', 1).orWhere('admission_status', 'Paid');
+        })
+        .select(db.raw('DATE_FORMAT(admission_date, "%Y-%m") as month'), db.raw('SUM(admission_fee) as total'))
+        .groupBy('month');
+      if (hostelIds.length > 0) admissionTrendQuery = admissionTrendQuery.whereIn('hostel_id', hostelIds);
+      const admissionTrendRes = await admissionTrendQuery;
+      admissionTrendMap = new Map(admissionTrendRes.map((item: any) => [item.month, Number(item.total || 0)]));
+    } catch(e) { console.error('[trend] admissions query failed:', e); }
+
     for (let i = 11; i >= 0; i--) {
       const tDate = new Date(targetYear, targetMonth - 1 - i, 1);
       const tYear = tDate.getFullYear();
       const tMonth = tDate.getMonth() + 1;
       const tMonthStr = `${tYear}-${String(tMonth).padStart(2, '0')}`;
-      const tStart = `${tMonthStr}-01`;
-      const tLastDay = new Date(tYear, tMonth, 0).getDate();
-      const tEnd = `${tMonthStr}-${String(tLastDay).padStart(2, '0')}`;
+      const tMonthLabel = tDate.toLocaleString('en-US', { month: 'short' });
 
-      // Fee collection
-      let tFeeQ = db('fee_payments as fp')
-        .join('students as s', 'fp.student_id', 's.student_id')
-        .whereNotNull('s.room_id')
-        .where('s.status', 1)
-        .whereBetween('fp.payment_date', [tStart, tEnd])
-        .sum('fp.amount as total');
-      if (hostelIds.length > 0) tFeeQ = tFeeQ.whereIn('fp.hostel_id', hostelIds);
-      const tFee = await tFeeQ.first();
+      const tFee = feeTrendMap.get(tMonthStr) || 0;
+      const tInc = incTrendMap.get(tMonthStr) || 0;
+      const tExp = expTrendMap.get(tMonthStr) || 0;
+      const tGuest = guestTrendMap.get(tMonthStr) || 0;
+      const tWages = wagesTrendMap.get(tMonthStr) || 0;
+      const tAdmission = admissionTrendMap.get(tMonthStr) || 0;
 
-      // Other income
-      let tIncQ = db('income')
-        .whereBetween('income_date', [tStart, tEnd])
-        .sum('amount as total');
-      if (hostelIds.length > 0) tIncQ = tIncQ.whereIn('hostel_id', hostelIds);
-      const tInc = await tIncQ.first();
-
-      // Expenses
-      let tExpQ = db('expenses')
-        .whereBetween('expense_date', [tStart, tEnd])
-        .sum('amount as total');
-      if (hostelIds.length > 0) tExpQ = tExpQ.whereIn('hostel_id', hostelIds);
-      const tExp = await tExpQ.first();
-
-      // Guest income + staff wages for the trend month (best-effort)
-      let tGuest = 0;
-      let tWages = 0;
-      try {
-        let tGuestQ = db('guests')
-          .whereBetween('check_in_date', [tStart, tEnd])
-          .sum('amount_paid as total');
-        if (hostelIds.length > 0) tGuestQ = tGuestQ.whereIn('hostel_id', hostelIds);
-        tGuest = Number((await tGuestQ.first())?.total || 0);
-      } catch (e) { tGuest = 0; }
-      try {
-        let tWagesQ = db('staff_payments')
-          .whereBetween('payment_date', [tStart, tEnd])
-          .sum('amount as total');
-        if (hostelIds.length > 0) tWagesQ = tWagesQ.whereIn('hostel_id', hostelIds);
-        tWages = Number((await tWagesQ.first())?.total || 0);
-      } catch (e) { tWages = 0; }
-
-      // Admission fees
-      let tAdmission = 0;
-      try {
-        let tAdmissionQ = db('students')
-          .whereBetween('admission_date', [tStart, tEnd])
-          .where(function() {
-            this.where('admission_status', 1)
-              .orWhere('admission_status', 'Paid');
-          })
-          .sum('admission_fee as total');
-        if (hostelIds.length > 0) tAdmissionQ = tAdmissionQ.whereIn('hostel_id', hostelIds);
-        tAdmission = Number((await tAdmissionQ.first())?.total || 0);
-      } catch (e) { tAdmission = 0; }
-
-      const tIncome = Number(tFee?.total || 0) + Number(tInc?.total || 0) + tGuest + tAdmission;
-      const tExpenses = Number(tExp?.total || 0) + tWages;
+      const tIncome = tFee + tInc + tGuest + tAdmission;
+      const tExpenses = tExp + tWages;
 
       trend.push({
         month: tMonthStr,
-        monthLabel: new Date(tYear, tMonth - 1).toLocaleString('en-US', { month: 'short' }),
+        monthLabel: tMonthLabel,
         year: tYear,
         income: tIncome,
-        feeCollection: Number(tFee?.total || 0),
-        otherIncome: Number(tInc?.total || 0),
+        feeCollection: tFee,
+        otherIncome: tInc,
         expenses: tExpenses,
         profit: tIncome - tExpenses
       });

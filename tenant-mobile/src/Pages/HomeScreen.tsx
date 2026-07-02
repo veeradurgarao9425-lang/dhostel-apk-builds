@@ -45,7 +45,7 @@ import {
 
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
-import { mockWeeklyMenu } from "../data/dummyData";
+
 import { Phase3EmptyState } from '../components/UIComponents';
 
 const { width } = Dimensions.get("window");
@@ -195,9 +195,39 @@ export default function HomeScreen({ navigation }: any) {
   };
 
 
+    const [todaysMeals, setTodaysMeals] = useState<any>({
+    breakfast: { items: 'Menu not updated' },
+    lunch: { items: 'Menu not updated' },
+    dinner: { items: 'Menu not updated' }
+  });
+
+  useEffect(() => {
+    if (!user?.hostel_id) return;
+    const fetchMenu = async () => {
+      try {
+        const res = await api.get('/mess-menu/' + user.hostel_id);
+        if (res.data && res.data.success) {
+          const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+          const today = days[new Date().getDay()];
+          const todayMenu = res.data.data.find((m: any) => m.day_of_week === today);
+          if (todayMenu) {
+            setTodaysMeals({
+              breakfast: { items: todayMenu.breakfast_items || 'No breakfast items' },
+              lunch: { items: todayMenu.lunch_items || 'No lunch items' },
+              dinner: { items: todayMenu.dinner_items || 'No dinner items' }
+            });
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching mess menu:', err);
+      }
+    };
+    fetchMenu();
+  }, [user]);
+
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const todayDay = days[new Date().getDay()];
-  const todayMenu = mockWeeklyMenu[todayDay as keyof typeof mockWeeklyMenu];
+  const todayMenu = todaysMeals;
 
   const meals: { key: "morning" | "lunch" | "dinner"; title: string; sub: string; time: string; Icon: any; bg: string; iconBg: string; color: string }[] = [
     { key: "morning", title: "Morning", sub: todayMenu.breakfast.items, time: "8:00 AM - 10:00 AM", Icon: Sun, bg: "#FFFBF5", iconBg: "#FFEDD5", color: "#F97316" },

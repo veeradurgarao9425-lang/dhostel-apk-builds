@@ -1,10 +1,10 @@
-import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, ScrollView, StatusBar } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View, ScrollView, StatusBar, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FileText, FileCheck2, Receipt, IdCard, Download, File, ArrowLeft } from 'lucide-react-native';
 
 import { useAuth } from '../context/AuthContext';
-import { sampleDocuments, TenantDocument } from '../data/tenantContent';
+import api from '../services/api';
 
 const BLUE      = '#2245D4';
 const BLUE_SOFT = '#EEF2FF';
@@ -17,7 +17,9 @@ const BORDER    = '#E2E8F0';
 const SUCCESS   = '#22C55E';
 const SUCCESS_SOFT= '#DCFCE7';
 
-const typeMeta: Record<TenantDocument['type'], { icon: any; tint: string; soft: string }> = {
+type DocType = 'Agreement' | 'Receipt' | 'KYC' | 'Other';
+
+const typeMeta: Record<DocType, { icon: any; tint: string; soft: string }> = {
   Agreement: { icon: FileCheck2, tint: BLUE, soft: BLUE_SOFT },
   Receipt: { icon: Receipt, tint: SUCCESS, soft: SUCCESS_SOFT },
   KYC: { icon: IdCard, tint: '#D97706', soft: '#FEF3C7' },
@@ -25,10 +27,62 @@ const typeMeta: Record<TenantDocument['type'], { icon: any; tint: string; soft: 
 };
 
 export default function DocumentsScreen({ navigation }: any) {
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchDocuments = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/fees/my-fees');
+      const feeRecords: any[] = res.data?.data ?? res.data ?? [];
+
+      const docs: any[] = [];
+      for (const feeRecord of feeRecords) {
+        const payments: any[] = feeRecord.payments ?? [];
+        for (const payment of payments) {
+          if (payment.verification_status === 'verified') {
+            docs.push({
+              id: payment.payment_id.toString(),
+              paymentId: payment.payment_id,
+              name: `Receipt - ${feeRecord.fee_month}`,
+              type: 'Receipt' as DocType,
+              date: payment.payment_date,
+              sizeKb: null,
+            });
+          }
+        }
+      }
+      setDocuments(docs);
+    } catch (err: any) {
+      console.error('DocumentsScreen fetch error:', err);
+      Alert.alert('Error', 'Could not load documents. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDocuments();
+  }, [fetchDocuments]);
+
+  const handleDownload = async (paymentId: string | number) => {
+    try {
+      const res = await api.get(`/fees/receipts/${paymentId}`);
+      const receipt = res.data?.data ?? res.data;
+      Alert.alert(
+        'Receipt Details',
+        `Receipt #: ${receipt.receipt_number ?? '-'}\nAmount: ₹${receipt.amount ?? '-'}\nDate: ${receipt.payment_date ? new Date(receipt.payment_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}\nMethod: ${receipt.payment_method ?? '-'}\nStatus: ${receipt.verification_status ?? '-'}`,
+      );
+    } catch (err: any) {
+      console.error('Receipt fetch error:', err);
+      Alert.alert('Error', 'Could not load receipt details. Please try again.');
+    }
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
       <StatusBar barStyle="light-content" backgroundColor={BLUE} />
-      
+
       {/* ── HEADER ── */}
       <View style={s.headerSection}>
         <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
@@ -45,7 +99,12 @@ export default function DocumentsScreen({ navigation }: any) {
       </View>
 
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
-        {sampleDocuments.length === 0 ? (
+        {loading ? (
+          <View style={s.loadingWrap}>
+            <ActivityIndicator size="large" color={BLUE} />
+            <Text style={s.loadingTxt}>Loading documents…</Text>
+          </View>
+        ) : documents.length === 0 ? (
           <View style={s.emptyCard}>
             <View style={s.emptyIconWrap}>
               <FileText size={32} color={TEXT_MID} />
@@ -55,8 +114,8 @@ export default function DocumentsScreen({ navigation }: any) {
           </View>
         ) : (
           <View style={s.listCard}>
-            {sampleDocuments.map((d, i) => {
-              const meta = typeMeta[d.type] || typeMeta.Other;
+            {documents.map((d, i) => {
+              const meta = typeMeta[d.type as DocType] || typeMeta.Other;
               const Icon = meta.icon;
               return (
                 <View key={d.id}>
@@ -71,11 +130,11 @@ export default function DocumentsScreen({ navigation }: any) {
                         {d.sizeKb ? ` • ${d.sizeKb} KB` : ''}
                       </Text>
                     </View>
-                    <TouchableOpacity style={s.dlBtn} activeOpacity={0.7}>
+                    <TouchableOpacity style={s.dlBtn} activeOpacity={0.7} onPress={() => handleDownload(d.paymentId)}>
                       <Download size={18} color={BLUE} strokeWidth={2.5} />
                     </TouchableOpacity>
                   </TouchableOpacity>
-                  {i < sampleDocuments.length - 1 && <View style={s.divider} />}
+                  {i < documents.length - 1 && <View style={s.divider} />}
                 </View>
               );
             })}
@@ -92,8 +151,11 @@ const s = StyleSheet.create({
   backBtnLight: { padding: 8, marginLeft: -8, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 12 },
   headerGreeting: { fontSize: 22, fontWeight: '800', color: WHITE },
   headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
-  
+
   scroll: { padding: 20, paddingBottom: 60 },
+
+  loadingWrap: { marginTop: 60, alignItems: 'center', gap: 12 },
+  loadingTxt: { fontSize: 14, color: TEXT_MID, fontWeight: '500' },
 
   emptyCard: { backgroundColor: WHITE, borderRadius: 24, padding: 32, alignItems: 'center', borderWidth: 1, borderColor: BORDER, borderStyle: 'dashed', marginTop: 20 },
   emptyIconWrap: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center', marginBottom: 16 },

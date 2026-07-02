@@ -17,6 +17,8 @@ import {
 } from 'lucide-react-native';
 
 import { FilterSheet, BaseBottomSheet, ConfirmationDialog } from '../components/UIComponents';
+import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const { width } = Dimensions.get('window');
 
@@ -49,40 +51,20 @@ const CATS: Record<string, { color: string; bg: string; Icon: any }> = {
 };
 
 // ── Static data ───────────────────────────────────────────────────────────────
-const BREAKDOWN = [
-  { name: 'Food',      pct: 43, color: '#EF5350', bg: '#FDEAEA', amount: 1570, Icon: Utensils },
-  { name: 'Transport', pct: 23, color: BLUE,      bg: BLUE_SOFT,  amount: 840,  Icon: Car },
-  { name: 'Shopping',  pct: 17, color: '#43A047', bg: '#EAF5EA',  amount: 620,  Icon: ShoppingBag },
-  { name: 'Others',    pct: 17, color: '#546E7A', bg: '#ECEFF1',  amount: 620,  Icon: MoreHorizontal },
-];
 
-const MONTH_TOTAL = 3650;
 
-const ALL_RECENT = [
-  { id: '1', title: 'Breakfast',    time: 'Today · 08:30 AM',    cat: 'Food',          amt: 120,  shared: false, recurring: false, hasReceipt: false },
-  { id: '2', title: 'Auto Ride',    time: 'Today · 09:15 AM',    cat: 'Transport',     amt: 80,   shared: false, recurring: false, hasReceipt: false },
-  { id: '3', title: 'Rent',         time: 'Today · 10:00 AM',    cat: 'Bills',         amt: 5000, shared: true,  recurring: true,  hasReceipt: true,  receiptUri: 'https://picsum.photos/400/600' },
-  { id: '4', title: 'Groceries',    time: 'Today · 11:45 AM',    cat: 'Shopping',      amt: 150,  shared: true,  recurring: false, hasReceipt: true,  receiptUri: 'https://picsum.photos/400/601' },
-  { id: '5', title: 'Mess Fee',     time: 'Yesterday · 04:20 PM',cat: 'Food',          amt: 2500, shared: false, recurring: true,  hasReceipt: false },
-  { id: '6', title: 'Movie Ticket', time: 'Yesterday · 07:00 PM',cat: 'Entertainment', amt: 220,  shared: true,  recurring: false, hasReceipt: false },
-  { id: '7', title: 'Laundry',      time: '18 Jun · 02:00 PM',   cat: 'Others',        amt: 100,  shared: false, recurring: true,  hasReceipt: false },
-  { id: '8', title: 'Metro Pass',   time: '15 Jun · 08:00 AM',   cat: 'Transport',     amt: 500,  shared: false, recurring: true,  hasReceipt: true,  receiptUri: 'https://picsum.photos/400/602' },
-  { id: '9', title: 'Dinner Pizza', time: '12 Jun · 09:30 PM',   cat: 'Food',          amt: 450,  shared: true,  recurring: false, hasReceipt: false },
-  { id: '10',title: 'New Shoes',    time: '10 Jun · 04:15 PM',   cat: 'Shopping',      amt: 2100, shared: false, recurring: false, hasReceipt: true,  receiptUri: 'https://picsum.photos/400/603' },
-  { id: '11',title: 'Phone Recharge',time:'05 Jun · 10:00 AM',   cat: 'Bills',         amt: 299,  shared: false, recurring: true,  hasReceipt: false },
-];
 
-const MONTHLY_DATA = [
-  { month: 'Jan', amt: 2800 }, { month: 'Feb', amt: 3200 }, { month: 'Mar', amt: 2600 },
-  { month: 'Apr', amt: 3800 }, { month: 'May', amt: 3100 }, { month: 'Jun', amt: 3650 },
-];
-const MAX_AMT = Math.max(...MONTHLY_DATA.map(m => m.amt));
+
+
+
+
+
 
 // ── Donut ─────────────────────────────────────────────────────────────────────
 const R = 46; const SW = 16; const SZ = (R + SW / 2 + 4) * 2; const CIRC = 2 * Math.PI * R;
-function Donut({ activeCategory }: { activeCategory: string | null }) {
+function Donut({ activeCategory, breakdown }: { activeCategory: string | null; breakdown: any[] }) {
   let cum = CIRC / 4;
-  const segs = BREAKDOWN.map(seg => {
+  const segs = breakdown.map(seg => {
     const full = (seg.pct / 100) * CIRC;
     const vis  = full - 4;
     const r = { ...seg, dl: vis, dg: CIRC - vis, off: cum, dimmed: activeCategory !== null && activeCategory !== seg.name };
@@ -364,9 +346,70 @@ type TabKey = 'Overview' | 'Categories' | 'Analytics';
 // MAIN SCREEN
 // ══════════════════════════════════════════════════════════════════════════════
 export default function ExpensesScreen({ navigation }: any) {
+  const [expenses, setExpenses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const [monthTotal, setMonthTotal] = useState(0);
+  const [breakdown, setBreakdown] = useState<any[]>([]);
+  const [monthlyData, setMonthlyData] = useState<any[]>([]);
+  const [maxAmt, setMaxAmt] = useState(0);
+
+  React.useEffect(() => {
+    const fetchExpenses = async () => {
+      try {
+        const res = await api.get('/tenant-expenses');
+        if (res.data && res.data.success) {
+          const fetched = res.data.data;
+          const formatted = fetched.map((e: any) => ({
+            id: e.expense_id.toString(),
+            title: e.title,
+            time: new Date(e.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
+            cat: e.category,
+            amt: Number(e.amount),
+            shared: false,
+            recurring: false,
+            hasReceipt: false,
+          }));
+          setExpenses(formatted);
+
+          let total = 0;
+          const catMap: Record<string, number> = {};
+          formatted.forEach((e: any) => {
+            total += e.amt;
+            catMap[e.cat] = (catMap[e.cat] || 0) + e.amt;
+          });
+          setMonthTotal(total);
+
+          const brk = Object.keys(catMap).map(k => ({
+            name: k,
+            amount: catMap[k],
+            pct: total > 0 ? Math.round((catMap[k] / total) * 100) : 0,
+            color: CATS[k] ? CATS[k].color : CATS['Others'].color,
+            bg: CATS[k] ? CATS[k].bg : CATS['Others'].bg,
+            Icon: CATS[k] ? CATS[k].Icon : CATS['Others'].Icon
+          })).sort((a: any,b: any) => b.amount - a.amount);
+          setBreakdown(brk);
+
+          const now = new Date();
+          const mData = Array.from({ length: 6 }, (_, i) => {
+            const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1);
+            return { month: d.toLocaleString('en-US', { month: 'short' }), amt: i === 5 ? total : 0 };
+          });
+          setMonthlyData(mData);
+          setMaxAmt(Math.max(...mData.map(m => m.amt), 1));
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchExpenses();
+  }, []);
+
   const [tab, setTab]                       = useState<TabKey>('Overview');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [budget, setBudget]                 = useState(5000);
+  const [budget, setBudget] = useState(0);
   const [showBudget, setShowBudget]         = useState(false);
   const [showGoal, setShowGoal]             = useState(false);
   const [showSettle, setShowSettle]         = useState(false);
@@ -374,11 +417,11 @@ export default function ExpensesScreen({ navigation }: any) {
   const [receiptUri, setReceiptUri]         = useState<string | null>(null);
   
   // Savings Goal State
-  const [goalName, setGoalName]             = useState('New Sneakers');
-  const [goalTarget, setGoalTarget]         = useState(3000);
-  const [goalSaved, setGoalSaved]           = useState(1950);
+  const [goalName, setGoalName]             = useState('Set Goal');
+  const [goalTarget, setGoalTarget]         = useState(0);
+  const [goalSaved, setGoalSaved]           = useState(0);
   const [showAddSavings, setShowAddSavings] = useState(false);
-  const goalProgress = Math.min(100, Math.round((goalSaved / goalTarget) * 100));
+  const goalProgress = goalTarget > 0 ? Math.min(100, Math.round((goalSaved / goalTarget) * 100)) : 0;
   const tabAnim                             = useRef(new Animated.Value(0)).current;
   const tabKeys: TabKey[]                   = ['Overview', 'Categories', 'Analytics'];
 
@@ -428,7 +471,7 @@ export default function ExpensesScreen({ navigation }: any) {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
         {tab === 'Overview' && (
-          <OverviewTab
+          <OverviewTab expenses={expenses} monthTotal={monthTotal} breakdown={breakdown}
             navigation={navigation}
             activeCategory={activeCategory}
             onToggleCategory={(name: string) => setActiveCategory(p => p === name ? null : name)}
@@ -444,8 +487,8 @@ export default function ExpensesScreen({ navigation }: any) {
             onAddSavings={() => setShowAddSavings(true)}
           />
         )}
-        {tab === 'Categories' && <CategoriesTab navigation={navigation} />}
-        {tab === 'Analytics'  && <AnalyticsTab />}
+        {tab === 'Categories' && <CategoriesTab expenses={expenses} monthTotal={monthTotal} breakdown={breakdown} navigation={navigation} />}
+        {tab === 'Analytics'  && <AnalyticsTab expenses={expenses} monthTotal={monthTotal} monthlyData={monthlyData} maxAmt={maxAmt} />}
       </ScrollView>
 
       {tab !== 'Analytics' && (
@@ -476,7 +519,7 @@ export default function ExpensesScreen({ navigation }: any) {
 // OVERVIEW TAB
 // ══════════════════════════════════════════════════════════════════════════════
 function OverviewTab({ 
-  navigation, activeCategory, onToggleCategory, onSettleUp, onReceiptOpen, budget, onEditBudget,
+  expenses, monthTotal, breakdown, navigation, activeCategory, onToggleCategory, onSettleUp, onReceiptOpen, budget, onEditBudget,
   goalName, goalTarget, goalProgress, goalSaved, onEditGoal, onAddSavings
 }: any) {
   const [searchQ, setSearchQ]         = useState('');
@@ -484,12 +527,12 @@ function OverviewTab({
   const [showFilter, setShowFilter]   = useState(false);
   const [catFilter, setCatFilter]     = useState<string | null>(null);
 
-  const budgetPct  = Math.round((MONTH_TOTAL / budget) * 100);
+  const budgetPct  = budget > 0 ? Math.round((monthTotal / budget) * 100) : 0;
   const isWarn     = budgetPct >= 80;
   const barColor   = budgetPct >= 100 ? DANGER : isWarn ? WARN_COLOR : BLUE;
 
   const filtered = useMemo(() => {
-    let r = ALL_RECENT;
+    let r = expenses;
     if (activeCategory) r = r.filter(x => x.cat === activeCategory);
     if (catFilter)      r = r.filter(x => x.cat === catFilter);
     if (searchQ.trim()) { const q = searchQ.toLowerCase(); r = r.filter(x => x.title.toLowerCase().includes(q) || x.cat.toLowerCase().includes(q)); }
@@ -526,7 +569,7 @@ function OverviewTab({
           </Svg>
           {/* Inner Text */}
           <View style={{ position: 'absolute', justifyContent: 'center', alignItems: 'center' }}>
-            <Text style={{ fontSize: 18, fontWeight: '800', color: TEXT_DARK }}>₹{MONTH_TOTAL}</Text>
+            <Text style={{ fontSize: 18, fontWeight: '800', color: TEXT_DARK }}>₹{monthTotal}</Text>
             <Text style={{ fontSize: 10, color: TEXT_MID, marginTop: 2 }}>of ₹{budget}</Text>
           </View>
         </View>
@@ -539,7 +582,7 @@ function OverviewTab({
           
           <View style={[s.trendRow, { flex: 1, paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#ECFDF5', borderRadius: 16, justifyContent: 'center' }]}>
             <Text style={[s.heroTrendTxt, { color: '#059669', fontWeight: '700' }]}>
-              ₹{Math.round(Math.max(budget - MONTH_TOTAL, 0) / (30 - new Date().getDate() + 1))} safe to spend today
+              ₹{Math.round(Math.max(budget - monthTotal, 0) / (30 - new Date().getDate() + 1))} safe to spend today
             </Text>
           </View>
         </View>
@@ -609,8 +652,8 @@ function OverviewTab({
         </View>
         <View style={{ flex: 1 }}>
           <Text style={s.insightLabel}>JUN INSIGHT</Text>
-          <Text style={s.insightTitle}>🔥 Highest spend: 13 Jun, ₹460</Text>
-          <Text style={s.insightSub}>Top category · Food at 43% of total</Text>
+          <Text style={s.insightTitle}>No insights yet.</Text>
+          <Text style={s.insightSub}>Check back after adding more expenses.</Text>
         </View>
         <ChevronRight size={16} color={WARN_COLOR} strokeWidth={2.5} />
       </TouchableOpacity>
@@ -637,12 +680,12 @@ function OverviewTab({
         <View style={s.splitAmtRow}>
           <View style={s.splitAmtBox}>
             <Text style={s.splitAmtLabel}>To Pay</Text>
-            <Text style={[s.splitAmtVal, { color: DANGER }]}>₹ 350</Text>
+            <Text style={[s.splitAmtVal, { color: DANGER }]}>₹0</Text>
           </View>
           <View style={s.splitAmtDivider} />
           <View style={s.splitAmtBox}>
             <Text style={s.splitAmtLabel}>To Receive</Text>
-            <Text style={[s.splitAmtVal, { color: SUCCESS }]}>₹ 120</Text>
+            <Text style={[s.splitAmtVal, { color: SUCCESS }]}>₹0</Text>
           </View>
         </View>
       </View>
@@ -769,7 +812,7 @@ function OverviewTab({
 // ══════════════════════════════════════════════════════════════════════════════
 // CATEGORIES TAB
 // ══════════════════════════════════════════════════════════════════════════════
-function DonutChart() {
+function DonutChart({ breakdown, monthTotal }: { breakdown: any[]; monthTotal: number }) {
   const size = 180;
   const strokeWidth = 24;
   const radius = (size - strokeWidth) / 2;
@@ -781,7 +824,7 @@ function DonutChart() {
     <View style={{ alignItems: 'center', justifyContent: 'center', height: size, marginVertical: 24 }}>
       <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         <G rotation="-90" origin={`${size/2}, ${size/2}`}>
-          {BREAKDOWN.map((cat, i) => {
+          {breakdown.map((cat, i) => {
             const strokeDashoffset = circumference - (cat.pct / 100) * circumference;
             const angle = (cat.pct / 100) * 360;
             const currentRotation = startAngle;
@@ -808,30 +851,30 @@ function DonutChart() {
       </Svg>
       <View style={{ position: 'absolute', alignItems: 'center' }}>
         <Text style={{ fontSize: 12, color: TEXT_LIGHT, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' }}>Total</Text>
-        <Text style={{ fontSize: 24, fontWeight: '800', color: TEXT_DARK, marginTop: 2 }}>₹3,650</Text>
+        <Text style={{ fontSize: 24, fontWeight: '800', color: TEXT_DARK, marginTop: 2 }}>₹{monthTotal.toLocaleString('en-IN')}</Text>
       </View>
     </View>
   );
 }
 
-function CategoriesTab({ navigation }: any) {
-  const MAX = Math.max(...BREAKDOWN.map(c => c.amount));
+function CategoriesTab({ expenses, monthTotal, breakdown, navigation }: any) {
+  const MAX = Math.max(...breakdown.map(c => c.amount));
   return (
     <>
       <View style={s.statRow}>
-        <View style={s.statCell}><Text style={s.statVal}>₹3,650</Text><Text style={s.statLbl}>Total</Text></View>
+        <View style={s.statCell}><Text style={s.statVal}>₹{monthTotal.toLocaleString('en-IN')}</Text><Text style={s.statLbl}>Total</Text></View>
         <View style={s.statLine} />
-        <View style={s.statCell}><Text style={s.statVal}>{BREAKDOWN.length}</Text><Text style={s.statLbl}>Categories</Text></View>
+        <View style={s.statCell}><Text style={s.statVal}>{breakdown.length}</Text><Text style={s.statLbl}>Categories</Text></View>
         <View style={s.statLine} />
         <View style={s.statCell}><Text style={[s.statVal, { color: '#EF5350' }]}>Food</Text><Text style={s.statLbl}>Top Spend</Text></View>
       </View>
 
       <View style={s.card}>
         <Text style={s.cardTitle}>Spending Breakdown</Text>
-        <DonutChart />
+        <DonutChart breakdown={breakdown} monthTotal={monthTotal} />
         
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12, marginTop: 8, marginBottom: 12 }}>
-          {BREAKDOWN.map(cat => (
+          {breakdown.map((cat: any) => (
             <View key={cat.name} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: cat.color }} />
               <Text style={{ fontSize: 11, color: TEXT_MID, fontWeight: '600' }}>{cat.name}</Text>
@@ -851,11 +894,11 @@ function CategoriesTab({ navigation }: any) {
       </View>
 
       <View style={s.txnCard}>
-        {BREAKDOWN.map((cat, i) => {
+        {breakdown.map((cat, i) => {
           const meta = CATS[cat.name] || CATS.Others;
           const Icon = meta.Icon;
           return (
-            <TouchableOpacity key={cat.name} style={[s.txnRow, i < BREAKDOWN.length - 1 && s.txnDivider]}
+            <TouchableOpacity key={cat.name} style={[s.txnRow, i < breakdown.length - 1 && s.txnDivider]}
               onPress={() => navigation.navigate('CategoryDetail', { categoryName: cat.name, spent: cat.amount, totalPct: cat.pct, color: cat.color, bg: cat.bg })}
               activeOpacity={0.7}
             >
@@ -879,14 +922,14 @@ function CategoriesTab({ navigation }: any) {
 // ══════════════════════════════════════════════════════════════════════════════
 // ANALYTICS TAB
 // ══════════════════════════════════════════════════════════════════════════════
-function TrendLine() {
-  const max = Math.max(...MONTHLY_DATA.map(d => d.amt));
-  
+function TrendLine({ monthlyData }: { monthlyData: any[] }) {
+  const max = Math.max(...monthlyData.map(d => d.amt), 1);
+
   return (
     <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 160, paddingTop: 20 }}>
-      {MONTHLY_DATA.map((d, i) => {
+      {monthlyData.map((d, i) => {
         const h = Math.max(12, (d.amt / max) * 110);
-        const isCurrent = i === MONTHLY_DATA.length - 1;
+        const isCurrent = i === monthlyData.length - 1;
         return (
           <View key={i} style={{ alignItems: 'center' }}>
             <Text style={{ fontSize: 9, color: isCurrent ? BLUE : TEXT_LIGHT, fontWeight: '700', marginBottom: 6 }}>
@@ -927,8 +970,10 @@ function WeeklyChart() {
   );
 }
 
-function AnalyticsTab() {
-  const mom = ((MONTHLY_DATA[5].amt - MONTHLY_DATA[4].amt) / MONTHLY_DATA[4].amt * 100).toFixed(1);
+function AnalyticsTab({ expenses, monthTotal, monthlyData, maxAmt }: any) {
+  const prevAmt = monthlyData[4]?.amt || 0;
+  const curAmt  = monthlyData[5]?.amt || 0;
+  const mom = prevAmt > 0 ? ((curAmt - prevAmt) / prevAmt * 100).toFixed(1) : '0.0';
   const isUp = parseFloat(mom) > 0;
 
   return (
@@ -943,7 +988,7 @@ function AnalyticsTab() {
 
       <Text style={[s.sectionTitle, { marginBottom: 10 }]}>6-Month Trend</Text>
       <View style={[s.card, { marginBottom: 16 }]}>
-        <TrendLine />
+        <TrendLine monthlyData={monthlyData} />
       </View>
 
       <Text style={[s.sectionTitle, { marginBottom: 10 }]}>This Week's Activity</Text>

@@ -41,7 +41,7 @@ const SLIDES: Slide[] = [
   {
     key: 'welcome',
     badge: 'sparkles',
-    image: require('../../assets/onboarding/home.jpeg'),
+    image: require('../../assets/onboarding/slide2.jpg'), // 01 Dashboard
     eyebrow: 'WELCOME',
     title: 'Manage your PG,\nthe smart way',
     subtitle: 'Everything you need to run your PG — tenants, rooms, fees and reports — in one beautiful app.',
@@ -51,7 +51,7 @@ const SLIDES: Slide[] = [
   {
     key: 'students',
     badge: 'person-add',
-    image: require('../../assets/onboarding/more.jpeg'),
+    image: require('../../assets/onboarding/slide1.jpg'), // 02 Manage Students
     eyebrow: 'STUDENTS & ROOMS',
     title: 'Tenants & rooms\nat your fingertips',
     subtitle: 'Add tenants in seconds, track room occupancy live, and never lose a record again.',
@@ -59,25 +59,25 @@ const SLIDES: Slide[] = [
     chips: ['Live occupancy', 'Quick add', 'Room map'],
   },
   {
-    key: 'fees',
-    badge: 'cash',
-    image: require('../../assets/onboarding/dues.jpeg'),
-    eyebrow: 'FEES & DUES',
-    title: 'Collect fees &\ntrack every rupee',
-    subtitle: 'Record payments, auto-generate dues, send reminders and download receipts instantly.',
-    gradient: ['#00B074', '#0E9F6E', '#047857'],
-    chips: ['Auto dues', 'Reminders', 'Receipts'],
+    key: 'rooms',
+    badge: 'business',
+    image: require('../../assets/onboarding/slide3.jpg'), // 03 Room Status
+    eyebrow: 'ROOM STATUS',
+    title: 'Rooms at a\nQuick View',
+    subtitle: 'Know which rooms are vacant, occupied or full across all floors instantly.',
+    gradient: ['#0EA5E9', '#0284C7', '#0369A1'],
+    chips: ['Floor views', 'Live status', 'Smart filters'],
   },
   {
-    key: 'reports',
-    badge: 'trending-up',
-    image: require('../../assets/onboarding/overview.jpeg'),
-    eyebrow: 'REPORTS',
-    title: 'Insights that\ngrow your business',
-    subtitle: 'See income, expenses and pending dues at a glance with clean, real-time dashboards.',
-    gradient: ['#FF7A59', '#F4511E', '#C53D13'],
-    chips: ['Income', 'Expenses', 'Overview'],
-  },
+    key: 'collections',
+    badge: 'cash',
+    image: require('../../assets/onboarding/slide4.jpg'), // 04 Pending Dues
+    eyebrow: 'COLLECTIONS',
+    title: 'Track & Collect\nPending Dues Effortlessly',
+    subtitle: 'Stay on top of outstanding payments, send reminders and collect dues faster – all in one place.',
+    gradient: ['#F59E0B', '#D97706', '#B45309'],
+    chips: ['Overdue alerts', 'Reminders', 'Quick collect'],
+  }
 ];
 
 const AUTO_ADVANCE_MS = 4000;
@@ -187,10 +187,11 @@ export default function OnboardingScreen({ navigation }: any) {
               extrapolate: 'clamp',
             });
             return (
-              <Animated.View
-                key={i}
-                style={[styles.dot, { opacity, transform: [{ scaleX }] }]}
-              />
+              <View key={i} style={styles.dotContainer}>
+                <Animated.View
+                  style={[styles.dot, { opacity, transform: [{ scaleX }] }]}
+                />
+              </View>
             );
           })}
         </View>
@@ -224,7 +225,6 @@ export default function OnboardingScreen({ navigation }: any) {
   );
 }
 
-// ─── Single slide: contained preview board on top, copy below ───────────────────
 function Panel({
   item,
   i,
@@ -236,92 +236,24 @@ function Panel({
   scrollX: Animated.Value;
   insets: { top: number };
 }) {
-  const inputRange = [(i - 1) * SCREEN_W, i * SCREEN_W, (i + 1) * SCREEN_W];
-
-  // Parallax inside the board so the hero drifts as you swipe.
-  const iconScale = scrollX.interpolate({
-    inputRange,
-    outputRange: [0.7, 1, 0.7],
-    extrapolate: 'clamp',
-  });
-  const iconTranslate = scrollX.interpolate({
-    inputRange,
-    outputRange: [SCREEN_W * 0.2, 0, -SCREEN_W * 0.2],
-    extrapolate: 'clamp',
-  });
-  const textTranslate = scrollX.interpolate({
-    inputRange,
-    outputRange: [SCREEN_W * 0.35, 0, -SCREEN_W * 0.35],
-    extrapolate: 'clamp',
-  });
-  const textOpacity = scrollX.interpolate({
-    inputRange,
-    outputRange: [0, 1, 0],
-    extrapolate: 'clamp',
-  });
-
   return (
-    <View style={styles.panel}>
-      {/* ── Preview board (contained card, not full-bleed) ── */}
-      <View style={[styles.board, { height: BOARD_HEIGHT, paddingTop: insets.top }]}>
-        <LinearGradient
-          colors={item.gradient}
-          start={{ x: 0.1, y: 0 }}
-          end={{ x: 0.9, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-        {/* Decorative floating blobs clipped inside the board */}
-        <View style={[styles.blob, styles.blobTop]} />
-        <View style={[styles.blob, styles.blobBottom]} />
-
-        {/* Hero: real app screenshot inside a phone-frame */}
-        <Animated.View
-          style={[
-            styles.heroWrap,
-            { transform: [{ scale: iconScale }, { translateX: iconTranslate }] },
-          ]}
-        >
-          <View style={styles.phoneFrame}>
-            <Image source={item.image} style={styles.phoneImage} resizeMode="cover" />
-            <View style={styles.heroBadge}>
-              <Ionicons name={item.badge} size={18} color={item.gradient[1]} />
-            </View>
-          </View>
-
-          <View style={styles.chips}>
-            {item.chips.map((c) => (
-              <View key={c} style={styles.chip}>
-                <Ionicons name="checkmark-circle" size={13} color={COLORS.white} />
-                <Text style={styles.chipText}>{c}</Text>
-              </View>
-            ))}
-          </View>
-        </Animated.View>
-      </View>
-
-      {/* ── Copy below the board ── */}
-      <Animated.View
-        style={[
-          styles.copy,
-          { opacity: textOpacity, transform: [{ translateX: textTranslate }] },
-        ]}
-      >
-        <Text style={styles.eyebrow}>{item.eyebrow}</Text>
-        <Text style={styles.title}>{item.title}</Text>
-        <Text style={styles.subtitle}>{item.subtitle}</Text>
-      </Animated.View>
+    <View style={[styles.panel, { backgroundColor: '#F2EEFC', paddingTop: insets.top + 40, paddingBottom: 130 }]}>
+      <Image
+        source={item.image}
+        style={{ flex: 1, width: '100%', resizeMode: 'contain' }}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
+  container: { flex: 1, backgroundColor: '#F2EEFC' },
 
   // Slide
   panel: {
     width: SCREEN_W,
     height: SCREEN_H,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#F2EEFC',
   },
 
   // Preview board
@@ -473,7 +405,7 @@ const styles = StyleSheet.create({
   skipText: {
     color: COLORS.white,
     fontSize: FONT.base,
-    fontWeight: FONT.semiBold,
+    fontWeight: 'bold', // User requested bold
   },
 
   // Footer
@@ -488,8 +420,12 @@ const styles = StyleSheet.create({
   dots: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
     marginBottom: SPACING.xl,
+  },
+  dotContainer: {
+    width: 28, // Active dot will be 24px wide, leaving a nice 4px gap.
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   dot: {
     height: 8,

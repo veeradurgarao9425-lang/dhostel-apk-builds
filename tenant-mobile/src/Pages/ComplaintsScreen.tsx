@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  StyleSheet, Text, TouchableOpacity, View, ScrollView, Image, StatusBar, Modal, TextInput, KeyboardAvoidingView, Platform, Dimensions
+  StyleSheet, Text, TouchableOpacity, View, ScrollView, Image, StatusBar, Modal, TextInput, KeyboardAvoidingView, Platform, Dimensions, ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, Plus, FileImage, X, UploadCloud, ChevronDown, Calendar, CheckCircle2, Search, Filter, Wrench, ClipboardList, Check, Edit2 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { CustomDateTimePicker } from '../components/pickers/CustomDateTimePicker';
 import { useAuth } from '../context/AuthContext';
+import api from '../services/api';
 
 const { width } = Dimensions.get('window');
 
@@ -30,13 +31,6 @@ const IN_PROGRESS_BG = '#E0E7FF';
 type FilterTab = 'All' | 'Open' | 'Resolved';
 const FILTER_TABS: FilterTab[] = ['All', 'Open', 'Resolved'];
 
-// Mock data
-const COMPLAINTS = [
-  { id: '1', title: 'WIFI Not Working', date: '14 May 2026, 09:30 AM', status: 'Open', category: 'WiFi', priority: 'High', note: 'Internet is very slow and keeps disconnecting in my room.' },
-  { id: '2', title: 'Water Leakage', date: '13 May 2026, 04:20 PM', status: 'In Progress', category: 'Maintenance', priority: 'Medium', note: 'There is a water leakage in room near the window.' },
-  { id: '3', title: 'Fan Not Working', date: '12 May 2026, 11:15 AM', status: 'Resolved', category: 'Electrical', priority: 'Low', note: 'Fan makes noise.' },
-  { id: '4', title: 'Mess Food Issue', date: '10 May 2026, 08:00 PM', status: 'Resolved', category: 'Food', priority: 'High', note: 'Food was too spicy today.' },
-];
 
 const statusConfig: Record<string, { bg: string; text: string; }> = {
   Open: { bg: WARN_BG, text: WARN },
@@ -110,7 +104,7 @@ function ComplaintDetailView({ complaint, onClose }: { complaint: any; onClose: 
   );
 }
 
-function StepperForm({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+function StepperForm({ visible, onClose, onSubmit, hostelId }: { visible: boolean; onClose: () => void; onSubmit: () => void; hostelId?: number }) {
   const [step, setStep] = useState(1);
   const [priority, setPriority] = useState('Medium');
   const [category, setCategory] = useState('');
@@ -120,6 +114,7 @@ function StepperForm({ visible, onClose }: { visible: boolean; onClose: () => vo
   const [prefDate, setPrefDate] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [images, setImages] = useState<string[]>([]);
+  const [submitting, setSubmitting] = useState(false);
   const categories = ['Maintenance', 'WiFi', 'Electrical', 'Food', 'Cleaning', 'Other'];
   
   // Reset form when opened
@@ -317,8 +312,28 @@ function StepperForm({ visible, onClose }: { visible: boolean; onClose: () => vo
           </ScrollView>
 
           <View style={[s.formFooter, { paddingBottom: Platform.OS === 'ios' ? 40 : 24 }]}>
-            <TouchableOpacity style={[s.btnBlue, { flex: 1, paddingVertical: 14 }]} onPress={step < 3 ? nextStep : onClose}>
-              <Text style={s.btnBlueTxt}>{step < 3 ? 'Next' : 'Submit'}</Text>
+            <TouchableOpacity
+              style={[s.btnBlue, { flex: 1, paddingVertical: 14 }, submitting && { opacity: 0.6 }]}
+              disabled={submitting}
+              onPress={step < 3 ? nextStep : async () => {
+                setSubmitting(true);
+                try {
+                  await api.post('/api/complaints/tenant', {
+                    hostel_id: hostelId,
+                    category,
+                    title,
+                    description: desc,
+                  });
+                  onSubmit();
+                  onClose();
+                } catch (e) {
+                  console.error('Failed to submit complaint', e);
+                } finally {
+                  setSubmitting(false);
+                }
+              }}
+            >
+              {submitting ? <ActivityIndicator color={WHITE} /> : <Text style={s.btnBlueTxt}>{step < 3 ? 'Next' : 'Submit'}</Text>}
             </TouchableOpacity>
           </View>
         </SafeAreaView>
@@ -360,33 +375,64 @@ export default function ComplaintsScreen({ navigation }: any) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [dateFilter, setDateFilter] = useState('Any time');
-  
+  const [complaints, setComplaints] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchComplaints = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/api/complaints/tenant');
+      setComplaints(res.data);
+    } catch (e) {
+      console.error('Failed to fetch complaints', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchComplaints();
+  }, []);
+
   if (selectedComplaint) {
     return <ComplaintDetailView complaint={selectedComplaint} onClose={() => setSelectedComplaint(null)} />;
   }
 
-  const filtered = COMPLAINTS.filter((c) => {
-    const matchesTab = activeTab === 'All' || 
-                      (activeTab === 'Open' && (c.status === 'Open' || c.status === 'In Progress')) ||
-                      (activeTab === 'Resolved' && c.status === 'Resolved');
-    
-    const matchesSearch = c.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          c.category.toLowerCase().includes(searchQuery.toLowerCase());
-                          
+  const filtered = complaints.filter((c) => {
+    const status = c.status ?? '';
+    const matchesTab = activeTab === 'All' ||
+                      (activeTab === 'Open' && (status === 'Open' || status === 'In Progress')) ||
+                      (activeTab === 'Resolved' && status === 'Resolved');
+
+    const matchesSearch = (c.title ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (c.category ?? '').toLowerCase().includes(searchQuery.toLowerCase());
+
     let matchesDate = true;
     if (dateFilter !== 'Any time') {
-       // Mock date filtering logic for visual effect
-       // Since the dates are strings like '14 May 2026, 09:30 AM', 
-       // this will just be a simulated effect (hide everything if strict, or show if loose).
-       if (dateFilter === 'Today') matchesDate = false; 
+      if (dateFilter === 'Today') {
+        const today = new Date().toISOString().slice(0, 10);
+        matchesDate = (c.created_at ?? '').startsWith(today);
+      } else if (dateFilter === 'Last 7 Days') {
+        const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        matchesDate = (c.created_at ?? '') >= cutoff;
+      } else if (dateFilter === 'This Month') {
+        const now = new Date();
+        const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        matchesDate = (c.created_at ?? '').startsWith(monthStr);
+      } else if (dateFilter === 'Last Month') {
+        const now = new Date();
+        const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const lastMonthStr = `${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, '0')}`;
+        matchesDate = (c.created_at ?? '').startsWith(lastMonthStr);
+      }
     }
-                          
+
     return matchesTab && matchesSearch && matchesDate;
   });
 
-  const totalCount = COMPLAINTS.length;
-  const pendingCount = COMPLAINTS.filter(c => c.status === 'Open' || c.status === 'In Progress').length;
-  const resolvedCount = COMPLAINTS.filter(c => c.status === 'Resolved').length;
+  const totalCount = complaints.length;
+  const pendingCount = complaints.filter(c => c.status === 'Open' || c.status === 'In Progress').length;
+  const resolvedCount = complaints.filter(c => c.status === 'Resolved').length;
 
   return (
     <View style={s.root}>
@@ -441,36 +487,55 @@ export default function ComplaintsScreen({ navigation }: any) {
       </View>
 
       {/* ── LIST ── */}
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.listContent}>
-        {filtered.map((c, i) => {
-          const status = statusConfig[c.status];
-          return (
-            <TouchableOpacity
-              key={c.id}
-              style={s.listCard}
-              onPress={() => setSelectedComplaint(c)}
-              activeOpacity={0.7}
-            >
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                <View>
-                  <Text style={s.cardTitle}>{c.title}</Text>
-                  <Text style={s.cardDate}>{c.date}</Text>
-                </View>
-                <View style={[s.statusPill, { backgroundColor: status.bg }]}>
-                  <Text style={[s.statusPillTxt, { color: status.text }]}>{c.status}</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+      {loading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={BLUE} />
+        </View>
+      ) : (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.listContent}>
+          {filtered.length === 0 ? (
+            <View style={{ alignItems: 'center', paddingTop: 60 }}>
+              <Text style={{ fontSize: 15, color: TEXT_MID, fontWeight: '600' }}>No complaints found</Text>
+            </View>
+          ) : (
+            filtered.map((c) => {
+              const statusKey = c.status ?? 'Open';
+              const status = statusConfig[statusKey] ?? statusConfig['Open'];
+              const dateStr = c.created_at ? new Date(c.created_at).toLocaleString() : '';
+              return (
+                <TouchableOpacity
+                  key={c.complaint_id ?? c.id}
+                  style={s.listCard}
+                  onPress={() => setSelectedComplaint({ ...c, date: dateStr, note: c.description })}
+                  activeOpacity={0.7}
+                >
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                    <View>
+                      <Text style={s.cardTitle}>{c.title}</Text>
+                      <Text style={s.cardDate}>{dateStr}</Text>
+                    </View>
+                    <View style={[s.statusPill, { backgroundColor: status.bg }]}>
+                      <Text style={[s.statusPillTxt, { color: status.text }]}>{statusKey}</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              );
+            })
+          )}
+        </ScrollView>
+      )}
 
       {/* ── FLOATING ADD BTN ── */}
       <TouchableOpacity style={s.fab} onPress={() => setShowForm(true)} activeOpacity={0.85}>
         <Plus size={24} color={WHITE} strokeWidth={3} />
       </TouchableOpacity>
 
-      <StepperForm visible={showForm} onClose={() => setShowForm(false)} />
+      <StepperForm
+        visible={showForm}
+        onClose={() => setShowForm(false)}
+        onSubmit={fetchComplaints}
+        hostelId={user?.hostel_id}
+      />
 
       {/* Mock List Filter Modal */}
       <Modal visible={showFilterModal} transparent animationType="fade">

@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  ScrollView, StatusBar, Modal, TextInput
+  ScrollView, StatusBar, Modal, TextInput, ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Clock, Calendar, CheckCircle, Ticket, QrCode, X } from 'lucide-react-native';
+import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const BLUE      = '#2245D4';
 const BLUE_SOFT = '#EEF2FF';
@@ -23,21 +25,71 @@ const WARN_BG   = '#FEF3C7';
 type PassStatus = 'none' | 'pending' | 'approved';
 
 export default function GatePassScreen({ navigation }: any) {
+  const { user } = useAuth();
   const [status, setStatus] = useState<PassStatus>('none');
   const [showForm, setShowForm] = useState(false);
-  
+  const [leaveRequests, setLeaveRequests] = useState<any[]>([]);
+  const [latestRequest, setLatestRequest] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
   // Form State
   const [reason, setReason] = useState('');
   const [returnTime, setReturnTime] = useState('');
 
-  const submitRequest = () => {
-    setShowForm(false);
-    setStatus('pending');
-    
-    // Simulate warden approval after 3 seconds
-    setTimeout(() => {
-      setStatus('approved');
-    }, 3000);
+  const fetchLeaveRequests = async () => {
+    try {
+      const res = await api.get('/requests/leave/tenant');
+      const requests: any[] = res.data || [];
+      setLeaveRequests(requests);
+
+      if (requests.length === 0) {
+        setStatus('none');
+        setLatestRequest(null);
+        return;
+      }
+
+      // Sort by created_at descending to get the most recent
+      const sorted = [...requests].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      const latest = sorted[0];
+      setLatestRequest(latest);
+
+      if (latest.status === 'Approved') {
+        setStatus('approved');
+      } else if (latest.status === 'Pending') {
+        setStatus('pending');
+      } else {
+        // Rejected or unknown — treat as no active pass
+        setStatus('none');
+      }
+    } catch {
+      setStatus('none');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLeaveRequests();
+  }, []);
+
+  const submitRequest = async () => {
+    if (!reason.trim() || !returnTime.trim()) return;
+    setSubmitting(true);
+    try {
+      await api.post('/requests/leave/tenant', { reason: reason.trim(), return_time: returnTime.trim() });
+      setShowForm(false);
+      setReason('');
+      setReturnTime('');
+      await fetchLeaveRequests();
+      setStatus('pending');
+    } catch {
+      // Keep form open on error
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -60,8 +112,14 @@ export default function GatePassScreen({ navigation }: any) {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 20, flexGrow: 1 }}>
-        
-        {status === 'none' && (
+
+        {loading && (
+          <View style={s.emptyState}>
+            <ActivityIndicator size="large" color={BLUE} />
+          </View>
+        )}
+
+        {!loading && status === 'none' && (
           <View style={s.emptyState}>
             <View style={s.iconWrap}><Ticket size={40} color={BLUE} /></View>
             <Text style={s.emptyTitle}>No Active Pass</Text>
@@ -73,7 +131,7 @@ export default function GatePassScreen({ navigation }: any) {
           </View>
         )}
 
-        {status === 'pending' && (
+        {!loading && status === 'pending' && (
           <View style={s.emptyState}>
             <View style={[s.iconWrap, { backgroundColor: WARN_BG }]}><Clock size={40} color={WARN} /></View>
             <Text style={s.emptyTitle}>Request Pending</Text>
@@ -81,7 +139,7 @@ export default function GatePassScreen({ navigation }: any) {
           </View>
         )}
 
-        {status === 'approved' && (
+        {!loading && status === 'approved' && (
           <View style={s.ticketWrapper}>
             <View style={s.ticketTop}>
               <View style={s.ticketHeaderRow}>
@@ -91,18 +149,18 @@ export default function GatePassScreen({ navigation }: any) {
                   <Text style={s.approvedTxt}>APPROVED</Text>
                 </View>
               </View>
-              
-              <Text style={s.ticketName}>Rahul Kumar</Text>
-              <Text style={s.ticketRoom}>Room 204 · Block A</Text>
+
+              <Text style={s.ticketName}>{user?.name || ''}</Text>
+              <Text style={s.ticketRoom}>{user?.room_number ? `Room ${user.room_number}` : ''}</Text>
 
               <View style={s.ticketDetailsRow}>
                 <View style={{ flex: 1 }}>
                   <Text style={s.ticketLbl}>OUTING REASON</Text>
-                  <Text style={s.ticketVal}>{reason || 'Going to movie'}</Text>
+                  <Text style={s.ticketVal}>{latestRequest?.reason || ''}</Text>
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={s.ticketLbl}>EXPECTED RETURN</Text>
-                  <Text style={s.ticketVal}>{returnTime || '11:30 PM'}</Text>
+                  <Text style={s.ticketVal}>{latestRequest?.return_time || ''}</Text>
                 </View>
               </View>
             </View>
@@ -153,8 +211,15 @@ export default function GatePassScreen({ navigation }: any) {
               onChangeText={setReturnTime} 
             />
 
-            <TouchableOpacity style={[s.primaryBtn, { marginTop: 32 }]} onPress={submitRequest}>
-              <Text style={s.primaryBtnTxt}>Submit Request</Text>
+            <TouchableOpacity
+              style={[s.primaryBtn, { marginTop: 32 }, submitting && { opacity: 0.7 }]}
+              onPress={submitRequest}
+              disabled={submitting}
+            >
+              {submitting
+                ? <ActivityIndicator color={WHITE} />
+                : <Text style={s.primaryBtnTxt}>Submit Request</Text>
+              }
             </TouchableOpacity>
           </View>
         </View>

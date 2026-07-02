@@ -1,65 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
   ScrollView,
-  Platform
+  Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowLeft, ChefHat, Info } from 'lucide-react-native';
-import { colors, radius, spacing, font, shadow } from '../theme';
+import { colors, radius, spacing, shadow } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 
 const BLUE = '#2245D4';
 const BLUE_DARK = '#1A36A8';
 
-// ── 7-day menu data ───────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 type MealSlot = { items: string; time: string };
 type DayMenu = { breakfast: MealSlot; lunch: MealSlot; dinner: MealSlot };
+type WeekMenu = Record<string, DayMenu>;
 
-const WEEK_MENU: Record<string, DayMenu> = {
-  Mon: {
-    breakfast: { items: 'Idli, Sambar, Chutney', time: '8:00 AM – 10:00 AM' },
-    lunch: { items: 'Rice, Dal, Veg Curry, Salad', time: '12:00 PM – 2:00 PM' },
-    dinner: { items: 'Chapathi, Paneer Curry, Pickle', time: '8:00 PM – 11:00 PM' },
-  },
-  Tue: {
-    breakfast: { items: 'Poha, Boiled Eggs, Tea/Coffee', time: '8:00 AM – 10:00 AM' },
-    lunch: { items: 'Curd Rice, Sambar, Papad', time: '12:00 PM – 2:00 PM' },
-    dinner: { items: 'Roti, Dal Fry, Jeera Rice', time: '8:00 PM – 11:00 PM' },
-  },
-  Wed: {
-    breakfast: { items: 'Upma, Coconut Chutney, Juice', time: '8:00 AM – 10:00 AM' },
-    lunch: { items: 'Biryani, Raita, Papad', time: '12:00 PM – 2:00 PM' },
-    dinner: { items: 'Puri, Aloo Sabzi, Dal', time: '8:00 PM – 11:00 PM' },
-  },
-  Thu: {
-    breakfast: { items: 'Dosa, Sambar, Chutney', time: '8:00 AM – 10:00 AM' },
-    lunch: { items: 'Rice, Rasam, Fry, Salad', time: '12:00 PM – 2:00 PM' },
-    dinner: { items: 'Chapathi, Chana Masala, Rice', time: '8:00 PM – 11:00 PM' },
-  },
-  Fri: {
-    breakfast: { items: 'Bread Toast, Omelette, Coffee', time: '8:00 AM – 10:00 AM' },
-    lunch: { items: 'Pulao, Dal Tadka, Raita', time: '12:00 PM – 2:00 PM' },
-    dinner: { items: 'Roti, Matar Paneer, Rice, Pickle', time: '8:00 PM – 11:00 PM' },
-  },
-  Sat: {
-    breakfast: { items: 'Pongal, Vadai, Sambar', time: '8:00 AM – 10:00 AM' },
-    lunch: { items: 'Chicken Curry, Rice, Raita', time: '12:00 PM – 2:00 PM' },
-    dinner: { items: 'Naan, Butter Chicken / Paneer', time: '8:00 PM – 11:00 PM' },
-  },
-  Sun: {
-    breakfast: { items: 'Aloo Paratha, Curd, Pickle', time: '8:00 AM – 10:00 AM' },
-    lunch: { items: 'Special Biryani, Raita, Sweet', time: '12:00 PM – 2:00 PM' },
-    dinner: { items: 'Chapathi, Dal Makhani, Rice', time: '8:00 PM – 11:00 PM' },
-  },
+// Map full day names from the API to the 3-letter keys used in the UI
+const DAY_NAME_TO_SHORT: Record<string, string> = {
+  Monday: 'Mon', Tuesday: 'Tue', Wednesday: 'Wed', Thursday: 'Thu',
+  Friday: 'Fri', Saturday: 'Sat', Sunday: 'Sun',
 };
 
-const DEFAULT_MENU: Record<string, DayMenu> = JSON.parse(JSON.stringify(WEEK_MENU));
+// Default meal times (API does not provide times)
+const MEAL_TIMES = {
+  breakfast: '8:00 AM – 10:00 AM',
+  lunch: '12:00 PM – 2:00 PM',
+  dinner: '8:00 PM – 11:00 PM',
+};
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const DATES: Record<string, string> = {
@@ -77,8 +52,38 @@ const MEALS = [
 ];
 
 export default function FullMenuScreen({ navigation }: any) {
+  const { user } = useAuth();
   const [selectedDay, setSelectedDay] = useState<string>('Mon');
-  const dayMenu = WEEK_MENU[selectedDay];
+  const [weekMenu, setWeekMenu] = useState<WeekMenu>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchMenu = async () => {
+      try {
+        const res = await api.get(`/mess-menu/${user?.hostel_id}`);
+        const rows: any[] = Array.isArray(res.data) ? res.data : [];
+        const mapped: WeekMenu = {};
+        rows.forEach((row) => {
+          const shortKey = DAY_NAME_TO_SHORT[row.day_of_week];
+          if (!shortKey) return;
+          mapped[shortKey] = {
+            breakfast: { items: row.breakfast_items ?? '', time: MEAL_TIMES.breakfast },
+            lunch:     { items: row.lunch_items     ?? '', time: MEAL_TIMES.lunch     },
+            dinner:    { items: row.dinner_items    ?? '', time: MEAL_TIMES.dinner    },
+          };
+        });
+        setWeekMenu(mapped);
+      } catch {
+        setWeekMenu({});
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchMenu();
+  }, [user?.hostel_id]);
+
+  const dayMenu: DayMenu | null = weekMenu[selectedDay] ?? null;
+  const hasMenu = Object.keys(weekMenu).length > 0;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -130,25 +135,37 @@ export default function FullMenuScreen({ navigation }: any) {
           <Text style={styles.dayDate}>June 2025</Text>
         </View>
 
-        {MEALS.map((meal) => {
-          const slot = dayMenu[meal.key];
-          return (
-            <View key={meal.key} style={styles.mealCard}>
-              <View style={[styles.mealHeader, { backgroundColor: meal.bg }]}>
-                <View style={styles.mealHeaderLeft}>
-                  <Text style={styles.mealEmoji}>{meal.emoji}</Text>
-                  <Text style={[styles.mealLabel, { color: meal.color }]}>{meal.label}</Text>
+        {loading ? (
+          <View style={styles.centeredState}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        ) : !hasMenu || !dayMenu ? (
+          <View style={styles.centeredState}>
+            <ChefHat size={40} color={colors.textMuted} />
+            <Text style={styles.emptyText}>Menu not set by hostel</Text>
+          </View>
+        ) : (
+          MEALS.map((meal) => {
+            const slot = dayMenu[meal.key];
+            const itemsText = slot.items
+              ? slot.items.split(',').map((s: string) => s.trim()).join('  •  ')
+              : '—';
+            return (
+              <View key={meal.key} style={styles.mealCard}>
+                <View style={[styles.mealHeader, { backgroundColor: meal.bg }]}>
+                  <View style={styles.mealHeaderLeft}>
+                    <Text style={styles.mealEmoji}>{meal.emoji}</Text>
+                    <Text style={[styles.mealLabel, { color: meal.color }]}>{meal.label}</Text>
+                  </View>
+                  <Text style={[styles.mealTime, { color: meal.color }]}>{slot.time}</Text>
                 </View>
-                <Text style={[styles.mealTime, { color: meal.color }]}>{slot.time}</Text>
+                <View style={styles.mealBody}>
+                  <Text style={styles.mealItems}>{itemsText}</Text>
+                </View>
               </View>
-              <View style={styles.mealBody}>
-                <Text style={styles.mealItems}>
-                  {slot.items.split(',').map(s => s.trim()).join('  •  ')}
-                </Text>
-              </View>
-            </View>
-          );
-        })}
+            );
+          })
+        )}
 
         <View style={styles.noteCard}>
           <Info size={16} color={colors.textMuted} />
@@ -198,4 +215,7 @@ const styles = StyleSheet.create({
 
   noteCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.surfaceAlt, borderRadius: radius.lg, padding: 16, marginTop: spacing.md },
   noteText: { flex: 1, fontSize: 13, color: colors.textMuted, lineHeight: 20, fontWeight: '500' },
+
+  centeredState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60, gap: 16 },
+  emptyText: { fontSize: 15, fontWeight: '600', color: colors.textMuted, textAlign: 'center' },
 });

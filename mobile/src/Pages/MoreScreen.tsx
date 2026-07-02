@@ -138,14 +138,7 @@ export default function MoreScreen() {
                     iconBg: '#FEE2E2',
                     route: 'ComplaintsManagement',
                 },
-                {
-                    label: 'Requests',
-                    subtitle: 'Approve leave & visitor passes',
-                    icon: 'briefcase-outline',
-                    iconColor: '#2563EB',
-                    iconBg: '#DBEAFE',
-                    route: 'RequestsManagement',
-                },
+
                 {
                     label: 'Mess Menu',
                     subtitle: 'Manage weekly food schedule',
@@ -509,60 +502,7 @@ export default function MoreScreen() {
                     </View>
                 )}
 
-                {/* ── PREMIUM UPGRADE BANNER ──────────────────────────── */}
-                {!searchQuery && (
-                    <TouchableOpacity
-                        activeOpacity={0.88}
-                        onPress={() => navigation.navigate('PremiumSubscription')}
-                        style={{
-                            marginHorizontal: 16,
-                            marginBottom: 16,
-                            borderRadius: 18,
-                            overflow: 'hidden',
-                            shadowColor: '#7C3AED',
-                            shadowOffset: { width: 0, height: 4 },
-                            shadowOpacity: 0.35,
-                            shadowRadius: 12,
-                            elevation: 7,
-                        }}
-                    >
-                        <LinearGradient
-                            colors={['#3B0764', '#6B21A8', '#9333EA']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={{
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                paddingHorizontal: 16,
-                                paddingVertical: 14,
-                                gap: 14,
-                            }}
-                        >
-                            <LinearGradient
-                                colors={['#FBBF24', '#D97706']}
-                                style={{
-                                    width: 46,
-                                    height: 46,
-                                    borderRadius: 23,
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                }}
-                            >
-                                <Ionicons name="diamond" size={22} color="#FFF" />
-                            </LinearGradient>
-                            <View style={{ flex: 1 }}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                                    <Text style={{ fontSize: 15, fontWeight: '800', color: '#FFF' }}>Go Premium</Text>
-                                    <View style={{ backgroundColor: '#FBBF24', borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2 }}>
-                                        <Text style={{ fontSize: 10, fontWeight: '800', color: '#1A0533' }}>₹10/month</Text>
-                                    </View>
-                                </View>
-                                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)' }}>Unlock reminders, reports, QR payments & more</Text>
-                            </View>
-                            <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
-                        </LinearGradient>
-                    </TouchableOpacity>
-                )}
+
 
                 {/* Empty State */}
                 {isListEmpty && (

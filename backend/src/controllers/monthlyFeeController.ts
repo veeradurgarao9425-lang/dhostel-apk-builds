@@ -533,39 +533,57 @@ export const getMonthlyFeesSummary = async (req: AuthRequest, res: Response) => 
     const carryForwardMap: Record<number, number> = {};
     const dueDateMap: Record<number, string | null> = {};
 
-    for (const row of studentsWithoutFee) {
-      const admDate = row.admission_date ? new Date(row.admission_date) : null;
-      if (!admDate) continue;
+    if (studentsWithoutFee.length > 0) {
+      // Batch-fetch latest fee record per student (only when table exists)
+      const latestFeeMap = new Map();
+      const paymentMap = new Map();
 
-      const rent = parseFloat(row.student_monthly_rent || 0);
-      let cY = cmYear;
-      let cM = cmMonth - 1; // start from previous month
-      if (cM === 0) { cM = 12; cY--; }
-      let accumulated = 0;
+      if (monthlyFeesTableExists) {
+        const studentIds = studentsWithoutFee.map((r: any) => r.student_id);
 
-      for (let i = 0; i < 24; i++) {
-        const cMonthStr = `${cY}-${String(cM).padStart(2, '0')}`;
-        const cMonthEnd = new Date(cY, cM, 0);
+        const latestFees = await db('monthly_fees')
+          .whereIn('student_id', studentIds)
+          .where('fee_month', '<', currentMonth)
+          .orderBy('fee_month', 'desc');
 
-        if (admDate > cMonthEnd) break;
+        for (const fee of latestFees) {
+          if (!latestFeeMap.has(fee.student_id)) {
+            latestFeeMap.set(fee.student_id, fee);
+          }
+        }
 
-        const rec = await db('monthly_fees')
-          .where({ student_id: row.student_id, fee_month: cMonthStr })
-          .first();
+        const feeIds = Array.from(latestFeeMap.values()).map((f: any) => f.fee_id);
+        const payments = feeIds.length > 0 ? await db('fee_payments')
+          .whereIn('fee_id', feeIds)
+          .select('fee_id')
+          .sum('amount as total')
+          .groupBy('fee_id') : [];
 
-        if (rec) {
-          const payments = await db('fee_payments')
-            .where('fee_id', rec.fee_id)
-            .sum('amount as total');
-          const pSum = parseFloat(payments[0]?.total || 0);
-          const sPaid = parseFloat(rec.paid_amount || 0);
+        for (const p of payments) {
+          paymentMap.set(p.fee_id, parseFloat(p.total || 0));
+        }
+      }
+
+      for (const row of studentsWithoutFee) {
+        const admDate = row.admission_date ? new Date(row.admission_date) : null;
+        if (!admDate) continue;
+
+        const rent = parseFloat(row.student_monthly_rent || 0);
+        const latestRec = latestFeeMap.get(row.student_id);
+
+        if (latestRec) {
+          // Direct calculation — no month-iteration cap needed.
+          // Count gap months strictly between latestRec.fee_month and currentMonth.
+          const [ly, lm] = latestRec.fee_month.split('-').map(Number);
+          const gapMonths = (cmYear - ly) * 12 + (cmMonth - lm) - 1;
+          const pSum = paymentMap.get(latestRec.fee_id) || 0;
+          const sPaid = parseFloat(latestRec.paid_amount || 0);
           const aPaid = pSum > 0 ? pSum : sPaid;
-          const tDue = parseFloat(rec.total_due || 0);
-          carryForwardMap[row.student_id] = Math.max(0, tDue - aPaid) + accumulated;
+          const tDue = parseFloat(latestRec.total_due || 0);
+          carryForwardMap[row.student_id] = Math.max(0, tDue - aPaid) + Math.max(0, gapMonths) * rent;
 
-          // Copy due_date from previous record (same day, current month)
-          if (rec.due_date) {
-            const prevDueDate = new Date(rec.due_date);
+          if (latestRec.due_date) {
+            const prevDueDate = new Date(latestRec.due_date);
             const dueDateDay = prevDueDate.getDate();
             let newDueDate = new Date(cmYear, cmMonth - 1, dueDateDay);
             if (newDueDate.getDate() !== dueDateDay) {
@@ -573,17 +591,25 @@ export const getMonthlyFeesSummary = async (req: AuthRequest, res: Response) => 
             }
             dueDateMap[row.student_id] = `${newDueDate.getFullYear()}-${String(newDueDate.getMonth() + 1).padStart(2, '0')}-${String(newDueDate.getDate()).padStart(2, '0')}`;
           }
-          break;
+        } else {
+          // No fee records at all — accumulate rent from admission date
+          let cY = cmYear;
+          let cM = cmMonth - 1;
+          if (cM === 0) { cM = 12; cY--; }
+          let accumulated = 0;
+
+          for (let i = 0; i < 24; i++) {
+            const cMonthEnd = new Date(cY, cM, 0);
+            if (admDate > cMonthEnd) break;
+            accumulated += rent;
+            cM--;
+            if (cM === 0) { cM = 12; cY--; }
+          }
+
+          if (accumulated > 0) {
+            carryForwardMap[row.student_id] = accumulated;
+          }
         }
-
-        accumulated += rent;
-        cM--;
-        if (cM === 0) { cM = 12; cY--; }
-      }
-
-      // If no records found at all, use accumulated
-      if (!(row.student_id in carryForwardMap) && accumulated > 0) {
-        carryForwardMap[row.student_id] = accumulated;
       }
     }
 
