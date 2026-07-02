@@ -207,15 +207,17 @@ export default function HomeScreen({ navigation }: any) {
     const fetchMenu = async () => {
       try {
         const res = await api.get('/mess-menu/' + user.hostel_id);
-        if (res.data && res.data.success) {
+        if (res.data?.success) {
           const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
           const today = days[new Date().getDay()];
-          const todayMenu = res.data.data.find((m: any) => m.day_of_week === today);
-          if (todayMenu) {
+          const todayItems: any[] = (res.data.menu || []).filter((m: any) => m.day_of_week === today);
+          if (todayItems.length > 0) {
+            const find = (type: string) =>
+              todayItems.find((m: any) => m.meal_type?.toLowerCase() === type.toLowerCase())?.items || 'Menu not updated';
             setTodaysMeals({
-              breakfast: { items: todayMenu.breakfast_items || 'No breakfast items' },
-              lunch: { items: todayMenu.lunch_items || 'No lunch items' },
-              dinner: { items: todayMenu.dinner_items || 'No dinner items' }
+              breakfast: { items: find('Breakfast') },
+              lunch:     { items: find('Lunch') },
+              dinner:    { items: find('Dinner') },
             });
           }
         }

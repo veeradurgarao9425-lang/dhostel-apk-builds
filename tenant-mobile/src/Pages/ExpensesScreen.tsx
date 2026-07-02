@@ -527,9 +527,9 @@ function OverviewTab({
 
   const filtered = useMemo(() => {
     let r = expenses;
-    if (activeCategory) r = r.filter(x => x.cat === activeCategory);
-    if (catFilter)      r = r.filter(x => x.cat === catFilter);
-    if (searchQ.trim()) { const q = searchQ.toLowerCase(); r = r.filter(x => x.title.toLowerCase().includes(q) || x.cat.toLowerCase().includes(q)); }
+    if (activeCategory) r = r.filter((x: any) => x.cat === activeCategory);
+    if (catFilter)      r = r.filter((x: any) => x.cat === catFilter);
+    if (searchQ.trim()) { const q = searchQ.toLowerCase(); r = r.filter((x: any) => x.title.toLowerCase().includes(q) || x.cat.toLowerCase().includes(q)); }
     return r;
   }, [activeCategory, catFilter, searchQ]);
 
@@ -882,7 +882,7 @@ function DonutChart({ breakdown, monthTotal }: { breakdown: any[]; monthTotal: n
 }
 
 function CategoriesTab({ expenses, monthTotal, breakdown, navigation }: any) {
-  const MAX = Math.max(...breakdown.map(c => c.amount));
+  const MAX = Math.max(...breakdown.map((c: any) => c.amount));
   return (
     <>
       <View style={s.statRow}>
@@ -920,7 +920,7 @@ function CategoriesTab({ expenses, monthTotal, breakdown, navigation }: any) {
       )}
 
       <View style={s.txnCard}>
-        {breakdown.map((cat, i) => {
+        {breakdown.map((cat: any, i: number) => {
           const meta = CATS[cat.name] || CATS.Others;
           const Icon = meta.Icon;
           return (

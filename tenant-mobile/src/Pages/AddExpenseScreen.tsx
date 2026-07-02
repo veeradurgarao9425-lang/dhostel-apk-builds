@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, StatusBar,
-  Dimensions, Modal, Animated, Image, Switch, ActivityIndicator,
+  Dimensions, Modal, Animated, Image, Switch,
 } from 'react-native';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
@@ -155,6 +155,7 @@ function AnimatedChip({ amount, selected, onPress }: { amount: string; selected:
 
 export default function AddExpenseScreen({ navigation, route }: any) {
   const defaultCategory = route?.params?.defaultCategory || 'Food';
+  const { showError } = useToast();
   const [amount, setAmount]               = useState('');
   const [category, setCategory]           = useState(defaultCategory);
   const [note, setNote]                   = useState('');
@@ -166,13 +167,38 @@ export default function AddExpenseScreen({ navigation, route }: any) {
   const [showAllCats, setShowAllCats]     = useState(false);
   const [receiptUri, setReceiptUri]       = useState<string | null>(null);
   const [isRecurring, setIsRecurring]     = useState(false);
+  const [saving, setSaving]               = useState(false);
+  const dateRef = useRef(new Date());
 
   useEffect(() => {
     const d = new Date();
+    dateRef.current = d;
     setDateTime(d.toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).replace(',', ','));
   }, []);
 
-  const handleSave = () => { if (!amount || Number(amount) <= 0) return; setShowSuccess(true); };
+  const handleSave = async () => {
+    if (!amount || Number(amount) <= 0) return;
+    setSaving(true);
+    try {
+      const year = dateRef.current.getFullYear();
+      const month = String(dateRef.current.getMonth() + 1).padStart(2, '0');
+      const day = String(dateRef.current.getDate()).padStart(2, '0');
+      const localDateStr = `${year}-${month}-${day}`;
+
+      await api.post('/tenant-expenses', {
+        title: note.trim() || category,
+        category,
+        amount: Number(amount),
+        date: localDateStr,
+        payment_mode: payMethod,
+      });
+      setShowSuccess(true);
+    } catch {
+      showError('Failed to save expense. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
   const handlePickReceipt = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, quality: 0.8 });
     if (!result.canceled) setReceiptUri(result.assets[0].uri);
@@ -232,7 +258,7 @@ export default function AddExpenseScreen({ navigation, route }: any) {
             <ChevronDown size={16} color={TEXT_LIGHT} strokeWidth={2} />
           </TouchableOpacity>
           <DateTimePickerModal isVisible={showDatePicker} mode="datetime" maximumDate={new Date()}
-            onConfirm={date => { setDateTime(date.toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).replace(',', ',')); setShowDatePicker(false); }}
+            onConfirm={date => { dateRef.current = date; setDateTime(date.toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).replace(',', ',')); setShowDatePicker(false); }}
             onCancel={() => setShowDatePicker(false)} />
 
           <Text style={[s.sectionLabel, { marginTop: 16 }]}>Payment Method</Text>
@@ -276,8 +302,8 @@ export default function AddExpenseScreen({ navigation, route }: any) {
             <ChevronRight size={16} color={TEXT_LIGHT} strokeWidth={2} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={[s.saveBtn, (!amount || Number(amount) <= 0) && s.saveBtnOff]} onPress={handleSave} activeOpacity={0.85}>
-            <Text style={s.saveBtnText}>Save Expense</Text>
+          <TouchableOpacity style={[s.saveBtn, (saving || !amount || Number(amount) <= 0) && s.saveBtnOff]} onPress={handleSave} disabled={saving} activeOpacity={0.85}>
+            <Text style={s.saveBtnText}>{saving ? 'Saving…' : 'Save Expense'}</Text>
           </TouchableOpacity>
           <Text style={s.bottomInfoText}>All added expenses are securely recorded in your monthly ledger.</Text>
           <View style={{ height: 40 }} />

@@ -746,6 +746,29 @@ async function patchDatabaseSchema() {
       console.error('[schema-patch] Error updating student_fee_payments for ecosystem:', e.message);
     }
 
+    // 19. Ensure tenant_expenses table exists
+    try {
+      if (!tableNamesLower.includes('tenant_expenses')) {
+        console.log('[schema-patch] creating missing tenant_expenses table...');
+        await db.raw(`
+          CREATE TABLE tenant_expenses (
+            expense_id INT AUTO_INCREMENT PRIMARY KEY,
+            student_id INT NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            amount DECIMAL(10, 2) NOT NULL,
+            category VARCHAR(100) NOT NULL,
+            date DATE NOT NULL,
+            payment_mode VARCHAR(50) DEFAULT 'Cash',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        await db.raw("CREATE INDEX idx_tenant_expenses_student ON tenant_expenses(student_id)");
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error checking/creating tenant_expenses table:', e.message);
+    }
+
     console.log('[schema-patch] Schema check and patch complete.');
   } catch (err: any) {
     console.error('[schema-patch] Critical error during schema patching:', err.message);

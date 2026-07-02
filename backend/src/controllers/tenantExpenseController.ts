@@ -34,12 +34,15 @@ export const createTenantExpense = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ success: false, error: 'Missing required fields' });
     }
 
+    // Ensure the date is formatted as YYYY-MM-DD to avoid MySQL strict mode parsing errors with full ISO 8601 strings
+    const formattedDate = typeof date === 'string' ? date.split('T')[0] : date;
+
     const [expense_id] = await db('tenant_expenses').insert({
       student_id: user.user_id,
       title,
       amount: parseFloat(amount),
       category,
-      date,
+      date: formattedDate,
       payment_mode: payment_mode || 'Cash',
       created_at: new Date(),
       updated_at: new Date()

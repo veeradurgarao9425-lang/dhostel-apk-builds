@@ -61,16 +61,22 @@ export default function FullMenuScreen({ navigation }: any) {
     const fetchMenu = async () => {
       try {
         const res = await api.get(`/mess-menu/${user?.hostel_id}`);
-        const rows: any[] = Array.isArray(res.data) ? res.data : [];
+        const rows: any[] = res.data?.menu ?? [];
         const mapped: WeekMenu = {};
         rows.forEach((row) => {
           const shortKey = DAY_NAME_TO_SHORT[row.day_of_week];
           if (!shortKey) return;
-          mapped[shortKey] = {
-            breakfast: { items: row.breakfast_items ?? '', time: MEAL_TIMES.breakfast },
-            lunch:     { items: row.lunch_items     ?? '', time: MEAL_TIMES.lunch     },
-            dinner:    { items: row.dinner_items    ?? '', time: MEAL_TIMES.dinner    },
-          };
+          if (!mapped[shortKey]) {
+            mapped[shortKey] = {
+              breakfast: { items: '', time: MEAL_TIMES.breakfast },
+              lunch:     { items: '', time: MEAL_TIMES.lunch     },
+              dinner:    { items: '', time: MEAL_TIMES.dinner    },
+            };
+          }
+          const mealType = row.meal_type?.toLowerCase();
+          if (mealType === 'breakfast') mapped[shortKey].breakfast.items = row.items ?? '';
+          if (mealType === 'lunch')     mapped[shortKey].lunch.items     = row.items ?? '';
+          if (mealType === 'dinner')    mapped[shortKey].dinner.items    = row.items ?? '';
         });
         setWeekMenu(mapped);
       } catch {
