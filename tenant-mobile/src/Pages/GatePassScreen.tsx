@@ -44,7 +44,7 @@ export default function GatePassScreen({ navigation }: any) {
   const fetchLeaveRequests = async () => {
     try {
       const res = await api.get('/requests/leave/tenant');
-      const requests: any[] = res.data || [];
+      const requests: any[] = res.data?.requests || res.data?.data || res.data || [];
       setLeaveRequests(requests);
 
       if (requests.length === 0) {

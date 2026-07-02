@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -10,10 +10,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  StatusBar,
-  Linking,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Plus,
   X,
@@ -24,28 +21,13 @@ import {
   Wallet,
   ArrowRight,
   Check,
-  ChevronLeft,
-  Briefcase,
-  TrendingUp,
-  ArrowUpRight,
-  ArrowDownLeft,
 } from 'lucide-react-native';
 
 import { useAuth } from '../context/AuthContext';
+import { Screen, AppHeader, Card, SectionHeader, Pill, Button, EmptyState, Avatar } from '../components/ui';
+import { colors, radius, spacing, font } from '../theme';
+import { formatCurrency, relativeDay } from '../utils/format';
 import { useSplits, YOU_ID, Member } from '../hooks/useSplits';
-
-const BLUE = '#2245D4';
-const BLUE_DARK = '#1E3A8A';
-const BLUE_SOFT = '#EEF2FF';
-const WHITE = '#FFFFFF';
-const TEXT_DARK = '#1A1A1A';
-const TEXT_MID = '#666666';
-const BORDER = '#F1F5F9';
-const BG = '#F8FAFD';
-const SUCCESS = '#22C55E';
-const SUCCESS_BG = '#DCFCE7';
-const DANGER = '#EF4444';
-const DANGER_BG = '#FEE2E2';
 
 export default function SplitsScreen({ navigation }: any) {
   const { user } = useAuth();
@@ -65,6 +47,7 @@ export default function SplitsScreen({ navigation }: any) {
   const [showMember, setShowMember] = useState(false);
   const [memberName, setMemberName] = useState('');
 
+  // Expense form state
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
   const [paidById, setPaidById] = useState(YOU_ID);
@@ -103,172 +86,158 @@ export default function SplitsScreen({ navigation }: any) {
       { text: 'Settle all', style: 'destructive', onPress: settleAll },
     ]);
 
-  if (!loaded) return <View style={styles.root} />;
+  if (!loaded) return <Screen><View /></Screen>;
 
   return (
-    <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={BLUE} />
-      
-      {/* ── HEADER ── */}
-      <View style={styles.headerSection}>
-        <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
-          <View style={styles.headerTop}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-              <ChevronLeft size={24} color={WHITE} />
-            </TouchableOpacity>
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={styles.headerGreeting}>Splits & Roommates</Text>
-              <Text style={styles.headerSub}>Manage shared expenses</Text>
-            </View>
-            <TouchableOpacity style={styles.hBtn} onPress={confirmSettle}>
-              <Check size={20} color={WHITE} />
-              <Text style={styles.hBtnText}>Settle</Text>
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
-      </View>
+    <Screen>
+      <AppHeader
+        title="Splits"
+        subtitle="Roommate expenses"
+        hideActions={true}
+        onPressBack={() => navigation.goBack()}
+        variant="primary"
+      />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
-        
-        {/* ── SUMMARY CARD ── */}
-        <View style={styles.summaryCard}>
-          <View style={[styles.summaryIconWrap, { backgroundColor: youBalance > 0 ? SUCCESS_BG : youBalance < 0 ? DANGER_BG : BLUE_SOFT }]}>
-            <Wallet size={32} color={youBalance > 0 ? SUCCESS : youBalance < 0 ? DANGER : BLUE} />
+      {/* Your net summary - Compact horizontal layout */}
+      <Card style={{ padding: 12, marginBottom: 16 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <View
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              justifyContent: 'center',
+              alignItems: 'center',
+              backgroundColor:
+                youBalance > 0 ? colors.successSoft : youBalance < 0 ? colors.dangerSoft : colors.primarySoft,
+            }}
+          >
+            <Wallet
+              size={20}
+              color={youBalance > 0 ? colors.success : youBalance < 0 ? colors.danger : colors.primary}
+            />
           </View>
-          <Text style={styles.summaryLabel}>
-            {youBalance > 0 ? 'You are owed' : youBalance < 0 ? 'You owe' : 'All settled up'}
-          </Text>
-          <Text style={[styles.summaryAmount, { color: youBalance > 0 ? SUCCESS : youBalance < 0 ? DANGER : TEXT_DARK }]}>
-            ₹{Math.abs(youBalance).toFixed(0)}
-          </Text>
-          <View style={styles.summaryBadgeRow}>
-            <View style={styles.summaryBadge}>
-              <Receipt size={14} color={TEXT_MID} />
-              <Text style={styles.summaryBadgeTxt}>{expenses.length} Expenses</Text>
-            </View>
-            <View style={styles.summaryBadge}>
-              <Users size={14} color={TEXT_MID} />
-              <Text style={styles.summaryBadgeTxt}>{members.length} People</Text>
-            </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 12, color: colors.textMuted, fontWeight: '600' }}>
+              {youBalance > 0 ? 'You are owed' : youBalance < 0 ? 'You owe' : 'All settled up'}
+            </Text>
+            <Text
+              style={{
+                fontSize: 20,
+                fontWeight: '800',
+                color: youBalance > 0 ? colors.success : youBalance < 0 ? colors.danger : colors.text,
+                marginTop: 2,
+              }}
+            >
+              {formatCurrency(Math.abs(youBalance))}
+            </Text>
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={{ fontSize: 11, color: colors.textSubtle, fontWeight: '500' }}>
+              {expenses.length} expense{expenses.length === 1 ? '' : 's'}
+            </Text>
+            <Text style={{ fontSize: 11, color: colors.textSubtle, fontWeight: '500', marginTop: 2 }}>
+              {members.length} roommate{members.length === 1 ? '' : 's'}
+            </Text>
           </View>
         </View>
+      </Card>
 
-        {/* ── BALANCES ── */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Roommate Balances</Text>
-          <TouchableOpacity onPress={() => setShowMember(true)}>
-            <Text style={styles.addBtnText}>+ Add Roommate</Text>
-          </TouchableOpacity>
-        </View>
+      {/* Per-person balances */}
+      <SectionHeader
+        title="Who owes what"
+        actionLabel={expenses.length ? 'Settle up' : undefined}
+        onPressAction={confirmSettle}
+      />
+      <Card padded={false}>
+        {balances.map((b, i) => (
+          <View key={b.member.id} style={[styles.balRow, i > 0 && styles.divider]}>
+            <Avatar name={b.member.name} size={36} />
+            <Text style={styles.balName}>{b.member.id === YOU_ID ? 'You' : b.member.name}</Text>
+            <View style={{ flex: 1 }} />
+            {b.net === 0 ? (
+              <Pill label="settled" tone="default" />
+            ) : b.net > 0 ? (
+              <Text style={[styles.balAmt, { color: colors.success }]}>
+                gets {formatCurrency(b.net)}
+              </Text>
+            ) : (
+              <Text style={[styles.balAmt, { color: colors.danger }]}>
+                owes {formatCurrency(Math.abs(b.net))}
+              </Text>
+            )}
+            {b.member.id !== YOU_ID && (
+              <TouchableOpacity onPress={() => removeMember(b.member.id)} hitSlop={8} style={styles.removeBtn}>
+                <X size={14} color={colors.textSubtle} />
+              </TouchableOpacity>
+            )}
+          </View>
+        ))}
+        <TouchableOpacity style={styles.addMemberRow} onPress={() => setShowMember(true)} activeOpacity={0.7}>
+          <View style={styles.addMemberIcon}>
+            <UserPlus size={18} color={colors.primary} />
+          </View>
+          <Text style={styles.addMemberText}>Add roommate</Text>
+        </TouchableOpacity>
+      </Card>
 
-        <View style={styles.card}>
-          {balances.map((b, i) => (
-            <View key={b.member.id} style={[styles.balRow, i > 0 && styles.divider]}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarTxt}>{b.member.name.charAt(0).toUpperCase()}</Text>
+      {/* Expenses */}
+      <SectionHeader
+        title="Shared expenses"
+        actionLabel="+ Add roommate expenses"
+        onPressAction={openExpense}
+      />
+      {expenses.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon={Receipt}
+            title="No shared expenses yet"
+            message="Add groceries, water cans, WiFi or snacks and we'll split them evenly across roommates."
+          />
+        </Card>
+      ) : (
+        <Card padded={false}>
+          {expenses.map((e, i) => (
+            <View key={e.id} style={[styles.expRow, i > 0 && styles.divider]}>
+              <View style={styles.expIcon}>
+                <Receipt size={18} color={colors.primary} />
               </View>
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={styles.balName}>{b.member.id === YOU_ID ? 'You' : b.member.name}</Text>
-                {b.net === 0 ? (
-                  <Text style={styles.balStatus}>Settled</Text>
-                ) : b.net > 0 ? (
-                  <Text style={[styles.balStatus, { color: SUCCESS }]}>Gets ₹{b.net.toFixed(0)}</Text>
-                ) : (
-                  <Text style={[styles.balStatus, { color: DANGER }]}>Owes ₹{Math.abs(b.net).toFixed(0)}</Text>
-                )}
+              <View style={{ flex: 1 }}>
+                <Text style={styles.expTitle}>{e.title}</Text>
+                <Text style={styles.expSub}>
+                  {nameById(e.paidById)} paid · {relativeDay(e.date)} · split {e.participantIds.length} ways
+                </Text>
               </View>
-              {b.net !== 0 && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  {b.net > 0 && b.member.id !== YOU_ID && youBalance < 0 && (
-                    <TouchableOpacity 
-                      style={{ backgroundColor: '#2245D4', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 }}
-                      onPress={() => Linking.openURL(`upi://pay?pa=${b.member.name.toLowerCase()}@upi&pn=${b.member.name}&am=${b.net}`)}
-                    >
-                      <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '700' }}>Pay UPI</Text>
-                    </TouchableOpacity>
-                  )}
-                  <View style={[styles.netIconBadge, { backgroundColor: b.net > 0 ? SUCCESS_BG : DANGER_BG }]}>
-                    {b.net > 0 ? <ArrowDownLeft size={16} color={SUCCESS} /> : <ArrowUpRight size={16} color={DANGER} />}
-                  </View>
-                  {b.member.id !== YOU_ID && (
-                    <TouchableOpacity onPress={() => removeMember(b.member.id)} style={{ padding: 4 }}>
-                      <X size={16} color="#CBD5E1" />
-                    </TouchableOpacity>
-                  )}
-                </View>
-              )}
+              <Text style={styles.expAmt}>{formatCurrency(e.amount)}</Text>
+              <TouchableOpacity onPress={() => removeExpense(e.id)} hitSlop={8} style={styles.removeBtn}>
+                <Trash2 size={15} color={colors.textSubtle} />
+              </TouchableOpacity>
             </View>
           ))}
-          {balances.length === 0 && (
-            <Text style={styles.emptyTxt}>No roommates added yet.</Text>
-          )}
-        </View>
-
-        {/* ── EXPENSES ── */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Shared Expenses</Text>
-        </View>
-
-        {expenses.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <View style={styles.emptyIconWrap}>
-              <Briefcase size={32} color={BLUE} />
-            </View>
-            <Text style={styles.emptyTitle}>No shared expenses</Text>
-            <Text style={styles.emptySub}>Add rent, groceries, or utilities to split them evenly among roommates.</Text>
-            <TouchableOpacity style={styles.primaryBtn} onPress={openExpense}>
-              <Plus size={18} color={WHITE} />
-              <Text style={styles.primaryBtnTxt}>Add First Expense</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={styles.card}>
-            {expenses.map((e, i) => (
-              <View key={e.id} style={[styles.expRow, i > 0 && styles.divider]}>
-                <View style={styles.expIcon}>
-                  <Receipt size={20} color={BLUE} />
-                </View>
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={styles.expTitle}>{e.title}</Text>
-                  <Text style={styles.expSub}>
-                    {nameById(e.paidById)} paid · split {e.participantIds.length} ways
-                  </Text>
-                </View>
-                <Text style={styles.expAmt}>₹{e.amount}</Text>
-                <TouchableOpacity onPress={() => removeExpense(e.id)} style={{ padding: 8, marginLeft: 8 }}>
-                  <Trash2 size={16} color="#CBD5E1" />
-                </TouchableOpacity>
-              </View>
-            ))}
-          </View>
-        )}
-
-      </ScrollView>
-
-      {/* ── FLOATING ADD BTN ── */}
-      {expenses.length > 0 && (
-        <TouchableOpacity style={styles.fab} onPress={openExpense} activeOpacity={0.8}>
-          <Plus size={24} color={WHITE} />
-        </TouchableOpacity>
+        </Card>
       )}
 
-      {/* ── ADD EXPENSE MODAL ── */}
+      <View style={{ height: spacing.lg }} />
+      <Button title="Add roommate expense" icon={Plus} onPress={openExpense} />
+      <Text style={styles.note}>Roommate splits are shared with your room. Personal expenses are tracked in the main Expenses tab.</Text>
+
+      {/* Add expense modal */}
       <Modal visible={showExpense} animationType="slide" transparent onRequestClose={() => setShowExpense(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalWrap}>
           <View style={styles.sheet}>
             <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Add Shared Expense</Text>
-              <TouchableOpacity onPress={() => setShowExpense(false)} style={styles.closeBtn}>
-                <X size={20} color={TEXT_MID} />
+              <Text style={styles.sheetTitle}>Add roommate expense</Text>
+              <TouchableOpacity onPress={() => setShowExpense(false)} hitSlop={10}>
+                <X size={22} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+            <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={styles.fieldLabel}>What for?</Text>
               <TextInput
                 style={styles.input}
-                placeholder="e.g. WiFi, Groceries"
-                placeholderTextColor="#94A3B8"
+                placeholder="e.g. Groceries, Water can"
+                placeholderTextColor={colors.textSubtle}
                 value={title}
                 onChangeText={setTitle}
               />
@@ -277,155 +246,177 @@ export default function SplitsScreen({ navigation }: any) {
               <TextInput
                 style={styles.input}
                 placeholder="0"
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={colors.textSubtle}
                 value={amount}
                 onChangeText={setAmount}
                 keyboardType="numeric"
               />
 
               <Text style={styles.fieldLabel}>Paid by</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row' }}>
-                {members.map(m => (
-                  <TouchableOpacity
-                    key={m.id}
-                    style={[styles.chip, paidById === m.id && styles.chipActive]}
-                    onPress={() => setPaidById(m.id)}
-                  >
-                    <Text style={[styles.chipTxt, paidById === m.id && styles.chipTxtActive]}>
-                      {m.id === YOU_ID ? 'You' : m.name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+              <MemberChips members={members} selected={[paidById]} onPress={(id) => setPaidById(id)} />
 
               <Text style={styles.fieldLabel}>Split between</Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {members.map(m => {
-                  const active = participants.includes(m.id);
-                  return (
-                    <TouchableOpacity
-                      key={m.id}
-                      style={[styles.chip, active && styles.chipActive]}
-                      onPress={() => toggleParticipant(m.id)}
-                    >
-                      {active && <Check size={14} color={WHITE} style={{ marginRight: 4 }} />}
-                      <Text style={[styles.chipTxt, active && styles.chipTxtActive]}>
-                        {m.id === YOU_ID ? 'You' : m.name}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+              <MemberChips members={members} selected={participants} onPress={toggleParticipant} multi />
 
-              <TouchableOpacity
-                style={[styles.primaryBtn, { marginTop: 32 }]}
+              {parseFloat(amount) > 0 && participants.length > 0 && (
+                <Text style={styles.perHead}>
+                  {formatCurrency(parseFloat(amount) / participants.length)} per person
+                </Text>
+              )}
+
+              <Button
+                title="Add roommate expense"
                 onPress={submitExpense}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.primaryBtnTxt}>Add Expense</Text>
-              </TouchableOpacity>
+                disabled={!title.trim() || !(parseFloat(amount) > 0) || participants.length === 0}
+                style={{ marginTop: spacing.lg }}
+              />
+              <View style={{ height: spacing.xl }} />
             </ScrollView>
           </View>
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* ── ADD MEMBER MODAL ── */}
+      {/* Add member modal */}
       <Modal visible={showMember} animationType="fade" transparent onRequestClose={() => setShowMember(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.centerWrap}>
           <View style={styles.dialog}>
             <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Add Roommate</Text>
-              <TouchableOpacity onPress={() => setShowMember(false)}>
-                <X size={20} color={TEXT_MID} />
+              <Text style={styles.sheetTitle}>Add roommate</Text>
+              <TouchableOpacity onPress={() => setShowMember(false)} hitSlop={10}>
+                <X size={22} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
             <TextInput
               style={styles.input}
-              placeholder="Enter name"
-              placeholderTextColor="#94A3B8"
+              placeholder="Roommate's name"
+              placeholderTextColor={colors.textSubtle}
               value={memberName}
               onChangeText={setMemberName}
               autoFocus
             />
-            <TouchableOpacity style={[styles.primaryBtn, { marginTop: 24 }]} onPress={submitMember}>
-              <Text style={styles.primaryBtnTxt}>Add Roommate</Text>
-            </TouchableOpacity>
+            <Button title="Add" onPress={submitMember} disabled={!memberName.trim()} style={{ marginTop: spacing.lg }} />
           </View>
         </KeyboardAvoidingView>
       </Modal>
+    </Screen>
+  );
+}
 
+function MemberChips({
+  members,
+  selected,
+  onPress,
+  multi,
+}: {
+  members: Member[];
+  selected: string[];
+  onPress: (id: string) => void;
+  multi?: boolean;
+}) {
+  return (
+    <View style={styles.chipRow}>
+      {members.map((m) => {
+        const active = selected.includes(m.id);
+        return (
+          <TouchableOpacity
+            key={m.id}
+            style={[styles.chip, active && styles.chipActive]}
+            onPress={() => onPress(m.id)}
+            activeOpacity={0.8}
+          >
+            {multi && active && <Check size={14} color="#fff" />}
+            <Text style={[styles.chipText, active && styles.chipTextActive]}>
+              {m.id === YOU_ID ? 'You' : m.name}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: BG },
-  headerSection: { backgroundColor: BLUE, paddingBottom: 16 },
-  headerTop: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 12 },
-  backBtn: { padding: 8, marginLeft: -8 },
-  headerGreeting: { fontSize: 20, fontWeight: '800', color: WHITE },
-  headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
-  hBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, gap: 6 },
-  hBtnText: { color: WHITE, fontWeight: '600', fontSize: 13 },
-
-  summaryCard: {
-    backgroundColor: WHITE, borderRadius: 24, padding: 24, alignItems: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 2,
-    marginBottom: 24, borderWidth: 1, borderColor: BORDER,
+  summary: { alignItems: 'center', paddingVertical: spacing['2xl'] },
+  summaryIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
   },
-  summaryIconWrap: { width: 64, height: 64, borderRadius: 32, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
-  summaryLabel: { fontSize: 14, color: TEXT_MID, fontWeight: '600', marginBottom: 4 },
-  summaryAmount: { fontSize: 40, fontWeight: '800', marginBottom: 16 },
-  summaryBadgeRow: { flexDirection: 'row', gap: 12 },
-  summaryBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: BG, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, gap: 6 },
-  summaryBadgeTxt: { fontSize: 12, fontWeight: '600', color: TEXT_MID },
+  summaryLabel: { fontSize: font.small, color: colors.textMuted },
+  summaryAmount: { fontSize: 40, fontWeight: '800', letterSpacing: -1, marginVertical: 2 },
+  summarySub: { fontSize: font.small, color: colors.textSubtle },
 
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: TEXT_DARK },
-  addBtnText: { fontSize: 13, fontWeight: '600', color: BLUE },
-
-  card: {
-    backgroundColor: WHITE, borderRadius: 20, padding: 16, marginBottom: 24,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 1,
-    borderWidth: 1, borderColor: BORDER,
+  balRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md, paddingHorizontal: spacing.lg },
+  divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  balName: { fontSize: font.body, fontWeight: '600', color: colors.text },
+  balAmt: { fontSize: font.small, fontWeight: '700' },
+  removeBtn: { padding: 4 },
+  addMemberRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.lg, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  addMemberIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.sm,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  divider: { borderTopWidth: 1, borderTopColor: BORDER, marginTop: 12, paddingTop: 12 },
-  emptyTxt: { textAlign: 'center', color: TEXT_MID, fontSize: 14, paddingVertical: 12 },
+  addMemberText: { fontSize: font.body, fontWeight: '600', color: colors.primary },
 
-  balRow: { flexDirection: 'row', alignItems: 'center' },
-  avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: BLUE_SOFT, justifyContent: 'center', alignItems: 'center' },
-  avatarTxt: { fontSize: 16, fontWeight: '700', color: BLUE },
-  balName: { fontSize: 15, fontWeight: '700', color: TEXT_DARK, marginBottom: 2 },
-  balStatus: { fontSize: 13, color: TEXT_MID, fontWeight: '500' },
-  netIconBadge: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+  expRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.lg },
+  expIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  expTitle: { fontSize: font.body, fontWeight: '600', color: colors.text },
+  expSub: { fontSize: font.small, color: colors.textMuted, marginTop: 2 },
+  expAmt: { fontSize: font.body, fontWeight: '700', color: colors.text },
 
-  emptyCard: { backgroundColor: WHITE, borderRadius: 20, padding: 32, alignItems: 'center', borderWidth: 1, borderColor: BORDER, borderStyle: 'dashed', marginBottom: 24 },
-  emptyIconWrap: { width: 64, height: 64, borderRadius: 32, backgroundColor: BLUE_SOFT, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: TEXT_DARK, marginBottom: 8 },
-  emptySub: { fontSize: 14, color: TEXT_MID, textAlign: 'center', marginBottom: 24, lineHeight: 20 },
+  note: { fontSize: font.small, color: colors.textSubtle, textAlign: 'center', marginTop: spacing.md },
 
-  expRow: { flexDirection: 'row', alignItems: 'center' },
-  expIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: BLUE_SOFT, justifyContent: 'center', alignItems: 'center' },
-  expTitle: { fontSize: 15, fontWeight: '700', color: TEXT_DARK, marginBottom: 2 },
-  expSub: { fontSize: 12, color: TEXT_MID },
-  expAmt: { fontSize: 16, fontWeight: '800', color: TEXT_DARK },
-
-  fab: { position: 'absolute', bottom: 32, right: 24, width: 60, height: 60, borderRadius: 30, backgroundColor: BLUE, justifyContent: 'center', alignItems: 'center', shadowColor: BLUE, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 },
-
-  modalWrap: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(15,23,42,0.6)' },
-  centerWrap: { flex: 1, justifyContent: 'center', padding: 20, backgroundColor: 'rgba(15,23,42,0.6)' },
-  sheet: { backgroundColor: WHITE, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, maxHeight: '90%' },
-  dialog: { backgroundColor: WHITE, borderRadius: 24, padding: 24 },
-  sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
-  sheetTitle: { fontSize: 20, fontWeight: '800', color: TEXT_DARK },
-  closeBtn: { padding: 8, backgroundColor: '#F1F5F9', borderRadius: 20 },
-  fieldLabel: { fontSize: 13, fontWeight: '700', color: TEXT_MID, marginBottom: 8, marginTop: 16 },
-  input: { backgroundColor: '#F8FAFD', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 16, padding: 16, fontSize: 15, color: TEXT_DARK, fontWeight: '500' },
-  chip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, marginRight: 8, borderWidth: 1, borderColor: 'transparent' },
-  chipActive: { backgroundColor: BLUE, borderColor: BLUE },
-  chipTxt: { fontSize: 14, fontWeight: '600', color: TEXT_MID },
-  chipTxtActive: { color: WHITE },
-
-  primaryBtn: { backgroundColor: BLUE, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, borderRadius: 16, gap: 8 },
-  primaryBtnTxt: { color: WHITE, fontSize: 16, fontWeight: '700' },
+  // Modals
+  modalWrap: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(15,23,42,0.45)' },
+  centerWrap: { flex: 1, justifyContent: 'center', padding: spacing.xl, backgroundColor: 'rgba(15,23,42,0.45)' },
+  sheet: {
+    backgroundColor: colors.bg,
+    borderTopLeftRadius: radius['2xl'],
+    borderTopRightRadius: radius['2xl'],
+    padding: spacing.xl,
+    maxHeight: '88%',
+  },
+  dialog: { backgroundColor: colors.bg, borderRadius: radius.xl, padding: spacing.xl },
+  sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg },
+  sheetTitle: { fontSize: font.h2, fontWeight: '800', color: colors.text },
+  fieldLabel: { fontSize: font.small, fontWeight: '700', color: colors.textMuted, marginBottom: spacing.sm, marginTop: spacing.md },
+  input: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+    fontSize: font.body,
+    color: colors.text,
+  },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  chipText: { fontSize: font.small, fontWeight: '600', color: colors.text },
+  chipTextActive: { color: '#fff' },
+  perHead: { fontSize: font.small, color: colors.textMuted, marginTop: spacing.md, textAlign: 'center' },
 });

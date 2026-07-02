@@ -44,6 +44,7 @@ import AllExpensesScreen from '../Pages/AllExpensesScreen';
 import SettingsScreen from '../Pages/SettingsScreen';
 import UIShowcaseScreen from '../Pages/UIShowcaseScreen';
 import SearchScreen from '../Pages/SearchScreen';
+import NotesScreen from '../Pages/NotesScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -117,6 +118,7 @@ export default function AppNavigator() {
             <Stack.Screen name="HelpScreen" component={HelpScreen} />
             <Stack.Screen name="VisitorPass" component={VisitorPassScreen} />
             <Stack.Screen name="Rating" component={RatingScreen} />
+            <Stack.Screen name="Notes" component={NotesScreen} />
           </>
         ) : connectedHostel ? (
           <Stack.Screen name="Auth" component={AuthStack} />

@@ -8,6 +8,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { CustomDateTimePicker } from '../components/pickers/CustomDateTimePicker';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
+import { AppHeader } from '../components/ui';
 
 const { width } = Dimensions.get('window');
 
@@ -39,8 +40,10 @@ const statusConfig: Record<string, { bg: string; text: string; }> = {
 };
 
 function ComplaintDetailView({ complaint, onClose }: { complaint: any; onClose: () => void }) {
-  const statusColor = statusConfig[complaint.status].text;
-  const statusBg = statusConfig[complaint.status].bg;
+  const statusKey = complaint.status ?? 'Open';
+  const status = statusConfig[statusKey] ?? statusConfig['Open'];
+  const statusColor = status.text;
+  const statusBg = status.bg;
 
   return (
     <View style={{ flex: 1, backgroundColor: WHITE }}>
@@ -393,9 +396,14 @@ export default function ComplaintsScreen({ navigation }: any) {
     try {
       setLoading(true);
       const res = await api.get('/complaints/tenant');
-      setComplaints(res.data);
+      if (res.data && res.data.success) {
+        setComplaints(res.data.complaints || []);
+      } else {
+        setComplaints([]);
+      }
     } catch (e) {
       console.error('Failed to fetch complaints', e);
+      setComplaints([]);
     } finally {
       setLoading(false);
     }
@@ -447,39 +455,37 @@ export default function ComplaintsScreen({ navigation }: any) {
 
   return (
     <View style={s.root}>
-      <StatusBar barStyle="dark-content" backgroundColor={BG} />
+      <StatusBar barStyle="light-content" backgroundColor={BLUE} />
       
       {/* ── HEADER ── */}
-      <SafeAreaView edges={['top']} style={{ backgroundColor: BG }}>
-        <View style={s.headerRow}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtnMinimal}>
-              <ChevronLeft size={28} color={TEXT_DARK} />
-            </TouchableOpacity>
-            <View>
-              <Text style={s.headerTitle}>Complaints</Text>
-              <Text style={s.headerStats}>Applied: {totalCount} • Pending: {pendingCount} • Resolved: {resolvedCount}</Text>
-            </View>
-          </View>
-        </View>
+      <View style={{ backgroundColor: BLUE }}>
+        <SafeAreaView edges={['top']}>
+          <AppHeader
+            title="Complaints"
+            subtitle={`Applied: ${totalCount} • Pending: ${pendingCount} • Resolved: ${resolvedCount}`}
+            hideActions={true}
+            onPressBack={() => navigation.goBack()}
+            variant="primary"
+          />
+        </SafeAreaView>
+      </View>
 
-        {/* ── SEARCH & FILTER ── */}
-        <View style={s.searchRow}>
-          <View style={s.searchBox}>
-            <Search size={18} color={TEXT_MID} />
-            <TextInput 
-              style={s.searchInput} 
-              placeholder="Search complaints..." 
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholderTextColor={TEXT_MID}
-            />
-          </View>
-          <TouchableOpacity style={s.filterBtn} onPress={() => setShowFilterModal(true)}>
-            <Filter size={18} color={BLUE} />
-          </TouchableOpacity>
+      {/* ── SEARCH & FILTER ── */}
+      <View style={s.searchRow}>
+        <View style={s.searchBox}>
+          <Search size={18} color={TEXT_MID} />
+          <TextInput 
+            style={s.searchInput} 
+            placeholder="Search complaints..." 
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholderTextColor={TEXT_MID}
+          />
         </View>
-      </SafeAreaView>
+        <TouchableOpacity style={s.filterBtn} onPress={() => setShowFilterModal(true)}>
+          <Filter size={18} color={BLUE} />
+        </TouchableOpacity>
+      </View>
 
       {/* ── TABS ── */}
       <View style={s.tabWrapper}>

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, ScrollView,
   Dimensions, Animated, StatusBar, TextInput, Modal,
@@ -17,10 +17,11 @@ import {
   AlertTriangle, Edit3, Target, Edit2, SlidersHorizontal,
 } from 'lucide-react-native';
 
-import { FilterSheet, BaseBottomSheet, ConfirmationDialog, Phase3EmptyState } from '../components/UIComponents';
+import { FilterSheet, BaseBottomSheet, ConfirmationDialog, Phase3EmptyState, MonthYearPickerSheet } from '../components/UIComponents';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 
@@ -96,6 +97,11 @@ function SetBudgetModal({ visible, currentBudget, onSave, onClose }: {
 }) {
   const [val, setVal] = useState(String(currentBudget));
   const quick = [2000, 3000, 5000, 8000, 10000];
+
+  useEffect(() => {
+    setVal(currentBudget > 0 ? String(currentBudget) : '5000');
+  }, [currentBudget, visible]);
+
   return (
     <BaseBottomSheet visible={visible} onClose={onClose} height={480}>
       <View style={bm.iconRow}>
@@ -280,7 +286,13 @@ function ReceiptModal({ uri, onClose }: { uri: string; onClose: () => void }) {
 }
 
 // ── Export Modal ──────────────────────────────────────────────────────────────
-function ExportModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+function ExportModal({ visible, onClose, selectedDate, monthTotal, breakdown }: {
+  visible: boolean; onClose: () => void; selectedDate: Date; monthTotal: number; breakdown: any[];
+}) {
+  const monthName = selectedDate.toLocaleString('en-US', { month: 'short' });
+  const year = selectedDate.getFullYear();
+  const summaryStr = breakdown.map(b => `${b.name}: ₹${b.amount.toLocaleString('en-IN')}`).join(' | ');
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1}>
@@ -288,15 +300,25 @@ function ExportModal({ visible, onClose }: { visible: boolean; onClose: () => vo
           <TouchableOpacity activeOpacity={1}>
             <View style={sm.sheet}>
               <View style={sm.handle} />
-              <Text style={sm.title}>Export Jun 2025</Text>
+              <Text style={sm.title}>Export {monthName} {year}</Text>
               <Text style={sm.sub}>Share your monthly expense summary</Text>
               <TouchableOpacity style={[sm.btn, { backgroundColor: BLUE }]}
-                onPress={async () => { await Share.share({ message: 'Stayvix Expense Report – Jun 2025\nFood: ₹1,570 | Transport: ₹840 | Shopping: ₹620 | Others: ₹620\nTotal: ₹3,650' }); onClose(); }} activeOpacity={0.85}>
+                onPress={async () => {
+                  await Share.share({
+                    message: `Stayvix Expense Report – ${monthName} ${year}\n${summaryStr}\nTotal: ₹${monthTotal.toLocaleString('en-IN')}`
+                  });
+                  onClose();
+                }} activeOpacity={0.85}>
                 <FileText size={18} color={WHITE} strokeWidth={2.5} />
                 <Text style={sm.btnTxt}>Share as Text / PDF</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[sm.btn, { backgroundColor: '#16A34A' }]}
-                onPress={async () => { await Share.share({ message: 'Date,Category,Amount\n2025-06-14,Food,120\n2025-06-14,Transport,80\n2025-06-14,Bills,5000' }); onClose(); }} activeOpacity={0.85}>
+                onPress={async () => {
+                  const csvHeader = 'Date,Category,Amount\n';
+                  const csvRows = breakdown.map(b => `,${b.name},${b.amount}`).join('\n');
+                  await Share.share({ message: csvHeader + csvRows });
+                  onClose();
+                }} activeOpacity={0.85}>
                 <Download size={18} color={WHITE} strokeWidth={2.5} />
                 <Text style={sm.btnTxt}>Export as CSV</Text>
               </TouchableOpacity>
@@ -320,20 +342,41 @@ export default function ExpensesScreen({ navigation }: any) {
   const { user } = useAuth();
   const { showSuccess } = useToast();
   const [monthTotal, setMonthTotal] = useState(0);
+  const [todaySpent, setTodaySpent] = useState(0);
   const [breakdown, setBreakdown] = useState<any[]>([]);
   const [monthlyData, setMonthlyData] = useState<any[]>([]);
   const [maxAmt, setMaxAmt] = useState(0);
 
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showMonthPicker, setShowMonthPicker] = useState(false);
+
   const fetchExpenses = useCallback(async () => {
     try {
       setLoading(true);
+      try {
+        const saved = await AsyncStorage.getItem('tenant_budget');
+        if (saved) {
+          setBudget(Number(saved));
+        } else {
+          setBudget(0);
+        }
+      } catch (e) {
+        console.error('Failed to load budget', e);
+      }
       const res = await api.get('/tenant-expenses');
       if (res.data && res.data.success) {
         const fetched = res.data.data;
         const formatted = fetched.map((e: any) => ({
           id: e.expense_id.toString(),
           title: e.title,
-          time: new Date(e.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
+          time: (() => {
+            if (typeof e.date === 'string') {
+              const [y, m, d] = e.date.split('-').map(Number);
+              const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+              return `${String(d).padStart(2, '0')} ${months[m - 1]}`;
+            }
+            return new Date(e.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+          })(),
           cat: e.category,
           amt: Number(e.amount),
           shared: false,
@@ -341,15 +384,44 @@ export default function ExpensesScreen({ navigation }: any) {
           hasReceipt: false,
           date_raw: e.date,
         }));
-        setExpenses(formatted);
+
+        // Filter expenses for selected month & year (Timezone-safe string splitting)
+        const monthlyFiltered = formatted.filter((e: any) => {
+          if (typeof e.date_raw === 'string') {
+            const [y, m] = e.date_raw.split('-').map(Number);
+            return (m - 1) === selectedDate.getMonth() && y === selectedDate.getFullYear();
+          }
+          const eDate = new Date(e.date_raw);
+          return eDate.getMonth() === selectedDate.getMonth() && eDate.getFullYear() === selectedDate.getFullYear();
+        });
+
+        setExpenses(monthlyFiltered);
 
         let total = 0;
         const catMap: Record<string, number> = {};
-        formatted.forEach((e: any) => {
+        monthlyFiltered.forEach((e: any) => {
           total += e.amt;
           catMap[e.cat] = (catMap[e.cat] || 0) + e.amt;
         });
         setMonthTotal(total);
+
+        // Calculate today's spent total (Timezone-safe checking)
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        const todayUtcStr = `${today.getUTCFullYear()}-${String(today.getUTCMonth() + 1).padStart(2, '0')}-${String(today.getUTCDate()).padStart(2, '0')}`;
+        const tSpent = formatted
+          .filter((e: any) => {
+            if (!e.date_raw) return false;
+            const cleanDate = typeof e.date_raw === 'string' ? e.date_raw.split('T')[0] : '';
+            if (cleanDate === todayStr || cleanDate === todayUtcStr) return true;
+            
+            const eDate = new Date(e.date_raw);
+            return eDate.getDate() === today.getDate() &&
+                   eDate.getMonth() === today.getMonth() &&
+                   eDate.getFullYear() === today.getFullYear();
+          })
+          .reduce((sum: number, e: any) => sum + e.amt, 0);
+        setTodaySpent(tSpent);
 
         const brk = Object.keys(catMap).map(k => ({
           name: k,
@@ -361,10 +433,21 @@ export default function ExpensesScreen({ navigation }: any) {
         })).sort((a: any, b: any) => b.amount - a.amount);
         setBreakdown(brk);
 
-        const now = new Date();
+        const now = selectedDate;
         const mData = Array.from({ length: 6 }, (_, i) => {
           const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1);
-          return { month: d.toLocaleString('en-US', { month: 'short' }), amt: i === 5 ? total : 0 };
+          // Calculate total for this specific historical month (Timezone-safe splitting)
+          const histTotal = formatted
+            .filter((e: any) => {
+              if (typeof e.date_raw === 'string') {
+                const [y, m] = e.date_raw.split('-').map(Number);
+                return (m - 1) === d.getMonth() && y === d.getFullYear();
+              }
+              const eDate = new Date(e.date_raw);
+              return eDate.getMonth() === d.getMonth() && eDate.getFullYear() === d.getFullYear();
+            })
+            .reduce((sum: number, e: any) => sum + e.amt, 0);
+          return { month: d.toLocaleString('en-US', { month: 'short' }), amt: histTotal };
         });
         setMonthlyData(mData);
         setMaxAmt(Math.max(...mData.map(m => m.amt), 1));
@@ -374,7 +457,7 @@ export default function ExpensesScreen({ navigation }: any) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedDate]);
 
   useFocusEffect(useCallback(() => { fetchExpenses(); }, [fetchExpenses]));
 
@@ -382,6 +465,25 @@ export default function ExpensesScreen({ navigation }: any) {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [budget, setBudget] = useState(0);
   const [showBudget, setShowBudget]         = useState(false);
+
+  // Load budget from AsyncStorage on mount
+  useEffect(() => {
+    const loadBudget = async () => {
+      try {
+        const saved = await AsyncStorage.getItem('tenant_budget');
+        if (saved) {
+          setBudget(Number(saved));
+        } else {
+          // No budget set yet — set to 0 and trigger the setup prompt
+          setBudget(0);
+          setShowBudget(true);
+        }
+      } catch (e) {
+        console.error('Failed to load budget', e);
+      }
+    };
+    loadBudget();
+  }, []);
   const [showGoal, setShowGoal]             = useState(false);
   const [showSettle, setShowSettle]         = useState(false);
   const [showExport, setShowExport]         = useState(false);
@@ -418,9 +520,11 @@ export default function ExpensesScreen({ navigation }: any) {
               </Text>
             </View>
             <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
-              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)' }} onPress={() => setShowBudget(true)} activeOpacity={0.7}>
+              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)' }} onPress={() => setShowMonthPicker(true)} activeOpacity={0.7}>
                 <ChevronDown size={14} color={WHITE} strokeWidth={2.5} />
-                <Text style={{ fontSize: 13, fontWeight: '700', color: WHITE }}>Jun</Text>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: WHITE }}>
+                  {selectedDate.toLocaleString('en-US', { month: 'short' })}
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }} onPress={() => setShowExport(true)} activeOpacity={0.7}>
                 <Download size={18} color={WHITE} strokeWidth={2} />
@@ -465,9 +569,11 @@ export default function ExpensesScreen({ navigation }: any) {
                 onEditGoal={() => setShowGoal(true)}
                 onAddSavings={() => setShowAddSavings(true)}
                 completedGoals={completedGoals}
+                selectedDate={selectedDate}
+                todaySpent={todaySpent}
               />
             )}
-            {tab === 'Categories' && <CategoriesTab expenses={expenses} monthTotal={monthTotal} breakdown={breakdown} navigation={navigation} />}
+            {tab === 'Categories' && <CategoriesTab expenses={expenses} monthTotal={monthTotal} breakdown={breakdown} navigation={navigation} selectedDate={selectedDate} />}
             {tab === 'Analytics'  && <AnalyticsTab expenses={expenses} monthTotal={monthTotal} monthlyData={monthlyData} maxAmt={maxAmt} breakdown={breakdown} />}
           </>
         )}
@@ -479,7 +585,15 @@ export default function ExpensesScreen({ navigation }: any) {
         </TouchableOpacity>
       )}
 
-      <SetBudgetModal visible={showBudget} currentBudget={budget} onSave={(val) => { setBudget(val); setShowBudget(false); }} onClose={() => setShowBudget(false)} />
+      <SetBudgetModal visible={showBudget} currentBudget={budget} onSave={async (val) => {
+        setBudget(val);
+        setShowBudget(false);
+        try {
+          await AsyncStorage.setItem('tenant_budget', String(val));
+        } catch (e) {
+          console.error('Failed to save budget', e);
+        }
+      }} onClose={() => setShowBudget(false)} />
       <SetGoalModal visible={showGoal} currentName={goalName} currentTarget={goalTarget} onSave={(name, target) => { setGoalName(name); setGoalTarget(target); setShowGoal(false); }} onClose={() => setShowGoal(false)} />
       <AddSavingsModal visible={showAddSavings} currentSaved={goalSaved} onSave={(val) => {
         const newSaved = goalSaved + val;
@@ -503,8 +617,23 @@ export default function ExpensesScreen({ navigation }: any) {
           primaryAction={{ label: 'Confirm Settlement', onPress: () => setShowSettle(false) }}
           secondaryAction={{ label: 'Cancel', onPress: () => setShowSettle(false) }}
         />
-      <ExportModal    visible={showExport} onClose={() => setShowExport(false)} />
+      <ExportModal
+        visible={showExport}
+        onClose={() => setShowExport(false)}
+        selectedDate={selectedDate}
+        monthTotal={monthTotal}
+        breakdown={breakdown}
+      />
       {receiptUri && <ReceiptModal uri={receiptUri} onClose={() => setReceiptUri(null)} />}
+      <MonthYearPickerSheet
+        visible={showMonthPicker}
+        onClose={() => setShowMonthPicker(false)}
+        initialDate={selectedDate}
+        onConfirm={(date) => {
+          setSelectedDate(date);
+          setShowMonthPicker(false);
+        }}
+      />
     </View>
   );
 }
@@ -514,7 +643,7 @@ export default function ExpensesScreen({ navigation }: any) {
 // ══════════════════════════════════════════════════════════════════════════════
 function OverviewTab({
   expenses, monthTotal, breakdown, navigation, activeCategory, onToggleCategory, onSettleUp, onReceiptOpen, budget, onEditBudget,
-  goalName, goalTarget, goalProgress, goalSaved, onEditGoal, onAddSavings, completedGoals
+  goalName, goalTarget, goalProgress, goalSaved, onEditGoal, onAddSavings, completedGoals, selectedDate, todaySpent = 0
 }: any) {
   const [searchQ, setSearchQ]         = useState('');
   const [showSearch, setShowSearch]   = useState(false);
@@ -533,19 +662,42 @@ function OverviewTab({
     return r;
   }, [activeCategory, catFilter, searchQ]);
 
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (budget === 0) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.08, duration: 800, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+        ])
+      ).start();
+    } else {
+      pulseAnim.setValue(1);
+    }
+  }, [budget]);
+
   return (
     <>
       {/* ── 1. Total Spent Donut Chart ── */}
       <View style={[s.overviewCard, { flexDirection: 'column', alignItems: 'center', position: 'relative' }]}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginBottom: 20 }}>
-          <Text style={s.overviewLabel}>Total Spent (Jun)</Text>
-          <TouchableOpacity onPress={onEditBudget} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#EEF2FF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#E0E7FF' }}>
-            <Edit3 size={14} color="#2245D4" />
-            <Text style={{ fontSize: 12, fontWeight: '700', color: '#2245D4' }}>Edit Budget</Text>
-          </TouchableOpacity>
+          <Text style={s.overviewLabel}>Total Spent ({selectedDate.toLocaleString('en-US', { month: 'short' })})</Text>
+          {budget > 0 ? (
+            <TouchableOpacity onPress={onEditBudget} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#EEF2FF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#E0E7FF' }}>
+              <Edit3 size={14} color="#2245D4" />
+              <Text style={{ fontSize: 12, fontWeight: '700', color: '#2245D4' }}>Edit Budget</Text>
+            </TouchableOpacity>
+          ) : (
+            <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+              <TouchableOpacity onPress={onEditBudget} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#EFF6FF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#BFDBFE' }}>
+                <Plus size={14} color="#2563EB" strokeWidth={2.5} />
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#2563EB' }}>Add Budget</Text>
+              </TouchableOpacity>
+            </Animated.View>
+          )}
         </View>
         
-        <View style={{ width: 130, height: 130, justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
+        <View style={{ width: 130, height: 130, justifyContent: 'center', alignItems: 'center', alignSelf: 'center', position: 'relative' }}>
           <Svg width="130" height="130" viewBox="0 0 100 100">
             {/* Background circle */}
             <Circle cx="50" cy="50" r="40" stroke="#F1F5F9" strokeWidth="10" fill="transparent" />
@@ -564,20 +716,40 @@ function OverviewTab({
           {/* Inner Text */}
           <View style={{ position: 'absolute', justifyContent: 'center', alignItems: 'center' }}>
             <Text style={{ fontSize: 18, fontWeight: '800', color: TEXT_DARK }}>₹{monthTotal}</Text>
-            <Text style={{ fontSize: 10, color: TEXT_MID, marginTop: 2 }}>of ₹{budget}</Text>
+            <Text style={{ fontSize: 10, color: TEXT_MID, marginTop: 2 }}>of ₹{budget > 0 ? budget : '—'}</Text>
           </View>
         </View>
 
-        <View style={{ flexDirection: 'row', gap: 12, marginTop: 24, alignSelf: 'stretch' }}>
-          <View style={[s.trendRow, { flex: 1, paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#F8FAFD', borderRadius: 16 }]}>
-            <TrendingUp size={14} color="#E11D48" strokeWidth={2.5} />
-            <Text style={[s.heroTrendTxt, { color: '#E11D48', marginLeft: 6 }]}>12% vs last month</Text>
-          </View>
+        <View style={{ flexDirection: 'column', gap: 10, marginTop: 20, alignSelf: 'stretch' }}>
           
-          <View style={[s.trendRow, { flex: 1, paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#ECFDF5', borderRadius: 16, justifyContent: 'center' }]}>
-            <Text style={[s.heroTrendTxt, { color: '#059669', fontWeight: '700' }]}>
-              ₹{Math.round(Math.max(budget - monthTotal, 0) / (30 - new Date().getDate() + 1))} safe to spend today
-            </Text>
+          <View style={[s.trendRow, { paddingHorizontal: 16, paddingVertical: 12, backgroundColor: budget > 0 ? (monthTotal > budget ? '#FEF2F2' : '#ECFDF5') : '#FFFBEB', borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: budget > 0 ? (monthTotal > budget ? 1 : 0) : 1, borderColor: budget > 0 ? (monthTotal > budget ? '#FCA5A5' : 'transparent') : '#FDE68A' }]}>
+            {budget > 0 ? (
+              <>
+                <Text style={{ fontSize: 13, color: monthTotal > budget ? '#DC2626' : '#059669', fontWeight: '800', flexShrink: 1 }}>
+                  {monthTotal > budget ? (
+                    "Over budget!"
+                  ) : (
+                    `₹${Math.round((budget - monthTotal) / (30 - new Date().getDate() + 1))} safe to spend today`
+                  )}
+                </Text>
+                
+                <View style={{ alignItems: 'flex-end', marginLeft: 8 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                    <TrendingUp size={10} color="#E11D48" strokeWidth={2.5} />
+                    <Text style={{ fontSize: 9, fontWeight: '700', color: '#E11D48', marginLeft: 3 }}>12% vs last month</Text>
+                  </View>
+                  <View style={{ backgroundColor: monthTotal > budget ? '#FEE2E2' : '#D1FAE5', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+                    <Text style={{ fontSize: 11, color: monthTotal > budget ? '#EF4444' : '#047857', fontWeight: '700' }}>
+                      ₹{todaySpent} spent today
+                    </Text>
+                  </View>
+                </View>
+              </>
+            ) : (
+              <Text style={{ fontSize: 12, color: '#D97706', fontWeight: '700' }}>
+                Set budget to calculate daily limit
+              </Text>
+            )}
           </View>
         </View>
       </View>
@@ -659,30 +831,18 @@ function OverviewTab({
       )}
 
       {/* ── 3. Insight Card ── */}
-      {breakdown.length > 0 && monthTotal > 0 ? (
+      {breakdown.length > 0 && monthTotal > 0 && (
         <TouchableOpacity
           style={s.insightCard}
           activeOpacity={0.85}
-          onPress={() => navigation.navigate('CategoryDetail', { categoryName: breakdown[0].name, spent: breakdown[0].amount, totalPct: breakdown[0].pct, color: breakdown[0].color, bg: breakdown[0].bg })}
+          onPress={() => navigation.navigate('CategoryDetail', { categoryName: breakdown[0].name, spent: breakdown[0].amount, totalPct: breakdown[0].pct, color: breakdown[0].color, bg: breakdown[0].bg, selectedDateStr: selectedDate.toISOString() })}
         >
           <View style={s.insightIcon}>
             <Lightbulb size={18} color={WARN_COLOR} strokeWidth={2} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={s.insightLabel}>{new Date().toLocaleString('en-US', { month: 'short' }).toUpperCase()} INSIGHT</Text>
+            <Text style={s.insightLabel}>SMART INSIGHT · {selectedDate.toLocaleString('en-US', { month: 'short' }).toUpperCase()}</Text>
             <Text style={s.insightTitle}>{breakdown[0].name} is your top spend this month at {breakdown[0].pct}% of total.</Text>
-          </View>
-          <ChevronRight size={16} color={WARN_COLOR} strokeWidth={2.5} />
-        </TouchableOpacity>
-      ) : (
-        <TouchableOpacity style={s.insightCard} activeOpacity={0.85}>
-          <View style={s.insightIcon}>
-            <Lightbulb size={18} color={WARN_COLOR} strokeWidth={2} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={s.insightLabel}>{new Date().toLocaleString('en-US', { month: 'short' }).toUpperCase()} INSIGHT</Text>
-            <Text style={s.insightTitle}>No insights yet.</Text>
-            <Text style={s.insightSub}>Check back after adding more expenses.</Text>
           </View>
           <ChevronRight size={16} color={WARN_COLOR} strokeWidth={2.5} />
         </TouchableOpacity>
@@ -881,7 +1041,7 @@ function DonutChart({ breakdown, monthTotal }: { breakdown: any[]; monthTotal: n
   );
 }
 
-function CategoriesTab({ expenses, monthTotal, breakdown, navigation }: any) {
+function CategoriesTab({ expenses, monthTotal, breakdown, navigation, selectedDate }: any) {
   const MAX = Math.max(...breakdown.map((c: any) => c.amount));
   return (
     <>
@@ -925,7 +1085,7 @@ function CategoriesTab({ expenses, monthTotal, breakdown, navigation }: any) {
           const Icon = meta.Icon;
           return (
             <TouchableOpacity key={cat.name} style={[s.txnRow, i < breakdown.length - 1 && s.txnDivider]}
-              onPress={() => navigation.navigate('CategoryDetail', { categoryName: cat.name, spent: cat.amount, totalPct: cat.pct, color: cat.color, bg: cat.bg })}
+              onPress={() => navigation.navigate('CategoryDetail', { categoryName: cat.name, spent: cat.amount, totalPct: cat.pct, color: cat.color, bg: cat.bg, selectedDateStr: selectedDate.toISOString() })}
               activeOpacity={0.7}
             >
               <View style={[s.txnIcon, { backgroundColor: cat.bg }]}><Icon size={18} color={cat.color} strokeWidth={2} /></View>

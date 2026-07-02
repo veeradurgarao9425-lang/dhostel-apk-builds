@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 // Force Metro Reload
-import { Bell } from 'lucide-react-native';
+import { Bell, ChevronLeft } from 'lucide-react-native';
 import { colors, spacing, font } from '../../theme';
 import Avatar from './Avatar';
 
@@ -10,10 +10,14 @@ type Props = {
   eyebrow?: string;
   /** Bold title e.g. the tenant name or screen title */
   title: string;
+  subtitle?: string;
   name?: string;
   unreadCount?: number;
   onPressBell?: () => void;
   onPressAvatar?: () => void;
+  hideActions?: boolean;
+  onPressBack?: () => void;
+  variant?: 'primary' | 'default';
 };
 
 /**
@@ -23,39 +27,66 @@ type Props = {
 export default function AppHeader({
   eyebrow,
   title,
+  subtitle,
   name,
   unreadCount = 0,
   onPressBell,
   onPressAvatar,
+  hideActions = false,
+  onPressBack,
+  variant = 'default',
 }: Props) {
+  const isPrimary = variant === 'primary';
+  const textColor = isPrimary ? '#FFFFFF' : colors.text;
+  const mutedTextColor = isPrimary ? 'rgba(255,255,255,0.8)' : colors.textMuted;
+
   return (
-    <View style={styles.row}>
+    <View style={[
+      styles.row,
+      isPrimary && {
+        backgroundColor: colors.primary,
+        marginHorizontal: -spacing.xl,
+        paddingHorizontal: spacing.xl,
+        paddingTop: spacing.lg,
+        paddingBottom: spacing.lg,
+        borderBottomLeftRadius: 16,
+        borderBottomRightRadius: 16,
+      }
+    ]}>
+      {onPressBack && (
+        <TouchableOpacity onPress={onPressBack} style={{ marginRight: 8, padding: 4 }} activeOpacity={0.7}>
+          <ChevronLeft size={24} color={textColor} strokeWidth={2.5} />
+        </TouchableOpacity>
+      )}
       <View style={styles.left}>
-        {!!eyebrow && <Text style={styles.eyebrow}>{eyebrow}</Text>}
-        <Text style={styles.title} numberOfLines={1}>
+        {!!eyebrow && <Text style={[styles.eyebrow, { color: mutedTextColor }]}>{eyebrow}</Text>}
+        <Text style={[styles.title, { color: textColor }]} numberOfLines={1}>
           {title}
         </Text>
+        {!!subtitle && <Text style={{ fontSize: 13, color: mutedTextColor, marginTop: 2 }}>{subtitle}</Text>}
       </View>
 
-      <View style={styles.actions}>
-        <TouchableOpacity
-          style={styles.iconBtn}
-          activeOpacity={0.7}
-          onPress={onPressBell}
-          accessibilityLabel="Notifications"
-        >
-          <Bell size={20} color={colors.text} />
-          {unreadCount > 0 && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
+      {!hideActions && (
+        <View style={styles.actions}>
+          <TouchableOpacity
+            style={styles.iconBtn}
+            activeOpacity={0.7}
+            onPress={onPressBell}
+            accessibilityLabel="Notifications"
+          >
+            <Bell size={20} color={textColor} />
+            {unreadCount > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
 
-        <TouchableOpacity activeOpacity={0.8} onPress={onPressAvatar} accessibilityLabel="Profile">
-          <Avatar name={name} size={42} />
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity activeOpacity={0.8} onPress={onPressAvatar} accessibilityLabel="Profile">
+            <Avatar name={name} size={42} />
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }

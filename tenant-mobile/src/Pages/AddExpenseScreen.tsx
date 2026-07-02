@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import {
@@ -168,6 +169,8 @@ export default function AddExpenseScreen({ navigation, route }: any) {
   const [receiptUri, setReceiptUri]       = useState<string | null>(null);
   const [isRecurring, setIsRecurring]     = useState(false);
   const [saving, setSaving]               = useState(false);
+  const [showBudgetPrompt, setShowBudgetPrompt] = useState(false);
+  const [budgetInput, setBudgetInput]     = useState('');
   const dateRef = useRef(new Date());
 
   useEffect(() => {
@@ -178,6 +181,19 @@ export default function AddExpenseScreen({ navigation, route }: any) {
 
   const handleSave = async () => {
     if (!amount || Number(amount) <= 0) return;
+    try {
+      const saved = await AsyncStorage.getItem('tenant_budget');
+      if (!saved || Number(saved) === 0) {
+        setShowBudgetPrompt(true);
+        return;
+      }
+    } catch {
+      // proceed if storage fails
+    }
+    await executeSave();
+  };
+
+  const executeSave = async () => {
     setSaving(true);
     try {
       const year = dateRef.current.getFullYear();
@@ -193,10 +209,27 @@ export default function AddExpenseScreen({ navigation, route }: any) {
         payment_mode: payMethod,
       });
       setShowSuccess(true);
-    } catch {
-      showError('Failed to save expense. Please try again.');
+    } catch (err: any) {
+      console.error('Failed to save expense:', err);
+      const errMsg = err?.response?.data?.error || err.message || 'Please try again.';
+      showError(`Failed to save expense: ${errMsg}`);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSaveBudgetAndExpense = async () => {
+    const bAmt = Number(budgetInput);
+    if (isNaN(bAmt) || bAmt < 100) {
+      showError('Please enter a valid budget of at least ₹100.');
+      return;
+    }
+    try {
+      await AsyncStorage.setItem('tenant_budget', String(bAmt));
+      setShowBudgetPrompt(false);
+      await executeSave();
+    } catch (err) {
+      showError('Failed to save budget.');
     }
   };
   const handlePickReceipt = async () => {
@@ -311,6 +344,45 @@ export default function AddExpenseScreen({ navigation, route }: any) {
       </KeyboardAvoidingView>
 
       <SuccessModal visible={showSuccess} amount={amount} category={category} onDone={() => { setShowSuccess(false); navigation.goBack(); }} />
+      
+      {/* ── BUDGET PROMPT MODAL ── */}
+      <Modal visible={showBudgetPrompt} transparent animationType="slide" onRequestClose={() => setShowBudgetPrompt(false)}>
+        <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(13,27,62,0.6)', justifyContent: 'flex-end' }} activeOpacity={1} onPress={() => setShowBudgetPrompt(false)}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            <TouchableOpacity activeOpacity={1} style={{ backgroundColor: WHITE, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 44, shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 10 }}>
+              <View style={{ width: 40, height: 4, backgroundColor: BORDER, borderRadius: 2, alignSelf: 'center', marginBottom: 20 }} />
+              
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+                <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: BLUE_SOFT, alignItems: 'center', justifyContent: 'center' }}>
+                  <CalendarDays size={22} color={BLUE} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 16, fontWeight: '800', color: TEXT_DARK }}>Set Monthly Budget First</Text>
+                  <Text style={{ fontSize: 12, color: TEXT_MID, marginTop: 2 }}>Please set a budget for this month before logging expenses.</Text>
+                </View>
+              </View>
+
+              <Text style={{ fontSize: 11, fontWeight: '800', color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10, marginLeft: 4 }}>Enter Monthly Budget (₹)</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: BG, borderWidth: 1, borderColor: BORDER, borderRadius: 14, paddingHorizontal: 16, height: 54, marginBottom: 24 }}>
+                <Text style={{ fontSize: 18, fontWeight: '800', color: TEXT_DARK }}>₹</Text>
+                <TextInput
+                  style={{ flex: 1, fontSize: 16, fontWeight: '700', color: TEXT_DARK }}
+                  placeholder="e.g. 5000"
+                  placeholderTextColor="#9CA3AF"
+                  keyboardType="numeric"
+                  value={budgetInput}
+                  onChangeText={v => setBudgetInput(v.replace(/[^0-9]/g, ''))}
+                  autoFocus
+                />
+              </View>
+
+              <TouchableOpacity style={{ backgroundColor: BLUE, borderRadius: 20, paddingVertical: 16, alignItems: 'center', justifyContent: 'center' }} onPress={handleSaveBudgetAndExpense}>
+                <Text style={{ color: WHITE, fontSize: 15, fontWeight: '800' }}>Save Budget & Log Expense</Text>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </KeyboardAvoidingView>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }

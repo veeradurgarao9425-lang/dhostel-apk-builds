@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, ScrollView,
-  TextInput, StatusBar, ActivityIndicator, RefreshControl,
+  TextInput, StatusBar, ActivityIndicator, RefreshControl, Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -9,11 +9,12 @@ import {
   Utensils, Car, ShoppingBag, Receipt,
   Film, HeartPulse, MoreHorizontal, Coffee,
   Home, Plane, Zap, Gift, BookOpen,
+  Calendar, Check, X,
 } from 'lucide-react-native';
 import { useFocusEffect } from '@react-navigation/native';
 
 import { useToast } from '../context/ToastContext';
-import { Phase3EmptyState } from '../components/UIComponents';
+import { Phase3EmptyState, BaseBottomSheet } from '../components/UIComponents';
 import api from '../services/api';
 
 const BLUE      = '#2245D4';
@@ -51,6 +52,8 @@ export default function AllExpensesScreen({ navigation }: any) {
   const [loading, setLoading]           = useState(true);
   const [refreshing, setRefreshing]     = useState(false);
   const [sortOrder, setSortOrder]       = useState<'newest' | 'oldest' | 'highest' | 'lowest'>('newest');
+  const [dateFilter, setDateFilter]     = useState<'Any time' | 'Today' | 'This Month' | 'Last Month' | 'This Year'>('Any time');
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const { showError } = useToast();
 
@@ -86,7 +89,7 @@ export default function AllExpensesScreen({ navigation }: any) {
   }, [fetchExpenses]);
 
   const cycleSortOrder = useCallback(() => {
-    const orders: typeof sortOrder[] = ['newest', 'oldest', 'highest', 'lowest'];
+    const orders: typeof sortOrder[] = ['newest', 'lowest'];
     setSortOrder(prev => {
       const next = orders[(orders.indexOf(prev) + 1) % orders.length];
       return next;
@@ -97,7 +100,30 @@ export default function AllExpensesScreen({ navigation }: any) {
     const filtered = allData.filter(item => {
       const matchCat = activeFilter === 'All' || item.cat === activeFilter;
       const matchQ   = item.title.toLowerCase().includes(query.toLowerCase()) || item.cat.toLowerCase().includes(query.toLowerCase());
-      return matchCat && matchQ;
+      
+      let matchDate = true;
+      if (dateFilter !== 'Any time') {
+        const itemDateStr = item.rawDate; // e.g. '2026-07-02'
+        if (typeof itemDateStr === 'string') {
+          const [y, m, d] = itemDateStr.split('-').map(Number);
+          
+          if (dateFilter === 'Today') {
+            const today = new Date();
+            matchDate = y === today.getFullYear() && (m - 1) === today.getMonth() && d === today.getDate();
+          } else if (dateFilter === 'This Month') {
+            const today = new Date();
+            matchDate = y === today.getFullYear() && (m - 1) === today.getMonth();
+          } else if (dateFilter === 'Last Month') {
+            const today = new Date();
+            const lm = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+            matchDate = y === lm.getFullYear() && (m - 1) === lm.getMonth();
+          } else if (dateFilter === 'This Year') {
+            const today = new Date();
+            matchDate = y === today.getFullYear();
+          }
+        }
+      }
+      return matchCat && matchQ && matchDate;
     });
     const sortFn = (a: any, b: any) => {
       if (sortOrder === 'newest')  return new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime();
@@ -109,7 +135,7 @@ export default function AllExpensesScreen({ navigation }: any) {
     const map: Record<string, typeof allData> = {};
     sorted.forEach(item => { if (!map[item.date]) map[item.date] = []; map[item.date].push(item); });
     return Object.entries(map);
-  }, [query, activeFilter, allData, sortOrder]);
+  }, [query, activeFilter, allData, sortOrder, dateFilter]);
 
   return (
     <View style={s.root}>
@@ -132,14 +158,49 @@ export default function AllExpensesScreen({ navigation }: any) {
               )}
             </View>
           </View>
-          <View style={s.searchBox}>
-            <Search size={16} color="rgba(255,255,255,0.7)" strokeWidth={2} />
-            <TextInput style={s.searchInput} placeholder="Search expenses..." placeholderTextColor="rgba(255,255,255,0.6)" value={query} onChangeText={setQuery} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 20, paddingBottom: 16 }}>
+            <View style={[s.searchBox, { flex: 1, marginHorizontal: 0, marginBottom: 0 }]}>
+              <Search size={16} color="rgba(255,255,255,0.7)" strokeWidth={2} />
+              <TextInput style={s.searchInput} placeholder="Search expenses..." placeholderTextColor="rgba(255,255,255,0.6)" value={query} onChangeText={setQuery} />
+            </View>
+            <TouchableOpacity 
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: 12,
+                backgroundColor: 'rgba(255,255,255,0.15)',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.3)',
+                position: 'relative',
+              }}
+              onPress={() => setShowDatePicker(true)}
+              activeOpacity={0.7}
+            >
+              <Calendar size={18} color={WHITE} strokeWidth={2} />
+              {dateFilter !== 'Any time' && (
+                <View style={{ position: 'absolute', top: -3, right: -3, width: 8, height: 8, borderRadius: 4, backgroundColor: '#EF4444' }} />
+              )}
+            </TouchableOpacity>
           </View>
         </SafeAreaView>
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filterRow} style={s.filterBar}>
+        {dateFilter !== 'Any time' && (
+          <TouchableOpacity 
+            style={[s.filterPill, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]} 
+            onPress={() => setShowDatePicker(true)}
+            activeOpacity={0.7}
+          >
+            <View style={[s.filterPillDot, { backgroundColor: '#DBEAFE' }]}>
+              <Calendar size={12} color="#2563EB" strokeWidth={2} />
+            </View>
+            <Text style={[s.filterPillText, { color: '#2563EB', fontWeight: '700' }]}>{dateFilter}</Text>
+          </TouchableOpacity>
+        )}
+
         {FILTER_CATS.map(cat => {
           const meta = CATS[cat]; const active = activeFilter === cat;
           return (
@@ -208,6 +269,43 @@ export default function AllExpensesScreen({ navigation }: any) {
         )}
         <View style={{ height: 60 }} />
       </ScrollView>
+      {/* ── Date Filter Modal (using reusable BaseBottomSheet) ── */}
+      <BaseBottomSheet visible={showDatePicker} onClose={() => setShowDatePicker(false)} height="auto">
+        <View style={{ padding: 20, paddingBottom: 40 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <Text style={{ fontSize: 16, fontWeight: '800', color: TEXT_DARK }}>Filter by Date</Text>
+            <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+              <X size={20} color={TEXT_MID} />
+            </TouchableOpacity>
+          </View>
+          
+          {(['Any time', 'Today', 'This Month', 'Last Month', 'This Year'] as const).map((filter) => {
+            const active = dateFilter === filter;
+            return (
+              <TouchableOpacity
+                key={filter}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  paddingVertical: 16,
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#F3F4F6',
+                }}
+                onPress={() => {
+                  setDateFilter(filter);
+                  setShowDatePicker(false);
+                }}
+              >
+                <Text style={{ fontSize: 15, fontWeight: active ? '700' : '500', color: active ? BLUE : TEXT_DARK }}>
+                  {filter}
+                </Text>
+                {active && <Check size={18} color={BLUE} strokeWidth={2.5} />}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </BaseBottomSheet>
     </View>
   );
 }

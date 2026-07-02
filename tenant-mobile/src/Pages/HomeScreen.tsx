@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect } from "react";
+import React, { useCallback, useState, useEffect, useRef } from "react";
 import {
   StyleSheet,
   Text,
@@ -10,6 +10,7 @@ import {
   StatusBar,
   Dimensions,
   LayoutAnimation,
+  Animated,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
@@ -45,9 +46,9 @@ import {
 } from "lucide-react-native";
 
 import { useAuth } from "../context/AuthContext";
-import api from "../services/api";
-
 import { Phase3EmptyState } from '../components/UIComponents';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import api from "../services/api";
 
 const { width } = Dimensions.get("window");
 
@@ -69,6 +70,59 @@ export default function HomeScreen({ navigation }: any) {
   const [dueAmount, setDueAmount] = useState<number>(0);
   const [rentDueDate, setRentDueDate] = useState<string | null>(null);
   const [totalRentAmount, setTotalRentAmount] = useState<number>(0);
+  const [budget, setBudget] = useState(0);
+  const [spent, setSpent] = useState(0);
+  const progressAnim = useRef(new Animated.Value(0)).current;
+
+  // Animate the budget bar when spent/budget values update
+  useEffect(() => {
+    if (budget > 0) {
+      Animated.timing(progressAnim, {
+        toValue: Math.min((spent / budget) * 100, 100),
+        duration: 1000,
+        useNativeDriver: false,
+      }).start();
+    } else {
+      progressAnim.setValue(0);
+    }
+  }, [spent, budget]);
+
+  // Load budget and monthly spent total on focus
+  useFocusEffect(
+    useCallback(() => {
+      const loadData = async () => {
+        try {
+          const savedBudget = await AsyncStorage.getItem('tenant_budget');
+          setBudget(savedBudget ? Number(savedBudget) : 0);
+        } catch (e) {
+          console.error('Failed to load budget on focus:', e);
+        }
+
+        try {
+          const res = await api.get('/tenant-expenses');
+          if (res.data && res.data.success) {
+            const fetched = res.data.data;
+            const now = new Date();
+            const monthlyFiltered = fetched.filter((e: any) => {
+              if (!e.date) return false;
+              const dateStr = typeof e.date === 'string' ? e.date.split('T')[0] : '';
+              if (dateStr) {
+                const [y, m] = dateStr.split('-').map(Number);
+                if ((m - 1) === now.getMonth() && y === now.getFullYear()) return true;
+              }
+              const eDate = new Date(e.date);
+              return eDate.getMonth() === now.getMonth() && eDate.getFullYear() === now.getFullYear();
+            });
+            const total = monthlyFiltered.reduce((sum: number, e: any) => sum + Number(e.amount), 0);
+            setSpent(total);
+          }
+        } catch (e) {
+          console.error('Failed to load expenses on focus:', e);
+        }
+      };
+      loadData();
+    }, [])
+  );
 
   // Mess skip state
   const [skipped, setSkipped] = useState({ morning: false, lunch: false, dinner: false });
@@ -302,6 +356,67 @@ export default function HomeScreen({ navigation }: any) {
           />
         }
       >
+        {/* ── Budget Summary Banner ── */}
+        {budget === 0 ? (
+          <TouchableOpacity 
+            style={{ 
+              marginHorizontal: 20, 
+              marginTop: 10, 
+              marginBottom: 16, 
+              backgroundColor: '#FFFBEB', 
+              borderRadius: 16, 
+              borderWidth: 1, 
+              borderColor: '#FDE68A', 
+              padding: 14, 
+              flexDirection: 'row', 
+              alignItems: 'center', 
+              gap: 12 
+            }}
+            onPress={() => navigation.navigate('Expenses')}
+            activeOpacity={0.8}
+          >
+            <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#FEF3C7', alignItems: 'center', justifyContent: 'center' }}>
+              <Wallet size={18} color="#D97706" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#B45309' }}>Monthly Budget Not Set</Text>
+              <Text style={{ fontSize: 11, color: '#D97706', marginTop: 1 }}>Tap to set a budget and track personal expenses</Text>
+            </View>
+            <ChevronRight size={16} color="#D97706" strokeWidth={2.5} />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity 
+            style={{ 
+              marginHorizontal: 20, 
+              marginTop: 10, 
+              marginBottom: 16, 
+              backgroundColor: '#EFF6FF', 
+              borderRadius: 16, 
+              borderWidth: 1, 
+              borderColor: '#BFDBFE', 
+              padding: 14, 
+            }}
+            onPress={() => navigation.navigate('Expenses')}
+            activeOpacity={0.8}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <View style={{ width: 30, height: 30, borderRadius: 8, backgroundColor: '#DBEAFE', alignItems: 'center', justifyContent: 'center' }}>
+                <Wallet size={16} color="#2563EB" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#1E40AF' }}>
+                  ₹{spent} of ₹{budget} spent
+                </Text>
+              </View>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: spent > budget ? '#DC2626' : '#2563EB' }}>
+                {spent > budget ? 'Over Budget!' : `₹${budget - spent} left`}
+              </Text>
+            </View>
+            <View style={{ height: 6, backgroundColor: '#E2E8F0', borderRadius: 3, overflow: 'hidden' }}>
+              <Animated.View style={{ height: '100%', width: progressAnim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }), backgroundColor: spent > budget ? '#EF4444' : '#3B82F6', borderRadius: 3 }} />
+            </View>
+          </TouchableOpacity>
+        )}
 
         {/* ── Total Due Overview Card ──────────────────────────────────────── */}
         <View style={styles.section}>

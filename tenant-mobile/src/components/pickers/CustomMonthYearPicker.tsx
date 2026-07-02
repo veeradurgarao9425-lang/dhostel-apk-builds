@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export interface CustomMonthYearPickerProps {
@@ -13,13 +12,11 @@ export interface CustomMonthYearPickerProps {
 }
 
 export function CustomMonthYearPicker({ visible, onClose, onConfirm, initialDate }: CustomMonthYearPickerProps) {
-    
-    const primary = '#8B4513';
+    const primary = '#2245D4'; // Changed from brown to Blue theme
 
     const [selectedYear, setSelectedYear] = useState(initialDate ? initialDate.getFullYear() : new Date().getFullYear());
     const [selectedMonth, setSelectedMonth] = useState(initialDate ? initialDate.getMonth() : new Date().getMonth());
     
-    // Pagination for years (blocks of 9)
     const [yearPage, setYearPage] = useState(0);
 
     const baseYear = (initialDate ? initialDate.getFullYear() : new Date().getFullYear()) - 4 + (yearPage * 9);
@@ -28,18 +25,18 @@ export function CustomMonthYearPicker({ visible, onClose, onConfirm, initialDate
     return (
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
             <View style={S.modalOverlay}>
+                <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
                 <View style={S.container}>
                     {/* Header */}
                     <View style={S.header}>
                         <TouchableOpacity onPress={onClose} style={{ padding: 4 }}>
-                            <Ionicons name="arrow-back" size={24} color="#1E293B" />
+                            <Ionicons name="close" size={24} color="#1E293B" />
                         </TouchableOpacity>
                         <Text style={S.headerTitle}>Select Month & Year</Text>
                         <View style={{ width: 24 }} />
                     </View>
 
-                    <ScrollView style={{ paddingHorizontal: 20 }}>
-                        
+                    <ScrollView style={{ paddingHorizontal: 20 }} showsVerticalScrollIndicator={false}>
                         {/* Select Year */}
                         <View style={S.sectionHeader}>
                             <TouchableOpacity onPress={() => setYearPage(p => p - 1)} style={{ padding: 4 }}>
@@ -56,7 +53,7 @@ export function CustomMonthYearPicker({ visible, onClose, onConfirm, initialDate
                                 return (
                                     <View key={y} style={S.cellWrap}>
                                         <TouchableOpacity 
-                                            style={[S.cellBtn, sel && { backgroundColor: primary }]}
+                                            style={[S.cellBtn, sel && { backgroundColor: primary, borderColor: primary }]}
                                             onPress={() => setSelectedYear(y)}
                                         >
                                             <Text style={[S.cellText, sel && { color: '#FFF' }]}>{y}</Text>
@@ -69,14 +66,14 @@ export function CustomMonthYearPicker({ visible, onClose, onConfirm, initialDate
                         <View style={S.divider} />
 
                         {/* Select Month */}
-                        <Text style={S.sectionTitle}>Select Month</Text>
+                        <Text style={[S.sectionTitle, { marginBottom: 12 }]}>Select Month</Text>
                         <View style={S.grid}>
                             {MONTHS.map((m, i) => {
                                 const sel = i === selectedMonth;
                                 return (
                                     <View key={i} style={S.cellWrap}>
                                         <TouchableOpacity 
-                                            style={[S.cellBtn, sel && { backgroundColor: primary }]}
+                                            style={[S.cellBtn, sel && { backgroundColor: primary, borderColor: primary }]}
                                             onPress={() => setSelectedMonth(i)}
                                         >
                                             <Text style={[S.cellText, sel && { color: '#FFF' }]}>{m}</Text>
@@ -85,7 +82,6 @@ export function CustomMonthYearPicker({ visible, onClose, onConfirm, initialDate
                                 );
                             })}
                         </View>
-
                     </ScrollView>
 
                     <View style={S.footer}>
@@ -97,7 +93,7 @@ export function CustomMonthYearPicker({ visible, onClose, onConfirm, initialDate
                                 onClose();
                             }}
                         >
-                            <Text style={S.confirmBtnText}>Confirm</Text>
+                            <Text style={S.confirmBtnText}>Confirm Selection</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -114,20 +110,20 @@ const S = StyleSheet.create({
     },
     container: {
         backgroundColor: '#FFFFFF',
-        borderTopLeftRadius: 28,
-        borderTopRightRadius: 28,
-        height: '80%',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        height: 480,
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 20,
-        paddingTop: 24,
-        paddingBottom: 16,
+        paddingTop: 20,
+        paddingBottom: 8,
     },
     headerTitle: {
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: '800',
         color: '#1E293B',
     },
@@ -135,58 +131,59 @@ const S = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginTop: 16,
-        marginBottom: 16,
+        marginTop: 8,
+        marginBottom: 8,
     },
     sectionTitle: {
-        fontSize: 15,
+        fontSize: 13,
         fontWeight: '700',
-        color: '#1E293B',
+        color: '#64748B',
     },
     grid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        marginHorizontal: -5,
+        marginHorizontal: -4,
     },
     cellWrap: {
         width: '33.33%',
-        padding: 5,
+        padding: 4,
     },
     cellBtn: {
         backgroundColor: '#F8FAFC',
-        paddingVertical: 14,
-        borderRadius: 12,
+        paddingVertical: 10,
+        borderRadius: 10,
         alignItems: 'center',
         borderWidth: 1,
         borderColor: '#E2E8F0',
     },
     cellText: {
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: '600',
         color: '#475569',
     },
     divider: {
         height: 1,
         backgroundColor: '#F1F5F9',
-        marginVertical: 20,
+        marginVertical: 12,
     },
     footer: {
-        padding: 20,
+        padding: 16,
         borderTopWidth: 1,
         borderColor: '#F1F5F9',
+        backgroundColor: '#FFFFFF',
     },
     confirmBtn: {
-        paddingVertical: 16,
-        borderRadius: 14,
+        paddingVertical: 14,
+        borderRadius: 12,
         alignItems: 'center',
-        elevation: 3,
+        elevation: 1,
         shadowColor: '#000',
-        shadowOpacity: 0.1,
-        shadowRadius: 5,
+        shadowOpacity: 0.05,
+        shadowRadius: 3,
     },
     confirmBtnText: {
         color: '#FFF',
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: '800',
     }
 });

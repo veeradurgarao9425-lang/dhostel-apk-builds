@@ -769,6 +769,48 @@ async function patchDatabaseSchema() {
       console.error('[schema-patch] Error checking/creating tenant_expenses table:', e.message);
     }
 
+    // 20. Ensure splits_members table exists
+    try {
+      if (!tableNamesLower.includes('splits_members')) {
+        console.log('[schema-patch] creating missing splits_members table...');
+        await db.raw(`
+          CREATE TABLE splits_members (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            student_id INT NOT NULL,
+            member_id VARCHAR(50) NOT NULL,
+            name VARCHAR(255) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        await db.raw("CREATE UNIQUE INDEX idx_splits_members_uniq ON splits_members(student_id, member_id)");
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error checking/creating splits_members table:', e.message);
+    }
+
+    // 21. Ensure splits_expenses table exists
+    try {
+      if (!tableNamesLower.includes('splits_expenses')) {
+        console.log('[schema-patch] creating missing splits_expenses table...');
+        await db.raw(`
+          CREATE TABLE splits_expenses (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            student_id INT NOT NULL,
+            expense_id VARCHAR(50) NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            amount DECIMAL(10, 2) NOT NULL,
+            paid_by_id VARCHAR(50) NOT NULL,
+            participant_ids TEXT NOT NULL,
+            expense_date DATE NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        await db.raw("CREATE UNIQUE INDEX idx_splits_expenses_uniq ON splits_expenses(student_id, expense_id)");
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error checking/creating splits_expenses table:', e.message);
+    }
+
     console.log('[schema-patch] Schema check and patch complete.');
   } catch (err: any) {
     console.error('[schema-patch] Critical error during schema patching:', err.message);

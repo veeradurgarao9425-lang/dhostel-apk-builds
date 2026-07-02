@@ -39,7 +39,7 @@ export default function VisitorPassScreen({ navigation }: any) {
   const fetchRequests = async () => {
     try {
       const res = await api.get('/requests/visitor/tenant');
-      setRequests(res.data?.data || res.data || []);
+      setRequests(res.data?.visitors || res.data?.data || res.data || []);
     } catch {
       showError('Could not load visitor requests.');
     } finally {
