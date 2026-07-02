@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Dimensions } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Dimensions, Animated } from 'react-native';
 import { FileText, Image as ImageIcon, CheckCircle, Download, Share2, Trash2, X, FileMinus, AlertTriangle, UploadCloud, File as FileIcon, Eye, Copy, Smartphone, Mail, Cloud, Edit2, MoreHorizontal, WifiOff } from 'lucide-react-native';
 import { Theme, PrimaryButton, SecondaryButton, BaseBottomSheet } from './UIComponents';
 
@@ -200,7 +200,88 @@ export function FileDetails() {
   );
 }
 
-// 8. Error States
+// 8a. Download Progress Sheet
+export function DownloadProgressSheet({
+  visible, fileName, progress, status, onClose,
+}: {
+  visible: boolean;
+  fileName: string;
+  progress: number; // 0–100
+  status: 'loading' | 'done' | 'error';
+  onClose: () => void;
+}) {
+  const bar = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(bar, { toValue: progress, duration: 300, useNativeDriver: false }).start();
+  }, [progress]);
+
+  const barWidth = bar.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] });
+  const color = status === 'done' ? Theme.success : status === 'error' ? Theme.error : '#F97316';
+
+  return (
+    <BaseBottomSheet visible={visible} onClose={onClose} height={260} disableDrag={status === 'loading'}>
+      <View style={{ alignItems: 'center', paddingTop: 8, paddingBottom: 8 }}>
+        <View style={[styles.iconBox, { backgroundColor: color + '15', marginBottom: 16 }]}>
+          {status === 'done'
+            ? <CheckCircle size={32} color={color} />
+            : status === 'error'
+            ? <AlertTriangle size={32} color={color} />
+            : <Download size={32} color={color} />}
+        </View>
+
+        <Text style={{ fontSize: 15, fontWeight: '700', color: Theme.text, marginBottom: 4, textAlign: 'center' }} numberOfLines={1}>{fileName}</Text>
+        <Text style={{ fontSize: 13, color: Theme.textMuted, marginBottom: 20 }}>
+          {status === 'done' ? 'Download complete' : status === 'error' ? 'Download failed' : `Downloading… ${progress}%`}
+        </Text>
+
+        <View style={{ width: '100%', height: 6, backgroundColor: Theme.border, borderRadius: 3, overflow: 'hidden', marginBottom: 20 }}>
+          <Animated.View style={{ height: '100%', width: barWidth, backgroundColor: color, borderRadius: 3 }} />
+        </View>
+
+        <TouchableOpacity
+          style={{ height: 48, width: '100%', borderRadius: 12, backgroundColor: status === 'loading' ? Theme.border : color, alignItems: 'center', justifyContent: 'center' }}
+          onPress={onClose}
+          disabled={status === 'loading'}
+        >
+          <Text style={{ color: status === 'loading' ? Theme.textMuted : '#FFF', fontWeight: '700', fontSize: 15 }}>
+            {status === 'done' ? 'Done' : status === 'error' ? 'Close' : 'Please wait…'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </BaseBottomSheet>
+  );
+}
+
+// 8b. Upload Progress Bar (inline, renders above submit button)
+export function UploadProgressBar({ progress, status }: { progress: number; status: 'idle' | 'uploading' | 'done' | 'error' }) {
+  const bar = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(bar, { toValue: progress, duration: 300, useNativeDriver: false }).start();
+  }, [progress]);
+
+  if (status === 'idle') return null;
+
+  const color = status === 'done' ? Theme.success : status === 'error' ? Theme.error : Theme.primary;
+  const barWidth = bar.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] });
+
+  return (
+    <View style={{ marginBottom: 16 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+        <Text style={{ fontSize: 13, fontWeight: '600', color }}>
+          {status === 'uploading' ? 'Uploading payment proof…' : status === 'done' ? 'Upload complete' : 'Upload failed'}
+        </Text>
+        <Text style={{ fontSize: 13, fontWeight: '700', color }}>{progress}%</Text>
+      </View>
+      <View style={{ height: 6, backgroundColor: Theme.border, borderRadius: 3, overflow: 'hidden' }}>
+        <Animated.View style={{ height: '100%', width: barWidth, backgroundColor: color, borderRadius: 3 }} />
+      </View>
+    </View>
+  );
+}
+
+// 8c. Error States
 export function FileErrorState({ type }: { type: 'offline' | 'not_found' | 'unsupported' }) {
   const getProps = () => {
     if (type === 'offline') return { icon: WifiOff, color: '#F97316', title: 'You\'re Offline', desc: 'This file is not available offline.\nPlease connect to the internet to view it.', btn: 'Retry', sec: 'Open Other Files' };

@@ -534,6 +534,117 @@ export function ListSkeleton() {
   );
 }
 
+export function DocumentsSkeleton() {
+  return (
+    <View style={{ padding: 20 }}>
+      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+        {[80, 90, 70, 60].map((w, i) => <BaseSkeleton key={i} width={w} height={32} borderRadius={16} />)}
+      </View>
+      <BaseSkeleton width="100%" height={16} style={{ marginBottom: 20 }} />
+      {[1, 2, 3, 4].map(i => (
+        <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 16, gap: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }}>
+          <BaseSkeleton width={48} height={48} borderRadius={14} />
+          <View style={{ flex: 1, gap: 8 }}>
+            <BaseSkeleton width="65%" height={15} />
+            <BaseSkeleton width="45%" height={12} />
+          </View>
+          <BaseSkeleton width={36} height={36} borderRadius={10} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+export function DuesSkeleton() {
+  return (
+    <View style={{ padding: 20 }}>
+      <BaseSkeleton width="100%" height={120} borderRadius={20} style={{ marginBottom: 20 }} />
+      <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
+        <BaseSkeleton width="48%" height={80} borderRadius={16} />
+        <BaseSkeleton width="48%" height={80} borderRadius={16} />
+      </View>
+      {[1, 2, 3].map(i => (
+        <View key={i} style={{ backgroundColor: '#F8FAFC', borderRadius: 16, padding: 16, marginBottom: 12, gap: 10 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <BaseSkeleton width={100} height={16} />
+            <BaseSkeleton width={64} height={22} borderRadius={8} />
+          </View>
+          <BaseSkeleton width="55%" height={13} />
+          <BaseSkeleton width="80%" height={6} borderRadius={3} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+export function VisitorSkeleton() {
+  return (
+    <View style={{ padding: 20 }}>
+      {[1, 2, 3].map(i => (
+        <View key={i} style={{ backgroundColor: '#F8FAFC', borderRadius: 20, padding: 20, marginBottom: 12 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+            <BaseSkeleton width={140} height={16} />
+            <BaseSkeleton width={70} height={24} borderRadius={8} />
+          </View>
+          <View style={{ flexDirection: 'row', gap: 16 }}>
+            <BaseSkeleton width={60} height={12} />
+            <BaseSkeleton width={80} height={12} />
+            <BaseSkeleton width={60} height={12} />
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+export function GatePassSkeleton() {
+  return (
+    <View style={{ padding: 20 }}>
+      <BaseSkeleton width="100%" height={220} borderRadius={20} style={{ marginBottom: 24 }} />
+      <BaseSkeleton width={120} height={14} style={{ marginBottom: 12 }} />
+      {[1, 2].map(i => (
+        <View key={i} style={{ backgroundColor: '#F8FAFC', borderRadius: 16, padding: 16, marginBottom: 10, gap: 8 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <BaseSkeleton width={160} height={15} />
+            <BaseSkeleton width={70} height={22} borderRadius={8} />
+          </View>
+          <BaseSkeleton width={100} height={12} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+export function NotificationsSkeleton() {
+  return (
+    <View style={{ padding: 20 }}>
+      {[1, 2, 3, 4].map(i => (
+        <View key={i} style={{ flexDirection: 'row', gap: 12, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }}>
+          <BaseSkeleton width={44} height={44} borderRadius={22} />
+          <View style={{ flex: 1, gap: 8 }}>
+            <BaseSkeleton width="75%" height={15} />
+            <BaseSkeleton width="55%" height={12} />
+            <BaseSkeleton width={80} height={11} />
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+export function PaymentSkeleton() {
+  return (
+    <View style={{ padding: 20 }}>
+      <BaseSkeleton width="100%" height={80} borderRadius={16} style={{ marginBottom: 24 }} />
+      <BaseSkeleton width={140} height={16} style={{ marginBottom: 12 }} />
+      <BaseSkeleton width="100%" height={72} borderRadius={16} style={{ marginBottom: 24 }} />
+      <BaseSkeleton width={120} height={16} style={{ marginBottom: 12 }} />
+      {[1, 2, 3].map(i => <BaseSkeleton key={i} width="100%" height={56} borderRadius={16} style={{ marginBottom: 12 }} />)}
+      <BaseSkeleton width="100%" height={140} borderRadius={16} style={{ marginTop: 12, marginBottom: 24 }} />
+    </View>
+  );
+}
+
 export function CardSkeleton() {
   return (
     <View style={{ padding: 20 }}>
@@ -1287,6 +1398,57 @@ export function AlertBanner({ type = 'info', title, message }: any) {
       <View style={{ marginLeft: 12, flex: 1 }}>
         {title && <Text style={{ fontSize: 14, fontWeight: '700', color }}>{title}</Text>}
         <Text style={{ fontSize: 13, color: Theme.text, marginTop: 2 }}>{message}</Text>
+      </View>
+    </View>
+  );
+}
+
+// --- FEE DETAIL CARD ---
+export function FeeDetailCard({ month, totalDue, paidAmount, balance, status, dueDate, onPay }: {
+  month: string; totalDue: number; paidAmount: number; balance: number;
+  status: string; dueDate?: string | null; onPay?: () => void;
+}) {
+  const statusColors: Record<string, { color: string; bg: string }> = {
+    'Fully Paid':     { color: '#22C55E', bg: '#DCFCE7' },
+    'Partially Paid': { color: '#F59E0B', bg: '#FEF3C7' },
+    'Pending':        { color: '#EF4444', bg: '#FEE2E2' },
+    'Overdue':        { color: '#DC2626', bg: '#FEE2E2' },
+  };
+  const sc = statusColors[status] || { color: '#64748B', bg: '#F1F5F9' };
+  const progress = totalDue > 0 ? Math.min(100, Math.round((paidAmount / totalDue) * 100)) : 0;
+
+  return (
+    <View style={{ backgroundColor: '#FFF', borderRadius: 20, padding: 20, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <Text style={{ fontSize: 16, fontWeight: '800', color: '#1A1A1A' }}>{month}</Text>
+        <View style={{ backgroundColor: sc.bg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 }}>
+          <Text style={{ fontSize: 11, fontWeight: '800', color: sc.color }}>{status}</Text>
+        </View>
+      </View>
+      <View style={{ flexDirection: 'row', gap: 12, marginBottom: 14 }}>
+        {[
+          { label: 'Total Due', value: `₹${totalDue.toLocaleString()}` },
+          { label: 'Paid', value: `₹${paidAmount.toLocaleString()}`, color: '#22C55E' },
+          { label: 'Balance', value: `₹${balance.toLocaleString()}`, color: balance > 0 ? '#EF4444' : '#22C55E' },
+        ].map(({ label, value, color }) => (
+          <View key={label} style={{ flex: 1, backgroundColor: '#F8FAFD', borderRadius: 12, padding: 10, alignItems: 'center' }}>
+            <Text style={{ fontSize: 11, color: '#9CA3AF', fontWeight: '600', marginBottom: 4 }}>{label}</Text>
+            <Text style={{ fontSize: 14, fontWeight: '800', color: color || '#1A1A1A' }}>{value}</Text>
+          </View>
+        ))}
+      </View>
+      <View style={{ height: 6, backgroundColor: '#F1F5F9', borderRadius: 3, overflow: 'hidden', marginBottom: 10 }}>
+        <View style={{ height: '100%', width: `${progress}%`, backgroundColor: progress === 100 ? '#22C55E' : '#2245D4', borderRadius: 3 }} />
+      </View>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Text style={{ fontSize: 12, color: '#9CA3AF' }}>
+          {dueDate ? `Due: ${new Date(dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : `${progress}% paid`}
+        </Text>
+        {balance > 0 && onPay && (
+          <TouchableOpacity onPress={onPay} style={{ backgroundColor: '#2245D4', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 10 }}>
+            <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>Pay Now</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );

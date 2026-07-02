@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
   ScrollView, StatusBar, Modal, TextInput, ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Clock, Calendar, CheckCircle, Ticket, QrCode, X } from 'lucide-react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { ArrowLeft, CheckCircle, Ticket, QrCode, X, Plus, XCircle } from 'lucide-react-native';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 
 const BLUE      = '#2245D4';
 const BLUE_SOFT = '#EEF2FF';
@@ -26,12 +28,14 @@ type PassStatus = 'none' | 'pending' | 'approved';
 
 export default function GatePassScreen({ navigation }: any) {
   const { user } = useAuth();
+  const { showError } = useToast();
   const [status, setStatus] = useState<PassStatus>('none');
   const [showForm, setShowForm] = useState(false);
   const [leaveRequests, setLeaveRequests] = useState<any[]>([]);
   const [latestRequest, setLatestRequest] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<'All' | 'Pending' | 'Approved' | 'Rejected'>('All');
 
   // Form State
   const [reason, setReason] = useState('');
@@ -71,9 +75,7 @@ export default function GatePassScreen({ navigation }: any) {
     }
   };
 
-  useEffect(() => {
-    fetchLeaveRequests();
-  }, []);
+  useFocusEffect(useCallback(() => { fetchLeaveRequests(); }, []));
 
   const submitRequest = async () => {
     if (!reason.trim() || !returnTime.trim()) return;
@@ -86,7 +88,7 @@ export default function GatePassScreen({ navigation }: any) {
       await fetchLeaveRequests();
       setStatus('pending');
     } catch {
-      // Keep form open on error
+      showError('Failed to submit gate pass request.');
     } finally {
       setSubmitting(false);
     }
@@ -111,7 +113,35 @@ export default function GatePassScreen({ navigation }: any) {
         </SafeAreaView>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 20, flexGrow: 1 }}>
+      {/* ── Filter chips ── */}
+      {!loading && leaveRequests.length > 0 && (
+        <ScrollView
+          horizontal showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 10, gap: 8 }}
+          style={{ backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: BORDER }}
+        >
+          {(['All', 'Pending', 'Approved', 'Rejected'] as const).map(f => {
+            const active = activeFilter === f;
+            const chipColor = f === 'Approved' ? SUCCESS : f === 'Rejected' ? '#EF4444' : f === 'Pending' ? WARN : BLUE;
+            return (
+              <TouchableOpacity
+                key={f}
+                onPress={() => setActiveFilter(f)}
+                activeOpacity={0.7}
+                style={{
+                  paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
+                  backgroundColor: active ? chipColor : '#F1F5F9',
+                  borderWidth: 1, borderColor: active ? chipColor : '#E2E8F0',
+                }}
+              >
+                <Text style={{ fontSize: 12, fontWeight: '700', color: active ? '#FFF' : TEXT_MID }}>{f}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      )}
+
+      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 120, flexGrow: 1 }}>
 
         {loading && (
           <View style={s.emptyState}>
@@ -119,28 +149,9 @@ export default function GatePassScreen({ navigation }: any) {
           </View>
         )}
 
-        {!loading && status === 'none' && (
-          <View style={s.emptyState}>
-            <View style={s.iconWrap}><Ticket size={40} color={BLUE} /></View>
-            <Text style={s.emptyTitle}>No Active Pass</Text>
-            <Text style={s.emptySub}>Request a late pass or weekend leave if you plan to stay out past curfew.</Text>
-            
-            <TouchableOpacity style={s.primaryBtn} onPress={() => setShowForm(true)}>
-              <Text style={s.primaryBtnTxt}>Request Gate Pass</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {!loading && status === 'pending' && (
-          <View style={s.emptyState}>
-            <View style={[s.iconWrap, { backgroundColor: WARN_BG }]}><Clock size={40} color={WARN} /></View>
-            <Text style={s.emptyTitle}>Request Pending</Text>
-            <Text style={s.emptySub}>Your request has been sent to the warden. You will be notified once it is approved.</Text>
-          </View>
-        )}
-
+        {/* Approved ticket — always shown at top when latest pass is approved */}
         {!loading && status === 'approved' && (
-          <View style={s.ticketWrapper}>
+          <View style={[s.ticketWrapper, { marginBottom: 24 }]}>
             <View style={s.ticketTop}>
               <View style={s.ticketHeaderRow}>
                 <Text style={s.ticketTitle}>LATE PASS</Text>
@@ -149,10 +160,8 @@ export default function GatePassScreen({ navigation }: any) {
                   <Text style={s.approvedTxt}>APPROVED</Text>
                 </View>
               </View>
-
               <Text style={s.ticketName}>{user?.name || ''}</Text>
               <Text style={s.ticketRoom}>{user?.room_number ? `Room ${user.room_number}` : ''}</Text>
-
               <View style={s.ticketDetailsRow}>
                 <View style={{ flex: 1 }}>
                   <Text style={s.ticketLbl}>OUTING REASON</Text>
@@ -164,14 +173,11 @@ export default function GatePassScreen({ navigation }: any) {
                 </View>
               </View>
             </View>
-            
-            {/* Ticket Divider */}
             <View style={s.ticketDividerWrap}>
               <View style={s.notchLeft} />
               <View style={s.dashedLine} />
               <View style={s.notchRight} />
             </View>
-
             <View style={s.ticketBottom}>
               <View style={s.qrWrapper}>
                 <QrCode size={120} color={TEXT_DARK} strokeWidth={1} />
@@ -180,7 +186,75 @@ export default function GatePassScreen({ navigation }: any) {
             </View>
           </View>
         )}
+
+        {/* Empty state — no requests at all */}
+        {!loading && leaveRequests.length === 0 && (
+          <View style={s.emptyState}>
+            <View style={s.iconWrap}><Ticket size={40} color={BLUE} /></View>
+            <Text style={s.emptyTitle}>No Requests Yet</Text>
+            <Text style={s.emptySub}>Request a late pass or weekend leave if you plan to stay out past curfew.</Text>
+            <TouchableOpacity style={s.primaryBtn} onPress={() => setShowForm(true)}>
+              <Text style={s.primaryBtnTxt}>Request Gate Pass</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* History list */}
+        {!loading && leaveRequests.length > 0 && (() => {
+          const filtered = activeFilter === 'All'
+            ? leaveRequests
+            : leaveRequests.filter(r => r.status === activeFilter);
+          if (filtered.length === 0) return (
+            <View style={{ alignItems: 'center', paddingTop: 40 }}>
+              <XCircle size={48} color="#CBD5E1" />
+              <Text style={{ fontSize: 15, fontWeight: '700', color: TEXT_MID, marginTop: 16 }}>No {activeFilter} requests</Text>
+              <Text style={{ fontSize: 13, color: '#9CA3AF', marginTop: 8 }}>Try a different filter</Text>
+            </View>
+          );
+          return (
+            <>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: TEXT_MID, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                {activeFilter === 'All' ? 'All Requests' : `${activeFilter} Requests`} ({filtered.length})
+              </Text>
+              {filtered.map((r: any, i: number) => {
+                const isApproved = r.status === 'Approved';
+                const isPending = r.status === 'Pending';
+                const statusBg = isApproved ? SUCCESS_BG : isPending ? WARN_BG : '#FEE2E2';
+                const statusColor = isApproved ? SUCCESS : isPending ? WARN : '#EF4444';
+                return (
+                  <View key={r.request_id || i} style={s.historyCard}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 15, fontWeight: '700', color: TEXT_DARK, marginBottom: 2 }} numberOfLines={1}>{r.reason || 'Gate pass'}</Text>
+                        <Text style={{ fontSize: 12, color: TEXT_MID }}>{r.return_time ? `Return: ${r.return_time}` : ''}</Text>
+                      </View>
+                      <View style={{ backgroundColor: statusBg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '800', color: statusColor }}>{r.status || 'Pending'}</Text>
+                      </View>
+                    </View>
+                    {r.created_at && (
+                      <Text style={{ fontSize: 12, color: TEXT_MID }}>
+                        {new Date(r.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </Text>
+                    )}
+                  </View>
+                );
+              })}
+            </>
+          );
+        })()}
       </ScrollView>
+
+      {/* FAB */}
+      {!loading && (
+        <TouchableOpacity
+          style={s.fab}
+          onPress={() => setShowForm(true)}
+          activeOpacity={0.85}
+        >
+          <Plus size={24} color={WHITE} strokeWidth={3} />
+        </TouchableOpacity>
+      )}
 
       {/* ── REQUEST MODAL ── */}
       <Modal visible={showForm} animationType="slide" transparent>
@@ -265,6 +339,9 @@ const s = StyleSheet.create({
   ticketBottom: { padding: 32, backgroundColor: WHITE, alignItems: 'center' },
   qrWrapper: { padding: 16, backgroundColor: WHITE, borderRadius: 16, borderWidth: 1, borderColor: BORDER, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, marginBottom: 20 },
   qrHelpTxt: { fontSize: 14, color: TEXT_MID, textAlign: 'center', paddingHorizontal: 20 },
+
+  historyCard: { backgroundColor: WHITE, borderRadius: 16, padding: 16, marginBottom: 10, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 1 },
+  fab: { position: 'absolute', bottom: 100, right: 24, width: 56, height: 56, borderRadius: 28, backgroundColor: BLUE, justifyContent: 'center', alignItems: 'center', shadowColor: BLUE, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
 
   // Modal
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(15,23,42,0.6)' },

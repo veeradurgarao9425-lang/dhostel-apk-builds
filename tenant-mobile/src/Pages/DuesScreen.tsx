@@ -314,10 +314,22 @@ export default function DuesScreen({ navigation }: any) {
             )}
           </View>
         ) : (
-          <>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.xl, marginTop: spacing.lg, marginBottom: spacing.md }}>
-              <Text style={[styles.groupLabel, { marginTop: 0, marginBottom: 0, paddingHorizontal: 0 }]}>All Months</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+          <View style={{ paddingBottom: 20 }}>
+            {/* Summary chips */}
+            <View style={styles.tlSummaryRow}>
+              <View style={styles.tlSummaryChip}>
+                <Text style={styles.tlSummaryChipLabel}>Total Records</Text>
+                <Text style={styles.tlSummaryChipValue}>{feeRecords.length}</Text>
+              </View>
+              <View style={[styles.tlSummaryChip, { borderColor: colors.success }]}>
+                <Text style={[styles.tlSummaryChipLabel, { color: colors.success }]}>Total Paid</Text>
+                <Text style={[styles.tlSummaryChipValue, { color: colors.success }]}>{formatCurrency(totalPaidAmount)}</Text>
+              </View>
+            </View>
+
+            {/* Year filter chips */}
+            <View style={styles.tlFilterRow}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: spacing.xl }}>
                 {availableYears.map(year => (
                   <TouchableOpacity
                     key={year}
@@ -330,40 +342,80 @@ export default function DuesScreen({ navigation }: any) {
                 ))}
               </ScrollView>
             </View>
-            <View style={styles.listCard}>
-              {filteredHistory.length > 0 ? filteredHistory.map((fee, i) => {
-                const cfg = statusConfig[fee.fee_status] || statusConfig['Pending'];
-                return (
-                  <View key={fee.fee_id} style={[styles.listRow, i < feeRecords.length - 1 && styles.listRowDivider]}>
-                    <View style={[styles.listIconWrap, { backgroundColor: cfg.bg }]}>
-                      <CreditCard size={16} color={cfg.color} strokeWidth={1.5} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.listTitle}>{formatMonth(fee.fee_month)}</Text>
-                      <Text style={styles.listSub}>
-                        {fee.fee_status === 'Fully Paid' && fee.payments[0]
-                          ? `Paid on ${formatDateStr(fee.payments[0].payment_date)}`
-                          : fee.due_date ? `Due: ${formatDateStr(fee.due_date)}` : fee.fee_status}
-                      </Text>
-                      {fee.payments[0]?.verification_status === 'Pending' && (
-                        <Text style={[styles.listSub, { color: colors.warning }]}>⏳ Proof submitted — awaiting verification</Text>
-                      )}
-                    </View>
-                    <View style={{ alignItems: 'flex-end' }}>
-                      <Text style={styles.listAmount}>{formatCurrency(fee.total_due)}</Text>
-                      <View style={[styles.statusPill, { backgroundColor: cfg.bg }]}>
-                        <Text style={[styles.statusPillText, { color: cfg.color }]}>{cfg.label}</Text>
+
+            {/* Timeline */}
+            {filteredHistory.length > 0 ? (
+              <View style={styles.tlContainer}>
+                {filteredHistory.map((fee, i) => {
+                  const cfg = statusConfig[fee.fee_status] || statusConfig['Pending'];
+                  const isFirst = i === 0;
+                  const isLast  = i === filteredHistory.length - 1;
+                  const isPaid  = fee.fee_status === 'Fully Paid';
+                  const dateLabel = isPaid && fee.payments[0]
+                    ? `Paid on ${formatDateStr(fee.payments[0].payment_date)}`
+                    : fee.due_date
+                    ? `Due: ${formatDateStr(fee.due_date)}`
+                    : fee.fee_status;
+                  const awaitingVerification = fee.payments[0]?.verification_status === 'Pending';
+
+                  return (
+                    <View key={fee.fee_id} style={styles.tlRow}>
+                      {/* Left: line + dot */}
+                      <View style={styles.tlLineCol}>
+                        {/* Top segment of line (hidden for first item) */}
+                        <View style={[styles.tlLineSegment, isFirst && { backgroundColor: 'transparent' }]} />
+                        {/* Dot */}
+                        <View style={[styles.tlDot, { backgroundColor: cfg.color, borderColor: cfg.bg }]} />
+                        {/* Bottom segment of line (hidden for last item) */}
+                        <View style={[styles.tlLineSegment, isLast && { backgroundColor: 'transparent' }]} />
+                      </View>
+
+                      {/* Right: card */}
+                      <View style={styles.tlCard}>
+                        {/* Top row: month + status badge */}
+                        <View style={styles.tlCardTopRow}>
+                          <Text style={styles.tlCardMonth}>{formatMonth(fee.fee_month)}</Text>
+                          <View style={[styles.statusPill, { backgroundColor: cfg.bg }]}>
+                            <Text style={[styles.statusPillText, { color: cfg.color }]}>{cfg.label}</Text>
+                          </View>
+                        </View>
+
+                        {/* Middle row: amount */}
+                        <Text style={[styles.tlCardAmount, { color: isPaid ? colors.success : cfg.color }]}>
+                          {formatCurrency(isPaid ? fee.paid_amount : fee.balance > 0 ? fee.balance : fee.total_due)}
+                        </Text>
+
+                        {/* Bottom row: date */}
+                        <Text style={styles.tlCardDate}>{dateLabel}</Text>
+
+                        {/* Verification pending note */}
+                        {awaitingVerification && (
+                          <Text style={[styles.tlCardDate, { color: colors.warning, marginTop: 4 }]}>
+                            Proof submitted — awaiting verification
+                          </Text>
+                        )}
+
+                        {/* Pay Now link for non-paid */}
+                        {!isPaid && (
+                          <TouchableOpacity
+                            onPress={() => navigation.navigate('Payments')}
+                            activeOpacity={0.7}
+                            style={styles.tlPayNow}
+                          >
+                            <Text style={styles.tlPayNowText}>Pay Now  →</Text>
+                          </TouchableOpacity>
+                        )}
                       </View>
                     </View>
-                  </View>
-                );
-              }) : (
-                <View style={{ padding: 30, alignItems: 'center' }}>
-                  <Text style={{ color: TEXT_MID, fontSize: 14 }}>No records found for this year.</Text>
-                </View>
-              )}
-            </View>
-          </>
+                  );
+                })}
+              </View>
+            ) : (
+              <View style={{ padding: 40, alignItems: 'center' }}>
+                <Text style={{ color: TEXT_MID, fontSize: 14 }}>No records found for this year.</Text>
+              </View>
+            )}
+          </View>
         )}
       </ScrollView>
 
@@ -455,4 +507,28 @@ const styles = StyleSheet.create({
   stickyBtnText:{ color: WHITE, fontWeight: '700', fontSize: 16 },
 
   fab: { position: 'absolute', bottom: 160, right: 20, width: 52, height: 52, borderRadius: 26, backgroundColor: BLUE, alignItems: 'center', justifyContent: 'center', shadowColor: BLUE_DARK, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 12, elevation: 8 },
+
+  // ── Timeline styles ──
+  tlSummaryRow:       { flexDirection: 'row', gap: 10, paddingHorizontal: spacing.xl, marginTop: spacing.lg, marginBottom: spacing.sm },
+  tlSummaryChip:      { flex: 1, backgroundColor: WHITE, borderRadius: radius.lg, borderWidth: 1.5, borderColor: BLUE, paddingVertical: 10, paddingHorizontal: 14, alignItems: 'center' },
+  tlSummaryChipLabel: { fontSize: 11, fontWeight: '600', color: BLUE, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4 },
+  tlSummaryChipValue: { fontSize: 18, fontWeight: '800', color: BLUE },
+
+  tlFilterRow:  { paddingVertical: spacing.sm, marginBottom: spacing.sm },
+
+  tlContainer:  { paddingHorizontal: spacing.xl, paddingTop: 4 },
+  tlRow:        { flexDirection: 'row', alignItems: 'stretch', marginBottom: 4 },
+
+  tlLineCol:    { width: 28, alignItems: 'center', flexShrink: 0 },
+  tlLineSegment:{ flex: 1, width: 2, backgroundColor: BLUE, opacity: 0.25 },
+  tlDot:        { width: 12, height: 12, borderRadius: 6, borderWidth: 2.5, marginVertical: 2, flexShrink: 0 },
+
+  tlCard:       { flex: 1, backgroundColor: WHITE, borderRadius: radius.xl, borderWidth: 1, borderColor: BORDER, marginLeft: 12, marginBottom: 12, padding: 14, ...shadow.card },
+  tlCardTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
+  tlCardMonth:  { fontSize: 16, fontWeight: '800', color: TEXT_DARK },
+  tlCardAmount: { fontSize: 20, fontWeight: '800', letterSpacing: -0.5, marginBottom: 6 },
+  tlCardDate:   { fontSize: 11, color: TEXT_MID, fontWeight: '500' },
+
+  tlPayNow:     { alignSelf: 'flex-start', marginTop: 10 },
+  tlPayNowText: { fontSize: 12, fontWeight: '700', color: BLUE },
 });

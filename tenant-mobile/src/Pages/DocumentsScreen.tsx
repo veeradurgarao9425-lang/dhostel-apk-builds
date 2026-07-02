@@ -1,45 +1,63 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, ScrollView, StatusBar, ActivityIndicator, Alert } from 'react-native';
+import React, { useState, useCallback, useRef } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View, ScrollView, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { FileText, FileCheck2, Receipt, IdCard, Download, File, ArrowLeft } from 'lucide-react-native';
 
-import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
+import { Phase3ErrorState, DocumentsSkeleton } from '../components/UIComponents';
+import { OfflineBanner } from '../components/NetworkComponents';
+import { DownloadProgressSheet, FileErrorState } from '../components/MediaComponents';
 import api from '../services/api';
 
-const BLUE      = '#2245D4';
-const BLUE_SOFT = '#EEF2FF';
-const WHITE     = '#FFFFFF';
-const TEXT_DARK = '#1A1A1A';
-const TEXT_MID  = '#666666';
-const TEXT_LIGHT= '#9CA3AF';
-const BG        = '#F8FAFD';
-const BORDER    = '#E2E8F0';
-const SUCCESS   = '#22C55E';
-const SUCCESS_SOFT= '#DCFCE7';
+const BLUE       = '#2245D4';
+const BLUE_SOFT  = '#EEF2FF';
+const WHITE      = '#FFFFFF';
+const TEXT_DARK  = '#1A1A1A';
+const TEXT_MID   = '#666666';
+const BG         = '#F8FAFD';
+const BORDER     = '#E2E8F0';
+const SUCCESS    = '#22C55E';
+const SUCCESS_SOFT = '#DCFCE7';
 
 type DocType = 'Agreement' | 'Receipt' | 'KYC' | 'Other';
 
 const typeMeta: Record<DocType, { icon: any; tint: string; soft: string }> = {
-  Agreement: { icon: FileCheck2, tint: BLUE, soft: BLUE_SOFT },
-  Receipt: { icon: Receipt, tint: SUCCESS, soft: SUCCESS_SOFT },
-  KYC: { icon: IdCard, tint: '#D97706', soft: '#FEF3C7' },
-  Other: { icon: File, tint: TEXT_MID, soft: '#F1F5F9' },
+  Agreement: { icon: FileCheck2, tint: BLUE,    soft: BLUE_SOFT },
+  Receipt:   { icon: Receipt,    tint: SUCCESS,  soft: SUCCESS_SOFT },
+  KYC:       { icon: IdCard,     tint: '#D97706', soft: '#FEF3C7' },
+  Other:     { icon: File,       tint: TEXT_MID,  soft: '#F1F5F9' },
 };
 
+type DocFilter = 'All' | 'Agreement' | 'Receipt' | 'KYC' | 'Other';
+const DOC_FILTERS: DocFilter[] = ['All', 'Receipt', 'Agreement', 'KYC', 'Other'];
+
+type DlStatus = 'loading' | 'done' | 'error';
+
 export default function DocumentsScreen({ navigation }: any) {
-  const [documents, setDocuments] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { showError } = useToast();
+  const [documents, setDocuments]       = useState<any[]>([]);
+  const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<DocFilter>('All');
+
+  // Download progress state
+  const [dlVisible, setDlVisible]   = useState(false);
+  const [dlFileName, setDlFileName] = useState('');
+  const [dlProgress, setDlProgress] = useState(0);
+  const [dlStatus, setDlStatus]     = useState<DlStatus>('loading');
+  const [dlError, setDlError]       = useState<'offline' | 'not_found' | 'unsupported' | null>(null);
+  const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchDocuments = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const res = await api.get('/fees/my-fees');
       const feeRecords: any[] = res.data?.data ?? res.data ?? [];
-
       const docs: any[] = [];
       for (const feeRecord of feeRecords) {
-        const payments: any[] = feeRecord.payments ?? [];
-        for (const payment of payments) {
+        for (const payment of (feeRecord.payments ?? [])) {
           if (payment.verification_status === 'verified') {
             docs.push({
               id: payment.payment_id.toString(),
@@ -47,36 +65,53 @@ export default function DocumentsScreen({ navigation }: any) {
               name: `Receipt - ${feeRecord.fee_month}`,
               type: 'Receipt' as DocType,
               date: payment.payment_date,
-              sizeKb: null,
             });
           }
         }
       }
       setDocuments(docs);
-    } catch (err: any) {
-      console.error('DocumentsScreen fetch error:', err);
-      Alert.alert('Error', 'Could not load documents. Please try again.');
+    } catch {
+      setError('Could not load documents.');
+      showError('Could not load documents. Please try again.');
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    fetchDocuments();
-  }, [fetchDocuments]);
+  useFocusEffect(useCallback(() => { fetchDocuments(); }, []));
 
-  const handleDownload = async (paymentId: string | number) => {
+  const handleDownload = async (paymentId: string | number, fileName: string) => {
+    setDlFileName(fileName);
+    setDlProgress(0);
+    setDlStatus('loading');
+    setDlError(null);
+    setDlVisible(true);
+
+    // Animate progress bar while API call is in flight
+    let pct = 0;
+    progressTimer.current = setInterval(() => {
+      pct = Math.min(pct + 12, 85);
+      setDlProgress(pct);
+    }, 180);
+
     try {
-      const res = await api.get(`/fees/receipts/${paymentId}`);
-      const receipt = res.data?.data ?? res.data;
-      Alert.alert(
-        'Receipt Details',
-        `Receipt #: ${receipt.receipt_number ?? '-'}\nAmount: ₹${receipt.amount ?? '-'}\nDate: ${receipt.payment_date ? new Date(receipt.payment_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}\nMethod: ${receipt.payment_method ?? '-'}\nStatus: ${receipt.verification_status ?? '-'}`,
-      );
-    } catch (err: any) {
-      console.error('Receipt fetch error:', err);
-      Alert.alert('Error', 'Could not load receipt details. Please try again.');
+      await api.get(`/fees/receipts/${paymentId}`);
+      clearInterval(progressTimer.current!);
+      setDlProgress(100);
+      setDlStatus('done');
+    } catch (e: any) {
+      clearInterval(progressTimer.current!);
+      setDlProgress(100);
+      setDlStatus('error');
+      const isOffline = !e?.response;
+      setDlError(isOffline ? 'offline' : 'not_found');
     }
+  };
+
+  const closeDl = () => {
+    if (dlStatus === 'loading') return;
+    setDlVisible(false);
+    setDlError(null);
   };
 
   return (
@@ -98,11 +133,38 @@ export default function DocumentsScreen({ navigation }: any) {
         </SafeAreaView>
       </View>
 
+      {/* ── Offline Banner ── */}
+      <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
+        <OfflineBanner />
+      </View>
+
+      {/* ── Filter chips ── */}
+      {!loading && !error && documents.length > 0 && (
+        <ScrollView
+          horizontal showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 10, gap: 8 }}
+          style={{ backgroundColor: WHITE, borderBottomWidth: 1, borderBottomColor: BORDER }}
+        >
+          {DOC_FILTERS.map(f => {
+            const active = activeFilter === f;
+            return (
+              <TouchableOpacity
+                key={f} onPress={() => setActiveFilter(f)} activeOpacity={0.7}
+                style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: active ? BLUE : '#F1F5F9', borderWidth: 1, borderColor: active ? BLUE : BORDER }}
+              >
+                <Text style={{ fontSize: 12, fontWeight: '700', color: active ? '#FFF' : TEXT_MID }}>{f}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      )}
+
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
         {loading ? (
-          <View style={s.loadingWrap}>
-            <ActivityIndicator size="large" color={BLUE} />
-            <Text style={s.loadingTxt}>Loading documents…</Text>
+          <DocumentsSkeleton />
+        ) : error ? (
+          <View style={{ marginTop: 40 }}>
+            <Phase3ErrorState variant="server" onAction={fetchDocuments} />
           </View>
         ) : documents.length === 0 ? (
           <View style={s.emptyCard}>
@@ -112,35 +174,61 @@ export default function DocumentsScreen({ navigation }: any) {
             <Text style={s.emptyTitle}>No Documents Found</Text>
             <Text style={s.emptySub}>Your rental agreement, payment receipts, and KYC documents will appear here once verified.</Text>
           </View>
-        ) : (
-          <View style={s.listCard}>
-            {documents.map((d, i) => {
-              const meta = typeMeta[d.type as DocType] || typeMeta.Other;
-              const Icon = meta.icon;
-              return (
-                <View key={d.id}>
-                  <TouchableOpacity style={s.row} activeOpacity={0.7}>
-                    <View style={[s.iconWrap, { backgroundColor: meta.soft }]}>
-                      <Icon size={22} color={meta.tint} />
+        ) : null}
+
+        {!loading && !error && documents.length > 0 && (() => {
+          const filtered = activeFilter === 'All' ? documents : documents.filter(d => d.type === activeFilter);
+          if (filtered.length === 0) return (
+            <View style={[s.emptyCard, { borderStyle: 'solid', marginTop: 8 }]}>
+              <Text style={s.emptyTitle}>No {activeFilter} Documents</Text>
+              <Text style={s.emptySub}>No documents of this type found.</Text>
+            </View>
+          );
+          return (
+            <View style={s.listCard}>
+              {filtered.map((d, i) => {
+                const meta = typeMeta[d.type as DocType] || typeMeta.Other;
+                const Icon = meta.icon;
+                return (
+                  <View key={d.id}>
+                    <View style={s.row}>
+                      <View style={[s.iconWrap, { backgroundColor: meta.soft }]}>
+                        <Icon size={22} color={meta.tint} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.nameTxt} numberOfLines={1}>{d.name}</Text>
+                        <Text style={s.metaTxt}>
+                          {d.type} • {new Date(d.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </Text>
+                      </View>
+                      <TouchableOpacity style={s.dlBtn} activeOpacity={0.7} onPress={() => handleDownload(d.paymentId, d.name)}>
+                        <Download size={18} color={BLUE} strokeWidth={2.5} />
+                      </TouchableOpacity>
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={s.nameTxt} numberOfLines={1}>{d.name}</Text>
-                      <Text style={s.metaTxt}>
-                        {d.type} • {new Date(d.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        {d.sizeKb ? ` • ${d.sizeKb} KB` : ''}
-                      </Text>
-                    </View>
-                    <TouchableOpacity style={s.dlBtn} activeOpacity={0.7} onPress={() => handleDownload(d.paymentId)}>
-                      <Download size={18} color={BLUE} strokeWidth={2.5} />
-                    </TouchableOpacity>
-                  </TouchableOpacity>
-                  {i < documents.length - 1 && <View style={s.divider} />}
-                </View>
-              );
-            })}
+                    {i < filtered.length - 1 && <View style={s.divider} />}
+                  </View>
+                );
+              })}
+            </View>
+          );
+        })()}
+
+        {/* File error inline state (when download failed) */}
+        {dlError && !dlVisible && (
+          <View style={{ marginTop: 12 }}>
+            <FileErrorState type={dlError} />
           </View>
         )}
       </ScrollView>
+
+      {/* ── Download Progress Sheet ── */}
+      <DownloadProgressSheet
+        visible={dlVisible}
+        fileName={dlFileName}
+        progress={dlProgress}
+        status={dlStatus}
+        onClose={closeDl}
+      />
     </View>
   );
 }
@@ -151,17 +239,11 @@ const s = StyleSheet.create({
   backBtnLight: { padding: 8, marginLeft: -8, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 12 },
   headerGreeting: { fontSize: 22, fontWeight: '800', color: WHITE },
   headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
-
   scroll: { padding: 20, paddingBottom: 60 },
-
-  loadingWrap: { marginTop: 60, alignItems: 'center', gap: 12 },
-  loadingTxt: { fontSize: 14, color: TEXT_MID, fontWeight: '500' },
-
   emptyCard: { backgroundColor: WHITE, borderRadius: 24, padding: 32, alignItems: 'center', borderWidth: 1, borderColor: BORDER, borderStyle: 'dashed', marginTop: 20 },
   emptyIconWrap: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: TEXT_DARK, marginBottom: 8 },
   emptySub: { fontSize: 14, color: TEXT_MID, textAlign: 'center', lineHeight: 20 },
-
   listCard: { backgroundColor: WHITE, borderRadius: 24, paddingHorizontal: 16, marginBottom: 24, borderWidth: 1, borderColor: BORDER, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 12, elevation: 2, marginTop: 10 },
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16 },
   iconWrap: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginRight: 16 },

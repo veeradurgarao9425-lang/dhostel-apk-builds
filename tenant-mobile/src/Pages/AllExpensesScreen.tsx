@@ -1,7 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, ScrollView,
-  TextInput, StatusBar,
+  TextInput, StatusBar, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -10,6 +10,11 @@ import {
   Film, HeartPulse, MoreHorizontal, Coffee,
   Home, Plane, Zap, Gift, BookOpen,
 } from 'lucide-react-native';
+import { useFocusEffect } from '@react-navigation/native';
+
+import { useToast } from '../context/ToastContext';
+import { Phase3EmptyState } from '../components/UIComponents';
+import api from '../services/api';
 
 const BLUE      = '#2245D4';
 const BLUE_SOFT = '#EEF3FF';
@@ -36,36 +41,75 @@ const CATS: Record<string, { color: string; bg: string; Icon: any }> = {
   Others:        { color: '#546E7A', bg: '#ECEFF1', Icon: MoreHorizontal },
 };
 
-const ALL_DATA = [
-  { id: 1,  title: 'Breakfast',        cat: 'Food',          time: '08:30 AM', amt: 120, date: 'Today, 14 Jun 2025' },
-  { id: 2,  title: 'Auto Ride',        cat: 'Transport',     time: '09:15 AM', amt: 80,  date: 'Today, 14 Jun 2025' },
-  { id: 3,  title: 'Groceries',        cat: 'Shopping',      time: '11:45 AM', amt: 150, date: 'Today, 14 Jun 2025' },
-  { id: 4,  title: 'Movie Ticket',     cat: 'Entertainment', time: '07:00 PM', amt: 220, date: 'Yesterday, 13 Jun 2025' },
-  { id: 5,  title: 'Bus Pass',         cat: 'Transport',     time: '08:30 AM', amt: 200, date: 'Yesterday, 13 Jun 2025' },
-  { id: 6,  title: 'Evening Tea',      cat: 'Food',          time: '04:20 PM', amt: 40,  date: 'Yesterday, 13 Jun 2025' },
-  { id: 7,  title: 'Online Shopping',  cat: 'Shopping',      time: '09:00 PM', amt: 450, date: '12 Jun 2025' },
-  { id: 8,  title: 'Electricity Bill', cat: 'Bills',         time: '11:00 AM', amt: 170, date: '12 Jun 2025' },
-  { id: 9,  title: 'Lunch',            cat: 'Food',          time: '01:00 PM', amt: 95,  date: '11 Jun 2025' },
-  { id: 10, title: 'Cab Ride',         cat: 'Transport',     time: '06:00 PM', amt: 130, date: '11 Jun 2025' },
-];
-
-const FILTER_CATS = ['All', 'Food', 'Transport', 'Shopping', 'Bills', 'Entertainment'];
+const FILTER_CATS = ['All', 'Food', 'Transport', 'Shopping', 'Bills', 'Entertainment', 'Health', 'Coffee', 'Education', 'Others'];
 const GROUP_COLORS = ['#EEF3FF', '#FFF3E0', '#EAF5EA', '#FCE4EC', '#F4E5FA'];
 
 export default function AllExpensesScreen({ navigation }: any) {
-  const [query, setQuery]             = useState('');
+  const [query, setQuery]               = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
+  const [allData, setAllData]           = useState<any[]>([]);
+  const [loading, setLoading]           = useState(true);
+  const [refreshing, setRefreshing]     = useState(false);
+  const [sortOrder, setSortOrder]       = useState<'newest' | 'oldest' | 'highest' | 'lowest'>('newest');
+
+  const { showError } = useToast();
+
+  const fetchExpenses = useCallback(async () => {
+    try {
+      const res = await api.get('/tenant-expenses');
+      if (res.data?.success) {
+        const fetched = res.data.data;
+        const formatted = fetched.map((e: any) => ({
+          id: e.expense_id,
+          title: e.title,
+          cat: e.category,
+          time: new Date(e.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+          amt: Number(e.amount),
+          date: new Date(e.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+          rawDate: e.date,
+        }));
+        setAllData(formatted);
+      }
+    } catch {
+      showError('Could not load expenses.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useFocusEffect(useCallback(() => { fetchExpenses(); }, []));
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchExpenses();
+  }, [fetchExpenses]);
+
+  const cycleSortOrder = useCallback(() => {
+    const orders: typeof sortOrder[] = ['newest', 'oldest', 'highest', 'lowest'];
+    setSortOrder(prev => {
+      const next = orders[(orders.indexOf(prev) + 1) % orders.length];
+      return next;
+    });
+  }, []);
 
   const grouped = useMemo(() => {
-    const filtered = ALL_DATA.filter(item => {
+    const filtered = allData.filter(item => {
       const matchCat = activeFilter === 'All' || item.cat === activeFilter;
       const matchQ   = item.title.toLowerCase().includes(query.toLowerCase()) || item.cat.toLowerCase().includes(query.toLowerCase());
       return matchCat && matchQ;
     });
-    const map: Record<string, typeof ALL_DATA> = {};
-    filtered.forEach(item => { if (!map[item.date]) map[item.date] = []; map[item.date].push(item); });
+    const sortFn = (a: any, b: any) => {
+      if (sortOrder === 'newest')  return new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime();
+      if (sortOrder === 'oldest')  return new Date(a.rawDate).getTime() - new Date(b.rawDate).getTime();
+      if (sortOrder === 'highest') return b.amt - a.amt;
+      return a.amt - b.amt;
+    };
+    const sorted = [...filtered].sort(sortFn);
+    const map: Record<string, typeof allData> = {};
+    sorted.forEach(item => { if (!map[item.date]) map[item.date] = []; map[item.date].push(item); });
     return Object.entries(map);
-  }, [query, activeFilter]);
+  }, [query, activeFilter, allData, sortOrder]);
 
   return (
     <View style={s.root}>
@@ -77,13 +121,20 @@ export default function AllExpensesScreen({ navigation }: any) {
               <ArrowLeft size={22} color={WHITE} strokeWidth={2.5} />
             </TouchableOpacity>
             <Text style={s.headerTitle}>All Expenses</Text>
-            <TouchableOpacity style={s.iconBtn}>
-              <SlidersHorizontal size={20} color={WHITE} strokeWidth={2} />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <TouchableOpacity style={[s.iconBtn, { backgroundColor: 'rgba(255,255,255,0.2)' }]} onPress={cycleSortOrder}>
+                <SlidersHorizontal size={18} color={WHITE} strokeWidth={2} />
+              </TouchableOpacity>
+              {sortOrder !== 'newest' && (
+                <View style={{ backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
+                  <Text style={{ fontSize: 10, color: WHITE, fontWeight: '700' }}>{sortOrder}</Text>
+                </View>
+              )}
+            </View>
           </View>
           <View style={s.searchBox}>
-            <Search size={16} color={TEXT_LIGHT} strokeWidth={2} />
-            <TextInput style={s.searchInput} placeholder="Search expenses..." placeholderTextColor={TEXT_LIGHT} value={query} onChangeText={setQuery} />
+            <Search size={16} color="rgba(255,255,255,0.7)" strokeWidth={2} />
+            <TextInput style={s.searchInput} placeholder="Search expenses..." placeholderTextColor="rgba(255,255,255,0.6)" value={query} onChangeText={setQuery} />
           </View>
         </SafeAreaView>
       </View>
@@ -100,40 +151,60 @@ export default function AllExpensesScreen({ navigation }: any) {
         })}
       </ScrollView>
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={s.listContent} showsVerticalScrollIndicator={false}>
-        {grouped.length === 0 ? (
-          <View style={s.empty}><Text style={{ fontSize: 40, marginBottom: 12 }}>🔍</Text><Text style={s.emptyTitle}>No results found</Text><Text style={s.emptySub}>Try a different keyword or category</Text></View>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={s.listContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={BLUE} colors={[BLUE]} />}
+      >
+        {loading ? (
+          <View style={{ flex: 1, alignItems: 'center', paddingTop: 80 }}>
+            <ActivityIndicator size="large" color={BLUE} />
+            <Text style={{ marginTop: 12, fontSize: 13, color: TEXT_MID, fontWeight: '500' }}>Loading expenses…</Text>
+          </View>
         ) : (
-          grouped.map(([date, items], groupIdx) => {
-            const dayTotal   = items.reduce((sum, i) => sum + i.amt, 0);
-            const groupColor = GROUP_COLORS[groupIdx % GROUP_COLORS.length];
-            return (
-              <View key={date} style={s.group}>
-                <View style={s.groupHeader}>
-                  <View><Text style={s.groupDate}>{date}</Text><Text style={s.groupCount}>{items.length} transaction{items.length > 1 ? 's' : ''}</Text></View>
-                  <View style={[s.groupTotalBadge, { backgroundColor: groupColor }]}>
-                    <Text style={s.groupTotalLabel}>Spent</Text>
-                    <Text style={s.groupTotalAmt}>₹ {dayTotal.toLocaleString('en-IN')}</Text>
+          grouped.length === 0 ? (
+            allData.length === 0 ? (
+              <View style={{ marginTop: 40 }}>
+                <Phase3EmptyState variant="expenses" />
+              </View>
+            ) : (
+              <View style={{ marginTop: 40 }}>
+                <Phase3EmptyState variant="search" />
+              </View>
+            )
+          ) : (
+            grouped.map(([date, items], groupIdx) => {
+              const dayTotal   = items.reduce((sum: number, i: any) => sum + i.amt, 0);
+              const groupColor = GROUP_COLORS[groupIdx % GROUP_COLORS.length];
+              return (
+                <View key={date} style={s.group}>
+                  <View style={s.groupHeader}>
+                    <View><Text style={s.groupDate}>{date}</Text><Text style={s.groupCount}>{items.length} transaction{items.length > 1 ? 's' : ''}</Text></View>
+                    <View style={[s.groupTotalBadge, { backgroundColor: groupColor }]}>
+                      <Text style={s.groupTotalLabel}>Spent</Text>
+                      <Text style={s.groupTotalAmt}>₹ {dayTotal.toLocaleString('en-IN')}</Text>
+                    </View>
+                  </View>
+                  <View style={s.groupCard}>
+                    {items.map((item: any, idx: number) => {
+                      const meta = CATS[item.cat] || CATS.Others; const Icon = meta.Icon;
+                      return (
+                        <TouchableOpacity key={item.id} style={[s.row, idx < items.length - 1 && s.rowDivider]} activeOpacity={0.7}>
+                          <View style={[s.iconWrap, { backgroundColor: meta.bg }]}><Icon size={20} color={meta.color} strokeWidth={2} /></View>
+                          <View style={{ flex: 1 }}><Text style={s.rowTitle}>{item.title}</Text><Text style={s.rowTime}>{item.time}</Text></View>
+                          <View style={{ alignItems: 'flex-end' }}>
+                            <Text style={s.rowAmt}>- ₹{item.amt}</Text>
+                            <View style={[s.catPill, { backgroundColor: meta.bg }]}><Text style={[s.catPillText, { color: meta.color }]}>{item.cat}</Text></View>
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
                 </View>
-                <View style={s.groupCard}>
-                  {items.map((item, idx) => {
-                    const meta = CATS[item.cat] || CATS.Others; const Icon = meta.Icon;
-                    return (
-                      <TouchableOpacity key={item.id} style={[s.row, idx < items.length - 1 && s.rowDivider]} activeOpacity={0.7}>
-                        <View style={[s.iconWrap, { backgroundColor: meta.bg }]}><Icon size={20} color={meta.color} strokeWidth={2} /></View>
-                        <View style={{ flex: 1 }}><Text style={s.rowTitle}>{item.title}</Text><Text style={s.rowTime}>{item.time}</Text></View>
-                        <View style={{ alignItems: 'flex-end' }}>
-                          <Text style={s.rowAmt}>- ₹{item.amt}</Text>
-                          <View style={[s.catPill, { backgroundColor: meta.bg }]}><Text style={[s.catPillText, { color: meta.color }]}>{item.cat}</Text></View>
-                        </View>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-            );
-          })
+              );
+            })
+          )
         )}
         <View style={{ height: 60 }} />
       </ScrollView>
@@ -147,7 +218,7 @@ const s = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 },
   iconBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 17, fontWeight: '800', color: WHITE },
-  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 12, marginHorizontal: 16, marginBottom: 14, paddingHorizontal: 14, height: 42, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' },
+  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 12, marginHorizontal: 16, marginBottom: 14, paddingHorizontal: 14, height: 42, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
   searchInput: { flex: 1, fontSize: 14, color: WHITE, fontWeight: '500' },
   filterBar: { backgroundColor: WHITE, maxHeight: 56, borderBottomWidth: 1, borderBottomColor: BORDER },
   filterRow: { paddingHorizontal: 14, paddingVertical: 10, gap: 8, alignItems: 'center' },
@@ -171,7 +242,4 @@ const s = StyleSheet.create({
   rowAmt: { fontSize: 15, fontWeight: '800', color: TEXT_DARK, letterSpacing: -0.3, marginBottom: 4 },
   catPill: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
   catPillText: { fontSize: 10, fontWeight: '700' },
-  empty: { alignItems: 'center', paddingTop: 80 },
-  emptyTitle: { fontSize: 16, fontWeight: '700', color: TEXT_DARK, marginBottom: 6 },
-  emptySub: { fontSize: 13, color: TEXT_LIGHT, fontWeight: '500' },
 });

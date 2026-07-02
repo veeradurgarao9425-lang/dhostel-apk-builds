@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { StyleSheet, Text, View, ActivityIndicator } from 'react-native';
 import { Wifi, Shirt, Car, Dumbbell, Star } from 'lucide-react-native';
+import { useFocusEffect } from '@react-navigation/native';
 
 import { useAuth } from '../context/AuthContext';
 import { Screen, AppHeader, Card } from '../components/ui';
@@ -28,13 +29,14 @@ export default function ServicesScreen({ navigation }: any) {
   const [amenities, setAmenities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     let cancelled = false;
     (async () => {
+      setLoading(true);
       try {
         const res = await api.get('/amenities');
         const data: any[] = res.data ?? res ?? [];
-        if (!cancelled) setAmenities(Array.isArray(data) ? data.filter(a => a.is_active !== false) : []);
+        if (!cancelled) setAmenities(Array.isArray(data) ? data.filter((a: any) => a.is_active !== false) : []);
       } catch {
         if (!cancelled) setAmenities([]);
       } finally {
@@ -42,7 +44,7 @@ export default function ServicesScreen({ navigation }: any) {
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, []));
 
   return (
     <Screen>

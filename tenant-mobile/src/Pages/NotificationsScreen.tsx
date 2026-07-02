@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, ScrollView } from 'react-native';
-import { ArrowLeft, Wallet, Megaphone, Wrench, BellRing, Bell, Search, Filter } from 'lucide-react-native';
+import React, { useState, useCallback } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
+import { ArrowLeft, Wallet, Megaphone, Wrench, BellRing, Filter } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 
-import { Card, EmptyState } from '../components/ui';
-import { colors, radius, spacing, font } from '../theme';
-import { sampleNotifications, NotificationItem } from '../data/tenantContent';
+import { Phase3EmptyState, Phase3ErrorState } from '../components/UIComponents';
+import { useToast } from '../context/ToastContext';
 import api from '../services/api';
 
 const BLUE = "#2245D4";
@@ -27,8 +27,15 @@ const typeMeta: Record<string, { icon: any; tint: string; soft: string }> = {
 export default function NotificationsScreen({ navigation }: any) {
   const [items, setItems] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('All');
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const fetchNotifications = async () => {
+  const { showError } = useToast();
+
+  const fetchNotifications = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
       const res = await api.get('/notifications');
       if (res.data.success) {
@@ -43,25 +50,39 @@ export default function NotificationsScreen({ navigation }: any) {
         setItems(formatted);
       }
     } catch (err) {
-      console.error('Fetch notifications error:', err);
-      const samplesWithTime = sampleNotifications.map((n, i) => ({
-        ...n,
-        time: i === 0 ? "10:30 AM" : i === 1 ? "08:45 AM" : i === 2 ? "06:15 AM" : "Yesterday"
-      }));
-      setItems(samplesWithTime as any);
+      setError('Could not load notifications.');
+      showError('Could not load notifications.');
+      setItems([]);
+    } finally {
+      setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchNotifications();
   }, []);
+
+  useFocusEffect(useCallback(() => {
+    fetchNotifications();
+  }, [fetchNotifications]));
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchNotifications();
+    setRefreshing(false);
+  }, [fetchNotifications]);
 
   const markAllRead = async () => {
     try {
       setItems((prev) => prev.map((i) => ({ ...i, read: true })));
       await api.put('/notifications/read-all');
     } catch (err) {
-      console.error('Mark all read error:', err);
+      // silently ignore — optimistic update already applied
+    }
+  };
+
+  const markOneRead = async (id: string | number) => {
+    setItems((prev) => prev.map((i) => i.id === id ? { ...i, read: true } : i));
+    try {
+      await api.put(`/notifications/${id}/read`);
+    } catch (_) {
+      // silently ignore
     }
   };
 
@@ -80,7 +101,7 @@ export default function NotificationsScreen({ navigation }: any) {
       const today = new Date();
       const yest = new Date(today);
       yest.setDate(yest.getDate() - 1);
-      
+
       const itemDateStr = itemDate.toISOString().split('T')[0];
       const todayStr = today.toISOString().split('T')[0];
       const yestStr = yest.toISOString().split('T')[0];
@@ -89,11 +110,11 @@ export default function NotificationsScreen({ navigation }: any) {
       else if (itemDateStr === yestStr) groupName = "Yesterday";
       else groupName = itemDate.toLocaleDateString("en-GB", { day: 'numeric', month: 'short' });
     }
-    
+
     if (!acc[groupName]) acc[groupName] = [];
     acc[groupName].push(item);
     return acc;
-  }, {} as Record<string, any[]>);
+  }, {} as Record<string, any[]>) as Record<string, any[]>;
 
   const formatTime = (dateStr: string) => {
     try {
@@ -105,6 +126,68 @@ export default function NotificationsScreen({ navigation }: any) {
   };
 
   const unreadCount = items.filter(i => !i.read).length;
+
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <View style={{ alignItems: 'center', paddingTop: 80 }}>
+          <ActivityIndicator size="large" color={BLUE} />
+        </View>
+      );
+    }
+
+    if (error) {
+      return (
+        <View style={{ marginTop: 40 }}>
+          <Phase3ErrorState variant="server" onAction={fetchNotifications} />
+        </View>
+      );
+    }
+
+    if (Object.keys(groupedItems).length === 0) {
+      return (
+        <View style={{ marginTop: 60 }}>
+          <Phase3EmptyState variant="notices" />
+        </View>
+      );
+    }
+
+    return Object.entries(groupedItems).map(([groupDate, groupData]) => (
+      <View key={groupDate} style={styles.groupContainer}>
+        <Text style={styles.groupTitle}>{groupDate}</Text>
+        <View style={styles.groupList}>
+          {(groupData as any[]).map((n: any, idx: number) => {
+            const meta = typeMeta[n.type] || typeMeta['system'];
+            const Icon = meta.icon;
+            const displayTime = n.time || formatTime(n.date);
+
+            return (
+              <TouchableOpacity
+                key={n.id}
+                style={[styles.card, idx !== groupData.length - 1 && styles.cardBorder]}
+                onPress={() => markOneRead(n.id)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.iconWrap, { backgroundColor: meta.soft }]}>
+                  <Icon size={20} color={meta.tint} />
+                </View>
+                <View style={styles.cardContent}>
+                  <View style={styles.cardHeader}>
+                    <Text style={styles.title} numberOfLines={1}>{n.title}</Text>
+                    <Text style={styles.time}>{displayTime}</Text>
+                  </View>
+                  <View style={styles.cardBodyRow}>
+                    <Text style={styles.body}>{n.body}</Text>
+                    {!n.read && <View style={styles.unreadDot} />}
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+    ));
+  };
 
   return (
     <View style={styles.safe}>
@@ -147,50 +230,15 @@ export default function NotificationsScreen({ navigation }: any) {
       </View>
 
       {/* Content */}
-      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }}>
-        {Object.keys(groupedItems).length === 0 ? (
-          <View style={{ marginTop: 60 }}>
-            <EmptyState
-              icon={Bell}
-              title="You're all caught up"
-              message="No notifications match this filter."
-            />
-          </View>
-        ) : (
-          Object.entries(groupedItems).map(([groupDate, groupData]) => (
-            <View key={groupDate} style={styles.groupContainer}>
-              <Text style={styles.groupTitle}>{groupDate}</Text>
-              <View style={styles.groupList}>
-                {groupData.map((n, idx) => {
-                  const meta = typeMeta[n.type] || typeMeta['system'];
-                  const Icon = meta.icon;
-                  const displayTime = n.time || formatTime(n.date);
-
-                  return (
-                    <View key={n.id} style={[styles.card, idx !== groupData.length - 1 && styles.cardBorder]}>
-                      <View style={[styles.iconWrap, { backgroundColor: meta.soft }]}>
-                        <Icon size={20} color={meta.tint} />
-                      </View>
-                      <View style={styles.cardContent}>
-                        <View style={styles.cardHeader}>
-                          <Text style={styles.title} numberOfLines={1}>{n.title}</Text>
-                          <Text style={styles.time}>{displayTime}</Text>
-                        </View>
-                        <View style={styles.cardBodyRow}>
-                          <Text style={styles.body}>{n.body}</Text>
-                          {!n.read && <View style={styles.unreadDot} />}
-                        </View>
-                      </View>
-                    </View>
-                  );
-                })}
-              </View>
-            </View>
-          ))
-        )}
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={{ paddingBottom: 100 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[BLUE]} tintColor={BLUE} />}
+      >
+        {renderContent()}
       </ScrollView>
 
-      {Object.keys(groupedItems).length > 0 && (
+      {!loading && !error && Object.keys(groupedItems).length > 0 && (
         <View style={styles.footer}>
           <TouchableOpacity style={styles.markReadBtn} onPress={markAllRead}>
             <Text style={styles.markReadText}>Mark all as read</Text>

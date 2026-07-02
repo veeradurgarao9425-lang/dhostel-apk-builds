@@ -1,12 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal,
-  TextInput, StatusBar, ActivityIndicator, Alert, Platform, RefreshControl
+  TextInput, StatusBar, ActivityIndicator, Platform, RefreshControl
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { ArrowLeft, Plus, User, Clock, Calendar, X, ChevronDown, Check } from 'lucide-react-native';
+import { ArrowLeft, Plus, User, Clock, Calendar, X, ChevronDown, Check, Filter } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import api from '../services/api';
 
 const BLUE = '#2245D4';
@@ -18,11 +19,13 @@ const BG = '#F8FAFD';
 
 export default function VisitorPassScreen({ navigation }: any) {
   const { user } = useAuth();
+  const { showError, showSuccess, showWarning } = useToast();
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<'All' | 'Pending' | 'Approved' | 'Rejected'>('All');
 
   // Form state
   const [visitorName, setVisitorName] = useState('');
@@ -37,8 +40,8 @@ export default function VisitorPassScreen({ navigation }: any) {
     try {
       const res = await api.get('/requests/visitor/tenant');
       setRequests(res.data?.data || res.data || []);
-    } catch (e) {
-      console.error('Failed to fetch visitor requests:', e);
+    } catch {
+      showError('Could not load visitor requests.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -53,7 +56,7 @@ export default function VisitorPassScreen({ navigation }: any) {
 
   const handleSubmit = async () => {
     if (!visitorName.trim() || !relation || !visitDate || !visitTime) {
-      Alert.alert('Missing Fields', 'Please fill in all fields.');
+      showWarning('Please fill in all fields.');
       return;
     }
     setSubmitting(true);
@@ -67,9 +70,10 @@ export default function VisitorPassScreen({ navigation }: any) {
       });
       setShowForm(false);
       resetForm();
+      showSuccess('Visitor pass request submitted.');
       fetchRequests();
     } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.message || 'Failed to submit request');
+      showError(e?.response?.data?.message || 'Failed to submit request.');
     } finally {
       setSubmitting(false);
     }
@@ -100,6 +104,34 @@ export default function VisitorPassScreen({ navigation }: any) {
         </SafeAreaView>
       </View>
 
+      {/* ── Filter chips ── */}
+      {!loading && requests.length > 0 && (
+        <ScrollView
+          horizontal showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 10, gap: 8 }}
+          style={{ backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: BORDER }}
+        >
+          {(['All', 'Pending', 'Approved', 'Rejected'] as const).map(f => {
+            const active = activeFilter === f;
+            const chipColor = f === 'Approved' ? '#22C55E' : f === 'Rejected' ? '#EF4444' : f === 'Pending' ? '#D97706' : BLUE;
+            return (
+              <TouchableOpacity
+                key={f}
+                onPress={() => setActiveFilter(f)}
+                activeOpacity={0.7}
+                style={{
+                  paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
+                  backgroundColor: active ? chipColor : '#F1F5F9',
+                  borderWidth: 1, borderColor: active ? chipColor : BORDER,
+                }}
+              >
+                <Text style={{ fontSize: 12, fontWeight: '700', color: active ? '#FFF' : TEXT_MID }}>{f}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      )}
+
       {loading ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color={BLUE} />
@@ -109,14 +141,23 @@ export default function VisitorPassScreen({ navigation }: any) {
           contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchRequests(); }} colors={[BLUE]} />}
         >
-          {requests.length === 0 ? (
-            <View style={{ alignItems: 'center', paddingTop: 60 }}>
-              <User size={56} color="#CBD5E1" />
-              <Text style={{ fontSize: 16, fontWeight: '700', color: TEXT_MID, marginTop: 16 }}>No visitor requests yet</Text>
-              <Text style={{ fontSize: 13, color: '#9CA3AF', marginTop: 8, textAlign: 'center' }}>Tap + to request a visitor pass</Text>
-            </View>
-          ) : (
-            requests.map((r: any, i: number) => {
+          {(() => {
+            const filtered = activeFilter === 'All' ? requests : requests.filter((r: any) => (r.status || 'Pending') === activeFilter);
+            if (requests.length === 0) return (
+              <View style={{ alignItems: 'center', paddingTop: 60 }}>
+                <User size={56} color="#CBD5E1" />
+                <Text style={{ fontSize: 16, fontWeight: '700', color: TEXT_MID, marginTop: 16 }}>No visitor requests yet</Text>
+                <Text style={{ fontSize: 13, color: '#9CA3AF', marginTop: 8, textAlign: 'center' }}>Tap + to request a visitor pass</Text>
+              </View>
+            );
+            if (filtered.length === 0) return (
+              <View style={{ alignItems: 'center', paddingTop: 60 }}>
+                <Filter size={48} color="#CBD5E1" />
+                <Text style={{ fontSize: 16, fontWeight: '700', color: TEXT_MID, marginTop: 16 }}>No {activeFilter} requests</Text>
+                <Text style={{ fontSize: 13, color: '#9CA3AF', marginTop: 8, textAlign: 'center' }}>Try a different filter</Text>
+              </View>
+            );
+            return filtered.map((r: any, i: number) => {
               const sc = statusColor(r.status || 'Pending');
               return (
                 <View key={r.visitor_id || i} style={{ backgroundColor: WHITE, borderRadius: 20, padding: 20, marginBottom: 12, borderWidth: 1, borderColor: BORDER, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 1 }}>
@@ -141,8 +182,8 @@ export default function VisitorPassScreen({ navigation }: any) {
                   </View>
                 </View>
               );
-            })
-          )}
+            });
+          })()}
         </ScrollView>
       )}
 

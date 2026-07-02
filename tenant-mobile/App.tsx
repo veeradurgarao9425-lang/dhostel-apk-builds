@@ -4,6 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { AuthProvider } from './src/context/AuthContext';
 import { ToastProvider } from './src/context/ToastContext';
+import { NetworkProvider } from './src/context/NetworkContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { CustomToast, ToastVariant } from './src/components/ui/CustomToast';
 
@@ -40,12 +41,14 @@ const ThemedToast = () => {
 export default function App() {
   return (
     <ToastProvider>
-      <AuthProvider>
+      <NetworkProvider>
+        <AuthProvider>
           <SafeAreaProvider style={styles.container}>
             <AppNavigator />
             <ThemedToast />
           </SafeAreaProvider>
-      </AuthProvider>
+        </AuthProvider>
+      </NetworkProvider>
     </ToastProvider>
   );
 }

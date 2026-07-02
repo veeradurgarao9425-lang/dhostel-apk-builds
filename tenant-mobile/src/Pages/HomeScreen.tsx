@@ -135,8 +135,8 @@ export default function HomeScreen({ navigation }: any) {
         setTotalRentAmount(latestRent);
         setRecentPayments(payments.slice(0, 3)); // keep top 3
       }
-    } catch (error) {
-      console.error("Error fetching home data:", error);
+    } catch {
+      // non-critical: dashboard still renders from cached user data
     }
   };
 

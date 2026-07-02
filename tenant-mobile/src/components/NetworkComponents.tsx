@@ -1,8 +1,9 @@
 import React, { useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { Wifi, WifiOff, AlertTriangle, RefreshCw, CheckCircle, Server, Wrench, X, Activity } from 'lucide-react-native';
 import { Theme, PrimaryButton, SecondaryButton } from './UIComponents';
 import { BaseBottomSheet } from './UIComponents';
+import { useNetwork } from '../context/NetworkContext';
 
 export type NetworkStateType = 
   | 'offline' | 'poor' | 'reconnecting' | 'slow' | 'online' 
@@ -78,6 +79,12 @@ export function NetworkBanner({ type, onClose }: { type: 'offline' | 'reconnecti
       )}
     </View>
   );
+}
+
+export function OfflineBanner() {
+  const { isConnected } = useNetwork();
+  if (isConnected) return null;
+  return <NetworkBanner type="offline" />;
 }
 
 export function ConnectionIndicatorRow({ status }: { status: 'Excellent' | 'Good' | 'Poor' | 'Offline' }) {
