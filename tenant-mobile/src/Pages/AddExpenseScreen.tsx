@@ -2,8 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, StatusBar,
-  Dimensions, Modal, Animated, Image, Switch,
+  Dimensions, Modal, Animated, Image, Switch, ActivityIndicator,
 } from 'react-native';
+import api from '../services/api';
+import { useToast } from '../context/ToastContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import {

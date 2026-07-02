@@ -166,7 +166,7 @@ export default function AllExpensesScreen({ navigation }: any) {
           grouped.length === 0 ? (
             allData.length === 0 ? (
               <View style={{ marginTop: 40 }}>
-                <Phase3EmptyState variant="expenses" />
+                <Phase3EmptyState variant="expenses" onAction={() => navigation.navigate('AddExpense')} />
               </View>
             ) : (
               <View style={{ marginTop: 40 }}>

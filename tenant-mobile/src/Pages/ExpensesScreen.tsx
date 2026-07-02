@@ -1,10 +1,11 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useCallback } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, ScrollView,
   Dimensions, Animated, StatusBar, TextInput, Modal,
   Share, Image, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import Svg, { Circle, Path, Polyline, Line, G } from 'react-native-svg';
 import {
   BarChart2, Plus, TrendingUp, TrendingDown,
@@ -323,59 +324,59 @@ export default function ExpensesScreen({ navigation }: any) {
   const [monthlyData, setMonthlyData] = useState<any[]>([]);
   const [maxAmt, setMaxAmt] = useState(0);
 
-  React.useEffect(() => {
-    const fetchExpenses = async () => {
-      try {
-        const res = await api.get('/tenant-expenses');
-        if (res.data && res.data.success) {
-          const fetched = res.data.data;
-          const formatted = fetched.map((e: any) => ({
-            id: e.expense_id.toString(),
-            title: e.title,
-            time: new Date(e.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
-            cat: e.category,
-            amt: Number(e.amount),
-            shared: false,
-            recurring: false,
-            hasReceipt: false,
-            date_raw: e.date,
-          }));
-          setExpenses(formatted);
+  const fetchExpenses = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/tenant-expenses');
+      if (res.data && res.data.success) {
+        const fetched = res.data.data;
+        const formatted = fetched.map((e: any) => ({
+          id: e.expense_id.toString(),
+          title: e.title,
+          time: new Date(e.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
+          cat: e.category,
+          amt: Number(e.amount),
+          shared: false,
+          recurring: false,
+          hasReceipt: false,
+          date_raw: e.date,
+        }));
+        setExpenses(formatted);
 
-          let total = 0;
-          const catMap: Record<string, number> = {};
-          formatted.forEach((e: any) => {
-            total += e.amt;
-            catMap[e.cat] = (catMap[e.cat] || 0) + e.amt;
-          });
-          setMonthTotal(total);
+        let total = 0;
+        const catMap: Record<string, number> = {};
+        formatted.forEach((e: any) => {
+          total += e.amt;
+          catMap[e.cat] = (catMap[e.cat] || 0) + e.amt;
+        });
+        setMonthTotal(total);
 
-          const brk = Object.keys(catMap).map(k => ({
-            name: k,
-            amount: catMap[k],
-            pct: total > 0 ? Math.round((catMap[k] / total) * 100) : 0,
-            color: CATS[k] ? CATS[k].color : CATS['Others'].color,
-            bg: CATS[k] ? CATS[k].bg : CATS['Others'].bg,
-            Icon: CATS[k] ? CATS[k].Icon : CATS['Others'].Icon
-          })).sort((a: any,b: any) => b.amount - a.amount);
-          setBreakdown(brk);
+        const brk = Object.keys(catMap).map(k => ({
+          name: k,
+          amount: catMap[k],
+          pct: total > 0 ? Math.round((catMap[k] / total) * 100) : 0,
+          color: CATS[k] ? CATS[k].color : CATS['Others'].color,
+          bg: CATS[k] ? CATS[k].bg : CATS['Others'].bg,
+          Icon: CATS[k] ? CATS[k].Icon : CATS['Others'].Icon,
+        })).sort((a: any, b: any) => b.amount - a.amount);
+        setBreakdown(brk);
 
-          const now = new Date();
-          const mData = Array.from({ length: 6 }, (_, i) => {
-            const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1);
-            return { month: d.toLocaleString('en-US', { month: 'short' }), amt: i === 5 ? total : 0 };
-          });
-          setMonthlyData(mData);
-          setMaxAmt(Math.max(...mData.map(m => m.amt), 1));
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
+        const now = new Date();
+        const mData = Array.from({ length: 6 }, (_, i) => {
+          const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1);
+          return { month: d.toLocaleString('en-US', { month: 'short' }), amt: i === 5 ? total : 0 };
+        });
+        setMonthlyData(mData);
+        setMaxAmt(Math.max(...mData.map(m => m.amt), 1));
       }
-    };
-    fetchExpenses();
+    } catch {
+      // keep previous data on error
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useFocusEffect(useCallback(() => { fetchExpenses(); }, [fetchExpenses]));
 
   const [tab, setTab]                       = useState<TabKey>('Overview');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
