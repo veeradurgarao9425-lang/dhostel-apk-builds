@@ -7,7 +7,6 @@ import api from '../services/api';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { AppHeader } from '../components/AppHeader';
-import { ProfileMenu } from '../components/ProfileMenu';
 import { buildReportHtml } from '../utils/reportHtml';
 import * as Print from 'expo-print';
 import { downloadAndSaveFile } from '../utils/fileDownloader';
@@ -324,17 +323,15 @@ export default function ReportsScreen() {
                 showBack={navigation.canGoBack()}
                 titleColor="#FFF"
                 iconColor="#FFF"
+
                 rightComponent={
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                        <ProfileMenu />
-                    </View>
+                    <TouchableOpacity style={[R.topFilterBtn, { marginBottom: 0 }]} onPress={() => setFilterSelectModal(true)} activeOpacity={0.8}>
+                        <Ionicons name="calendar-outline" size={14} color="#FFF" />
+                        <Text style={R.topFilterTxt}>{periodLabel}</Text>
+                        <Ionicons name="chevron-down" size={12} color="#FFF" />
+                    </TouchableOpacity>
                 }
             >
-                <TouchableOpacity style={R.topFilterBtn} onPress={() => setFilterSelectModal(true)} activeOpacity={0.8}>
-                    <Ionicons name="calendar-outline" size={14} color="#FFF" />
-                    <Text style={R.topFilterTxt}>{periodLabel}</Text>
-                    <Ionicons name="chevron-down" size={12} color="#FFF" />
-                </TouchableOpacity>
             </AppHeader>
 
             <View style={[R.mainSheet, { backgroundColor: isDark ? theme.background : '#F8FAFC' }]}>
@@ -539,10 +536,8 @@ const R = StyleSheet.create({
     },
     hBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
     topFilterBtn: {
-        flexDirection: 'row', alignItems: 'center', gap: 6,
-        alignSelf: 'flex-end',
-        marginRight: 16, marginBottom: 12,
-        paddingHorizontal: 10, paddingVertical: 6,
+        flexDirection: 'row', alignItems: 'center', gap: 4,
+        paddingHorizontal: 8, paddingVertical: 6,
         borderRadius: 8,
         borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)',
     },

@@ -95,6 +95,40 @@ export default function MoreScreen() {
             groupTitle: t('more.management'),
             items: [
                 {
+                    label: 'Collect Rent',
+                    subtitle: 'Collect fees and record payments',
+                    icon: 'cash-outline',
+                    iconColor: '#10B981',
+                    iconBg: '#D1FAE5',
+                    route: 'FeeManagement',
+                },
+                {
+                    label: t('more.pendingPayments'),
+                    subtitle: t('more.pendingPaymentsSub'),
+                    icon: 'alert-circle',
+                    iconColor: '#DC2626',
+                    iconBg: '#FEE2E2',
+                    route: 'PendingTab',
+                    badgeCount: stats?.pendingDuesCount ?? 0,
+                },
+                {
+                    label: t('more.incomeReport'),
+                    subtitle: t('more.incomeReportSub'),
+                    icon: 'trending-up',
+                    iconColor: '#16A34A',
+                    iconBg: '#DCFCE7',
+                    route: 'IncomeDetails',
+                    routeParams: { period: 'month' },
+                },
+                {
+                    label: t('more.reportsAnalytics'),
+                    subtitle: t('more.reportsAnalyticsSub'),
+                    icon: 'bar-chart',
+                    iconColor: '#059669',
+                    iconBg: '#D1FAE5',
+                    route: 'Reports',
+                },
+                {
                     label: t('more.rooms'),
                     subtitle: t('more.roomsSub'),
                     icon: 'bed',
@@ -110,15 +144,7 @@ export default function MoreScreen() {
                     iconColor: '#7C3AED',
                     iconBg: '#EDE9FE',
                     route: 'Students',
-                    badgeCount: stats?.tenantsCount || stats?.totalStudents || 0,
-                },
-                {
-                    label: t('more.reportsAnalytics'),
-                    subtitle: t('more.reportsAnalyticsSub'),
-                    icon: 'bar-chart',
-                    iconColor: '#059669',
-                    iconBg: '#D1FAE5',
-                    route: 'Reports',
+                    badgeCount: (stats?.tenantsCount || stats?.totalStudents || 0) > 0 ? (stats?.tenantsCount || stats?.totalStudents) : undefined,
                 },
                 {
                     label: t('more.staffManagement'),
@@ -139,43 +165,6 @@ export default function MoreScreen() {
                     badgeCount: 0,
                 },
                 {
-                    label: t('more.hostels'),
-                    subtitle: t('more.hostelsSub'),
-                    icon: 'business',
-                    iconColor: '#16A34A',
-                    iconBg: '#DCFCE7',
-                    route: 'Hostels',
-                    badgeCount: stats?.hostelsCount || 0,
-                },
-                {
-                    label: t('more.vacateNotices'),
-                    subtitle: t('more.vacateNoticesSub'),
-                    icon: 'calendar-outline',
-                    iconColor: '#EA580C',
-                    iconBg: '#FFEDD5',
-                    route: 'Notices',
-                    badgeCount: stats?.noticesCount || 0,
-                },
-                {
-                    label: t('more.pendingPayments'),
-                    subtitle: t('more.pendingPaymentsSub'),
-                    icon: 'alert-circle',
-                    iconColor: '#DC2626',
-                    iconBg: '#FEE2E2',
-                    route: 'PendingTab',
-                    badgeCount: stats?.pendingDuesCount ?? 0,
-                },
-                {
-                    label: 'Complaints',
-                    subtitle: 'Manage tenant complaints',
-                    icon: 'construct-outline',
-                    iconColor: '#DC2626',
-                    iconBg: '#FEE2E2',
-                    route: 'ComplaintsManagement',
-                    badgeCount: 0,
-                },
-
-                {
                     label: 'Mess Menu',
                     subtitle: 'Manage weekly food schedule',
                     icon: 'restaurant-outline',
@@ -191,7 +180,24 @@ export default function MoreScreen() {
                     iconBg: '#EDE9FE',
                     route: 'NoticesManagement',
                 },
-
+                {
+                    label: 'Complaints',
+                    subtitle: 'Manage tenant complaints',
+                    icon: 'construct-outline',
+                    iconColor: '#DC2626',
+                    iconBg: '#FEE2E2',
+                    route: 'ComplaintsManagement',
+                    badgeCount: 0,
+                },
+                {
+                    label: t('more.vacateNotices'),
+                    subtitle: t('more.vacateNoticesSub'),
+                    icon: 'calendar-outline',
+                    iconColor: '#EA580C',
+                    iconBg: '#FFEDD5',
+                    route: 'Notices',
+                    badgeCount: stats?.noticesCount || 0,
+                },
                 {
                     label: 'Tenant Reviews',
                     subtitle: 'View ratings from your tenants',
@@ -203,16 +209,16 @@ export default function MoreScreen() {
             ],
         },
         {
-            groupTitle: t('more.finance'),
+            groupTitle: 'Hostel',
             items: [
                 {
-                    label: t('more.incomeReport'),
-                    subtitle: t('more.incomeReportSub'),
-                    icon: 'trending-up',
+                    label: t('more.hostels'),
+                    subtitle: t('more.hostelsSub'),
+                    icon: 'business',
                     iconColor: '#16A34A',
                     iconBg: '#DCFCE7',
-                    route: 'IncomeDetails',
-                    routeParams: { period: 'month' },
+                    route: 'Hostels',
+                    badgeCount: stats?.hostelsCount || 0,
                 },
                 {
                     label: t('more.bulkDelete'),
@@ -595,11 +601,7 @@ export default function MoreScreen() {
                                             <Text style={s.badgeText}>{item.badgeCount}</Text>
                                         </View>
                                     )}
-                                    {item.badgeCount !== undefined && (item.badgeCount === 0 || item.badgeCount === '0/0') && (
-                                        <View style={[s.badgeContainer, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]}>
-                                            <Text style={[s.badgeText, { color: isDark ? '#94A3B8' : '#64748B' }]}>{item.badgeCount}</Text>
-                                        </View>
-                                    )}
+
                                     {item.comingSoon && (
                                         <View style={s.soonBadge}>
                                             <Text style={s.soonBadgeText}>Soon</Text>

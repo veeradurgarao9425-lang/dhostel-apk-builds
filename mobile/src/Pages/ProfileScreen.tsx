@@ -9,6 +9,8 @@ import {
     Modal,
     ActivityIndicator,
     TextInput,
+    Alert,
+    Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -25,7 +27,7 @@ const ProfileScreen = ({ navigation }: any) => {
     const { user, signOut, updateTokenAndUser, hostels: contextHostels } = useAuth();
     const { theme, isDark } = useTheme();
     const { t } = useTranslation();
-    const { showError, showSuccess, showApiError, showInfo } = useToast();
+    const { showError, showSuccess, showApiError, showToast } = useToast();
     const insets = useSafeAreaInsets();
     const confirm = useConfirmation();
     const [stats, setStats] = useState<any>(null);
@@ -44,6 +46,9 @@ const ProfileScreen = ({ navigation }: any) => {
         phone: '',
     });
     const [savingProfile, setSavingProfile] = useState(false);
+    
+    // Support Modal
+    const [supportModalVisible, setSupportModalVisible] = useState(false);
 
     const fetchStats = async () => {
         try {
@@ -236,7 +241,7 @@ const ProfileScreen = ({ navigation }: any) => {
                         </LinearGradient>
                         <TouchableOpacity 
                             style={styles.cameraBadge} 
-                            onPress={() => showInfo(t('profile.photoMsg', 'Upload profile photo feature coming soon!'), t('profile.photoTitle', 'Profile Photo'))}
+                            onPress={() => Alert.alert(t('profile.photoTitle', 'Profile Photo'), t('profile.photoMsg', 'Upload profile photo feature coming soon!'))}
                             activeOpacity={0.8}
                         >
                             <Ionicons name="camera" size={12} color="#7C3AED" />
@@ -268,40 +273,56 @@ const ProfileScreen = ({ navigation }: any) => {
                 {/* ── APP-STYLE STATS GRID ── */}
                 <View style={styles.statsGrid}>
                     {/* Hostels */}
-                    <View style={[styles.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                    <TouchableOpacity 
+                        style={[styles.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
+                        onPress={() => navigation.navigate('Hostels')}
+                        activeOpacity={0.7}
+                    >
                         <View style={[styles.statIconBox, { backgroundColor: '#EDE9FE' }]}>
                             <Ionicons name="business" size={18} color="#7C3AED" />
                         </View>
                         <Text style={[styles.statValue, { color: theme.textPrimary }]}>{totalHostels}</Text>
                         <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{t('profile.hostels', 'Hostels')}</Text>
-                    </View>
+                    </TouchableOpacity>
 
                     {/* Tenants */}
-                    <View style={[styles.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                    <TouchableOpacity 
+                        style={[styles.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
+                        onPress={() => navigation.navigate('Students')}
+                        activeOpacity={0.7}
+                    >
                         <View style={[styles.statIconBox, { backgroundColor: '#DCFCE7' }]}>
                             <Ionicons name="people" size={18} color="#10B981" />
                         </View>
                         <Text style={[styles.statValue, { color: theme.textPrimary }]}>{totalTenants}</Text>
                         <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{t('profile.tenants', 'Tenants')}</Text>
-                    </View>
+                    </TouchableOpacity>
 
                     {/* Occupied */}
-                    <View style={[styles.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                    <TouchableOpacity 
+                        style={[styles.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
+                        onPress={() => navigation.navigate('Rooms')}
+                        activeOpacity={0.7}
+                    >
                         <View style={[styles.statIconBox, { backgroundColor: '#E0F2FE' }]}>
                             <Ionicons name="bed" size={18} color="#0284C7" />
                         </View>
                         <Text style={[styles.statValue, { color: theme.textPrimary }]}>{occupiedBeds}</Text>
                         <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{t('profile.occupied', 'Occupied')}</Text>
-                    </View>
+                    </TouchableOpacity>
 
                     {/* Revenue (This Month) */}
-                    <View style={[styles.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                    <TouchableOpacity 
+                        style={[styles.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
+                        onPress={() => navigation.navigate('Reports')}
+                        activeOpacity={0.7}
+                    >
                         <View style={[styles.statIconBox, { backgroundColor: '#FEF3C7' }]}>
                             <Ionicons name="cash" size={18} color="#D97706" />
                         </View>
                         <Text style={[styles.statValue, { color: theme.textPrimary }]} numberOfLines={1}>{fmt(thisMonthRevenue)}</Text>
                         <Text style={[styles.statLabel, { color: theme.textSecondary }]} numberOfLines={1}>{t('profile.thisMonth', 'This Month')}</Text>
-                    </View>
+                    </TouchableOpacity>
                 </View>
 
                 {/* ── ACTIVE HOSTEL SECTION ── */}
@@ -373,11 +394,11 @@ const ProfileScreen = ({ navigation }: any) => {
                     </Text>
                     <TouchableOpacity 
                         onPress={openEditModal} 
-                        style={styles.editLinkRow}
-                        activeOpacity={0.7}
+                        style={[styles.editLink, { backgroundColor: theme.primary, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }]}
+                        activeOpacity={0.8}
                     >
-                        <Ionicons name="create-outline" size={13} color="#7C3AED" />
-                        <Text style={styles.editLinkText}>{t('common.edit', 'Edit')}</Text>
+                        <Ionicons name="pencil" size={12} color="#FFF" style={{ marginRight: 4 }} />
+                        <Text style={[styles.editLinkText, { color: '#FFF' }]}>{t('common.edit', 'Edit')}</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -416,8 +437,8 @@ const ProfileScreen = ({ navigation }: any) => {
                         { icon: 'swap-horizontal', label: t('profile.switchHostel', 'Switch Hostel'), color: '#10B981', bg: '#DCFCE7', onPress: openHostelSelector },
                         { icon: 'business', label: t('profile.manageHostels', 'Hostels'), color: '#7C3AED', bg: '#EDE9FE', onPress: () => navigation.navigate('Hostels') },
                         { icon: 'bar-chart', label: t('profile.reports', 'Reports'), color: '#0284C7', bg: '#E0F2FE', onPress: () => navigation.navigate('Reports') },
-                        { icon: 'medal', label: t('profile.subscription', 'Subscription'), color: '#D97706', bg: '#FEF3C7', onPress: () => navigation.navigate('ComingSoon') },
-                        { icon: 'headset', label: t('profile.support', 'Support'), color: '#EF4444', bg: '#FEE2E2', onPress: () => showInfo('📧 hello.hostix@gmail.com\n📞 +91 98765 43210\n\nAvailable 24/7', t('profile.helpSupport', 'Help & Support')) },
+                        // { icon: 'medal', label: t('profile.subscription', 'Subscription'), color: '#D97706', bg: '#FEF3C7', onPress: () => navigation.navigate('ComingSoon') },
+                        { icon: 'headset', label: t('profile.support', 'Support'), color: '#EF4444', bg: '#FEE2E2', onPress: () => setSupportModalVisible(true) },
                     ].map((item, i) => (
                         <TouchableOpacity key={i} style={styles.manageItem} onPress={item.onPress} activeOpacity={0.7}>
                             <View style={[styles.manageIconBox, { backgroundColor: item.bg }]}>
@@ -428,21 +449,7 @@ const ProfileScreen = ({ navigation }: any) => {
                     ))}
                 </View>
 
-                {/* ── SETTINGS ── */}
-                <TouchableOpacity 
-                    style={[styles.logoutBtn, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0', marginBottom: 12 }]} 
-                    onPress={() => navigation.navigate('Settings')} 
-                    activeOpacity={0.85}
-                >
-                    <View style={[styles.logoutIconBox, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                        <Ionicons name="settings-outline" size={20} color={theme.textPrimary} />
-                    </View>
-                    <View style={{ flex: 1, marginLeft: 12 }}>
-                        <Text style={[styles.logoutTitle, { color: theme.textPrimary }]}>{t('more.settings', 'Settings')}</Text>
-                        <Text style={styles.logoutSub}>{t('more.appSettingsSub', 'App configuration, Fonts')}</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
-                </TouchableOpacity>
+                {/* ── SETTINGS (Removed) ── */}
 
                 {/* ── LOG OUT ── */}
                 <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.85}>
@@ -649,13 +656,11 @@ const ProfileScreen = ({ navigation }: any) => {
                             <View style={styles.inputGroup}>
                                 <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>{t('profile.email', 'Email Address')}</Text>
                                 <TextInput
-                                    style={[styles.modalInput, { color: theme.textPrimary, borderColor: isDark ? '#334155' : '#E2E8F0', backgroundColor: isDark ? '#1E293B' : '#FFF' }]}
+                                    style={[styles.modalInput, { color: isDark ? '#64748B' : '#94A3B8', borderColor: isDark ? '#334155' : '#E2E8F0', backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }]}
                                     value={editForm.email}
-                                    onChangeText={(val) => setEditForm(p => ({ ...p, email: val }))}
                                     placeholder="Email Address"
                                     placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
-                                    keyboardType="email-address"
-                                    autoCapitalize="none"
+                                    editable={false}
                                 />
                             </View>
 
@@ -684,6 +689,64 @@ const ProfileScreen = ({ navigation }: any) => {
                                 </TouchableOpacity>
                             )}
                         </ScrollView>
+                    </View>
+                </View>
+            </Modal>
+            {/* ── SUPPORT MODAL ── */}
+            <Modal visible={supportModalVisible} transparent animationType="fade" onRequestClose={() => setSupportModalVisible(false)}>
+                <View style={[styles.modalOverlay, { justifyContent: 'center', paddingHorizontal: 32, backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+                    <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => setSupportModalVisible(false)} />
+                    <View style={[styles.modalContent, { backgroundColor: theme.cardBg, borderRadius: 24, padding: 20, alignItems: 'center', width: '100%', maxHeight: undefined, paddingBottom: 20 }]}>
+                        
+                        <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: isDark ? '#1E1B4B' : '#EFF6FF', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                            <Ionicons name="headset" size={28} color="#3B82F6" />
+                        </View>
+                        
+                        <Text style={{ fontSize: 18, fontWeight: '800', color: theme.textPrimary, marginBottom: 4, textAlign: 'center' }}>Hostix Support</Text>
+                        <Text style={{ fontSize: 13, color: theme.textSecondary, textAlign: 'center', marginBottom: 20, lineHeight: 18 }}>
+                            Available 24/7 to assist you with any queries.
+                        </Text>
+
+                        <View style={{ width: '100%', gap: 10 }}>
+                            <TouchableOpacity 
+                                style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: isDark ? '#064E3B' : '#F0FDF4', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: isDark ? '#065F46' : '#DCFCE7' }}
+                                onPress={() => Linking.openURL('tel:+916303359425')}
+                                activeOpacity={0.7}
+                            >
+                                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: isDark ? '#022C22' : '#DCFCE7', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                                    <Ionicons name="call" size={18} color="#10B981" />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={{ fontSize: 11, color: isDark ? '#6EE7B7' : '#16A34A', fontWeight: '600', marginBottom: 2 }}>Call Us</Text>
+                                    <Text style={{ fontSize: 14, color: isDark ? '#A7F3D0' : '#14532D', fontWeight: '700' }}>+91 6303359425</Text>
+                                </View>
+                                <Ionicons name="chevron-forward" size={16} color={isDark ? '#6EE7B7' : '#16A34A'} />
+                            </TouchableOpacity>
+
+                            <TouchableOpacity 
+                                style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: isDark ? '#1E3A8A' : '#EFF6FF', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: isDark ? '#1E40AF' : '#DBEAFE' }}
+                                onPress={() => Linking.openURL('mailto:support@hostix.in')}
+                                activeOpacity={0.7}
+                            >
+                                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: isDark ? '#172554' : '#DBEAFE', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                                    <Ionicons name="mail" size={18} color="#3B82F6" />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={{ fontSize: 11, color: isDark ? '#93C5FD' : '#2563EB', fontWeight: '600', marginBottom: 2 }}>Email Us</Text>
+                                    <Text style={{ fontSize: 14, color: isDark ? '#BFDBFE' : '#1E3A8A', fontWeight: '700' }}>support@hostix.in</Text>
+                                </View>
+                                <Ionicons name="chevron-forward" size={16} color={isDark ? '#93C5FD' : '#2563EB'} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <TouchableOpacity 
+                            style={{ width: '100%', paddingVertical: 12, marginTop: 16, borderRadius: 12, alignItems: 'center', backgroundColor: isDark ? '#334155' : '#F1F5F9' }}
+                            onPress={() => setSupportModalVisible(false)}
+                            activeOpacity={0.8}
+                        >
+                            <Text style={{ fontSize: 14, fontWeight: '700', color: theme.textPrimary }}>Close</Text>
+                        </TouchableOpacity>
+
                     </View>
                 </View>
             </Modal>

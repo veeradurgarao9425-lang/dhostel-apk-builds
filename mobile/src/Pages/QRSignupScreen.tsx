@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import QRCode from 'react-native-qrcode-svg';
-import { QrCode, Home, BedDouble, Info, Share2, ChevronDown, Check, X, ShieldCheck, Download, Link, Smartphone, FileText, User, Wand2, Copy, Shield } from 'lucide-react-native';
+import { QrCode, Home, BedDouble, Info, Share2, ChevronDown, Check, X, ShieldCheck, Download, Link, Smartphone, FileText, User, Wand2, Copy, Shield, Search } from 'lucide-react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { AppHeader } from '../components/AppHeader';
@@ -35,7 +35,7 @@ type Mode = 'general' | 'room';
 
 // ─── Smooth bottom-sheet modal ────────────────────────────────────────────────
 const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: any) => {
-    const { theme } = useTheme();
+    const { theme, isDark } = useTheme();
     const [shouldRender, setShouldRender] = useState(visible);
     const translateY = useRef(new Animated.Value(600)).current;
     const opacity = useRef(new Animated.Value(0)).current;
@@ -68,7 +68,7 @@ const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: any) => {
                 </Animated.View>
                 <Animated.View style={[
                     s.modalSheet,
-                    { backgroundColor: theme.cardBg, maxHeight, transform: [{ translateY }] }
+                    { backgroundColor: theme.cardBg, maxHeight, transform: [{ translateY }], borderWidth: 1, borderColor: isDark ? '#334155' : '#E2E8F0', borderBottomWidth: 0 }
                 ]}>
                     {children}
                 </Animated.View>
@@ -81,27 +81,51 @@ const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: any) => {
 const RoomPickerModal = ({ visible, rooms, selectedRoomId, onSelectRoom, onClose }: any) => {
     const { theme, isDark, fontSize } = useTheme();
     const [search, setSearch] = useState('');
+    const [selectedFloor, setSelectedFloor] = useState<number | 'All'>('All');
+
+    const floors = useMemo(() => {
+        const set = new Set<number>();
+        rooms.forEach((r: any) => set.add(Number(r.floor_number ?? 0)));
+        return ['All', ...Array.from(set).sort((a, b) => a - b)];
+    }, [rooms]);
 
     const grouped = useMemo(() => {
-        const filtered = search ? rooms.filter((r: any) => r.room_number?.toString().includes(search)) : rooms;
+        let filtered = rooms;
+        if (selectedFloor !== 'All') {
+            filtered = filtered.filter((r: any) => Number(r.floor_number ?? 0) === Number(selectedFloor));
+        }
+        if (search) {
+            filtered = filtered.filter((r: any) => r.room_number?.toString().includes(search));
+        }
+        
         const map: Record<number, any[]> = {};
         filtered.forEach((r: any) => {
-            const floor = r.floor_number ?? 0;
+            const floor = Number(r.floor_number ?? 0);
             if (!map[floor]) map[floor] = [];
             map[floor].push(r);
         });
-        return Object.keys(map).sort((a, b) => Number(a) - Number(b)).map(floor => {
+        
+        const groupedArray = Object.keys(map).map(floor => {
             const floorRooms = map[Number(floor)];
             floorRooms.sort((a: any, b: any) => {
-                const aAvail = (a.available_beds ?? 0) > 0;
-                const bAvail = (b.available_beds ?? 0) > 0;
+                const aAvail = Number(a.available_beds ?? 0) > 0;
+                const bAvail = Number(b.available_beds ?? 0) > 0;
                 if (aAvail && !bAvail) return -1;
                 if (!aAvail && bAvail) return 1;
                 return (a.room_number ?? '').toString().localeCompare((b.room_number ?? '').toString(), undefined, { numeric: true });
             });
-            return { floor: Number(floor), rooms: floorRooms };
+            const hasAvailable = floorRooms.some((r: any) => Number(r.available_beds ?? 0) > 0);
+            return { floor: Number(floor), rooms: floorRooms, hasAvailable };
         });
-    }, [rooms, search]);
+
+        groupedArray.sort((a, b) => {
+            if (a.hasAvailable && !b.hasAvailable) return -1;
+            if (!a.hasAvailable && b.hasAvailable) return 1;
+            return a.floor - b.floor;
+        });
+
+        return groupedArray;
+    }, [rooms, search, selectedFloor]);
 
     const statusColor = (r: any) => r.status === 'MAINTENANCE' ? '#F97316' : (r.available_beds ?? 0) > 0 ? '#16A34A' : '#DC2626';
     const statusLabel = (r: any) => r.status === 'MAINTENANCE' ? 'MAINTENANCE' : (r.available_beds ?? 0) > 0 ? 'AVAILABLE' : 'FULL';
@@ -111,44 +135,78 @@ const RoomPickerModal = ({ visible, rooms, selectedRoomId, onSelectRoom, onClose
             <View style={s.sheetHandle} />
             <View style={[s.sheetHeader, { borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>
                 <Text style={[s.sheetTitle, { color: theme.textPrimary }]}>Select Room</Text>
-                <TouchableOpacity onPress={onClose} style={[s.closeBtn, { backgroundColor: isDark ? theme.primary + '20' : '#FFF1F1' }]}><Text style={[s.closeBtnText, { color: theme.primary }]}>Close</Text></TouchableOpacity>
+                <TouchableOpacity onPress={onClose} style={[s.closeBtn, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}><Text style={[s.closeBtnText, { color: theme.textSecondary }]}>Close</Text></TouchableOpacity>
             </View>
             <View style={{ paddingHorizontal: 16, marginBottom: 10, marginTop: 10 }}>
                 <View style={[s.searchBar, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                    <Text style={{ color: theme.textSecondary, marginRight: 8 }}>🔍</Text>
-                    <TextInput style={{ flex: 1, fontSize: 15, color: theme.textPrimary }} placeholder="Search room number..." placeholderTextColor={isDark ? '#64748B' : '#94A3B8'} value={search} onChangeText={setSearch} />
+                    <Search size={14} color={theme.textSecondary} style={{ marginRight: 6 }} />
+                    <TextInput style={{ flex: 1, fontSize: 13, color: theme.textPrimary, padding: 0 }} placeholder="Search room number..." placeholderTextColor={isDark ? '#64748B' : '#94A3B8'} value={search} onChangeText={setSearch} />
                 </View>
+                
+                {selectedRoomId && (
+                    (() => {
+                        const selRoom = rooms.find((r: any) => r.room_id?.toString() === selectedRoomId);
+                        if (!selRoom) return null;
+                        return (
+                            <Text style={{ fontSize: 13, color: theme.textSecondary, marginBottom: 8, marginTop: 4, paddingHorizontal: 4 }}>
+                                <Text style={{ fontWeight: '700', color: theme.primary }}>Selected:</Text> Room {selRoom.room_number} (Floor {selRoom.floor_number ?? '—'})
+                            </Text>
+                        );
+                    })()
+                )}
+                
+                {/* Floor Tabs */}
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
+                    {floors.map(floor => (
+                        <TouchableOpacity 
+                            key={floor.toString()} 
+                            onPress={() => setSelectedFloor(floor as any)}
+                            style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: selectedFloor === floor ? theme.primary : (isDark ? '#334155' : '#F1F5F9'), marginRight: 8 }}
+                        >
+                            <Text style={{ fontSize: 13, fontWeight: '600', color: selectedFloor === floor ? '#FFF' : theme.textSecondary }}>
+                                {floor === 'All' ? 'All Floors' : `Floor ${floor}`}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
             </View>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 16 }}>
                 {grouped.map(({ floor, rooms: fr }) => (
                     <View key={floor}>
-                        <View style={[s.floorChip, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}><Text style={[s.floorChipText, { color: theme.textSecondary }]}>FLOOR {floor}</Text></View>
-                        {fr.map((room: any) => {
-                            const isSelected = selectedRoomId === room.room_id?.toString();
-                            const avail = room.available_beds ?? 0;
-                            return (
-                                <TouchableOpacity
-                                    key={room.room_id}
-                                    style={[s.roomCard, { backgroundColor: isDark ? '#1E293B' : '#FFF9F9', borderColor: isDark ? '#334155' : '#FFD5D5' }, isSelected && { borderColor: theme.primary, backgroundColor: isDark ? theme.primary + '20' : '#FFF1F1' }, avail <= 0 && s.roomCardDim]}
-                                    onPress={() => { onSelectRoom(room); onClose(); }}
-                                    activeOpacity={0.75}
-                                >
-                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <Text style={[s.roomNum, { fontSize: fontSize + 4, color: theme.textPrimary }, isSelected && { color: theme.primary }]}>{room.room_number}</Text>
-                                        {!isSelected && <Text style={[s.roomCap, { fontSize: fontSize - 1, color: theme.textSecondary }]}>Cap: {room.capacity ?? '—'}</Text>}
-                                    </View>
-                                    <Text style={[s.roomAvail, { fontSize: fontSize - 1, color: statusColor(room) }]}>Available: {avail}</Text>
-                                    <Text style={[s.roomRent, { fontSize: fontSize - 1, color: theme.textSecondary }]}>Rent: ₹{room.rent_per_bed ?? room.base_rent ?? '—'}</Text>
-                                    <Text style={[s.roomStatusTxt, { fontSize: fontSize - 2, color: statusColor(room) }]}>Status: {statusLabel(room)}</Text>
-                                    {isSelected && (
-                                        <View style={[s.selectedBadge, { backgroundColor: isDark ? theme.primary + '20' : '#FFF1F1' }]}>
-                                            <Check size={12} color={theme.primary} />
-                                            <Text style={[s.selectedBadgeText, { color: theme.primary }]}>Selected</Text>
+                        {selectedFloor === 'All' && (
+                            <View style={[s.floorChip, { backgroundColor: isDark ? '#334155' : '#F1F5F9', alignSelf: 'flex-start', marginVertical: 12 }]}><Text style={[s.floorChipText, { color: theme.textSecondary }]}>FLOOR {floor}</Text></View>
+                        )}
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8 }}>
+                            {fr.map((room: any) => {
+                                const isSelected = selectedRoomId === room.room_id?.toString();
+                                const avail = room.available_beds ?? 0;
+                                return (
+                                    <TouchableOpacity
+                                        key={room.room_id}
+                                        style={[
+                                            s.roomCard, 
+                                            { width: '48%', marginBottom: 8, backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0' }, 
+                                            isSelected && { borderColor: theme.primary, backgroundColor: isDark ? theme.primary + '20' : '#F5F3FF', borderWidth: 2, shadowColor: theme.primary, shadowOpacity: 0.15, elevation: 4 }, 
+                                            avail <= 0 && { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', opacity: 0.6 }
+                                        ]}
+                                        onPress={() => { onSelectRoom(room); onClose(); }}
+                                        activeOpacity={0.75}
+                                    >
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                                            <Text style={[s.roomNum, { fontSize: fontSize + 2, color: theme.textPrimary }, isSelected && { color: theme.primary }]}>{room.room_number}</Text>
                                         </View>
-                                    )}
-                                </TouchableOpacity>
-                            );
-                        })}
+                                        <Text style={[s.roomAvail, { fontSize: fontSize - 2, color: statusColor(room) }]}>{avail} Available</Text>
+                                        <Text style={[s.roomRent, { fontSize: fontSize - 2, color: theme.textSecondary, marginTop: 4 }]}>₹{room.rent_per_bed ?? room.base_rent ?? '—'}</Text>
+                                        
+                                        {isSelected && (
+                                            <View style={{ position: 'absolute', top: 8, right: 8 }}>
+                                                <Check size={14} color={theme.primary} />
+                                            </View>
+                                        )}
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
                     </View>
                 ))}
                 {grouped.length === 0 && <View style={{ padding: 40, alignItems: 'center' }}><Text style={{ color: theme.textSecondary }}>No rooms found</Text></View>}
@@ -161,17 +219,35 @@ const RoomPickerModal = ({ visible, rooms, selectedRoomId, onSelectRoom, onClose
 const BedPickerModal = ({ visible, room, beds, selectedBedId, onSelectBed, onClose, loading }: any) => {
     const { theme, isDark, fontSize } = useTheme();
     return (
-        <ModalSheet visible={visible} onClose={onClose} maxHeight="70%">
+        <ModalSheet visible={visible} onClose={onClose} maxHeight="85%">
             <View style={s.sheetHandle} />
             <View style={[s.sheetHeader, { borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>
                 <Text style={[s.sheetTitle, { color: theme.textPrimary }]}>Beds in Room {room?.room_number}</Text>
-                <TouchableOpacity onPress={onClose} style={[s.closeBtn, { backgroundColor: isDark ? theme.primary + '20' : '#FFF1F1' }]}><Text style={[s.closeBtnText, { color: theme.primary }]}>Close</Text></TouchableOpacity>
+                <TouchableOpacity onPress={onClose} style={[s.closeBtn, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}><Text style={[s.closeBtnText, { color: theme.textSecondary }]}>Close</Text></TouchableOpacity>
             </View>
-            {room && <View style={{ paddingHorizontal: 16, marginBottom: 8, marginTop: 8 }}><View style={[s.floorChip, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}><Text style={[s.floorChipText, { color: theme.textSecondary }]}>ROOM {room.room_number}</Text></View></View>}
+            {room && (
+                <View style={{ paddingHorizontal: 16, marginBottom: 8, marginTop: 8 }}>
+                    <View style={[s.floorChip, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                        <Text style={[s.floorChipText, { color: theme.textSecondary }]}>ROOM {room.room_number}</Text>
+                    </View>
+                    
+                    {selectedBedId && (
+                        (() => {
+                            const selBed = beds.find((b: any) => b.bed_id?.toString() === selectedBedId);
+                            if (!selBed) return null;
+                            return (
+                                <Text style={{ fontSize: 13, color: theme.textSecondary, marginBottom: 8, marginTop: 4, paddingHorizontal: 4 }}>
+                                    <Text style={{ fontWeight: '700', color: theme.primary }}>Selected:</Text> {selBed.bed_name ?? `Bed ${selBed.bed_number}`}
+                                </Text>
+                            );
+                        })()
+                    )}
+                </View>
+            )}
             {loading ? (
                 <ActivityIndicator color={theme.primary} style={{ marginVertical: 30 }} />
             ) : (
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}>
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100 }}>
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
                         {beds.map((bed: any) => {
                             const isAvail = !bed.student_id || bed.status === 'available';
@@ -181,8 +257,8 @@ const BedPickerModal = ({ visible, room, beds, selectedBedId, onSelectBed, onClo
                                     key={bed.bed_id}
                                     style={[
                                         s.bedCard,
-                                        { backgroundColor: isDark ? '#1E293B' : '#FFF9F9', borderColor: isDark ? '#334155' : '#FFD5D5' },
-                                        isSel && { borderColor: theme.primary, backgroundColor: isDark ? theme.primary + '20' : '#FFF1F1' },
+                                        { width: '47%', padding: 12, borderRadius: 12, borderWidth: 1, backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0' },
+                                        isSel && { borderColor: theme.primary, backgroundColor: isDark ? theme.primary + '20' : '#F5F3FF', borderWidth: 2, shadowColor: theme.primary, shadowOpacity: 0.15, elevation: 4 },
                                         !isAvail && { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#1E293B' : '#E2E8F0', opacity: 0.7 }
                                     ]}
                                     onPress={() => { if (!isAvail) return; onSelectBed(bed); onClose(); }}
@@ -325,8 +401,8 @@ export default function QRSignupScreen({ navigation }: any) {
                 {mode === 'general' ? null : (
                     <View style={[s.infoBanner, { borderColor: '#7C3AED22', backgroundColor: isDark ? '#1E293B' : '#F5F3FF' }]}>
                         <Info size={18} color="#7C3AED" />
-                        <Text style={[s.infoText, { color: theme.textSecondary }]}>
-                            <Text style={{ fontWeight: '700', color: theme.textPrimary }}>Room QR flow: </Text>
+                        <Text style={[s.infoText, { color: isDark ? '#E2E8F0' : '#334155', fontWeight: '500' }]}>
+                            <Text style={{ fontWeight: '800', color: isDark ? '#FFFFFF' : '#0F172A' }}>Room QR Flow: </Text>
                             Select a room (and optionally a bed). The QR pre-fills that allocation. Tenant only needs to enter their personal details.
                         </Text>
                     </View>
@@ -335,8 +411,15 @@ export default function QRSignupScreen({ navigation }: any) {
                 {/* ── Room Selector (Room Mode only) ── */}
                 {mode === 'room' && (
                     <View style={[s.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
-                        <Text style={[s.cardTitle, { fontSize: fontSize + 1, color: theme.textPrimary }]}>🏠 Pre-select Room & Bed</Text>
-                        <Text style={[s.cardSubtitle, { fontSize: fontSize - 3, color: theme.textSecondary }]}>Tenant will see these as locked fields in the form</Text>
+                        <View style={{ marginBottom: 16 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                                <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: theme.primary, alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+                                    <Text style={{ color: '#FFF', fontSize: 12, fontWeight: 'bold' }}>1</Text>
+                                </View>
+                                <Text style={{ fontSize: fontSize + 1, fontWeight: '700', color: theme.textPrimary }}>Pre-select Room & Bed</Text>
+                            </View>
+                            <Text style={{ fontSize: fontSize - 2, color: theme.textSecondary, marginLeft: 34 }}>These details will be locked in the signup form</Text>
+                        </View>
 
                         {/* Room button */}
                         <TouchableOpacity
@@ -391,64 +474,57 @@ export default function QRSignupScreen({ navigation }: any) {
                     </View>
                 )}
 
-                {/* ── 1. Main QR Card ── */}
-                <View style={[s.newQrCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
-                    <View style={{ alignItems: 'center', marginBottom: 20 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-                            <ShieldCheck size={20} color="#10B981" />
-                            <Text style={{ fontSize: fontSize + 2, fontWeight: '700', color: theme.textPrimary, marginLeft: 8 }}>
-                                Share this QR with new tenants
-                            </Text>
-                        </View>
-                        <Text style={{ fontSize: fontSize - 1, color: theme.textSecondary }}>
-                            They scan, fill details and appear as <Text style={{ color: '#F97316', fontWeight: '600' }}>Inactive</Text>
-                        </Text>
+                {/* ── Main QR Card ── */}
+                <View style={[s.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0, paddingBottom: 24 }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+                        {mode === 'room' && (
+                            <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: theme.primary, alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+                                <Text style={{ color: '#FFF', fontSize: 12, fontWeight: 'bold' }}>2</Text>
+                            </View>
+                        )}
+                        <Text style={{ fontSize: fontSize + 1, fontWeight: '700', color: theme.textPrimary }}>Your {mode === 'room' ? 'Room' : 'Hostel'} QR Code</Text>
                     </View>
 
-                    {/* QR Code with viewfinder style */}
+                    {/* QR Code */}
                     {mode === 'room' && !selectedRoom ? (
-                        <View style={[s.qrPlaceholder, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
-                            <Home size={48} color={theme.textSecondary} />
-                            <Text style={[s.qrPlaceholderText, { fontSize: fontSize - 1, color: theme.textSecondary }]}>Select a room above to generate a room-specific QR code</Text>
+                        <View style={{ alignItems: 'center', padding: 30, backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderRadius: 16, borderWidth: 1, borderColor: isDark ? '#334155' : '#E2E8F0', flexDirection: 'row', justifyContent: 'center' }}>
+                            <Info size={16} color={theme.textSecondary} style={{ marginRight: 8 }} />
+                            <Text style={{ fontSize: fontSize - 1, color: theme.textSecondary }}>Please select a room first</Text>
                         </View>
                     ) : (
                         <View style={{ alignItems: 'center', marginBottom: 16 }}>
                             <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 1 }}>
-                                <LinearGradient 
-                                    colors={isDark ? ['#1E293B', '#0F172A'] : [theme.primary, theme.primary + 'dd']} 
-                                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                                    style={{ padding: 32, borderRadius: 24, alignItems: 'center', width: 280, shadowColor: theme.primary, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.2, shadowRadius: 20, elevation: 10 }}
-                                >
+                                <View style={{ backgroundColor: '#FFFFFF', padding: 24, borderRadius: 16, alignItems: 'center', borderWidth: 1, borderColor: '#F1F5F9', width: 280 }}>
                                     
-                                    {/* Hostel Name */}
-                                    <Text style={{ fontSize: 22, fontWeight: '800', color: '#FFFFFF', marginBottom: 24, textAlign: 'center', letterSpacing: 0.5 }}>
-                                        {user?.hostel_name || 'Hostel QR'}
-                                    </Text>
-                                    
-                                    {/* QR Code Card */}
-                                    <View style={{ backgroundColor: '#FFFFFF', padding: 16, borderRadius: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 8, marginBottom: 24 }}>
+                                    <View style={{ backgroundColor: '#FFFFFF', padding: 8, borderRadius: 12, borderWidth: 1, borderColor: '#F1F5F9' }}>
                                         <QRCode
                                             value={activeUrl}
-                                            size={170}
-                                            color="#0F172A"
+                                            size={180}
+                                            color="#1E293B"
                                             backgroundColor="#FFFFFF"
                                         />
                                     </View>
                                     
-                                    {/* Subtitle */}
-                                    <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.9)', fontWeight: '600', textAlign: 'center', marginBottom: 24, paddingHorizontal: 10 }}>
-                                        {mode === 'general' ? 'Scan to self-register' : selectedRoom ? `Scan to register for Room ${selectedRoom.room_number}${selectedBed ? ` (Bed ${selectedBed.bed_name ?? ''})` : ''}` : ''}
+                                    <Text style={{ fontSize: 12, color: '#64748B', textAlign: 'center', marginTop: 16, marginBottom: 4 }}>
+                                        Anyone who scans this QR can register only for
                                     </Text>
+                                    
+                                    {mode === 'room' && selectedRoom ? (
+                                        <Text style={{ fontSize: 13, fontWeight: '700', color: theme.primary, textAlign: 'center' }}>
+                                            Room {selectedRoom.room_number} {selectedBed ? `• Bed ${selectedBed.bed_name ?? ''}` : ''}
+                                        </Text>
+                                    ) : (
+                                        <Text style={{ fontSize: 13, fontWeight: '700', color: theme.primary, textAlign: 'center' }}>
+                                            {user?.hostel_name || 'Your Hostel'}
+                                        </Text>
+                                    )}
 
                                     {/* Product Branding Pill */}
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20 }}>
-                                        <Image source={require('../../assets/icon.png')} style={{ width: 14, height: 14, borderRadius: 3, marginRight: 6 }} resizeMode="contain" />
-                                        <Text style={{ fontSize: 10, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.5 }}>
-                                            POWERED BY DHOSTEL
-                                        </Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16, opacity: 0.8 }}>
+                                        <Image source={require('../../assets/icon.png')} style={{ width: 12, height: 12, borderRadius: 2, marginRight: 4 }} resizeMode="contain" />
+                                        <Text style={{ fontSize: 9, fontWeight: '700', color: '#64748B', letterSpacing: 0.5 }}>POWERED BY DHOSTEL</Text>
                                     </View>
-
-                                </LinearGradient>
+                                </View>
                             </ViewShot>
                         </View>
                     )}
@@ -641,10 +717,10 @@ const s = StyleSheet.create({
     sheetTitle: { fontSize: 18, fontWeight: '700' },
     closeBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8 },
     closeBtnText: { fontWeight: '700', fontSize: 14 },
-    searchBar: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10 },
+    searchBar: { flexDirection: 'row', alignItems: 'center', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 },
     floorChip: { borderRadius: 8, paddingHorizontal: 12, paddingVertical: 4, alignSelf: 'flex-start', marginBottom: 10, marginTop: 8 },
     floorChipText: { fontSize: 12, fontWeight: '700' },
-    roomCard: { borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1.5, position: 'relative' },
+    roomCard: { borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 1 },
     roomCardSelected: {},
     roomCardDim: { opacity: 0.6 },
     roomNum: { fontSize: 18, fontWeight: '700', color: '#1E293B' },
@@ -654,9 +730,9 @@ const s = StyleSheet.create({
     roomStatusTxt: { fontSize: 12, fontWeight: '700', marginTop: 2 },
     selectedBadge: { position: 'absolute', top: 10, right: 10, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF1F1', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, gap: 4 },
     selectedBadgeText: { fontSize: 11, color: '#FF6B6B', fontWeight: '700' },
-    bedCard: { backgroundColor: '#FFF9F9', borderRadius: 12, padding: 14, borderWidth: 1.5, borderColor: '#FFD5D5', width: '47%' },
-    bedCardSel: { borderColor: '#FF6B6B', backgroundColor: '#FFF1F1' },
-    bedCardOcc: { backgroundColor: '#F8FAFC', borderColor: '#E2E8F0', opacity: 0.7 },
+    bedCard: { borderRadius: 16, padding: 16, borderWidth: 1, width: '47%', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 1 },
+    bedCardSel: {},
+    bedCardOcc: {},
     bedName: { fontSize: 16, fontWeight: '700', color: '#1E293B', marginBottom: 4 },
 });
 

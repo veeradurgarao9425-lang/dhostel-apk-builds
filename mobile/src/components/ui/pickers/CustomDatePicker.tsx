@@ -58,6 +58,12 @@ export function CustomDatePicker({ visible, onClose, onConfirm, initialDate, tit
         return selectedDate?.getTime() === d;
     };
 
+    const isToday = (day: number) => {
+        if (!day) return false;
+        const now = new Date();
+        return day === now.getDate() && month === now.getMonth() && year === now.getFullYear();
+    };
+
     return (
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
             <View style={S.modalOverlay}>
@@ -94,15 +100,24 @@ export function CustomDatePicker({ visible, onClose, onConfirm, initialDate, tit
                         <View style={S.grid}>
                             {calendarGrid.map((day, i) => {
                                 const sel = day ? isSelected(day) : false;
+                                const today = day ? isToday(day) : false;
                                 
                                 return (
                                     <View key={i} style={S.cellWrap}>
                                         {day ? (
                                             <TouchableOpacity 
-                                                style={[S.dayCell, sel && { backgroundColor: primary }]}
+                                                style={[
+                                                    S.dayCell, 
+                                                    sel && { backgroundColor: primary },
+                                                    !sel && today && { borderWidth: 1, borderColor: primary, backgroundColor: primarySoft }
+                                                ]}
                                                 onPress={() => handleDayPress(day)}
                                             >
-                                                <Text style={[S.dayText, sel && { color: '#FFF', fontWeight: '800' }]}>{day}</Text>
+                                                <Text style={[
+                                                    S.dayText, 
+                                                    sel && { color: '#FFF', fontWeight: '800' },
+                                                    !sel && today && { color: primary, fontWeight: '800' }
+                                                ]}>{day}</Text>
                                             </TouchableOpacity>
                                         ) : <View style={S.dayCell} />}
                                     </View>
@@ -150,7 +165,8 @@ const S = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         borderTopLeftRadius: 28,
         borderTopRightRadius: 28,
-        height: '90%',
+        maxHeight: '75%',
+        paddingBottom: 20,
     },
     header: {
         flexDirection: 'row',

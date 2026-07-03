@@ -35,7 +35,7 @@ export default function NoticesScreen({ navigation }: any) {
     const [notices, setNotices] = useState<any[]>([]);
     const [allStudents, setAllStudents] = useState<any[]>([]);
     const [createModalVisible, setCreateModalVisible] = useState(false);
-    
+
     // Main screen filters
     const [mainSearchQuery, setMainSearchQuery] = useState('');
     const [mainRoomFilter, setMainRoomFilter] = useState('');
@@ -60,10 +60,10 @@ export default function NoticesScreen({ navigation }: any) {
                 const list = res.data.data || [];
                 setAllStudents(list);
                 const noticesList = list.filter(
-                    (s: any) => s.vacate_notice_date !== null && 
-                                s.vacate_notice_date !== undefined && 
-                                s.status === 1 && 
-                                s.room_id != null
+                    (s: any) => s.vacate_notice_date !== null &&
+                        s.vacate_notice_date !== undefined &&
+                        s.status === 1 &&
+                        s.room_id != null
                 );
                 // Sort by notice date ascending (soonest first)
                 noticesList.sort((a: any, b: any) => a.vacate_notice_date.localeCompare(b.vacate_notice_date));
@@ -109,10 +109,10 @@ export default function NoticesScreen({ navigation }: any) {
     const getDaysLeftText = (dateStr: string) => {
         const todayStr = new Date().toISOString().split('T')[0];
         if (dateStr === todayStr) return 'Today';
-        
+
         const diff = new Date(dateStr).getTime() - new Date(todayStr).getTime();
         const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
-        
+
         if (days < 0) return `Overdue by ${Math.abs(days)}d`;
         if (days === 1) return 'Tomorrow';
         return `in ${days} days`;
@@ -152,11 +152,11 @@ export default function NoticesScreen({ navigation }: any) {
 
     // Filter notices for the main list screen
     const filteredNotices = notices.filter(n => {
-        const matchesSearch = !mainSearchQuery || 
+        const matchesSearch = !mainSearchQuery ||
             `${n.first_name} ${n.last_name || ''}`.toLowerCase().includes(mainSearchQuery.toLowerCase());
-        const matchesRoom = !mainRoomFilter || 
+        const matchesRoom = !mainRoomFilter ||
             (n.room_number && n.room_number.toString().includes(mainRoomFilter));
-        const matchesDate = !mainDateFilter || 
+        const matchesDate = !mainDateFilter ||
             (n.vacate_notice_date && n.vacate_notice_date.startsWith(mainDateFilter));
         return matchesSearch && matchesRoom && matchesDate;
     });
@@ -176,15 +176,15 @@ export default function NoticesScreen({ navigation }: any) {
     const availableStudents = allStudents.filter(s => {
         const matchesStatus = s.status === 1 && s.room_id != null && !s.vacate_notice_date && s.room_number;
         if (!matchesStatus) return false;
-        
-        const matchesSearch = 
-            (s.first_name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) || 
-            (s.last_name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) || 
+
+        const matchesSearch =
+            (s.first_name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+            (s.last_name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
             (s.room_number?.toString() || '').includes(searchQuery);
-            
-        const matchesFloor = selectedModalFloor === 'All' || 
+
+        const matchesFloor = selectedModalFloor === 'All' ||
             (s.floor_number !== undefined && s.floor_number !== null && s.floor_number.toString() === selectedModalFloor);
-            
+
         return matchesSearch && matchesFloor;
     });
 
@@ -192,7 +192,7 @@ export default function NoticesScreen({ navigation }: any) {
         <View style={[styles.container, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }]}>
             <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-            <AppHeader 
+            <AppHeader
                 title="Vacate Schedules"
                 subtitle="List of active tenants scheduled to leave the hostel"
                 alignLeft={true}
@@ -221,8 +221,8 @@ export default function NoticesScreen({ navigation }: any) {
                             keyboardType="numeric"
                         />
                     </View>
-                    <TouchableOpacity 
-                        style={[styles.dateFilterBtn, { backgroundColor: isDark ? '#0F172A' : '#F1F5F9' }, mainDateFilter && { backgroundColor: theme.primary + '15', borderColor: theme.primary }]} 
+                    <TouchableOpacity
+                        style={[styles.dateFilterBtn, { backgroundColor: isDark ? '#0F172A' : '#F1F5F9' }, mainDateFilter && { backgroundColor: theme.primary + '15', borderColor: theme.primary }]}
                         onPress={() => setShowMainDatePicker(true)}
                     >
                         <Calendar size={15} color={mainDateFilter ? theme.primary : '#64748B'} />
@@ -314,7 +314,7 @@ export default function NoticesScreen({ navigation }: any) {
                                             <Trash2 size={14} color="#EF4444" style={{ marginRight: 4 }} />
                                             <Text style={styles.actionBtnTextSecondary}>Clear Schedule</Text>
                                         </TouchableOpacity>
-                                        
+
                                         <View style={styles.viewDetailsBtn}>
                                             <Text style={[styles.viewDetailsText, { color: theme.primary }]}>View Profile</Text>
                                             <ChevronRight size={14} color={theme.primary} />
@@ -344,49 +344,54 @@ export default function NoticesScreen({ navigation }: any) {
                                 <X size={24} color="#64748B" />
                             </TouchableOpacity>
                         </View>
+
+                        {!selectedStudent && (
+                            <View>
+                                <View style={[styles.searchContainer, { backgroundColor: isDark ? '#0F172A' : '#F1F5F9' }]}>
+                                    <Search size={18} color="#94A3B8" />
+                                    <TextInput 
+                                        style={[styles.searchInput, { color: isDark ? '#F8FAFC' : '#1E293B' }]}
+                                        placeholder="Search tenant or room..."
+                                        value={searchQuery}
+                                        onChangeText={setSearchQuery}
+                                        placeholderTextColor="#94A3B8"
+                                    />
+                                </View>
+
+                                {/* Floor Tabs Selector in Create Modal */}
+                                <Text style={[styles.inputLabel, { color: isDark ? '#94A3B8' : '#64748B', marginBottom: 6 }]}>Filter by Floor</Text>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.modalFloorScroll} contentContainerStyle={styles.modalFloorContent}>
+                                    {modalFloors.map((floor) => {
+                                        const isSelected = selectedModalFloor === floor;
+                                        return (
+                                            <TouchableOpacity
+                                                key={floor}
+                                                style={[
+                                                    styles.modalFloorTab,
+                                                    { backgroundColor: isDark ? '#0F172A' : '#F1F5F9' },
+                                                    isSelected && { backgroundColor: theme.primary }
+                                                ]}
+                                                onPress={() => setSelectedModalFloor(floor)}
+                                            >
+                                                <Text style={[
+                                                    styles.modalFloorTabText,
+                                                    { color: isDark ? '#94A3B8' : '#64748B' },
+                                                    isSelected && { color: '#FFFFFF', fontWeight: '700' }
+                                                ]}>
+                                                    {floor === 'All' ? 'All Floors' : `Floor ${floor}`}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </ScrollView>
+                            </View>
+                        )}
                         
                         <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                             {!selectedStudent ? (
+
                                 <View>
-                                    <View style={[styles.searchContainer, { backgroundColor: isDark ? '#0F172A' : '#F1F5F9' }]}>
-                                        <Search size={18} color="#94A3B8" />
-                                        <TextInput 
-                                            style={[styles.searchInput, { color: isDark ? '#F8FAFC' : '#1E293B' }]}
-                                            placeholder="Search tenant or room..."
-                                            value={searchQuery}
-                                            onChangeText={setSearchQuery}
-                                            placeholderTextColor="#94A3B8"
-                                        />
-                                    </View>
-
-                                    {/* Floor Tabs Selector in Create Modal */}
-                                    <Text style={[styles.inputLabel, { color: isDark ? '#94A3B8' : '#64748B', marginBottom: 6 }]}>Filter by Floor</Text>
-                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.modalFloorScroll} contentContainerStyle={styles.modalFloorContent}>
-                                        {modalFloors.map((floor) => {
-                                            const isSelected = selectedModalFloor === floor;
-                                            return (
-                                                <TouchableOpacity
-                                                    key={floor}
-                                                    style={[
-                                                        styles.modalFloorTab,
-                                                        { backgroundColor: isDark ? '#0F172A' : '#F1F5F9' },
-                                                        isSelected && { backgroundColor: theme.primary }
-                                                    ]}
-                                                    onPress={() => setSelectedModalFloor(floor)}
-                                                >
-                                                    <Text style={[
-                                                        styles.modalFloorTabText,
-                                                        { color: isDark ? '#94A3B8' : '#64748B' },
-                                                        isSelected && { color: '#FFFFFF', fontWeight: '700' }
-                                                    ]}>
-                                                        {floor === 'All' ? 'All Floors' : `Floor ${floor}`}
-                                                    </Text>
-                                                </TouchableOpacity>
-                                            );
-                                        })}
-                                    </ScrollView>
-
-                                    <Text style={[styles.inputLabel, { color: isDark ? '#94A3B8' : '#64748B', marginTop: 12 }]}>Select Tenant</Text>
+                                    <Text style={[styles.inputLabel, { color: isDark ? '#94A3B8' : '#64748B', marginTop: 8 }]}>Select Tenant</Text>
                                     {availableStudents.length === 0 ? (
                                         <Text style={styles.noStudentsText}>No eligible tenants found.</Text>
                                     ) : (
@@ -424,7 +429,7 @@ export default function NoticesScreen({ navigation }: any) {
                                     </TouchableOpacity>
 
                                     <Text style={[styles.inputLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>Reason / Notes (Optional)</Text>
-                                    <TextInput 
+                                    <TextInput
                                         style={[styles.reasonInput, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0', color: isDark ? '#F8FAFC' : '#1E293B' }]}
                                         placeholder="E.g., Completed studies, relocating..."
                                         placeholderTextColor="#94A3B8"
@@ -467,7 +472,7 @@ const styles = StyleSheet.create({
     emptyIconWrap: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#FEF3C7', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
     emptyTitle: { fontSize: 16, fontWeight: '700', color: '#1E293B', marginBottom: 6 },
     emptySubtitle: { fontSize: 13, color: '#64748B', textAlign: 'center', lineHeight: 19 },
-    
+
     // Main filter bar styles
     filtersContainer: {
         paddingHorizontal: 16,
@@ -524,15 +529,15 @@ const styles = StyleSheet.create({
     daysBadgeText: { fontSize: 11, fontWeight: '700' },
     daysBadgeOverdue: { backgroundColor: '#FEE2E2' },
     daysBadgeTextOverdue: { color: '#EF4444' },
-    
+
     divider: { height: 1, marginBottom: 12 },
     infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
     dateLabel: { fontSize: 13, fontWeight: '500', marginRight: 4 },
     dateValue: { fontSize: 13, fontWeight: '700' },
-    
+
     reasonWrap: { flexDirection: 'row', padding: 10, borderRadius: 10, marginBottom: 14, borderLeftWidth: 3 },
     reasonText: { fontSize: 12, fontWeight: '500', flex: 1, lineHeight: 17 },
-    
+
     cardActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, paddingTop: 12 },
     actionBtnSecondary: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF2F2', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
     actionBtnTextSecondary: { fontSize: 12, fontWeight: '700', color: '#EF4444' },
@@ -545,10 +550,10 @@ const styles = StyleSheet.create({
         shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 3,
     },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end' },
-    modalContent: { 
-        borderTopLeftRadius: 28, borderTopRightRadius: 28, 
-        width: '100%', maxHeight: '90%', paddingHorizontal: 20, paddingTop: 10, paddingBottom: Platform.OS === 'ios' ? 40 : 20, 
-        shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 5, overflow: 'hidden' 
+    modalContent: {
+        borderTopLeftRadius: 28, borderTopRightRadius: 28,
+        width: '100%', maxHeight: '90%', paddingHorizontal: 20, paddingTop: 10, paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+        shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 5, overflow: 'hidden'
     },
     handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: '#CBD5E1', alignSelf: 'center', marginBottom: 16, marginTop: 4 },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
@@ -570,7 +575,7 @@ const styles = StyleSheet.create({
     reasonInput: { padding: 14, borderRadius: 12, borderWidth: 1, height: 80, fontSize: 14, marginBottom: 16 },
     submitBtn: { height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
     submitBtnText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
-    
+
     // Modal Floor filter styles
     modalFloorScroll: {
         marginBottom: 8,

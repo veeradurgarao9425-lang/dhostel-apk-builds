@@ -742,6 +742,27 @@ export const getIncomeExport = async (req: AuthRequest, res: Response) => {
     // Create workbook
     const workbook = new ExcelJS.Workbook();
 
+    // --- SHEET 0: SUMMARY ---
+    const summarySheet = workbook.addWorksheet('Summary');
+    summarySheet.columns = [{ width: 25 }, { width: 15 }];
+    summarySheet.getCell('A1').value = 'Income Summary Report';
+    summarySheet.getCell('A1').font = { size: 14, bold: true };
+    summarySheet.mergeCells('A1:B1');
+    
+    let totalOther = 0; incomes.forEach(i => totalOther += parseFloat(i.amount));
+    let totalRent = 0; feePayments.forEach(f => totalRent += parseFloat(f.amount));
+    let totalGuest = 0; guests.forEach(g => totalGuest += parseFloat(g.amount_paid));
+    let totalAdmissions = 0; admissions.forEach(a => totalAdmissions += parseFloat(a.admission_fee));
+    const grandTotal = totalOther + totalRent + totalGuest + totalAdmissions;
+
+    summarySheet.addRow(['Category', 'Total Amount']).font = { bold: true };
+    summarySheet.addRow(['Rent/Fee Payments', totalRent]);
+    summarySheet.addRow(['Other Incomes', totalOther]);
+    summarySheet.addRow(['Guest Payments', totalGuest]);
+    summarySheet.addRow(['Admissions', totalAdmissions]);
+    summarySheet.addRow([]);
+    summarySheet.addRow(['Grand Total', grandTotal]).font = { bold: true };
+
     // --- SHEET 1: INCOME ---
     const worksheet = workbook.addWorksheet('Income');
     worksheet.columns = [
