@@ -4,7 +4,7 @@ import {
     StatusBar, ScrollView, Platform, TextInput,
     Modal, ActivityIndicator, Image
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
@@ -27,6 +27,7 @@ interface MenuItem {
     routeParams?: object;
     comingSoon?: boolean;
     danger?: boolean;
+    badgeCount?: string | number;
 }
 
 export default function MoreScreen() {
@@ -34,6 +35,25 @@ export default function MoreScreen() {
     const { user, signOut, updateTokenAndUser, hostels: authHostels, loadHostels } = useAuth();
     const confirm = useConfirmation();
     const [testUiVisible, setTestUiVisible] = useState(false);
+
+    const [stats, setStats] = useState<any>(null);
+
+    const fetchStats = async () => {
+        try {
+            const [ownerRes, reportRes] = await Promise.all([
+                api.get('/dashboard/owner-stats').catch(() => ({ data: { success: false } })),
+                api.get('/reports/dashboard-stats').catch(() => ({ data: { success: false } }))
+            ]);
+            let combinedStats: any = {};
+            if (ownerRes.data?.success) combinedStats = { ...combinedStats, ...ownerRes.data.data };
+            if (reportRes.data?.success) combinedStats = { ...combinedStats, ...reportRes.data.data };
+            setStats(combinedStats);
+        } catch (error) {
+            console.error('Failed to fetch stats for More screen', error);
+        }
+    };
+
+    useFocusEffect(React.useCallback(() => { fetchStats(); }, []));
 
     useEffect(() => {
         if (authHostels.length === 0) {
@@ -75,12 +95,13 @@ export default function MoreScreen() {
             groupTitle: t('more.management'),
             items: [
                 {
-                    label: t('more.hostels'),
-                    subtitle: t('more.hostelsSub'),
-                    icon: 'business',
-                    iconColor: '#16A34A',
-                    iconBg: '#DCFCE7',
-                    route: 'Hostels',
+                    label: t('more.rooms'),
+                    subtitle: t('more.roomsSub'),
+                    icon: 'bed',
+                    iconColor: '#2563EB',
+                    iconBg: '#DBEAFE',
+                    route: 'Rooms',
+                    badgeCount: stats?.rooms ? `${stats.rooms.occupied_beds}/${stats.rooms.total_beds}` : '0/0',
                 },
                 {
                     label: t('more.tenants'),
@@ -89,14 +110,7 @@ export default function MoreScreen() {
                     iconColor: '#7C3AED',
                     iconBg: '#EDE9FE',
                     route: 'Students',
-                },
-                {
-                    label: t('more.rooms'),
-                    subtitle: t('more.roomsSub'),
-                    icon: 'bed',
-                    iconColor: '#2563EB',
-                    iconBg: '#DBEAFE',
-                    route: 'Rooms',
+                    badgeCount: stats?.tenantsCount || stats?.totalStudents || 0,
                 },
                 {
                     label: t('more.reportsAnalytics'),
@@ -107,12 +121,40 @@ export default function MoreScreen() {
                     route: 'Reports',
                 },
                 {
+                    label: t('more.staffManagement'),
+                    subtitle: t('more.staffManagementSub'),
+                    icon: 'person-circle',
+                    iconColor: '#0891B2',
+                    iconBg: '#CFFAFE',
+                    route: 'Staff',
+                    badgeCount: stats?.staffCount ?? 0,
+                },
+                {
+                    label: 'Verify Rent',
+                    subtitle: 'Verify uploaded payment proofs',
+                    icon: 'shield-checkmark-outline',
+                    iconColor: '#16A34A',
+                    iconBg: '#DCFCE7',
+                    route: 'PaymentVerification',
+                    badgeCount: 0,
+                },
+                {
+                    label: t('more.hostels'),
+                    subtitle: t('more.hostelsSub'),
+                    icon: 'business',
+                    iconColor: '#16A34A',
+                    iconBg: '#DCFCE7',
+                    route: 'Hostels',
+                    badgeCount: stats?.hostelsCount || 0,
+                },
+                {
                     label: t('more.vacateNotices'),
                     subtitle: t('more.vacateNoticesSub'),
                     icon: 'calendar-outline',
                     iconColor: '#EA580C',
                     iconBg: '#FFEDD5',
                     route: 'Notices',
+                    badgeCount: stats?.noticesCount || 0,
                 },
                 {
                     label: t('more.pendingPayments'),
@@ -121,14 +163,7 @@ export default function MoreScreen() {
                     iconColor: '#DC2626',
                     iconBg: '#FEE2E2',
                     route: 'PendingTab',
-                },
-                {
-                    label: t('more.staffManagement'),
-                    subtitle: t('more.staffManagementSub'),
-                    icon: 'person-circle',
-                    iconColor: '#0891B2',
-                    iconBg: '#CFFAFE',
-                    route: 'Staff',
+                    badgeCount: stats?.pendingDuesCount ?? 0,
                 },
                 {
                     label: 'Complaints',
@@ -137,6 +172,7 @@ export default function MoreScreen() {
                     iconColor: '#DC2626',
                     iconBg: '#FEE2E2',
                     route: 'ComplaintsManagement',
+                    badgeCount: 0,
                 },
 
                 {
@@ -155,14 +191,7 @@ export default function MoreScreen() {
                     iconBg: '#EDE9FE',
                     route: 'NoticesManagement',
                 },
-                {
-                    label: 'Verify Rent',
-                    subtitle: 'Verify uploaded payment proofs',
-                    icon: 'shield-checkmark-outline',
-                    iconColor: '#16A34A',
-                    iconBg: '#DCFCE7',
-                    route: 'PaymentVerification',
-                },
+
                 {
                     label: 'Tenant Reviews',
                     subtitle: 'View ratings from your tenants',
@@ -215,16 +244,16 @@ export default function MoreScreen() {
                     label: t('more.profile'),
                     subtitle: t('more.profileSub'),
                     icon: 'person',
-                    iconColor: '#6B7280',
-                    iconBg: '#F3F4F6',
+                    iconColor: '#8B5CF6',
+                    iconBg: '#EDE9FE',
                     route: 'Profile',
                 },
                 {
                     label: t('more.settings', 'Settings'),
                     subtitle: t('more.appSettingsSub'),
                     icon: 'settings',
-                    iconColor: '#64748B',
-                    iconBg: '#F1F5F9',
+                    iconColor: '#3B82F6',
+                    iconBg: '#DBEAFE',
                     route: 'Settings',
                 },
                 {
@@ -237,7 +266,7 @@ export default function MoreScreen() {
                 }
             ],
         },
-    ], [t]);
+    ], [t, stats]);
 
     const [showSearch, setShowSearch] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -561,6 +590,16 @@ export default function MoreScreen() {
                                         <Text style={[s.cardLabel, { color: theme.textPrimary, fontSize: fontSize - 1 }]} numberOfLines={1}>{item.label}</Text>
                                         <Text style={[s.cardSub, { color: theme.textSecondary, fontSize: fontSize - 3, lineHeight: fontSize - 1 }]} numberOfLines={2}>{item.subtitle}</Text>
                                     </View>
+                                    {item.badgeCount !== undefined && (item.badgeCount !== 0 && item.badgeCount !== '0/0') && (
+                                        <View style={[s.badgeContainer, { backgroundColor: theme.primary }]}>
+                                            <Text style={s.badgeText}>{item.badgeCount}</Text>
+                                        </View>
+                                    )}
+                                    {item.badgeCount !== undefined && (item.badgeCount === 0 || item.badgeCount === '0/0') && (
+                                        <View style={[s.badgeContainer, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                                            <Text style={[s.badgeText, { color: isDark ? '#94A3B8' : '#64748B' }]}>{item.badgeCount}</Text>
+                                        </View>
+                                    )}
                                     {item.comingSoon && (
                                         <View style={s.soonBadge}>
                                             <Text style={s.soonBadgeText}>Soon</Text>
@@ -850,6 +889,22 @@ const s = StyleSheet.create({
     },
 
     group: { marginHorizontal: 16, marginBottom: 24 },
+    badgeContainer: {
+        position: 'absolute',
+        top: 12,
+        right: 12,
+        borderRadius: 12,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        minWidth: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    badgeText: {
+        color: '#FFFFFF',
+        fontSize: 10,
+        fontWeight: '700',
+    },
     groupTitle: {
         fontSize: 12,
         fontWeight: '800',

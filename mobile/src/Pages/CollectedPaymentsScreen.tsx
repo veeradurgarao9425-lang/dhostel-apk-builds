@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
     FlatList, StatusBar, Dimensions, Linking, Modal, TextInput, RefreshControl,
-    ActivityIndicator
+    ActivityIndicator, ScrollView
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -449,7 +449,7 @@ export default function CollectedPaymentsScreen() {
                 animationType="slide"
                 onRequestClose={() => setShowExportModal(false)}
             >
-                <View style={s.modalOverlay}>
+                <View style={[s.modalOverlay, { justifyContent: 'flex-end', padding: 0, backgroundColor: 'rgba(0,0,0,0.5)' }]}>
                     <TouchableOpacity
                         style={StyleSheet.absoluteFillObject}
                         activeOpacity={1}

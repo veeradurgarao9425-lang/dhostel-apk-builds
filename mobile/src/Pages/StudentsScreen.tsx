@@ -600,6 +600,23 @@ export default function StudentsScreen({ navigation, route }: any) {
                     )}
                 </View>
 
+                {(startDateFilter && endDateFilter) && (
+                    <View style={styles.activeFilterBadge}>
+                        <Text style={styles.activeFilterText}>Admissions: {startDateFilter} to {endDateFilter}</Text>
+                        <TouchableOpacity onPress={() => { setStartDateFilter(null); setEndDateFilter(null); }} style={{ marginLeft: 8 }}>
+                            <X size={14} color="#FFF" />
+                        </TouchableOpacity>
+                    </View>
+                )}
+                {(dateFilter) && (
+                    <View style={styles.activeFilterBadge}>
+                        <Text style={styles.activeFilterText}>Admissions: {dateFilter.toLocaleDateString()}</Text>
+                        <TouchableOpacity onPress={() => { setDateFilter(null); }} style={{ marginLeft: 8 }}>
+                            <X size={14} color="#FFF" />
+                        </TouchableOpacity>
+                    </View>
+                )}
+
                 <DateTimePickerModal
                     isVisible={showDatePicker}
                     mode="date"
@@ -837,6 +854,28 @@ const styles = StyleSheet.create({
     avatarImg: {
         width: 36,
         height: 36,
+    },
+    addBtnText: {
+        color: '#FFF',
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    activeFilterBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 12,
+        alignSelf: 'flex-start',
+        marginLeft: 16,
+        marginTop: -6,
+        marginBottom: 8,
+    },
+    activeFilterText: {
+        color: '#FFF',
+        fontSize: 12,
+        fontWeight: '600',
     },
     avatarTextInitials: {
         fontSize: 13,

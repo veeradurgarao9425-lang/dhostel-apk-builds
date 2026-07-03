@@ -879,16 +879,17 @@ export const getOwnerStats = async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user;
     let hostelIds: number[] = [];
+    
+    // Find all active hostels owned by this user
+    const userHostels = await db('hostel_master')
+      .select('hostel_id')
+      .where({ owner_id: user.user_id, is_active: 1 });
+      
+    const hostelsCount = userHostels.length;
 
     if (user?.role_id === 2) {
-      // Find all active hostels owned by this user
-      const userHostels = await db('hostel_master')
-        .select('hostel_id')
-        .where({ owner_id: user.user_id, is_active: 1 });
       hostelIds = userHostels.map(h => h.hostel_id);
     }
-
-    const hostelsCount = hostelIds.length;
 
     // 1. Get occupied beds
     let occupiedBeds = 0;
@@ -1248,7 +1249,7 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
 
     // ── 5. 12-month trend (last 12 months including current) ──
     const trend: any[] = [];
-    const trendStartDate = new Date(targetYear, targetMonth - 12, 1);
+    const trendStartDate = new Date(targetYear, targetMonth - 6, 1);
     const trendStartDateStr = `${trendStartDate.getFullYear()}-${String(trendStartDate.getMonth() + 1).padStart(2, '0')}-01`;
 
     // Fee collection
@@ -1320,7 +1321,7 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
       admissionTrendMap = new Map(admissionTrendRes.map((item: any) => [item.month, Number(item.total || 0)]));
     } catch(e) { console.error('[trend] admissions query failed:', e); }
 
-    for (let i = 11; i >= 0; i--) {
+    for (let i = 5; i >= 0; i--) {
       const tDate = new Date(targetYear, targetMonth - 1 - i, 1);
       const tYear = tDate.getFullYear();
       const tMonth = tDate.getMonth() + 1;

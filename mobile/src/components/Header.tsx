@@ -10,12 +10,14 @@ import { HeaderNotification } from './HeaderNotification';
 
 interface HeaderProps {
     title: string;
+    subtitle?: string;
     showBack?: boolean;
     showNotification?: boolean;
     rightElement?: React.ReactNode;
+    showProfile?: boolean;
 }
 
-export const Header = ({ title, showBack = true, showNotification = false, rightElement }: HeaderProps) => {
+export const Header = ({ title, subtitle, showBack = true, showNotification = false, rightElement, showProfile = true }: HeaderProps) => {
     const navigation = useNavigation();
     const { user, signOut } = useAuth();
     const { theme } = useTheme();
@@ -36,7 +38,10 @@ export const Header = ({ title, showBack = true, showNotification = false, right
                         </TouchableOpacity>
                     )}
                 </View>
-                <Text style={styles.title} numberOfLines={1}>{title}</Text>
+                <View style={styles.titleContainer}>
+                    <Text style={styles.title} numberOfLines={1}>{title}</Text>
+                    {subtitle && <Text style={styles.subtitleText} numberOfLines={1}>{subtitle}</Text>}
+                </View>
                 <View style={styles.right}>
                     {rightElement}
 
@@ -44,15 +49,17 @@ export const Header = ({ title, showBack = true, showNotification = false, right
                         <HeaderNotification navigation={navigation} />
                     )}
 
-                    <TouchableOpacity
-                        onPress={() => setMenuVisible(true)}
-                        style={styles.profileButton}
-                        activeOpacity={0.8}
-                    >
-                        <View style={styles.avatarMini}>
-                            <Text style={styles.avatarText}>{user?.full_name?.charAt(0) || 'A'}</Text>
-                        </View>
-                    </TouchableOpacity>
+                    {showProfile && (
+                        <TouchableOpacity
+                            onPress={() => setMenuVisible(true)}
+                            style={styles.profileButton}
+                            activeOpacity={0.8}
+                        >
+                            <View style={styles.avatarMini}>
+                                <Text style={styles.avatarText}>{user?.full_name?.charAt(0) || 'A'}</Text>
+                            </View>
+                        </TouchableOpacity>
+                    )}
 
                     {/* Dropdown Menu Modal */}
                     <Modal
@@ -119,7 +126,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
     },
     left: {
-        width: 40,
+        width: 32,
         alignItems: 'flex-start',
     },
     right: {
@@ -136,12 +143,21 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         backgroundColor: 'rgba(255,255,255,0.2)'
     },
+    titleContainer: {
+        flex: 1,
+        alignItems: 'flex-start',
+        paddingHorizontal: 8,
+    },
     title: {
         fontSize: 18,
         fontWeight: '700',
         color: '#FFF',
-        flex: 1,
-        textAlign: 'center',
+    },
+    subtitleText: {
+        fontSize: 11,
+        color: 'rgba(255,255,255,0.85)',
+        fontWeight: '500',
+        marginTop: 2,
     },
     profileButton: {
         width: 36,

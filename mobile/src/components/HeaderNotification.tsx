@@ -5,11 +5,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNotifications, Notification } from '../hooks/useNotifications';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const { width, height } = Dimensions.get('window');
 
 export const HeaderNotification = ({ navigation }: { navigation?: any }) => {
     const { notifications, unreadCount, markAsRead, markAllAsRead, loading } = useNotifications();
+    const { theme } = useTheme();
     const [showNotif, setShowNotif] = useState(false);
     const nav = navigation || useNavigation();
     const insets = useSafeAreaInsets();
@@ -33,7 +35,7 @@ export const HeaderNotification = ({ navigation }: { navigation?: any }) => {
             nav.navigate('FeeManagement');
         } else {
             // Default fallback
-            nav.navigate('Notifications');
+            nav.navigate('Main', { screen: 'HomeTab' });
         }
     };
 
@@ -88,7 +90,7 @@ export const HeaderNotification = ({ navigation }: { navigation?: any }) => {
                             <View style={styles.notifHeaderLeft}>
                                 <Text style={styles.notifTitle}>Notifications</Text>
                                 {unreadCount > 0 && (
-                                    <View style={styles.notifCountBadge}>
+                                    <View style={[styles.notifCountBadge, { backgroundColor: theme.primary }]}>
                                         <Text style={styles.notifCountText}>{unreadCount}</Text>
                                     </View>
                                 )}
@@ -96,7 +98,7 @@ export const HeaderNotification = ({ navigation }: { navigation?: any }) => {
                             <View style={styles.notifHeaderRight}>
                                 {unreadCount > 0 && (
                                     <TouchableOpacity onPress={markAllAsRead}>
-                                        <Text style={styles.markAllText}>Mark all read</Text>
+                                        <Text style={[styles.markAllText, { color: theme.primary }]}>Mark all read</Text>
                                     </TouchableOpacity>
                                 )}
                                 <TouchableOpacity onPress={() => setShowNotif(false)} style={styles.notifCloseBtn}>
@@ -108,7 +110,7 @@ export const HeaderNotification = ({ navigation }: { navigation?: any }) => {
                         <View style={styles.scrollContainer}>
                             {loading ? (
                                 <View style={styles.loadingContainer}>
-                                    <ActivityIndicator size="small" color="#FF6B6B" />
+                                    <ActivityIndicator size="small" color={theme.primary} />
                                 </View>
                             ) : notifications.length === 0 ? (
                                 <View style={styles.emptyContainer}>
@@ -120,7 +122,7 @@ export const HeaderNotification = ({ navigation }: { navigation?: any }) => {
                                     {notifications.slice(0, 5).map((n, index) => (
                                         <TouchableOpacity
                                             key={`notif-${index}-${Date.now()}`}
-                                            style={[styles.notifItem, !n.read && styles.notifItemUnread]}
+                                            style={[styles.notifItem, !n.read && { backgroundColor: theme.lightBg }]}
                                             onPress={() => handleNotifClick(n)}
                                             activeOpacity={0.7}
                                         >
@@ -139,8 +141,8 @@ export const HeaderNotification = ({ navigation }: { navigation?: any }) => {
                         </View>
 
                         <TouchableOpacity style={styles.viewAllBtn} onPress={handleViewAll}>
-                            <Text style={styles.viewAllBtnText}>View All Activities</Text>
-                            <ChevronRight color="#FF6B6B" size={14} />
+                            <Text style={[styles.viewAllBtnText, { color: theme.primary }]}>View All Activities</Text>
+                            <ChevronRight color={theme.primary} size={14} />
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -167,13 +169,13 @@ const styles = StyleSheet.create({
         width: 18,
         height: 18,
         borderRadius: 9,
-        backgroundColor: '#FFCC00',
+        backgroundColor: '#EF4444',
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1.5,
-        borderColor: '#FF6B6B',
+        borderColor: '#FFFFFF',
     },
-    badgeText: { fontSize: 9, fontWeight: '800', color: '#333333' },
+    badgeText: { fontSize: 9, fontWeight: '800', color: '#FFFFFF' },
 
     // Modal Styles
     modalOverlay: {
@@ -226,14 +228,13 @@ const styles = StyleSheet.create({
     notifHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     notifTitle: { fontSize: 15, fontWeight: '700', color: '#1A1A1A' },
     notifCountBadge: {
-        backgroundColor: '#FF6B6B',
         paddingHorizontal: 6,
         paddingVertical: 1,
         borderRadius: 10,
     },
     notifCountText: { fontSize: 10, fontWeight: '700', color: '#FFFFFF' },
     notifHeaderRight: { flexDirection: 'row', alignItems: 'center' },
-    markAllText: { fontSize: 11, color: '#FF6B6B', fontWeight: '600' },
+    markAllText: { fontSize: 11, fontWeight: '600' },
     notifCloseBtn: { marginLeft: 10, padding: 2 },
     scrollContainer: {
         maxHeight: 500,
@@ -252,7 +253,6 @@ const styles = StyleSheet.create({
         borderBottomColor: '#F8F8F8',
         gap: 10,
     },
-    notifItemUnread: { backgroundColor: '#FFFAF9' },
     notifIconBox: {
         width: 32,
         height: 32,
@@ -278,6 +278,5 @@ const styles = StyleSheet.create({
     viewAllBtnText: {
         fontSize: 12,
         fontWeight: '600',
-        color: '#FF6B6B'
     }
 });

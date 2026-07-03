@@ -305,15 +305,15 @@ export default function PendingPaymentsScreen() {
     
     // Filter Modal state
     const [filterModalVisible, setFilterModalVisible] = useState(false);
-    const [filterLoading, setFilterLoading] = useState(false);
     const [activeFilters, setActiveFilters] = useState<any>({ status: 'All', datePreset: 'All Time', room: 'All' });
     const handleApplyFilters = async (filters: any) => {
-        setFilterLoading(true);
+        setFilterModalVisible(false);
         setActiveFilters(filters);
+        setLoading(true);
         setPage(1);
         setHasMore(true);
-        await load(1, true);
-        setFilterLoading(false);
+        await load(1, false);
+        setLoading(false);
     };
     const [totalPending, setTotalPending] = useState(0);
     const [partialPaid, setPartialPaid] = useState(0);
@@ -511,16 +511,18 @@ export default function PendingPaymentsScreen() {
 
     const keyExtractor = useCallback((item: DueTenant) => `due-${item.id}`, []);
     const renderItem = useCallback(({ item }: { item: DueTenant }) => (
-        <TenantDueCard
-            item={item}
-            themeColor={theme.primary}
-            onRemind={handleRemind}
-            onCollect={handleCollect}
-            isDark={isDark}
-            theme={theme}
-            fontSize={fontSize}
-        />
-    ), [theme, isDark, fontSize, handleRemind, handleCollect]);
+        <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate('StudentDetails', { studentId: item.id })}>
+            <TenantDueCard
+                item={item}
+                themeColor={theme.primary}
+                onRemind={handleRemind}
+                onCollect={handleCollect}
+                isDark={isDark}
+                theme={theme}
+                fontSize={fontSize}
+            />
+        </TouchableOpacity>
+    ), [theme, isDark, fontSize, handleRemind, handleCollect, navigation]);
 
     // ── LOADING SKELETON ──────────────────────────────────────────────────────
     if (loading) {
@@ -558,8 +560,6 @@ export default function PendingPaymentsScreen() {
     return (
         <View style={[s.root, { backgroundColor: theme.background }]}>
             <StatusBar barStyle="light-content" />
-            <FullScreenLoader visible={filterLoading} />
-
             {/* ── Header ── */}
             <AppHeader
                 title={t('pendingDues.title')}
@@ -646,6 +646,27 @@ export default function PendingPaymentsScreen() {
                     </Text>
                 </TouchableOpacity>
             </View>
+
+            {/* ── Active Filters Chips ── */}
+            {(activeFilters.status !== 'All' || activeFilters.datePreset !== 'All Time' || activeFilters.room !== 'All') && (
+                <View style={{ paddingHorizontal: 16, paddingBottom: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                    {activeFilters.status !== 'All' && (
+                        <View style={[s.filterChip, { backgroundColor: isDark ? theme.primary + '30' : theme.primary + '15' }]}>
+                            <Text style={[s.filterChipText, { color: theme.primary }]}>{activeFilters.status}</Text>
+                        </View>
+                    )}
+                    {activeFilters.datePreset !== 'All Time' && (
+                        <View style={[s.filterChip, { backgroundColor: isDark ? theme.primary + '30' : theme.primary + '15' }]}>
+                            <Text style={[s.filterChipText, { color: theme.primary }]}>{activeFilters.datePreset}</Text>
+                        </View>
+                    )}
+                    {activeFilters.room !== 'All' && (
+                        <View style={[s.filterChip, { backgroundColor: isDark ? theme.primary + '30' : theme.primary + '15' }]}>
+                            <Text style={[s.filterChipText, { color: theme.primary }]}>Room {activeFilters.room}</Text>
+                        </View>
+                    )}
+                </View>
+            )}
 
             <View style={{ paddingHorizontal: 16, paddingBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Text style={{ fontSize: 13, color: isDark ? '#94A3B8' : '#64748B', fontWeight: '600' }}>
@@ -996,6 +1017,15 @@ const s = StyleSheet.create({
         fontWeight: '500',
         padding: 0,
         height: 20,
+    },
+    filterChip: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 12,
+    },
+    filterChipText: {
+        fontSize: 12,
+        fontWeight: '600',
     },
     filterBtn: {
         flexDirection: 'row',

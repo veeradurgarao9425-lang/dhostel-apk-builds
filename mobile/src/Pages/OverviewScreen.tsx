@@ -225,44 +225,41 @@ export default function OverviewScreen() {
                     </View>
                 }
             >
-                <TouchableOpacity 
-                    style={{
-                        flexDirection: 'row', alignItems: 'center', gap: 6,
-                        alignSelf: 'center',
-                        marginTop: 12,
-                        paddingHorizontal: 12, paddingVertical: 8,
-                        borderRadius: 8,
-                        backgroundColor: 'rgba(255,255,255,0.15)',
-                    }} 
-                    onPress={() => setFilterSelectModal(true)} 
-                    activeOpacity={0.8}
-                >
-                    <Ionicons name="calendar-outline" size={14} color="#FFF" />
-                    <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '700' }}>{periodLabel}</Text>
-                    <Ionicons name="chevron-down" size={12} color="#FFF" />
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 12, marginTop: 12 }}>
+                    <TouchableOpacity 
+                        style={{
+                            flexDirection: 'row', alignItems: 'center', gap: 6,
+                            paddingHorizontal: 12, paddingVertical: 8,
+                            borderRadius: 8,
+                            backgroundColor: 'rgba(255,255,255,0.15)',
+                        }} 
+                        onPress={() => setFilterSelectModal(true)} 
+                        activeOpacity={0.8}
+                    >
+                        <Ionicons name="calendar-outline" size={14} color="#FFF" />
+                        <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '700' }}>{periodLabel}</Text>
+                        <Ionicons name="chevron-down" size={12} color="#FFF" />
+                    </TouchableOpacity>
 
-                {/* Quick shortcut to daily income view */}
-                <TouchableOpacity
-                    onPress={() => navigation.navigate('IncomeDetails', { period: 'day' })}
-                    style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginTop: 10,
-                        backgroundColor: 'rgba(255,255,255,0.15)',
-                        borderRadius: 10,
-                        paddingVertical: 7,
-                        paddingHorizontal: 14,
-                        alignSelf: 'center',
-                        gap: 6,
-                    }}
-                    activeOpacity={0.8}
-                >
-                    <Ionicons name="today-outline" size={14} color="#FFF" />
-                    <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>View Daily Collection</Text>
-                    <Ionicons name="chevron-forward" size={13} color="rgba(255,255,255,0.8)" />
-                </TouchableOpacity>
+                    {/* Quick shortcut to daily income view */}
+                    <TouchableOpacity
+                        onPress={() => navigation.navigate('IncomeDetails', { period: 'day' })}
+                        style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            backgroundColor: 'rgba(255,255,255,0.15)',
+                            borderRadius: 8,
+                            paddingVertical: 8,
+                            paddingHorizontal: 12,
+                            gap: 6,
+                        }}
+                        activeOpacity={0.8}
+                    >
+                        <Ionicons name="today-outline" size={14} color="#FFF" />
+                        <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '700' }}>Today</Text>
+                        <Ionicons name="chevron-forward" size={13} color="rgba(255,255,255,0.8)" />
+                    </TouchableOpacity>
+                </View>
             </AppHeader>
 
 

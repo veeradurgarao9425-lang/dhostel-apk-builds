@@ -789,7 +789,7 @@ export default function IncomeDetailsScreen() {
                 animationType="slide"
                 onRequestClose={() => setShowWeekSelectorModal(false)}
             >
-                <View style={s.modalOverlay}>
+                <View style={s.bottomSheetOverlay}>
                     <TouchableOpacity
                         style={StyleSheet.absoluteFillObject}
                         activeOpacity={1}
@@ -862,7 +862,7 @@ export default function IncomeDetailsScreen() {
                 animationType="slide"
                 onRequestClose={() => setShowExportModal(false)}
             >
-                <View style={s.modalOverlay}>
+                <View style={s.bottomSheetOverlay}>
                     <TouchableOpacity
                         style={StyleSheet.absoluteFillObject}
                         activeOpacity={1}
@@ -1364,7 +1364,7 @@ const s = StyleSheet.create({
     },
 
     // ── BOTTOM SHEET MODAL ─────────────────────────────────────────────────
-    modalOverlay: {
+    bottomSheetOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.4)',
         justifyContent: 'flex-end',
@@ -1637,11 +1637,7 @@ const s = StyleSheet.create({
         fontSize: 13,
         fontWeight: '700',
     },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'transparent',
-        justifyContent: 'flex-end',
-    },
+
     modalSheet: {
         borderTopLeftRadius: 28,
         borderTopRightRadius: 28,

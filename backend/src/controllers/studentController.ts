@@ -70,9 +70,9 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
 
     // Filter by specific date or range
     if (date) {
-      query = query.where('s.admission_date', date);
+      query = query.whereRaw('DATE(s.admission_date) = ?', [date]);
     } else if (startDate && endDate) {
-      query = query.whereBetween('s.admission_date', [startDate, endDate]);
+      query = query.whereRaw('DATE(s.admission_date) >= ? AND DATE(s.admission_date) <= ?', [startDate, endDate]);
     }
 
     // Pagination

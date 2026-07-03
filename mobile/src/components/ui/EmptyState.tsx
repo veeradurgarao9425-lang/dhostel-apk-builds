@@ -18,6 +18,11 @@ export const EmptyState = ({ icon, title, subtitle, actionLabel, onAction, iconC
 
     return (
         <View style={S.container}>
+            {icon && (
+                <View style={[S.iconWrap, { backgroundColor: primary + '15' }]}>
+                    <Ionicons name={icon} size={42} color={primary} />
+                </View>
+            )}
 
             <Text style={[S.title, { color: isDark ? '#F8FAFC' : '#1E293B' }]}>{title}</Text>
             <Text style={[S.subtitle, { color: isDark ? '#94A3B8' : '#64748B' }]}>{subtitle}</Text>
@@ -42,30 +47,37 @@ const S = StyleSheet.create({
         alignItems: 'center',
         padding: 32,
     },
-
+    iconWrap: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 16,
+    },
     title: {
-        fontSize: 22,
+        fontSize: 20,
         fontWeight: '700',
-        marginBottom: 12,
+        marginBottom: 8,
         textAlign: 'center',
     },
     subtitle: {
-        fontSize: 15,
+        fontSize: 14,
         textAlign: 'center',
-        lineHeight: 22,
-        marginBottom: 32,
+        lineHeight: 20,
+        marginBottom: 24,
     },
     btn: {
-        paddingHorizontal: 24,
-        paddingVertical: 14,
-        borderRadius: 12,
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderRadius: 10,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
     },
     btnText: {
         color: '#FFFFFF',
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: '600',
     }
 });

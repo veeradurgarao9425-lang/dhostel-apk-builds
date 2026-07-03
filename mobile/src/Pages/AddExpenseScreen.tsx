@@ -31,6 +31,7 @@ import { useRefresh } from '../../contexts/RefreshContext';
 import { SPACING } from '../theme/index';
 import { AppHeader } from '../components/AppHeader';
 import { FullScreenLoader } from '../components/FullScreenLoader';
+import { SelectionModal } from '../components/ui/SelectionModal';
 
 const CAT_COLORS: Record<string, string> = {
     'Electricity': '#F59E0B',
@@ -57,7 +58,12 @@ const FormInput = ({ label, icon: Icon, placeholder, value, onChangeText, keyboa
     const { theme, isDark, fontSize } = useTheme();
     return (
         <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }]}>{label}</Text>
+            {!!label && (
+                <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }]}>
+                    {label.replace(' *', '')}
+                    {label.includes('*') && <Text style={{ color: '#EF4444' }}> *</Text>}
+                </Text>
+            )}
             <View style={[
                 styles.inputContainer,
                 { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' },
@@ -92,7 +98,12 @@ const SelectField = ({ label, value, placeholder, icon: Icon, onPress, error }: 
     const { theme, isDark, fontSize } = useTheme();
     return (
         <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }]}>{label}</Text>
+            {!!label && (
+                <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }]}>
+                    {label.replace(' *', '')}
+                    {label.includes('*') && <Text style={{ color: '#EF4444' }}> *</Text>}
+                </Text>
+            )}
             <TouchableOpacity style={[styles.inputContainer, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }, error && styles.inputError]} onPress={onPress} activeOpacity={0.7}>
                 <View style={styles.inputIcon}><Icon size={18} color={error ? '#EF4444' : theme.primary} /></View>
                 <Text style={[styles.inputText, { color: theme.textPrimary, fontSize }, !value && { color: isDark ? '#475569' : '#BBBBBB' }]}>{value || placeholder}</Text>
@@ -129,8 +140,13 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
     const insets = useSafeAreaInsets();
     const [isKeyboardVisible, setKeyboardVisible] = useState(false);
 
+    const [staffList, setStaffList] = useState<any[]>([]);
+    const [showStaffPicker, setShowStaffPicker] = useState(false);
+    const [isOtherStaff, setIsOtherStaff] = useState(false);
+
     useEffect(() => {
         fetchCategories();
+        fetchStaff();
         const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
         const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
         return () => {
@@ -138,6 +154,17 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
             keyboardDidHideListener.remove();
         };
     }, []);
+
+    const fetchStaff = async () => {
+        try {
+            const response = await api.get('/staff');
+            if (response.data.success) {
+                setStaffList(response.data.data.filter((s: any) => s.is_active));
+            }
+        } catch (error) {
+            console.error('Error fetching staff:', error);
+        }
+    };
 
     useEffect(() => {
         if (expense) {
@@ -223,7 +250,7 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
         if (!formData.category_id) nextErrors.category_id = 'Please select a category';
         if (!formData.expense_date) nextErrors.expense_date = 'Expense date is required';
         if (!formData.amount || isNaN(Number(formData.amount)) || Number(formData.amount) <= 0) nextErrors.amount = 'Amount must be greater than 0';
-        if (!formData.vendor_name || !formData.vendor_name.trim()) nextErrors.vendor_name = 'Vendor name is required';
+        if (!formData.vendor_name || !formData.vendor_name.trim()) nextErrors.vendor_name = 'Name is required';
         setErrors(nextErrors);
         return Object.keys(nextErrors).length === 0;
     };
@@ -291,7 +318,7 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
                 <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#EDE9FE', borderWidth: 1 }]}>
                     <Text style={[styles.sectionTitle, { fontSize: fontSize + 1, color: theme.textPrimary, borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>🏷️ Expense Details</Text>
                     
-                    <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }]}>Category *</Text>
+                    <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }]}>Category<Text style={{ color: '#EF4444' }}> *</Text></Text>
                     <View style={styles.categoryGrid}>
                         {categories.map((cat) => {
                             const isSelected = formData.category_id === cat.category_id.toString();
@@ -317,7 +344,7 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
                         <TouchableOpacity
                             style={[
                                 styles.catButton,
-                                { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' },
+                                { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0', borderStyle: 'dashed' },
                                 showCustomCategoryInput && { borderColor: theme.primary, backgroundColor: theme.primary + '12' }
                             ]}
                             onPress={() => setShowCustomCategoryInput(prev => !prev)}
@@ -370,7 +397,7 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
                         onPress={() => setDatePickerVisibility(true)}
                     />
 
-                    <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary, marginTop: 12 }]}>Payment Mode *</Text>
+                    <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary, marginTop: 12 }]}>Payment Mode<Text style={{ color: '#EF4444' }}> *</Text></Text>
                     <View style={styles.categoryGrid}>
                         {[
                             { id: '1', name: 'Cash', color: '#10B981' },
@@ -403,13 +430,46 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
                 <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#EDE9FE', borderWidth: 1 }]}>
                     <Text style={[styles.sectionTitle, { fontSize: fontSize + 1, color: theme.textPrimary, borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>📄 Vendor & Notes</Text>
 
-                    <FormInput
-                        label="Vendor Name *"
-                        icon={User}
-                        placeholder="Enter name"
-                        value={formData.vendor_name}
-                        onChangeText={(text: string) => setFormData({ ...formData, vendor_name: text })}
-                    />
+                    {(() => {
+                        const selectedCat = categories.find(c => c.category_id.toString() === formData.category_id);
+                        const isSalary = selectedCat?.category_name?.toLowerCase().includes('salary') || selectedCat?.category_name?.toLowerCase().includes('staff');
+                        const hasStaff = staffList.length > 0;
+                        
+                        return (
+                            <View>
+                                {isSalary && hasStaff && isOtherStaff && (
+                                    <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 4 }}>
+                                        <TouchableOpacity onPress={() => setIsOtherStaff(false)}>
+                                            <Text style={{ color: theme.primary, fontSize: fontSize - 2, fontWeight: '700' }}>Choose from list</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+
+                                {isSalary && hasStaff && !isOtherStaff ? (
+                                    <View style={styles.inputGroup}>
+                                        <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }]}>
+                                            Select Staff<Text style={{ color: '#EF4444' }}> *</Text>
+                                        </Text>
+                                        <TouchableOpacity style={[styles.inputContainer, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }, errors.vendor_name && styles.inputError]} onPress={() => setShowStaffPicker(true)} activeOpacity={0.7}>
+                                            <View style={styles.inputIcon}><User size={18} color={errors.vendor_name ? '#EF4444' : theme.primary} /></View>
+                                            <Text style={[styles.inputText, { color: theme.textPrimary, fontSize }, !formData.vendor_name && { color: isDark ? '#475569' : '#BBBBBB' }]}>{formData.vendor_name || "Choose Staff Member"}</Text>
+                                            <ChevronDown size={18} color={theme.textSecondary} style={{ marginRight: 12 }} />
+                                        </TouchableOpacity>
+                                        {errors.vendor_name && <Text style={styles.errorText}>{errors.vendor_name}</Text>}
+                                    </View>
+                                ) : (
+                                    <FormInput
+                                        label={isSalary ? "Staff Name *" : "Vendor Name *"}
+                                        icon={User}
+                                        placeholder={isSalary ? "Enter staff name" : "Enter name"}
+                                        value={formData.vendor_name}
+                                        onChangeText={(text: string) => setFormData({ ...formData, vendor_name: text })}
+                                        error={errors.vendor_name}
+                                    />
+                                )}
+                            </View>
+                        );
+                    })()}
 
                     <FormInput
                         label="Bill / Reference Number"
@@ -475,6 +535,26 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
                 onConfirm={handleConfirmDate}
                 onCancel={() => setDatePickerVisibility(false)}
             />
+            <SelectionModal
+                visible={showStaffPicker}
+                title="Select Staff Member"
+                items={[
+                    ...staffList.map(s => ({ id: s.name, label: s.name, subLabel: s.role })),
+                    { id: 'OTHER_STAFF', label: 'Other', subLabel: 'Enter name manually' }
+                ]}
+                onClose={() => setShowStaffPicker(false)}
+                onConfirm={(item) => {
+                    if (item.id === 'OTHER_STAFF') {
+                        setIsOtherStaff(true);
+                        setFormData({ ...formData, vendor_name: '' });
+                    } else {
+                        setFormData({ ...formData, vendor_name: item.label });
+                        setIsOtherStaff(false);
+                    }
+                    setShowStaffPicker(false);
+                }}
+            />
+
         </KeyboardAvoidingView>
     );
 };

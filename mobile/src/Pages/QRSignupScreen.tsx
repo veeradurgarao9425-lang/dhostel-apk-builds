@@ -16,12 +16,14 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import QRCode from 'react-native-qrcode-svg';
-import { QrCode, Home, BedDouble, Info, Share2, ChevronDown, Check, X } from 'lucide-react-native';
+import { QrCode, Home, BedDouble, Info, Share2, ChevronDown, Check, X, ShieldCheck, Download, Link, Smartphone, FileText, User, Wand2, Copy, Shield } from 'lucide-react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { AppHeader } from '../components/AppHeader';
 import api from '../services/api';
 import { useFocusEffect } from '@react-navigation/native';
+import * as Clipboard from 'expo-clipboard';
+import { useToast } from '../context/ToastContext';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Mode = 'general' | 'room';
@@ -198,6 +200,7 @@ const BedPickerModal = ({ visible, room, beds, selectedBedId, onSelectBed, onClo
 export default function QRSignupScreen({ navigation }: any) {
     const { user } = useAuth();
     const { theme, isDark, fontSize } = useTheme();
+    const { showSuccess } = useToast();
 
     const [mode, setMode] = useState<Mode>('general');
     const [rooms, setRooms] = useState<any[]>([]);
@@ -370,71 +373,144 @@ export default function QRSignupScreen({ navigation }: any) {
                     </View>
                 )}
 
-                {/* ── QR Card ── */}
-                <View style={[s.qrCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
-                    {/* QR label */}
-                    <View style={s.qrLabelRow}>
-                        <View style={[s.qrDot, { backgroundColor: theme.primary }]} />
-                        <Text style={[s.qrLabel, { fontSize: fontSize, color: theme.primary }]}>
-                            {mode === 'general' ? 'General Hostel QR' : selectedRoom ? `Room ${selectedRoom.room_number}${selectedBed ? ` — Bed ${selectedBed.bed_name ?? ''}` : ''} QR` : 'Select a room to generate QR'}
+                {/* ── 1. Main QR Card ── */}
+                <View style={[s.newQrCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
+                    <View style={{ alignItems: 'center', marginBottom: 20 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                            <ShieldCheck size={20} color="#10B981" />
+                            <Text style={{ fontSize: fontSize + 2, fontWeight: '700', color: theme.textPrimary, marginLeft: 8 }}>
+                                Share this QR with new tenants
+                            </Text>
+                        </View>
+                        <Text style={{ fontSize: fontSize - 1, color: theme.textSecondary }}>
+                            They scan, fill details and appear as <Text style={{ color: '#F97316', fontWeight: '600' }}>Inactive</Text>
                         </Text>
                     </View>
 
-                    {/* QR Code */}
+                    {/* QR Code with viewfinder style */}
                     {mode === 'room' && !selectedRoom ? (
                         <View style={[s.qrPlaceholder, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
                             <Home size={48} color={theme.textSecondary} />
                             <Text style={[s.qrPlaceholderText, { fontSize: fontSize - 1, color: theme.textSecondary }]}>Select a room above to generate a room-specific QR code</Text>
                         </View>
                     ) : (
-                        <View style={[s.qrWrapper, { borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                            <QRCode
-                                value={activeUrl}
-                                size={220}
-                                color={isDark ? "#0F172A" : "#1E293B"}
-                                backgroundColor="#FFFFFF"
-                            />
+                        <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                            <View style={[s.viewfinder, { borderColor: theme.primary }]}>
+                                <QRCode
+                                    value={activeUrl}
+                                    size={200}
+                                    color={isDark ? "#0F172A" : "#1E293B"}
+                                    backgroundColor="#FFFFFF"
+                                />
+                            </View>
                         </View>
                     )}
 
-                    {/* URL display */}
+                    {/* QR label */}
+                    <Text style={{ fontSize: fontSize, color: theme.primary, fontWeight: '600', textAlign: 'center', marginBottom: 20 }}>
+                        {mode === 'general' ? 'General Hostel QR' : selectedRoom ? `Room ${selectedRoom.room_number}${selectedBed ? ` — Bed ${selectedBed.bed_name ?? ''}` : ''} QR` : ''}
+                    </Text>
+
+                    {/* Action Buttons */}
                     {(mode === 'general' || selectedRoom) && (
-                        <View style={[s.urlBox, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC' }]}>
-                            <Text style={[s.urlText, { color: theme.textSecondary }]} numberOfLines={2}>{activeUrl}</Text>
+                        <View style={s.qrActionsRow}>
+                            <TouchableOpacity style={[s.qrActionBtn, { backgroundColor: isDark ? theme.primary + '20' : '#F3E8FF' }]} activeOpacity={0.7}>
+                                <Download size={16} color={theme.primary} />
+                                <Text style={[s.qrActionBtnText, { color: theme.primary }]}>Download</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={[s.qrActionBtn, { backgroundColor: isDark ? theme.primary + '20' : '#F3E8FF' }]} onPress={handleShare} activeOpacity={0.7}>
+                                <Share2 size={16} color={theme.primary} />
+                                <Text style={[s.qrActionBtnText, { color: theme.primary }]}>Share</Text>
+                            </TouchableOpacity>
                         </View>
                     )}
+                </View>
 
-                    {/* Share button */}
-                    {(mode === 'general' || selectedRoom) && (
-                        <TouchableOpacity style={[s.shareBtn, { backgroundColor: theme.primary }]} onPress={handleShare} activeOpacity={0.85}>
-                            <Share2 size={18} color="#FFF" />
-                            <Text style={[s.shareBtnText, { fontSize: fontSize + 1 }]}>Share QR Link</Text>
+                {/* ── 2. Link Card ── */}
+                {(mode === 'general' || selectedRoom) && (
+                    <View style={[s.linkCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
+                        <View style={[s.linkIconCircle, { backgroundColor: isDark ? theme.primary + '20' : '#F3E8FF' }]}>
+                            <Link size={20} color={theme.primary} />
+                        </View>
+                        <View style={{ flex: 1, marginHorizontal: 12 }}>
+                            <Text style={{ fontSize: fontSize - 3, color: theme.textSecondary, marginBottom: 4 }}>Or share this link</Text>
+                            <Text style={{ fontSize: fontSize - 2, color: theme.textPrimary, fontWeight: '500' }} numberOfLines={2}>
+                                {activeUrl}
+                            </Text>
+                        </View>
+                        <TouchableOpacity 
+                            style={[s.copyBtn, { backgroundColor: theme.primary }]}
+                            onPress={async () => {
+                                await Clipboard.setStringAsync(activeUrl);
+                                showSuccess('Link copied to clipboard!');
+                            }}
+                            activeOpacity={0.8}
+                        >
+                            <Text style={{ color: '#FFFFFF', fontSize: fontSize - 1, fontWeight: '600' }}>Copy</Text>
                         </TouchableOpacity>
-                    )}
-                </View>
+                    </View>
+                )}
 
-                {/* ── Flow Explanation ── */}
-                <View style={[s.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
-                    <Text style={[s.cardTitle, { fontSize: fontSize + 1, color: theme.textPrimary }]}>📋 What Happens After Scanning?</Text>
-                    <View style={s.stepRow}>
-                        <View style={[s.stepDot, { backgroundColor: theme.primary }]}><Text style={s.stepNum}>1</Text></View>
-                        <Text style={[s.stepText, { fontSize: fontSize, color: theme.textPrimary }]}>Tenant scans the QR with their phone camera</Text>
+                {/* ── 3. How it works Card ── */}
+                <View style={[s.howItWorksCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+                        <Wand2 size={18} color={theme.primary} />
+                        <Text style={{ fontSize: fontSize + 1, fontWeight: '700', color: theme.textPrimary, marginLeft: 8 }}>
+                            How it works
+                        </Text>
                     </View>
-                    <View style={s.stepRow}>
-                        <View style={[s.stepDot, { backgroundColor: theme.primary }]}><Text style={s.stepNum}>2</Text></View>
-                        <Text style={[s.stepText, { fontSize: fontSize, color: theme.textPrimary }]}>A form opens in their browser — they fill in their details</Text>
-                    </View>
-                    <View style={s.stepRow}>
-                        <View style={[s.stepDot, { backgroundColor: theme.primary }]}><Text style={s.stepNum}>3</Text></View>
-                        <Text style={[s.stepText, { fontSize: fontSize, color: theme.textPrimary }]}>Their record is saved as <Text style={{ fontWeight: '700', color: '#DC2626' }}>Inactive</Text> in your tenant list</Text>
-                    </View>
-                    <View style={s.stepRow}>
-                        <View style={[s.stepDot, { backgroundColor: '#10B981' }]}><Text style={s.stepNum}>4</Text></View>
-                        <Text style={[s.stepText, { fontSize: fontSize, color: theme.textPrimary }]}>You open their profile and tap <Text style={{ fontWeight: '700', color: '#10B981' }}>Mark Active</Text> to approve them</Text>
+                    
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 16 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                            {/* Step 1 */}
+                            <View style={s.stepItem}>
+                                <View style={[s.stepBadge, { backgroundColor: theme.primary }]}><Text style={s.stepBadgeText}>1</Text></View>
+                                <View style={[s.stepCircle, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}><Smartphone size={24} color={theme.textPrimary} /></View>
+                                <Text style={[s.stepTitle, { color: theme.textPrimary }]}>Scan QR</Text>
+                                <Text style={[s.stepDesc, { color: theme.textSecondary }]}>Tenant scans using phone camera</Text>
+                            </View>
+
+                            <View style={s.stepConnector}><Text style={{ color: theme.textSecondary }}>→</Text></View>
+
+                            {/* Step 2 */}
+                            <View style={s.stepItem}>
+                                <View style={[s.stepBadge, { backgroundColor: theme.primary }]}><Text style={s.stepBadgeText}>2</Text></View>
+                                <View style={[s.stepCircle, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}><FileText size={24} color={theme.textPrimary} /></View>
+                                <Text style={[s.stepTitle, { color: theme.textPrimary }]}>Fill Details</Text>
+                                <Text style={[s.stepDesc, { color: theme.textSecondary }]}>Form opens in their browser</Text>
+                            </View>
+
+                            <View style={s.stepConnector}><Text style={{ color: theme.textSecondary }}>→</Text></View>
+
+                            {/* Step 3 */}
+                            <View style={s.stepItem}>
+                                <View style={[s.stepBadge, { backgroundColor: theme.primary }]}><Text style={s.stepBadgeText}>3</Text></View>
+                                <View style={[s.stepCircle, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}><User size={24} color={theme.textPrimary} /></View>
+                                <Text style={[s.stepTitle, { color: theme.textPrimary }]}>Added as <Text style={{ color: '#F97316' }}>Inactive</Text></Text>
+                                <Text style={[s.stepDesc, { color: theme.textSecondary }]}>Record is saved in your tenant list</Text>
+                            </View>
+
+                            <View style={s.stepConnector}><Text style={{ color: theme.textSecondary }}>→</Text></View>
+
+                            {/* Step 4 */}
+                            <View style={s.stepItem}>
+                                <View style={[s.stepBadge, { backgroundColor: theme.primary }]}><Text style={s.stepBadgeText}>4</Text></View>
+                                <View style={[s.stepCircle, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}><View style={{ backgroundColor: '#10B981', borderRadius: 12, padding: 4 }}><Check size={16} color="#FFF" /></View></View>
+                                <Text style={[s.stepTitle, { color: theme.textPrimary }]}>Activate</Text>
+                                <Text style={[s.stepDesc, { color: theme.textSecondary }]}>You review and mark as <Text style={{ color: '#10B981' }}>active</Text></Text>
+                            </View>
+                        </View>
+                    </ScrollView>
+
+                    {/* Secure Footer */}
+                    <View style={[s.secureFooter, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC' }]}>
+                        <Shield size={20} color={theme.primary} />
+                        <View style={{ flex: 1, marginLeft: 12 }}>
+                            <Text style={{ fontSize: fontSize - 1, fontWeight: '700', color: theme.textPrimary, marginBottom: 2 }}>Secure & Verified</Text>
+                            <Text style={{ fontSize: fontSize - 2, color: theme.textSecondary }}>All registrations are safe and require your approval before tenant becomes active.</Text>
+                        </View>
                     </View>
                 </View>
-
-                <View style={{ height: 40 }} />
             </ScrollView>
 
             {/* ── Modals ── */}
@@ -492,24 +568,28 @@ const s = StyleSheet.create({
     selectorBtnLabel: { fontSize: 15, fontWeight: '600' },
     selectorBtnMeta: { fontSize: 12, marginTop: 3 },
 
-    // ── QR Card ───────────────────────────────────────────────────────────────
-    qrCard: { borderRadius: 24, padding: 24, marginBottom: 16, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4 },
-    qrLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 20 },
-    qrDot: { width: 10, height: 10, borderRadius: 5 },
-    qrLabel: { fontWeight: '700' },
-    qrWrapper: { padding: 16, backgroundColor: '#FFFFFF', borderRadius: 18, borderWidth: 1, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, elevation: 1 },
-    qrPlaceholder: { width: 220, height: 220, borderRadius: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderStyle: 'dashed', gap: 12 },
+    // ── New UI Styles ─────────────────────────────────────────────────────────
+    newQrCard: { borderRadius: 24, padding: 24, paddingBottom: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4 },
+    viewfinder: { padding: 16, borderRadius: 16, borderWidth: 2, borderStyle: 'dashed' },
+    qrPlaceholder: { width: 200, height: 200, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderStyle: 'dashed', gap: 12 },
     qrPlaceholderText: { textAlign: 'center', paddingHorizontal: 20 },
-    urlBox: { marginTop: 16, borderRadius: 10, padding: 12, width: '100%' },
-    urlText: { textAlign: 'center', fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' },
-    shareBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 16, width: '100%', paddingVertical: 14, borderRadius: 14 },
-    shareBtnText: { color: '#FFF', fontWeight: '700' },
-
-    // ── Steps ─────────────────────────────────────────────────────────────────
-    stepRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 12 },
-    stepDot: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-    stepNum: { fontSize: 13, fontWeight: '700', color: '#FFF' },
-    stepText: { flex: 1, lineHeight: 20, paddingTop: 3 },
+    qrActionsRow: { flexDirection: 'row', gap: 12 },
+    qrActionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, borderRadius: 12 },
+    qrActionBtnText: { fontWeight: '700' },
+    
+    linkCard: { flexDirection: 'row', alignItems: 'center', borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 },
+    linkIconCircle: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+    copyBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
+    
+    howItWorksCard: { borderRadius: 20, padding: 20, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 3 },
+    stepItem: { width: 100, alignItems: 'center', paddingHorizontal: 4 },
+    stepBadge: { position: 'absolute', top: -5, right: 15, width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center', zIndex: 10 },
+    stepBadgeText: { color: '#FFF', fontSize: 11, fontWeight: '800' },
+    stepCircle: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+    stepTitle: { fontSize: 12, fontWeight: '700', textAlign: 'center', marginBottom: 4 },
+    stepDesc: { fontSize: 10, textAlign: 'center', lineHeight: 14 },
+    stepConnector: { marginTop: 18, marginHorizontal: -5, opacity: 0.5 },
+    secureFooter: { flexDirection: 'row', alignItems: 'center', marginTop: 24, padding: 16, borderRadius: 12 },
 
     // ── Modal / Sheet ─────────────────────────────────────────────────────────
     modalOverlay: { flex: 1, backgroundColor: 'transparent', justifyContent: 'flex-end' },
