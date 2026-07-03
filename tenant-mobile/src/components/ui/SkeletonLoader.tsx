@@ -29,10 +29,10 @@ export function SkeletonBox({
     return () => pulse.stopAnimation();
   }, [pulse]);
 
-  const shimmerOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0, 0.55] });
+  const shimmerOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0, 0.4] });
 
   return (
-    <View style={[{ width: width as any, height, borderRadius, backgroundColor: colors.surfaceAlt, overflow: 'hidden' }, style]}>
+    <View style={[{ width: width as any, height, borderRadius, backgroundColor: '#F1F5F9', overflow: 'hidden' }, style]}>
       <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: '#FFFFFF', opacity: shimmerOpacity }]} />
     </View>
   );

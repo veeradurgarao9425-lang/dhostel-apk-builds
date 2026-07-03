@@ -2,7 +2,7 @@ import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react'
 import {
   StyleSheet, Text, View, TouchableOpacity, ScrollView,
   Dimensions, Animated, StatusBar, TextInput, Modal,
-  Share, Image,
+  Share, Image, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -550,11 +550,8 @@ export default function ExpensesScreen({ navigation }: any) {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
         {loading ? (
-          <View style={{ paddingTop: 4 }}>
-            <SkeletonStatCard />
-            <SkeletonExpenseCard />
-            <SkeletonExpenseCard />
-            <SkeletonExpenseCard />
+          <View style={{ paddingTop: 80, alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={BLUE} />
           </View>
         ) : (
           <>
@@ -1353,7 +1350,7 @@ const s = StyleSheet.create({
   donutLbl:    { fontSize: 10, color: 'rgba(255,255,255,0.65)', fontWeight: '600', marginTop: 1 },
 
   // Generic card
-  card: { backgroundColor: WHITE, borderRadius: 20, padding: 18, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 1 },
+  card: { backgroundColor: WHITE, borderRadius: 20, padding: 18, marginBottom: 12, borderWidth: 1, borderColor: BORDER },
   cardTitle: { fontSize: 15, fontWeight: '700', color: TEXT_DARK, marginBottom: 2 },
   cardSub:   { fontSize: 12, color: TEXT_LIGHT, fontWeight: '500' },
 
@@ -1410,7 +1407,7 @@ const s = StyleSheet.create({
   chipTxtActive:{ color: WHITE, fontWeight: '700' },
 
   // Transaction card
-  txnCard:    { backgroundColor: WHITE, borderRadius: 20, overflow: 'hidden', marginBottom: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 1 },
+  txnCard:    { backgroundColor: WHITE, borderRadius: 20, overflow: 'hidden', marginBottom: 14, borderWidth: 1, borderColor: BORDER },
   txnRow:     { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14 },
   txnDivider: { borderBottomWidth: 1, borderBottomColor: BORDER },
   txnIcon:    { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
@@ -1431,7 +1428,7 @@ const s = StyleSheet.create({
   emptyTxt: { fontSize: 14, color: TEXT_MID, fontWeight: '500' },
 
   // Categories tab
-  statRow:  { flexDirection: 'row', backgroundColor: WHITE, borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 4, elevation: 1 },
+  statRow:  { flexDirection: 'row', backgroundColor: WHITE, borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: BORDER },
   statCell: { flex: 1, alignItems: 'center' },
   statVal:  { fontSize: 15, fontWeight: '800', color: TEXT_DARK, marginBottom: 2 },
   statLbl:  { fontSize: 11, color: TEXT_LIGHT, fontWeight: '600' },
@@ -1462,7 +1459,7 @@ const s = StyleSheet.create({
   heroStatVal:      { fontSize: 16, color: WHITE, fontWeight: '700' },
   heroStatDivider:  { width: 1, height: 28, backgroundColor: 'rgba(255,255,255,0.15)', marginHorizontal: 12 },
 
-  momRow:   { flexDirection: 'row', backgroundColor: WHITE, borderRadius: 14, padding: 12, marginBottom: 16, shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 4, elevation: 1 },
+  momRow:   { flexDirection: 'row', backgroundColor: WHITE, borderRadius: 14, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: BORDER },
   momCell:  { flex: 1, alignItems: 'center' },
   momMonth: { fontSize: 11, color: TEXT_MID, fontWeight: '600', marginBottom: 3 },
   momDelta: { fontSize: 13, fontWeight: '800' },
@@ -1471,7 +1468,7 @@ const s = StyleSheet.create({
   fab: { position: 'absolute', bottom: 130, right: 20, width: 58, height: 58, borderRadius: 29, backgroundColor: BLUE, alignItems: 'center', justifyContent: 'center', shadowColor: BLUE_DARK, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 14, elevation: 10 },
 
   // Overview Card style
-  overviewCard: { backgroundColor: WHITE, borderRadius: 20, padding: 20, flexDirection: 'row', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2, marginBottom: 16 },
+  overviewCard: { backgroundColor: WHITE, borderRadius: 20, padding: 20, flexDirection: 'row', alignItems: 'center', marginBottom: 16, borderWidth: 1, borderColor: BORDER },
   overviewLeft:   { flex: 1 },
   overviewLabel:  { fontSize: 13, color: TEXT_MID, fontWeight: '500', marginBottom: 8 },
   overviewAmt:    { fontSize: 28, fontWeight: '800', color: '#E11D48', marginBottom: 8 },

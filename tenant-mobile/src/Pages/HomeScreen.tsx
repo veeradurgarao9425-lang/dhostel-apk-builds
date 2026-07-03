@@ -54,15 +54,7 @@ import api from "../services/api";
 const { width } = Dimensions.get("window");
 
 function FadeSlideIn({ children, delay = 0, style }: { children: React.ReactNode; delay?: number; style?: any }) {
-  const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(28)).current;
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(opacity, { toValue: 1, duration: 480, delay, useNativeDriver: true }),
-      Animated.spring(translateY, { toValue: 0, delay, friction: 7, tension: 50, useNativeDriver: true }),
-    ]).start();
-  }, []);
-  return <Animated.View style={[{ opacity, transform: [{ translateY }] }, style]}>{children}</Animated.View>;
+  return <View style={style}>{children}</View>;
 }
 
 // ── Ocean Blue Palette ────────────────────────────────────────────────────────

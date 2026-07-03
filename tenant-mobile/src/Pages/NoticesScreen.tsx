@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  StyleSheet, Text, TouchableOpacity, View, ScrollView, StatusBar,
+  StyleSheet, Text, TouchableOpacity, View, ScrollView, StatusBar, ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -153,7 +153,11 @@ export default function NoticesScreen({ navigation }: any) {
       {/* ── Notices List ── */}
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
         <View style={styles.noticesWrapper}>
-          {error ? (
+          {loading ? (
+            <View style={{ marginTop: 60, alignItems: 'center' }}>
+              <ActivityIndicator size="large" color={BLUE} />
+            </View>
+          ) : error ? (
             <View style={{ marginTop: 60 }}>
               <Phase3ErrorState variant="server" onAction={fetchNotices} />
             </View>

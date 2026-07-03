@@ -21,6 +21,7 @@ const BLUE = '#2245D4';
 const BLUE_DARK = '#1A36A8';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 type MealSlot = { items: string; time: string };
 type DayMenu = { breakfast: MealSlot; lunch: MealSlot; dinner: MealSlot };
 type WeekMenu = Record<string, DayMenu>;

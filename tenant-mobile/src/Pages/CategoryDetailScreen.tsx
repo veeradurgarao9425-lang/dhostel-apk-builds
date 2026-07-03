@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ImageBackground } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, Image, StatusBar } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle } from 'react-native-svg';
-import { ArrowLeft, ChevronRight, ChevronDown } from 'lucide-react-native';
+import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react-native';
 import { MonthYearPickerSheet } from '../components/UIComponents';
 import CategoryGlowBadge from '../components/ui/CategoryGlowBadge';
 import CategoryHeroArt from '../components/ui/CategoryHeroArt';
@@ -31,12 +31,14 @@ const TEXT_LIGHT = '#9CA3AF';
 const BG = '#F8FAFD';
 const BORDER = '#E8EDF5';
 
-const DONUT_R = 36;
-const DONUT_SW = 12;
+const DONUT_R = 28;
+const DONUT_SW = 10;
 const DONUT_SZ = (DONUT_R + DONUT_SW / 2 + 2) * 2;
 const CIRC = 2 * Math.PI * DONUT_R;
 
 export default function CategoryDetailScreen({ navigation, route }: any) {
+  const insets = useSafeAreaInsets();
+
   const {
     categoryName = 'Food',
     spent = 0,
@@ -46,7 +48,6 @@ export default function CategoryDetailScreen({ navigation, route }: any) {
 
   const [selectedDate, setSelectedDate] = useState(selectedDateStr ? new Date(selectedDateStr) : new Date());
   const [loading, setLoading] = useState(true);
-  const [breakdown, setBreakdown] = useState<any[]>([]);
   const [recent, setRecent] = useState<any[]>([]);
   const [categoryTotal, setCategoryTotal] = useState(spent);
   const [categoryPct, setCategoryPct] = useState(totalPct);
@@ -65,6 +66,7 @@ export default function CategoryDetailScreen({ navigation, route }: any) {
           cat: e.category,
           amt: Number(e.amount),
           date_raw: e.date,
+          payment_mode: e.payment_mode,
         }));
 
         // Filter by month & year
@@ -85,38 +87,28 @@ export default function CategoryDetailScreen({ navigation, route }: any) {
         const pct = totalSpent > 0 ? Math.round((catSpent / totalSpent) * 100) : 0;
         setCategoryPct(pct);
 
-        // Group categoryExpenses by title to construct the Breakdown data dynamically
+        // Calculate percentage as before
+
+        // Get all transactions in this category for the month, sorted by date
         const catMeta = getCategoryTheme(categoryName);
-        const groupedMap: Record<string, number> = {};
-        categoryExpenses.forEach((e: any) => {
-          groupedMap[e.title] = (groupedMap[e.title] || 0) + e.amt;
-        });
-
-        const computedBreakdown = Object.keys(groupedMap).map((name, index) => {
-          const amt = groupedMap[name];
-          const itemPct = catSpent > 0 ? Math.round((amt / catSpent) * 100) : 0;
-          return {
-            id: String(index + 1),
-            name,
-            amt,
-            pct: itemPct,
-            Icon: catMeta.Icon,
-          };
-        }).sort((a, b) => b.amt - a.amt);
-        setBreakdown(computedBreakdown);
-
-        // Get 4 most recent transactions in this category
         const sortedRecent = [...categoryExpenses].sort((a, b) => {
           return new Date(b.date_raw).getTime() - new Date(a.date_raw).getTime();
-        }).slice(0, 4);
+        });
 
-        const computedRecent = sortedRecent.map(e => ({
-          id: e.id,
-          title: e.title,
-          time: e.time,
-          amt: e.amt,
-          Icon: catMeta.Icon,
-        }));
+        const computedRecent = sortedRecent.map(e => {
+          let displayTitle = e.title;
+          if (!displayTitle || displayTitle.toLowerCase() === categoryName.toLowerCase()) {
+            displayTitle = `${categoryName} expense`;
+          }
+          return {
+            id: e.id,
+            title: displayTitle,
+            time: e.time,
+            amt: e.amt,
+            Icon: catMeta.Icon,
+            payment_mode: e.payment_mode,
+          };
+        });
         setRecent(computedRecent);
       }
     } catch (err) {
@@ -138,31 +130,35 @@ export default function CategoryDetailScreen({ navigation, route }: any) {
   const strokeDashoffset = CIRC - (categoryPct / 100) * CIRC;
 
   return (
-    <SafeAreaView style={s.safe} edges={['top']}>
+    <View style={s.safe}>
+      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
       {/* Hero */}
-      <View style={s.hero}>
+      <View style={[s.hero, { height: 220, marginTop: Math.max(insets.top, 40) + 40, marginHorizontal: 16, borderRadius: 24, marginBottom: 0 }]}>
         {hasHeroImage ? (
-          <ImageBackground
+          <Image
             source={heroImage}
-            style={StyleSheet.absoluteFill}
+            style={[StyleSheet.absoluteFill, { width: '100%', height: '100%', borderRadius: 24 }]}
             resizeMode="cover"
           />
         ) : (
           <>
-            <LinearGradient colors={catMeta.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+            <LinearGradient colors={catMeta.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, { borderRadius: 24 }]} />
             <CategoryHeroArt category={categoryName} width={width} height={HERO_HEIGHT} />
           </>
         )}
-        <LinearGradient
-          colors={['rgba(0,0,0,0)', hasHeroImage ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.22)']}
-          style={StyleSheet.absoluteFill}
-          pointerEvents="none"
-        />
+        
+        {!hasHeroImage && (
+          <LinearGradient
+            colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.22)']}
+            style={[StyleSheet.absoluteFill, { borderRadius: 24 }]}
+            pointerEvents="none"
+          />
+        )}
 
-        <View style={s.heroInner}>
+        <View style={[s.heroInner, { paddingTop: 16 }]}>
           <View style={s.heroTopRow}>
             <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()}>
-              <ArrowLeft size={22} color={WHITE} strokeWidth={2.5} />
+              <ChevronLeft size={28} color={WHITE} strokeWidth={2.5} />
             </TouchableOpacity>
             <TouchableOpacity style={s.monthPill} onPress={() => setShowMonthPicker(true)}>
               <Text style={s.monthPillText}>{selectedDate.toLocaleString('en-US', { month: 'short', year: 'numeric' })}</Text>
@@ -180,15 +176,19 @@ export default function CategoryDetailScreen({ navigation, route }: any) {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={{ 
+          backgroundColor: WHITE, 
+          flex: 1 
+        }}
+        contentContainerStyle={s.scroll} 
+        showsVerticalScrollIndicator={false}
+      >
         {/* Total Overview */}
         <View style={s.overviewCard}>
           <View style={{ flex: 1 }}>
             <Text style={s.overviewLabel}>Total Spent in {selectedDate.toLocaleString('en-US', { month: 'long', year: 'numeric' })}</Text>
             <Text style={s.overviewAmt}>₹ {categoryTotal.toLocaleString('en-IN')}</Text>
-            <View style={s.overviewSubBadge}>
-              <Text style={s.overviewSubText}>{categoryPct}% of total expenses</Text>
-            </View>
           </View>
           <View style={s.donutWrap}>
             <Svg width={DONUT_SZ} height={DONUT_SZ}>
@@ -213,44 +213,29 @@ export default function CategoryDetailScreen({ navigation, route }: any) {
             <SkeletonListRow />
             <SkeletonListRow last />
           </View>
-        ) : breakdown.length === 0 ? (
+        ) : recent.length === 0 ? (
           <View style={s.empty}>
             <Text style={s.emptyTxt}>No transactions recorded</Text>
           </View>
         ) : (
           <>
-            {/* Breakdown */}
-            <Text style={s.sectionTitle}>Breakdown</Text>
-            <View style={s.listCard}>
-              {breakdown.map((item, i) => {
-                return (
-                  <View key={item.id} style={[s.row, i < breakdown.length - 1 && s.rowBorder]}>
-                    <CategoryGlowBadge category={categoryName} size="md" style={{ marginRight: 12 }} />
-                    <View style={{ flex: 1, paddingRight: 10 }}>
-                      <Text style={s.rowTitle}>{item.name}</Text>
-                      <Text style={s.rowSub}>Transactions</Text>
-                    </View>
-                    <View style={{ alignItems: 'flex-end', flexDirection: 'row', gap: 6 }}>
-                      <View style={{ alignItems: 'flex-end' }}>
-                        <Text style={s.rowAmt}>₹ {item.amt.toLocaleString('en-IN')}</Text>
-                        <Text style={[s.rowPct, { color }]}>{item.pct}%</Text>
-                      </View>
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-
-            {/* Recent Transactions */}
-            <Text style={s.sectionTitle}>Recent Transactions</Text>
+            {/* Transactions */}
+            <Text style={s.sectionTitle}>Transactions</Text>
             <View style={s.listCard}>
               {recent.map((item, i) => {
                 return (
                   <View key={item.id} style={[s.row, i < recent.length - 1 && s.rowBorder]}>
-                    <CategoryGlowBadge category={categoryName} size="md" style={{ marginRight: 12 }} />
+                    <CategoryGlowBadge category={categoryName} size="sm" style={{ marginRight: 12 }} />
                     <View style={{ flex: 1 }}>
                       <Text style={s.rowTitle}>{item.title}</Text>
-                      <Text style={s.rowSub}>{item.time}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                        <Text style={s.rowSub}>{item.time}</Text>
+                        {item.payment_mode && (
+                          <View style={s.paymentBadge}>
+                            <Text style={s.paymentText}>{item.payment_mode}</Text>
+                          </View>
+                        )}
+                      </View>
                     </View>
                     <Text style={s.rowAmt}>₹ {item.amt.toLocaleString('en-IN')}</Text>
                   </View>
@@ -272,14 +257,13 @@ export default function CategoryDetailScreen({ navigation, route }: any) {
           setShowMonthPicker(false);
         }}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: BG },
+  safe: { flex: 1, backgroundColor: WHITE },
   hero: {
-    minHeight: HERO_HEIGHT,
     overflow: 'hidden', position: 'relative',
   },
   heroInner: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 28 },
@@ -301,28 +285,26 @@ const s = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
   },
 
-  scroll: { padding: 16 },
+  scroll: { paddingHorizontal: 16, paddingBottom: 40, paddingTop: 4 },
 
   overviewCard: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: WHITE, borderRadius: 20, padding: 20, marginBottom: 24,
-    borderWidth: 1, borderColor: BORDER,
+    paddingVertical: 20, marginBottom: 16,
   },
-  overviewLabel: { fontSize: 12, fontWeight: '600', color: TEXT_MID, marginBottom: 4 },
-  overviewAmt: { fontSize: 32, fontWeight: '800', color: TEXT_DARK, letterSpacing: -0.5, marginBottom: 12 },
+  overviewLabel: { fontSize: 11, fontWeight: '600', color: TEXT_MID, marginBottom: 4 },
+  overviewAmt: { fontSize: 24, fontWeight: '800', color: TEXT_DARK, letterSpacing: -0.5, marginBottom: 8 },
   overviewSubBadge: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: BLUE_SOFT },
   overviewSubText: { fontSize: 10, fontWeight: '700', color: BLUE },
 
   donutWrap: { position: 'relative', width: DONUT_SZ, height: DONUT_SZ, alignItems: 'center', justifyContent: 'center' },
   donutCenter: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
-  donutPctText: { fontSize: 16, fontWeight: '800', color: TEXT_DARK },
-  donutLbl: { fontSize: 9, color: TEXT_LIGHT, fontWeight: '600' },
+  donutPctText: { fontSize: 14, fontWeight: '800', color: TEXT_DARK },
+  donutLbl: { fontSize: 8, color: TEXT_LIGHT, fontWeight: '600' },
 
   sectionTitle: { fontSize: 14, fontWeight: '700', color: TEXT_DARK, marginBottom: 12, marginLeft: 4 },
 
   listCard: {
-    backgroundColor: WHITE, borderRadius: 16, borderWidth: 1, borderColor: BORDER,
-    marginBottom: 24, overflow: 'hidden',
+    marginBottom: 24,
   },
   row: { flexDirection: 'row', alignItems: 'center', padding: 16 },
   rowBorder: { borderBottomWidth: 1, borderBottomColor: BORDER },
@@ -330,7 +312,9 @@ const s = StyleSheet.create({
   rowSub: { fontSize: 11, color: TEXT_LIGHT, fontWeight: '500' },
   rowAmt: { fontSize: 13, fontWeight: '700', color: TEXT_DARK },
   rowPct: { fontSize: 11, fontWeight: '700', textAlign: 'right', marginTop: 2 },
-  empty: { padding: 32, alignItems: 'center', backgroundColor: WHITE, borderRadius: 16, borderWidth: 1, borderColor: BORDER },
+  paymentBadge: { backgroundColor: '#F1F5F9', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  paymentText: { fontSize: 10, color: TEXT_MID, fontWeight: '600' },
+  empty: { padding: 32, alignItems: 'center' },
   emptyTxt: { fontSize: 13, color: TEXT_MID, fontWeight: '600' },
   viewAllBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
