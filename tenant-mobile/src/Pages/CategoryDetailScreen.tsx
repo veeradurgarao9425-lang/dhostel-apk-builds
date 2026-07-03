@@ -12,31 +12,31 @@ import api from '../services/api';
 
 const { width } = Dimensions.get('window');
 
-const BLUE       = '#2245D4';
-const BLUE_SOFT  = '#EEF3FF';
-const WHITE      = '#FFFFFF';
-const TEXT_DARK  = '#0D1B3E';
-const TEXT_MID   = '#4A5568';
+const BLUE = '#2245D4';
+const BLUE_SOFT = '#EEF3FF';
+const WHITE = '#FFFFFF';
+const TEXT_DARK = '#0D1B3E';
+const TEXT_MID = '#4A5568';
 const TEXT_LIGHT = '#9CA3AF';
-const BG         = '#F8FAFD';
-const BORDER     = '#E8EDF5';
+const BG = '#F8FAFD';
+const BORDER = '#E8EDF5';
 
 const CATS: Record<string, { color: string; bg: string; Icon: any }> = {
-  Food:          { color: '#EF5350', bg: '#FDEAEA', Icon: Utensils },
-  Rent:          { color: '#546E7A', bg: '#ECEFF1', Icon: Home },
-  Transport:     { color: BLUE,      bg: BLUE_SOFT, Icon: Car },
-  Shopping:      { color: '#43A047', bg: '#EAF5EA', Icon: ShoppingBag },
-  Health:        { color: '#E53935', bg: '#FDEAEA', Icon: HeartPulse },
+  Food: { color: '#EF5350', bg: '#FDEAEA', Icon: Utensils },
+  Rent: { color: '#546E7A', bg: '#ECEFF1', Icon: Home },
+  Transport: { color: BLUE, bg: BLUE_SOFT, Icon: Car },
+  Shopping: { color: '#43A047', bg: '#EAF5EA', Icon: ShoppingBag },
+  Health: { color: '#E53935', bg: '#FDEAEA', Icon: HeartPulse },
   Entertainment: { color: '#8E24AA', bg: '#F4E5FA', Icon: Film },
-  Travel:        { color: '#0288D1', bg: '#E1F5FE', Icon: Plane },
-  Education:     { color: '#3949AB', bg: '#E8EAF6', Icon: BookOpen },
-  Coffee:        { color: '#795548', bg: '#EFEBE9', Icon: Coffee },
-  Gym:           { color: '#F4511E', bg: '#FBE9E7', Icon: Dumbbell },
-  Utilities:     { color: '#F9A825', bg: '#FFFDE7', Icon: Zap },
-  Gifts:         { color: '#EC407A', bg: '#FCE4EC', Icon: Gift },
-  Pets:          { color: '#6D4C41', bg: '#EFEBE9', Icon: Dog },
-  Bills:         { color: '#FB8C00', bg: '#FFF3E0', Icon: Receipt },
-  Others:        { color: '#546E7A', bg: '#ECEFF1', Icon: MoreHorizontal },
+  Travel: { color: '#0288D1', bg: '#E1F5FE', Icon: Plane },
+  Education: { color: '#3949AB', bg: '#E8EAF6', Icon: BookOpen },
+  Coffee: { color: '#795548', bg: '#EFEBE9', Icon: Coffee },
+  Gym: { color: '#F4511E', bg: '#FBE9E7', Icon: Dumbbell },
+  Utilities: { color: '#F9A825', bg: '#FFFDE7', Icon: Zap },
+  Gifts: { color: '#00897B', bg: '#E0F2F1', Icon: Gift },
+  Pets: { color: '#6D4C41', bg: '#EFEBE9', Icon: Dog },
+  Bills: { color: '#FB8C00', bg: '#FFF3E0', Icon: Receipt },
+  Others: { color: '#546E7A', bg: '#ECEFF1', Icon: MoreHorizontal },
 };
 
 const DONUT_R = 36;
@@ -45,10 +45,10 @@ const DONUT_SZ = (DONUT_R + DONUT_SW / 2 + 2) * 2;
 const CIRC = 2 * Math.PI * DONUT_R;
 
 export default function CategoryDetailScreen({ navigation, route }: any) {
-  const { 
-    categoryName = 'Food', 
-    spent = 0, 
-    totalPct = 0, 
+  const {
+    categoryName = 'Food',
+    spent = 0,
+    totalPct = 0,
     selectedDateStr,
   } = route.params || {};
 
@@ -169,7 +169,7 @@ export default function CategoryDetailScreen({ navigation, route }: any) {
         {/* Total Overview */}
         <View style={s.overviewCard}>
           <View style={{ flex: 1 }}>
-            <Text style={s.overviewLabel}>Total Spent</Text>
+            <Text style={s.overviewLabel}>Total Spent in {selectedDate.toLocaleString('en-US', { month: 'long', year: 'numeric' })}</Text>
             <Text style={s.overviewAmt}>₹ {categoryTotal.toLocaleString('en-IN')}</Text>
             <View style={s.overviewSubBadge}>
               <Text style={s.overviewSubText}>{categoryPct}% of total expenses</Text>
@@ -181,7 +181,7 @@ export default function CategoryDetailScreen({ navigation, route }: any) {
               <Circle cx={DONUT_SZ / 2} cy={DONUT_SZ / 2} r={DONUT_R} fill="none"
                 stroke={color} strokeWidth={DONUT_SW} strokeLinecap="round"
                 strokeDasharray={`${CIRC} ${CIRC}`} strokeDashoffset={strokeDashoffset}
-                transform={`rotate(-90 ${DONUT_SZ/2} ${DONUT_SZ/2})`}
+                transform={`rotate(-90 ${DONUT_SZ / 2} ${DONUT_SZ / 2})`}
               />
             </Svg>
             <View style={s.donutCenter}>
@@ -245,19 +245,9 @@ export default function CategoryDetailScreen({ navigation, route }: any) {
                 );
               })}
             </View>
-
-            {/* View All Button */}
-            <TouchableOpacity 
-              style={s.viewAllBtn} 
-              activeOpacity={0.7}
-              onPress={() => navigation.navigate('TransactionsList', { categoryName, spent: categoryTotal, selectedDateStr: selectedDate.toISOString() })}
-            >
-              <Text style={[s.viewAllText, { color }]}>View All Transactions</Text>
-              <ChevronRight size={18} color={color} strokeWidth={2.5} />
-            </TouchableOpacity>
           </>
         )}
-        
+
         <View style={{ height: 40 }} />
       </ScrollView>
 
@@ -293,7 +283,7 @@ const s = StyleSheet.create({
   monthPillText: { fontSize: 11, fontWeight: '600', color: TEXT_MID },
 
   scroll: { padding: 16 },
-  
+
   overviewCard: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     backgroundColor: WHITE, borderRadius: 20, padding: 20, marginBottom: 24,
@@ -310,7 +300,7 @@ const s = StyleSheet.create({
   donutLbl: { fontSize: 9, color: TEXT_LIGHT, fontWeight: '600' },
 
   sectionTitle: { fontSize: 14, fontWeight: '700', color: TEXT_DARK, marginBottom: 12, marginLeft: 4 },
-  
+
   listCard: {
     backgroundColor: WHITE, borderRadius: 16, borderWidth: 1, borderColor: BORDER,
     marginBottom: 24, overflow: 'hidden',

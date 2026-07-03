@@ -10,6 +10,8 @@ import {
 import api from '../services/api';
 import { mockNotices } from '../data/dummyData';
 import { Phase3EmptyState, Phase3ErrorState } from '../components/UIComponents';
+import { CustomMonthYearPicker } from '../components/pickers/CustomMonthYearPicker';
+import { Calendar } from 'lucide-react-native';
 
 const BLUE      = '#2245D4';
 const BLUE_SOFT = '#EEF3FF';
@@ -35,6 +37,8 @@ export default function NoticesScreen({ navigation }: any) {
   const [notices, setNotices]           = useState<any[]>([]);
   const [loading, setLoading]           = useState<boolean>(true);
   const [error, setError]               = useState<string | null>(null);
+  const [showPicker, setShowPicker]     = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState<Date | null>(null);
 
   const fetchNotices = async () => {
     try {
@@ -63,7 +67,15 @@ export default function NoticesScreen({ navigation }: any) {
     fetchNotices();
   }, []);
 
-  const filtered = notices.filter(n => activeFilter === 'All' ? true : n.category === activeFilter);
+  const filtered = notices.filter(n => {
+    const passCategory = activeFilter === 'All' ? true : n.category === activeFilter;
+    let passDate = true;
+    if (selectedMonth && n.date) {
+      const noticeDate = new Date(n.date);
+      passDate = noticeDate.getFullYear() === selectedMonth.getFullYear() && noticeDate.getMonth() === selectedMonth.getMonth();
+    }
+    return passCategory && passDate;
+  });
 
   // Count badges per filter tab
   const getCounts = () => {
@@ -85,14 +97,33 @@ export default function NoticesScreen({ navigation }: any) {
           <View style={styles.header}>
             <View>
               <Text style={styles.headerGreeting}>Notices</Text>
-              <Text style={styles.headerSub}>Latest hostel announcements</Text>
+              <Text style={styles.headerSub}>
+                {selectedMonth 
+                  ? `Showing notices for ${selectedMonth.toLocaleString('default', { month: 'short' })} ${selectedMonth.getFullYear()}` 
+                  : 'Latest hostel announcements'}
+              </Text>
             </View>
-            <TouchableOpacity style={styles.hBtn}>
-              <SlidersHorizontal size={20} color={WHITE} />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity style={styles.hBtn} onPress={() => setShowPicker(true)}>
+                <Calendar size={20} color={WHITE} />
+                {selectedMonth && <View style={styles.filterDot} />}
+              </TouchableOpacity>
+              {selectedMonth && (
+                <TouchableOpacity style={styles.hBtn} onPress={() => setSelectedMonth(null)}>
+                  <Plus size={20} color={WHITE} style={{ transform: [{ rotate: '45deg' }] }} />
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         </SafeAreaView>
       </View>
+
+      <CustomMonthYearPicker 
+        visible={showPicker}
+        onClose={() => setShowPicker(false)}
+        onConfirm={(d) => setSelectedMonth(d)}
+        initialDate={selectedMonth || new Date()}
+      />
 
       {/* ── Filter Chips with Count Badges ── */}
       <View style={styles.filterScroll}>
@@ -161,6 +192,7 @@ const styles = StyleSheet.create({
   headerGreeting: { color: WHITE, fontSize: 18, fontWeight: '700' },
   headerSub:      { color: 'rgba(255,255,255,0.8)', fontSize: 13, marginTop: 2 },
   hBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
+  filterDot: { position: 'absolute', top: 10, right: 10, width: 8, height: 8, borderRadius: 4, backgroundColor: '#EF4444', borderWidth: 1, borderColor: BLUE },
 
   filterScroll:    { backgroundColor: WHITE, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: BORDER },
   filterContainer: { paddingHorizontal: 16, gap: 10 },

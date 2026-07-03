@@ -113,8 +113,15 @@ export const skipMeal = async (req: AuthRequest, res: Response) => {
 export const getMySkips = async (req: AuthRequest, res: Response) => {
   try {
     const student_id = req.user?.user_id;
-    const today = new Date().toISOString().slice(0, 10);
-    const skips = await db('mess_skips').where({ student_id, meal_date: today });
+    const { month } = req.query; // optional 'YYYY-MM'
+
+    let query = db('mess_skips').where({ student_id });
+
+    if (month && typeof month === 'string') {
+      query = query.where('meal_date', 'like', `${month}%`);
+    }
+    
+    const skips = await query;
     res.json({ success: true, data: skips });
   } catch (error: any) {
     if (error?.code === 'ER_NO_SUCH_TABLE') return res.json({ success: true, data: [] });

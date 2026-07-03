@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  ArrowLeft, Search, SlidersHorizontal,
+  ChevronLeft, Search, SlidersHorizontal,
   Utensils, Car, ShoppingBag, Receipt,
   Film, HeartPulse, MoreHorizontal, Coffee,
   Home, Plane, Zap, Gift, BookOpen,
@@ -37,13 +37,13 @@ const CATS: Record<string, { color: string; bg: string; Icon: any }> = {
   Travel:        { color: '#0288D1', bg: '#E1F5FE', Icon: Plane },
   Rent:          { color: '#546E7A', bg: '#ECEFF1', Icon: Home },
   Utilities:     { color: '#F9A825', bg: '#FFFDE7', Icon: Zap },
-  Gifts:         { color: '#EC407A', bg: '#FCE4EC', Icon: Gift },
+  Gifts:         { color: '#00897B', bg: '#E0F2F1', Icon: Gift },
   Education:     { color: '#3949AB', bg: '#E8EAF6', Icon: BookOpen },
   Others:        { color: '#546E7A', bg: '#ECEFF1', Icon: MoreHorizontal },
 };
 
 const FILTER_CATS = ['All', 'Food', 'Transport', 'Shopping', 'Bills', 'Entertainment', 'Health', 'Coffee', 'Education', 'Others'];
-const GROUP_COLORS = ['#EEF3FF', '#FFF3E0', '#EAF5EA', '#FCE4EC', '#F4E5FA'];
+const GROUP_COLORS = ['#EEF3FF', '#FFF3E0', '#EAF5EA', '#E8EAF6', '#E0F2F1'];
 
 export default function AllExpensesScreen({ navigation }: any) {
   const [query, setQuery]               = useState('');
@@ -89,11 +89,7 @@ export default function AllExpensesScreen({ navigation }: any) {
   }, [fetchExpenses]);
 
   const cycleSortOrder = useCallback(() => {
-    const orders: typeof sortOrder[] = ['newest', 'lowest'];
-    setSortOrder(prev => {
-      const next = orders[(orders.indexOf(prev) + 1) % orders.length];
-      return next;
-    });
+    // Deprecated sort functionality
   }, []);
 
   const grouped = useMemo(() => {
@@ -126,10 +122,7 @@ export default function AllExpensesScreen({ navigation }: any) {
       return matchCat && matchQ && matchDate;
     });
     const sortFn = (a: any, b: any) => {
-      if (sortOrder === 'newest')  return new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime();
-      if (sortOrder === 'oldest')  return new Date(a.rawDate).getTime() - new Date(b.rawDate).getTime();
-      if (sortOrder === 'highest') return b.amt - a.amt;
-      return a.amt - b.amt;
+      return new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime();
     };
     const sorted = [...filtered].sort(sortFn);
     const map: Record<string, typeof allData> = {};
@@ -142,63 +135,61 @@ export default function AllExpensesScreen({ navigation }: any) {
       <StatusBar barStyle="light-content" backgroundColor={BLUE} />
       <View style={s.headerWrap}>
         <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
-          <View style={s.header}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={s.iconBtn}>
-              <ArrowLeft size={22} color={WHITE} strokeWidth={2.5} />
-            </TouchableOpacity>
-            <Text style={s.headerTitle}>All Expenses</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <TouchableOpacity style={[s.iconBtn, { backgroundColor: 'rgba(255,255,255,0.2)' }]} onPress={cycleSortOrder}>
-                <SlidersHorizontal size={18} color={WHITE} strokeWidth={2} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingRight: 16 }}>
+                <ChevronLeft size={28} color={WHITE} strokeWidth={2.5} />
               </TouchableOpacity>
-              {sortOrder !== 'newest' && (
-                <View style={{ backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
-                  <Text style={{ fontSize: 10, color: WHITE, fontWeight: '700' }}>{sortOrder}</Text>
-                </View>
-              )}
+              <View>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: WHITE }}>All Expenses</Text>
+                <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 2 }}>
+                  Track and review transactions
+                </Text>
+              </View>
             </View>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 20, paddingBottom: 16 }}>
-            <View style={[s.searchBox, { flex: 1, marginHorizontal: 0, marginBottom: 0 }]}>
-              <Search size={16} color="rgba(255,255,255,0.7)" strokeWidth={2} />
-              <TextInput style={s.searchInput} placeholder="Search expenses..." placeholderTextColor="rgba(255,255,255,0.6)" value={query} onChangeText={setQuery} />
-            </View>
+            
             <TouchableOpacity 
-              style={{
-                width: 42,
-                height: 42,
-                borderRadius: 12,
-                backgroundColor: 'rgba(255,255,255,0.15)',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderWidth: 1,
-                borderColor: 'rgba(255,255,255,0.3)',
-                position: 'relative',
-              }}
               onPress={() => setShowDatePicker(true)}
-              activeOpacity={0.7}
+              style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}
             >
               <Calendar size={18} color={WHITE} strokeWidth={2} />
               {dateFilter !== 'Any time' && (
-                <View style={{ position: 'absolute', top: -3, right: -3, width: 8, height: 8, borderRadius: 4, backgroundColor: '#EF4444' }} />
+                <View style={{ position: 'absolute', top: -2, right: -2, width: 10, height: 10, borderRadius: 5, backgroundColor: '#EF4444', borderWidth: 2, borderColor: '#2245D4' }} />
               )}
             </TouchableOpacity>
           </View>
         </SafeAreaView>
       </View>
 
+      <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8, backgroundColor: WHITE }}>
+        <View style={[s.searchBox, { marginHorizontal: 0, marginBottom: 0, backgroundColor: BG, borderColor: BORDER }]}>
+          <Search size={16} color={TEXT_LIGHT} strokeWidth={2} />
+          <TextInput style={[s.searchInput, { color: TEXT_DARK }]} placeholder="Search expenses..." placeholderTextColor={TEXT_LIGHT} value={query} onChangeText={setQuery} />
+          {query.length > 0 && (
+            <TouchableOpacity onPress={() => setQuery('')}>
+              <X size={16} color={TEXT_LIGHT} strokeWidth={2} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filterRow} style={s.filterBar}>
         {dateFilter !== 'Any time' && (
-          <TouchableOpacity 
-            style={[s.filterPill, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]} 
-            onPress={() => setShowDatePicker(true)}
-            activeOpacity={0.7}
-          >
-            <View style={[s.filterPillDot, { backgroundColor: '#DBEAFE' }]}>
-              <Calendar size={12} color="#2563EB" strokeWidth={2} />
-            </View>
-            <Text style={[s.filterPillText, { color: '#2563EB', fontWeight: '700' }]}>{dateFilter}</Text>
-          </TouchableOpacity>
+          <View style={[s.filterPill, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE', paddingRight: 8 }]}>
+            <TouchableOpacity 
+              onPress={() => setShowDatePicker(true)}
+              activeOpacity={0.7}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+            >
+              <View style={[s.filterPillDot, { backgroundColor: '#DBEAFE' }]}>
+                <Calendar size={12} color="#2563EB" strokeWidth={2} />
+              </View>
+              <Text style={[s.filterPillText, { color: '#2563EB', fontWeight: '700', marginRight: 4 }]}>{dateFilter}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setDateFilter('Any time')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <X size={14} color="#2563EB" strokeWidth={2.5} />
+            </TouchableOpacity>
+          </View>
         )}
 
         {FILTER_CATS.map(cat => {
@@ -247,11 +238,11 @@ export default function AllExpensesScreen({ navigation }: any) {
                       <Text style={s.groupTotalAmt}>₹ {dayTotal.toLocaleString('en-IN')}</Text>
                     </View>
                   </View>
-                  <View style={s.groupCard}>
-                    {items.map((item: any, idx: number) => {
+                  <View style={{ gap: 12 }}>
+                    {items.map((item: any) => {
                       const meta = CATS[item.cat] || CATS.Others; const Icon = meta.Icon;
                       return (
-                        <TouchableOpacity key={item.id} style={[s.row, idx < items.length - 1 && s.rowDivider]} activeOpacity={0.7}>
+                        <TouchableOpacity key={item.id} style={[s.row, { backgroundColor: WHITE, borderColor: 'rgba(0,0,0,0.04)', borderWidth: 1, borderRadius: 16 }]} activeOpacity={0.7}>
                           <View style={[s.iconWrap, { backgroundColor: meta.bg }]}><Icon size={20} color={meta.color} strokeWidth={2} /></View>
                           <View style={{ flex: 1 }}><Text style={s.rowTitle}>{item.title}</Text><Text style={s.rowTime}>{item.time}</Text></View>
                           <View style={{ alignItems: 'flex-end' }}>

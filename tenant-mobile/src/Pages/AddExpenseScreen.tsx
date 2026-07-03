@@ -17,6 +17,7 @@ import {
 } from 'lucide-react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import Svg, { Circle, Path } from 'react-native-svg';
+import { LoaderOverlay } from '../components/ui/PageLoader';
 
 const { width } = Dimensions.get('window');
 
@@ -182,13 +183,13 @@ export default function AddExpenseScreen({ navigation, route }: any) {
   const handleSave = async () => {
     if (!amount || Number(amount) <= 0) return;
     try {
-      const saved = await AsyncStorage.getItem('tenant_budget');
-      if (!saved || Number(saved) === 0) {
+      const savedBudget = await AsyncStorage.getItem('tenant_budget');
+      if (!savedBudget || Number(savedBudget) === 0) {
         setShowBudgetPrompt(true);
         return;
       }
     } catch {
-      // proceed if storage fails
+      // proceed if fails
     }
     await executeSave();
   };
@@ -225,7 +226,10 @@ export default function AddExpenseScreen({ navigation, route }: any) {
       return;
     }
     try {
-      await AsyncStorage.setItem('tenant_budget', String(bAmt));
+      await AsyncStorage.setItem('tenant_budget', bAmt.toString());
+      // Optionally sync to backend silently
+      api.post('/tenant-expenses/goal', { amount: bAmt }).catch(() => {});
+      
       setShowBudgetPrompt(false);
       await executeSave();
     } catch (err) {
@@ -383,6 +387,8 @@ export default function AddExpenseScreen({ navigation, route }: any) {
           </KeyboardAvoidingView>
         </TouchableOpacity>
       </Modal>
+
+      <LoaderOverlay visible={saving} label="Adding Expense…" />
     </SafeAreaView>
   );
 }

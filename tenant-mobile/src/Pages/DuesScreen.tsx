@@ -13,6 +13,8 @@ import {
 } from 'lucide-react-native';
 
 import { Phase3EmptyState, Phase3ErrorState } from '../components/UIComponents';
+import { CustomMonthYearPicker } from '../components/pickers/CustomMonthYearPicker';
+import { Calendar as CalendarIcon } from 'lucide-react-native';
 
 import { useAuth } from '../context/AuthContext';
 import { colors, radius, spacing, shadow } from '../theme';
@@ -78,7 +80,8 @@ export default function DuesScreen({ navigation }: any) {
   const [feeRecords, setFeeRecords]   = useState<FeeRecord[]>([]);
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState<string | null>(null);
-  const [filterYear, setFilterYear]   = useState<string>('All');
+  const [showPicker, setShowPicker]   = useState(false);
+  const [filterMonthYear, setFilterMonthYear] = useState<Date | null>(null);
 
   const fetchFees = async () => {
     try {
@@ -116,11 +119,12 @@ export default function DuesScreen({ navigation }: any) {
   
   const totalPaidAmount = feeRecords.reduce((sum, f) => sum + (Number(f.paid_amount) || 0), 0);
   
-  const availableYears = ['All', ...Array.from(new Set(feeRecords.map(f => f.fee_month.split('-')[0])))].sort((a, b) => b.localeCompare(a));
-  
-  const filteredHistory = filterYear === 'All' 
-    ? feeRecords 
-    : feeRecords.filter(f => f.fee_month.startsWith(filterYear));
+  const filteredHistory = filterMonthYear
+    ? feeRecords.filter(f => {
+        const [y, m] = f.fee_month.split('-');
+        return parseInt(y) === filterMonthYear.getFullYear() && parseInt(m) === filterMonthYear.getMonth() + 1;
+      })
+    : feeRecords;
 
   const firstName = (user?.name || 'Tenant').split(' ')[0];
   const initials  = (user?.name || 'V')
@@ -327,20 +331,22 @@ export default function DuesScreen({ navigation }: any) {
               </View>
             </View>
 
-            {/* Year filter chips */}
-            <View style={styles.tlFilterRow}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: spacing.xl }}>
-                {availableYears.map(year => (
-                  <TouchableOpacity
-                    key={year}
-                    onPress={() => setFilterYear(year)}
-                    style={[styles.filterChip, filterYear === year && styles.filterChipActive]}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={[styles.filterChipText, filterYear === year && styles.filterChipTextActive]}>{year}</Text>
+            {/* Filter */}
+            <View style={[styles.tlFilterRow, { paddingHorizontal: spacing.xl, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: TEXT_DARK }}>Payment History</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {filterMonthYear && (
+                  <TouchableOpacity onPress={() => setFilterMonthYear(null)} style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: '#FEE2E2', flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#EF4444' }}>Clear</Text>
                   </TouchableOpacity>
-                ))}
-              </ScrollView>
+                )}
+                <TouchableOpacity onPress={() => setShowPicker(true)} style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: BLUE_SOFT, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <CalendarIcon size={14} color={BLUE} />
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: BLUE }}>
+                    {filterMonthYear ? `${filterMonthYear.toLocaleString('default', { month: 'short' })} ${filterMonthYear.getFullYear()}` : 'Filter by Month'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Timeline */}
@@ -435,7 +441,12 @@ export default function DuesScreen({ navigation }: any) {
         </View>
       )}
 
-
+      <CustomMonthYearPicker
+        visible={showPicker}
+        onClose={() => setShowPicker(false)}
+        onConfirm={(d) => setFilterMonthYear(d)}
+        initialDate={filterMonthYear || new Date()}
+      />
     </View>
   );
 }

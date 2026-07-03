@@ -56,3 +56,60 @@ export const createTenantExpense = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({ success: false, error: 'Failed to add expense.' });
   }
 };
+
+export const getSavingGoal = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user || user.role_id !== 3) {
+      return res.status(403).json({ success: false, error: 'Unauthorized.' });
+    }
+
+    let goal = await db('tenant_saving_goals').where('student_id', user.user_id).first();
+    
+    // Default fallback if not found
+    if (!goal) {
+      goal = { student_id: user.user_id, amount: 0 };
+    }
+
+    return res.json({ success: true, data: goal });
+  } catch (error: any) {
+    if (error?.code === 'ER_NO_SUCH_TABLE') return res.json({ success: true, data: { amount: 0 } });
+    console.error('Error fetching saving goal:', error);
+    return res.status(500).json({ success: false, error: 'Failed to fetch saving goal.' });
+  }
+};
+
+export const updateSavingGoal = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user || user.role_id !== 3) {
+      return res.status(403).json({ success: false, error: 'Unauthorized.' });
+    }
+
+    const { amount } = req.body;
+    if (amount === undefined || amount === null) {
+      return res.status(400).json({ success: false, error: 'Amount is required' });
+    }
+
+    const existing = await db('tenant_saving_goals').where('student_id', user.user_id).first();
+
+    if (existing) {
+      await db('tenant_saving_goals')
+        .where('student_id', user.user_id)
+        .update({ amount: parseFloat(amount), updated_at: new Date() });
+    } else {
+      await db('tenant_saving_goals').insert({
+        student_id: user.user_id,
+        amount: parseFloat(amount),
+        created_at: new Date(),
+        updated_at: new Date()
+      });
+    }
+
+    const updated = await db('tenant_saving_goals').where('student_id', user.user_id).first();
+    return res.json({ success: true, data: updated, message: 'Saving goal updated successfully' });
+  } catch (error: any) {
+    console.error('Error updating saving goal:', error);
+    return res.status(500).json({ success: false, error: 'Failed to update saving goal.' });
+  }
+};
