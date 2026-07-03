@@ -1,16 +1,26 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ImageBackground } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle } from 'react-native-svg';
-import {
-  ArrowLeft, ChevronRight, ChevronDown, Utensils, Car, ShoppingBag, Receipt,
-  Film, HeartPulse, MoreHorizontal, Coffee, Home,
-  Plane, Zap, Gift, BookOpen, Dumbbell, Dog
-} from 'lucide-react-native';
+import { ArrowLeft, ChevronRight, ChevronDown } from 'lucide-react-native';
 import { MonthYearPickerSheet } from '../components/UIComponents';
+import CategoryGlowBadge from '../components/ui/CategoryGlowBadge';
+import CategoryHeroArt from '../components/ui/CategoryHeroArt';
+import { SkeletonListRow } from '../components/ui/SkeletonLoader';
+import { getCategoryTheme } from '../constants/categoryTheme';
 import api from '../services/api';
 
 const { width } = Dimensions.get('window');
+const HERO_HEIGHT = 280;
+
+const HERO_IMAGES: Record<string, any> = {
+  Entertainment: require('../../assets/expenses/entertainment.jpeg'),
+  Coffee: require('../../assets/expenses/cofee.jpeg'),
+  Food: require('../../assets/expenses/food.jpeg'),
+  Gym: require('../../assets/expenses/gym.jpeg'),
+  Shopping: require('../../assets/expenses/shopping.jpeg'),
+};
 
 const BLUE = '#2245D4';
 const BLUE_SOFT = '#EEF3FF';
@@ -20,24 +30,6 @@ const TEXT_MID = '#4A5568';
 const TEXT_LIGHT = '#9CA3AF';
 const BG = '#F8FAFD';
 const BORDER = '#E8EDF5';
-
-const CATS: Record<string, { color: string; bg: string; Icon: any }> = {
-  Food: { color: '#EF5350', bg: '#FDEAEA', Icon: Utensils },
-  Rent: { color: '#546E7A', bg: '#ECEFF1', Icon: Home },
-  Transport: { color: BLUE, bg: BLUE_SOFT, Icon: Car },
-  Shopping: { color: '#43A047', bg: '#EAF5EA', Icon: ShoppingBag },
-  Health: { color: '#E53935', bg: '#FDEAEA', Icon: HeartPulse },
-  Entertainment: { color: '#8E24AA', bg: '#F4E5FA', Icon: Film },
-  Travel: { color: '#0288D1', bg: '#E1F5FE', Icon: Plane },
-  Education: { color: '#3949AB', bg: '#E8EAF6', Icon: BookOpen },
-  Coffee: { color: '#795548', bg: '#EFEBE9', Icon: Coffee },
-  Gym: { color: '#F4511E', bg: '#FBE9E7', Icon: Dumbbell },
-  Utilities: { color: '#F9A825', bg: '#FFFDE7', Icon: Zap },
-  Gifts: { color: '#00897B', bg: '#E0F2F1', Icon: Gift },
-  Pets: { color: '#6D4C41', bg: '#EFEBE9', Icon: Dog },
-  Bills: { color: '#FB8C00', bg: '#FFF3E0', Icon: Receipt },
-  Others: { color: '#546E7A', bg: '#ECEFF1', Icon: MoreHorizontal },
-};
 
 const DONUT_R = 36;
 const DONUT_SW = 12;
@@ -94,7 +86,7 @@ export default function CategoryDetailScreen({ navigation, route }: any) {
         setCategoryPct(pct);
 
         // Group categoryExpenses by title to construct the Breakdown data dynamically
-        const catMeta = CATS[categoryName] || CATS.Others;
+        const catMeta = getCategoryTheme(categoryName);
         const groupedMap: Record<string, number> = {};
         categoryExpenses.forEach((e: any) => {
           groupedMap[e.title] = (groupedMap[e.title] || 0) + e.amt;
@@ -138,31 +130,54 @@ export default function CategoryDetailScreen({ navigation, route }: any) {
     fetchExpenses();
   }, [fetchExpenses]);
 
-  const catMeta = CATS[categoryName] || CATS.Others;
-  const CatIcon = catMeta.Icon;
+  const catMeta = getCategoryTheme(categoryName);
   const color = catMeta.color;
-  const bg = catMeta.bg;
+  const heroImage = HERO_IMAGES[categoryName];
+  const hasHeroImage = !!heroImage;
 
   const strokeDashoffset = CIRC - (categoryPct / 100) * CIRC;
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
-      {/* Header */}
-      <View style={s.header}>
-        <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()}>
-          <ArrowLeft size={24} color={TEXT_DARK} strokeWidth={2.5} />
-        </TouchableOpacity>
-        <View style={[s.headerIconWrap, { backgroundColor: bg }]}>
-          <CatIcon size={18} color={color} strokeWidth={2.5} />
+      {/* Hero */}
+      <View style={s.hero}>
+        {hasHeroImage ? (
+          <ImageBackground
+            source={heroImage}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+          />
+        ) : (
+          <>
+            <LinearGradient colors={catMeta.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+            <CategoryHeroArt category={categoryName} width={width} height={HERO_HEIGHT} />
+          </>
+        )}
+        <LinearGradient
+          colors={['rgba(0,0,0,0)', hasHeroImage ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.22)']}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
+
+        <View style={s.heroInner}>
+          <View style={s.heroTopRow}>
+            <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()}>
+              <ArrowLeft size={22} color={WHITE} strokeWidth={2.5} />
+            </TouchableOpacity>
+            <TouchableOpacity style={s.monthPill} onPress={() => setShowMonthPicker(true)}>
+              <Text style={s.monthPillText}>{selectedDate.toLocaleString('en-US', { month: 'short', year: 'numeric' })}</Text>
+              <ChevronDown size={14} color={WHITE} strokeWidth={2} />
+            </TouchableOpacity>
+          </View>
+
+          {!hasHeroImage && (
+            <View style={s.heroContent}>
+              <CategoryGlowBadge category={categoryName} size="hero" pulse entrance />
+              <Text style={s.heroTitle}>{categoryName}</Text>
+              <Text style={s.heroSub}>{`All ${categoryName} expenses`}</Text>
+            </View>
+          )}
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={s.headerTitle}>{categoryName}</Text>
-          <Text style={s.headerSub}>{`All ${categoryName} expenses`}</Text>
-        </View>
-        <TouchableOpacity style={s.monthPill} onPress={() => setShowMonthPicker(true)}>
-          <Text style={s.monthPillText}>{selectedDate.toLocaleString('en-US', { month: 'short', year: 'numeric' })}</Text>
-          <ChevronDown size={14} color={TEXT_MID} strokeWidth={2} />
-        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
@@ -192,8 +207,11 @@ export default function CategoryDetailScreen({ navigation, route }: any) {
         </View>
 
         {loading ? (
-          <View style={{ paddingVertical: 80, alignItems: 'center' }}>
-            <ActivityIndicator size="large" color={BLUE} />
+          <View style={s.listCard}>
+            <SkeletonListRow />
+            <SkeletonListRow />
+            <SkeletonListRow />
+            <SkeletonListRow last />
           </View>
         ) : breakdown.length === 0 ? (
           <View style={s.empty}>
@@ -205,12 +223,9 @@ export default function CategoryDetailScreen({ navigation, route }: any) {
             <Text style={s.sectionTitle}>Breakdown</Text>
             <View style={s.listCard}>
               {breakdown.map((item, i) => {
-                const Icon = item.Icon;
                 return (
                   <View key={item.id} style={[s.row, i < breakdown.length - 1 && s.rowBorder]}>
-                    <View style={[s.iconBox, { backgroundColor: bg }]}>
-                      <Icon size={16} color={color} strokeWidth={2} />
-                    </View>
+                    <CategoryGlowBadge category={categoryName} size="md" style={{ marginRight: 12 }} />
                     <View style={{ flex: 1, paddingRight: 10 }}>
                       <Text style={s.rowTitle}>{item.name}</Text>
                       <Text style={s.rowSub}>Transactions</Text>
@@ -230,12 +245,9 @@ export default function CategoryDetailScreen({ navigation, route }: any) {
             <Text style={s.sectionTitle}>Recent Transactions</Text>
             <View style={s.listCard}>
               {recent.map((item, i) => {
-                const Icon = item.Icon;
                 return (
                   <View key={item.id} style={[s.row, i < recent.length - 1 && s.rowBorder]}>
-                    <View style={[s.iconBox, { backgroundColor: bg }]}>
-                      <Icon size={16} color={color} strokeWidth={2} />
-                    </View>
+                    <CategoryGlowBadge category={categoryName} size="md" style={{ marginRight: 12 }} />
                     <View style={{ flex: 1 }}>
                       <Text style={s.rowTitle}>{item.title}</Text>
                       <Text style={s.rowSub}>{item.time}</Text>
@@ -266,21 +278,28 @@ export default function CategoryDetailScreen({ navigation, route }: any) {
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: BG },
-  header: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 12,
-    backgroundColor: WHITE, borderBottomWidth: 1, borderBottomColor: BORDER,
+  hero: {
+    minHeight: HERO_HEIGHT,
+    overflow: 'hidden', position: 'relative',
   },
-  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', marginLeft: -8, marginRight: 4 },
-  headerIconWrap: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
-  headerTitle: { fontSize: 16, fontWeight: '700', color: TEXT_DARK },
-  headerSub: { fontSize: 11, color: TEXT_LIGHT, fontWeight: '500', marginTop: 1 },
+  heroInner: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 28 },
+  heroTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', marginLeft: -8 },
   monthPill: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingHorizontal: 10, paddingVertical: 6,
-    borderRadius: 8, borderWidth: 1, borderColor: BORDER, backgroundColor: WHITE,
+    paddingHorizontal: 12, paddingVertical: 7,
+    borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)',
   },
-  monthPillText: { fontSize: 11, fontWeight: '600', color: TEXT_MID },
+  monthPillText: { fontSize: 12, fontWeight: '700', color: WHITE },
+  heroContent: { alignItems: 'center', marginTop: 8 },
+  heroTitle: {
+    fontSize: 22, fontWeight: '800', color: WHITE, letterSpacing: -0.3, marginTop: 12,
+    textShadowColor: 'rgba(0,0,0,0.35)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6,
+  },
+  heroSub: {
+    fontSize: 12, color: 'rgba(255,255,255,0.92)', fontWeight: '600', marginTop: 2,
+    textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
+  },
 
   scroll: { padding: 16 },
 
@@ -307,7 +326,6 @@ const s = StyleSheet.create({
   },
   row: { flexDirection: 'row', alignItems: 'center', padding: 16 },
   rowBorder: { borderBottomWidth: 1, borderBottomColor: BORDER },
-  iconBox: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   rowTitle: { fontSize: 13, fontWeight: '600', color: TEXT_DARK, marginBottom: 2 },
   rowSub: { fontSize: 11, color: TEXT_LIGHT, fontWeight: '500' },
   rowAmt: { fontSize: 13, fontWeight: '700', color: TEXT_DARK },

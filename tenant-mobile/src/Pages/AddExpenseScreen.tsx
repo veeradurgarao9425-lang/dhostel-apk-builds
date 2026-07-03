@@ -11,13 +11,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import {
   ArrowLeft, Check, CalendarDays, ChevronDown, FileImage,
-  ChevronRight, Utensils, Car, ShoppingBag, Receipt,
-  Film, HeartPulse, MoreHorizontal, Coffee, Home,
-  Plane, Zap, Gift, BookOpen, Dumbbell, Dog, Plus, RefreshCw, X, ChevronLeft,
+  ChevronRight, MoreHorizontal,
+  Plus, RefreshCw, X, ChevronLeft,
 } from 'lucide-react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
+import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { LoaderOverlay } from '../components/ui/PageLoader';
+import { getCategoryTheme } from '../constants/categoryTheme';
 
 const { width } = Dimensions.get('window');
 
@@ -31,23 +32,14 @@ const BG        = '#F8FAFD';
 const BORDER    = '#E8EDF5';
 const SUCCESS   = '#16A34A';
 
-const CATEGORIES = [
-  { id: 'Food',          color: '#EF5350', bg: '#FDEAEA', Icon: Utensils },
-  { id: 'Rent',          color: '#546E7A', bg: '#ECEFF1', Icon: Home },
-  { id: 'Transport',     color: BLUE,      bg: BLUE_SOFT, Icon: Car },
-  { id: 'Shopping',      color: '#43A047', bg: '#EAF5EA', Icon: ShoppingBag },
-  { id: 'Health',        color: '#E53935', bg: '#FDEAEA', Icon: HeartPulse },
-  { id: 'Entertainment', color: '#8E24AA', bg: '#F4E5FA', Icon: Film },
-  { id: 'Travel',        color: '#0288D1', bg: '#E1F5FE', Icon: Plane },
-  { id: 'Education',     color: '#3949AB', bg: '#E8EAF6', Icon: BookOpen },
-  { id: 'Coffee',        color: '#795548', bg: '#EFEBE9', Icon: Coffee },
-  { id: 'Gym',           color: '#F4511E', bg: '#FBE9E7', Icon: Dumbbell },
-  { id: 'Utilities',     color: '#F9A825', bg: '#FFFDE7', Icon: Zap },
-  { id: 'Gifts',         color: '#EC407A', bg: '#FCE4EC', Icon: Gift },
-  { id: 'Pets',          color: '#6D4C41', bg: '#EFEBE9', Icon: Dog },
-  { id: 'Bills',         color: '#FB8C00', bg: '#FFF3E0', Icon: Receipt },
-  { id: 'Others',        color: '#546E7A', bg: '#ECEFF1', Icon: MoreHorizontal },
+const CATEGORY_IDS = [
+  'Food', 'Rent', 'Transport', 'Shopping', 'Health', 'Entertainment', 'Travel',
+  'Education', 'Coffee', 'Gym', 'Utilities', 'Gifts', 'Pets', 'Bills', 'Others',
 ];
+const CATEGORIES = CATEGORY_IDS.map(id => {
+  const theme = getCategoryTheme(id);
+  return { id, color: theme.color, bg: theme.bg, gradient: theme.gradient, glowColor: theme.glowColor, premium: theme.premium, Icon: theme.Icon };
+});
 
 const QUICK_AMOUNTS   = [50, 100, 200, 500];
 const PAYMENT_METHODS = ['Cash', 'UPI', 'Card', 'Net Banking', 'Wallet'];
@@ -122,12 +114,23 @@ function CategoryItem({ cat, selected, onPress }: { cat: typeof CATEGORIES[0]; s
     <TouchableOpacity style={s.catItem} onPress={handlePress} activeOpacity={0.9}>
       <Animated.View style={[
         s.catIconWrap,
-        { backgroundColor: cat.bg, transform: [{ scale }] },
-        selected && { shadowColor: cat.color, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
+        { transform: [{ scale }], overflow: 'hidden' },
+        selected && {
+          shadowColor: cat.glowColor, shadowOpacity: cat.premium ? 0.45 : 0.3,
+          shadowRadius: cat.premium ? 14 : 8, shadowOffset: { width: 0, height: 4 }, elevation: 4,
+        },
       ]}>
-        <Icon size={24} color={cat.color} strokeWidth={2} />
+        {selected ? (
+          <LinearGradient colors={cat.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.catIconFill}>
+            <Icon size={24} color={WHITE} strokeWidth={2} />
+          </LinearGradient>
+        ) : (
+          <View style={[s.catIconFill, { backgroundColor: cat.bg }]}>
+            <Icon size={24} color={cat.color} strokeWidth={2} />
+          </View>
+        )}
         {selected && (
-          <Animated.View style={[s.catCheckBadge, { backgroundColor: cat.color }]}>
+          <Animated.View style={[s.catCheckBadge, { backgroundColor: cat.glowColor }]}>
             <Check size={10} color={WHITE} strokeWidth={3} />
           </Animated.View>
         )}
@@ -417,6 +420,7 @@ const s = StyleSheet.create({
   catGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: COL_GAP },
   catItem: { alignItems: 'center', width: TILE },
   catIconWrap: { width: 56, height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center', position: 'relative', marginBottom: 8 },
+  catIconFill: { width: '100%', height: '100%', borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   catCheckBadge: { position: 'absolute', bottom: -2, right: -2, width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: WHITE },
   catLabel: { fontSize: 12, fontWeight: '600', color: TEXT_DARK, textAlign: 'center' },
   inputCard: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: WHITE, borderWidth: 1, borderColor: BORDER, borderRadius: 13, paddingHorizontal: 14, height: 52 },

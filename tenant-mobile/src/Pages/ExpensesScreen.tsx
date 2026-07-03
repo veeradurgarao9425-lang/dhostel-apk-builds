@@ -2,11 +2,11 @@ import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react'
 import {
   StyleSheet, Text, View, TouchableOpacity, ScrollView,
   Dimensions, Animated, StatusBar, TextInput, Modal,
-  Share, Image, ActivityIndicator,
+  Share, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import Svg, { Circle, Path, Polyline, Line, G } from 'react-native-svg';
+import Svg, { Circle, Path, Polyline, Polygon, Line, G } from 'react-native-svg';
 import {
   BarChart2, Plus, TrendingUp, TrendingDown,
   Utensils, Car, ShoppingBag, Receipt,
@@ -18,6 +18,9 @@ import {
 } from 'lucide-react-native';
 
 import { FilterSheet, BaseBottomSheet, ConfirmationDialog, Phase3EmptyState, MonthYearPickerSheet } from '../components/UIComponents';
+import CategoryGlowBadge from '../components/ui/CategoryGlowBadge';
+import { SkeletonStatCard, SkeletonExpenseCard } from '../components/ui/SkeletonLoader';
+import { getCategoryTheme } from '../constants/categoryTheme';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -547,9 +550,11 @@ export default function ExpensesScreen({ navigation }: any) {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
         {loading ? (
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 80 }}>
-            <ActivityIndicator size="large" color={BLUE} />
-            <Text style={{ marginTop: 12, fontSize: 13, color: TEXT_MID, fontWeight: '500' }}>Loading expenses…</Text>
+          <View style={{ paddingTop: 4 }}>
+            <SkeletonStatCard />
+            <SkeletonExpenseCard />
+            <SkeletonExpenseCard />
+            <SkeletonExpenseCard />
           </View>
         ) : (
           <>
@@ -571,6 +576,7 @@ export default function ExpensesScreen({ navigation }: any) {
                 completedGoals={completedGoals}
                 selectedDate={selectedDate}
                 todaySpent={todaySpent}
+                monthlyData={monthlyData}
               />
             )}
             {tab === 'Categories' && <CategoriesTab expenses={expenses} monthTotal={monthTotal} breakdown={breakdown} navigation={navigation} selectedDate={selectedDate} />}
@@ -641,10 +647,53 @@ export default function ExpensesScreen({ navigation }: any) {
 // ══════════════════════════════════════════════════════════════════════════════
 // OVERVIEW TAB
 // ══════════════════════════════════════════════════════════════════════════════
+function FadeSlideIn({ children, delay = 0, style }: { children: React.ReactNode; delay?: number; style?: any }) {
+  const opacity = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(28)).current;
+  useEffect(() => {
+    opacity.setValue(0);
+    translateY.setValue(28);
+    Animated.parallel([
+      Animated.timing(opacity, { toValue: 1, duration: 480, delay, useNativeDriver: true }),
+      Animated.spring(translateY, { toValue: 0, delay, friction: 7, tension: 50, useNativeDriver: true }),
+    ]).start();
+  }, []);
+  return <Animated.View style={[{ opacity, transform: [{ translateY }] }, style]}>{children}</Animated.View>;
+}
+
+function MiniSparkline({ data, color = BLUE, height = 40 }: { data: any[]; color?: string; height?: number }) {
+  const vbW = 300;
+  const amts = data.map((d: any) => d.amt);
+  const max = Math.max(...amts, 1);
+  const min = Math.min(...amts, 0);
+  const range = Math.max(max - min, 1);
+  const stepX = vbW / (data.length - 1);
+  const pad = 4;
+  const pts = data.map((d: any, i: number) => {
+    const x = i * stepX;
+    const y = pad + (height - pad * 2) * (1 - (d.amt - min) / range);
+    return { x, y };
+  });
+  const polyPoints = pts.map(p => `${p.x},${p.y}`).join(' ');
+  const areaPoints = `0,${height} ${polyPoints} ${vbW},${height}`;
+  const last = pts[pts.length - 1];
+
+  return (
+    <Svg width="100%" height={height} viewBox={`0 0 ${vbW} ${height}`} preserveAspectRatio="none">
+      <Polygon points={areaPoints} fill={color} opacity={0.08} />
+      <Polyline points={polyPoints} fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+      <Circle cx={last.x} cy={last.y} r={4} fill={WHITE} stroke={color} strokeWidth={2.5} />
+    </Svg>
+  );
+}
+
 function OverviewTab({
   expenses, monthTotal, breakdown, navigation, activeCategory, onToggleCategory, onSettleUp, onReceiptOpen, budget, onEditBudget,
-  goalName, goalTarget, goalProgress, goalSaved, onEditGoal, onAddSavings, completedGoals, selectedDate, todaySpent = 0
+  goalName, goalTarget, goalProgress, goalSaved, onEditGoal, onAddSavings, completedGoals, selectedDate, todaySpent = 0, monthlyData = []
 }: any) {
+  const prevMonthAmt = monthlyData[monthlyData.length - 2]?.amt || 0;
+  const momPct = prevMonthAmt > 0 ? Math.round(((monthTotal - prevMonthAmt) / prevMonthAmt) * 100) : 0;
+  const momUp = momPct >= 0;
   const [searchQ, setSearchQ]         = useState('');
   const [showSearch, setShowSearch]   = useState(false);
   const [showFilter, setShowFilter]   = useState(false);
@@ -679,6 +728,7 @@ function OverviewTab({
   return (
     <>
       {/* ── 1. Total Spent Donut Chart ── */}
+      <FadeSlideIn delay={0}>
       <View style={[s.overviewCard, { flexDirection: 'column', alignItems: 'center', position: 'relative' }]}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginBottom: 20 }}>
           <Text style={s.overviewLabel}>Total Spent ({selectedDate.toLocaleString('en-US', { month: 'short' })})</Text>
@@ -720,8 +770,17 @@ function OverviewTab({
           </View>
         </View>
 
-        <View style={{ flexDirection: 'column', gap: 10, marginTop: 20, alignSelf: 'stretch' }}>
-          
+        {monthlyData && monthlyData.length > 1 && (
+          <View style={{ width: '100%', marginTop: 18 }}>
+            <Text style={{ fontSize: 10, fontWeight: '700', color: TEXT_LIGHT, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>
+              6-Month Trend
+            </Text>
+            <MiniSparkline data={monthlyData} color={momUp ? '#E11D48' : '#2245D4'} />
+          </View>
+        )}
+
+        <View style={{ flexDirection: 'column', gap: 10, marginTop: 16, alignSelf: 'stretch' }}>
+
           <View style={[s.trendRow, { paddingHorizontal: 16, paddingVertical: 12, backgroundColor: budget > 0 ? (monthTotal > budget ? '#FEF2F2' : '#ECFDF5') : '#FFFBEB', borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: budget > 0 ? (monthTotal > budget ? 1 : 0) : 1, borderColor: budget > 0 ? (monthTotal > budget ? '#FCA5A5' : 'transparent') : '#FDE68A' }]}>
             {budget > 0 ? (
               <>
@@ -734,10 +793,16 @@ function OverviewTab({
                 </Text>
                 
                 <View style={{ alignItems: 'flex-end', marginLeft: 8 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                    <TrendingUp size={10} color="#E11D48" strokeWidth={2.5} />
-                    <Text style={{ fontSize: 9, fontWeight: '700', color: '#E11D48', marginLeft: 3 }}>12% vs last month</Text>
-                  </View>
+                  {prevMonthAmt > 0 && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                      {momUp
+                        ? <TrendingUp size={10} color="#E11D48" strokeWidth={2.5} />
+                        : <TrendingDown size={10} color="#059669" strokeWidth={2.5} />}
+                      <Text style={{ fontSize: 9, fontWeight: '700', color: momUp ? '#E11D48' : '#059669', marginLeft: 3 }}>
+                        {Math.abs(momPct)}% vs last month
+                      </Text>
+                    </View>
+                  )}
                   <View style={{ backgroundColor: monthTotal > budget ? '#FEE2E2' : '#D1FAE5', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
                     <Text style={{ fontSize: 11, color: monthTotal > budget ? '#EF4444' : '#047857', fontWeight: '700' }}>
                       ₹{todaySpent} spent today
@@ -753,13 +818,15 @@ function OverviewTab({
           </View>
         </View>
       </View>
+      </FadeSlideIn>
 
       {/* ── 2. Top Spending Category ── */}
       {breakdown.length > 0 && (() => {
         const topCat = CATS[breakdown[0].name] || CATS['Others'];
         const TopIcon = topCat.Icon;
         return (
-          <View style={[s.card, { backgroundColor: '#FFF0F2', borderColor: '#FFE4E6', padding: 14 }]}>
+          <FadeSlideIn delay={80}>
+          <View style={[s.card, { backgroundColor: '#FFF0F2', borderColor: '#FFE4E6', padding: 14, borderLeftWidth: 4, borderLeftColor: topCat.color }]}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <View style={{ backgroundColor: topCat.color, padding: 6, borderRadius: 10, shadowColor: topCat.color, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 2 }}>
@@ -779,10 +846,12 @@ function OverviewTab({
               <Text style={{ fontSize: 24, fontWeight: '900', color: '#E11D48', letterSpacing: -0.5 }}>₹{breakdown[0].amount.toLocaleString('en-IN')}</Text>
             </View>
           </View>
+          </FadeSlideIn>
         );
       })()}
 
       {/* ── 2.5 Savings Goal ── */}
+      <FadeSlideIn delay={140}>
       {goalTarget === 0 ? (
         <TouchableOpacity
           style={[s.card, { backgroundColor: '#F0FDF4', borderColor: '#DCFCE7', padding: 16 }]}
@@ -829,9 +898,11 @@ function OverviewTab({
           </View>
         </TouchableOpacity>
       )}
+      </FadeSlideIn>
 
       {/* ── 3. Insight Card ── */}
       {breakdown.length > 0 && monthTotal > 0 && (
+        <FadeSlideIn delay={200}>
         <TouchableOpacity
           style={s.insightCard}
           activeOpacity={0.85}
@@ -846,9 +917,11 @@ function OverviewTab({
           </View>
           <ChevronRight size={16} color={WARN_COLOR} strokeWidth={2.5} />
         </TouchableOpacity>
+        </FadeSlideIn>
       )}
 
       {/* ── 4. Bill Split Card ── */}
+      <FadeSlideIn delay={260}>
       <View style={s.card}>
         <View style={s.splitTop}>
           <View style={s.splitIconWrap}><Users size={18} color={WHITE} /></View>
@@ -879,8 +952,10 @@ function OverviewTab({
           </View>
         </View>
       </View>
+      </FadeSlideIn>
 
       {/* ── 5. Recent Transactions ── */}
+      <FadeSlideIn delay={320}>
       <View style={s.sectionRow}>
         <Text style={s.sectionTitle}>Recent</Text>
         <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
@@ -915,10 +990,9 @@ function OverviewTab({
         </TouchableOpacity>
         {Object.entries(CATS).map(([name, meta]) => {
           const act = catFilter === name;
-          const Icon = meta.Icon;
           return (
             <TouchableOpacity key={name} style={[s.chip, act && { backgroundColor: meta.bg, borderColor: meta.color }]} onPress={() => setCatFilter(act ? null : name)} activeOpacity={0.7}>
-              <Icon size={11} color={act ? meta.color : TEXT_LIGHT} strokeWidth={2} />
+              <CategoryGlowBadge category={name} size="xs" active={act} />
               <Text style={[s.chipTxt, act && { color: meta.color, fontWeight: '700' }]}>{name}</Text>
             </TouchableOpacity>
           );
@@ -929,13 +1003,10 @@ function OverviewTab({
       {filtered.length > 0 ? (
         <View style={s.txnCard}>
           {filtered.slice(0, 5).map((item: any, i: number) => {
-            const meta = CATS[item.cat] || CATS.Others;
-            const Icon = meta.Icon;
+            const itemTheme = getCategoryTheme(item.cat);
             return (
-              <View key={item.id} style={[s.txnRow, i < filtered.length - 1 && s.txnDivider]}>
-                <View style={[s.txnIcon, { backgroundColor: meta.bg }]}>
-                  <Icon size={18} color={meta.color} strokeWidth={2} />
-                </View>
+              <View key={item.id} style={[s.txnRow, i < filtered.length - 1 && s.txnDivider, { borderLeftWidth: 3, borderLeftColor: itemTheme.color }]}>
+                <CategoryGlowBadge category={item.cat} size="md" />
                 <View style={{ flex: 1 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 5 }}>
                     <Text style={s.txnTitle}>{item.title}</Text>
@@ -960,8 +1031,10 @@ function OverviewTab({
       ) : (
         <Phase3EmptyState variant="search" />
       )}
+      </FadeSlideIn>
 
       {/* ── Completed Goals History ── */}
+      <FadeSlideIn delay={380}>
       <View style={{ marginTop: 24, marginBottom: 16 }}>
         <Text style={[s.sectionTitle, { paddingHorizontal: 0, marginBottom: 12 }]}>Past Achievements</Text>
         {completedGoals.length === 0 ? (
@@ -988,6 +1061,7 @@ function OverviewTab({
           </ScrollView>
         )}
       </View>
+      </FadeSlideIn>
       <FilterSheet visible={showFilter} onClose={() => setShowFilter(false)} />
     </>
   );
@@ -1045,6 +1119,7 @@ function CategoriesTab({ expenses, monthTotal, breakdown, navigation, selectedDa
   const MAX = Math.max(...breakdown.map((c: any) => c.amount));
   return (
     <>
+      <FadeSlideIn delay={0}>
       <View style={s.statRow}>
         <View style={s.statCell}><Text style={s.statVal}>₹{monthTotal.toLocaleString('en-IN')}</Text><Text style={s.statLbl}>Total</Text></View>
         <View style={s.statLine} />
@@ -1052,11 +1127,13 @@ function CategoriesTab({ expenses, monthTotal, breakdown, navigation, selectedDa
         <View style={s.statLine} />
         <View style={s.statCell}><Text style={[s.statVal, { color: breakdown.length > 0 ? (breakdown[0].color || '#EF5350') : '#EF5350' }]}>{breakdown.length > 0 ? breakdown[0].name : '--'}</Text><Text style={s.statLbl}>Top Spend</Text></View>
       </View>
+      </FadeSlideIn>
 
+      <FadeSlideIn delay={80}>
       <View style={s.card}>
         <Text style={s.cardTitle}>Spending Breakdown</Text>
         <DonutChart breakdown={breakdown} monthTotal={monthTotal} />
-        
+
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12, marginTop: 8, marginBottom: 12 }}>
           {breakdown.map((cat: any) => (
             <View key={cat.name} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -1066,8 +1143,10 @@ function CategoriesTab({ expenses, monthTotal, breakdown, navigation, selectedDa
           ))}
         </View>
       </View>
+      </FadeSlideIn>
 
       {breakdown.length > 0 && (
+        <FadeSlideIn delay={160}>
         <View style={[s.card, { backgroundColor: WARN_BG, borderColor: WARN_BORDER, marginBottom: 16 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
             <Lightbulb size={16} color={WARN_COLOR} strokeWidth={2.5} />
@@ -1077,18 +1156,18 @@ function CategoriesTab({ expenses, monthTotal, breakdown, navigation, selectedDa
             You spent <Text style={{ fontWeight: '800' }}>{breakdown[0].pct}%</Text> of your budget on <Text style={{ fontWeight: '800' }}>{breakdown[0].name}</Text> this month.
           </Text>
         </View>
+        </FadeSlideIn>
       )}
 
+      <FadeSlideIn delay={240}>
       <View style={s.txnCard}>
         {breakdown.map((cat: any, i: number) => {
-          const meta = CATS[cat.name] || CATS.Others;
-          const Icon = meta.Icon;
           return (
-            <TouchableOpacity key={cat.name} style={[s.txnRow, i < breakdown.length - 1 && s.txnDivider]}
+            <TouchableOpacity key={cat.name} style={[s.txnRow, i < breakdown.length - 1 && s.txnDivider, { borderLeftWidth: 3, borderLeftColor: cat.color }]}
               onPress={() => navigation.navigate('CategoryDetail', { categoryName: cat.name, spent: cat.amount, totalPct: cat.pct, color: cat.color, bg: cat.bg, selectedDateStr: selectedDate.toISOString() })}
               activeOpacity={0.7}
             >
-              <View style={[s.txnIcon, { backgroundColor: cat.bg }]}><Icon size={18} color={cat.color} strokeWidth={2} /></View>
+              <CategoryGlowBadge category={cat.name} size="md" entrance />
               <View style={{ flex: 1 }}>
                 <Text style={s.txnTitle}>{cat.name}</Text>
                 <View style={[s.catDetailBar]}><View style={[s.catDetailFill, { width: `${cat.pct}%` as any, backgroundColor: cat.color }]} /></View>
@@ -1101,6 +1180,7 @@ function CategoriesTab({ expenses, monthTotal, breakdown, navigation, selectedDa
           );
         })}
       </View>
+      </FadeSlideIn>
     </>
   );
 }
@@ -1177,6 +1257,7 @@ function AnalyticsTab({ expenses, monthTotal, monthlyData, maxAmt, breakdown }: 
 
   return (
     <>
+      <FadeSlideIn delay={0}>
       <View style={s.statRow}>
         <View style={s.statCell}><Text style={s.statVal}>₹{dailyAvg.toLocaleString('en-IN')}</Text><Text style={s.statLbl}>Daily Avg</Text></View>
         <View style={s.statLine} />
@@ -1184,22 +1265,28 @@ function AnalyticsTab({ expenses, monthTotal, monthlyData, maxAmt, breakdown }: 
         <View style={s.statLine} />
         <View style={s.statCell}><Text style={[s.statVal, { color: isUp ? DANGER : SUCCESS }]}>{isUp ? '↑' : '↓'} {Math.abs(parseFloat(mom))}%</Text><Text style={s.statLbl}>Trend</Text></View>
       </View>
+      </FadeSlideIn>
 
+      <FadeSlideIn delay={80}>
       <Text style={[s.sectionTitle, { marginBottom: 10 }]}>6-Month Trend</Text>
       <View style={[s.card, { marginBottom: 16 }]}>
         <TrendLine monthlyData={monthlyData} />
       </View>
+      </FadeSlideIn>
 
+      <FadeSlideIn delay={160}>
       <Text style={[s.sectionTitle, { marginBottom: 10 }]}>This Week's Activity</Text>
       <View style={[s.card, { marginBottom: 16 }]}>
         <WeeklyChart expenses={expenses} />
       </View>
+      </FadeSlideIn>
 
+      <FadeSlideIn delay={240}>
       <Text style={[s.sectionTitle, { marginBottom: 10 }]}>Where your money goes</Text>
       <View style={[s.card, { padding: 0, overflow: 'hidden' }]}>
         {topThree.length > 0 ? topThree.map((cat: any, i: number) => (
           <View key={cat.name} style={[s.txnRow, i < topThree.length - 1 && s.txnDivider, { padding: 16 }]}>
-            <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: cat.color, marginRight: 12 }} />
+            <CategoryGlowBadge category={cat.name} size="sm" style={{ marginRight: 12 }} />
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 14, fontWeight: '700', color: TEXT_DARK }}>{cat.name}</Text>
               <Text style={{ fontSize: 11, color: TEXT_LIGHT, marginTop: 2 }}>{cat.pct}% of total</Text>
@@ -1212,6 +1299,7 @@ function AnalyticsTab({ expenses, monthTotal, monthlyData, maxAmt, breakdown }: 
           </View>
         )}
       </View>
+      </FadeSlideIn>
     </>
   );
 }

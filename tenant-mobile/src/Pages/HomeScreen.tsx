@@ -47,10 +47,23 @@ import {
 
 import { useAuth } from "../context/AuthContext";
 import { Phase3EmptyState } from '../components/UIComponents';
+import IconGlowBadge from '../components/ui/IconGlowBadge';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from "../services/api";
 
 const { width } = Dimensions.get("window");
+
+function FadeSlideIn({ children, delay = 0, style }: { children: React.ReactNode; delay?: number; style?: any }) {
+  const opacity = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(28)).current;
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(opacity, { toValue: 1, duration: 480, delay, useNativeDriver: true }),
+      Animated.spring(translateY, { toValue: 0, delay, friction: 7, tension: 50, useNativeDriver: true }),
+    ]).start();
+  }, []);
+  return <Animated.View style={[{ opacity, transform: [{ translateY }] }, style]}>{children}</Animated.View>;
+}
 
 // ── Ocean Blue Palette ────────────────────────────────────────────────────────
 const BLUE = "#2245D4";
@@ -286,23 +299,22 @@ export default function HomeScreen({ navigation }: any) {
   const todayDay = days[new Date().getDay()];
   const todayMenu = todaysMeals;
 
-  const meals: { key: "morning" | "lunch" | "dinner"; title: string; sub: string; time: string; Icon: any; bg: string; iconBg: string; color: string }[] = [
-    { key: "morning", title: "Morning", sub: todayMenu.breakfast.items, time: "8:00 AM - 10:00 AM", Icon: Sun, bg: "#FFFBF5", iconBg: "#FFEDD5", color: "#F97316" },
-    { key: "lunch", title: "Lunch", sub: todayMenu.lunch.items, time: "12:00 PM - 2:00 PM", Icon: Utensils, bg: "#FFF1F2", iconBg: "#FFE4E6", color: "#E11D48" },
-    { key: "dinner", title: "Dinner", sub: todayMenu.dinner.items, time: "8:00 PM - 11:00 PM", Icon: ConciergeBell, bg: "#ECFDF5", iconBg: "#D1FAE5", color: "#059669" },
+  const meals: { key: "morning" | "lunch" | "dinner"; title: string; sub: string; time: string; Icon: any; bg: string; iconBg: string; color: string; gradient: [string, string] }[] = [
+    { key: "morning", title: "Morning", sub: todayMenu.breakfast.items, time: "8:00 AM - 10:00 AM", Icon: Sun, bg: "#FFFBF5", iconBg: "#FFEDD5", color: "#F97316", gradient: ["#EA580C", "#FB923C"] },
+    { key: "lunch", title: "Lunch", sub: todayMenu.lunch.items, time: "12:00 PM - 2:00 PM", Icon: Utensils, bg: "#FFF1F2", iconBg: "#FFE4E6", color: "#E11D48", gradient: ["#BE123C", "#FB7185"] },
+    { key: "dinner", title: "Dinner", sub: todayMenu.dinner.items, time: "8:00 PM - 11:00 PM", Icon: ConciergeBell, bg: "#ECFDF5", iconBg: "#D1FAE5", color: "#059669", gradient: ["#047857", "#34D399"] },
   ];
 
-  const shortcuts = [
-    { id: 'mess', name: 'Mess', icon: Utensils, nav: 'FullMenu', bg: '#DCFCE7', color: '#22C55E' },
-    { id: 'rent', name: 'Pay Rent', icon: Wallet, nav: 'Payments', bg: '#FFEDD5', color: '#F97316' },
-    { id: 'complaints', name: 'Complaints', icon: AlertCircle, nav: 'Complaints', bg: '#FEE2E2', color: '#EF4444' },
-
-    { id: 'documents', name: 'Documents', icon: FileSignature, nav: 'Documents', bg: '#F3E8FF', color: '#9333EA' },
-    { id: 'notes', name: 'Notes', icon: FileText, nav: 'Notes', bg: '#FEF3C7', color: '#D97706' },
-    { id: 'room', name: 'Room Info', icon: HomeIcon, nav: 'RoomInfo', bg: '#E0E7FF', color: '#4F46E5' },
-    { id: 'gatepass', name: 'Gate Pass', icon: QrCode, nav: 'GatePass', bg: '#E0F2FE', color: '#0EA5E9' },
-    { id: 'splits', name: 'Splits', icon: Briefcase, nav: 'Splits', bg: '#FFE4E6', color: '#E11D48' },
-    { id: 'visitor', name: 'Visitor Pass', icon: User2, nav: 'VisitorPass', bg: '#E0E7FF', color: '#4F46E5' },
+  const shortcuts: { id: string; name: string; icon: any; nav: string; bg: string; color: string; gradient: [string, string] }[] = [
+    { id: 'mess', name: 'Mess', icon: Utensils, nav: 'FullMenu', bg: '#DCFCE7', color: '#22C55E', gradient: ['#16A34A', '#4ADE80'] },
+    { id: 'rent', name: 'Pay Rent', icon: Wallet, nav: 'Payments', bg: '#FFEDD5', color: '#F97316', gradient: ['#EA580C', '#FB923C'] },
+    { id: 'complaints', name: 'Complaints', icon: AlertCircle, nav: 'Complaints', bg: '#FEE2E2', color: '#EF4444', gradient: ['#DC2626', '#F87171'] },
+    { id: 'documents', name: 'Documents', icon: FileSignature, nav: 'Documents', bg: '#F3E8FF', color: '#9333EA', gradient: ['#7E22CE', '#C084FC'] },
+    { id: 'notes', name: 'Notes', icon: FileText, nav: 'Notes', bg: '#FEF3C7', color: '#D97706', gradient: ['#B45309', '#FBBF24'] },
+    { id: 'room', name: 'Room Info', icon: HomeIcon, nav: 'RoomInfo', bg: '#E0E7FF', color: '#4F46E5', gradient: ['#4338CA', '#818CF8'] },
+    { id: 'gatepass', name: 'Gate Pass', icon: QrCode, nav: 'GatePass', bg: '#E0F2FE', color: '#0EA5E9', gradient: ['#0284C7', '#38BDF8'] },
+    { id: 'splits', name: 'Splits', icon: Briefcase, nav: 'Splits', bg: '#FFE4E6', color: '#E11D48', gradient: ['#BE123C', '#FB7185'] },
+    { id: 'visitor', name: 'Visitor Pass', icon: User2, nav: 'VisitorPass', bg: '#E0E7FF', color: '#4F46E5', gradient: ['#4338CA', '#818CF8'] },
   ];
 
   return (
@@ -357,6 +369,7 @@ export default function HomeScreen({ navigation }: any) {
         }
       >
         {/* ── Budget Summary Banner ── */}
+        <FadeSlideIn delay={0}>
         {budget === 0 ? (
           <TouchableOpacity 
             style={{ 
@@ -417,8 +430,10 @@ export default function HomeScreen({ navigation }: any) {
             </View>
           </TouchableOpacity>
         )}
+        </FadeSlideIn>
 
         {/* ── Total Due Overview Card ──────────────────────────────────────── */}
+        <FadeSlideIn delay={80}>
         <View style={styles.section}>
           <View style={styles.overviewCard}>
             <View style={styles.overviewLeft}>
@@ -461,8 +476,10 @@ export default function HomeScreen({ navigation }: any) {
             </View>
           </View>
         </View>
+        </FadeSlideIn>
 
         {/* ── Next Meal ──────────────────────────────────────────────── */}
+        <FadeSlideIn delay={160}>
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Next Meal</Text>
@@ -487,9 +504,15 @@ export default function HomeScreen({ navigation }: any) {
               >
                 <View style={styles.nmHeader}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1 }}>
-                    <View style={[styles.menuIconWrap, { backgroundColor: isSkipped ? "#E2E8F0" : activeMeal.iconBg }]}>
-                      <MealIcon size={24} color={isSkipped ? "#94A3B8" : activeMeal.color} />
-                    </View>
+                    <IconGlowBadge
+                      Icon={MealIcon}
+                      gradient={activeMeal.gradient}
+                      glowColor={activeMeal.color}
+                      flatColor="#94A3B8"
+                      flatBg="#E2E8F0"
+                      active={!isSkipped}
+                      size="sm"
+                    />
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.menuTitle, isSkipped && { color: "#94A3B8", textDecorationLine: "line-through" }]}>
                         {activeMeal.title}
@@ -538,8 +561,10 @@ export default function HomeScreen({ navigation }: any) {
             );
           })()}
         </View>
+        </FadeSlideIn>
 
         {/* ── Today's Message ───────────────────────────────────────────────── */}
+        <FadeSlideIn delay={240}>
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Today's Message</Text>
@@ -552,9 +577,14 @@ export default function HomeScreen({ navigation }: any) {
             style={styles.messageCard}
             onPress={() => navigation.navigate("Notices")}
           >
-            <View style={styles.messageIconWrap}>
-              <Mail size={20} color={WHITE} />
-            </View>
+            <IconGlowBadge
+              Icon={Mail}
+              gradient={['#1E3A8A', '#3B82F6']}
+              glowColor={BLUE}
+              size="sm"
+              entrance
+              style={{ marginRight: 12 }}
+            />
             <View style={styles.messageContent}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
@@ -575,26 +605,36 @@ export default function HomeScreen({ navigation }: any) {
             </View>
           </TouchableOpacity>
         </View>
+        </FadeSlideIn>
 
         {/* ── Shortcuts ────────────────────────────────────────────────────── */}
+        <FadeSlideIn delay={300}>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Shortcuts</Text>
           <View style={styles.shortcutGrid}>
             {shortcuts.map((sc) => {
-              const ShortcutIcon = sc.icon;
               return (
                 <TouchableOpacity key={sc.id} style={styles.shortcutItem} onPress={() => navigation.navigate(sc.nav)}>
-                  <View style={[styles.shortcutIconBox, { backgroundColor: sc.bg }]}>
-                    <ShortcutIcon size={22} color={sc.color} />
-                  </View>
+                  <IconGlowBadge
+                    Icon={sc.icon}
+                    gradient={sc.gradient}
+                    glowColor={sc.color}
+                    flatColor={sc.color}
+                    flatBg={sc.bg}
+                    size="sm"
+                    entrance
+                    style={{ marginBottom: 8 }}
+                  />
                   <Text style={styles.shortcutText}>{sc.name}</Text>
                 </TouchableOpacity>
               );
             })}
           </View>
         </View>
+        </FadeSlideIn>
 
         {/* ── Recent Activity ──────────────────────────────────────────────── */}
+        <FadeSlideIn delay={360}>
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Activity</Text>
@@ -607,9 +647,14 @@ export default function HomeScreen({ navigation }: any) {
             {recentPayments.length > 0 ? (
               recentPayments.map((p, index) => (
                 <View key={p.id} style={[styles.activityItem, index > 0 && { borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 16 }]}>
-                  <View style={[styles.activityIconWrap, { backgroundColor: "#DCFCE7" }]}>
-                    <CheckCircle2 size={18} color="#22C55E" />
-                  </View>
+                  <IconGlowBadge
+                    Icon={CheckCircle2}
+                    gradient={['#16A34A', '#4ADE80']}
+                    glowColor="#22C55E"
+                    size="sm"
+                    entrance
+                    style={{ marginRight: 12 }}
+                  />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.activityTitle}>Payment received ({p.mode})</Text>
                     <Text style={styles.activityDate}>{formatDate(p.date)}</Text>
@@ -624,6 +669,7 @@ export default function HomeScreen({ navigation }: any) {
             )}
           </View>
         </View>
+        </FadeSlideIn>
       </ScrollView>
     </View>
   );

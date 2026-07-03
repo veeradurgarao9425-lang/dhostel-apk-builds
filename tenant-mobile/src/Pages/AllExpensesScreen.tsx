@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, ScrollView,
-  TextInput, StatusBar, ActivityIndicator, RefreshControl, Modal,
+  TextInput, StatusBar, RefreshControl, Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -15,6 +15,8 @@ import { useFocusEffect } from '@react-navigation/native';
 
 import { useToast } from '../context/ToastContext';
 import { Phase3EmptyState, BaseBottomSheet } from '../components/UIComponents';
+import CategoryGlowBadge from '../components/ui/CategoryGlowBadge';
+import { SkeletonExpenseCard } from '../components/ui/SkeletonLoader';
 import api from '../services/api';
 
 const BLUE      = '#2245D4';
@@ -195,9 +197,9 @@ export default function AllExpensesScreen({ navigation }: any) {
         {FILTER_CATS.map(cat => {
           const meta = CATS[cat]; const active = activeFilter === cat;
           return (
-            <TouchableOpacity key={cat} style={[s.filterPill, active && { backgroundColor: BLUE, borderColor: BLUE }]} onPress={() => setActiveFilter(cat)} activeOpacity={0.7}>
-              {meta && (<View style={[s.filterPillDot, { backgroundColor: active ? 'rgba(255,255,255,0.3)' : meta.bg }]}><meta.Icon size={12} color={active ? WHITE : meta.color} strokeWidth={2} /></View>)}
-              <Text style={[s.filterPillText, active && { color: WHITE }]}>{cat}</Text>
+            <TouchableOpacity key={cat} style={[s.filterPill, active && { backgroundColor: meta ? meta.bg : BLUE, borderColor: meta ? meta.color : BLUE }]} onPress={() => setActiveFilter(cat)} activeOpacity={0.7}>
+              {meta && <CategoryGlowBadge category={cat} size="xs" active={active} />}
+              <Text style={[s.filterPillText, active && { color: meta ? meta.color : WHITE, fontWeight: '700' }]}>{cat}</Text>
             </TouchableOpacity>
           );
         })}
@@ -210,9 +212,12 @@ export default function AllExpensesScreen({ navigation }: any) {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={BLUE} colors={[BLUE]} />}
       >
         {loading ? (
-          <View style={{ flex: 1, alignItems: 'center', paddingTop: 80 }}>
-            <ActivityIndicator size="large" color={BLUE} />
-            <Text style={{ marginTop: 12, fontSize: 13, color: TEXT_MID, fontWeight: '500' }}>Loading expenses…</Text>
+          <View style={{ paddingTop: 4 }}>
+            <SkeletonExpenseCard />
+            <SkeletonExpenseCard />
+            <SkeletonExpenseCard />
+            <SkeletonExpenseCard />
+            <SkeletonExpenseCard />
           </View>
         ) : (
           grouped.length === 0 ? (
@@ -240,10 +245,10 @@ export default function AllExpensesScreen({ navigation }: any) {
                   </View>
                   <View style={{ gap: 12 }}>
                     {items.map((item: any) => {
-                      const meta = CATS[item.cat] || CATS.Others; const Icon = meta.Icon;
+                      const meta = CATS[item.cat] || CATS.Others;
                       return (
-                        <TouchableOpacity key={item.id} style={[s.row, { backgroundColor: WHITE, borderColor: 'rgba(0,0,0,0.04)', borderWidth: 1, borderRadius: 16 }]} activeOpacity={0.7}>
-                          <View style={[s.iconWrap, { backgroundColor: meta.bg }]}><Icon size={20} color={meta.color} strokeWidth={2} /></View>
+                        <TouchableOpacity key={item.id} style={[s.row, { backgroundColor: WHITE, borderColor: 'rgba(0,0,0,0.04)', borderWidth: 1, borderRadius: 16, borderLeftWidth: 3, borderLeftColor: meta.color }]} activeOpacity={0.7}>
+                          <CategoryGlowBadge category={item.cat} size="md" />
                           <View style={{ flex: 1 }}><Text style={s.rowTitle}>{item.title}</Text><Text style={s.rowTime}>{item.time}</Text></View>
                           <View style={{ alignItems: 'flex-end' }}>
                             <Text style={s.rowAmt}>- ₹{item.amt}</Text>

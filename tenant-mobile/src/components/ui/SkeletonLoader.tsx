@@ -22,16 +22,18 @@ export function SkeletonBox({
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: 700, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0, duration: 700, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1, duration: 900, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0, duration: 900, useNativeDriver: true }),
       ])
     ).start();
     return () => pulse.stopAnimation();
   }, [pulse]);
 
+  const shimmerOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0, 0.55] });
+
   return (
     <View style={[{ width: width as any, height, borderRadius, backgroundColor: colors.surfaceAlt, overflow: 'hidden' }, style]}>
-      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: colors.primarySoft, opacity: pulse }]} />
+      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: '#FFFFFF', opacity: shimmerOpacity }]} />
     </View>
   );
 }
