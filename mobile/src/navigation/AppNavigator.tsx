@@ -30,7 +30,7 @@ import HostelsScreen         from '../Pages/HostelsScreen';
 import HostelDetailsScreen   from '../Pages/HostelDetailsScreen';
 import AddExpenseScreen      from '../Pages/AddExpenseScreen';
 import ExpenseDetailsScreen  from '../Pages/ExpenseDetailsScreen';
-import FeeCollectionScreen   from '../Pages/FeeCollectionScreen';
+import FeeManagementScreen   from '../Pages/FeeManagementScreen';
 import SettingsScreen        from '../Pages/SettingsScreen';
 import ReceiptScreen         from '../Pages/ReciptScreen';
 import PrivacyPolicyScreen   from '../Pages/PrivacyPolicyScreen';
@@ -192,7 +192,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen name="OverviewTab"     component={OverviewScreen}        />
                     <Stack.Screen name="BillReminders"   component={BillRemindersScreen}   />
                     <Stack.Screen name="PaymentDetails"  component={PaymentDetailsScreen}  />
-                    <Stack.Screen name="FeeManagement"   component={FeeCollectionScreen}   />
+                    <Stack.Screen name="FeeManagement"   component={FeeManagementScreen}   />
                     <Stack.Screen name="Receipt"        component={ReceiptScreen}        />
                     <Stack.Screen name="Income"         component={IncomeScreen}         />
                     <Stack.Screen name="IncomeDetails"  component={IncomeDetailsScreen}  />

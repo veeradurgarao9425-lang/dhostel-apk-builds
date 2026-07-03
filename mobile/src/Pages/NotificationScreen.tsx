@@ -159,7 +159,7 @@ export const NotificationScreen = () => {
                         <TouchableOpacity 
                             style={[
                                 styles.headerDateFilterBtn, 
-                                filterDate && { backgroundColor: 'rgba(255, 255, 255, 0.25)', borderColor: '#FFFFFF', borderWidth: 1 }
+                                filterDate ? { backgroundColor: 'rgba(255, 255, 255, 0.25)', borderColor: '#FFFFFF', borderWidth: 1 } : null
                             ]} 
                             onPress={() => setShowDatePicker(true)}
                             activeOpacity={0.8}
@@ -174,7 +174,7 @@ export const NotificationScreen = () => {
 
                         {notifications.some(n => !n.read) && (
                             <TouchableOpacity onPress={markAllAsRead} style={styles.markReadButton}>
-                                <CheckCircle2 size={15} color="#FFF" />
+                                <CheckCircle2 size={14} color="#FFF" />
                                 <Text style={styles.markReadText}>Mark Read</Text>
                             </TouchableOpacity>
                         )}
@@ -303,7 +303,6 @@ const styles = StyleSheet.create({
     headerRightContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
     },
     headerDateFilterBtn: {
         width: 32,
@@ -313,6 +312,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         flexDirection: 'row',
+        marginRight: 8,
     },
 
     // Filter bar styles
@@ -387,9 +387,8 @@ const styles = StyleSheet.create({
     markReadButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 5,
-        paddingVertical: 5,
-        paddingHorizontal: 10,
+        paddingVertical: 6,
+        paddingHorizontal: 8,
         borderRadius: 16,
         backgroundColor: 'rgba(255, 255, 255, 0.15)',
         borderWidth: 1,
@@ -398,7 +397,8 @@ const styles = StyleSheet.create({
     markReadText: {
         color: '#FFFFFF',
         fontSize: 11,
-        fontWeight: '700',
+        fontWeight: '600',
+        marginLeft: 4,
     },
     bottomSpacing: { height: 60 },
 });

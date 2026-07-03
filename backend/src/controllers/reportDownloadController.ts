@@ -578,6 +578,25 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
     if (hostelIds.length > 0) roomsList.whereIn('r.hostel_id', hostelIds);
     const roomsListData = await roomsList;
 
+    // 6. Fetch Pending Dues
+    const dues = db('monthly_fees as mf')
+      .join('students as s', 'mf.student_id', 's.student_id')
+      .leftJoin('rooms as r', 's.room_id', 'r.room_id')
+      .select(
+        's.first_name',
+        's.last_name',
+        'r.room_number',
+        'mf.fee_month',
+        'mf.fee_amount',
+        'mf.due_date',
+        'mf.fee_status'
+      )
+      .whereIn('mf.fee_status', ['Pending', 'Partially Paid'])
+      .orderBy('mf.due_date', 'asc');
+
+    if (hostelIds.length > 0) dues.whereIn('mf.hostel_id', hostelIds);
+    const duesData = await dues;
+
     // Calculate totals
     const feeIncome = paymentsData.reduce((sum, p) => sum + Number(p.amount_paid || 0), 0);
     const otherIncomeVal = incomesData.reduce((sum, inc) => sum + Number(inc.amount || 0), 0);
@@ -831,6 +850,70 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
     paymentSheet.getColumn('J').width = 25;
 
     // -------------------------------------------------------------
+    // SHEET 3.5: PENDING DUES
+    // -------------------------------------------------------------
+    const duesSheet = workbook.addWorksheet('Pending Dues');
+    applyMainHeader(duesSheet, 'Pending Dues & Unpaid Fees');
+
+    const duesHeaders = ['S.No', 'Tenant Name', 'Room No', 'Fee Month', 'Due Date', 'Amount Due', 'Status'];
+    duesSheet.getRow(4).height = 24;
+    
+    duesHeaders.forEach((h, idx) => {
+      const cell = duesSheet.getCell(4, idx + 1);
+      cell.value = h;
+      cell.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDC2626' } }; // Red 600
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    });
+
+    let dIdx = 5;
+    duesData.forEach((d, idx) => {
+      duesSheet.getRow(dIdx).height = 20;
+      duesSheet.getCell(`A${dIdx}`).value = idx + 1;
+      duesSheet.getCell(`B${dIdx}`).value = `${d.first_name || ''} ${d.last_name || ''}`.trim();
+      duesSheet.getCell(`C${dIdx}`).value = d.room_number || '-';
+      duesSheet.getCell(`D${dIdx}`).value = d.fee_month || '-';
+      
+      const dDateVal = d.due_date ? new Date(d.due_date) : null;
+      if (dDateVal) {
+        duesSheet.getCell(`E${dIdx}`).value = dDateVal;
+        duesSheet.getCell(`E${dIdx}`).numFmt = 'dd/mm/yyyy';
+      } else {
+        duesSheet.getCell(`E${dIdx}`).value = '-';
+      }
+      
+      duesSheet.getCell(`F${dIdx}`).value = Number(d.fee_amount || 0);
+      duesSheet.getCell(`F${dIdx}`).numFmt = '₹#,##0.00';
+      duesSheet.getCell(`F${dIdx}`).font = { bold: true };
+      
+      duesSheet.getCell(`G${dIdx}`).value = d.fee_status || 'Pending';
+
+      for (let col = 1; col <= 7; col++) {
+        const cell = duesSheet.getCell(dIdx, col);
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFECEFf4' } },
+          bottom: { style: 'thin', color: { argb: 'FFECEFf4' } }
+        };
+        if (col === 1 || col === 3 || col === 5 || col === 7) {
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        } else if (col === 6) {
+          cell.alignment = { horizontal: 'right', vertical: 'middle' };
+        } else {
+          cell.alignment = { horizontal: 'left', vertical: 'middle' };
+        }
+      }
+      dIdx++;
+    });
+
+    duesSheet.getColumn('A').width = 6;
+    duesSheet.getColumn('B').width = 25;
+    duesSheet.getColumn('C').width = 12;
+    duesSheet.getColumn('D').width = 15;
+    duesSheet.getColumn('E').width = 15;
+    duesSheet.getColumn('F').width = 15;
+    duesSheet.getColumn('G').width = 15;
+
+    // -------------------------------------------------------------
     // SHEET 4: ROOMS & BEDS
     // -------------------------------------------------------------
     const roomSheet = workbook.addWorksheet('Rooms & Occupancy');
@@ -972,7 +1055,8 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
 
     if (reportType && reportType !== 'full_excel') {
       const sheetsToKeep: string[] = ['Summary'];
-      if (reportType === 'collection' || reportType === 'dues') sheetsToKeep.push('Fee Payments');
+      if (reportType === 'collection') sheetsToKeep.push('Fee Payments');
+      if (reportType === 'dues') sheetsToKeep.push('Pending Dues');
       if (reportType === 'expenses') sheetsToKeep.push('Expenses');
       if (reportType === 'occupancy') sheetsToKeep.push('Rooms & Occupancy');
       if (reportType === 'tenants') sheetsToKeep.push('Tenants');
