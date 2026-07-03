@@ -395,7 +395,7 @@ export const getIncomeReport = async (req: AuthRequest, res: Response) => {
       .leftJoin('students as s', 'fp.student_id', 's.student_id')
       .leftJoin('payment_modes as pm', 'fp.payment_mode_id', 'pm.payment_mode_id')
       .select(
-        db.raw('DATE_FORMAT(fp.payment_date, "%Y-%m") as month'),
+        db.raw("DATE_FORMAT(fp.payment_date, '%Y-%m') as month"),
         'pm.payment_mode_name',
         db.raw('SUM(fp.amount) as total_amount'),
         db.raw('COUNT(*) as payment_count')
@@ -456,7 +456,7 @@ export const getExpenseReport = async (req: AuthRequest, res: Response) => {
     let query = db('expenses as e')
       .leftJoin('expense_categories as ec', 'e.category_id', 'ec.category_id')
       .select(
-        db.raw('DATE_FORMAT(e.expense_date, "%Y-%m") as month'),
+        db.raw("DATE_FORMAT(e.expense_date, '%Y-%m') as month"),
         'ec.category_name',
         db.raw('SUM(e.amount) as total_amount'),
         db.raw('COUNT(*) as expense_count')
@@ -551,7 +551,7 @@ export const getProfitLoss = async (req: AuthRequest, res: Response) => {
       .where('s.status', 1)
       .whereBetween('fp.payment_date', [dateStart, dateEnd])
       .select(
-        db.raw('DATE_FORMAT(fp.payment_date, "%Y-%m") as month'),
+        db.raw("DATE_FORMAT(fp.payment_date, '%Y-%m') as month"),
         db.raw('SUM(fp.amount) as total')
       )
       .groupBy('month')
@@ -569,7 +569,7 @@ export const getProfitLoss = async (req: AuthRequest, res: Response) => {
     let expensesQuery = db('expenses')
       .whereBetween('expense_date', [dateStart, dateEnd])
       .select(
-        db.raw('DATE_FORMAT(expense_date, "%Y-%m") as month'),
+        db.raw("DATE_FORMAT(expense_date, '%Y-%m') as month"),
         db.raw('SUM(amount) as total')
       )
       .groupBy('month')
@@ -589,7 +589,7 @@ export const getProfitLoss = async (req: AuthRequest, res: Response) => {
       let staffWagesQuery = db('staff_payments')
         .whereBetween('payment_date', [dateStart, dateEnd])
         .select(
-          db.raw('DATE_FORMAT(payment_date, "%Y-%m") as month'),
+          db.raw("DATE_FORMAT(payment_date, '%Y-%m') as month"),
           db.raw('SUM(amount) as total')
         )
         .groupBy('month')
@@ -1257,7 +1257,7 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
       .whereNotNull('s.room_id')
       .where('s.status', 1)
       .whereBetween('fp.payment_date', [trendStartDateStr, monthEnd])
-      .select(db.raw('DATE_FORMAT(fp.payment_date, "%Y-%m") as month'), db.raw('SUM(fp.amount) as total'))
+      .select(db.raw("DATE_FORMAT(fp.payment_date, '%Y-%m') as month"), db.raw('SUM(fp.amount) as total'))
       .groupBy('month');
     if (hostelIds.length > 0) feeTrendQuery = feeTrendQuery.whereIn('fp.hostel_id', hostelIds);
     const feeTrendRes = await feeTrendQuery;
@@ -1266,7 +1266,7 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
     // Other income
     let incTrendQuery = db('income')
       .whereBetween('income_date', [trendStartDateStr, monthEnd])
-      .select(db.raw('DATE_FORMAT(income_date, "%Y-%m") as month'), db.raw('SUM(amount) as total'))
+      .select(db.raw("DATE_FORMAT(income_date, '%Y-%m') as month"), db.raw('SUM(amount) as total'))
       .groupBy('month');
     if (hostelIds.length > 0) incTrendQuery = incTrendQuery.whereIn('hostel_id', hostelIds);
     const incTrendRes = await incTrendQuery;
@@ -1275,7 +1275,7 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
     // Expenses
     let expTrendQuery = db('expenses')
       .whereBetween('expense_date', [trendStartDateStr, monthEnd])
-      .select(db.raw('DATE_FORMAT(expense_date, "%Y-%m") as month'), db.raw('SUM(amount) as total'))
+      .select(db.raw("DATE_FORMAT(expense_date, '%Y-%m') as month"), db.raw('SUM(amount) as total'))
       .groupBy('month');
     if (hostelIds.length > 0) expTrendQuery = expTrendQuery.whereIn('hostel_id', hostelIds);
     const expTrendRes = await expTrendQuery;
@@ -1286,7 +1286,7 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
     try {
       let guestTrendQuery = db('guests')
         .whereBetween('check_in_date', [trendStartDateStr, monthEnd])
-        .select(db.raw('DATE_FORMAT(check_in_date, "%Y-%m") as month'), db.raw('SUM(amount_paid) as total'))
+        .select(db.raw("DATE_FORMAT(check_in_date, '%Y-%m') as month"), db.raw('SUM(amount_paid) as total'))
         .groupBy('month');
       if (hostelIds.length > 0) guestTrendQuery = guestTrendQuery.whereIn('hostel_id', hostelIds);
       const guestTrendRes = await guestTrendQuery;
@@ -1298,7 +1298,7 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
     try {
       let wagesTrendQuery = db('staff_payments')
         .whereBetween('payment_date', [trendStartDateStr, monthEnd])
-        .select(db.raw('DATE_FORMAT(payment_date, "%Y-%m") as month'), db.raw('SUM(amount) as total'))
+        .select(db.raw("DATE_FORMAT(payment_date, '%Y-%m') as month"), db.raw('SUM(amount) as total'))
         .groupBy('month');
       if (hostelIds.length > 0) wagesTrendQuery = wagesTrendQuery.whereIn('hostel_id', hostelIds);
       const wagesTrendRes = await wagesTrendQuery;
@@ -1313,7 +1313,7 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
         .where(function() {
           this.where('admission_status', 1).orWhere('admission_status', 'Paid');
         })
-        .select(db.raw('DATE_FORMAT(admission_date, "%Y-%m") as month'), db.raw('SUM(admission_fee) as total'))
+        .select(db.raw("DATE_FORMAT(admission_date, '%Y-%m') as month"), db.raw('SUM(admission_fee) as total'))
         .groupBy('month');
       if (hostelIds.length > 0) admissionTrendQuery = admissionTrendQuery.whereIn('hostel_id', hostelIds);
       const admissionTrendRes = await admissionTrendQuery;
