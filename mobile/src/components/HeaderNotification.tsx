@@ -20,19 +20,31 @@ export const HeaderNotification = ({ navigation }: { navigation?: any }) => {
         markAsRead(notif.id);
         setShowNotif(false);
 
+        const title = (notif.title || '').toLowerCase();
+        const type = notif.type;
+        const data = notif.data;
+
         // Navigation logic based on type/content
-        if (notif.title.includes('payment') || notif.title.includes('collect')) {
+        if (title.includes('payment') || title.includes('collect') || title.includes('fee')) {
+            nav.navigate('CollectedPayments');
+        } else if (title.includes('due') || title.includes('pending')) {
             nav.navigate('PendingPayments');
-        } else if (notif.type === 'admission' || notif.title.includes('Admission')) {
-            if (notif.data && notif.data.id) {
-                nav.navigate('StudentDetails', { studentId: notif.data.id });
+        } else if (title.includes('verify') || title.includes('verification')) {
+            nav.navigate('PaymentVerification');
+        } else if (title.includes('notice') || title.includes('publish')) {
+            nav.navigate('Notices');
+        } else if (title.includes('maintenance') || title.includes('complaint')) {
+            nav.navigate('ComplaintsManagement');
+        } else if (title.includes('room') || title.includes('assign')) {
+            nav.navigate('Rooms');
+        } else if (title.includes('admission') || title.includes('tenant') || type === 'info') {
+            if (data && (data.id || data.student_id)) {
+                nav.navigate('StudentDetails', { studentId: data.id || data.student_id });
             } else {
                 nav.navigate('Students');
             }
-        } else if (notif.type === 'expense' || notif.title.includes('Expense')) {
+        } else if (type === 'warning' && title.includes('expense')) {
             nav.navigate('Expenses');
-        } else if (notif.type === 'success') {
-            nav.navigate('FeeManagement');
         } else {
             // Default fallback
             nav.navigate('Main', { screen: 'HomeTab' });

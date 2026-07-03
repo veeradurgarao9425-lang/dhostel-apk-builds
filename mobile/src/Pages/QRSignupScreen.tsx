@@ -13,6 +13,7 @@ import {
     Animated,
     Pressable,
     Platform,
+    Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import QRCode from 'react-native-qrcode-svg';
@@ -24,6 +25,10 @@ import api from '../services/api';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Clipboard from 'expo-clipboard';
 import { useToast } from '../context/ToastContext';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import * as MediaLibrary from 'expo-media-library';
+import ViewShot from 'react-native-view-shot';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Mode = 'general' | 'room';
@@ -200,7 +205,7 @@ const BedPickerModal = ({ visible, room, beds, selectedBedId, onSelectBed, onClo
 export default function QRSignupScreen({ navigation }: any) {
     const { user } = useAuth();
     const { theme, isDark, fontSize } = useTheme();
-    const { showSuccess } = useToast();
+    const { showSuccess, showError, showWarning } = useToast();
 
     const [mode, setMode] = useState<Mode>('general');
     const [rooms, setRooms] = useState<any[]>([]);
@@ -228,6 +233,27 @@ export default function QRSignupScreen({ navigation }: any) {
         if (selectedBed) url += `&bedId=${encodeURIComponent(selectedBed.bed_id)}&bedName=${encodeURIComponent(selectedBed.bed_name ?? '')}`;
         return url;
     }, [baseURL, hostelId, selectedRoom, selectedBed, generalUrl]);
+
+    const viewShotRef = useRef<ViewShot>(null);
+
+    const handleDownload = async () => {
+        if (viewShotRef.current && viewShotRef.current.capture) {
+            try {
+                const uri = await viewShotRef.current.capture();
+                const { status } = await MediaLibrary.requestPermissionsAsync(true);
+                if (status !== 'granted') {
+                    showWarning("Please grant photo library access to save the QR code.");
+                    return;
+                }
+                
+                await MediaLibrary.saveToLibraryAsync(uri);
+                showSuccess("QR Code saved to gallery!");
+            } catch (e) {
+                console.error("Error saving QR:", e);
+                showError("Failed to save QR Code");
+            }
+        }
+    };
 
     const activeUrl = mode === 'general' ? generalUrl : roomUrl;
 
@@ -279,32 +305,24 @@ export default function QRSignupScreen({ navigation }: any) {
             <AppHeader 
                 title="Tenant QR Signup" 
                 subtitle="Scan to self-register"
-            >
-                {/* Mode Tabs */}
-                <View style={s.tabRow}>
-                    <TouchableOpacity style={[s.tab, { backgroundColor: isDark ? '#334155' : 'rgba(255,255,255,0.15)' }, mode === 'general' && s.tabActive, mode === 'general' && isDark && { backgroundColor: '#1E293B' }]} onPress={() => setMode('general')} activeOpacity={0.8}>
-                        <QrCode size={15} color={mode === 'general' ? theme.primary : '#FFF'} />
-                        <Text style={[s.tabText, { fontSize: fontSize - 1 }, mode === 'general' && { color: theme.primary }]}>General QR</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[s.tab, { backgroundColor: isDark ? '#334155' : 'rgba(255,255,255,0.15)' }, mode === 'room' && s.tabActive, mode === 'room' && isDark && { backgroundColor: '#1E293B' }]} onPress={() => setMode('room')} activeOpacity={0.8}>
-                        <Home size={15} color={mode === 'room' ? theme.primary : '#FFF'} />
-                        <Text style={[s.tabText, { fontSize: fontSize - 1 }, mode === 'room' && { color: theme.primary }]}>Room QR</Text>
-                    </TouchableOpacity>
-                </View>
-            </AppHeader>
+                alignLeft={true}
+            />
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.body}>
+                {/* Mode Tabs */}
+                <View style={s.tabRow}>
+                    <TouchableOpacity style={[s.tab, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }, mode === 'general' && [s.tabActive, { backgroundColor: isDark ? '#334155' : '#FFFFFF' }]]} onPress={() => setMode('general')} activeOpacity={0.8}>
+                        <QrCode size={15} color={mode === 'general' ? theme.primary : theme.textSecondary} />
+                        <Text style={[s.tabText, { fontSize: fontSize - 1, color: theme.textSecondary }, mode === 'general' && { color: theme.primary }]}>General QR</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[s.tab, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }, mode === 'room' && [s.tabActive, { backgroundColor: isDark ? '#334155' : '#FFFFFF' }]]} onPress={() => setMode('room')} activeOpacity={0.8}>
+                        <Home size={15} color={mode === 'room' ? theme.primary : theme.textSecondary} />
+                        <Text style={[s.tabText, { fontSize: fontSize - 1, color: theme.textSecondary }, mode === 'room' && { color: theme.primary }]}>Room QR</Text>
+                    </TouchableOpacity>
+                </View>
 
                 {/* ── Info Banner ── */}
-                {mode === 'general' ? (
-                    <View style={[s.infoBanner, { backgroundColor: isDark ? '#1E293B' : '#FFF5F5', borderColor: isDark ? '#334155' : '#FFD5D5' }]}>
-                        <Info size={18} color={theme.primary} />
-                        <Text style={[s.infoText, { color: theme.textSecondary }]}>
-                            <Text style={{ fontWeight: '700', color: theme.textPrimary }}>How it works: </Text>
-                            Share this QR with new tenants. They scan → fill their details → appear as <Text style={{ fontWeight: '700' }}>Inactive</Text>. You review and activate them.
-                        </Text>
-                    </View>
-                ) : (
+                {mode === 'general' ? null : (
                     <View style={[s.infoBanner, { borderColor: '#7C3AED22', backgroundColor: isDark ? '#1E293B' : '#F5F3FF' }]}>
                         <Info size={18} color="#7C3AED" />
                         <Text style={[s.infoText, { color: theme.textSecondary }]}>
@@ -395,26 +413,50 @@ export default function QRSignupScreen({ navigation }: any) {
                         </View>
                     ) : (
                         <View style={{ alignItems: 'center', marginBottom: 16 }}>
-                            <View style={[s.viewfinder, { borderColor: theme.primary }]}>
-                                <QRCode
-                                    value={activeUrl}
-                                    size={200}
-                                    color={isDark ? "#0F172A" : "#1E293B"}
-                                    backgroundColor="#FFFFFF"
-                                />
-                            </View>
+                            <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 1 }}>
+                                <LinearGradient 
+                                    colors={isDark ? ['#1E293B', '#0F172A'] : [theme.primary, theme.primary + 'dd']} 
+                                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                                    style={{ padding: 32, borderRadius: 24, alignItems: 'center', width: 280, shadowColor: theme.primary, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.2, shadowRadius: 20, elevation: 10 }}
+                                >
+                                    
+                                    {/* Hostel Name */}
+                                    <Text style={{ fontSize: 22, fontWeight: '800', color: '#FFFFFF', marginBottom: 24, textAlign: 'center', letterSpacing: 0.5 }}>
+                                        {user?.hostel_name || 'Hostel QR'}
+                                    </Text>
+                                    
+                                    {/* QR Code Card */}
+                                    <View style={{ backgroundColor: '#FFFFFF', padding: 16, borderRadius: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 8, marginBottom: 24 }}>
+                                        <QRCode
+                                            value={activeUrl}
+                                            size={170}
+                                            color="#0F172A"
+                                            backgroundColor="#FFFFFF"
+                                        />
+                                    </View>
+                                    
+                                    {/* Subtitle */}
+                                    <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.9)', fontWeight: '600', textAlign: 'center', marginBottom: 24, paddingHorizontal: 10 }}>
+                                        {mode === 'general' ? 'Scan to self-register' : selectedRoom ? `Scan to register for Room ${selectedRoom.room_number}${selectedBed ? ` (Bed ${selectedBed.bed_name ?? ''})` : ''}` : ''}
+                                    </Text>
+
+                                    {/* Product Branding Pill */}
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20 }}>
+                                        <Image source={require('../../assets/icon.png')} style={{ width: 14, height: 14, borderRadius: 3, marginRight: 6 }} resizeMode="contain" />
+                                        <Text style={{ fontSize: 10, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.5 }}>
+                                            POWERED BY DHOSTEL
+                                        </Text>
+                                    </View>
+
+                                </LinearGradient>
+                            </ViewShot>
                         </View>
                     )}
-
-                    {/* QR label */}
-                    <Text style={{ fontSize: fontSize, color: theme.primary, fontWeight: '600', textAlign: 'center', marginBottom: 20 }}>
-                        {mode === 'general' ? 'General Hostel QR' : selectedRoom ? `Room ${selectedRoom.room_number}${selectedBed ? ` — Bed ${selectedBed.bed_name ?? ''}` : ''} QR` : ''}
-                    </Text>
 
                     {/* Action Buttons */}
                     {(mode === 'general' || selectedRoom) && (
                         <View style={s.qrActionsRow}>
-                            <TouchableOpacity style={[s.qrActionBtn, { backgroundColor: isDark ? theme.primary + '20' : '#F3E8FF' }]} activeOpacity={0.7}>
+                            <TouchableOpacity style={[s.qrActionBtn, { backgroundColor: isDark ? theme.primary + '20' : '#F3E8FF' }]} activeOpacity={0.7} onPress={handleDownload}>
                                 <Download size={16} color={theme.primary} />
                                 <Text style={[s.qrActionBtnText, { color: theme.primary }]}>Download</Text>
                             </TouchableOpacity>
@@ -460,7 +502,7 @@ export default function QRSignupScreen({ navigation }: any) {
                         </Text>
                     </View>
                     
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 16 }}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 16, paddingTop: 10 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
                             {/* Step 1 */}
                             <View style={s.stepItem}>
@@ -544,10 +586,10 @@ const s = StyleSheet.create({
     root: { flex: 1 },
 
     // ── Tabs ──────────────────────────────────────────────────────────────────
-    tabRow: { flexDirection: 'row', gap: 10, paddingBottom: 20 },
-    tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingVertical: 10, borderRadius: 12 },
-    tabActive: { backgroundColor: '#FFFFFF' },
-    tabText: { fontSize: 13, fontWeight: '700', color: '#FFF' },
+    tabRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+    tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingVertical: 12, borderRadius: 12 },
+    tabActive: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+    tabText: { fontWeight: '700' },
 
     // ── Body ──────────────────────────────────────────────────────────────────
     body: { padding: 16 },
@@ -571,7 +613,7 @@ const s = StyleSheet.create({
     // ── New UI Styles ─────────────────────────────────────────────────────────
     newQrCard: { borderRadius: 24, padding: 24, paddingBottom: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4 },
     viewfinder: { padding: 16, borderRadius: 16, borderWidth: 2, borderStyle: 'dashed' },
-    qrPlaceholder: { width: 200, height: 200, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderStyle: 'dashed', gap: 12 },
+    qrPlaceholder: { width: 160, height: 160, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderStyle: 'dashed', gap: 12 },
     qrPlaceholderText: { textAlign: 'center', paddingHorizontal: 20 },
     qrActionsRow: { flexDirection: 'row', gap: 12 },
     qrActionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, borderRadius: 12 },

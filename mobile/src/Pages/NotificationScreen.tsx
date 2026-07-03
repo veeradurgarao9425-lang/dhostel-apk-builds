@@ -89,24 +89,28 @@ export const NotificationScreen = () => {
         markAsRead(notif.id);
  
         const data = notif.data;
-        const title = notif.title.toLowerCase();
+        const title = (notif.title || '').toLowerCase();
         const type = notif.type;
  
-        // Smart navigation based on payload structure and titles - aligned with HeaderNotification
-        if (title.includes('payment') || title.includes('collect')) {
+        // Smart navigation based on payload structure and titles
+        if (title.includes('payment') || title.includes('collect') || title.includes('fee')) {
+            navigation.navigate('CollectedPayments');
+        } else if (title.includes('due') || title.includes('pending')) {
             navigation.navigate('PendingPayments');
-        } else if (type === 'success') {
-            navigation.navigate('FeeManagement');
+        } else if (title.includes('verify') || title.includes('verification')) {
+            navigation.navigate('PaymentVerification');
+        } else if (title.includes('notice') || title.includes('publish')) {
+            navigation.navigate('Notices');
+        } else if (title.includes('maintenance') || title.includes('complaint')) {
+            navigation.navigate('ComplaintsManagement');
+        } else if (title.includes('room') || title.includes('assign')) {
+            navigation.navigate('Rooms');
         } else if (title.includes('admission') || title.includes('tenant') || type === 'info') {
             if (data && (data.id || data.student_id)) {
                 navigation.navigate('StudentDetails', { studentId: data.id || data.student_id });
             } else {
                 navigation.navigate('Students');
             }
-        } else if (title.includes('room') || title.includes('created')) {
-            navigation.navigate('Main', { screen: 'OverviewTab' });
-        } else if (title.includes('notice') || title.includes('publish')) {
-            navigation.navigate('Notices');
         } else if (type === 'warning' && title.includes('expense')) {
             navigation.navigate('Expenses');
         } else {
@@ -116,7 +120,7 @@ export const NotificationScreen = () => {
 
     // Filter notifications list
     const filteredNotifications = notifications.filter(n => {
-        const titleLower = n.title.toLowerCase();
+        const titleLower = (n.title || '').toLowerCase();
         
         // Category match
         let matchesCategory = true;
@@ -235,19 +239,19 @@ export const NotificationScreen = () => {
                                     key={notif.id} 
                                     onPress={() => handleNotifClick(notif)} 
                                     activeOpacity={0.7}
-                                    style={[styles.itemContainer, { borderColor: isDark ? '#334155' : '#F1F5F9', backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }, !notif.read && { backgroundColor: theme.primary + '08' }]}
+                                    style={[styles.itemContainer, { borderColor: isDark ? '#334155' : '#E2E8F0', backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }, !notif.read && { backgroundColor: isDark ? '#1E293B' : theme.primary + '0A', borderColor: isDark ? theme.primary + '50' : theme.primary + '40', shadowColor: theme.primary, shadowOpacity: 0.15, elevation: 4 }]}
                                 >
                                     <View style={styles.row}>
                                         {/* Premium Left Icon Badge */}
                                         <View style={[styles.iconContainer, { backgroundColor: badge.bgColor }]}>
-                                            <BadgeIcon size={20} color={badge.iconColor} />
+                                            <BadgeIcon size={22} color={badge.iconColor} />
                                         </View>
                                         
                                         {/* Middle content section */}
                                         <View style={styles.textContainer}>
                                             <View style={styles.headerRow}>
                                                 <Text 
-                                                    style={[styles.notifTitle, !notif.read && styles.unreadTitle]} 
+                                                    style={[styles.notifTitle, !notif.read && styles.unreadTitle, { color: isDark ? '#E2E8F0' : '#334155' }]} 
                                                     numberOfLines={1}
                                                 >
                                                     {notif.title}
@@ -255,7 +259,7 @@ export const NotificationScreen = () => {
                                                 <Text style={styles.notifTime}>{formatRelativeTime(notif.date)}</Text>
                                             </View>
                                             <Text 
-                                                style={[styles.notifMessage, !notif.read && styles.unreadMessage]} 
+                                                style={[styles.notifMessage, !notif.read && styles.unreadMessage, { color: isDark ? '#94A3B8' : '#475569' }]} 
                                                 numberOfLines={2}
                                             >
                                                 {notif.body}
@@ -337,39 +341,39 @@ const styles = StyleSheet.create({
     },
 
     itemContainer: {
-        paddingVertical: 14,
+        paddingVertical: 16,
         paddingHorizontal: 16,
-        borderRadius: 12,
+        borderRadius: 16,
         marginHorizontal: 16,
-        marginBottom: 10,
+        marginBottom: 12,
         flexDirection: 'row',
         alignItems: 'center',
         borderWidth: 1,
-        elevation: 2,
+        elevation: 3,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
     },
     unreadItem: {
-        backgroundColor: '#8B291A08', // very subtle primary tint
+        backgroundColor: '#8B291A08', 
     },
     row: { flexDirection: 'row', alignItems: 'center', width: '100%' },
     iconContainer: {
-        width: 44,
-        height: 44,
-        borderRadius: 22, // Round circle
+        width: 48,
+        height: 48,
+        borderRadius: 24, 
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 14
+        marginRight: 16,
     },
     textContainer: { flex: 1, marginRight: 8 },
-    headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 },
-    notifTitle: { fontSize: 14, fontWeight: '500', color: '#64748B' },
-    unreadTitle: { fontWeight: '700', color: '#1E293B' },
-    notifTime: { fontSize: 11, color: '#94A3B8', fontWeight: '400', marginLeft: 8 },
-    notifMessage: { fontSize: 13, color: '#64748B', lineHeight: 18, fontWeight: '400' },
-    unreadMessage: { color: '#334155', fontWeight: '500' },
+    headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 },
+    notifTitle: { fontSize: 15, fontWeight: '600' },
+    unreadTitle: { fontWeight: '800' },
+    notifTime: { fontSize: 12, color: '#94A3B8', fontWeight: '500', marginLeft: 8 },
+    notifMessage: { fontSize: 13, lineHeight: 20, fontWeight: '400' },
+    unreadMessage: { fontWeight: '600' },
     rightIndicatorContainer: {
         width: 24,
         alignItems: 'center',

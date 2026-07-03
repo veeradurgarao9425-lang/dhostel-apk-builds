@@ -72,6 +72,20 @@ export default function CollectedPaymentsScreen() {
     const [isEndDatePickerVisible, setEndDatePickerVisible] = useState(false);
     const [isDatePickerVisible, setDatePickerVisible] = useState(false);
 
+    // Single Date Filter
+    const [singleDateFilter, setSingleDateFilter] = useState<Date | null>(null);
+    const [showSingleDatePicker, setShowSingleDatePicker] = useState(false);
+
+    // Derived min/max date bounds for the date picker (based on statsMonth)
+    const minDateBound = filterMode === 'month' ? new Date(statsMonth.getFullYear(), statsMonth.getMonth(), 1) : customStart;
+    let maxDateBound = filterMode === 'month' ? new Date(statsMonth.getFullYear(), statsMonth.getMonth() + 1, 0) : customEnd;
+    
+    // Restrict future dates
+    const today = new Date();
+    if (maxDateBound > today) {
+        maxDateBound = today;
+    }
+
     const searchTimeout = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
@@ -90,10 +104,14 @@ export default function CollectedPaymentsScreen() {
         try {
             const params: Record<string, any> = {
                 page: pageNum,
-                limit: 20   // Increased from 10 to 20 for faster loading
+                limit: 10
             };
 
-            if (filterMode === 'month') {
+            if (singleDateFilter) {
+                params.type = 'custom';
+                params.startDate = toLocalDateString(singleDateFilter);
+                params.endDate = toLocalDateString(singleDateFilter);
+            } else if (filterMode === 'month') {
                 params.type = 'month';
                 params.date = toLocalDateString(statsMonth);
             } else {
@@ -143,12 +161,12 @@ export default function CollectedPaymentsScreen() {
             setLoading(false);
             setLoadingMore(false);
         }
-    }, [filterMode, statsMonth, customStart, customEnd, debouncedSearchQuery]);
+    }, [filterMode, statsMonth, customStart, customEnd, debouncedSearchQuery, singleDateFilter]);
 
     useEffect(() => {
         setPage(1);
         setHasMore(true);
-        load(1, true);
+        load(1, false);
     }, [load, refreshCounter]);
 
     let periodLabel = '';
@@ -262,7 +280,7 @@ export default function CollectedPaymentsScreen() {
                             <Ionicons name={iconName as any} size={18} color={textColor} />
                         </View>
                         <View style={s.cardNameBlock}>
-                            <Text style={s.cardNameText}>{item.title}</Text>
+                            <Text style={s.cardNameText} numberOfLines={1}>{item.title}</Text>
                             {(isRent && item.room_number) ? (
                                 <View style={[s.roomBadge, { backgroundColor: bgAvatar }]}>
                                     <Text style={[s.roomBadgeText, { color: textColor }]}>Room {item.room_number}</Text>
@@ -283,14 +301,14 @@ export default function CollectedPaymentsScreen() {
                             <Text style={[s.cardAmtText, { color: textColor }]}>
                                 ₹{item.amount.toLocaleString('en-IN')}
                             </Text>
-                            <Text style={s.cardStatusSub}>Paid</Text>
+                            <Text style={[s.cardStatusSub, { color: textColor }]}>PAID</Text>
                         </View>
                     </View>
 
                     <View style={s.columnsBlock}>
                         <View style={s.colItem}>
                             <Text style={s.colLabel}>Total</Text>
-                            <Text style={s.colValue}>₹{item.amount.toLocaleString('en-IN')}</Text>
+                            <Text style={s.colValue}>₹{(item.total_due ?? item.amount).toLocaleString('en-IN')}</Text>
                         </View>
                         <View style={s.colDivider} />
                         <View style={s.colItem}>
@@ -300,7 +318,7 @@ export default function CollectedPaymentsScreen() {
                         <View style={s.colDivider} />
                         <View style={s.colItem}>
                             <Text style={[s.colLabel, { color: '#DC2626' }]}>Pending</Text>
-                            <Text style={[s.colValue, { color: '#DC2626' }]}>₹0</Text>
+                            <Text style={[s.colValue, { color: '#DC2626' }]}>₹{(item.balance ?? 0).toLocaleString('en-IN')}</Text>
                         </View>
                     </View>
 
@@ -335,19 +353,22 @@ export default function CollectedPaymentsScreen() {
             {/* HEADER */}
             <AppHeader
                 title="Collected Rent"
-                subtitle={`${transactionsCount} payments`}
+                subtitle="All history payments"
+                alignLeft={true}
                 rightComponent={
-                    <TouchableOpacity onPress={() => setShowExportModal(true)} style={s.exportBtn}>
-                        <Download color="#FFF" size={20} />
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                        <TouchableOpacity style={s.topFilterBtn} onPress={() => setShowMonthPicker(true)} activeOpacity={0.8}>
+                            <Ionicons name="calendar-outline" size={14} color="#FFF" />
+                            <Text style={s.topFilterTxt}>{periodLabel}</Text>
+                            <Ionicons name="chevron-down" size={12} color="#FFF" />
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity onPress={() => setShowExportModal(true)} style={s.exportBtn}>
+                            <Download color="#FFF" size={18} />
+                        </TouchableOpacity>
+                    </View>
                 }
-            >
-                <TouchableOpacity style={s.topFilterBtn} onPress={() => setFilterSelectModal(true)} activeOpacity={0.8}>
-                    <Ionicons name="calendar-outline" size={14} color="#FFF" />
-                    <Text style={s.topFilterTxt}>{periodLabel}</Text>
-                    <Ionicons name="chevron-down" size={12} color="#FFF" />
-                </TouchableOpacity>
-            </AppHeader>
+            />
 
             {/* BODY */}
             {loading ? (
@@ -383,7 +404,7 @@ export default function CollectedPaymentsScreen() {
                     }}
                     onEndReachedThreshold={0.4}
                     ListHeaderComponent={
-                        <View style={{ gap: 16, marginBottom: 16 }}>
+                        <View style={{ gap: 8, marginBottom: 8 }}>
                             {/* Retry button on error */}
                             {error && (
                                 <TouchableOpacity style={s.retryBtn} onPress={() => load(1, true)}>
@@ -399,7 +420,7 @@ export default function CollectedPaymentsScreen() {
                                             <Ionicons name="wallet-outline" size={22} color="#059669" />
                                         </View>
                                         <View style={s.totalCollectedTextContainer}>
-                                            <Text style={s.totalCollectedLabel}>Total Collected</Text>
+                                            <Text style={s.totalCollectedLabel}>Total Collected • {periodLabel}</Text>
                                             <Text style={s.totalCollectedValue}>₹{total.toLocaleString('en-IN')}</Text>
                                             <Text style={s.totalCollectedSub}>From {transactionsCount} payment{transactionsCount !== 1 ? 's' : ''}</Text>
                                         </View>
@@ -410,17 +431,53 @@ export default function CollectedPaymentsScreen() {
                                 </View>
                             )}
 
-                            {/* Search Bar */}
-                            <View style={s.searchBarContainer}>
-                                <Ionicons name="search" size={18} color="#94A3B8" />
-                                <TextInput
-                                    style={s.searchInput}
-                                    placeholder="Search by name, phone, or room..."
-                                    value={searchQuery}
-                                    onChangeText={setSearchQuery}
-                                    placeholderTextColor="#94A3B8"
-                                />
+                            {/* Search Bar & Single Date Row */}
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: singleDateFilter ? 4 : 8 }}>
+                                <View style={[s.searchBarContainer, { flex: 1, marginBottom: 0 }]}>
+                                    <Ionicons name="search" size={18} color="#94A3B8" />
+                                    <TextInput
+                                        style={s.searchInput}
+                                        placeholder="Search by name, phone, or room..."
+                                        value={searchQuery}
+                                        onChangeText={setSearchQuery}
+                                        placeholderTextColor="#94A3B8"
+                                    />
+                                </View>
+                                
+                                <TouchableOpacity 
+                                    style={s.singleDateBtn} 
+                                    onPress={() => setShowSingleDatePicker(true)}
+                                >
+                                    <Ionicons name="calendar" size={18} color="#64748B" />
+                                </TouchableOpacity>
                             </View>
+
+                            {/* Active Single Date Filter Chip */}
+                            {singleDateFilter && (
+                                <View style={s.activeFilterChipContainer}>
+                                    <View style={s.activeFilterChip}>
+                                        <Text style={s.activeFilterChipText}>
+                                            {singleDateFilter.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                        </Text>
+                                        <TouchableOpacity 
+                                            onPress={() => setSingleDateFilter(null)}
+                                            style={s.activeFilterChipClose}
+                                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                        >
+                                            <X size={12} color="#059669" />
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            )}
+
+                            {/* Showing X out of Y text */}
+                            {transactionsCount > 0 && !error && (
+                                <View style={{ paddingHorizontal: 4, paddingBottom: 4 }}>
+                                    <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '600' }}>
+                                        Showing {transactions.length} of {transactionsCount} payments
+                                    </Text>
+                                </View>
+                            )}
                         </View>
                     }
                     ListEmptyComponent={
@@ -531,41 +588,31 @@ export default function CollectedPaymentsScreen() {
                 }}
                 onCancel={() => setEndDatePickerVisible(false)}
             />
-            <Modal visible={filterSelectModal} transparent animationType="fade" onRequestClose={() => setFilterSelectModal(false)}>
-                <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setFilterSelectModal(false)}>
-                    <View style={[s.dropdownMenu, { backgroundColor: theme.cardBg || '#FFF' }]}>
-                        <TouchableOpacity style={[s.filterOpt, { borderBottomColor: isDark ? '#334155' : '#E2E8F0', borderBottomWidth: 1 }]}
-                            onPress={() => { setFilterSelectModal(false); setShowMonthPicker(true); }}>
-                            <Ionicons name="calendar-outline" size={18} color={theme.primary} />
-                            <View style={{ flex: 1, marginLeft: 10 }}>
-                                <Text style={[s.fTitle, { color: theme.textPrimary }]}>Specific Month</Text>
-                                <Text style={s.fSub}>E.g., June 2026</Text>
-                            </View>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={s.filterOpt}
-                            onPress={() => { setFilterSelectModal(false); setShowCustomPicker(true); }}>
-                            <Ionicons name="calendar-number-outline" size={18} color={theme.primary} />
-                            <View style={{ flex: 1, marginLeft: 10 }}>
-                                <Text style={[s.fTitle, { color: theme.textPrimary }]}>Custom Date Range</Text>
-                                <Text style={s.fSub}>E.g., 12 Jun - 18 Jun</Text>
-                            </View>
-                        </TouchableOpacity>
-                    </View>
-                </TouchableOpacity>
-            </Modal>
-
+            
+            <DateTimePickerModal
+                isVisible={showSingleDatePicker}
+                mode="date"
+                date={singleDateFilter || new Date()}
+                minimumDate={minDateBound}
+                maximumDate={maxDateBound}
+                onConfirm={(date) => {
+                    setSingleDateFilter(date);
+                    setShowSingleDatePicker(false);
+                }}
+                onCancel={() => setShowSingleDatePicker(false)}
+            />
+            
             <CustomMonthYearPicker
                 visible={showMonthPicker}
                 onClose={() => setShowMonthPicker(false)}
-                onSelect={(d) => { setFilterMode('month'); setStatsMonth(d); setShowMonthPicker(false); }}
+                onSelect={(d) => { setFilterMode('month'); setStatsMonth(d); setSingleDateFilter(null); setShowMonthPicker(false); }}
                 initialDate={statsMonth}
             />
 
             <CustomDateRangePicker
                 visible={showCustomPicker}
                 onClose={() => setShowCustomPicker(false)}
-                onConfirm={(st: Date, ed: Date) => { setFilterMode('custom'); setCustomStart(st); setCustomEnd(ed); setShowCustomPicker(false); }}
+                onConfirm={(st: Date, ed: Date) => { setFilterMode('custom'); setCustomStart(st); setCustomEnd(ed); setSingleDateFilter(null); setShowCustomPicker(false); }}
                 initialStart={customStart}
                 initialEnd={customEnd}
             />
@@ -577,13 +624,11 @@ const s = StyleSheet.create({
     root: { flex: 1, backgroundColor: '#F8FAFC' },
     topFilterBtn: {
         flexDirection: 'row', alignItems: 'center', gap: 6,
-        alignSelf: 'center',
-        marginTop: 8,
-        paddingHorizontal: 10, paddingVertical: 6,
+        paddingHorizontal: 10, paddingVertical: 8,
         borderRadius: 8,
-        borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)',
+        backgroundColor: 'rgba(255,255,255,0.2)',
     },
-    topFilterTxt: { color: '#FFF', fontSize: 11, fontWeight: '700' },
+    topFilterTxt: { color: '#FFF', fontSize: 12, fontWeight: '700' },
     dropdownMenu: {
         position: 'absolute', top: 90, right: 16,
         borderRadius: 16, padding: 8, width: 220,
@@ -673,7 +718,6 @@ const s = StyleSheet.create({
         borderRadius: 20,
         paddingHorizontal: 16,
         paddingVertical: 14,
-        marginBottom: 16,
         borderWidth: 1,
         borderColor: '#BFEAD0',
     },
@@ -744,6 +788,45 @@ const s = StyleSheet.create({
         fontSize: 13,
         fontWeight: '600',
         color: '#0F172A',
+    },
+    singleDateBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 14,
+        backgroundColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 2 },
+        flexDirection: 'row',
+    },
+    activeFilterChipContainer: {
+        flexDirection: 'row',
+        marginBottom: 10,
+    },
+    activeFilterChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#D1FAE5',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#A7F3D0',
+    },
+    activeFilterChipText: {
+        color: '#065F46',
+        fontSize: 11,
+        fontWeight: '700',
+        marginRight: 6,
+    },
+    activeFilterChipClose: {
+        backgroundColor: 'rgba(5, 150, 105, 0.1)',
+        padding: 3,
+        borderRadius: 10,
     },
 
     monthNavBar: {
@@ -881,9 +964,10 @@ const s = StyleSheet.create({
     },
     cardNameBlock: {
         flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'flex-start',
+        gap: 4,
     },
     cardNameText: {
         fontSize: 14,
@@ -909,10 +993,9 @@ const s = StyleSheet.create({
         fontWeight: '900',
     },
     cardStatusSub: {
-        fontSize: 9,
-        color: '#94A3B8',
-        fontWeight: '600',
-        marginTop: 1,
+        fontSize: 10,
+        fontWeight: '800',
+        marginTop: 2,
     },
     columnsBlock: {
         flexDirection: 'row',

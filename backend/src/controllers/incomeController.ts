@@ -457,6 +457,7 @@ export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
       .leftJoin('students as s', 'fp.student_id', 's.student_id')
       .leftJoin('rooms as r', 's.room_id', 'r.room_id')
       .leftJoin('payment_modes as pm', 'fp.payment_mode_id', 'pm.payment_mode_id')
+      .leftJoin('monthly_fees as mf', 'fp.fee_id', 'mf.fee_id')
       .whereBetween('fp.payment_date', [startDate, endDate]);
 
     if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && hostelId) {
@@ -478,7 +479,9 @@ export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
       's.first_name',
       's.last_name',
       'r.room_number',
-      'pm.payment_mode_name as payment_mode'
+      'pm.payment_mode_name as payment_mode',
+      'mf.total_due',
+      'mf.balance'
     );
 
     // 2.5 Fetch Guest payments
@@ -544,9 +547,11 @@ export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
       })),
       ...feePayments.map(fp => ({
         id: `fee_${fp.payment_id}`,
-        title: `${fp.first_name || 'Student'} ${fp.last_name || ''}`,
-        subtitle: `Rent · ${fp.payment_mode || 'Cash'}`,
+        title: `${fp.first_name || 'Student'} ${fp.last_name || ''}`.trim(),
+        subtitle: `Rent/Fee · ${fp.payment_mode || 'Cash'}`,
         amount: parseFloat(fp.amount),
+        total_due: fp.total_due ? parseFloat(fp.total_due) : parseFloat(fp.amount),
+        balance: fp.balance ? parseFloat(fp.balance) : 0,
         date: safeGetDateString(fp.payment_date),
         student_id: fp.student_id,
         room_number: fp.room_number,
