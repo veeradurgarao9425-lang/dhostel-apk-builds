@@ -175,6 +175,21 @@ export default function AddCategoryScreen({ navigation }: any) {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* FOOTER */}
+      <View style={s.footer}>
+        <TouchableOpacity 
+          style={[s.saveBtn, { backgroundColor: name.trim() ? PRIMARY : '#D1D5DB' }]}
+          disabled={!name.trim()}
+          activeOpacity={0.8}
+          onPress={() => {
+            // In a real app we would save it, for now just go back
+            navigation.goBack();
+          }}
+        >
+          <Text style={s.saveBtnText}>Save Category</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -234,4 +249,24 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   iconCellActive: { borderWidth: 2 },
+
+  // Footer
+  footer: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: BG,
+    borderTopWidth: 1,
+    borderTopColor: BORDER,
+  },
+  saveBtn: {
+    height: 56,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveBtnText: {
+    color: WHITE,
+    fontSize: 16,
+    fontWeight: '700',
+  },
 });

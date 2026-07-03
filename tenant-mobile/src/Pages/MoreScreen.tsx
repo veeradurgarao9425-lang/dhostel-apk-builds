@@ -2,11 +2,12 @@ import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  FileText, PieChart, Megaphone, Wrench, User, HelpCircle, Settings,
+  FileText, PieChart, Megaphone, Wrench, User, HelpCircle, Settings, LogOut
 } from 'lucide-react-native';
 
 import { useAuth } from '../context/AuthContext';
 import { colors, spacing, radius, shadow } from '../theme';
+import VacateModal from '../components/VacateModal';
 
 const GRID_ITEMS = [
   { icon: FileText,  label: 'Due',          screen: 'Dues',       iconBg: '#FEE2E2', iconColor: '#EF4444' },
@@ -19,6 +20,7 @@ const GRID_ITEMS = [
 
 export default function MoreScreen({ navigation }: any) {
   const { user } = useAuth();
+  const [showVacateModal, setShowVacateModal] = React.useState(false);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -63,7 +65,25 @@ export default function MoreScreen({ navigation }: any) {
           </View>
           <Text style={styles.settingsLabel}>Settings</Text>
         </TouchableOpacity>
+
+        {/* ── Vacate Room ────────────────────────────────────────────────────── */}
+        <TouchableOpacity
+          style={[styles.settingsRow, { marginTop: 12, borderColor: '#FEE2E2' }]}
+          onPress={() => setShowVacateModal(true)}
+          activeOpacity={0.75}
+        >
+          <View style={[styles.settingsIconWrap, { backgroundColor: '#FEE2E2' }]}>
+            <LogOut size={22} color={colors.danger} strokeWidth={1.5} />
+          </View>
+          <Text style={[styles.settingsLabel, { color: colors.danger }]}>Vacate Room</Text>
+        </TouchableOpacity>
       </ScrollView>
+
+      <VacateModal 
+        visible={showVacateModal} 
+        onClose={() => setShowVacateModal(false)} 
+        onSuccess={() => {}} 
+      />
     </SafeAreaView>
   );
 }

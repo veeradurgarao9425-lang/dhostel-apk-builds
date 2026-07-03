@@ -34,7 +34,7 @@ const SUCCESS   = '#16A34A';
 
 const CATEGORY_IDS = [
   'Food', 'Rent', 'Transport', 'Shopping', 'Health', 'Entertainment', 'Travel',
-  'Education', 'Coffee', 'Gym', 'Utilities', 'Gifts', 'Pets', 'Bills', 'Others',
+  'Education', 'Coffee', 'Gym', 'Utilities', 'Gifts', 'Pets', 'Bills', 'Family', 'Fuel', 'Others',
 ];
 const CATEGORIES = CATEGORY_IDS.map(id => {
   const theme = getCategoryTheme(id);

@@ -119,7 +119,7 @@ export default function SplitsScreen({ navigation }: any) {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 12, color: colors.textMuted, fontWeight: '600' }}>
-              {youBalance > 0 ? 'You are owed' : youBalance < 0 ? 'You owe' : 'All settled up'}
+              {youBalance > 0 ? 'You receive' : youBalance < 0 ? 'You pay' : 'All settled up'}
             </Text>
             <Text
               style={{
@@ -145,7 +145,7 @@ export default function SplitsScreen({ navigation }: any) {
 
       {/* Per-person balances */}
       <SectionHeader
-        title="Who owes what"
+        title="Balances"
         actionLabel={expenses.length ? 'Settle up' : undefined}
         onPressAction={confirmSettle}
       />
@@ -163,7 +163,7 @@ export default function SplitsScreen({ navigation }: any) {
               </Text>
             ) : (
               <Text style={[styles.balAmt, { color: colors.danger }]}>
-                owes {formatCurrency(Math.abs(b.net))}
+                pays {formatCurrency(Math.abs(b.net))}
               </Text>
             )}
             {b.member.id !== YOU_ID && (

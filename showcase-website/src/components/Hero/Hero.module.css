@@ -1,0 +1,392 @@
+/* ─── Hero Section — Light Theme ──────────────── */
+.hero {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  isolation: isolate;
+  padding: 100px 0 80px;
+  background: linear-gradient(135deg, #f0f4ff 0%, #faf7ff 40%, #f0fcfa 100%);
+}
+
+/* ─── Canvas ───────────────────────────────────── */
+.canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+/* ─── Gradient Orbs ────────────────────────────── */
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  z-index: 0;
+  animation: orbFloat 8s ease-in-out infinite;
+}
+
+.orbOne {
+  width: 500px;
+  height: 500px;
+  top: -160px;
+  right: -100px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.18), transparent 70%);
+  animation-delay: 0s;
+}
+
+.orbTwo {
+  width: 420px;
+  height: 420px;
+  bottom: -180px;
+  left: -80px;
+  background: radial-gradient(circle, rgba(13, 148, 136, 0.12), transparent 70%);
+  animation-delay: -3s;
+}
+
+.orbThree {
+  width: 300px;
+  height: 300px;
+  top: 35%;
+  left: 35%;
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.1), transparent 70%);
+  animation-delay: -5s;
+}
+
+@keyframes orbFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(24px, -16px) scale(1.04); }
+  66% { transform: translate(-16px, 24px) scale(0.97); }
+}
+
+/* ─── Grid ─────────────────────────────────────── */
+.grid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 64px;
+  align-items: center;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 960px) {
+  .grid { grid-template-columns: 1fr; gap: 56px; }
+  .hero { min-height: unset; padding: 120px 0 80px; }
+}
+
+.textCol {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* ─── Badge ────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 18px 8px 10px;
+  border-radius: 100px;
+  background: #fff;
+  border: 1px solid rgba(79, 70, 229, 0.18);
+  box-shadow: 0 2px 16px rgba(79, 70, 229, 0.12);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--hostix-indigo);
+  width: fit-content;
+}
+
+.badgeDot { flex-shrink: 0; }
+
+/* ─── Headline ─────────────────────────────────── */
+.headline { margin: 0; line-height: 1.06; }
+
+.gradientText {
+  background: linear-gradient(120deg, var(--hostix-indigo) 0%, var(--stayvix-purple) 50%, var(--hostix-teal) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  background-size: 200% auto;
+  animation: gradMove 4s linear infinite;
+}
+
+.accentText {
+  font-style: normal;
+  color: var(--stayvix-purple);
+}
+
+@keyframes gradMove {
+  0% { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+
+/* ─── Subhead ──────────────────────────────────── */
+.subhead { max-width: 520px; color: var(--ink-soft); margin: 0; }
+.subhead strong { color: var(--ink); font-weight: 700; }
+
+/* ─── App Tags ─────────────────────────────────── */
+.tags { display: flex; flex-wrap: wrap; gap: 10px; }
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 100px;
+  font-size: 0.83rem;
+  font-weight: 700;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+
+.tagDot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.tagHostix .tagDot { background: var(--hostix-indigo); }
+.tagStayvix .tagDot { background: linear-gradient(135deg, var(--stayvix-purple), var(--hostix-teal)); }
+
+/* ─── Visual Wrap ──────────────────────────────── */
+.visualWrap {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* ─── Phone Frame — Light ──────────────────────── */
+.phoneFrame {
+  position: relative;
+  width: 280px;
+  background: #f8fafc;
+  border-radius: 44px;
+  padding: 12px;
+  box-shadow:
+    0 0 0 1px rgba(15,23,42,0.06),
+    0 0 0 8px rgba(79, 70, 229, 0.04),
+    0 40px 100px -20px rgba(79, 70, 229, 0.15),
+    0 16px 40px rgba(15, 23, 42, 0.1);
+  animation: phoneFloat 6s ease-in-out infinite;
+  transform: perspective(800px) rotateY(-6deg) rotateX(2deg);
+}
+
+@keyframes phoneFloat {
+  0%, 100% { transform: perspective(800px) rotateY(-6deg) rotateX(2deg) translateY(0); }
+  50% { transform: perspective(800px) rotateY(-6deg) rotateX(2deg) translateY(-12px); }
+}
+
+.notch {
+  width: 80px;
+  height: 22px;
+  background: #cbd5e1;
+  border-radius: 0 0 16px 16px;
+  margin: 0 auto 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notchDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #94a3b8;
+  border: 1px solid #cbd5e1;
+}
+
+.homeIndicator {
+  width: 100px;
+  height: 4px;
+  background: #cbd5e1;
+  border-radius: 2px;
+  margin: 12px auto 0;
+}
+
+/* ─── App UI Inside Phone ──────────────────────── */
+.appUI {
+  background: #ffffff;
+  border-radius: 36px;
+  padding: 18px 14px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(15,23,42,0.06);
+}
+
+.appHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.appGreeting {
+  font-size: 0.65rem;
+  color: var(--ink-faint);
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+
+.appName {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--ink);
+}
+
+.liveBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #2dd4bf;
+  background: rgba(20, 184, 166, 0.15);
+  padding: 4px 8px;
+  border-radius: 100px;
+  flex-shrink: 0;
+}
+
+.liveDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #2dd4bf;
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.7); }
+}
+
+.statRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.statCard {
+  background: #f8fafc;
+  border: 1px solid rgba(15,23,42,0.06);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.statLabel { font-size: 0.6rem; color: var(--ink-soft); font-weight: 600; margin-bottom: 4px; }
+
+.statValue {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.statValue small { font-size: 0.58rem; font-weight: 700; color: #0d9488; margin-left: 3px; }
+
+.sparkline { width: 100%; height: 28px; margin-top: 4px; }
+
+.rows { border-top: 1px solid rgba(15,23,42,0.06); padding-top: 10px; }
+
+.row { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
+
+.avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.rowText { flex: 1; min-width: 0; }
+.rowName { font-size: 0.72rem; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rowSub { font-size: 0.6rem; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.rowStatus { font-size: 0.6rem; font-weight: 700; padding: 3px 8px; border-radius: 100px; flex-shrink: 0; }
+.statusPaid { color: #0d9488; background: rgba(13, 148, 136, 0.1); }
+.statusDue { color: #f97316; background: rgba(249, 115, 22, 0.1); }
+
+/* ─── Floating Badges ──────────────────────────── */
+.floatingBadge1 {
+  position: absolute;
+  bottom: 20px;
+  left: -30px;
+  background: linear-gradient(135deg, var(--hostix-indigo), var(--stayvix-purple));
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  box-shadow: 0 8px 28px rgba(79, 70, 229, 0.4);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: badgeFloat1 4s ease-in-out infinite;
+}
+
+.floatingBadge2 {
+  position: absolute;
+  top: 40px;
+  right: -20px;
+  background: #fff;
+  border: 1px solid rgba(13, 148, 136, 0.2);
+  color: var(--ink);
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.12);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: badgeFloat2 5s ease-in-out infinite;
+}
+
+.badge2Dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--hostix-teal);
+  animation: pulse 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes badgeFloat1 {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-8px) rotate(0deg); }
+}
+
+@keyframes badgeFloat2 {
+  0%, 100% { transform: translateY(0) rotate(1deg); }
+  50% { transform: translateY(-6px) rotate(-1deg); }
+}
+
+/* ─── Bottom Fade ──────────────────────────────── */
+.bottomFade {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 100px;
+  background: linear-gradient(to bottom, transparent, rgba(240, 244, 255, 0.6));
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ─── Responsive ───────────────────────────────── */
+@media (max-width: 640px) {
+  .phoneFrame {
+    width: 240px;
+    transform: perspective(800px) rotateY(-3deg) rotateX(1deg);
+  }
+
+  .floatingBadge1 { left: 0; bottom: -10px; font-size: 0.66rem; }
+  .floatingBadge2 { right: 0; top: 20px; font-size: 0.66rem; }
+}

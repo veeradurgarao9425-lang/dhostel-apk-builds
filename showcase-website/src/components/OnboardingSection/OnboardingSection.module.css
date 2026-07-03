@@ -1,0 +1,75 @@
+.section {
+  padding: 100px 0;
+  background: radial-gradient(ellipse 900px 450px at 85% 0%, rgba(124, 58, 237, 0.07) 0%, transparent 60%);
+}
+
+.steps {
+  margin-top: 56px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  position: relative;
+}
+
+@media (max-width: 860px) { .steps { grid-template-columns: 1fr; gap: 16px; } }
+
+.step {
+  position: relative;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: var(--r-md);
+  padding: 32px 26px;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.06);
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+  overflow: hidden;
+}
+
+.step::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--step-color, var(--stayvix-purple));
+}
+
+.step:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px color-mix(in srgb, var(--step-color, var(--stayvix-purple)) 24%, transparent);
+  border-color: color-mix(in srgb, var(--step-color, var(--stayvix-purple)) 30%, transparent);
+}
+
+.number {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 2.4rem;
+  color: var(--step-color, var(--stayvix-purple));
+  margin-bottom: 14px;
+  display: block;
+  line-height: 1;
+}
+
+.stepTitle {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.stepDesc { font-size: 0.9rem; color: var(--ink-soft); line-height: 1.6; }
+
+.arrow {
+  display: none;
+  position: absolute;
+  top: 50%;
+  right: -26px;
+  transform: translateY(-50%);
+  color: var(--ink-faint);
+  z-index: 2;
+}
+
+@media (min-width: 861px) {
+  .step:not(:last-child) .arrow { display: block; }
+}

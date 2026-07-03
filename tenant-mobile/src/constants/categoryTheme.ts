@@ -1,6 +1,7 @@
 import {
   Utensils, Car, ShoppingBag, Receipt, Film, MoreHorizontal,
   HeartPulse, Coffee, Plane, Home, Zap, Gift, BookOpen, Dumbbell, Dog,
+  Users, Fuel
 } from 'lucide-react-native';
 
 export interface CategoryTheme {
@@ -84,12 +85,43 @@ export const CATEGORY_THEME: Record<string, CategoryTheme> = {
     gradient: ['#795548', '#A1887F'],
     glowColor: '#A1887F',
   },
+  Family: {
+    Icon: Users, color: '#D81B60', bg: '#FCE4EC',
+    gradient: ['#D81B60', '#F06292'],
+    glowColor: '#E91E63',
+  },
+  Fuel: {
+    Icon: Fuel, color: '#FF9800', bg: '#FFF3E0',
+    gradient: ['#F57C00', '#FFB74D'],
+    glowColor: '#FF9800',
+  },
   Others: {
     Icon: MoreHorizontal, color: '#546E7A', bg: '#ECEFF1',
     gradient: ['#607D8B', '#90A4AE'],
     glowColor: '#78909C',
   },
 };
+
+export const CATEGORY_HERO_IMAGES: Record<string, any> = {
+  Entertainment: require('../../assets/expenses/entertainment.jpeg'),
+  Coffee: require('../../assets/expenses/cofee.jpeg'),
+  Food: require('../../assets/expenses/food.jpeg'),
+  Gym: require('../../assets/expenses/gym.jpeg'),
+  Shopping: require('../../assets/expenses/shopping.jpeg'),
+  Rent: require('../../assets/expenses/rent.jpeg'),
+  Transport: require('../../assets/expenses/transport.jpeg'),
+  Bills: require('../../assets/expenses/bills.jpeg'),
+  Education: require('../../assets/expenses/education.jpeg'),
+  Family: require('../../assets/expenses/family.jpeg'),
+  Fuel: require('../../assets/expenses/fuel.jpeg'),
+  Gifts: require('../../assets/expenses/gift.jpeg'),
+  Health: require('../../assets/expenses/medical.jpeg'),
+  Pets: require('../../assets/expenses/pet.jpeg'),
+};
+
+export function getCategoryHeroImage(category: string) {
+  return CATEGORY_HERO_IMAGES[category] || null;
+}
 
 export const DEFAULT_CATEGORY_THEME = CATEGORY_THEME.Others;
 

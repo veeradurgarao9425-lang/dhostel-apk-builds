@@ -977,3 +977,32 @@ export const getPendingRegistrations = async (req: AuthRequest, res: Response) =
   }
 };
 
+export const submitVacateNotice = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user || user.role_id !== 3) {
+      return res.status(403).json({ success: false, error: 'Only tenants can submit a vacate notice.' });
+    }
+
+    const { date, reason } = req.body;
+
+    // If date is null, it means cancelling the vacate notice
+    const formattedDate = date ? (typeof date === 'string' ? date.split('T')[0] : date) : null;
+
+    await db('students')
+      .where('student_id', user.user_id)
+      .update({
+        vacate_notice_date: formattedDate,
+        vacate_notice_reason: reason || null,
+        updated_at: new Date()
+      });
+
+    return res.json({ 
+      success: true, 
+      message: formattedDate ? 'Vacate notice submitted successfully.' : 'Vacate notice cancelled.' 
+    });
+  } catch (error: any) {
+    console.error('Error submitting vacate notice:', error);
+    return res.status(500).json({ success: false, error: 'Failed to submit vacate notice.' });
+  }
+};

@@ -353,9 +353,9 @@ export default function ExpensesScreen({ navigation }: any) {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showMonthPicker, setShowMonthPicker] = useState(false);
 
-  const fetchExpenses = useCallback(async () => {
+  const fetchExpenses = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       try {
         const saved = await AsyncStorage.getItem('tenant_budget');
         if (saved) {
@@ -373,12 +373,15 @@ export default function ExpensesScreen({ navigation }: any) {
           id: e.expense_id.toString(),
           title: e.title,
           time: (() => {
-            if (typeof e.date === 'string') {
-              const [y, m, d] = e.date.split('-').map(Number);
-              const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-              return `${String(d).padStart(2, '0')} ${months[m - 1]}`;
+            try {
+              const d = new Date(e.date);
+              if (isNaN(d.getTime())) return e.date;
+              const dateStr = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+              const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+              return `${dateStr} • ${timeStr}`;
+            } catch (err) {
+              return String(e.date);
             }
-            return new Date(e.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
           })(),
           cat: e.category,
           amt: Number(e.amount),
@@ -462,7 +465,7 @@ export default function ExpensesScreen({ navigation }: any) {
     }
   }, [selectedDate]);
 
-  useFocusEffect(useCallback(() => { fetchExpenses(); }, [fetchExpenses]));
+  useFocusEffect(useCallback(() => { fetchExpenses(true); }, [fetchExpenses]));
 
   const [tab, setTab]                       = useState<TabKey>('Overview');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -550,8 +553,11 @@ export default function ExpensesScreen({ navigation }: any) {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
         {loading ? (
-          <View style={{ paddingTop: 80, alignItems: 'center' }}>
-            <ActivityIndicator size="large" color={BLUE} />
+          <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40, gap: 20 }}>
+            <SkeletonStatCard />
+            <SkeletonExpenseCard />
+            <SkeletonExpenseCard />
+            <SkeletonExpenseCard />
           </View>
         ) : (
           <>
@@ -635,6 +641,9 @@ export default function ExpensesScreen({ navigation }: any) {
         onConfirm={(date) => {
           setSelectedDate(date);
           setShowMonthPicker(false);
+          // fetchExpenses(false) will happen automatically via dependency change, 
+          // but we want to show loading when date changes.
+          setLoading(true);
         }}
       />
     </View>
@@ -823,7 +832,7 @@ function OverviewTab({
         const TopIcon = topCat.Icon;
         return (
           <FadeSlideIn delay={80}>
-          <View style={[s.card, { backgroundColor: '#FFF0F2', borderColor: '#FFE4E6', padding: 14, borderLeftWidth: 4, borderLeftColor: topCat.color }]}>
+          <View style={[s.card, { backgroundColor: '#FFF0F2', borderColor: '#FFE4E6', padding: 14 }]}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <View style={{ backgroundColor: topCat.color, padding: 6, borderRadius: 10, shadowColor: topCat.color, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 2 }}>
@@ -958,9 +967,6 @@ function OverviewTab({
         <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
           <TouchableOpacity style={s.iconPill} onPress={() => setShowSearch(v => !v)} activeOpacity={0.7}>
             {showSearch ? <X size={14} color={BLUE} strokeWidth={3} /> : <Search size={14} color={BLUE} strokeWidth={2} />}
-          </TouchableOpacity>
-          <TouchableOpacity style={s.iconPill} onPress={() => setShowFilter(true)} activeOpacity={0.7}>
-            <SlidersHorizontal size={14} color={BLUE} strokeWidth={2} />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => navigation.navigate('AllExpenses')} activeOpacity={0.7}>
             <Text style={s.viewAll}>View All</Text>

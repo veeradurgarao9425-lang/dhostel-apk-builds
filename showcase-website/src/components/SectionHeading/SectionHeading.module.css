@@ -1,0 +1,26 @@
+.heading { max-width: 640px; }
+
+.heading.center {
+  max-width: 680px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.heading.center .dot { display: none; }
+
+.eyebrow {
+  color: var(--eyebrow-color, var(--hostix-indigo));
+  margin-bottom: 16px;
+}
+
+.dot { flex-shrink: 0; }
+
+.title {
+  margin-bottom: 0;
+  color: var(--ink);
+}
+
+.subtitle {
+  margin-top: 18px;
+  color: var(--ink-soft);
+}

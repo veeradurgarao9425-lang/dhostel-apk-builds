@@ -9,6 +9,7 @@ import {
   deleteStudent,
   allocateRoom,
   getPendingRegistrations,
+  submitVacateNotice,
 } from '../controllers/studentController.js';
 
 const router = express.Router();
@@ -21,6 +22,7 @@ router.get('/pending-registrations', getPendingRegistrations);
 
 // Student routes
 router.get('/stats', getStudentStats);
+router.post('/vacate', submitVacateNotice); // Tenant route
 router.get('/', getStudents);
 router.get('/:studentId', getStudentById);
 router.post('/', createStudent);
