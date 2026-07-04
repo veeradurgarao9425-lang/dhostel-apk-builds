@@ -88,12 +88,13 @@ export const HostelChatbot: React.FC = () => {
   }, [i18n.language]);
 
   const categories = useMemo(() => [
-    { id: 'all', label: t('chatbot.history') },
-    { id: 'home', label: t('chatbot.homePage') },
-    { id: 'pending', label: t('chatbot.pendingTab') },
-    { id: 'overview', label: t('chatbot.overviewPage') },
-    { id: 'more', label: t('chatbot.moreOptions') }
-  ], [t]);
+    { id: 'all', label: 'All Features' },
+    { id: 'dashboard', label: 'Dashboard' },
+    { id: 'rooms', label: 'Rooms & Beds' },
+    { id: 'tenants', label: 'Tenants & Staff' },
+    { id: 'financials', label: 'Financials' },
+    { id: 'alerts', label: 'Settings & Alerts' }
+  ], []);
 
 
   // Perform search / category filtration
@@ -277,12 +278,8 @@ export const HostelChatbot: React.FC = () => {
               </View>
 
               {/* Category Pills */}
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={s.categoryScroll}
-                contentContainerStyle={s.categoryContent}
-              >
+              {/* Category Pills Grid */}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingHorizontal: 16, paddingBottom: 10 }}>
                 {categories.map(cat => (
                   <TouchableOpacity
                     key={cat.id}
@@ -292,6 +289,7 @@ export const HostelChatbot: React.FC = () => {
                     }}
                     style={[
                       s.categoryPill,
+                      { marginBottom: 4, marginRight: 4 }, // Fallback for older react-native gap support
                       selectedCategory === cat.id && s.categoryPillActive
                     ]}
                   >
@@ -305,7 +303,7 @@ export const HostelChatbot: React.FC = () => {
                     </Text>
                   </TouchableOpacity>
                 ))}
-              </ScrollView>
+              </View>
             </View>
 
             {/* Chat conversation area */}

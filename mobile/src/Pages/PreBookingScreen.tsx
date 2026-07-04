@@ -88,7 +88,8 @@ const SelectField = ({ label, value, placeholder, icon: Icon, onPress, error }: 
                 style={[styles.inputContainer, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }, error && styles.inputError]} 
                 onPress={onPress}
                 activeOpacity={0.7}
-            >    <View style={styles.inputIcon}><Icon size={18} color={error ? '#EF4444' : theme.primary} /></View>
+            >
+                <View style={styles.inputIcon}><Icon size={18} color={error ? '#EF4444' : theme.primary} /></View>
                 <Text style={[styles.inputText, { color: theme.textPrimary, fontSize }, !value && { color: isDark ? '#475569' : '#BBBBBB' }]}>{value || placeholder}</Text>
                 <ChevronDown size={18} color={theme.textSecondary} />
             </TouchableOpacity>
