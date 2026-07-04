@@ -309,18 +309,17 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // Check if phone already exists (status = 1 means Active)
+    // Check if phone already exists in THIS hostel (status = 1 means Active)
     const existingStudent = await db('students')
-      .where({ phone, status: 1 })
+      .where({ phone, status: 1, hostel_id })
       .first();
 
     if (existingStudent) {
       return res.status(409).json({
         success: false,
-        error: 'Student with this phone number already exists'
+        error: 'Student with this phone number already exists in this hostel'
       });
     }
-
     // If room allocation is provided, check room availability
     let roomDetails = null;
     if (room_id) {

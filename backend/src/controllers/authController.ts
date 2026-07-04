@@ -1078,21 +1078,27 @@ export const authController = {
         return res.status(400).json({ success: false, error: 'Phone number is required.' });
       }
 
-      // ── Global uniqueness checks ───────────────────────────────────────────
-      // Phone must be unique across ALL hostels (prevents identity confusion)
+      // ── Hostel-specific uniqueness checks ──────────────────────────────────
+      // Phone must be unique within the SAME hostel
       if (finalPhone) {
-        const existingPhone = await db('students').where('phone', finalPhone).first();
+        const existingPhone = await db('students')
+          .where('phone', finalPhone)
+          .where('hostel_id', hostel_id)
+          .first();
         if (existingPhone) {
-          return res.status(400).json({ success: false, error: 'This phone number is already registered. Please login instead.' });
+          return res.status(400).json({ success: false, error: 'This phone number is already registered in this hostel. Please login instead.' });
         }
       }
 
-      // Email must be unique across ALL hostels
+      // Email must be unique within the SAME hostel
       const finalEmail = email || (identifier.includes('@') ? identifier : null);
       if (finalEmail) {
-        const existingEmail = await db('students').where('email', finalEmail).first();
+        const existingEmail = await db('students')
+          .where('email', finalEmail)
+          .where('hostel_id', hostel_id)
+          .first();
         if (existingEmail) {
-          return res.status(400).json({ success: false, error: 'This email address is already registered. Please login instead.' });
+          return res.status(400).json({ success: false, error: 'This email address is already registered in this hostel. Please login instead.' });
         }
       }
       // ──────────────────────────────────────────────────────────────────────

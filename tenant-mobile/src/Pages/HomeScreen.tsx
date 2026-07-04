@@ -42,7 +42,8 @@ import {
   Layers,
   FileText,
   QrCode,
-  User2
+  User2,
+  Clock
 } from "lucide-react-native";
 
 import { useAuth } from "../context/AuthContext";
@@ -51,7 +52,7 @@ import IconGlowBadge from '../components/ui/IconGlowBadge';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from "../services/api";
 
-const { width } = Dimensions.get("window");
+const { width, height } = Dimensions.get("window");
 
 function FadeSlideIn({ children, delay = 0, style }: { children: React.ReactNode; delay?: number; style?: any }) {
   return <View style={style}>{children}</View>;
@@ -424,7 +425,7 @@ export default function HomeScreen({ navigation }: any) {
         )}
         </FadeSlideIn>
 
-        {/* ── Total Due Overview Card ──────────────────────────────────────── */}
+        {/* ── Total Due Overview Card ── */}
         <FadeSlideIn delay={80}>
         <View style={styles.section}>
           <View style={styles.overviewCard}>
@@ -433,7 +434,7 @@ export default function HomeScreen({ navigation }: any) {
                 {dueAmount > 0 ? "Total Due" : "Monthly Rent"}
               </Text>
               <Text style={[styles.overviewAmount, dueAmount === 0 && { color: "#22C55E" }]}>
-                ₹ {dueAmount > 0 ? dueAmount.toLocaleString("en-IN") : (totalRentAmount || 5500).toLocaleString("en-IN")}
+                ₹ {dueAmount > 0 ? dueAmount.toLocaleString("en-IN") : (totalRentAmount || 0).toLocaleString("en-IN")}
               </Text>
               {dueAmount > 0 ? (
                 <Text style={styles.overviewDate}>

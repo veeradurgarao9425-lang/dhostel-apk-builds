@@ -161,8 +161,13 @@ const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect, isDar
         ? `${item.daysOverdue}d overdue`
         : `Due: ${item.dueDate}`;
 
-    const statusText = item.paidAmount > 0 ? 'PARTIAL' : 'PENDING';
-    const statusColor = item.paidAmount > 0 ? '#F59E0B' : accentColor;
+    const getBadgeStyle = () => {
+        if (item.isOverdue) return { bg: '#FEE2E2', text: '#DC2626', label: 'Overdue' };
+        if (item.paidAmount > 0) return { bg: '#FFEDD5', text: '#EA580C', label: 'Partly Paid' };
+        return { bg: '#FEE2E2', text: '#DC2626', label: 'Unpaid' };
+    };
+    const badgeStyle = getBadgeStyle();
+
     const isDarkBg = isDark ? '#1E293B' : '#FFF';
 
     return (
@@ -197,11 +202,11 @@ const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect, isDar
                     </View>
 
                     {/* Right: Badge */}
-                    <View style={{ alignItems: 'flex-end', justifyContent: 'center' }}>
-                        <View style={[card.badge, { backgroundColor: item.isOverdue ? '#FEF2F2' : '#FFFBEB' }]}>
-                            <Ionicons name="time-outline" size={12} color={accentColor} />
-                            <Text style={[card.badgeTxt, { color: accentColor }]}>{tagLabel}</Text>
+                    <View style={{ alignItems: 'flex-end', justifyContent: 'center', gap: 6 }}>
+                        <View style={[card.badge, { backgroundColor: badgeStyle.bg, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 }]}>
+                            <Text style={[card.badgeTxt, { color: badgeStyle.text, fontSize: 12, fontWeight: '800' }]}>{badgeStyle.label}</Text>
                         </View>
+                        <Text style={{ fontSize: 10, color: '#6B7280', fontWeight: '600' }}>{tagLabel}</Text>
                     </View>
                 </View>
 

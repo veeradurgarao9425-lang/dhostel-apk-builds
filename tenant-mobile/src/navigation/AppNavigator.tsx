@@ -45,6 +45,7 @@ import SettingsScreen from '../Pages/SettingsScreen';
 import UIShowcaseScreen from '../Pages/UIShowcaseScreen';
 import SearchScreen from '../Pages/SearchScreen';
 import NotesScreen from '../Pages/NotesScreen';
+import PendingApprovalScreen from '../Pages/PendingApprovalScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -89,10 +90,15 @@ export default function AppNavigator() {
     return null;
   }
 
+  // Logged in but no room assigned yet → show pending approval screen only
+  const isPendingApproval = user && !user.room_id;
+
   return (
     <NavigationContainer ref={navigationRef} theme={navTheme}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {user ? (
+        {isPendingApproval ? (
+          <Stack.Screen name="PendingApproval" component={PendingApprovalScreen} />
+        ) : user ? (
           <>
             <Stack.Screen name="Main" component={MainTabs} />
             {/* Stack screens accessible from any tab */}
