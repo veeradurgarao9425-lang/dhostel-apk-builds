@@ -1004,20 +1004,20 @@ export default function HomeScreen() {
                     {/* ─────────────────── IMPORTANT NOTICE BANNER ─────────────────── */}
                     {data.latestNotice ? (
                         <TouchableOpacity
-                            style={[s.noticeBanner, { backgroundColor: isDark ? '#3D2A1C' : '#FFF9F2', borderColor: isDark ? '#5C3E26' : '#FFEFD6' }]}
+                            style={[s.noticeBanner, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF', borderColor: isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE' }]}
                             onPress={() => navigation.navigate('NoticesManagement')}
                             activeOpacity={0.8}
                         >
                             <View style={s.noticeHeaderRow}>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                    <Ionicons name="megaphone" size={18} color="#E65100" />
-                                    <Text style={s.noticeBannerTitle}>{t('dashboard.importantNotice')}</Text>
+                                    <Ionicons name="megaphone" size={18} color={isDark ? "#93C5FD" : "#2563EB"} />
+                                    <Text style={[s.noticeBannerTitle, { color: isDark ? "#93C5FD" : "#2563EB" }]}>{t('dashboard.importantNotice')}</Text>
                                 </View>
                                 <TouchableOpacity
-                                    style={s.noticeViewAllBtn}
+                                    style={[s.noticeViewAllBtn, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(37, 99, 235, 0.1)' }]}
                                     onPress={() => navigation.navigate('NoticesManagement')}
                                 >
-                                    <Text style={s.noticeViewAllText}>{t('dashboard.viewAll')}  ➔</Text>
+                                    <Text style={[s.noticeViewAllText, { color: isDark ? "#93C5FD" : "#2563EB" }]}>{t('dashboard.viewAll')}  ➔</Text>
                                 </TouchableOpacity>
                             </View>
                             <Text style={[s.noticeBannerContent, { color: theme.textPrimary }]} numberOfLines={2}>
@@ -1082,11 +1082,11 @@ export default function HomeScreen() {
                     <TenantAppCard theme={theme} isDark={isDark} hostelCode={data.hostelCode} />
 
                     {/* ─────────────────── COLLECTION PICTURE ─────────────────── */}
-                    <View style={{ marginBottom: 20 }}>
-                        <Text style={[s.sectionTitle, { color: theme.textPrimary }]}>
+                    <View style={{ marginBottom: 40 }}>
+                        <Text style={[s.sectionTitle, { color: theme.textPrimary, marginBottom: 16 }]}>
                             {data.collectionStats.monthName} Collection Status
                         </Text>
-                        <View style={[s.card, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0', padding: 16 }]}>
+                        <View style={[s.card, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0', padding: 16, paddingBottom: 24 }]}>
                             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
                                 <Text style={{ color: theme.textSecondary, fontSize: 14 }}>Total Expected</Text>
                                 <View style={{ alignItems: 'flex-end' }}>
@@ -1118,21 +1118,21 @@ export default function HomeScreen() {
                             <View style={{ height: 1, backgroundColor: isDark ? '#334155' : '#E2E8F0', marginBottom: 16 }} />
 
                             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-                                <View style={{ width: '48%', flexDirection: 'row', justifyContent: 'space-between' }}>
-                                    <Text style={{ color: theme.textSecondary, fontSize: 13 }}>Overdue:</Text>
-                                    <Text style={{ color: '#EF4444', fontSize: 13, fontWeight: '700' }}>{data.collectionStats.overdueCount}</Text>
+                                <View style={{ width: '48%', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                                    <Text style={{ color: theme.textPrimary, fontSize: 13, fontWeight: '700' }}>Overdue:</Text>
+                                    <Text style={{ color: '#EF4444', fontSize: 13, fontWeight: '800' }}>{data.collectionStats.overdueCount}</Text>
+                                </View>
+                                <View style={{ width: '48%', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                                    <Text style={{ color: theme.textPrimary, fontSize: 13, fontWeight: '700' }}>Due Today:</Text>
+                                    <Text style={{ color: '#F59E0B', fontSize: 13, fontWeight: '800' }}>{data.collectionStats.dueTodayCount}</Text>
                                 </View>
                                 <View style={{ width: '48%', flexDirection: 'row', justifyContent: 'space-between' }}>
-                                    <Text style={{ color: theme.textSecondary, fontSize: 13 }}>Due Today:</Text>
-                                    <Text style={{ color: '#F59E0B', fontSize: 13, fontWeight: '700' }}>{data.collectionStats.dueTodayCount}</Text>
+                                    <Text style={{ color: theme.textPrimary, fontSize: 13, fontWeight: '700' }}>Due This Wk:</Text>
+                                    <Text style={{ color: theme.textPrimary, fontSize: 13, fontWeight: '800' }}>{data.collectionStats.dueThisWeekCount}</Text>
                                 </View>
                                 <View style={{ width: '48%', flexDirection: 'row', justifyContent: 'space-between' }}>
-                                    <Text style={{ color: theme.textSecondary, fontSize: 13 }}>Due This Week:</Text>
-                                    <Text style={{ color: theme.textPrimary, fontSize: 13, fontWeight: '700' }}>{data.collectionStats.dueThisWeekCount}</Text>
-                                </View>
-                                <View style={{ width: '48%', flexDirection: 'row', justifyContent: 'space-between' }}>
-                                    <Text style={{ color: theme.textSecondary, fontSize: 13 }}>Paid Already:</Text>
-                                    <Text style={{ color: '#10B981', fontSize: 13, fontWeight: '700' }}>{data.collectionStats.paidCount}</Text>
+                                    <Text style={{ color: theme.textPrimary, fontSize: 13, fontWeight: '700' }}>Paid:</Text>
+                                    <Text style={{ color: '#10B981', fontSize: 13, fontWeight: '800' }}>{data.collectionStats.paidCount}</Text>
                                 </View>
                             </View>
                         </View>
@@ -1606,18 +1606,18 @@ const s = StyleSheet.create({
     noticeBannerTitle: {
         fontSize: 13,
         fontWeight: '800',
-        color: '#E65100',
+        color: '#2563EB',
     },
     noticeViewAllBtn: {
         paddingVertical: 2,
         paddingHorizontal: 8,
         borderRadius: 12,
-        backgroundColor: 'rgba(230, 81, 0, 0.1)',
+        backgroundColor: 'rgba(37, 99, 235, 0.1)',
     },
     noticeViewAllText: {
         fontSize: 10,
         fontWeight: '700',
-        color: '#E65100',
+        color: '#2563EB',
     },
     noticeBannerContent: {
         fontSize: 12,

@@ -1054,7 +1054,7 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
     expenseSheet.getColumn('H').width = 25;
 
     if (reportType && reportType !== 'full_excel') {
-      const sheetsToKeep: string[] = ['Summary'];
+      const sheetsToKeep: string[] = [];
       if (reportType === 'collection') sheetsToKeep.push('Fee Payments');
       if (reportType === 'dues') sheetsToKeep.push('Pending Dues');
       if (reportType === 'expenses') sheetsToKeep.push('Expenses');

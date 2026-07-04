@@ -197,7 +197,7 @@ export default function AddStaffScreen() {
                     <Text style={styles.sectionTitle}>👤 Personal Details</Text>
                     
                     <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>Full Name *</Text>
+                        <Text style={styles.inputLabel}>Full Name <Text style={{ color: '#EF4444' }}>*</Text></Text>
                         <View style={[styles.inputContainer, errors.fullName && styles.inputError]}>
                             <Ionicons name="person-outline" size={18} color={errors.fullName ? '#EF4444' : theme.primary} style={styles.inputIcon} />
                             <TextInput
@@ -212,7 +212,7 @@ export default function AddStaffScreen() {
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>Phone Number *</Text>
+                        <Text style={styles.inputLabel}>Phone Number <Text style={{ color: '#EF4444' }}>*</Text></Text>
                         <View style={[styles.inputContainer, errors.phone && styles.inputError]}>
                             <Ionicons name="call-outline" size={18} color={errors.phone ? '#EF4444' : theme.primary} style={styles.inputIcon} />
                             <TextInput
@@ -249,7 +249,7 @@ export default function AddStaffScreen() {
                 <View style={styles.formCard}>
                     <Text style={styles.sectionTitle}>⚙️ Role & Status</Text>
 
-                    <Text style={styles.fieldLabel}>Role *</Text>
+                    <Text style={styles.fieldLabel}>Role <Text style={{ color: '#EF4444' }}>*</Text></Text>
                     <View style={styles.chipRow}>
                         {ROLES.map((r) => {
                             const isSelected = role === r;
@@ -269,7 +269,7 @@ export default function AddStaffScreen() {
                         })}
                     </View>
 
-                    <Text style={[styles.fieldLabel, { marginTop: 16 }]}>Staff Status *</Text>
+                    <Text style={[styles.fieldLabel, { marginTop: 16 }]}>Staff Status <Text style={{ color: '#EF4444' }}>*</Text></Text>
                     <View style={styles.statusRow}>
                         {['ACTIVE', 'INACTIVE'].map((st) => {
                             const isSelected = status === st;
@@ -295,7 +295,7 @@ export default function AddStaffScreen() {
                     <Text style={styles.sectionTitle}>💼 Employment Details</Text>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>Join Date *</Text>
+                        <Text style={styles.inputLabel}>Join Date <Text style={{ color: '#EF4444' }}>*</Text></Text>
                         <TouchableOpacity style={styles.dateField} onPress={() => setDatePickerVisible(true)} activeOpacity={0.7}>
                             <Ionicons name="calendar-outline" size={18} color={theme.primary} />
                             <Text style={styles.dateText}>{joinDate}</Text>

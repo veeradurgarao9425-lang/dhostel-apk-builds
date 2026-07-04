@@ -126,11 +126,18 @@ const CustomAlertModal = ({ visible, title, message, onClose, primaryAction, sec
 };
 
 // ─── Reusable form components ─────────────────────────────────────────────────
+const renderLabel = (text: any) => {
+    if (typeof text === 'string' && text.endsWith(' *')) {
+        return <Text>{text.slice(0, -2)} <Text style={{ color: '#EF4444' }}>*</Text></Text>;
+    }
+    return text;
+};
+
 const FormInput = ({ label, icon: Icon, placeholder, value, onChangeText, keyboardType, multiline, error, onFocus, onBlur, autoCapitalize }: any) => {
     const { theme, isDark, fontSize } = useTheme();
     return (
         <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }]}>{label}</Text>
+            <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }]}>{renderLabel(label)}</Text>
             <View style={[styles.inputContainer, { backgroundColor: isDark ? '#1E293B' : '#F9FAFB', borderColor: isDark ? '#334155' : '#F1F5F9' }, multiline && styles.multilineContainer, error && styles.inputError]}>
                 <View style={styles.inputIcon}><Icon size={18} color={error ? '#EF4444' : theme.primary} /></View>
                 <TextInput
@@ -156,7 +163,7 @@ const SelectField = ({ label, value, placeholder, icon: Icon, onPress, error }: 
     const { theme, isDark, fontSize } = useTheme();
     return (
         <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }]}>{label}</Text>
+            <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }]}>{renderLabel(label)}</Text>
             <TouchableOpacity style={[styles.inputContainer, { backgroundColor: isDark ? '#1E293B' : '#F9FAFB', borderColor: isDark ? '#334155' : '#F1F5F9' }, error && styles.inputError]} onPress={onPress} activeOpacity={0.7}>
                 <View style={styles.inputIcon}><Icon size={18} color={error ? '#EF4444' : theme.primary} /></View>
                 <Text style={[styles.inputText, { color: theme.textPrimary, fontSize }, !value && { color: isDark ? '#475569' : '#BBBBBB' }]}>{value || placeholder}</Text>
@@ -194,7 +201,7 @@ const Selector = ({ label, options, selected, onSelect }: any) => {
 
     return (
         <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }]}>{label}</Text>
+            <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }]}>{renderLabel(label)}</Text>
             <View 
                 style={[
                     styles.selectorContainer, 
@@ -538,7 +545,7 @@ const ProfilePhotoCapture = ({ uri, onCapture, onRemove, error }: any) => {
             </TouchableOpacity>
             
             <View style={styles.profileDetailsContainer}>
-                <Text style={[styles.profilePhotoTitle, { color: theme.textPrimary, fontSize: fontSize + 1 }]}>Add Profile Photo *</Text>
+                <Text style={[styles.profilePhotoTitle, { color: theme.textPrimary, fontSize: fontSize + 1 }]}>Add Profile Photo <Text style={{ color: '#EF4444' }}>*</Text></Text>
                 <Text style={[styles.profilePhotoSubtitle, { color: theme.textSecondary }]}>Upload a clear photo of the tenant</Text>
                 {error && <Text style={{ color: '#EF4444', fontSize: 11, fontWeight: '600', marginBottom: 8 }}>{error}</Text>}
                 <TouchableOpacity 

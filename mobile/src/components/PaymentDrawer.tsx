@@ -24,6 +24,7 @@ import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { toLocalDateStr } from '../utils/dateUtils';
 import { FullScreenLoader } from './FullScreenLoader';
 import { CardWatermark } from './ui/CardWatermark';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export interface PaymentDrawerProps {
     visible: boolean;
@@ -70,6 +71,7 @@ export function PaymentDrawer({
 }: PaymentDrawerProps) {
     const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
     const [isDueDatePickerVisible, setDueDatePickerVisibility] = useState(false);
+    const { isDark } = useTheme();
 
     const handleConfirmDate = (d: Date) => {
         setPayDate(toLocalDateStr(d));
@@ -127,7 +129,7 @@ export function PaymentDrawer({
                             keyboardShouldPersistTaps="handled"
                         >
                             {/* Amount */}
-                            <Text style={S.label}>Amount (₹) *</Text>
+                            <Text style={S.label}>Amount (₹) <Text style={{ color: '#EF4444' }}>*</Text></Text>
                             <TextInput
                                 style={S.inputField}
                                 keyboardType="numeric"
@@ -222,12 +224,12 @@ export function PaymentDrawer({
                                     }
 
                                     const hasArrears = collapsedCovers.some(c => c.isArrears);
-                                    const allocationBg = hasArrears ? '#FEF2F2' : '#F8FAFC';
-                                    const allocationBorder = hasArrears ? '#FECACA' : '#E2E8F0';
+                                    const allocationBg = isDark ? 'rgba(239, 68, 68, 0.1)' : '#FEF2F2';
+                                    const allocationBorder = '#EF4444';
 
                                     return (
                                         <View style={{ backgroundColor: allocationBg, padding: 12, borderRadius: 8, marginTop: 4, marginBottom: 12, borderWidth: 1, borderColor: allocationBorder }}>
-                                            <Text style={{ fontSize: 13, fontWeight: '700', color: hasArrears ? '#DC2626' : '#475569', marginBottom: 8 }}>Payment Allocation:</Text>
+                                            <Text style={{ fontSize: 13, fontWeight: '700', color: isDark ? '#FCA5A5' : '#DC2626', marginBottom: 8 }}>Payment Allocation:</Text>
                                             {collapsedCovers.map((c, i) => {
                                                 const rowTextColor = c.isArrears ? '#EF4444' : '#64748B';
                                                 const valTextColor = c.isArrears ? '#EF4444' : '#334155';
@@ -262,7 +264,7 @@ export function PaymentDrawer({
 
                             <View style={S.row}>
                                 <View style={{ flex: 1, marginRight: 6 }}>
-                                    <Text style={S.label}>Payment Date *</Text>
+                                    <Text style={S.label}>Payment Date <Text style={{ color: '#EF4444' }}>*</Text></Text>
                                     <TouchableOpacity
                                         style={S.dateField}
                                         onPress={() => setDatePickerVisibility(true)}
@@ -272,7 +274,7 @@ export function PaymentDrawer({
                                     </TouchableOpacity>
                                 </View>
                                 <View style={{ flex: 1, marginLeft: 6 }}>
-                                    <Text style={S.label}>Due Date *</Text>
+                                    <Text style={S.label}>Due Date <Text style={{ color: '#EF4444' }}>*</Text></Text>
                                     <TouchableOpacity
                                         style={S.dateField}
                                         onPress={() => setDueDatePickerVisibility(true)}

@@ -260,15 +260,15 @@ export default function ReportsScreen() {
                 const startStr = toLocalDateStr(overrideStart);
                 const endStr = toLocalDateStr(overrideEnd);
                 url = `${base}/reports/download/excel?startDate=${startStr}&endDate=${endStr}&reportType=${reportId}&token=${encodeURIComponent(token)}`;
-                filename = `Report_${startStr}_to_${endStr}.xlsx`;
+                filename = `${reportId}_Report_${startStr}_to_${endStr}.xlsx`;
             } else {
                 const { startDate, endDate, monthStr } = getQueryDates();
                 if (filterMode === 'month' && monthStr) {
                     url = `${base}/reports/download/excel?month=${monthStr}&reportType=${reportId}&token=${encodeURIComponent(token)}`;
-                    filename = `Report_${monthStr}.xlsx`;
+                    filename = `${reportId}_Report_${monthStr}.xlsx`;
                 } else {
                     url = `${base}/reports/download/excel?startDate=${startDate}&endDate=${endDate}&reportType=${reportId}&token=${encodeURIComponent(token)}`;
-                    filename = `Report_${startDate}_to_${endDate}.xlsx`;
+                    filename = `${reportId}_Report_${startDate}_to_${endDate}.xlsx`;
                 }
             }
 
