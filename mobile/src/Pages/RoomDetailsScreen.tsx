@@ -33,7 +33,7 @@ import {
     UserPlus,
 } from 'lucide-react-native';
 import api from '../services/api';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { AppHeader } from '../components/AppHeader';
 import { SkeletonDetails } from '../components/ui/SkeletonDetails';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -62,9 +62,11 @@ export const RoomDetailsScreen = ({ route }: any) => {
     const [room, setRoom] = useState<any>(null);
     const [selectedBedIndex, setSelectedBedIndex] = useState<number | null>(null);
 
-    useEffect(() => {
-        fetchRoomDetails();
-    }, [roomId]);
+    useFocusEffect(
+        React.useCallback(() => {
+            fetchRoomDetails();
+        }, [roomId])
+    );
 
     const fetchRoomDetails = async () => {
         try {

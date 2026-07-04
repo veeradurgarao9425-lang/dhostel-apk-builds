@@ -64,6 +64,7 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
     const pushMessages = tokens.map(token => ({
       to: token,
       sound: 'default',
+      channelId: 'default',
       title,
       body: message,
       data: {

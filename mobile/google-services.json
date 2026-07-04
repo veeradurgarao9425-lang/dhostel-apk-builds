@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "738498750186",
+    "project_id": "hostix-mobile",
+    "storage_bucket": "hostix-mobile.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:738498750186:android:f5c771db3613c92eeb9993",
+        "android_client_info": {
+          "package_name": "com.durgarao2.hostixmobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBbSxWVl4E2zsafD-rYCgvS6rhZ8StnPKQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
