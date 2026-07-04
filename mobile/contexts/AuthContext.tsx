@@ -18,7 +18,7 @@ type AuthContextType = {
   user: User | null;
   loading: boolean;
   signIn: (identifier: string, password: string) => Promise<{ error: any; user?: User }>;
-  signUp: (payload: { full_name: string; email?: string; phone?: string; password: string; hostel_name?: string }) => Promise<{ error: any; user?: User }>;
+  signUp: (payload: { full_name: string; email?: string; phone?: string; password: string; hostel_name?: string; address?: string }) => Promise<{ error: any; user?: User }>;
   signOut: () => Promise<void>;
   updateTokenAndUser: (token: string | null | undefined, updatedFields: Partial<User>) => Promise<void>;
   hostels: any[];
@@ -196,7 +196,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const signUp = async (payload: { full_name: string; email?: string; phone?: string; password: string; hostel_name?: string }) => {
+  const signUp = async (payload: { full_name: string; email?: string; phone?: string; password: string; hostel_name?: string; address?: string }) => {
     try {
       const response = await api.post('/auth/register', payload);
       const body = response.data;

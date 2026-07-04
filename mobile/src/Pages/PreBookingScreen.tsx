@@ -35,9 +35,21 @@ import { FullScreenLoader } from '../components/FullScreenLoader';
 // ─── Reusable custom components ──────────────────────────────────────────────
 const FormInput = ({ label, icon: Icon, placeholder, value, onChangeText, keyboardType, error }: any) => {
     const { theme, isDark, fontSize } = useTheme();
+    const renderLabel = (text: string) => {
+        if (text.includes('*')) {
+            const parts = text.split('*');
+            return (
+                <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }]}>
+                    {parts[0]}<Text style={{ color: '#EF4444' }}>*</Text>{parts[1]}
+                </Text>
+            );
+        }
+        return <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }]}>{text}</Text>;
+    };
+
     return (
         <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }]}>{label}</Text>
+            {renderLabel(label)}
             <View style={[styles.inputContainer, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }, error && styles.inputError]}>
                 <View style={styles.inputIcon}><Icon size={18} color={error ? '#EF4444' : theme.primary} /></View>
                 <TextInput
@@ -47,6 +59,7 @@ const FormInput = ({ label, icon: Icon, placeholder, value, onChangeText, keyboa
                     value={value}
                     onChangeText={onChangeText}
                     keyboardType={keyboardType}
+                    maxLength={keyboardType === 'phone-pad' ? 10 : undefined}
                 />
             </View>
             {error && <Text style={styles.errorText}>{error}</Text>}
@@ -56,11 +69,26 @@ const FormInput = ({ label, icon: Icon, placeholder, value, onChangeText, keyboa
 
 const SelectField = ({ label, value, placeholder, icon: Icon, onPress, error }: any) => {
     const { theme, isDark, fontSize } = useTheme();
+    const renderLabel = (text: string) => {
+        if (text.includes('*')) {
+            const parts = text.split('*');
+            return (
+                <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }]}>
+                    {parts[0]}<Text style={{ color: '#EF4444' }}>*</Text>{parts[1]}
+                </Text>
+            );
+        }
+        return <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }]}>{text}</Text>;
+    };
+
     return (
         <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }]}>{label}</Text>
-            <TouchableOpacity style={[styles.inputContainer, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }, error && styles.inputError]} onPress={onPress} activeOpacity={0.7}>
-                <View style={styles.inputIcon}><Icon size={18} color={error ? '#EF4444' : theme.primary} /></View>
+            {renderLabel(label)}
+            <TouchableOpacity 
+                style={[styles.inputContainer, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }, error && styles.inputError]} 
+                onPress={onPress}
+                activeOpacity={0.7}
+            >    <View style={styles.inputIcon}><Icon size={18} color={error ? '#EF4444' : theme.primary} /></View>
                 <Text style={[styles.inputText, { color: theme.textPrimary, fontSize }, !value && { color: isDark ? '#475569' : '#BBBBBB' }]}>{value || placeholder}</Text>
                 <ChevronDown size={18} color={theme.textSecondary} />
             </TouchableOpacity>
@@ -455,7 +483,7 @@ export default function PreBookingScreen({ navigation, route }: any) {
         if (!formData.phone) e.phone = 'Phone is required';
         else if (!/^\d{10}$/.test(formData.phone)) e.phone = 'Must be exactly 10 digits';
         if (!formData.expected_join_date) e.expected_join_date = 'Expected join date is required';
-        if (!formData.room_id) e.room_id = 'Please select a room';
+        if (!formData.room_id) e.room_id = 'Room allocation is strictly mandatory';
         setErrors(e);
         return Object.keys(e).length === 0;
     };
@@ -506,12 +534,31 @@ export default function PreBookingScreen({ navigation, route }: any) {
                 contentContainerStyle={[styles.scrollContent, { paddingBottom: (isKeyboardVisible ? 200 : 100) + insets.bottom }]}
                 keyboardShouldPersistTaps="handled"
             >
+                <View style={{ marginBottom: 20, paddingHorizontal: 5 }}>
+                    <Text style={{ fontSize: fontSize + 8, fontWeight: '800', color: theme.textPrimary, marginBottom: 5 }}>
+                        Pre-Booking
+                    </Text>
+                    <Text style={{ fontSize: fontSize - 1, color: theme.textSecondary }}>
+                        Reserve a bed for an upcoming tenant. Room allocation is mandatory to proceed.
+                    </Text>
+                </View>
+
                 <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
                     <Text style={[styles.sectionTitle, { fontSize: fontSize + 1, color: theme.textPrimary }]}>👤 Tenant Information</Text>
                     <FormInput label="First Name *" icon={User} placeholder="e.g. Rahul" value={formData.first_name} error={errors.first_name} onChangeText={(t: string) => up('first_name', t)} />
                     <FormInput label="Last Name" icon={User} placeholder="e.g. Sharma" value={formData.last_name} onChangeText={(t: string) => up('last_name', t)} />
                     <Selector label="Gender" options={['Male', 'Female', 'Other']} selected={formData.gender} onSelect={(v: string) => up('gender', v)} />
-                    <FormInput label="Phone *" icon={Phone} placeholder="9876543210" keyboardType="phone-pad" value={formData.phone} error={errors.phone} onChangeText={(t: string) => up('phone', t.replace(/\D/g, ''))} />
+                    <FormInput label="Phone *" icon={Phone} placeholder="9876543210" keyboardType="phone-pad" value={formData.phone} error={errors.phone} onChangeText={(t: string) => {
+                        const numericText = t.replace(/\D/g, '').substring(0, 10);
+                        if (numericText.length > 0 && /^[0-5]/.test(numericText)) {
+                            setErrors(prev => ({ ...prev, phone: 'Number should start with 6, 7, 8, or 9 only' }));
+                        } else if (numericText.length > 0 && numericText.length < 10) {
+                            setErrors(prev => ({ ...prev, phone: 'Please enter a 10-digit number' }));
+                        } else {
+                            setErrors(prev => { const newE = { ...prev }; delete newE.phone; return newE; });
+                        }
+                        up('phone', numericText);
+                    }} />
                 </View>
 
                 <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>

@@ -35,6 +35,7 @@ type Slide = {
   subtitle: string;
   gradient: [string, string, string];
   chips: string[];
+  bgColor?: string;
 };
 
 const SLIDES: Slide[] = [
@@ -71,12 +72,43 @@ const SLIDES: Slide[] = [
   {
     key: 'collections',
     badge: 'cash',
-    image: require('../../assets/onboarding/slide4.jpg'), // 04 Pending Dues
+    image: require('../../assets/onboarding/slide4.jpeg'), // 04 Pending Dues
     eyebrow: 'COLLECTIONS',
     title: 'Track & Collect\nPending Dues Effortlessly',
     subtitle: 'Stay on top of outstanding payments, send reminders and collect dues faster – all in one place.',
     gradient: ['#F59E0B', '#D97706', '#B45309'],
     chips: ['Overdue alerts', 'Reminders', 'Quick collect'],
+  },
+  {
+    key: 'more_features',
+    badge: 'star',
+    image: require('../../assets/onboarding/slide5.jpeg'), // 05 More Features
+    eyebrow: 'AND MORE',
+    title: 'Everything you need,\nin your pocket',
+    subtitle: 'Manage expenses, support tickets, and get comprehensive reports anywhere you go.',
+    gradient: ['#EC4899', '#DB2777', '#BE185D'],
+    chips: ['Expenses', 'Support', 'Reports'],
+  },
+  {
+    key: 'notifications',
+    badge: 'notifications',
+    image: require('../../assets/onboarding/slide6.jpeg'), // 06 Notifications
+    eyebrow: 'STAY INFORMED',
+    title: 'Real-Time Alerts\n& Updates',
+    subtitle: 'Never miss a beat. Get instant push notifications for rent payments, student complaints, and important hostel updates.',
+    gradient: ['#06B6D4', '#0891B2', '#155E75'],
+    chips: ['Push Alerts', 'Reminders', 'Instant Updates'],
+  },
+  {
+    key: 'security',
+    badge: 'shield-checkmark',
+    image: require('../../assets/onboarding/slide7.jpeg'), // 07 Security
+    eyebrow: 'BANK-LEVEL SECURITY',
+    title: 'Your Data is\nSafe & Secure',
+    subtitle: 'We use industry-leading encryption to protect your data. Your privacy and security are our top priorities.',
+    gradient: ['#10B981', '#059669', '#047857'],
+    chips: ['Encrypted', 'Cloud Backup', 'Privacy First'],
+    bgColor: '#F2EEFC', // Matches the image background for slide 7
   }
 ];
 
@@ -237,7 +269,7 @@ function Panel({
   insets: { top: number };
 }) {
   return (
-    <View style={[styles.panel, { backgroundColor: '#F2EEFC', paddingTop: insets.top + 40, paddingBottom: 130 }]}>
+    <View style={[styles.panel, { backgroundColor: item.bgColor || '#F2EEFC', paddingTop: insets.top + 40, paddingBottom: 130 }]}>
       <Image
         source={item.image}
         style={{ flex: 1, width: '100%', resizeMode: 'contain' }}
@@ -400,7 +432,16 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: SPACING.md,
     borderRadius: RADIUS.full,
-    backgroundColor: 'rgba(0,0,0,0.18)',
+    backgroundColor: COLORS.primary,
+    ...Platform.select({
+      android: { elevation: 4 },
+      default: {
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+      },
+    }),
   },
   skipText: {
     color: COLORS.white,

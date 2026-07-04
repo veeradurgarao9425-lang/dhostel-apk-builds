@@ -5,10 +5,10 @@
     "scheme": "hostix",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/HostixNew.jpeg",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/HostixNew.jpeg",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -17,20 +17,20 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/HostixNew.jpeg",
         "backgroundColor": "#ffffff"
       },
       "package": "com.durgarao2.hostixmobile"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/HostixNew.jpeg"
     },
     "plugins": [
       "@react-native-community/datetimepicker",
       [
         "expo-notifications",
         {
-          "icon": "./assets/notification-logo.png",
+          "icon": "./assets/HostixNew.jpeg",
           "color": "#8B291A"
         }
       ],

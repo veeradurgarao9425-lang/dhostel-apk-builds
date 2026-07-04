@@ -283,6 +283,20 @@ export const createRoom = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    // Validate floor number against hostel's total floors
+    if (floor_number !== undefined && floor_number !== null) {
+      const hostel = await db('hostel_master').where('hostel_id', finalHostelId).first();
+      const maxFloors = hostel?.total_floors || 1;
+      const parsedFloor = parseInt(floor_number, 10);
+      
+      if (!isNaN(parsedFloor) && parsedFloor > maxFloors) {
+        return res.status(400).json({
+          success: false,
+          error: `You added ${maxFloors} floors during PG creation. You need to go and update the PG form to add rooms on floor ${parsedFloor}.`
+        });
+      }
+    }
+
     // Check for duplicate room number in same hostel
     const existing = await db('rooms')
       .where({ hostel_id: finalHostelId, room_number })
@@ -373,6 +387,20 @@ export const updateRoom = async (req: AuthRequest, res: Response) => {
         return res.status(403).json({
           success: false,
           error: 'You can only update rooms from your own hostel'
+        });
+      }
+    }
+
+    // Validate floor number against hostel's total floors
+    if (floor_number !== undefined && floor_number !== null) {
+      const hostel = await db('hostel_master').where('hostel_id', room.hostel_id).first();
+      const maxFloors = hostel?.total_floors || 1;
+      const parsedFloor = parseInt(floor_number, 10);
+      
+      if (!isNaN(parsedFloor) && parsedFloor > maxFloors) {
+        return res.status(400).json({
+          success: false,
+          error: `You added ${maxFloors} floors during PG creation. You need to go and update the PG form to add rooms on floor ${parsedFloor}.`
         });
       }
     }

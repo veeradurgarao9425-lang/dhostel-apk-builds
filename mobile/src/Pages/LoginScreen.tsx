@@ -141,7 +141,7 @@ export default function LoginScreen({ navigation }: any) {
                     <View style={styles.logoWrapper}>
                         <View style={styles.logoImageContainer}>
                             <Image
-                                source={require('../../assets/Hostix.png')}
+                                source={require('../../assets/HostixNew.jpeg')}
                                 style={styles.logoImage}
                                 resizeMode="cover"
                             />

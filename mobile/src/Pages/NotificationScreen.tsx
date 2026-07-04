@@ -4,10 +4,11 @@ import { Header } from '../components/Header';
 import { Card } from '../components/Card';
 import { EmptyState } from '../components/ui/EmptyState';
 import { SkeletonList } from '../components/ui/SkeletonCard';
-import { Bell, CreditCard, UserPlus, AlertTriangle, CheckCircle2, ChevronRight, MessageSquareCode, Calendar, X } from 'lucide-react-native';
+import { Bell, CreditCard, UserPlus, AlertTriangle, CheckCircle2, ChevronRight, MessageSquareCode, Calendar, X, User, FileText } from 'lucide-react-native';
 import { useNotifications, Notification } from '../hooks/useNotifications';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ThemeContext';
+import { AnimatedGlowIcon } from '../components/ui/AnimatedGlowIcon';
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 
 // Helper function to format timestamp into friendly relative time
@@ -57,7 +58,7 @@ export const NotificationScreen = () => {
     const { theme, isDark } = useTheme();
 
     // Notification filtering states
-    const [selectedCategory, setSelectedCategory] = useState<'all' | 'payment' | 'admission' | 'other'>('all');
+    const [selectedCategory, setSelectedCategory] = useState<'all' | 'payment' | 'admission' | 'room' | 'other'>('all');
     const [filterDate, setFilterDate] = useState<string | null>(null);
     const [showDatePicker, setShowDatePicker] = useState(false);
  
@@ -65,24 +66,21 @@ export const NotificationScreen = () => {
         refreshNotifications();
     };
  
-    // Get icon for each notification category
+    // Get animated icon for each notification category
     const getBadgeStyle = (notif: Notification) => {
         const title = notif.title.toLowerCase();
-        let Icon = Bell;
         
         if (title.includes('payment') || title.includes('collect') || notif.type === 'success') {
-            Icon = CheckCircle2;
+            return <AnimatedGlowIcon Icon={CheckCircle2} gradientColors={['#10B981', '#059669']} glowColor="#10B98133" containerSize={48} iconSize={22} />;
+        } else if (title.includes('room') || title.includes('assign')) {
+            return <AnimatedGlowIcon Icon={require('lucide-react-native').DoorOpen} gradientColors={['#F59E0B', '#D97706']} glowColor="#F59E0B33" containerSize={48} iconSize={22} />;
         } else if (title.includes('admission') || title.includes('tenant') || notif.type === 'info') {
-            Icon = UserPlus;
-        } else if (title.includes('expense') || title.includes('due') || notif.type === 'warning') {
-            Icon = AlertTriangle;
+            return <AnimatedGlowIcon Icon={User} gradientColors={['#3B82F6', '#2563EB']} glowColor="#3B82F633" containerSize={48} iconSize={22} />;
+        } else if (title.includes('report') || title.includes('generated')) {
+            return <AnimatedGlowIcon Icon={FileText} gradientColors={['#8B5CF6', '#6D28D9']} glowColor="#8B5CF633" containerSize={48} iconSize={22} />;
+        } else {
+            return <AnimatedGlowIcon Icon={Bell} gradientColors={['#F43F5E', '#BE123C']} glowColor="#F43F5E33" containerSize={48} iconSize={22} />;
         }
-        
-        return {
-            bgColor: theme.primary + '15', // primary light matching current theme
-            iconColor: theme.primary, // primary matching current theme
-            Icon
-        };
     };
  
     const handleNotifClick = (notif: Notification) => {
@@ -127,11 +125,15 @@ export const NotificationScreen = () => {
         if (selectedCategory === 'payment') {
             matchesCategory = titleLower.includes('payment') || titleLower.includes('collect') || n.type === 'success';
         } else if (selectedCategory === 'admission') {
-            matchesCategory = titleLower.includes('admission') || titleLower.includes('tenant') || n.type === 'info';
+            const isRoom = titleLower.includes('room') || titleLower.includes('assign');
+            matchesCategory = !isRoom && (titleLower.includes('admission') || titleLower.includes('tenant') || n.type === 'info');
+        } else if (selectedCategory === 'room') {
+            matchesCategory = titleLower.includes('room') || titleLower.includes('assign');
         } else if (selectedCategory === 'other') {
             const isPayment = titleLower.includes('payment') || titleLower.includes('collect') || n.type === 'success';
-            const isAdmission = titleLower.includes('admission') || titleLower.includes('tenant') || n.type === 'info';
-            matchesCategory = !isPayment && !isAdmission;
+            const isRoom = titleLower.includes('room') || titleLower.includes('assign');
+            const isAdmission = !isRoom && (titleLower.includes('admission') || titleLower.includes('tenant') || n.type === 'info');
+            matchesCategory = !isPayment && !isAdmission && !isRoom;
         }
 
         // Date match
@@ -186,7 +188,7 @@ export const NotificationScreen = () => {
             <View style={[styles.filterBar, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
                     <View style={styles.categoryContainer}>
-                        {(['all', 'payment', 'admission', 'other'] as const).map((cat) => {
+                        {(['all', 'payment', 'admission', 'room', 'other'] as const).map((cat) => {
                             const isSelected = selectedCategory === cat;
                             const label = cat.charAt(0).toUpperCase() + cat.slice(1) + 's';
                             const displayLabel = cat === 'all' ? 'All' : cat === 'other' ? 'System' : label;
@@ -239,24 +241,23 @@ export const NotificationScreen = () => {
                                     key={notif.id} 
                                     onPress={() => handleNotifClick(notif)} 
                                     activeOpacity={0.7}
-                                    style={[styles.itemContainer, { borderColor: isDark ? '#334155' : '#E2E8F0', backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }, !notif.read && { backgroundColor: isDark ? '#1E293B' : theme.primary + '0A', borderColor: isDark ? theme.primary + '50' : theme.primary + '40', shadowColor: theme.primary, shadowOpacity: 0.15, elevation: 4 }]}
+                                    style={[styles.itemContainer, { borderBottomColor: isDark ? '#334155' : '#F1F5F9', backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }, !notif.read && { backgroundColor: isDark ? '#1E293B' : '#FAFAFA' }]}
                                 >
                                     <View style={styles.row}>
                                         {/* Premium Left Icon Badge */}
-                                        <View style={[styles.iconContainer, { backgroundColor: badge.bgColor }]}>
-                                            <BadgeIcon size={22} color={badge.iconColor} />
+                                        <View style={styles.iconContainerAnimated}>
+                                            {getBadgeStyle(notif)}
                                         </View>
                                         
                                         {/* Middle content section */}
                                         <View style={styles.textContainer}>
                                             <View style={styles.headerRow}>
                                                 <Text 
-                                                    style={[styles.notifTitle, !notif.read && styles.unreadTitle, { color: isDark ? '#E2E8F0' : '#334155' }]} 
+                                                    style={[styles.notifTitle, !notif.read && styles.unreadTitle, { color: isDark ? '#E2E8F0' : '#0F172A' }]} 
                                                     numberOfLines={1}
                                                 >
                                                     {notif.title}
                                                 </Text>
-                                                <Text style={styles.notifTime}>{formatRelativeTime(notif.date)}</Text>
                                             </View>
                                             <Text 
                                                 style={[styles.notifMessage, !notif.read && styles.unreadMessage, { color: isDark ? '#94A3B8' : '#475569' }]} 
@@ -264,6 +265,7 @@ export const NotificationScreen = () => {
                                             >
                                                 {notif.body}
                                             </Text>
+                                            <Text style={styles.notifTime}>{formatRelativeTime(notif.date)}</Text>
                                         </View>
  
                                         {/* Right Indicator (Blue unread dot or chevron) */}
@@ -341,39 +343,28 @@ const styles = StyleSheet.create({
     },
 
     itemContainer: {
-        paddingVertical: 16,
-        paddingHorizontal: 16,
-        borderRadius: 16,
-        marginHorizontal: 16,
-        marginBottom: 12,
+        paddingVertical: 20,
+        paddingHorizontal: 24,
         flexDirection: 'row',
         alignItems: 'center',
-        borderWidth: 1,
-        elevation: 3,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
+        borderBottomWidth: 1,
     },
     unreadItem: {
-        backgroundColor: '#8B291A08', 
+        backgroundColor: '#FAFAFA', 
     },
     row: { flexDirection: 'row', alignItems: 'center', width: '100%' },
-    iconContainer: {
-        width: 48,
-        height: 48,
-        borderRadius: 24, 
-        alignItems: 'center',
+    iconContainerAnimated: {
+        marginRight: 15,
         justifyContent: 'center',
-        marginRight: 16,
+        alignItems: 'center',
     },
     textContainer: { flex: 1, marginRight: 8 },
-    headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 },
-    notifTitle: { fontSize: 15, fontWeight: '600' },
+    headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 },
+    notifTitle: { fontSize: 15, fontWeight: '700' },
     unreadTitle: { fontWeight: '800' },
-    notifTime: { fontSize: 12, color: '#94A3B8', fontWeight: '500', marginLeft: 8 },
-    notifMessage: { fontSize: 13, lineHeight: 20, fontWeight: '400' },
-    unreadMessage: { fontWeight: '600' },
+    notifMessage: { fontSize: 13, lineHeight: 20, fontWeight: '400', marginBottom: 8 },
+    unreadMessage: { fontWeight: '500' },
+    notifTime: { fontSize: 12, color: '#64748B', fontWeight: '500' },
     rightIndicatorContainer: {
         width: 24,
         alignItems: 'center',

@@ -100,7 +100,7 @@ export default function MoreScreen() {
                     icon: 'cash-outline',
                     iconColor: '#10B981',
                     iconBg: '#D1FAE5',
-                    route: 'FeeManagement',
+                    route: 'CollectedPayments',
                 },
                 {
                     label: t('more.pendingPayments'),

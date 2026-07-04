@@ -47,8 +47,8 @@ export const useNotifications = () => {
                     return {
                         id: item.notification_id,
                         type,
-                        title: item.title,
-                        body: item.message,
+                        title: item.title || 'Notification',
+                        body: item.message || '',
                         time: new Date(item.created_at).toLocaleString(),
                         date: item.created_at,
                         read: item.is_read === 1,
@@ -71,6 +71,21 @@ export const useNotifications = () => {
 
     useEffect(() => {
         fetchNotifications();
+
+        // Listen for foreground notifications to auto-refresh the count and list
+        const subscription = require('expo-notifications').addNotificationReceivedListener(() => {
+            fetchNotifications();
+        });
+
+        // Listen for internal events to sync across components
+        const eventSubscription = require('react-native').DeviceEventEmitter.addListener('REFRESH_NOTIFICATIONS', () => {
+            fetchNotifications();
+        });
+
+        return () => {
+            subscription.remove();
+            eventSubscription.remove();
+        };
     }, [fetchNotifications]);
 
     const markAsRead = async (id: string | number) => {
@@ -81,6 +96,7 @@ export const useNotifications = () => {
 
             // Sync with backend
             await api.put(`/notifications/${id}/read`);
+            require('react-native').DeviceEventEmitter.emit('REFRESH_NOTIFICATIONS');
         } catch (error) {
             console.error(`Error marking notification ${id} as read:`, error);
             // Revert changes on error by refetching
@@ -96,6 +112,7 @@ export const useNotifications = () => {
 
           // Sync with backend
           await api.put('/notifications/read-all');
+          require('react-native').DeviceEventEmitter.emit('REFRESH_NOTIFICATIONS');
       } catch (error) {
           console.error('Error marking all notifications as read:', error);
           fetchNotifications();

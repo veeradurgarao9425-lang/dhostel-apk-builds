@@ -4,7 +4,7 @@
     "slug": "tenant-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/HostixNew.jpeg",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true
@@ -12,17 +12,17 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "foregroundImage": "./assets/HostixNew.jpeg",
+        "backgroundImage": "./assets/HostixNew.jpeg",
+        "monochromeImage": "./assets/HostixNew.jpeg"
       },
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/HostixNew.jpeg"
     },
     "splash": {
-      "image": "./assets/logo.jpeg",
+      "image": "./assets/HostixNew.jpeg",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     }

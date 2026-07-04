@@ -258,7 +258,7 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
             if (!Number.isInteger(floorNumber) || floorNumber < 1) {
                 newErrors.floor_number = 'Floor number must be a positive whole number';
             } else if (hostelFloorLimit !== null && floorNumber > hostelFloorLimit) {
-                newErrors.floor_number = `Floor number cannot be greater than ${hostelFloorLimit}`;
+                newErrors.floor_number = `You only added ${hostelFloorLimit} floors when creating this PG. Please update your PG details to add rooms on floor ${floorNumber}.`;
             }
         }
         if (!formData.capacity) newErrors.capacity = 'Capacity is required';
@@ -403,7 +403,20 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
                                     value={formData.floor_number}
                                     onChangeText={text => {
                                         setFormData(p => ({ ...p, floor_number: text }));
-                                        if (errors.floor_number) setErrors(e => { const n = { ...e }; delete n.floor_number; return n; });
+                                        
+                                        // Real-time validation
+                                        if (text.trim() !== '') {
+                                            const floorNumber = Number(text);
+                                            if (!Number.isInteger(floorNumber) || floorNumber < 1) {
+                                                setErrors(e => ({ ...e, floor_number: 'Floor number must be a positive whole number' }));
+                                            } else if (hostelFloorLimit !== null && floorNumber > hostelFloorLimit) {
+                                                setErrors(e => ({ ...e, floor_number: `You only added ${hostelFloorLimit} floors when creating this PG. Please update your PG details to add rooms on floor ${floorNumber}.` }));
+                                            } else {
+                                                if (errors.floor_number) setErrors(e => { const n = { ...e }; delete n.floor_number; return n; });
+                                            }
+                                        } else {
+                                            if (errors.floor_number) setErrors(e => { const n = { ...e }; delete n.floor_number; return n; });
+                                        }
                                     }}
                                 />
                             </View>

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator, Modal, Platform } from 'react-native';
-import { CheckCircle, AlertCircle, Info, X, ChevronRight } from 'lucide-react-native';
+import { CheckCircle, AlertCircle, Info, X, ChevronRight, DoorOpen } from 'lucide-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNotifications, Notification } from '../hooks/useNotifications';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AnimatedGlowIcon } from './ui/AnimatedGlowIcon';
 import { useTheme } from '../../contexts/ThemeContext';
 
 const { width, height } = Dimensions.get('window');
@@ -56,16 +57,19 @@ export const HeaderNotification = ({ navigation }: { navigation?: any }) => {
         nav.navigate('Notifications');
     };
 
-    const getIcon = (type: Notification['type']) => {
-        if (type === 'success') return <CheckCircle color="#059669" size={16} />;
-        if (type === 'warning') return <AlertCircle color="#D97706" size={16} />;
-        return <Info color="#3B82F6" size={16} />;
-    };
-
-    const getIconBg = (type: Notification['type']) => {
-        if (type === 'success') return '#D1FAE5';
-        if (type === 'warning') return '#FEF3C7';
-        return '#DBEAFE';
+    const getAnimatedIcon = (notif: Notification) => {
+        const title = (notif.title || '').toLowerCase();
+        
+        if (title.includes('payment') || title.includes('collect') || notif.type === 'success') {
+            return <AnimatedGlowIcon Icon={CheckCircle} gradientColors={['#10B981', '#059669']} glowColor="#10B98155" />;
+        }
+        if (title.includes('room') || title.includes('assign')) {
+            return <AnimatedGlowIcon Icon={DoorOpen} gradientColors={['#F59E0B', '#D97706']} glowColor="#F59E0B55" />;
+        }
+        if (notif.type === 'warning') {
+            return <AnimatedGlowIcon Icon={AlertCircle} gradientColors={['#EF4444', '#DC2626']} glowColor="#EF444455" />;
+        }
+        return <AnimatedGlowIcon Icon={Info} gradientColors={['#3B82F6', '#2563EB']} glowColor="#3B82F655" />;
     };
 
     return (
@@ -138,9 +142,9 @@ export const HeaderNotification = ({ navigation }: { navigation?: any }) => {
                                             onPress={() => handleNotifClick(n)}
                                             activeOpacity={0.7}
                                         >
-                                            <View style={[styles.notifIconBox, { backgroundColor: getIconBg(n.type) }]}>
-                                                {getIcon(n.type)}
-                                            </View>
+                                        <View style={styles.notifIconContainer}>
+                                            {getAnimatedIcon(n)}
+                                        </View>
                                             <View style={styles.notifBody}>
                                                 <Text style={styles.notifItemTitle}>{n.title}</Text>
                                                 <Text style={styles.notifItemBody} numberOfLines={2}>{n.body}</Text>
@@ -265,13 +269,12 @@ const styles = StyleSheet.create({
         borderBottomColor: '#F8F8F8',
         gap: 10,
     },
-    notifIconBox: {
-        width: 32,
-        height: 32,
-        borderRadius: 10,
-        alignItems: 'center',
+    notifIconContainer: {
+        width: 36,
+        height: 36,
+        marginRight: 12,
         justifyContent: 'center',
-        marginTop: 2,
+        alignItems: 'center',
     },
     notifBody: { flex: 1, gap: 2 },
     notifItemTitle: { fontSize: 13, fontWeight: '700', color: '#1A1A1A' },

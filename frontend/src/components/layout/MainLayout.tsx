@@ -25,7 +25,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../contexts/ThemeContext';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
-import hostixLogo from '../../assets/Hostix.png';
+import hostixLogo from '../../assets/HostixNew.jpeg';
 
 export const MainLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);

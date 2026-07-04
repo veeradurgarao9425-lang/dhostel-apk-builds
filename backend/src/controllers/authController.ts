@@ -171,13 +171,13 @@ export const authController = {
   // Public self-registration for new hostel owners (sign up from the app)
   async register(req: Request, res: Response) {
     try {
-      const { full_name, email, phone, password, hostel_name } = req.body;
+      const { full_name, email, phone, password, hostel_name, address, total_floors } = req.body;
 
       // Validate required fields (all are mandatory now)
-      if (!full_name || !password || !email || !phone || !hostel_name) {
+      if (!full_name || !password || !email || !phone || !hostel_name || !address || !total_floors) {
         return res.status(400).json({
           success: false,
-          error: 'All fields (Full Name, Email, Mobile Number, PG Name, and Password) are mandatory.',
+          error: 'All fields (Full Name, Email, Mobile Number, PG Name, Floors, Address, and Password) are mandatory.',
         });
       }
       if (String(password).length < 6) {
@@ -199,6 +199,12 @@ export const authController = {
         return res.status(400).json({
           success: false,
           error: 'PG Name must be at least 3 characters.',
+        });
+      }
+      if (String(address).trim().length < 5) {
+        return res.status(400).json({
+          success: false,
+          error: 'Address must be at least 5 characters.',
         });
       }
 
@@ -274,7 +280,8 @@ export const authController = {
           // hostel_type is NOT NULL in the schema; default to 'Boys' so the row is
           // valid and can be edited later without a 500. The owner can change it in Edit Hostel.
           hostel_type: 'Boys',
-          address: '',
+          address: String(address).trim(),
+          total_floors: parseInt(total_floors, 10) || 1,
           is_active: 1,
           created_at: new Date(),
         });
@@ -303,6 +310,7 @@ export const authController = {
                 <li><strong>Email:</strong> ${resolvedEmail}</li>
                 <li><strong>Phone:</strong> ${phone || 'N/A'}</li>
                 <li><strong>Hostel Name:</strong> ${trimmedHostel || 'N/A'}</li>
+                <li><strong>Address:</strong> ${address ? String(address).trim() : 'N/A'}</li>
               </ul>
             </div>
           `

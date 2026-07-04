@@ -68,7 +68,7 @@ export default function SplashScreen({ navigation }: any) {
           {/* Logo */}
           <View style={styles.logoContainer}>
             <Image 
-                source={require('../../assets/Hostix.png')}
+                source={require('../../assets/HostixNew.jpeg')}
                 style={{ width: '100%', height: '100%', borderRadius: 28 }}
                 resizeMode="cover"
             />

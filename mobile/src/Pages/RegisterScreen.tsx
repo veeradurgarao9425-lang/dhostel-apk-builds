@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
     View,
     Text,
@@ -29,6 +29,8 @@ export default function RegisterScreen({ navigation }: any) {
     const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
     const [hostelName, setHostelName] = useState('');
+    const [floors, setFloors] = useState('');
+    const [address, setAddress] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -45,10 +47,23 @@ export default function RegisterScreen({ navigation }: any) {
     const [emailVerified, setEmailVerified] = useState(false);
     const [sendingOtp, setSendingOtp] = useState(false);
     const [verifyingOtp, setVerifyingOtp] = useState(false);
+    const [resendTimer, setResendTimer] = useState(0);
+
+    useEffect(() => {
+        let interval: NodeJS.Timeout;
+        if (resendTimer > 0) {
+            interval = setInterval(() => {
+                setResendTimer(prev => prev - 1);
+            }, 1000);
+        }
+        return () => clearInterval(interval);
+    }, [resendTimer]);
 
     const emailRef = useRef<TextInput>(null);
     const phoneRef = useRef<TextInput>(null);
-    const hostelRef = useRef<TextInput>(null);
+    const hostelNameRef = useRef<TextInput>(null);
+    const floorsRef = useRef<TextInput>(null);
+    const addressRef = useRef<TextInput>(null);
     const passwordRef = useRef<TextInput>(null);
     const otpRef = useRef<TextInput>(null);
 
@@ -66,6 +81,12 @@ export default function RegisterScreen({ navigation }: any) {
         } else if (name === 'hostelName') {
             if (!value.trim()) err = 'PG Name is required';
             else if (value.trim().length < 3) err = 'Must be at least 3 characters';
+        } else if (name === 'floors') {
+            if (!value.trim()) err = 'Number of floors is required';
+            else if (isNaN(Number(value)) || Number(value) < 1) err = 'Must be a valid number (min 1)';
+        } else if (name === 'address') {
+            if (!value.trim()) err = 'Address is required';
+            else if (value.trim().length < 5) err = 'Must be at least 5 characters';
         } else if (name === 'password') {
             if (!value) err = 'Password is required';
             else if (value.length < 6) err = 'Must be at least 6 characters';
@@ -110,6 +131,8 @@ export default function RegisterScreen({ navigation }: any) {
         if (name === 'email') validateField('email', email);
         if (name === 'phone') validateField('phone', phone);
         if (name === 'hostelName') validateField('hostelName', hostelName);
+        if (name === 'floors') validateField('floors', floors);
+        if (name === 'address') validateField('address', address);
         if (name === 'password') validateField('password', password);
         if (name === 'otp') validateField('otp', otp);
     };
@@ -136,6 +159,7 @@ export default function RegisterScreen({ navigation }: any) {
                     setOtp(data.dev_otp);
                     setSubmitError(`[Dev] OTP auto-filled: ${data.dev_otp}`);
                 }
+                setResendTimer(120); // 2 minutes
                 setTimeout(() => otpRef.current?.focus(), 100);
             } else {
                 setFieldErrors(prev => ({ ...prev, email: data?.error || data?.message || 'Could not send verification code.' }));
@@ -201,7 +225,9 @@ export default function RegisterScreen({ navigation }: any) {
         const trimmedName = fullName.trim();
         const trimmedEmail = email.trim();
         const trimmedPhone = phone.trim();
-        const trimmedHostel = hostelName.trim();
+        const trimmedHostelName = hostelName.trim();
+        const trimmedFloors = floors.trim();
+        const trimmedAddress = address.trim();
 
         // Mark all fields as touched
         const allTouched = {
@@ -209,6 +235,8 @@ export default function RegisterScreen({ navigation }: any) {
             email: true,
             phone: true,
             hostelName: true,
+            floors: true,
+            address: true,
             password: true,
         };
         setTouched(allTouched);
@@ -216,8 +244,10 @@ export default function RegisterScreen({ navigation }: any) {
         // Run validation for all fields
         const e1 = validateField('fullName', trimmedName);
         const e2 = validateField('email', trimmedEmail);
-        const e3 = validateField('phone', trimmedPhone);
-        const e4 = validateField('hostelName', trimmedHostel);
+        const e3 = validateField('password', password);
+        const e4 = validateField('hostelName', trimmedHostelName);
+        const eFloors = validateField('floors', trimmedFloors);
+        const eAddress = validateField('address', trimmedAddress);
         const e5 = validateField('password', password);
 
         // Additional email verification check
@@ -227,8 +257,9 @@ export default function RegisterScreen({ navigation }: any) {
             setFieldErrors(prev => ({ ...prev, email: emailVerifyError }));
         }
 
-        if (e1 || e2 || e3 || e4 || e5 || emailVerifyError) {
-            return; // Stop if there are local validation errors
+        if (e1 || e2 || e3 || e4 || eFloors || eAddress || e5 || emailVerifyError) {
+            setSubmitError('Please fix the errors above.');
+            return;
         }
 
         setIsLoading(true);
@@ -247,7 +278,9 @@ export default function RegisterScreen({ navigation }: any) {
                 email: trimmedEmail,
                 phone: trimmedPhone,
                 password,
-                hostel_name: trimmedHostel,
+                hostel_name: trimmedHostelName,
+                total_floors: trimmedFloors,
+                address: trimmedAddress,
             });
             if (!error) {
                 navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
@@ -306,7 +339,7 @@ export default function RegisterScreen({ navigation }: any) {
 
                     <View style={styles.headerLogoContainer}>
                         <Image
-                            source={require('../../assets/Hostix.png')}
+                            source={require('../../assets/HostixNew.jpeg')}
                             style={styles.headerLogo}
                             resizeMode="cover"
                         />
@@ -340,8 +373,22 @@ export default function RegisterScreen({ navigation }: any) {
                 </Field>
 
                 {/* Email + verify */}
-                <View>
-                    <Field label="Email" error={getFieldError('email', email)}>
+                <View style={styles.inputGroup}>
+                    <Field 
+                        label="Email" 
+                        error={getFieldError('email', email)}
+                        rightAction={otpSent ? (
+                            <TouchableOpacity
+                                onPress={() => {
+                                    setOtpSent(false);
+                                    setOtp('');
+                                    clearErr();
+                                }}
+                            >
+                                <Text style={{ color: '#5F2EEA', fontSize: 13, fontWeight: '700' }}>Change</Text>
+                            </TouchableOpacity>
+                        ) : undefined}
+                    >
                         <Ionicons name="mail-outline" size={18} color="#7C3AED" style={styles.icon} />
                         <TextInput
                             ref={emailRef}
@@ -370,28 +417,9 @@ export default function RegisterScreen({ navigation }: any) {
                                 <Text style={styles.verifiedText}>Verified</Text>
                             </View>
                         ) : otpSent ? (
-                            <View style={styles.verifyBtnGroup}>
-                                <TouchableOpacity
-                                    style={styles.changeEmailBtn}
-                                    onPress={() => {
-                                        setOtpSent(false);
-                                        setOtp('');
-                                        clearErr();
-                                    }}
-                                    activeOpacity={0.7}
-                                >
-                                    <Text style={styles.changeEmailBtnText}>Change</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[styles.verifyBtn, sendingOtp && { opacity: 0.6 }]}
-                                    onPress={handleSendOtp}
-                                    disabled={sendingOtp}
-                                    activeOpacity={0.8}
-                                >
-                                    {sendingOtp
-                                        ? <ActivityIndicator color="#5F2EEA" size="small" />
-                                        : <Text style={styles.verifyBtnText}>Resend</Text>}
-                                </TouchableOpacity>
+                            <View style={styles.verifiedBadge}>
+                                <Ionicons name="lock-closed-outline" size={16} color="#16A34A" />
+                                <Text style={[styles.verifiedText, { color: '#16A34A' }]}>OTP Sent</Text>
                             </View>
                         ) : (
                             <TouchableOpacity
@@ -406,14 +434,35 @@ export default function RegisterScreen({ navigation }: any) {
                             </TouchableOpacity>
                         )}
                     </Field>
-                    <Text style={styles.helperText}>
-                        Please enter your correct email; you will receive a verification OTP on this email.
-                    </Text>
+                    {!otpSent && (
+                        <Text style={styles.helperText}>
+                            Please enter your correct email; you will receive a verification OTP on this email.
+                        </Text>
+                    )}
                 </View>
 
                 {/* OTP entry — shown only after a code has been sent and not yet verified */}
                 {otpSent && !emailVerified && (
-                    <Field label="Enter Verification Code" error={getFieldError('otp', otp)}>
+                    <View style={{ marginTop: 10 }}>
+                        <Field 
+                            label="Enter Verification Code" 
+                            error={getFieldError('otp', otp)}
+                            rightAction={
+                                <TouchableOpacity
+                                    onPress={handleSendOtp}
+                                    disabled={sendingOtp || resendTimer > 0}
+                                    style={{ opacity: (sendingOtp || resendTimer > 0) ? 0.6 : 1 }}
+                                >
+                                    {sendingOtp ? (
+                                        <ActivityIndicator color="#5F2EEA" size="small" />
+                                    ) : (
+                                        <Text style={{ color: '#5F2EEA', fontSize: 13, fontWeight: '700' }}>
+                                            {resendTimer > 0 ? `Resend in ${Math.floor(resendTimer / 60)}:${String(resendTimer % 60).padStart(2, '0')}` : 'Resend OTP'}
+                                        </Text>
+                                    )}
+                                </TouchableOpacity>
+                            }
+                        >
                         <Ionicons name="key-outline" size={18} color="#7C3AED" style={styles.icon} />
                         <TextInput
                             ref={otpRef}
@@ -443,7 +492,8 @@ export default function RegisterScreen({ navigation }: any) {
                                 ? <ActivityIndicator color="#5F2EEA" size="small" />
                                 : <Text style={styles.verifyBtnText}>Confirm</Text>}
                         </TouchableOpacity>
-                    </Field>
+                        </Field>
+                    </View>
                 )}
 
                 {/* Phone */}
@@ -458,7 +508,7 @@ export default function RegisterScreen({ navigation }: any) {
                         maxLength={10}
                         value={phone}
                         returnKeyType="next"
-                        onSubmitEditing={() => hostelRef.current?.focus()}
+                        onSubmitEditing={() => hostelNameRef.current?.focus()}
                         blurOnSubmit={false}
                         onBlur={() => {
                             markTouched('phone');
@@ -476,20 +526,63 @@ export default function RegisterScreen({ navigation }: any) {
                     />
                 </Field>
 
-                {/* PG name */}
-                <Field label="PG Name" error={getFieldError('hostelName', hostelName)}>
+                {/* PG Name */}
+                <Field label="Hostel / PG Name" error={getFieldError('hostelName', hostelName)}>
                     <Ionicons name="business-outline" size={18} color="#7C3AED" style={styles.icon} />
                     <TextInput
-                        ref={hostelRef}
+                        ref={hostelNameRef}
                         style={styles.input}
-                        placeholder="Your PG's name"
+                        placeholder="e.g. Sunrise PG"
                         placeholderTextColor="#B8B8B8"
                         value={hostelName}
                         returnKeyType="next"
-                        onSubmitEditing={() => passwordRef.current?.focus()}
+                        onSubmitEditing={() => floorsRef.current?.focus()}
                         blurOnSubmit={false}
                         onBlur={() => markTouched('hostelName')}
                         onChangeText={(t) => { setHostelName(t); validateField('hostelName', t); clearErr(); }}
+                    />
+                </Field>
+
+                {/* Floors */}
+                <Field label="Total Floors" error={getFieldError('floors', floors)}>
+                    <Ionicons name="layers-outline" size={18} color="#7C3AED" style={styles.icon} />
+                    <TextInput
+                        ref={floorsRef}
+                        style={styles.input}
+                        placeholder="e.g. 3"
+                        placeholderTextColor="#B8B8B8"
+                        keyboardType="numeric"
+                        value={floors}
+                        returnKeyType="next"
+                        onSubmitEditing={() => addressRef.current?.focus()}
+                        blurOnSubmit={false}
+                        onBlur={() => markTouched('floors')}
+                        onChangeText={(t) => { setFloors(t); validateField('floors', t); clearErr(); }}
+                    />
+                </Field>
+
+                {/* Address */}
+                <Field 
+                    label="Address" 
+                    error={getFieldError('address', address)}
+                    containerStyle={{ height: 100, alignItems: 'flex-start', paddingTop: 14 }}
+                >
+                    <Ionicons name="location-outline" size={18} color="#7C3AED" style={[styles.icon, { marginTop: 2 }]} />
+                    <TextInput
+                        ref={addressRef}
+                        style={[styles.input, { height: '100%', textAlignVertical: 'top', paddingTop: 0, paddingBottom: 0 }]}
+                        placeholder="Enter full address"
+                        placeholderTextColor="#B8B8B8"
+                        value={address}
+                        multiline
+                        numberOfLines={3}
+                        blurOnSubmit={false}
+                        onBlur={() => markTouched('address')}
+                        onChangeText={(t) => {
+                            setAddress(t);
+                            validateField('address', t);
+                            clearErr();
+                        }}
                     />
                 </Field>
 
@@ -571,10 +664,13 @@ export default function RegisterScreen({ navigation }: any) {
 }
 
 // Small labelled input wrapper to keep the form consistent
-const Field = ({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) => (
+const Field = ({ label, error, rightAction, containerStyle, children }: { label: string; error?: string; rightAction?: React.ReactNode; containerStyle?: any; children: React.ReactNode }) => (
     <View style={styles.inputGroup}>
-        <Text style={styles.label}>{label} <Text style={{ color: '#EF4444' }}>*</Text></Text>
-        <View style={[styles.inputContainer, error ? { borderColor: '#EF4444' } : null]}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 8 }}>
+            <Text style={[styles.label, { marginBottom: 0 }]}>{label} <Text style={{ color: '#EF4444' }}>*</Text></Text>
+            {rightAction}
+        </View>
+        <View style={[styles.inputContainer, error ? { borderColor: '#EF4444' } : null, containerStyle]}>
             {children}
         </View>
         {error ? (

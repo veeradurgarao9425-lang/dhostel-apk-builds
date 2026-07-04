@@ -95,6 +95,7 @@ export const notificationService = {
     const responseSubscription = Notifications.addNotificationResponseReceivedListener(response => {
       console.log('Notification clicked:', response);
       const data = response.notification.request.content.data;
+      const title = (response.notification.request.content.title || '').toLowerCase();
       
       if (data) {
         // Direct navigation based on notification payload structure
@@ -107,6 +108,8 @@ export const notificationService = {
         } else if (title.includes('payment') || title.includes('collect') || data?.type === 'success') {
           navigate('FeeManagement');
         } else if (title.includes('tenant') || title.includes('admission')) {
+          navigate('Rooms');
+        } else if (title.includes('room') || title.includes('assign')) {
           navigate('Rooms');
         }
       }
