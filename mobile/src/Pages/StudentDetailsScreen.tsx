@@ -40,6 +40,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useConfirmation } from '../../contexts/ConfirmationContext';
 import { PaymentDrawer } from '../components/PaymentDrawer';
 import { useRefresh } from '../../contexts/RefreshContext';
+import { ModalSheet } from '../components/FormComponents';
 
 
 // ─── Sub-component: a single payment history row ──────────────────────────────
@@ -1227,56 +1228,51 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
             />
 
             {/* ── Vacancy Notice Modal ─────────────────────────────────────── */}
-            <Modal
+            <ModalSheet
                 visible={noticeModalVisible}
-                animationType="slide"
-                transparent={true}
-                onRequestClose={() => setNoticeModalVisible(false)}
+                onClose={() => setNoticeModalVisible(false)}
             >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <View style={{ width: 40, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, alignSelf: 'center', marginBottom: 20 }} />
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Schedule Vacate Date</Text>
-                            <TouchableOpacity onPress={() => setNoticeModalVisible(false)}>
-                                <X size={24} color="#666" />
-                            </TouchableOpacity>
-                        </View>
-
-                        <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-                            <Text style={styles.inputLabel}>Expected Vacate Date *</Text>
-                            <TouchableOpacity
-                                style={styles.dateSelector}
-                                onPress={() => setNoticeDatePickerVisible(true)}
-                            >
-                                <Calendar size={18} color={theme.primary} />
-                                <Text style={styles.dateText}>{noticeDate}</Text>
-                            </TouchableOpacity>
-
-                            <Text style={[styles.inputLabel, { marginTop: 16 }]}>Reason / Notes (Optional)</Text>
-                            <TextInput
-                                style={[styles.notesInput, { height: 80 }]}
-                                value={noticeReason}
-                                onChangeText={setNoticeReason}
-                                multiline={true}
-                                placeholder="e.g. Completed course, moving away..."
-                                textAlignVertical="top"
-                            />
-
-                            <TouchableOpacity
-                                style={[styles.submitButton, { backgroundColor: '#F59E0B' }, noticeSubmitLoading && styles.disabledButton]}
-                                onPress={handleSetVacancyNotice}
-                                disabled={noticeSubmitLoading}
-                            >
-                                {noticeSubmitLoading
-                                    ? <ActivityIndicator color="#FFF" />
-                                    : <Text style={styles.submitButtonText}>Schedule Vacate</Text>
-                                }
-                            </TouchableOpacity>
-                        </ScrollView>
+                <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
+                    <View style={styles.modalHeader}>
+                        <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>Schedule Vacate Date</Text>
+                        <TouchableOpacity onPress={() => setNoticeModalVisible(false)}>
+                            <X size={24} color="#666" />
+                        </TouchableOpacity>
                     </View>
+
+                    <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+                        <Text style={styles.inputLabel}>Expected Vacate Date *</Text>
+                        <TouchableOpacity
+                            style={styles.dateSelector}
+                            onPress={() => setNoticeDatePickerVisible(true)}
+                        >
+                            <Calendar size={18} color={theme.primary} />
+                            <Text style={styles.dateText}>{noticeDate}</Text>
+                        </TouchableOpacity>
+
+                        <Text style={[styles.inputLabel, { marginTop: 16 }]}>Reason / Notes (Optional)</Text>
+                        <TextInput
+                            style={[styles.notesInput, { height: 80 }]}
+                            value={noticeReason}
+                            onChangeText={setNoticeReason}
+                            multiline={true}
+                            placeholder="e.g. Completed course, moving away..."
+                            textAlignVertical="top"
+                        />
+
+                        <TouchableOpacity
+                            style={[styles.submitButton, { backgroundColor: '#F59E0B' }, noticeSubmitLoading && styles.disabledButton]}
+                            onPress={handleSetVacancyNotice}
+                            disabled={noticeSubmitLoading}
+                        >
+                            {noticeSubmitLoading
+                                ? <ActivityIndicator color="#FFF" />
+                                : <Text style={styles.submitButtonText}>Schedule Vacate</Text>
+                            }
+                        </TouchableOpacity>
+                    </ScrollView>
                 </View>
-            </Modal>
+            </ModalSheet>
 
             <DateTimePickerModal
                 isVisible={noticeDatePickerVisible}

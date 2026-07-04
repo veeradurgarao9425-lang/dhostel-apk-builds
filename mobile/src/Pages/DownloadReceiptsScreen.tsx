@@ -19,6 +19,7 @@ import * as Sharing from 'expo-sharing';
 import { SuccessModal } from '../components/SuccessModal';
 import { downloadAndSaveFile } from '../utils/fileDownloader';
 import { MonthFilter } from '../components/MonthFilter';
+import { ModalSheet } from '../components/FormComponents';
 
 const { width } = Dimensions.get('window');
 
@@ -378,64 +379,61 @@ export default function DownloadReceiptsScreen() {
             )}
 
             {/* Export Modal */}
-            <Modal
+            {/* Export Modal */}
+            <ModalSheet
                 visible={showExportModal}
-                transparent
-                animationType="fade"
-                onRequestClose={() => setShowExportModal(false)}
+                onClose={() => setShowExportModal(false)}
             >
-                <View style={s.modalOverlay}>
-                    <View style={s.modalContent}>
-                        <View style={s.modalHeader}>
-                            <Text style={s.modalTitle}>Export Income Report</Text>
-                            <TouchableOpacity onPress={() => setShowExportModal(false)}>
-                                <X size={24} color="#64748B" />
-                            </TouchableOpacity>
-                        </View>
-
-                        <Text style={s.modalLabel}>Select Date Range</Text>
-                        <Text style={s.modalSubLabel}>All transactions in this range will be exported</Text>
-
-                        <View style={s.dateInputs}>
-                            <TouchableOpacity style={s.dateInput} onPress={() => setStartDatePickerVisible(true)}>
-                                <Ionicons name="calendar-outline" size={18} color="#64748B" />
-                                <Text style={s.dateInputText}>
-                                    {exportStart.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                </Text>
-                            </TouchableOpacity>
-                            <Text style={{ color: '#94A3B8', fontWeight: '700' }}>→</Text>
-                            <TouchableOpacity style={s.dateInput} onPress={() => setEndDatePickerVisible(true)}>
-                                <Ionicons name="calendar-outline" size={18} color="#64748B" />
-                                <Text style={s.dateInputText}>
-                                    {exportEnd.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        {exportStart > exportEnd && (
-                            <Text style={s.exportWarning}>⚠️ Start date must be before end date</Text>
-                        )}
-
-                        <TouchableOpacity
-                            style={[
-                                s.exportConfirmBtn,
-                                (isExporting || exportStart > exportEnd) && s.exportConfirmBtnDisabled
-                            ]}
-                            onPress={handleExport}
-                            disabled={isExporting || exportStart > exportEnd}
-                        >
-                            {isExporting ? (
-                                <ActivityIndicator color="#FFF" size="small" />
-                            ) : (
-                                <>
-                                    <Text style={s.exportConfirmText}>Download Excel (All Data)</Text>
-                                    <Download size={18} color="#FFF" />
-                                </>
-                            )}
+                <View style={{ paddingHorizontal: 20, paddingBottom: 24 }}>
+                    <View style={s.modalHeader}>
+                        <Text style={s.modalTitle}>Export Income Report</Text>
+                        <TouchableOpacity onPress={() => setShowExportModal(false)}>
+                            <X size={24} color="#64748B" />
                         </TouchableOpacity>
                     </View>
+
+                    <Text style={s.modalLabel}>Select Date Range</Text>
+                    <Text style={s.modalSubLabel}>All transactions in this range will be exported</Text>
+
+                    <View style={s.dateInputs}>
+                        <TouchableOpacity style={s.dateInput} onPress={() => setStartDatePickerVisible(true)}>
+                            <Ionicons name="calendar-outline" size={18} color="#64748B" />
+                            <Text style={s.dateInputText}>
+                                {exportStart.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </Text>
+                        </TouchableOpacity>
+                        <Text style={{ color: '#94A3B8', fontWeight: '700' }}>→</Text>
+                        <TouchableOpacity style={s.dateInput} onPress={() => setEndDatePickerVisible(true)}>
+                            <Ionicons name="calendar-outline" size={18} color="#64748B" />
+                            <Text style={s.dateInputText}>
+                                {exportEnd.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {exportStart > exportEnd && (
+                        <Text style={s.exportWarning}>⚠️ Start date must be before end date</Text>
+                    )}
+
+                    <TouchableOpacity
+                        style={[
+                            s.exportConfirmBtn,
+                            (isExporting || exportStart > exportEnd) && s.exportConfirmBtnDisabled
+                        ]}
+                        onPress={handleExport}
+                        disabled={isExporting || exportStart > exportEnd}
+                    >
+                        {isExporting ? (
+                            <ActivityIndicator color="#FFF" size="small" />
+                        ) : (
+                            <>
+                                <Text style={s.exportConfirmText}>Download Excel (All Data)</Text>
+                                <Download size={18} color="#FFF" />
+                            </>
+                        )}
+                    </TouchableOpacity>
                 </View>
-            </Modal>
+            </ModalSheet>
 
             <DateTimePickerModal
                 isVisible={isStartDatePickerVisible}

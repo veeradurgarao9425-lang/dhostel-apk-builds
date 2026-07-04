@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, Animated, Pressable, FlatList } from 'react-native';
 import { ChevronDown, Check } from 'lucide-react-native';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export const FormInput = ({ label, icon: Icon, placeholder, value, onChangeText, keyboardType, multiline, error, style }: any) => (
     <View style={styles.inputGroup}>
@@ -49,6 +50,7 @@ export const Selector = ({ label, options, selected, onSelect }: any) => (
 );
 
 export const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: any) => {
+    const { isDark, theme } = useTheme();
     const [shouldRender, setShouldRender] = useState(visible);
     const translateY = useRef(new Animated.Value(600)).current;
     const opacity = useRef(new Animated.Value(0)).current;
@@ -76,12 +78,16 @@ export const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: an
     return (
         <Modal transparent visible={visible || shouldRender} animationType="none" statusBarTranslucent onRequestClose={onClose}>
             <View style={{ flex: 1 }}>
-                <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'transparent', opacity }]}>
+                <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(15, 23, 42, 0.6)', opacity }]}>
                     <Pressable style={{ flex: 1 }} onPress={onClose} />
                 </Animated.View>
                 <Animated.View style={[
                     styles.sheet,
-                    { maxHeight, transform: [{ translateY }] }
+                    { 
+                        maxHeight, 
+                        transform: [{ translateY }],
+                        backgroundColor: isDark ? '#1E293B' : '#FFF' 
+                    }
                 ]}>
                     <View style={styles.sheetHandle} />
                     {children}

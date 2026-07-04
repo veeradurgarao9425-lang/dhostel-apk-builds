@@ -22,6 +22,7 @@ import { FullScreenLoader } from '../components/FullScreenLoader';
 
 import { CustomMonthYearPicker } from '../components/ui/pickers/CustomMonthYearPicker';
 import { CustomDateRangePicker } from '../components/ui/pickers/CustomDateRangePicker';
+import { ModalSheet } from '../components/FormComponents';
 
 const { width, height } = Dimensions.get('window');
 type Period = 'day' | 'week' | 'month';
@@ -856,88 +857,78 @@ export default function IncomeDetailsScreen() {
             />
 
             {/* DATE EXPORT MODAL */}
-            <Modal
+            <ModalSheet
                 visible={showExportModal}
-                transparent={true}
-                animationType="slide"
-                onRequestClose={() => setShowExportModal(false)}
+                onClose={() => setShowExportModal(false)}
+                maxHeight="75%"
             >
-                <View style={s.bottomSheetOverlay}>
-                    <TouchableOpacity
-                        style={StyleSheet.absoluteFillObject}
-                        activeOpacity={1}
-                        onPress={() => setShowExportModal(false)}
-                    />
-                    <View style={[s.bottomSheetContent, { backgroundColor: theme.cardBg }]}>
-                        <View style={s.bottomSheetHeader}>
-                            <Text style={[s.bottomSheetTitle, { color: theme.textPrimary }]}>Export Income Report</Text>
-                            <TouchableOpacity onPress={() => setShowExportModal(false)}>
-                                <Text style={{ color: theme.primary, fontSize: 15, fontWeight: '700' }}>Close</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 30 }} showsVerticalScrollIndicator={false}>
-                            <Text style={[s.exportLabel, { color: theme.textSecondary }]}>Select Date Range</Text>
-                            <Text style={{ fontSize: 12, color: '#94A3B8', marginBottom: 16 }}>All transactions in this range will be exported</Text>
-
-                            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
-                                <TouchableOpacity 
-                                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: theme.isDark ? '#334155' : '#F8FAFC', borderWidth: 1, borderColor: theme.isDark ? '#475569' : '#E2E8F0', padding: 12, borderRadius: 12, gap: 8 }} 
-                                    onPress={() => setStartDatePickerVisible(true)}
-                                >
-                                    <Ionicons name="calendar-outline" size={18} color="#64748B" />
-                                    <View>
-                                        <Text style={{ fontSize: 10, color: '#94A3B8' }}>Start Date</Text>
-                                        <Text style={{ fontSize: 13, fontWeight: '700', color: theme.textPrimary, marginTop: 2 }}>
-                                            {exportStart.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                        </Text>
-                                    </View>
-                                </TouchableOpacity>
-
-                                <TouchableOpacity 
-                                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: theme.isDark ? '#334155' : '#F8FAFC', borderWidth: 1, borderColor: theme.isDark ? '#475569' : '#E2E8F0', padding: 12, borderRadius: 12, gap: 8 }} 
-                                    onPress={() => setEndDatePickerVisible(true)}
-                                >
-                                    <Ionicons name="calendar-outline" size={18} color="#64748B" />
-                                    <View>
-                                        <Text style={{ fontSize: 10, color: '#94A3B8' }}>End Date</Text>
-                                        <Text style={{ fontSize: 13, fontWeight: '700', color: theme.textPrimary, marginTop: 2 }}>
-                                            {exportEnd.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                        </Text>
-                                    </View>
-                                </TouchableOpacity>
-                            </View>
-
-                            {exportStart > exportEnd && (
-                                <Text style={{ color: '#EF4444', fontSize: 12, fontWeight: '700', marginBottom: 16 }}>⚠️ Start date must be before end date</Text>
-                            )}
-
-                            <TouchableOpacity
-                                style={{
-                                    backgroundColor: (isExporting || exportStart > exportEnd) ? '#94A3B8' : theme.primary,
-                                    borderRadius: 16,
-                                    paddingVertical: 14,
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    flexDirection: 'row',
-                                    gap: 8,
-                                }}
-                                onPress={handleExport}
-                                disabled={isExporting || exportStart > exportEnd}
-                            >
-                                {isExporting ? (
-                                    <ActivityIndicator color="#FFF" size="small" />
-                                ) : (
-                                    <>
-                                        <Text style={{ color: '#FFF', fontSize: 15, fontWeight: '700' }}>Download Excel Report</Text>
-                                        <Download size={18} color="#FFF" />
-                                    </>
-                                )}
-                            </TouchableOpacity>
-                        </ScrollView>
-                    </View>
+                <View style={s.bottomSheetHeader}>
+                    <Text style={[s.bottomSheetTitle, { color: theme.textPrimary }]}>Export Income Report</Text>
+                    <TouchableOpacity onPress={() => setShowExportModal(false)}>
+                        <Text style={{ color: theme.primary, fontSize: 15, fontWeight: '700' }}>Close</Text>
+                    </TouchableOpacity>
                 </View>
-            </Modal>
+
+                <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 30 }} showsVerticalScrollIndicator={false}>
+                    <Text style={[s.exportLabel, { color: theme.textSecondary }]}>Select Date Range</Text>
+                    <Text style={{ fontSize: 12, color: '#94A3B8', marginBottom: 16 }}>All transactions in this range will be exported</Text>
+
+                    <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
+                        <TouchableOpacity 
+                            style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: theme.isDark ? '#334155' : '#F8FAFC', borderWidth: 1, borderColor: theme.isDark ? '#475569' : '#E2E8F0', padding: 12, borderRadius: 12, gap: 8 }} 
+                            onPress={() => setStartDatePickerVisible(true)}
+                        >
+                            <Ionicons name="calendar-outline" size={18} color="#64748B" />
+                            <View>
+                                <Text style={{ fontSize: 10, color: '#94A3B8' }}>Start Date</Text>
+                                <Text style={{ fontSize: 13, fontWeight: '700', color: theme.textPrimary, marginTop: 2 }}>
+                                    {exportStart.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                </Text>
+                            </View>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity 
+                            style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: theme.isDark ? '#334155' : '#F8FAFC', borderWidth: 1, borderColor: theme.isDark ? '#475569' : '#E2E8F0', padding: 12, borderRadius: 12, gap: 8 }} 
+                            onPress={() => setEndDatePickerVisible(true)}
+                        >
+                            <Ionicons name="calendar-outline" size={18} color="#64748B" />
+                            <View>
+                                <Text style={{ fontSize: 10, color: '#94A3B8' }}>End Date</Text>
+                                <Text style={{ fontSize: 13, fontWeight: '700', color: theme.textPrimary, marginTop: 2 }}>
+                                    {exportEnd.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                </Text>
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+
+                    {exportStart > exportEnd && (
+                        <Text style={{ color: '#EF4444', fontSize: 12, fontWeight: '700', marginBottom: 16 }}>⚠️ Start date must be before end date</Text>
+                    )}
+
+                    <TouchableOpacity
+                        style={{
+                            backgroundColor: (isExporting || exportStart > exportEnd) ? '#94A3B8' : theme.primary,
+                            borderRadius: 16,
+                            paddingVertical: 14,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexDirection: 'row',
+                            gap: 8,
+                        }}
+                        onPress={handleExport}
+                        disabled={isExporting || exportStart > exportEnd}
+                    >
+                        {isExporting ? (
+                            <ActivityIndicator color="#FFF" size="small" />
+                        ) : (
+                            <>
+                                <Text style={{ color: '#FFF', fontSize: 15, fontWeight: '700' }}>Download Excel Report</Text>
+                                <Download size={18} color="#FFF" />
+                            </>
+                        )}
+                    </TouchableOpacity>
+                </ScrollView>
+            </ModalSheet>
 
             {/* POPUP DATE PICKERS */}
             <DateTimePickerModal

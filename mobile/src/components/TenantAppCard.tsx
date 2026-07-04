@@ -10,9 +10,10 @@ interface TenantAppCardProps {
     theme: any;
     isDark: boolean;
     hostelCode?: string;
+    isMini?: boolean;
 }
 
-export const TenantAppCard: React.FC<TenantAppCardProps> = ({ theme, isDark, hostelCode = 'HOSTEX' }) => {
+export const TenantAppCard: React.FC<TenantAppCardProps> = ({ theme, isDark, hostelCode = 'HOSTEX', isMini = false }) => {
     const [modalVisible, setModalVisible] = useState(false);
     const [isCopied, setIsCopied] = useState(false);
 
@@ -40,52 +41,84 @@ export const TenantAppCard: React.FC<TenantAppCardProps> = ({ theme, isDark, hos
                 onPress={() => setModalVisible(true)}
                 style={styles.cardShadow}
             >
-                <LinearGradient
-                    colors={['#7C3AED', '#4F46E5']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.cardGradient}
-                >
-                    <View style={styles.contentRow}>
-                        {/* Left Side: Text and Code */}
-                        <View style={styles.leftContent}>
-                            <Text style={styles.title}>Install Hostex Tenant App</Text>
-                            <Text style={styles.subtitle} numberOfLines={2}>
-                                Manage rent, maintenance, & dues directly from your mobile.
+                {isMini ? (
+                    <View style={{ backgroundColor: isDark ? '#2E1A47' : '#F5F3FF', borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center' }}>
+                        <View style={{ flex: 1, paddingRight: 8 }}>
+                            <Text style={{ color: '#7C3AED', fontWeight: '800', fontSize: 13, marginBottom: 6 }}>Hostex Tenant App</Text>
+                            <Text style={{ color: isDark ? '#C4B5FD' : '#6B7280', fontSize: 10, marginBottom: 10, lineHeight: 14 }} numberOfLines={2}>
+                                Manage rent, maintenance & dues on the go.
                             </Text>
-
-                            <View style={styles.actionRow}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                                 <TouchableOpacity 
-                                    style={styles.codeButton}
+                                    style={{ backgroundColor: isDark ? '#4C1D95' : '#FFFFFF', paddingHorizontal: 6, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 }}
                                     onPress={handleCopyCode}
                                 >
-                                    <Text style={styles.codeText}>{isCopied ? 'Copied!' : `Code: ${hostelCode}`}</Text>
-                                    <Ionicons name={isCopied ? "checkmark-outline" : "copy-outline"} size={14} color="#7C3AED" />
+                                    <Text style={{ color: isDark ? '#DDD6FE' : '#7C3AED', fontSize: 9, fontWeight: '700' }}>
+                                        {isCopied ? 'Copied' : `Code: ${hostelCode}`}
+                                    </Text>
+                                    <Ionicons name={isCopied ? "checkmark-outline" : "copy-outline"} size={10} color={isDark ? '#DDD6FE' : '#7C3AED'} />
                                 </TouchableOpacity>
-                                
                                 <TouchableOpacity 
-                                    style={styles.secondaryButton}
+                                    style={{ backgroundColor: isDark ? '#4C1D95' : '#FFFFFF', paddingHorizontal: 6, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 }}
                                     onPress={handleShare}
                                 >
-                                    <Ionicons name="share-social" size={14} color="#FFFFFF" />
-                                    <Text style={styles.secondaryButtonText}>Share</Text>
+                                    <Ionicons name="share-social" size={10} color={isDark ? '#DDD6FE' : '#7C3AED'} />
+                                    <Text style={{ color: isDark ? '#DDD6FE' : '#7C3AED', fontSize: 9, fontWeight: '700' }}>Share</Text>
                                 </TouchableOpacity>
                             </View>
                         </View>
-
-                        {/* Right Side: QR Preview */}
-                        <View style={styles.rightContent}>
-                            <View style={styles.qrWrapper}>
-                                <QRCode
-                                    value="https://hostex.in/app"
-                                    size={45}
-                                    color="#1E293B"
-                                    backgroundColor="#FFFFFF"
-                                />
-                            </View>
+                        <View style={{ backgroundColor: '#FFF', padding: 4, borderRadius: 8, justifyContent: 'center', alignItems: 'center' }}>
+                            <QRCode value="https://hostex.in/app" size={40} color="#1E293B" backgroundColor="#FFFFFF" />
                         </View>
                     </View>
-                </LinearGradient>
+                ) : (
+                    <LinearGradient
+                        colors={['#7C3AED', '#4F46E5']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.cardGradient}
+                    >
+                        <View style={styles.contentRow}>
+                            {/* Left Side: Text and Code */}
+                            <View style={styles.leftContent}>
+                                <Text style={styles.title}>Install Hostex Tenant App</Text>
+                                <Text style={styles.subtitle} numberOfLines={2}>
+                                    Manage rent, maintenance, & dues directly from your mobile.
+                                </Text>
+
+                                <View style={styles.actionRow}>
+                                    <TouchableOpacity 
+                                        style={styles.codeButton}
+                                        onPress={handleCopyCode}
+                                    >
+                                        <Text style={styles.codeText}>{isCopied ? 'Copied!' : `Code: ${hostelCode}`}</Text>
+                                        <Ionicons name={isCopied ? "checkmark-outline" : "copy-outline"} size={14} color="#7C3AED" />
+                                    </TouchableOpacity>
+                                    
+                                    <TouchableOpacity 
+                                        style={styles.secondaryButton}
+                                        onPress={handleShare}
+                                    >
+                                        <Ionicons name="share-social" size={14} color="#FFFFFF" />
+                                        <Text style={styles.secondaryButtonText}>Share</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+
+                            {/* Right Side: QR Preview */}
+                            <View style={styles.rightContent}>
+                                <View style={styles.qrWrapper}>
+                                    <QRCode
+                                        value="https://hostex.in/app"
+                                        size={45}
+                                        color="#1E293B"
+                                        backgroundColor="#FFFFFF"
+                                    />
+                                </View>
+                            </View>
+                        </View>
+                    </LinearGradient>
+                )}
             </TouchableOpacity>
 
             <TenantAppQRModal

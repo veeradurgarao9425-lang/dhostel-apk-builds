@@ -25,6 +25,7 @@ import { SkeletonList } from '../components/ui/SkeletonCard';
 import { LoadMoreFooter } from '../components/ui/LoadMoreFooter';
 import { CustomDateRangePicker } from '../components/ui/pickers/CustomDateRangePicker';
 import { CustomMonthYearPicker } from '../components/ui/pickers/CustomMonthYearPicker';
+import { ModalSheet } from '../components/FormComponents';
 
 const { width } = Dimensions.get('window');
 
@@ -500,71 +501,61 @@ export default function CollectedPaymentsScreen() {
             )}
 
             {/* Export Modal (Bottom Sheet Drawer) */}
-            <Modal
+            <ModalSheet
                 visible={showExportModal}
-                transparent
-                animationType="slide"
-                onRequestClose={() => setShowExportModal(false)}
+                onClose={() => setShowExportModal(false)}
+                maxHeight="75%"
             >
-                <View style={[s.modalOverlay, { justifyContent: 'flex-end', padding: 0, backgroundColor: 'rgba(0,0,0,0.5)' }]}>
-                    <TouchableOpacity
-                        style={StyleSheet.absoluteFillObject}
-                        activeOpacity={1}
-                        onPress={() => setShowExportModal(false)}
-                    />
-                    <View style={[s.bottomSheetContent, { backgroundColor: theme.cardBg }]}>
-                        <View style={s.bottomSheetHeader}>
-                            <Text style={[s.bottomSheetTitle, { color: theme.textPrimary }]}>Export Income Report</Text>
-                            <TouchableOpacity onPress={() => setShowExportModal(false)}>
-                                <Text style={{ color: theme.primary, fontSize: 15, fontWeight: '700' }}>Close</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 30 }} showsVerticalScrollIndicator={false}>
-                            <Text style={[s.modalLabel, { color: theme.textSecondary }]}>Select Date Range</Text>
-                            <Text style={[s.modalSubLabel, { color: '#94A3B8' }]}>All transactions in this range will be exported</Text>
-
-                            <View style={s.dateInputs}>
-                                <TouchableOpacity style={[s.dateInput, { backgroundColor: theme.isDark ? '#334155' : '#F1F5F9', borderColor: theme.isDark ? '#475569' : '#E2E8F0' }]} onPress={() => setStartDatePickerVisible(true)}>
-                                    <Ionicons name="calendar-outline" size={18} color="#64748B" />
-                                    <Text style={[s.dateInputText, { color: theme.textPrimary }]}>
-                                        {exportStart.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                    </Text>
-                                </TouchableOpacity>
-
-                                <TouchableOpacity style={[s.dateInput, { backgroundColor: theme.isDark ? '#334155' : '#F1F5F9', borderColor: theme.isDark ? '#475569' : '#E2E8F0' }]} onPress={() => setEndDatePickerVisible(true)}>
-                                    <Ionicons name="calendar-outline" size={18} color="#64748B" />
-                                    <Text style={[s.dateInputText, { color: theme.textPrimary }]}>
-                                        {exportEnd.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                    </Text>
-                                </TouchableOpacity>
-                            </View>
-
-                            {exportStart > exportEnd && (
-                                <Text style={s.exportWarning}>⚠️ Start date must be before end date</Text>
-                            )}
-
-                            <TouchableOpacity
-                                style={[
-                                    s.exportConfirmBtn,
-                                    { backgroundColor: (isExporting || exportStart > exportEnd) ? '#94A3B8' : theme.primary }
-                                ]}
-                                onPress={handleExport}
-                                disabled={isExporting || exportStart > exportEnd}
-                            >
-                                {isExporting ? (
-                                    <ActivityIndicator color="#FFF" size="small" />
-                                ) : (
-                                    <>
-                                        <Text style={s.exportConfirmText}>Download Excel (All Data)</Text>
-                                        <Download size={18} color="#FFF" />
-                                    </>
-                                )}
-                            </TouchableOpacity>
-                        </ScrollView>
-                    </View>
+                <View style={s.bottomSheetHeader}>
+                    <Text style={[s.bottomSheetTitle, { color: theme.textPrimary }]}>Export Income Report</Text>
+                    <TouchableOpacity onPress={() => setShowExportModal(false)}>
+                        <Text style={{ color: theme.primary, fontSize: 15, fontWeight: '700' }}>Close</Text>
+                    </TouchableOpacity>
                 </View>
-            </Modal>
+
+                <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 30 }} showsVerticalScrollIndicator={false}>
+                    <Text style={[s.modalLabel, { color: theme.textSecondary }]}>Select Date Range</Text>
+                    <Text style={[s.modalSubLabel, { color: '#94A3B8' }]}>All transactions in this range will be exported</Text>
+
+                    <View style={s.dateInputs}>
+                        <TouchableOpacity style={[s.dateInput, { backgroundColor: theme.isDark ? '#334155' : '#F1F5F9', borderColor: theme.isDark ? '#475569' : '#E2E8F0' }]} onPress={() => setStartDatePickerVisible(true)}>
+                            <Ionicons name="calendar-outline" size={18} color="#64748B" />
+                            <Text style={[s.dateInputText, { color: theme.textPrimary }]}>
+                                {exportStart.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={[s.dateInput, { backgroundColor: theme.isDark ? '#334155' : '#F1F5F9', borderColor: theme.isDark ? '#475569' : '#E2E8F0' }]} onPress={() => setEndDatePickerVisible(true)}>
+                            <Ionicons name="calendar-outline" size={18} color="#64748B" />
+                            <Text style={[s.dateInputText, { color: theme.textPrimary }]}>
+                                {exportEnd.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {exportStart > exportEnd && (
+                        <Text style={s.exportWarning}>⚠️ Start date must be before end date</Text>
+                    )}
+
+                    <TouchableOpacity
+                        style={[
+                            s.exportConfirmBtn,
+                            { backgroundColor: (isExporting || exportStart > exportEnd) ? '#94A3B8' : theme.primary }
+                        ]}
+                        onPress={handleExport}
+                        disabled={isExporting || exportStart > exportEnd}
+                    >
+                        {isExporting ? (
+                            <ActivityIndicator color="#FFF" size="small" />
+                        ) : (
+                            <>
+                                <Text style={s.exportConfirmText}>Download Excel (All Data)</Text>
+                                <Download size={18} color="#FFF" />
+                            </>
+                        )}
+                    </TouchableOpacity>
+                </ScrollView>
+            </ModalSheet>
 
             <DateTimePickerModal
                 isVisible={isStartDatePickerVisible}

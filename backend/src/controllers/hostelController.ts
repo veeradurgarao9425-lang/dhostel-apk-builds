@@ -2,6 +2,7 @@ import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { sendEmail } from '../utils/email.js';
+import crypto from 'crypto';
 
 export const createHostel = async (req: AuthRequest, res: Response) => {
   try {
@@ -89,6 +90,7 @@ export const createHostel = async (req: AuthRequest, res: Response) => {
     // Prepare hostel data
     const hostelData: any = {
       hostel_name,
+      hostel_code: crypto.randomBytes(3).toString('hex'),
       address,
       city,
       state,

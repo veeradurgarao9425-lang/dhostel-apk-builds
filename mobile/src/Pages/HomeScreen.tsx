@@ -203,10 +203,10 @@ export default function HomeScreen() {
                 const fees: any[] = summaryRes.data.data.fees;
                 const now = new Date();
                 now.setHours(0, 0, 0, 0);
-                
+
                 // Group by student ID to prevent duplicates
                 const studentMap = new Map();
-                
+
                 fees
                     .filter(f =>
                         (f.balance || 0) > 0 &&
@@ -216,7 +216,7 @@ export default function HomeScreen() {
                         const due = f.due_date ? new Date(f.due_date) : new Date();
                         due.setHours(0, 0, 0, 0);
                         const diffDays = Math.floor((now.getTime() - due.getTime()) / 86400000);
-                        
+
                         const id = f.student_id;
                         if (!studentMap.has(id)) {
                             studentMap.set(id, {
@@ -229,10 +229,10 @@ export default function HomeScreen() {
                                 daysLeft: 9999, // default large number
                             });
                         }
-                        
+
                         const s = studentMap.get(id);
                         s.amount += parseFloat(f.balance || 0);
-                        
+
                         if (diffDays > 0) {
                             s.isOverdue = true;
                             if (diffDays > s.daysLate) s.daysLate = diffDays;
@@ -241,50 +241,50 @@ export default function HomeScreen() {
                             if (left < s.daysLeft) s.daysLeft = left;
                         }
                     });
-                    
+
                 const mappedFees = Array.from(studentMap.values());
-                    
+
                 topDefaulters = mappedFees
                     .filter(f => f.isOverdue)
                     .sort((a, b) => b.daysLate - a.daysLate || b.amount - a.amount)
                     .slice(0, 5);
-                    
+
                 upcomingDuesList = mappedFees
                     .filter(f => !f.isOverdue && f.daysLeft <= 3 && f.daysLeft >= 0)
                     .sort((a, b) => a.daysLeft - b.daysLeft)
                     .slice(0, 5);
             }
-            
+
             // Build collection stats picture
             const collectionStats = {
                 totalExpected: 0, collected: 0, pending: 0, overdueAmount: 0,
-                overdueCount: 0, dueTodayCount: 0, dueThisWeekCount: 0, 
+                overdueCount: 0, dueTodayCount: 0, dueThisWeekCount: 0,
                 paidCount: 0, tenantsCount: 0, monthName: ''
             };
             if (summaryRes.data.success && summaryRes.data.data?.fees) {
                 const fees: any[] = summaryRes.data.data.fees;
                 collectionStats.tenantsCount = fees.length;
-                
+
                 const now = new Date();
                 now.setHours(0, 0, 0, 0);
                 collectionStats.monthName = now.toLocaleString('en-IN', { month: 'long' });
-                
+
                 fees.forEach(f => {
                     const balance = parseFloat(f.balance || 0);
                     const paid = parseFloat(f.paid_amount || 0);
                     const totalDue = balance + paid;
-                    
+
                     collectionStats.totalExpected += totalDue;
                     collectionStats.collected += paid;
                     collectionStats.pending += balance;
-                    
+
                     if (balance <= 0) {
                         collectionStats.paidCount++;
                     } else {
                         const due = f.due_date ? new Date(f.due_date) : new Date();
                         due.setHours(0, 0, 0, 0);
                         const diffDays = Math.floor((due.getTime() - now.getTime()) / 86400000);
-                        
+
                         if (diffDays < 0) {
                             collectionStats.overdueCount++;
                             collectionStats.overdueAmount += balance;
@@ -710,12 +710,12 @@ export default function HomeScreen() {
                     {data.totalBeds === 0 ? (
                         <TouchableOpacity
                             style={[
-                                s.card, 
-                                { 
-                                    backgroundColor: theme.cardBg, 
+                                s.card,
+                                {
+                                    backgroundColor: theme.cardBg,
                                     borderColor: isDark ? '#334155' : '#F1F5F9',
-                                    flexDirection: 'row', 
-                                    alignItems: 'center', 
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
                                     padding: 16,
                                     gap: 14
                                 }
@@ -723,13 +723,13 @@ export default function HomeScreen() {
                             onPress={() => navigation.navigate('AddRoom')}
                             activeOpacity={0.8}
                         >
-                            <Animated.View style={{ 
+                            <Animated.View style={{
                                 transform: [{ scale: pulseValue }],
-                                width: 44, 
-                                height: 44, 
-                                borderRadius: 22, 
-                                backgroundColor: theme.primary, 
-                                justifyContent: 'center', 
+                                width: 44,
+                                height: 44,
+                                borderRadius: 22,
+                                backgroundColor: theme.primary,
+                                justifyContent: 'center',
                                 alignItems: 'center',
                                 shadowColor: theme.primary,
                                 shadowOffset: { width: 0, height: 3 },

@@ -5,6 +5,7 @@ import { generateToken } from '../utils/jwt.js';
 import { AuthRequest } from '../middleware/auth.js';
 import jwt from 'jsonwebtoken';
 import { sendPasswordResetEmail, sendOtpEmail, sendEmail } from '../utils/email.js';
+import crypto from 'crypto';
 
 export const authController = {
   // Login
@@ -276,6 +277,7 @@ export const authController = {
       if (trimmedHostel.length >= 3) {
         [hostel_id] = await db('hostel_master').insert({
           hostel_name: trimmedHostel,
+          hostel_code: crypto.randomBytes(3).toString('hex'),
           owner_id: user_id,
           // hostel_type is NOT NULL in the schema; default to 'Boys' so the row is
           // valid and can be edited later without a 500. The owner can change it in Edit Hostel.

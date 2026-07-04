@@ -36,7 +36,7 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { COLORS } from '../theme/index';
 import { toLocalDateStr } from '../utils/dateUtils';
 import { useRefresh } from '../../contexts/RefreshContext';
-
+import { FullScreenLoader } from '../components/FullScreenLoader';
 
 // if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
 //     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -556,6 +556,7 @@ export default function StudentsScreen({ navigation, route }: any) {
     return (
         <View style={[styles.container, { backgroundColor: isDark ? theme.background : '#F8FAFC' }]}>
             <StatusBar barStyle="light-content" />
+            <FullScreenLoader visible={statusLoading} />
 
             <AppHeader
                 title={t('students.directory')}
