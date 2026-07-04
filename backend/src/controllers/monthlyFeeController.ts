@@ -742,8 +742,24 @@ export const getMonthlyFeesSummary = async (req: AuthRequest, res: Response) => 
       if (aIsOverdue && !bIsOverdue) return -1;
       if (!aIsOverdue && bIsOverdue) return 1;
       
-      // Then by balance (due amount) descending
-      return (b.balance || 0) - (a.balance || 0);
+      // Then by due date (closest dates first)
+      return aDueDate.getTime() - bDueDate.getTime();
+    });
+
+    let tab_counts = { overdue: 0, next_7_days: 0, all: filteredFees.length };
+    filteredFees.forEach((f: any) => {
+      const fDueDate = f.due_date ? new Date(f.due_date) : new Date();
+      fDueDate.setHours(0, 0, 0, 0);
+      const diff = todayDate.getTime() - fDueDate.getTime();
+      const isOverdue = diff > 0 && f.fee_status !== 'Fully Paid';
+      if (isOverdue) {
+        tab_counts.overdue++;
+      } else {
+        const diffForward = Math.floor((fDueDate.getTime() - todayDate.getTime()) / 86400000);
+        if (diffForward >= 0 && diffForward <= 7) {
+          tab_counts.next_7_days++;
+        }
+      }
     });
 
     let paginatedFees = filteredFees;
@@ -763,6 +779,7 @@ export const getMonthlyFeesSummary = async (req: AuthRequest, res: Response) => 
       success: true,
       data: {
         summary,
+        tab_counts,
         fees: paginatedFees,
         hasMore
       }

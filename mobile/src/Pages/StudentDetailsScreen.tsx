@@ -24,6 +24,7 @@ import {
     CheckCircle, X, Edit, Users, Receipt, MessageCircle, MessageSquare, Check
 } from 'lucide-react-native';
 import DateTimePickerModal from "react-native-modal-datetime-picker";
+import { Ionicons } from '@expo/vector-icons';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -36,6 +37,7 @@ import { AppHeader } from '../components/AppHeader';
 import { useFocusEffect } from '@react-navigation/native';
 import { useConfirmation } from '../../contexts/ConfirmationContext';
 import { PaymentDrawer } from '../components/PaymentDrawer';
+import { useRefresh } from '../../contexts/RefreshContext';
 
 
 // ─── Sub-component: a single payment history row ──────────────────────────────
@@ -84,6 +86,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
     const { theme, isDark } = useTheme();
     const { showError, showSuccess, showApiError } = useToast();
     const confirm = useConfirmation();
+    const { triggerRefresh } = useRefresh();
 
     // Core student data (loaded immediately)
     const [student, setStudent] = useState<any>(null);
@@ -160,6 +163,55 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                 const data = response.data.data;
                 // Separate payment history from core data so it can be rendered later
                 const { payment_history, ...coreData } = data;
+
+                // FIX: Compute virtual fee row if latest fee month is older than current month
+                // This ensures StudentDetails matches PendingPayments exactly.
+                if (coreData.pending_dues && coreData.pending_dues.length > 0) {
+                    const dues = [...coreData.pending_dues].sort((a: any, b: any) => b.fee_month.localeCompare(a.fee_month));
+                    const latest = dues[0];
+                    const now = new Date();
+                    const cmYear = now.getFullYear();
+                    const cmMonth = now.getMonth() + 1;
+                    const currentMonthStr = `${cmYear}-${String(cmMonth).padStart(2, '0')}`;
+                    
+                    if (latest.fee_month && latest.fee_month < currentMonthStr) {
+                        const [ly, lm] = latest.fee_month.split('-').map(Number);
+                        const gapMonths = (cmYear - ly) * 12 + (cmMonth - lm);
+                        
+                        if (gapMonths > 0) {
+                            const rent = parseFloat(coreData.monthly_rent || 0);
+                            const prevTotalDue = parseFloat(latest.total_due || 0);
+                            const prevPaid = parseFloat(latest.paid_amount || 0);
+                            
+                            // Outstanding from older months + intermediate gap months (minus the current one)
+                            const carryForward = Math.max(0, prevTotalDue - prevPaid) + Math.max(0, gapMonths - 1) * rent;
+                            const newTotalDue = carryForward + rent;
+                            
+                            let newDueDate = new Date(cmYear, cmMonth - 1, new Date(latest.due_date || now).getDate());
+                            if (newDueDate.getDate() !== new Date(latest.due_date || now).getDate()) {
+                                newDueDate = new Date(cmYear, cmMonth, 0); // fallback to last day of month
+                            }
+
+                            const virtualDue = {
+                                fee_id: 'virtual-' + currentMonthStr,
+                                student_id: coreData.student_id,
+                                fee_month: currentMonthStr,
+                                monthly_rent: rent,
+                                carry_forward: carryForward,
+                                total_due: newTotalDue,
+                                paid_amount: 0,
+                                balance: newTotalDue,
+                                fee_status: 'Pending',
+                                due_date: newDueDate.toISOString()
+                            };
+                            
+                            // Insert at beginning because dues is sorted descending
+                            dues.unshift(virtualDue);
+                            coreData.pending_dues = dues;
+                        }
+                    }
+                }
+
                 setStudent(coreData);
 
                 // If this tenant has no room, prompt to allocate one (billing only starts
@@ -229,13 +281,38 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
     // Only count dues that are due now (current month or earlier). Future months are
     // auto-created by the backend after a full payment, and counting them here would
     // keep "Pay Now" visible even though the tenant is up to date.
+    // Calculate total outstanding balance from pending dues.
+    // We only take the balance from the most recent month up to the current month,
+    // because the backend carries forward the balance from older months into newer ones.
     const outstandingBalance = useMemo(() => {
         if (!student?.pending_dues?.length) return 0;
         const now = new Date();
         const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-        return student.pending_dues
+        const relevantDues = student.pending_dues
             .filter((due: any) => !due.fee_month || due.fee_month <= currentMonth)
-            .reduce((sum: number, due: any) => sum + (parseFloat(due.balance) || 0), 0);
+            .sort((a: any, b: any) => b.fee_month.localeCompare(a.fee_month)); // Sort descending
+        return relevantDues.length > 0 ? (parseFloat(relevantDues[0].balance) || 0) : 0;
+    }, [student]);
+
+    const overdueDays = useMemo(() => {
+        if (!student?.pending_dues?.length) return null;
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        let maxDays = 0;
+        let isOverdue = false;
+        
+        for (const due of student.pending_dues) {
+            if (due.due_date && parseFloat(due.balance) > 0) {
+                const dueDate = new Date(due.due_date);
+                dueDate.setHours(0, 0, 0, 0);
+                const diffDays = Math.floor((now.getTime() - dueDate.getTime()) / 86400000);
+                if (diffDays > 0) {
+                    isOverdue = true;
+                    if (diffDays > maxDays) maxDays = diffDays;
+                }
+            }
+        }
+        return isOverdue ? maxDays : null;
     }, [student]);
 
     // ── Open payment modal ─────────────────────────────────────────────────
@@ -246,9 +323,18 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
 
         setPayAmount(defaultAmount.toString());
 
-        const nextMonth = new Date();
-        if (outstandingBalance <= 0) nextMonth.setMonth(nextMonth.getMonth() + 1);
-        setPayDueDate(nextMonth.toISOString().split('T')[0]);
+        // Keep the original due date if they owe money (so they remain overdue)
+        if (outstandingBalance > 0 && student?.pending_dues?.length > 0) {
+            // Find the oldest unpaid due date
+            const duesDesc = [...student.pending_dues].sort((a: any, b: any) => b.fee_month.localeCompare(a.fee_month));
+            const latest = duesDesc[0];
+            const rawDueDate = latest.due_date ? new Date(latest.due_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+            setPayDueDate(rawDueDate);
+        } else {
+            const nextMonth = new Date();
+            nextMonth.setMonth(nextMonth.getMonth() + 1);
+            setPayDueDate(nextMonth.toISOString().split('T')[0]);
+        }
 
         // Lazy-load payment modes only now
         fetchPaymentModes();
@@ -412,8 +498,9 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                 setPayTransactionId('');
                 setPayReceiptNumber('');
 
-                // Refresh student data silently in background
+                // Refresh student data AND trigger global dashboard refresh
                 fetchStudentDetails();
+                triggerRefresh();
             }
         } catch (error: any) {
             console.error('Payment error:', error);
@@ -460,6 +547,83 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                     </View>
                 ) : (
                     <>
+                        {/* ── PAYMENT ALERT BANNER ─────────────────────────────────────── */}
+                        {outstandingBalance > 0 && (() => {
+                            const pendingDues = student?.pending_dues || [];
+                            const now = new Date(); now.setHours(0,0,0,0);
+                            const unpaidMonths = pendingDues.filter((d: any) => parseFloat(d.balance) > 0);
+                            const isAnyOverdue = overdueDays !== null;
+                            const bannerBg = isDark ? (isAnyOverdue ? '#3B1A1A' : '#1C1917') : (isAnyOverdue ? '#FEF2F2' : '#FFFBEB');
+                            const bannerBorder = isAnyOverdue ? '#FCA5A5' : '#FCD34D';
+                            const iconColor = isAnyOverdue ? '#DC2626' : '#D97706';
+                            const iconBg = isDark ? (isAnyOverdue ? '#7F1D1D' : '#44200C') : (isAnyOverdue ? '#FEE2E2' : '#FEF3C7');
+                            const titleColor = isDark ? (isAnyOverdue ? '#FECACA' : '#FDE68A') : (isAnyOverdue ? '#991B1B' : '#92400E');
+                            const textColor = isDark ? (isAnyOverdue ? '#FCA5A5' : '#FCD34D') : (isAnyOverdue ? '#DC2626' : '#D97706');
+                            return (
+                                <View style={{ backgroundColor: bannerBg, borderColor: bannerBorder, borderWidth: 1, padding: 14, borderRadius: 12, marginBottom: 16 }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: unpaidMonths.length > 0 ? 10 : 0 }}>
+                                        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: iconBg, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                                            <Ionicons name={isAnyOverdue ? 'warning' : 'time'} size={22} color={iconColor} />
+                                        </View>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={{ color: titleColor, fontWeight: '800', fontSize: 15 }}>
+                                                {isAnyOverdue ? `Payment Overdue — ${overdueDays} days` : 'Payment Due Soon'}
+                                            </Text>
+                                            <Text style={{ color: textColor, fontSize: 12, marginTop: 2 }}>
+                                                Total outstanding: ₹{outstandingBalance.toLocaleString('en-IN')}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    {unpaidMonths.length > 0 && (
+                                        <View style={{ backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.05)', borderRadius: 8, padding: 8 }}>
+                                            {(() => {
+                                                const latestDue = unpaidMonths.length > 0 
+                                                    ? [...unpaidMonths].sort((a: any, b: any) => b.fee_month.localeCompare(a.fee_month))[0] 
+                                                    : null;
+                                                
+                                                if (!latestDue) return null;
+
+                                                const carryForward = parseFloat(latestDue.carry_forward || 0);
+                                                const monthlyRent = parseFloat(latestDue.monthly_rent || latestDue.student_monthly_rent || 0);
+                                                const paidAmount = parseFloat(latestDue.paid_amount || 0);
+
+                                                return (
+                                                    <View>
+                                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 }}>
+                                                            <Text style={{ fontSize: 13, color: '#EF4444', fontWeight: '700' }}>Previous Overdue</Text>
+                                                            <Text style={{ fontSize: 13, fontWeight: '800', color: '#EF4444' }}>
+                                                                ₹{carryForward.toLocaleString('en-IN')}
+                                                            </Text>
+                                                        </View>
+                                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 }}>
+                                                            <Text style={{ fontSize: 13, color: textColor }}>This Month Rent</Text>
+                                                            <Text style={{ fontSize: 13, fontWeight: '700', color: textColor }}>
+                                                                ₹{monthlyRent.toLocaleString('en-IN')}
+                                                            </Text>
+                                                        </View>
+                                                        {paidAmount > 0 && (
+                                                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 }}>
+                                                                <Text style={{ fontSize: 13, color: '#10B981' }}>Paid</Text>
+                                                                <Text style={{ fontSize: 13, fontWeight: '700', color: '#10B981' }}>
+                                                                    - ₹{paidAmount.toLocaleString('en-IN')}
+                                                                </Text>
+                                                            </View>
+                                                        )}
+                                                    </View>
+                                                );
+                                            })()}
+                                            <View style={{ borderTopWidth: 1, borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)', marginTop: 4, paddingTop: 4, flexDirection: 'row', justifyContent: 'space-between' }}>
+                                                <Text style={{ fontSize: 13, fontWeight: '800', color: titleColor }}>Total Outstanding:</Text>
+                                                <Text style={{ fontSize: 13, fontWeight: '800', color: titleColor }}>
+                                                    ₹{outstandingBalance.toLocaleString('en-IN')}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                    )}
+                                </View>
+                            );
+                        })()}
+
                         {/* ── Profile Hero Header ─────────────────────────────────────── */}
                         <Card style={[styles.profileCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
                             <View style={styles.profileSection}>
@@ -1032,7 +1196,8 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                 selectedFee={student ? {
                     first_name: student.first_name,
                     last_name: student.last_name,
-                    room_number: student.room_number || 'N/A'
+                    room_number: student.room_number || 'N/A',
+                    pending_dues: student.pending_dues
                 } : null}
                 paymentModes={paymentModes}
                 payAmount={payAmount}

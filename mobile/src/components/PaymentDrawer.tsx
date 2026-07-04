@@ -86,8 +86,8 @@ export function PaymentDrawer({
             <FullScreenLoader visible={payLoading} />
 
             <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-                <KeyboardAvoidingView 
-                    style={S.modalRoot} 
+                <KeyboardAvoidingView
+                    style={S.modalRoot}
                     behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 >
                     <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
@@ -137,7 +137,129 @@ export function PaymentDrawer({
                                 placeholderTextColor="#CBD5E1"
                             />
 
+                            {/* Dynamic Payment Breakdown */}
+                            {(() => {
+                                const amount = parseFloat(payAmount || '0');
+                                if (amount > 0 && selectedFee?.pending_dues?.length > 0) {
+                                    const now = new Date();
+                                    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+                                    // 1. Calculate actual outstanding amount for each month (Newest to Oldest to find specific monthly debt)
+                                    const duesDesc = [...selectedFee.pending_dues]
+                                        .filter((d: any) => !d.fee_month || d.fee_month <= currentMonth)
+                                        .sort((a: any, b: any) => b.fee_month.localeCompare(a.fee_month));
+
+                                    let outstandingBalance = duesDesc.length > 0 ? parseFloat(duesDesc[0].balance || 0) : 0;
+                                    let remainingTotal = outstandingBalance;
+
+                                    const actualOwedByMonth = [];
+                                    for (const d of duesDesc) {
+                                        if (remainingTotal <= 0) break;
+                                        const baseRent = parseFloat(d.monthly_rent || d.student_monthly_rent || 0);
+                                        const rent = baseRent > 0 ? baseRent : Math.max(0, parseFloat(d.total_due || 0) - parseFloat(d.carry_forward || 0));
+                                        const actualRent = rent > 0 ? rent : parseFloat(d.balance || 0);
+                                        const allocated = Math.min(actualRent, remainingTotal);
+                                        if (allocated > 0) {
+                                            actualOwedByMonth.unshift({ month: d.fee_month, owed: allocated });
+                                            remainingTotal -= allocated;
+                                        }
+                                    }
+                                    if (remainingTotal > 0.01) {
+                                        actualOwedByMonth.unshift({ month: 'Previous Arrears', owed: remainingTotal });
+                                    }
+
+                                    if (actualOwedByMonth.length === 0) return null;
+
+                                    // 2. Allocate payment from Oldest to Newest
+                                    let remainingPayment = amount;
+                                    const covers = [];
+
+                                    for (const d of actualOwedByMonth) {
+                                        if (remainingPayment <= 0) {
+                                            // Optional: If we want to show unpaid months that didn't get any payment, we could, 
+                                            // but standard UX is to just show what the payment covers.
+                                            break;
+                                        }
+                                        const deduct = Math.min(remainingPayment, d.owed);
+                                        covers.push({ month: d.month, amount: deduct, stillOwed: d.owed - deduct });
+                                        remainingPayment -= deduct;
+                                    }
+
+                                    const remaining = remainingPayment;
+
+                                    const collapsedCovers = [];
+                                    let prevAmount = 0;
+                                    let prevStillOwed = 0;
+                                    let currentAmount = 0;
+                                    let currentStillOwed = 0;
+
+                                    for (const c of covers) {
+                                        const isArrears = c.month === 'Previous Arrears' || (c.month && c.month < currentMonth);
+                                        if (isArrears) {
+                                            prevAmount += c.amount;
+                                            prevStillOwed += c.stillOwed;
+                                        } else {
+                                            currentAmount += c.amount;
+                                            currentStillOwed += c.stillOwed;
+                                        }
+                                    }
+
+                                    if (prevAmount > 0 || prevStillOwed > 0) {
+                                        collapsedCovers.push({
+                                            displayMonth: 'Previous Overdue',
+                                            amount: prevAmount,
+                                            stillOwed: prevStillOwed,
+                                            isArrears: true
+                                        });
+                                    }
+                                    if (currentAmount > 0 || currentStillOwed > 0) {
+                                        collapsedCovers.push({
+                                            displayMonth: 'This Month Rent',
+                                            amount: currentAmount,
+                                            stillOwed: currentStillOwed,
+                                            isArrears: false
+                                        });
+                                    }
+
+                                    const hasArrears = collapsedCovers.some(c => c.isArrears);
+                                    const allocationBg = hasArrears ? '#FEF2F2' : '#F8FAFC';
+                                    const allocationBorder = hasArrears ? '#FECACA' : '#E2E8F0';
+
+                                    return (
+                                        <View style={{ backgroundColor: allocationBg, padding: 12, borderRadius: 8, marginTop: 4, marginBottom: 12, borderWidth: 1, borderColor: allocationBorder }}>
+                                            <Text style={{ fontSize: 13, fontWeight: '700', color: hasArrears ? '#DC2626' : '#475569', marginBottom: 8 }}>Payment Allocation:</Text>
+                                            {collapsedCovers.map((c, i) => {
+                                                const rowTextColor = c.isArrears ? '#EF4444' : '#64748B';
+                                                const valTextColor = c.isArrears ? '#EF4444' : '#334155';
+
+                                                return (
+                                                    <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                                                        <Text style={{ fontSize: 12, color: rowTextColor, fontWeight: c.isArrears ? '700' : '400' }}>• {c.displayMonth}:</Text>
+                                                        <Text style={{ fontSize: 12, fontWeight: '600', color: valTextColor }}>
+                                                            - ₹{c.amount.toLocaleString('en-IN')}
+                                                            {c.stillOwed > 0 && <Text style={{ color: '#EF4444', fontWeight: '400' }}> (₹{c.stillOwed.toLocaleString('en-IN')} pending)</Text>}
+                                                        </Text>
+                                                    </View>
+                                                );
+                                            })}
+                                            {remaining > 0 && (
+                                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4, paddingTop: 4, borderTopWidth: 1, borderTopColor: '#E2E8F0' }}>
+                                                    <Text style={{ fontSize: 12, color: '#10B981', fontWeight: '600' }}>Advance / Credit:</Text>
+                                                    <Text style={{ fontSize: 12, color: '#10B981', fontWeight: '700' }}>+ ₹{remaining.toLocaleString('en-IN')}</Text>
+                                                </View>
+                                            )}
+                                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#CBD5E1' }}>
+                                                <Text style={{ fontSize: 13, color: '#1E293B', fontWeight: '800' }}>Total Paid:</Text>
+                                                <Text style={{ fontSize: 13, color: '#1E293B', fontWeight: '800' }}>₹{amount.toLocaleString('en-IN')}</Text>
+                                            </View>
+                                        </View>
+                                    );
+                                }
+                                return null;
+                            })()}
+
                             {/* Date row */}
+
                             <View style={S.row}>
                                 <View style={{ flex: 1, marginRight: 6 }}>
                                     <Text style={S.label}>Payment Date *</Text>
@@ -168,7 +290,7 @@ export function PaymentDrawer({
                                     const mId = (m.payment_mode_id || m.id)?.toString();
                                     const mName = m.payment_mode_name || m.name || 'Cash';
                                     const active = payModeId === mId;
-                                    
+
                                     // Determine icon based on name
                                     let iconName = 'cash-outline';
                                     const nLower = mName.toLowerCase();
@@ -273,22 +395,22 @@ export function PaymentDrawer({
                     </View>
                 </KeyboardAvoidingView>
 
-            <DateTimePickerModal
-                isVisible={isDatePickerVisible}
-                mode="date"
-                onConfirm={handleConfirmDate}
-                onCancel={() => setDatePickerVisibility(false)}
-                date={new Date(payDate)}
-                maximumDate={new Date()}
-            />
-            <DateTimePickerModal
-                isVisible={isDueDatePickerVisible}
-                mode="date"
-                onConfirm={handleConfirmDueDate}
-                onCancel={() => setDueDatePickerVisibility(false)}
-                date={new Date(payDueDate)}
-            />
-        </Modal>
+                <DateTimePickerModal
+                    isVisible={isDatePickerVisible}
+                    mode="date"
+                    onConfirm={handleConfirmDate}
+                    onCancel={() => setDatePickerVisibility(false)}
+                    date={new Date(payDate)}
+                    maximumDate={new Date()}
+                />
+                <DateTimePickerModal
+                    isVisible={isDueDatePickerVisible}
+                    mode="date"
+                    onConfirm={handleConfirmDueDate}
+                    onCancel={() => setDueDatePickerVisibility(false)}
+                    date={new Date(payDueDate)}
+                />
+            </Modal>
         </>
     );
 }

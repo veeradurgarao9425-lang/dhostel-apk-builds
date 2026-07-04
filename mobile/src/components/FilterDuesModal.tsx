@@ -54,7 +54,7 @@ export function FilterDuesModal({ visible, onClose, onApply }: FilterDuesProps) 
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
             <View style={S.modalOverlay}>
                 <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
-                <View style={[S.modalContent, { backgroundColor: isDark ? '#1E293B' : '#FFF' }]}>
+                <View style={[S.modalContent, { backgroundColor: isDark ? '#1E293B' : '#FFF', borderWidth: 1.5, borderColor: primary, borderBottomWidth: 0 }]}>
                     <View style={S.modalHeader}>
                         <Text style={[S.modalTitle, { color: theme.textPrimary }]}>Filter Dues</Text>
                         <TouchableOpacity onPress={onClose} style={S.closeBtn}>

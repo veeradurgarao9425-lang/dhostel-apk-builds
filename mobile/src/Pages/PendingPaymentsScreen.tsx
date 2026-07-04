@@ -41,9 +41,11 @@ interface DueTenant {
     dueAmount: number;
     feeMonth: string;
     dueDate: string;
+    rawDueDate: string;
     daysOverdue: number;
     isOverdue: boolean;
     status: string;
+    breakdown?: { month: string; amount: number; dueDate: string }[];
 }
 
 const sf = (v: any): number => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
@@ -166,7 +168,8 @@ const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect, isDar
     return (
         <View style={[card.wrap, {
             backgroundColor: isDarkBg,
-            borderColor: '#ECECEC',
+            borderColor: item.isOverdue ? '#FECACA' : (isDark ? '#334155' : '#ECECEC'),
+            borderWidth: item.isOverdue ? 1.5 : 1,
             shadowColor: '#000',
         }]}>
             {/* Left accent bar */}
@@ -189,7 +192,7 @@ const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect, isDar
                             {item.name}
                         </Text>
                         <Text style={[card.roomTxt, { color: '#6B7280', fontSize: fontSize - 2 }]} numberOfLines={1}>
-                            Room {item.room} · {item.feeMonth}
+                            Room {item.room} · {(item as any).displayMonth || item.feeMonth}
                         </Text>
                     </View>
 
@@ -210,22 +213,25 @@ const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect, isDar
                     {/* Totals */}
                     <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, justifyContent: 'space-between' }}>
                         <View style={card.statCol}>
-                            <Text style={[card.statLabel, { color: '#6B7280' }]} numberOfLines={1}>Total</Text>
+                            <Text style={[card.statLabel, { color: '#EF4444', fontSize: 10, fontWeight: '700' }]} numberOfLines={1}>Prev Overdue</Text>
+                            <Text style={[card.statVal, { color: '#EF4444', fontWeight: '800' }]} numberOfLines={1}>
+                                ₹{item.carryForward.toLocaleString('en-IN')}
+                            </Text>
+                        </View>
+                        <View style={card.statCol}>
+                            <Text style={[card.statLabel, { color: '#6B7280', fontSize: 10 }]} numberOfLines={1}>This Month</Text>
                             <Text style={[card.statVal, { color: isDark ? '#F8FAFC' : '#1F2937' }]} numberOfLines={1}>
-                                ₹{item.totalAmount.toLocaleString('en-IN')}
+                                ₹{item.monthlyRent.toLocaleString('en-IN')}
                             </Text>
                         </View>
                         <View style={card.statCol}>
-                            <Text style={[card.statLabel, { color: '#10B981' }]} numberOfLines={1}>Paid</Text>
-                            <Text style={[card.statVal, { color: '#10B981' }]} numberOfLines={1}>
-                                ₹{item.paidAmount.toLocaleString('en-IN')}
-                            </Text>
-                        </View>
-                        <View style={card.statCol}>
-                            <Text style={[card.statLabel, { color: accentColor }]} numberOfLines={1}>Due</Text>
-                            <Text style={[card.statVal, { color: accentColor, fontSize: fontSize + 2 }]} numberOfLines={1}>
+                            <Text style={[card.statLabel, { color: accentColor, fontWeight: '700' }]} numberOfLines={1}>Total Due</Text>
+                            <Text style={[card.statVal, { color: accentColor, fontSize: fontSize + 2, fontWeight: '800' }]} numberOfLines={1}>
                                 ₹{item.dueAmount.toLocaleString('en-IN')}
                             </Text>
+                            {item.paidAmount > 0 && (
+                                <Text style={{ fontSize: 9, color: '#10B981', marginTop: 2, fontWeight: '600' }}>Paid: ₹{item.paidAmount}</Text>
+                            )}
                         </View>
                     </View>
 
@@ -251,6 +257,29 @@ const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect, isDar
                         </TouchableOpacity>
                     </View>
                 </View>
+
+                {/* ── Breakdown: always show if there's data ── */}
+                {item.breakdown && item.breakdown.length > 0 && (
+                    <View style={{ marginTop: 8, padding: 8, backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderRadius: 8, borderLeftWidth: 3, borderLeftColor: accentColor }}>
+                        <Text style={{ fontSize: fontSize - 3, color: isDark ? '#94A3B8' : '#64748B', fontWeight: '700', marginBottom: 4 }}>
+                            📋 Payment breakdown:
+                        </Text>
+                        {item.breakdown.map((b: any, i: number) => (
+                            <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 1 }}>
+                                <Text style={{ fontSize: fontSize - 3, color: (b as any).isPast ? '#DC2626' : (isDark ? '#CBD5E1' : '#475569') }}>
+                                    {(b as any).isPast ? '⚠ ' : '• '}{b.month}
+                                </Text>
+                                <Text style={{ fontSize: fontSize - 3, fontWeight: '700', color: (b as any).isPast ? '#DC2626' : accentColor }}>
+                                    ₹{b.amount.toLocaleString('en-IN')}
+                                </Text>
+                            </View>
+                        ))}
+                        <View style={{ marginTop: 4, borderTopWidth: 1, borderTopColor: isDark ? '#334155' : '#E2E8F0', paddingTop: 4, flexDirection: 'row', justifyContent: 'space-between' }}>
+                            <Text style={{ fontSize: fontSize - 3, fontWeight: '800', color: isDark ? '#F8FAFC' : '#1F2937' }}>Total Due</Text>
+                            <Text style={{ fontSize: fontSize - 3, fontWeight: '800', color: accentColor }}>₹{item.dueAmount.toLocaleString('en-IN')}</Text>
+                        </View>
+                    </View>
+                )}
             </View>
         </View>
     );
@@ -319,6 +348,9 @@ export default function PendingPaymentsScreen() {
     const [partialPaid, setPartialPaid] = useState(0);
     const [totalDefaulters, setTotalDefaulters] = useState(0);
 
+    const [activeTab, setActiveTab] = useState<'Overdue' | 'Next 7 Days' | 'All Dues'>('Overdue');
+    const [tabCounts, setTabCounts] = useState({ overdue: 0, next_7_days: 0, all: 0 });
+
     // Collect Drawer
     const [collectModalVisible, setCollectModalVisible] = useState(false);
     const [selectedFee, setSelectedFee] = useState<any>(null);
@@ -364,38 +396,76 @@ export default function PendingPaymentsScreen() {
             const fees: any[] = res.data.data?.fees || [];
             const now = new Date(); now.setHours(0, 0, 0, 0);
 
-            const pending: DueTenant[] = fees.map(f => {
-                const total = sf(f.total_amount || f.total_due || f.monthly_rent || 0);
-                const paid = sf(f.amount_paid || f.paid_amount || 0);
-                const due = Math.max(0, total - paid);
+            const studentMap = new Map();
+
+            fees.forEach(f => {
+                // balance = total actually owed (current month + all unpaid carry_forward)
+                // This is the REAL amount the student owes total
+                const balance = sf(f.balance || 0);
+                const paid = sf(f.paid_amount || f.amount_paid || 0);
+                const totalDue = sf(f.total_due || 0); // current month fee only
+                const carryForward = sf(f.carry_forward || 0); // from past unpaid months
+                const monthlyRent = sf(f.monthly_rent || f.fee_monthly_rent || f.student_monthly_rent || 0);
 
                 const dueDateObj = f.due_date ? new Date(f.due_date) : new Date();
                 dueDateObj.setHours(0, 0, 0, 0);
                 const diffDays = Math.floor((now.getTime() - dueDateObj.getTime()) / 86400000);
 
                 const dueMonth = f.fee_month || f.month || '';
-                const dueDateStr = f.due_date
-                    ? new Date(f.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
-                    : '';
+                const dueDateStr = f.due_date ? new Date(f.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '';
 
-                return {
-                    id: f.student_id,
-                    name: `${f.first_name || ''} ${f.last_name || ''}`.trim(),
-                    first_name: f.first_name || '',
-                    last_name: f.last_name || '',
-                    phone: f.phone || '',
-                    room: f.room_number || 'N/A',
-                    room_number: f.room_number || 'N/A',
-                    hostel_id: f.hostel_id,
-                    totalAmount: total,
-                    paidAmount: paid,
-                    dueAmount: due,
-                    feeMonth: dueMonth,
-                    dueDate: dueDateStr,
-                    daysOverdue: Math.max(0, diffDays),
-                    isOverdue: diffDays > 0,
-                    status: f.fee_status || 'pending',
-                };
+                // Skip students with nothing owed
+                if (balance <= 0) return;
+
+                if (!studentMap.has(f.student_id)) {
+                    studentMap.set(f.student_id, {
+                        id: f.student_id,
+                        name: `${f.first_name || ''} ${f.last_name || ''}`.trim(),
+                        first_name: f.first_name || '',
+                        last_name: f.last_name || '',
+                        phone: f.phone || '',
+                        room: f.room_number || 'N/A',
+                        room_number: f.room_number || 'N/A',
+                        hostel_id: f.hostel_id,
+                        totalAmount: balance + paid,  // Total billed (Due + Paid)
+                        paidAmount: paid,             // amount paid so far
+                        dueAmount: balance,           // TOTAL actually owed (includes ALL past unpaid)
+                        feeMonth: dueMonth,
+                        dueDate: dueDateStr,
+                        rawDueDate: f.due_date || new Date().toISOString(),
+                        daysOverdue: Math.max(0, diffDays),
+                        isOverdue: diffDays > 0,
+                        status: f.fee_status || 'pending',
+                        carryForward: carryForward,
+                        monthlyRent: monthlyRent,
+                        breakdown: []
+                    });
+                }
+
+                const s = studentMap.get(f.student_id);
+
+                // Build breakdown: if there's carry_forward, show it as past months
+                if (carryForward > 0) {
+                    s.breakdown.push({
+                        month: 'Past unpaid months',
+                        amount: carryForward,
+                        dueDate: null,
+                        isPast: true
+                    });
+                }
+                if (monthlyRent > 0) {
+                    s.breakdown.push({
+                        month: dueMonth || 'Current month',
+                        amount: monthlyRent,
+                        dueDate: f.due_date,
+                        isPast: false
+                    });
+                }
+            });
+
+            const pending: DueTenant[] = Array.from(studentMap.values()).map((s: any) => {
+                s.displayMonth = s.feeMonth;
+                return s;
             });
 
             setHasMore(res.data.data?.hasMore ?? (pending.length === 10));
@@ -434,8 +504,15 @@ export default function PendingPaymentsScreen() {
         setPayAmount(t.dueAmount.toString());
         setPayNotes(''); setPayTransactionId('');
         setPayDate(toLocalDateStr(new Date()));
-        const next = new Date(); next.setMonth(next.getMonth() + 1);
-        setPayDueDate(toLocalDateStr(next));
+        
+        // Keep the original due date by default so they remain in the Overdue tab on partial payments
+        if (t.dueAmount > 0 && t.rawDueDate) {
+            setPayDueDate(t.rawDueDate.split('T')[0]);
+        } else {
+            const next = new Date(); next.setMonth(next.getMonth() + 1);
+            setPayDueDate(toLocalDateStr(next));
+        }
+        
         setCollectModalVisible(true);
     }, []);
 
@@ -504,6 +581,20 @@ export default function PendingPaymentsScreen() {
             if (activeFilters.datePreset === 'This Month' && t.feeMonth !== thisMonthStr) return false;
             if (activeFilters.datePreset === 'Last Month' && t.feeMonth !== lastMonthStr) return false;
             if (activeFilters.datePreset === 'Older' && (t.feeMonth === thisMonthStr || t.feeMonth === lastMonthStr)) return false;
+        }
+        // 5. Tab Filter
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        const dueObj = new Date(t.rawDueDate);
+        dueObj.setHours(0, 0, 0, 0);
+        const diffDays = Math.floor((dueObj.getTime() - now.getTime()) / 86400000);
+        
+        if (activeTab === 'Overdue') {
+            if (!t.isOverdue) return false;
+        } else if (activeTab === 'Next 7 Days') {
+            if (t.isOverdue || diffDays < 0 || diffDays > 7) return false;
+        } else if (activeTab === 'All Dues') {
+            return true;
         }
 
         return true;
@@ -614,7 +705,7 @@ export default function PendingPaymentsScreen() {
                 </View>
             </View>
 
-            {/* ── Fixed Search + Filter ─────────────────────────────────── */}
+            {/* ── Search & Filter ──────────────────────────────────────── */}
             <View style={s.searchRow}>
                 <View style={[s.searchBox, {
                     backgroundColor: isDark ? '#1E293B' : '#FFF',
@@ -636,7 +727,13 @@ export default function PendingPaymentsScreen() {
                 </View>
 
                 <TouchableOpacity
-                    style={[s.filterBtn, { backgroundColor: isDark ? '#1E293B' : '#FFF', borderColor: isDark ? '#334155' : '#ECECEC', borderWidth: 1, shadowColor: 'transparent', elevation: 0 }]}
+                    style={[s.filterBtn, { 
+                        backgroundColor: isDark ? '#1E293B' : '#FFF', 
+                        borderColor: filterModalVisible || Object.values(activeFilters).some(v => v !== 'All' && v !== 'All Time') ? theme.primary : (isDark ? '#334155' : '#ECECEC'), 
+                        borderWidth: filterModalVisible || Object.values(activeFilters).some(v => v !== 'All' && v !== 'All Time') ? 1.5 : 1, 
+                        shadowColor: 'transparent', 
+                        elevation: 0 
+                    }]}
                     activeOpacity={0.7}
                     onPress={() => setFilterModalVisible(true)}
                 >
@@ -667,7 +764,68 @@ export default function PendingPaymentsScreen() {
                     )}
                 </View>
             )}
-
+            {/* ── Tabs ─────────────────────────────────────── */}
+            <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 10, gap: 8 }}>
+                {(['Overdue', 'Next 7 Days', 'All Dues'] as const).map(tab => {
+                    const isActive = activeTab === tab;
+                    const tabColors: Record<string, string> = {
+                        'Overdue': '#DC2626',
+                        'Next 7 Days': '#D97706',
+                        'All Dues': theme.primary,
+                    };
+                    const color = tabColors[tab];
+                    const overdueCount = tenants.filter(t => t.isOverdue).length;
+                    const next7Count = tenants.filter(t => {
+                        if (t.isOverdue) return false;
+                        const now = new Date(); now.setHours(0,0,0,0);
+                        const d = new Date(t.rawDueDate); d.setHours(0,0,0,0);
+                        const diff = Math.floor((d.getTime()-now.getTime())/86400000);
+                        return diff >= 0 && diff <= 7;
+                    }).length;
+                    const counts: Record<string, number> = { 'Overdue': overdueCount, 'Next 7 Days': next7Count, 'All Dues': tenants.length };
+                    return (
+                        <TouchableOpacity
+                            key={tab}
+                            style={{
+                                flex: 1,
+                                paddingVertical: 8,
+                                paddingHorizontal: 4,
+                                borderRadius: 20,
+                                backgroundColor: isActive ? color : (isDark ? '#1E293B' : '#F1F5F9'),
+                                borderWidth: 1.5,
+                                borderColor: isActive ? color : (isDark ? '#334155' : '#E2E8F0'),
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 4,
+                            }}
+                            onPress={() => setActiveTab(tab)}
+                            activeOpacity={0.8}
+                        >
+                            <Text style={{
+                                color: isActive ? '#FFF' : (isDark ? '#94A3B8' : '#64748B'),
+                                fontWeight: isActive ? '700' : '500',
+                                fontSize: 12,
+                            }}>
+                                {tab}
+                            </Text>
+                            {counts[tab] > 0 && (
+                                <View style={{
+                                    backgroundColor: isActive ? 'rgba(255,255,255,0.25)' : color + '20',
+                                    borderRadius: 10,
+                                    paddingHorizontal: 6,
+                                    paddingVertical: 1,
+                                    minWidth: 20,
+                                    alignItems: 'center',
+                                }}>
+                                    <Text style={{ color: isActive ? '#FFF' : color, fontSize: 10, fontWeight: '800' }}>{counts[tab]}</Text>
+                                </View>
+                            )}
+                        </TouchableOpacity>
+                    );
+                })}
+            </View>
+            {/* ── Count row ─────────────────────────────────────────── */}
             <View style={{ paddingHorizontal: 16, paddingBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Text style={{ fontSize: 13, color: isDark ? '#94A3B8' : '#64748B', fontWeight: '600' }}>
                     Showing {filteredTenants.length} student{filteredTenants.length !== 1 ? 's' : ''}
@@ -733,7 +891,18 @@ export default function PendingPaymentsScreen() {
             <PaymentDrawer
                 visible={collectModalVisible}
                 onClose={() => setCollectModalVisible(false)}
-                selectedFee={selectedFee}
+                selectedFee={selectedFee ? {
+                    ...selectedFee,
+                    pending_dues: [
+                        {
+                            fee_month: selectedFee.feeMonth,
+                            balance: selectedFee.dueAmount,
+                            monthly_rent: selectedFee.monthlyRent,
+                            carry_forward: selectedFee.carryForward,
+                            total_due: selectedFee.dueAmount
+                        }
+                    ]
+                } : null}
                 paymentModes={paymentModes}
                 payAmount={payAmount} setPayAmount={setPayAmount}
                 payNotes={payNotes} setPayNotes={setPayNotes}

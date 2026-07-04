@@ -35,6 +35,7 @@ import ratingRoutes from './routes/ratingRoutes.js';
 import { startMonthlyFeesGenerationJob } from './jobs/monthlyFeesGeneration.js';
 import { startGuestOverstayJob } from './jobs/guestOverstay.js';
 import { startChatResetJob } from './jobs/chatReset.js';
+import { startOverdueNotifierJob } from './jobs/overdueNotifier.js';
 import { sendNotificationToHostelOwner } from './utils/notification.js';
 
 // Load environment variables
@@ -367,12 +368,13 @@ httpServer.listen(PORT, HOST, () => {
   console.log(`🔐 Environment: ${NODE_ENV}`);
   console.log(`📍 Listening on ${HOST}:${PORT}`);
 
-  // Start cron jobs
+  // Start Background Cron Jobs
   startMonthlyFeesGenerationJob();
   startGuestOverstayJob();
   startChatResetJob();
-  console.log(`⏰ Cron jobs initialized`);
+  startOverdueNotifierJob();
+
+  console.log('⏰ Cron jobs initialized');
 });
 
 export default app;
-

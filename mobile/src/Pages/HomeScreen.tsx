@@ -34,6 +34,7 @@ const INITIAL_STATE = {
     activeTenants: 0,
     leftTenants: 0,
     unpaidStudents: [] as any[],
+    upcomingDues: [] as any[],
     totalRooms: 0,
     availableRooms: 0,
     occupancyRate: 0,
@@ -48,6 +49,17 @@ const INITIAL_STATE = {
     unallocatedCount: 0,
     qrRegisterCount: 0,
     openComplaintsCount: 0,
+    collectionStats: {
+        totalExpected: 0,
+        collected: 0,
+        pending: 0,
+        overdueCount: 0,
+        dueTodayCount: 0,
+        dueThisWeekCount: 0,
+        paidCount: 0,
+        tenantsCount: 0,
+        monthName: ''
+    }
 };
 
 // ─── Greeting helper ──────────────────────────────────────────────────────────
@@ -184,33 +196,104 @@ export default function HomeScreen() {
             const monthlyOverview = overviewRes.data?.success ? overviewRes.data.data : null;
             const currentMonthRevenue = Number(monthlyOverview?.currentMonth?.totalIncome ?? monthCollected ?? 0);
 
-            // Build top 3 defaulters list
+            // Build top 5 defaulters list and upcoming dues
             let topDefaulters: any[] = [];
+            let upcomingDuesList: any[] = [];
             if (summaryRes.data.success && summaryRes.data.data?.fees) {
                 const fees: any[] = summaryRes.data.data.fees;
                 const now = new Date();
                 now.setHours(0, 0, 0, 0);
-                topDefaulters = fees
+                
+                // Group by student ID to prevent duplicates
+                const studentMap = new Map();
+                
+                fees
                     .filter(f =>
                         (f.balance || 0) > 0 &&
                         !['paid', 'fully paid'].includes((f.fee_status || '').toLowerCase()),
                     )
-                    .sort((a, b) => (b.balance || 0) - (a.balance || 0))
-                    .slice(0, 3)
-                    .map(f => {
+                    .forEach(f => {
                         const due = f.due_date ? new Date(f.due_date) : new Date();
                         due.setHours(0, 0, 0, 0);
                         const diffDays = Math.floor((now.getTime() - due.getTime()) / 86400000);
-                        return {
-                            id: f.student_id,
-                            name: `${f.first_name || ''} ${f.last_name || ''}`.trim(),
-                            amount: f.balance || 0,
-                            phone: f.phone,
-                            isOverdue: diffDays > 0,
-                            daysLate: diffDays > 0 ? diffDays : 0,
-                            daysLeft: diffDays <= 0 ? Math.abs(diffDays) : 0,
-                        };
+                        
+                        const id = f.student_id;
+                        if (!studentMap.has(id)) {
+                            studentMap.set(id, {
+                                id: id,
+                                name: `${f.first_name || ''} ${f.last_name || ''}`.trim(),
+                                amount: 0,
+                                phone: f.phone,
+                                isOverdue: false,
+                                daysLate: 0,
+                                daysLeft: 9999, // default large number
+                            });
+                        }
+                        
+                        const s = studentMap.get(id);
+                        s.amount += parseFloat(f.balance || 0);
+                        
+                        if (diffDays > 0) {
+                            s.isOverdue = true;
+                            if (diffDays > s.daysLate) s.daysLate = diffDays;
+                        } else {
+                            const left = Math.abs(diffDays);
+                            if (left < s.daysLeft) s.daysLeft = left;
+                        }
                     });
+                    
+                const mappedFees = Array.from(studentMap.values());
+                    
+                topDefaulters = mappedFees
+                    .filter(f => f.isOverdue)
+                    .sort((a, b) => b.daysLate - a.daysLate || b.amount - a.amount)
+                    .slice(0, 5);
+                    
+                upcomingDuesList = mappedFees
+                    .filter(f => !f.isOverdue && f.daysLeft <= 3 && f.daysLeft >= 0)
+                    .sort((a, b) => a.daysLeft - b.daysLeft)
+                    .slice(0, 5);
+            }
+            
+            // Build collection stats picture
+            const collectionStats = {
+                totalExpected: 0, collected: 0, pending: 0, 
+                overdueCount: 0, dueTodayCount: 0, dueThisWeekCount: 0, 
+                paidCount: 0, tenantsCount: 0, monthName: ''
+            };
+            if (summaryRes.data.success && summaryRes.data.data?.fees) {
+                const fees: any[] = summaryRes.data.data.fees;
+                collectionStats.tenantsCount = fees.length;
+                
+                const now = new Date();
+                now.setHours(0, 0, 0, 0);
+                collectionStats.monthName = now.toLocaleString('en-IN', { month: 'long' });
+                
+                fees.forEach(f => {
+                    const balance = parseFloat(f.balance || 0);
+                    const paid = parseFloat(f.paid_amount || 0);
+                    const totalDue = balance + paid;
+                    
+                    collectionStats.totalExpected += totalDue;
+                    collectionStats.collected += paid;
+                    collectionStats.pending += balance;
+                    
+                    if (balance <= 0) {
+                        collectionStats.paidCount++;
+                    } else {
+                        const due = f.due_date ? new Date(f.due_date) : new Date();
+                        due.setHours(0, 0, 0, 0);
+                        const diffDays = Math.floor((due.getTime() - now.getTime()) / 86400000);
+                        
+                        if (diffDays < 0) {
+                            collectionStats.overdueCount++;
+                        } else if (diffDays === 0) {
+                            collectionStats.dueTodayCount++;
+                        } else if (diffDays > 0 && diffDays <= 7) {
+                            collectionStats.dueThisWeekCount++;
+                        }
+                    }
+                });
             }
 
             const activeNotice = noticeRes.data?.success && noticeRes.data.data?.length > 0
@@ -257,6 +340,7 @@ export default function HomeScreen() {
                 activeTenants: occupied,
                 leftTenants: d2.leftTenants || d2.vacatedStudents || 0,
                 unpaidStudents: topDefaulters,
+                upcomingDues: upcomingDuesList,
                 totalRooms: d2.totalRooms || 0,
                 availableRooms: d2.availableRooms || 0,
                 occupancyRate: d2.occupancyRate || 0,
@@ -271,6 +355,7 @@ export default function HomeScreen() {
                 unallocatedCount,
                 qrRegisterCount,
                 openComplaintsCount,
+                collectionStats,
             });
             isFirstLoadRef.current = false;
         } catch {
@@ -554,6 +639,8 @@ export default function HomeScreen() {
                             <Ionicons name="chevron-forward" size={18} color="#D97706" />
                         </TouchableOpacity>
                     )}
+
+
 
                     {/* ─────────────────── TOP METRICS ROW ─────────────────── */}
                     <View style={s.topMetricsRow}>
@@ -866,6 +953,54 @@ export default function HomeScreen() {
                         </View>
                     </View>
 
+                    {/* ─────────────────── TOP DEFAULTERS (OVERDUE) ─────────────────── */}
+                    {data.unpaidStudents && data.unpaidStudents.length > 0 && (
+                        <View style={s.sectionBlock}>
+                            <Text style={[s.sectionTitle, { fontSize: fontSize, color: '#DC2626', textTransform: 'uppercase' }]}>
+                                ⚠️ Top 5 Overdue Students
+                            </Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 4 }}>
+                                {data.unpaidStudents.map((item, idx) => (
+                                    <TouchableOpacity
+                                        key={idx}
+                                        style={[s.card, { backgroundColor: isDark ? '#3B1A1A' : '#FEF2F2', borderColor: '#FCA5A5', borderWidth: 1, padding: 12, borderRadius: 12, width: 150 }]}
+                                        onPress={() => navigation.navigate('StudentDetails', { studentId: item.id })}
+                                    >
+                                        <Text style={{ fontWeight: '700', fontSize: 14, color: isDark ? '#FECACA' : '#991B1B' }} numberOfLines={1}>{item.name}</Text>
+                                        <Text style={{ fontSize: 16, fontWeight: '800', color: '#DC2626', marginTop: 4 }}>₹{item.amount}</Text>
+                                        <Text style={{ fontSize: 11, color: '#DC2626', marginTop: 4 }}>
+                                            {item.isOverdue ? `${item.daysLate}d Overdue` : 'Pending'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        </View>
+                    )}
+
+                    {/* ─────────────────── NEXT 3 DAYS DUES ─────────────────── */}
+                    {data.upcomingDues && data.upcomingDues.length > 0 && (
+                        <View style={s.sectionBlock}>
+                            <Text style={[s.sectionTitle, { fontSize: fontSize, color: '#D97706', textTransform: 'uppercase' }]}>
+                                🕒 Dues in Next 3 Days
+                            </Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 4 }}>
+                                {data.upcomingDues.map((item, idx) => (
+                                    <TouchableOpacity
+                                        key={idx}
+                                        style={[s.card, { backgroundColor: isDark ? '#2D1A0E' : '#FFF7ED', borderColor: '#FCD34D', borderWidth: 1, padding: 12, borderRadius: 12, width: 150 }]}
+                                        onPress={() => navigation.navigate('StudentDetails', { studentId: item.id })}
+                                    >
+                                        <Text style={{ fontWeight: '700', fontSize: 14, color: isDark ? '#FEF3C7' : '#92400E' }} numberOfLines={1}>{item.name}</Text>
+                                        <Text style={{ fontSize: 16, fontWeight: '800', color: '#D97706', marginTop: 4 }}>₹{item.amount}</Text>
+                                        <Text style={{ fontSize: 11, color: '#D97706', marginTop: 4 }}>
+                                            {item.daysLeft === 0 ? 'Due Today' : `Due in ${item.daysLeft}d`}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        </View>
+                    )}
+
                     {/* ─────────────────── IMPORTANT NOTICE BANNER ─────────────────── */}
                     {data.latestNotice ? (
                         <TouchableOpacity
@@ -946,34 +1081,62 @@ export default function HomeScreen() {
                     {/* ─────────────────── TENANT APP PROMO ─────────────────── */}
                     <TenantAppCard theme={theme} isDark={isDark} hostelCode={data.hostelCode} />
 
-                    {/* ─────────────────── REVENUE OVERVIEW ─────────────────── */}
-                    <TouchableOpacity
-                        style={[s.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
-                        onPress={() => navigation.navigate('IncomeDetails')}
-                        activeOpacity={0.85}
-                    >
-                        <View style={s.cardHeader}>
-                            <View style={s.cardHeaderLeft}>
-                                <Ionicons name="bar-chart" size={15} color={theme.primary} />
-                                <Text style={[s.cardTitle, { fontSize: fontSize - 1, color: theme.textPrimary }]}>{t('dashboard.revenueOverview')}</Text>
+                    {/* ─────────────────── COLLECTION PICTURE ─────────────────── */}
+                    <View style={{ marginBottom: 20 }}>
+                        <Text style={[s.sectionTitle, { color: theme.textPrimary }]}>
+                            {data.collectionStats.monthName} Collection Status
+                        </Text>
+                        <View style={[s.card, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0', padding: 16 }]}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                                <Text style={{ color: theme.textSecondary, fontSize: 14 }}>Total Expected</Text>
+                                <View style={{ alignItems: 'flex-end' }}>
+                                    <Text style={{ color: theme.textPrimary, fontSize: 15, fontWeight: '700' }}>₹{data.collectionStats.totalExpected.toLocaleString('en-IN')}</Text>
+                                    <Text style={{ color: theme.textSecondary, fontSize: 11, marginTop: 2 }}>({data.collectionStats.tenantsCount} tenants)</Text>
+                                </View>
                             </View>
-                            <Text style={[s.cardMeta, { fontSize: Math.max(9, fontSize - 4), color: theme.textSecondary }]}>
-                                {t('dashboard.currentMonth')}: {fmt(data.monthAmount)}
-                            </Text>
+
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                                <Text style={{ color: '#10B981', fontSize: 14, fontWeight: '600' }}>Collected</Text>
+                                <View style={{ alignItems: 'flex-end', flexDirection: 'row', gap: 8 }}>
+                                    <Text style={{ color: '#10B981', fontSize: 15, fontWeight: '700' }}>₹{data.collectionStats.collected.toLocaleString('en-IN')}</Text>
+                                    <Text style={{ color: theme.textSecondary, fontSize: 12 }}>
+                                        ({data.collectionStats.totalExpected > 0 ? Math.round((data.collectionStats.collected / data.collectionStats.totalExpected) * 100) : 0}%)
+                                    </Text>
+                                </View>
+                            </View>
+
+                            {/* Progress bar */}
+                            <View style={{ height: 8, backgroundColor: isDark ? '#334155' : '#E2E8F0', borderRadius: 4, marginVertical: 8, overflow: 'hidden' }}>
+                                <View style={{ height: '100%', backgroundColor: '#10B981', width: `${data.collectionStats.totalExpected > 0 ? Math.round((data.collectionStats.collected / data.collectionStats.totalExpected) * 100) : 0}%`, borderRadius: 4 }} />
+                            </View>
+
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 }}>
+                                <Text style={{ color: '#EF4444', fontSize: 14, fontWeight: '600' }}>Pending</Text>
+                                <Text style={{ color: '#EF4444', fontSize: 15, fontWeight: '700' }}>₹{data.collectionStats.pending.toLocaleString('en-IN')}</Text>
+                            </View>
+
+                            <View style={{ height: 1, backgroundColor: isDark ? '#334155' : '#E2E8F0', marginBottom: 16 }} />
+
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+                                <View style={{ width: '48%', flexDirection: 'row', justifyContent: 'space-between' }}>
+                                    <Text style={{ color: theme.textSecondary, fontSize: 13 }}>Overdue:</Text>
+                                    <Text style={{ color: '#EF4444', fontSize: 13, fontWeight: '700' }}>{data.collectionStats.overdueCount}</Text>
+                                </View>
+                                <View style={{ width: '48%', flexDirection: 'row', justifyContent: 'space-between' }}>
+                                    <Text style={{ color: theme.textSecondary, fontSize: 13 }}>Due Today:</Text>
+                                    <Text style={{ color: '#F59E0B', fontSize: 13, fontWeight: '700' }}>{data.collectionStats.dueTodayCount}</Text>
+                                </View>
+                                <View style={{ width: '48%', flexDirection: 'row', justifyContent: 'space-between' }}>
+                                    <Text style={{ color: theme.textSecondary, fontSize: 13 }}>Due This Week:</Text>
+                                    <Text style={{ color: theme.textPrimary, fontSize: 13, fontWeight: '700' }}>{data.collectionStats.dueThisWeekCount}</Text>
+                                </View>
+                                <View style={{ width: '48%', flexDirection: 'row', justifyContent: 'space-between' }}>
+                                    <Text style={{ color: theme.textSecondary, fontSize: 13 }}>Paid Already:</Text>
+                                    <Text style={{ color: '#10B981', fontSize: 13, fontWeight: '700' }}>{data.collectionStats.paidCount}</Text>
+                                </View>
+                            </View>
                         </View>
-                        <View style={s.chartWrap}>
-                            {revenueData.map((item, idx) => (
-                                <RevenueBar
-                                    key={idx}
-                                    amount={item.amount}
-                                    maxAmount={maxRevenue}
-                                    month={item.month}
-                                    isCurrent={item.isCurrent}
-                                />
-                            ))}
-                        </View>
-                        <Text style={s.chartNote}>{t('dashboard.revenueOverviewNote', { max: fmt(maxRevenue) })}</Text>
-                    </TouchableOpacity>
+                    </View>
 
                 </View>
             </ScrollView>
