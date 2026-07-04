@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
-import { Modal, View, Text, StyleSheet, TouchableOpacity, Animated, Pressable, Platform } from 'react-native';
+import { Modal, View, Text, StyleSheet, TouchableOpacity, Animated, Pressable, Platform, ActivityIndicator } from 'react-native';
 import { useTheme } from './ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -141,7 +141,8 @@ export const ConfirmationProvider = ({ children }: { children: React.ReactNode }
                                 },
                             ]}
                         >
-                            {/* No grab handle — centered dialog */}
+                            {/* Grab handle for drawer feel */}
+                            <View style={[styles.grabHandle, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]} />
 
                             {/* Header row: Left Icon, Right Text Column */}
                             <View style={styles.headerBlock}>
@@ -180,9 +181,13 @@ export const ConfirmationProvider = ({ children }: { children: React.ReactNode }
                                     activeOpacity={0.8}
                                     disabled={loading}
                                 >
-                                    <Text style={styles.confirmBtnText}>
-                                        {loading ? '...' : (config.confirmText || details.confirmText)}
-                                    </Text>
+                                    {loading ? (
+                                        <ActivityIndicator color="#FFF" size="small" />
+                                    ) : (
+                                        <Text style={styles.confirmBtnText}>
+                                            {config.confirmText || details.confirmText}
+                                        </Text>
+                                    )}
                                 </TouchableOpacity>
                             </View>
                         </Animated.View>
@@ -204,23 +209,22 @@ export const useConfirmation = () => {
 const styles = StyleSheet.create({
     overlay: {
         flex: 1,
-        justifyContent: 'center',
+        justifyContent: 'flex-end',
         alignItems: 'center',
-        padding: 24,
     },
     backdrop: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(15, 23, 42, 0.45)',
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
     },
     card: {
         width: '100%',
-        borderRadius: 24,
+        padding: 24,
+        paddingBottom: 48,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
         borderWidth: 1,
-        paddingHorizontal: 24,
-        paddingTop: 24,
-        paddingBottom: 24,
-        elevation: 20,
-        shadowOffset: { width: 0, height: 8 },
+        elevation: 10,
+        shadowOffset: { width: 0, height: -4 },
         shadowOpacity: 0.15,
         shadowRadius: 16,
     },

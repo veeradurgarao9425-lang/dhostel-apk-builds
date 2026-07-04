@@ -602,8 +602,10 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                                             </Text>
                                                         </View>
                                                         {paidAmount > 0 && (
-                                                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 }}>
-                                                                <Text style={{ fontSize: 13, color: '#10B981' }}>Paid</Text>
+                                                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3, alignItems: 'center' }}>
+                                                                <View style={[styles.feeStatusBadge, { backgroundColor: '#E6F9F3', marginRight: 6 }]}>
+                                                                    <Text style={[styles.feeStatusBadgeText, { color: '#00B074' }]}>Paid</Text>
+                                                                </View>
                                                                 <Text style={{ fontSize: 13, fontWeight: '700', color: '#10B981' }}>
                                                                     - ₹{paidAmount.toLocaleString('en-IN')}
                                                                 </Text>
@@ -1230,6 +1232,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
+                        <View style={{ width: 40, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, alignSelf: 'center', marginBottom: 20 }} />
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Schedule Vacate Date</Text>
                             <TouchableOpacity onPress={() => setNoticeModalVisible(false)}>
@@ -1422,8 +1425,8 @@ const styles = StyleSheet.create({
     emptyHistoryText: { fontSize: 13, color: '#94A3B8', fontWeight: '500' },
 
     /* ── Modals ── */
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-    modalContent: { backgroundColor: '#FFF', borderRadius: 20, padding: 24, width: '100%', maxHeight: '80%', shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.18, shadowRadius: 16, elevation: 8 },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+    modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40, width: '100%', maxHeight: '80%', shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 10 },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
     modalTitle: { fontSize: 18, fontWeight: '700', color: '#1E293B' },
     modalBody: { gap: 8 },

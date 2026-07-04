@@ -257,7 +257,7 @@ export default function HomeScreen() {
             
             // Build collection stats picture
             const collectionStats = {
-                totalExpected: 0, collected: 0, pending: 0, 
+                totalExpected: 0, collected: 0, pending: 0, overdueAmount: 0,
                 overdueCount: 0, dueTodayCount: 0, dueThisWeekCount: 0, 
                 paidCount: 0, tenantsCount: 0, monthName: ''
             };
@@ -287,6 +287,7 @@ export default function HomeScreen() {
                         
                         if (diffDays < 0) {
                             collectionStats.overdueCount++;
+                            collectionStats.overdueAmount += balance;
                         } else if (diffDays === 0) {
                             collectionStats.dueTodayCount++;
                         } else if (diffDays > 0 && diffDays <= 7) {
@@ -1120,7 +1121,7 @@ export default function HomeScreen() {
                             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
                                 <View style={{ width: '48%', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
                                     <Text style={{ color: theme.textPrimary, fontSize: 13, fontWeight: '700' }}>Overdue:</Text>
-                                    <Text style={{ color: '#EF4444', fontSize: 13, fontWeight: '800' }}>{data.collectionStats.overdueCount}</Text>
+                                    <Text style={{ color: '#EF4444', fontSize: 13, fontWeight: '800' }}>{data.collectionStats.overdueCount} (₹{(data.collectionStats.overdueAmount || 0).toLocaleString('en-IN')})</Text>
                                 </View>
                                 <View style={{ width: '48%', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
                                     <Text style={{ color: theme.textPrimary, fontSize: 13, fontWeight: '700' }}>Due Today:</Text>

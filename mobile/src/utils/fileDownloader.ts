@@ -57,60 +57,16 @@ export const downloadAndSaveFile = async (
             }
         }
 
-        // On Android, save silently to local public storage using SAF
-        if (Platform.OS === 'android') {
-            try {
-                let directoryUri = await AsyncStorage.getItem(SAF_DIR_KEY);
-                
-                if (!directoryUri) {
-                    Toast.hide(); // Hide progress temporarily for permission prompt
-                    const downloadsUri = 'content://com.android.externalstorage.documents/tree/primary%3ADownload';
-                    const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync(downloadsUri);
-                    if (permissions.granted) {
-                        directoryUri = permissions.directoryUri;
-                        await AsyncStorage.setItem(SAF_DIR_KEY, directoryUri);
-                    } else {
-                        throw new Error('Storage permission denied.');
-                    }
-                }
-                
-                Toast.show({ type: 'downloading', text1: 'Saving File', text2: 'Writing to local storage...', props: { progress: 100 }, autoHide: false });
-
-                const base64Data = await FileSystem.readAsStringAsync(finalLocalUri, { encoding: FileSystem.EncodingType.Base64 });
-                const newFileUri = await FileSystem.StorageAccessFramework.createFileAsync(directoryUri, filename, mimeType);
-                await FileSystem.writeAsStringAsync(newFileUri, base64Data, { encoding: FileSystem.EncodingType.Base64 });
-                
-                Toast.hide();
-                ToastAndroid.show(`✓ Saved to local folder: ${filename}`, ToastAndroid.LONG);
-                
-                // Cleanup temp file
-                if (!isLocalUri) {
-                    await FileSystem.deleteAsync(finalLocalUri, { idempotent: true });
-                }
-                return;
-                
-            } catch (safError: any) {
-                console.warn('SAF Error:', safError);
-                Toast.hide();
-                // Fallback to Sharing if SAF fails or is rejected
-                const canShare = await Sharing.isAvailableAsync();
-                if (canShare) {
-                    await Sharing.shareAsync(finalLocalUri, { mimeType, dialogTitle: `Save ${filename}`, UTI: getUTI(mimeType) });
-                }
-            }
+        Toast.hide();
+        const canShare = await Sharing.isAvailableAsync();
+        if (canShare) {
+            await Sharing.shareAsync(finalLocalUri, {
+                mimeType,
+                dialogTitle: `Save ${filename}`,
+                UTI: getUTI(mimeType),
+            });
         } else {
-            // iOS fallback (iOS users usually "Save to Files" via share sheet)
-            Toast.hide();
-            const canShare = await Sharing.isAvailableAsync();
-            if (canShare) {
-                await Sharing.shareAsync(finalLocalUri, {
-                    mimeType,
-                    dialogTitle: `Save ${filename}`,
-                    UTI: getUTI(mimeType),
-                });
-            } else {
-                Alert.alert('File Ready', `File saved as:\n${filename}`);
-            }
+            Alert.alert('File Ready', `File saved as:\n${filename}`);
         }
 
     } catch (error: any) {

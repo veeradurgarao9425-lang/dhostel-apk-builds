@@ -66,11 +66,12 @@ export const ReceiptScreen = ({ navigation, route }: any) => {
         return `
             <html>
               <head>
-                <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
+                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                 <style>
+                  @page { margin: 0; size: A5 portrait; }
                   body {
                     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-                    background-color: #f5f6f8;
+                    background-color: #ffffff;
                     margin: 0;
                     padding: 24px;
                     color: #1e293b;
@@ -81,8 +82,8 @@ export const ReceiptScreen = ({ navigation, route }: any) => {
                   }
                   .receipt-container {
                     width: 100%;
-                    max-width: 480px;
-                    background-color: #f5f6f8;
+                    max-width: 100%;
+                    background-color: #ffffff;
                   }
                   .status-header {
                     display: flex;
@@ -121,9 +122,8 @@ export const ReceiptScreen = ({ navigation, route }: any) => {
                   .receipt-card {
                     background-color: #ffffff;
                     border-radius: 16px;
-                    padding: 20px;
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-                    border: 1px solid #e2e8f0;
+                    padding: 24px;
+                    border: 2px solid #e2e8f0;
                   }
                   .card-label {
                     font-size: 12px;
@@ -173,7 +173,7 @@ export const ReceiptScreen = ({ navigation, route }: any) => {
                     margin: 4px 0 0 0;
                   }
                   .amount {
-                    font-size: 20px;
+                    font-size: 24px;
                     font-weight: 800;
                     color: #0f172a;
                   }

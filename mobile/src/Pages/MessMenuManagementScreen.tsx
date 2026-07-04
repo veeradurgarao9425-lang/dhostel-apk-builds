@@ -499,7 +499,7 @@ const styles = StyleSheet.create({
     contentContainer: { padding: 16, paddingBottom: 100 },
     emptySearch: { paddingVertical: 40, alignItems: 'center' },
     emptySearchText: { fontSize: 15 },
-    card: { backgroundColor: '#FFF', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#F1F5F9', elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, marginBottom: 16 },
+    card: { backgroundColor: '#FFF', borderRadius: 16, padding: 12, borderWidth: 1, borderColor: '#F1F5F9', elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, marginBottom: 12 },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
     cardHeaderLeft: { flexDirection: 'row', alignItems: 'center' },
     cardIconBox: { width: 48, height: 48, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
@@ -512,8 +512,8 @@ const styles = StyleSheet.create({
     emptyBoxSubtitle: { fontSize: 13, color: '#64748B', marginTop: 2 },
 
     menuItemsListRow: { flexDirection: 'row', flexWrap: 'wrap' },
-    menuItemBadge: { backgroundColor: '#F8FAFC', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 8, marginRight: 8 },
-    menuItemBadgeText: { fontSize: 13, color: '#334155', fontWeight: '500' },
+    menuItemBadge: { backgroundColor: 'rgba(99, 102, 241, 0.1)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(99, 102, 241, 0.2)', marginBottom: 8, marginRight: 8 },
+    menuItemBadgeText: { fontSize: 13, color: '#4F46E5', fontWeight: '700' },
 
     // MODAL
     modalContainer: { flex: 1 },

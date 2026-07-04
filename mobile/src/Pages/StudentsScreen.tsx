@@ -580,10 +580,13 @@ export default function StudentsScreen({ navigation, route }: any) {
                         autoCapitalize="none"
                     />
 
-                    {search.length > 0 && (
+                    {search.length > 0 && !backgroundLoading && (
                         <TouchableOpacity onPress={() => setSearch('')}>
                             <X size={18} color="rgba(255,255,255,0.7)" />
                         </TouchableOpacity>
+                    )}
+                    {backgroundLoading && (
+                        <ActivityIndicator color="#FFF" size="small" />
                     )}
                     <View style={{ width: 1, height: 20, backgroundColor: 'rgba(255,255,255,0.2)', marginHorizontal: 8 }} />
                     <TouchableOpacity onPress={() => setShowDatePicker(true)}>

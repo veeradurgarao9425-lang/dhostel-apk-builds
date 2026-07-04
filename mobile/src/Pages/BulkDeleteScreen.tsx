@@ -10,7 +10,8 @@ import {
     RefreshControl,
     ActivityIndicator,
     Animated,
-    Platform
+    Platform,
+    Modal
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -49,6 +50,8 @@ export default function BulkDeleteScreen() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const [deleteProgress, setDeleteProgress] = useState(0);
+    const [deleteTotal, setDeleteTotal] = useState(0);
     const [search, setSearch] = useState('');
 
     // Data lists
@@ -204,6 +207,8 @@ export default function BulkDeleteScreen() {
         const count = activeTab === 'rooms' ? selectedRooms.size : selectedExpenses.size;
         setDangerModal(false);
         setDeleting(true);
+        setDeleteTotal(count);
+        setDeleteProgress(0);
         const selectedIds = Array.from(activeTab === 'rooms' ? selectedRooms : selectedExpenses);
         let successCount = 0;
         let failCount = 0;
@@ -221,6 +226,7 @@ export default function BulkDeleteScreen() {
                 failCount++;
                 console.error(`Error deleting item ${id}:`, err);
             }
+            setDeleteProgress(prev => prev + 1);
         }
 
         setDeleting(false);
@@ -476,7 +482,7 @@ export default function BulkDeleteScreen() {
                     data={activeList}
                     keyExtractor={(item) => activeTab === 'rooms' ? item.room_id.toString() : item.expense_id.toString()}
                     renderItem={activeTab === 'rooms' ? renderRoomCard : renderExpenseCard}
-                    contentContainerStyle={styles.listContent}
+                    contentContainerStyle={[styles.listContent, { paddingBottom: 150 }]}
                     showsVerticalScrollIndicator={false}
                     refreshControl={
                         <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={theme.primary} />
@@ -522,6 +528,21 @@ export default function BulkDeleteScreen() {
                     )}
                 </TouchableOpacity>
             </View>
+
+            <Modal visible={deleting} transparent animationType="fade">
+                <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.6)', flex: 1, justifyContent: 'center', padding: 20 }]}>
+                    <View style={[styles.dangerModalContent, { backgroundColor: isDark ? '#1E293B' : '#FFF', alignItems: 'center', padding: 20, borderRadius: 16 }]}>
+                        <ActivityIndicator size="large" color={theme.primary} style={{ marginBottom: 15 }} />
+                        <Text style={{ fontSize: fontSize + 2, fontWeight: '700', color: theme.textPrimary, marginBottom: 10 }}>Deleting...</Text>
+                        <Text style={{ fontSize: fontSize, color: theme.textSecondary, marginBottom: 20 }}>
+                            {deleteProgress} of {deleteTotal} completed
+                        </Text>
+                        <View style={{ width: '100%', height: 8, backgroundColor: isDark ? '#334155' : '#E2E8F0', borderRadius: 4, overflow: 'hidden' }}>
+                            <View style={{ width: `${deleteTotal > 0 ? (deleteProgress / deleteTotal) * 100 : 0}%`, height: '100%', backgroundColor: theme.primary }} />
+                        </View>
+                    </View>
+                </View>
+            </Modal>
 
             <DangerModal
                 visible={dangerModal}

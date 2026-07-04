@@ -356,8 +356,8 @@ const s = StyleSheet.create({
     card: {
         backgroundColor: '#FFF',
         borderRadius: 20,
-        padding: 16,
-        marginBottom: 16,
+        padding: 12,
+        marginBottom: 12,
         borderWidth: 1,
         borderColor: '#E2E8F0',
         elevation: 2,
@@ -376,12 +376,12 @@ const s = StyleSheet.create({
     dateText: { fontSize: 11, color: '#94A3B8', marginBottom: 4 },
     statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
     statusText: { fontSize: 11, fontWeight: '700' },
-    divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 12 },
+    divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 8 },
     cardBottom: {},
-    complaintTitle: { fontSize: 15, fontWeight: '700', color: '#334155', marginBottom: 4 },
-    description: { fontSize: 13, color: '#475569', lineHeight: 20, marginBottom: 8 },
+    complaintTitle: { fontSize: 14, fontWeight: '700', color: '#334155', marginBottom: 4 },
+    description: { fontSize: 13, color: '#475569', lineHeight: 18, marginBottom: 4 },
     categoryTag: { fontSize: 11, color: '#475569', fontWeight: '600', backgroundColor: '#F1F5F9', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, alignSelf: 'flex-start' },
-    actionsRow: { flexDirection: 'row', gap: 8, justifyContent: 'flex-end', marginTop: 12 },
+    actionsRow: { flexDirection: 'row', gap: 8, justifyContent: 'flex-end', marginTop: 8 },
     btn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, minWidth: 110, alignItems: 'center', justifyContent: 'center' },
     btnText: { color: '#FFF', fontSize: 13, fontWeight: '600' }
 });

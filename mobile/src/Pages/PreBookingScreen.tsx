@@ -254,7 +254,16 @@ const RoomPickerDrawer = ({ visible, rooms, selectedRoomId, onSelectRoom, onClos
         }
         const map: Record<number, any[]> = {};
         f.forEach((r: any) => { const fl = r.floor_number ?? 0; if (!map[fl]) map[fl] = []; map[fl].push(r); });
-        return Object.keys(map).sort((a, b) => Number(a) - Number(b)).map(fl => {
+        
+        return Object.keys(map).sort((a, b) => {
+            const floorA = map[Number(a)];
+            const floorB = map[Number(b)];
+            const aHasAvail = floorA.some((r: any) => (r.available_beds ?? 0) > 0);
+            const bHasAvail = floorB.some((r: any) => (r.available_beds ?? 0) > 0);
+            if (aHasAvail && !bHasAvail) return -1;
+            if (!aHasAvail && bHasAvail) return 1;
+            return Number(a) - Number(b);
+        }).map(fl => {
             const floorRooms = map[Number(fl)];
             floorRooms.sort((a: any, b: any) => {
                 const aAvail = (a.available_beds ?? 0) > 0;
@@ -515,6 +524,7 @@ export default function PreBookingScreen({ navigation, route }: any) {
                 admission_status: 0,
             };
             await api.post('/students', payload);
+            Toast.show({ type: 'success', text1: 'Pre-Booking Saved', text2: 'The bed has been successfully reserved.' });
             navigation.goBack();
         } catch (e) {
             Alert.alert('Error', 'Failed to save');
@@ -532,7 +542,7 @@ export default function PreBookingScreen({ navigation, route }: any) {
             <ScrollView 
                 style={styles.content} 
                 showsVerticalScrollIndicator={false} 
-                contentContainerStyle={[styles.scrollContent, { paddingBottom: (isKeyboardVisible ? 200 : 100) + insets.bottom }]}
+                contentContainerStyle={[styles.scrollContent, { paddingBottom: (isKeyboardVisible ? 250 : 150) + insets.bottom }]}
                 keyboardShouldPersistTaps="handled"
             >
                 <View style={{ marginBottom: 20, paddingHorizontal: 5 }}>
@@ -582,9 +592,12 @@ export default function PreBookingScreen({ navigation, route }: any) {
                 </View>
             </ScrollView>
 
-            <View style={[styles.stickyFooter, { backgroundColor: theme.cardBg, borderTopColor: isDark ? '#334155' : '#F1F5F9', paddingBottom: isKeyboardVisible ? 0 : insets.bottom + 16, paddingTop: 12, marginTop: 8 }]}>
-                <TouchableOpacity style={[styles.cancelButton, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#CBD5E1' }]} onPress={handleReset}><Text style={[styles.cancelButtonText, { color: theme.textSecondary }]}>Reset</Text></TouchableOpacity>
-                <TouchableOpacity style={[styles.submitButton, { backgroundColor: theme.primary }]} onPress={handleSave}><Text style={styles.submitButtonText}>Save Pre-Booking</Text></TouchableOpacity>
+            <View style={[styles.stickyFooter, { backgroundColor: theme.cardBg, borderTopColor: isDark ? '#334155' : '#F1F5F9', paddingBottom: isKeyboardVisible ? 0 : Math.max(insets.bottom + 20, 48), paddingTop: 16, marginTop: 8, flexDirection: 'column' }]}>
+                <Text style={{ fontSize: 12, color: theme.textSecondary, textAlign: 'center', marginBottom: 12, fontWeight: '500' }}>Please review pre-booking details carefully before saving.</Text>
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                    <TouchableOpacity style={[styles.cancelButton, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#CBD5E1' }]} onPress={handleReset}><Text style={[styles.cancelButtonText, { color: theme.textSecondary }]}>Reset</Text></TouchableOpacity>
+                    <TouchableOpacity style={[styles.submitButton, { backgroundColor: theme.primary }]} onPress={handleSave}><Text style={styles.submitButtonText}>Save Pre-Booking</Text></TouchableOpacity>
+                </View>
             </View>
 
             <DateTimePickerModal isVisible={showDatePicker} mode="date" onConfirm={(date) => { up('expected_join_date', date.toISOString().split('T')[0]); setShowDatePicker(false); }} onCancel={() => setShowDatePicker(false)} />

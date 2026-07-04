@@ -185,7 +185,7 @@ export default function NoticesManagementScreen({ navigation }: any) {
             {/* Create Notice Modal */}
             <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={() => setModalVisible(false)}>
                 <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
+                    <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
                         <View style={styles.modalHandle} />
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>New Notice</Text>
@@ -232,6 +232,12 @@ export default function NoticesManagementScreen({ navigation }: any) {
                             multiline
                         />
 
+                        <Text style={styles.label}>Attachment (Optional)</Text>
+                        <TouchableOpacity style={styles.imageUploadBtn}>
+                            <Ionicons name="image-outline" size={20} color="#7C3AED" />
+                            <Text style={styles.imageUploadText}>Upload Image</Text>
+                        </TouchableOpacity>
+
                         <TouchableOpacity
                             style={[styles.saveBtn, (saving || !title.trim() || !content.trim()) && { opacity: 0.6 }]}
                             onPress={handleCreate}
@@ -247,7 +253,7 @@ export default function NoticesManagementScreen({ navigation }: any) {
                                 }
                             </LinearGradient>
                         </TouchableOpacity>
-                    </View>
+                    </ScrollView>
                 </KeyboardAvoidingView>
             </Modal>
 
@@ -282,7 +288,7 @@ const styles = StyleSheet.create({
     sentText: { fontSize: 12, color: '#16A34A', fontWeight: '600' },
     deleteBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#FEF2F2', alignItems: 'center', justifyContent: 'center' },
 
-    fab: { position: 'absolute', bottom: 28, right: 20, borderRadius: 28, elevation: 8, shadowColor: '#7C3AED', shadowOpacity: 0.4, shadowRadius: 12 },
+    fab: { position: 'absolute', bottom: 100, right: 20, borderRadius: 28, elevation: 8, shadowColor: '#7C3AED', shadowOpacity: 0.4, shadowRadius: 12 },
     fabGrad: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
 
     modalOverlay: { flex: 1, backgroundColor: 'transparent', justifyContent: 'flex-end' },
@@ -300,6 +306,8 @@ const styles = StyleSheet.create({
     input: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 14, fontSize: 15, color: '#1E293B', fontWeight: '500' },
     inputMultiline: { minHeight: 110, textAlignVertical: 'top' },
     saveBtn: { marginTop: 24, borderRadius: 16, overflow: 'hidden', elevation: 4, shadowColor: '#7C3AED', shadowOpacity: 0.3, shadowRadius: 8 },
-    saveBtnGrad: { paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-    saveBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800', letterSpacing: 0.3 },
+    saveBtnGrad: { paddingVertical: 14, borderRadius: 14, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' },
+    saveBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700', letterSpacing: 0.3 },
+    imageUploadBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F3E8FF', borderWidth: 1, borderColor: '#D8B4FE', borderStyle: 'dashed', borderRadius: 12, paddingVertical: 12, marginBottom: 20 },
+    imageUploadText: { color: '#7C3AED', fontSize: 14, fontWeight: '600', marginLeft: 8 },
 });

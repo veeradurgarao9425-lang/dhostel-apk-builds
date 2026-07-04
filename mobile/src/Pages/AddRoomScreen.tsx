@@ -144,7 +144,9 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
                     const defaultTypeId = fourShareType
                         ? fourShareType.room_type_id.toString()
                         : response.data.data[0].room_type_id.toString();
-                    setFormData(prev => ({ ...prev, room_type_id: defaultTypeId }));
+                    
+                    const cap = fourShareType ? extractCapacity(fourShareType.room_type_name) : extractCapacity(response.data.data[0].room_type_name);
+                    setFormData(prev => ({ ...prev, room_type_id: defaultTypeId, capacity: cap }));
                 }
             }
         } catch (error) {
@@ -481,15 +483,12 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
                             }]}>
                                 <Users size={16} color={errors.capacity ? '#EF4444' : '#94A3B8'} style={styles.inputIcon} />
                                 <TextInput
-                                    style={[styles.inputText, { color: theme.textPrimary }]}
+                                    style={[styles.inputText, { color: theme.textSecondary }]}
                                     placeholder="Total beds"
                                     placeholderTextColor="#94A3B8"
                                     keyboardType="numeric"
                                     value={formData.capacity}
-                                    onChangeText={text => {
-                                        setFormData(p => ({ ...p, capacity: text }));
-                                        if (errors.capacity) setErrors(e => { const n = { ...e }; delete n.capacity; return n; });
-                                    }}
+                                    editable={false}
                                 />
                             </View>
                             {errors.capacity && <Text style={styles.errorText}>{errors.capacity}</Text>}

@@ -74,7 +74,7 @@ const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: any) => {
     return (
         <Modal transparent visible={visible} animationType="none" statusBarTranslucent onRequestClose={onClose}>
             <View style={{ flex: 1, justifyContent: 'flex-end' }}>
-                <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'transparent', opacity: backdropOpacity }]}>
+                <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#000', opacity: backdropOpacity }]}>
                     <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} />
                 </Animated.View>
                 <Animated.View style={[
@@ -545,7 +545,7 @@ const ProfilePhotoCapture = ({ uri, onCapture, onRemove, error }: any) => {
             </TouchableOpacity>
             
             <View style={styles.profileDetailsContainer}>
-                <Text style={[styles.profilePhotoTitle, { color: theme.textPrimary, fontSize: fontSize + 1 }]}>Add Profile Photo <Text style={{ color: '#EF4444' }}>*</Text></Text>
+                <Text style={[styles.profilePhotoTitle, { color: theme.textPrimary, fontSize: fontSize + 1 }]}>Add Profile Photo</Text>
                 <Text style={[styles.profilePhotoSubtitle, { color: theme.textSecondary }]}>Upload a clear photo of the tenant</Text>
                 {error && <Text style={{ color: '#EF4444', fontSize: 11, fontWeight: '600', marginBottom: 8 }}>{error}</Text>}
                 <TouchableOpacity 
@@ -829,18 +829,9 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
         };
         setTouched(allTouched);
 
-        if (!profilePhoto) {
-            e.profilePhoto = 'Profile photo is required';
-        }
+        setTouched(allTouched);
 
-        if (showIdPhotos && formData.id_proof_type_id) {
-            if (!aadhaarFront) {
-                e.aadhaarFront = 'Front side image is required';
-            }
-            if (!aadhaarBack) {
-                e.aadhaarBack = 'Back side image is required';
-            }
-        }
+        // Optional: showIdPhotos logic left without mandatory errors
 
         if (!formData.first_name || !formData.first_name.trim()) {
             e.first_name = 'First name is required';
@@ -878,6 +869,9 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
         }
         if (!formData.admission_date) {
             e.admission_date = 'Admission date is required';
+        }
+        if (!formData.admission_fee || parseFloat(formData.admission_fee) < 0 || formData.admission_fee === '') {
+            e.admission_fee = 'Admission fee is required (can be 0)';
         }
         if (!formData.permanent_address || !formData.permanent_address.trim()) {
             e.permanent_address = 'Address is required';
@@ -954,10 +948,27 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                         }
                     });
                 } else {
-                    showSuccess(`Tenant ${isEdit ? 'updated' : 'registered'} successfully!`);
-                    // Navigate first, then signal refresh so destination screen fetches fresh data
-                    navigation.goBack();
-                    setTimeout(() => triggerRefresh({ studentAllocated: !!payload.room_id }), 50);
+                    if (!isEdit && parseFloat(payload.admission_fee) > 0 && payload.admission_status === 'Pending') {
+                        setPageAlert({
+                            visible: true,
+                            title: 'Admission Fee Pending',
+                            message: 'Tenant registered successfully, but the Admission Fee is still pending. Please collect it soon.',
+                            icon: Info,
+                            primaryAction: {
+                                label: 'Okay',
+                                onPress: () => {
+                                    setPageAlert({ visible: false });
+                                    navigation.goBack();
+                                    setTimeout(() => triggerRefresh({ studentAllocated: !!payload.room_id }), 50);
+                                }
+                            }
+                        });
+                    } else {
+                        showSuccess(`Tenant ${isEdit ? 'updated' : 'registered'} successfully!`);
+                        // Navigate first, then signal refresh so destination screen fetches fresh data
+                        navigation.goBack();
+                        setTimeout(() => triggerRefresh({ studentAllocated: !!payload.room_id }), 50);
+                    }
                 }
             }
         } catch (error: any) {
@@ -1175,7 +1186,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                             setShowDatePicker(true); 
                         }} 
                     />
-                    <FormInput label="Admission Fee (₹)" icon={CreditCard} placeholder="0" keyboardType="numeric" value={formData.admission_fee} onChangeText={(t: string) => up('admission_fee', t.replace(/\D/g, ''))} />
+                    <FormInput label="Admission Fee (₹) *" icon={CreditCard} placeholder="0" keyboardType="numeric" value={formData.admission_fee} onChangeText={(t: string) => up('admission_fee', t.replace(/\D/g, ''))} />
                     <Selector label="Payment Status" options={['Paid', 'Unpaid']} selected={formData.admission_status} onSelect={(v: string) => up('admission_status', v)} />
                 </View>
 
@@ -1249,7 +1260,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
             </ScrollView>
 
             {/* ─── Sticky Footer ───────────────────────────────────────────────────── */}
-            <View style={[styles.stickyFooter, { backgroundColor: theme.cardBg, borderTopColor: isDark ? '#334155' : '#F1F5F9', paddingBottom: Math.max(insets.bottom, 28) }]}>
+            <View style={[styles.stickyFooter, { backgroundColor: theme.cardBg, borderTopColor: isDark ? '#334155' : '#F1F5F9', paddingBottom: Math.max(insets.bottom + 20, 48) }]}>
                 <TouchableOpacity
                     style={[styles.cancelButton, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#CBD5E1' }]}
                     onPress={handleReset}
@@ -1369,7 +1380,16 @@ const RoomPickerDrawer = ({ visible, rooms, selectedRoomId, onSelectRoom, onClos
         }
         const map: Record<number, any[]> = {};
         f.forEach((r: any) => { const fl = r.floor_number ?? 0; if (!map[fl]) map[fl] = []; map[fl].push(r); });
-        return Object.keys(map).sort((a, b) => Number(a) - Number(b)).map(fl => {
+        
+        return Object.keys(map).sort((a, b) => {
+            const floorA = map[Number(a)];
+            const floorB = map[Number(b)];
+            const aHasAvail = floorA.some((r: any) => (r.available_beds ?? 0) > 0);
+            const bHasAvail = floorB.some((r: any) => (r.available_beds ?? 0) > 0);
+            if (aHasAvail && !bHasAvail) return -1;
+            if (!aHasAvail && bHasAvail) return 1;
+            return Number(a) - Number(b);
+        }).map(fl => {
             const floorRooms = map[Number(fl)];
             floorRooms.sort((a: any, b: any) => {
                 const aAvail = (a.available_beds ?? 0) > 0;

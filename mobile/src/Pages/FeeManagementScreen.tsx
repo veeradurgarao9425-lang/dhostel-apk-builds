@@ -123,6 +123,8 @@ export default function FeeManagementScreen() {
     const { theme } = useTheme();
     const [activeTab, setActiveTab] = useState('Unpaid');
     const [search, setSearch] = useState('');
+    const [floorFilter, setFloorFilter] = useState('');
+    const [roomFilter, setRoomFilter] = useState('');
     const [loading, setLoading] = useState(false);
     const [fees, setFees] = useState<any[]>([]);
     const [payModalVisible, setPayModalVisible] = useState(false);
@@ -181,12 +183,25 @@ export default function FeeManagementScreen() {
     const filteredFees = useMemo(() => {
         return fees.filter(f => {
             const name = `${f.first_name || ''} ${f.last_name || ''}`.toLowerCase();
-            const matches = name.includes(search.toLowerCase()) || f.room_number?.toString().includes(search);
-            if (activeTab === 'Unpaid') return matches && (f.fee_status === 'Pending' || f.fee_status === 'Overdue');
-            if (activeTab === 'Paid') return matches && f.fee_status === 'Fully Paid';
-            return matches && f.fee_status === 'Partially Paid';
+            const matchesSearch = name.includes(search.toLowerCase()) || f.room_number?.toString().includes(search);
+            const matchesFloor = floorFilter ? f.floor_number?.toString() === floorFilter : true;
+            const matchesRoom = roomFilter ? f.room_number?.toString() === roomFilter : true;
+            
+            let matchesTab = true;
+            if (activeTab === 'Unpaid') matchesTab = (f.fee_status === 'Pending' || f.fee_status === 'Overdue');
+            else if (activeTab === 'Paid') matchesTab = (f.fee_status === 'Fully Paid');
+            else if (activeTab === 'Partial') matchesTab = (f.fee_status === 'Partially Paid');
+
+            return matchesSearch && matchesFloor && matchesRoom && matchesTab;
         });
-    }, [fees, search, activeTab]);
+    }, [fees, search, activeTab, floorFilter, roomFilter]);
+
+    const clearFilters = () => {
+        setSearch('');
+        setFloorFilter('');
+        setRoomFilter('');
+        setActiveTab('All');
+    };
 
     const handleCollectRent = useCallback(async () => {
         if (!payAmount || parseFloat(payAmount) <= 0) {
@@ -240,43 +255,45 @@ export default function FeeManagementScreen() {
                     </View>
                 </View>
 
-                <View style={styles.financialRow}>
-                    <View style={styles.priceBlock}>
-                        <Text style={styles.finLabel}>RENT</Text>
-                        <Text style={styles.finVal}>₹{total}</Text>
+                {(item.fee_status === 'Overdue' || due > 0) && (
+                    <View style={styles.financialRow}>
+                        <View style={styles.priceBlock}>
+                            <Text style={styles.finLabel}>RENT</Text>
+                            <Text style={styles.finVal}>₹{total}</Text>
+                        </View>
+                        <View style={styles.divider} />
+                        <View style={styles.priceBlock}>
+                            <Text style={[styles.finLabel, { color: '#EF4444' }]}>BALANCE</Text>
+                            <Text style={[styles.finVal, { color: '#EF4444' }]}>₹{due}</Text>
+                        </View>
+                        <View style={styles.actionGroup}>
+                            <TouchableOpacity
+                                style={styles.nudgeBtn}
+                                onPress={() => Linking.openURL(`whatsapp://send?phone=91${item.phone}&text=Hi ${item.first_name}, rent balance ₹${due} is pending.`)}
+                            >
+                                <MessageCircle size={20} color="#22C55E" />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.collectBtn, { backgroundColor: theme.primary }]}
+                                onPress={() => {
+                                    setSelectedFee(item);
+                                    setPayAmount(due.toString());
+                                    const upiMode = (paymentModes || []).find((m: any) => m.payment_mode_name?.toLowerCase() === 'upi');
+                                    const defaultMode = upiMode ? upiMode.payment_mode_id.toString() : (paymentModes?.[0]?.payment_mode_id?.toString() || '1');
+                                    setPayModeId(defaultMode);
+                                    setPayNotes('');
+                                    setPayTransactionId('');
+                                    setPayDate(toLocalDateStr(new Date()));
+                                    const next = new Date(); next.setMonth(next.getMonth() + 1);
+                                    setPayDueDate(toLocalDateStr(next));
+                                    setPayModalVisible(true);
+                                }}
+                            >
+                                <Text style={styles.collectBtnText}>COLLECT</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
-                    <View style={styles.divider} />
-                    <View style={styles.priceBlock}>
-                        <Text style={[styles.finLabel, { color: '#EF4444' }]}>BALANCE</Text>
-                        <Text style={[styles.finVal, { color: '#EF4444' }]}>₹{due}</Text>
-                    </View>
-                    <View style={styles.actionGroup}>
-                        <TouchableOpacity
-                            style={styles.nudgeBtn}
-                            onPress={() => Linking.openURL(`whatsapp://send?phone=91${item.phone}&text=Hi ${item.first_name}, rent balance ₹${due} is pending.`)}
-                        >
-                            <MessageCircle size={20} color="#22C55E" />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[styles.collectBtn, { backgroundColor: theme.primary }]}
-                            onPress={() => {
-                                setSelectedFee(item);
-                                setPayAmount(due.toString());
-                                const upiMode = (paymentModes || []).find((m: any) => m.payment_mode_name?.toLowerCase() === 'upi');
-                                const defaultMode = upiMode ? upiMode.payment_mode_id.toString() : (paymentModes?.[0]?.payment_mode_id?.toString() || '1');
-                                setPayModeId(defaultMode);
-                                setPayNotes('');
-                                setPayTransactionId('');
-                                setPayDate(toLocalDateStr(new Date()));
-                                const next = new Date(); next.setMonth(next.getMonth() + 1);
-                                setPayDueDate(toLocalDateStr(next));
-                                setPayModalVisible(true);
-                            }}
-                        >
-                            <Text style={styles.collectBtnText}>COLLECT</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
+                )}
             </View>
         );
     };
@@ -302,7 +319,10 @@ export default function FeeManagementScreen() {
                         placeholderTextColor="#94A3B8"
                     />
                 </View>
-                <View style={styles.tabBar}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                    <TouchableOpacity style={[styles.tab, activeTab === 'All' && styles.activeTab]} onPress={() => { LayoutAnimation.easeInEaseOut(); setActiveTab('All'); }}>
+                        <Text style={[styles.tabText, activeTab === 'All' ? { color: theme.primary } : { color: '#FFF' }]}>All</Text>
+                    </TouchableOpacity>
                     {['Unpaid', 'Partial', 'Paid'].map(t => (
                         <TouchableOpacity
                             key={t}
@@ -312,7 +332,10 @@ export default function FeeManagementScreen() {
                             <Text style={[styles.tabText, activeTab === t ? { color: theme.primary } : { color: '#FFF' }]}>{t}</Text>
                         </TouchableOpacity>
                     ))}
-                </View>
+                    <TouchableOpacity style={styles.tab} onPress={clearFilters}>
+                        <Text style={[styles.tabText, { color: '#FFF' }]}>Clear Filters</Text>
+                    </TouchableOpacity>
+                </ScrollView>
             </LinearGradient>
 
             <FlatList
@@ -352,14 +375,14 @@ const styles = StyleSheet.create({
     debtTotal: { fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: '700' },
     searchBar: { backgroundColor: '#FFF', borderRadius: 16, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, height: 46, marginBottom: 15 },
     input: { flex: 1, marginLeft: 10, fontWeight: '600', color: '#1E293B' },
-    tabBar: { flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.12)', padding: 4, borderRadius: 14 },
-    tab: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 10 },
+    tabBar: { flexDirection: 'row', padding: 4, borderRadius: 14 },
+    tab: { paddingHorizontal: 16, paddingVertical: 8, alignItems: 'center', borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.1)' },
     activeTab: { backgroundColor: '#FFF' },
     tabText: { fontSize: 12, fontWeight: '800' },
     list: { padding: 16, paddingBottom: 100 },
-    feeCard: { backgroundColor: '#FFF', borderRadius: 24, padding: 18, marginBottom: 12, elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8 },
-    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
-    studentName: { fontSize: 16, fontWeight: '800', color: '#1E293B' },
+    feeCard: { backgroundColor: '#FFF', borderRadius: 20, padding: 12, marginBottom: 10, elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8 },
+    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+    studentName: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
     roomText: { fontSize: 12, color: '#64748B', fontWeight: '600', marginTop: 2 },
     statusTag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
     statusText: { fontSize: 10, fontWeight: '900' },

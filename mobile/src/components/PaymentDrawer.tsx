@@ -392,7 +392,7 @@ export function PaymentDrawer({
                                     <Text style={S.submitBtnText}>Proceed to Pay</Text>
                                 )}
                             </TouchableOpacity>
-                            <View style={{ height: 40 }} />
+                            <View style={{ height: 100 }} />
                         </ScrollView>
                     </View>
                 </KeyboardAvoidingView>
