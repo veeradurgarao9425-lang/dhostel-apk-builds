@@ -1002,39 +1002,7 @@ export default function HomeScreen() {
                         </View>
                     )}
 
-                    {/* ─────────────────── IMPORTANT NOTICE BANNER ─────────────────── */}
-                    {data.latestNotice ? (
-                        <TouchableOpacity
-                            style={[s.noticeBanner, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF', borderColor: isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE' }]}
-                            onPress={() => navigation.navigate('NoticesManagement')}
-                            activeOpacity={0.8}
-                        >
-                            <View style={s.noticeHeaderRow}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                    <Ionicons name="megaphone" size={18} color={isDark ? "#93C5FD" : "#2563EB"} />
-                                    <Text style={[s.noticeBannerTitle, { color: isDark ? "#93C5FD" : "#2563EB" }]}>{t('dashboard.importantNotice')}</Text>
-                                </View>
-                                <TouchableOpacity
-                                    style={[s.noticeViewAllBtn, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(37, 99, 235, 0.1)' }]}
-                                    onPress={() => navigation.navigate('NoticesManagement')}
-                                >
-                                    <Text style={[s.noticeViewAllText, { color: isDark ? "#93C5FD" : "#2563EB" }]}>{t('dashboard.viewAll')}  ➔</Text>
-                                </TouchableOpacity>
-                            </View>
-                            <Text style={[s.noticeBannerContent, { color: theme.textPrimary }]} numberOfLines={2}>
-                                {data.latestNotice.title}: {data.latestNotice.content}
-                            </Text>
-                            <Text style={s.noticeBannerDate}>
-                                {new Date(data.latestNotice.created_at).toLocaleDateString('en-IN', {
-                                    day: 'numeric',
-                                    month: 'short',
-                                    year: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                })}
-                            </Text>
-                        </TouchableOpacity>
-                    ) : null}
+
 
                     {/* ─────────────────── UPCOMING CHECKOUT SCHEDULES ─────────────────── */}
                     {data.upcomingVacates && data.upcomingVacates.length > 0 ? (
@@ -1087,53 +1055,50 @@ export default function HomeScreen() {
                         <Text style={[s.sectionTitle, { color: theme.textPrimary, marginBottom: 16 }]}>
                             {data.collectionStats.monthName} Collection Status
                         </Text>
-                        <View style={[s.card, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0', padding: 16, paddingBottom: 24 }]}>
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                                <Text style={{ color: theme.textSecondary, fontSize: 14 }}>Total Expected</Text>
-                                <View style={{ alignItems: 'flex-end' }}>
-                                    <Text style={{ color: theme.textPrimary, fontSize: 15, fontWeight: '700' }}>₹{data.collectionStats.totalExpected.toLocaleString('en-IN')}</Text>
-                                    <Text style={{ color: theme.textSecondary, fontSize: 11, marginTop: 2 }}>({data.collectionStats.tenantsCount} tenants)</Text>
-                                </View>
-                            </View>
-
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                                <Text style={{ color: '#10B981', fontSize: 14, fontWeight: '600' }}>Collected</Text>
-                                <View style={{ alignItems: 'flex-end', flexDirection: 'row', gap: 8 }}>
-                                    <Text style={{ color: '#10B981', fontSize: 15, fontWeight: '700' }}>₹{data.collectionStats.collected.toLocaleString('en-IN')}</Text>
-                                    <Text style={{ color: theme.textSecondary, fontSize: 12 }}>
-                                        ({data.collectionStats.totalExpected > 0 ? Math.round((data.collectionStats.collected / data.collectionStats.totalExpected) * 100) : 0}%)
+                        <View style={[s.card, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0', padding: 12, marginBottom: 24 }]}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 10 }}>
+                                <View>
+                                    <Text style={{ color: theme.textPrimary, fontSize: 13, fontWeight: '700', marginBottom: 6 }}>
+                                        Target: ₹{data.collectionStats.totalExpected.toLocaleString('en-IN')}
+                                        <Text style={{ color: theme.textSecondary, fontSize: 11, fontWeight: '500' }}>  ({data.collectionStats.tenantsCount} tenants)</Text>
                                     </Text>
+                                    <Text style={{ color: '#10B981', fontSize: 11, fontWeight: '700', marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0.5 }}>Collected</Text>
+                                    <Text style={{ color: '#10B981', fontSize: 24, fontWeight: '800' }}>₹{data.collectionStats.collected.toLocaleString('en-IN')}</Text>
+                                </View>
+                                <View style={{ alignItems: 'flex-end' }}>
+                                    <Text style={{ color: '#EF4444', fontSize: 11, fontWeight: '700', marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0.5 }}>Pending</Text>
+                                    <Text style={{ color: '#EF4444', fontSize: 18, fontWeight: '800' }}>₹{data.collectionStats.pending.toLocaleString('en-IN')}</Text>
                                 </View>
                             </View>
 
-                            {/* Progress bar */}
-                            <View style={{ height: 8, backgroundColor: isDark ? '#334155' : '#E2E8F0', borderRadius: 4, marginVertical: 8, overflow: 'hidden' }}>
-                                <View style={{ height: '100%', backgroundColor: '#10B981', width: `${data.collectionStats.totalExpected > 0 ? Math.round((data.collectionStats.collected / data.collectionStats.totalExpected) * 100) : 0}%`, borderRadius: 4 }} />
+                            <View style={{ height: 6, backgroundColor: isDark ? '#334155' : '#E2E8F0', borderRadius: 3, marginBottom: 12, overflow: 'hidden' }}>
+                                <View style={{ height: '100%', backgroundColor: '#10B981', width: `${data.collectionStats.totalExpected > 0 ? Math.round((data.collectionStats.collected / data.collectionStats.totalExpected) * 100) : 0}%`, borderRadius: 3 }} />
                             </View>
 
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 }}>
-                                <Text style={{ color: '#EF4444', fontSize: 14, fontWeight: '600' }}>Pending</Text>
-                                <Text style={{ color: '#EF4444', fontSize: 15, fontWeight: '700' }}>₹{data.collectionStats.pending.toLocaleString('en-IN')}</Text>
-                            </View>
+                            <View style={{ flexDirection: 'column' }}>
+                                <View style={{ flexDirection: 'row', marginBottom: 8 }}>
+                                    <View style={{ flex: 1, marginRight: 8, backgroundColor: '#FEF2F2', padding: 10, borderRadius: 8, borderLeftWidth: 3, borderLeftColor: '#EF4444', justifyContent: 'center' }}>
+                                        <Text style={{ color: '#EF4444', fontSize: 11, fontWeight: '600', marginBottom: 2 }}>Overdue</Text>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                            <Text style={{ color: '#991B1B', fontSize: 14, fontWeight: '800' }}>{data.collectionStats.overdueCount}</Text>
+                                            <Text style={{ color: '#991B1B', fontSize: 10, fontWeight: '700' }}>₹{(data.collectionStats.overdueAmount || 0).toLocaleString('en-IN')}</Text>
+                                        </View>
+                                    </View>
+                                    <View style={{ flex: 1, backgroundColor: '#FFFBEB', padding: 10, borderRadius: 8, borderLeftWidth: 3, borderLeftColor: '#F59E0B', justifyContent: 'center' }}>
+                                        <Text style={{ color: '#F59E0B', fontSize: 11, fontWeight: '600', marginBottom: 2 }}>Due Today</Text>
+                                        <Text style={{ color: '#B45309', fontSize: 14, fontWeight: '800' }}>{data.collectionStats.dueTodayCount}</Text>
+                                    </View>
+                                </View>
 
-                            <View style={{ height: 1, backgroundColor: isDark ? '#334155' : '#E2E8F0', marginBottom: 16 }} />
-
-                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-                                <View style={{ width: '48%', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                                    <Text style={{ color: theme.textPrimary, fontSize: 13, fontWeight: '700' }}>Overdue:</Text>
-                                    <Text style={{ color: '#EF4444', fontSize: 13, fontWeight: '800' }}>{data.collectionStats.overdueCount} (₹{(data.collectionStats.overdueAmount || 0).toLocaleString('en-IN')})</Text>
-                                </View>
-                                <View style={{ width: '48%', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                                    <Text style={{ color: theme.textPrimary, fontSize: 13, fontWeight: '700' }}>Due Today:</Text>
-                                    <Text style={{ color: '#F59E0B', fontSize: 13, fontWeight: '800' }}>{data.collectionStats.dueTodayCount}</Text>
-                                </View>
-                                <View style={{ width: '48%', flexDirection: 'row', justifyContent: 'space-between' }}>
-                                    <Text style={{ color: theme.textPrimary, fontSize: 13, fontWeight: '700' }}>Due This Wk:</Text>
-                                    <Text style={{ color: theme.textPrimary, fontSize: 13, fontWeight: '800' }}>{data.collectionStats.dueThisWeekCount}</Text>
-                                </View>
-                                <View style={{ width: '48%', flexDirection: 'row', justifyContent: 'space-between' }}>
-                                    <Text style={{ color: theme.textPrimary, fontSize: 13, fontWeight: '700' }}>Paid:</Text>
-                                    <Text style={{ color: '#10B981', fontSize: 13, fontWeight: '800' }}>{data.collectionStats.paidCount}</Text>
+                                <View style={{ flexDirection: 'row' }}>
+                                    <View style={{ flex: 1, marginRight: 8, backgroundColor: isDark ? '#0F172A' : '#F1F5F9', padding: 10, borderRadius: 8, borderLeftWidth: 3, borderLeftColor: '#64748B', justifyContent: 'center' }}>
+                                        <Text style={{ color: isDark ? '#94A3B8' : '#475569', fontSize: 11, fontWeight: '600', marginBottom: 2 }}>Due This Wk</Text>
+                                        <Text style={{ color: isDark ? '#E2E8F0' : '#1E293B', fontSize: 14, fontWeight: '800' }}>{data.collectionStats.dueThisWeekCount}</Text>
+                                    </View>
+                                    <View style={{ flex: 1, backgroundColor: '#ECFDF5', padding: 10, borderRadius: 8, borderLeftWidth: 3, borderLeftColor: '#10B981', justifyContent: 'center' }}>
+                                        <Text style={{ color: '#10B981', fontSize: 11, fontWeight: '600', marginBottom: 2 }}>Paid</Text>
+                                        <Text style={{ color: '#065F46', fontSize: 14, fontWeight: '800' }}>{data.collectionStats.paidCount}</Text>
+                                    </View>
                                 </View>
                             </View>
                         </View>
