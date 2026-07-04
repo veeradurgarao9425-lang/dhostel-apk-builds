@@ -393,6 +393,10 @@ export default function PendingPaymentsScreen() {
             });
             if (!res.data.success) throw new Error(res.data?.error || 'Failed to load dues');
 
+            if (res.data.data?.tab_counts) {
+                setTabCounts(res.data.data.tab_counts);
+            }
+
             const fees: any[] = res.data.data?.fees || [];
             const now = new Date(); now.setHours(0, 0, 0, 0);
 
@@ -663,6 +667,12 @@ export default function PendingPaymentsScreen() {
                     </View>
                 }
             />
+            {/* ── Page Title ───────────────────────────────────────────── */}
+            <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 }}>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: isDark ? '#F8FAFC' : '#1F2937', textAlign: 'left' }}>
+                    Pending Dues
+                </Text>
+            </View>
 
             {/* ── Fixed Summary Cards ──────────────────────────────────── */}
             <View style={s.summaryRow}>
@@ -774,15 +784,11 @@ export default function PendingPaymentsScreen() {
                         'All Dues': theme.primary,
                     };
                     const color = tabColors[tab];
-                    const overdueCount = tenants.filter(t => t.isOverdue).length;
-                    const next7Count = tenants.filter(t => {
-                        if (t.isOverdue) return false;
-                        const now = new Date(); now.setHours(0,0,0,0);
-                        const d = new Date(t.rawDueDate); d.setHours(0,0,0,0);
-                        const diff = Math.floor((d.getTime()-now.getTime())/86400000);
-                        return diff >= 0 && diff <= 7;
-                    }).length;
-                    const counts: Record<string, number> = { 'Overdue': overdueCount, 'Next 7 Days': next7Count, 'All Dues': tenants.length };
+                    const counts: Record<string, number> = { 
+                        'Overdue': tabCounts.overdue, 
+                        'Next 7 Days': tabCounts.next_7_days, 
+                        'All Dues': tabCounts.all 
+                    };
                     return (
                         <TouchableOpacity
                             key={tab}

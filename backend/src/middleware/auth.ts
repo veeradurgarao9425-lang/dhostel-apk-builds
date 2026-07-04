@@ -84,7 +84,7 @@ export const queryTokenMiddleware = (
       req.user = {
         user_id: 9999,
         email: 'veeradurgarao840@gmail.com',
-        role_id: 3,
+        role_id: 2,
         hostel_id: 1,
       };
       return next();

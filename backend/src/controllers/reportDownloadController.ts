@@ -587,7 +587,7 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
         's.last_name',
         'r.room_number',
         'mf.fee_month',
-        'mf.fee_amount',
+        'mf.total_due',
         'mf.due_date',
         'mf.fee_status'
       )
@@ -882,7 +882,7 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
         duesSheet.getCell(`E${dIdx}`).value = '-';
       }
       
-      duesSheet.getCell(`F${dIdx}`).value = Number(d.fee_amount || 0);
+      duesSheet.getCell(`F${dIdx}`).value = Number(d.total_due || 0);
       duesSheet.getCell(`F${dIdx}`).numFmt = '₹#,##0.00';
       duesSheet.getCell(`F${dIdx}`).font = { bold: true };
       
