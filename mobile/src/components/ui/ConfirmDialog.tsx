@@ -9,6 +9,7 @@ import {
   Pressable,
 } from 'react-native';
 import { COLORS, FONT, RADIUS, SPACING, SHADOW } from '../../theme/index';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface ConfirmDialogProps {
@@ -36,6 +37,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   loading = false,
 }) => {
   const [shouldRender, setShouldRender] = useState(visible);
+  const insets = useSafeAreaInsets();
   const translateY = useRef(new Animated.Value(300)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
@@ -71,7 +73,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           <Pressable style={{ flex: 1 }} onPress={onCancel} />
         </Animated.View>
 
-        <Animated.View style={[styles.sheet, { transform: [{ translateY }] }]}>
+        <Animated.View style={[styles.sheet, { paddingBottom: Math.max(SPACING.xxxl, insets.bottom + SPACING.lg), transform: [{ translateY }] }]}>
           {/* Handle */}
           <View style={styles.handle} />
 

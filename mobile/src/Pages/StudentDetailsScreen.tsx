@@ -28,7 +28,9 @@ import { Ionicons } from '@expo/vector-icons';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { LinearGradient } from 'expo-linear-gradient';
+import { FullScreenLoader } from '../components/FullScreenLoader';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ProfileMenu } from '../components/ProfileMenu';
 import { SkeletonDetails } from '../components/ui/SkeletonDetails';
 import { SkeletonList } from '../components/ui/SkeletonCard';
@@ -514,6 +516,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
     return (
         <View style={styles.container}>
             <StatusBar barStyle="light-content" />
+            <FullScreenLoader visible={statusLoading} />
 
             <View pointerEvents={payModalVisible ? 'none' : 'auto'}>
                 <AppHeader 

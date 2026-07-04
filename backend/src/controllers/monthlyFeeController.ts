@@ -76,7 +76,7 @@ export const diagnoseCarryForward = async (req: AuthRequest, res: Response) => {
       const storedPaidAmount = parseFloat(prevMonthFee.paid_amount || 0);
       const actualPaid = paymentsSumValue > 0 ? paymentsSumValue : storedPaidAmount;
       const totalDue = parseFloat(prevMonthFee.total_due || 0);
-      const correctCarryForward = Math.max(0, totalDue - actualPaid);
+      const correctCarryForward = totalDue - actualPaid;
 
       console.log(`\n[DIAGNOSTIC] Carry Forward Calculation:`);
       console.log(`  - fee_payments SUM: ${paymentsSumValue}`);
@@ -97,7 +97,7 @@ export const diagnoseCarryForward = async (req: AuthRequest, res: Response) => {
     if (currentMonthFee) {
       console.log(`  - fee_id: ${currentMonthFee.fee_id}`);
       console.log(`  - monthly_rent: ${currentMonthFee.monthly_rent}`);
-      console.log(`  - carry_forward: ${currentMonthFee.carry_forward} ${currentMonthFee.carry_forward != (prevMonthFee ? Math.max(0, parseFloat(prevMonthFee.total_due || 0) - parseFloat(prevMonthFee.paid_amount || 0)) : 0) ? '❌ WRONG!' : '✓ CORRECT'}`);
+      console.log(`  - carry_forward: ${currentMonthFee.carry_forward} ${currentMonthFee.carry_forward != (prevMonthFee ? (parseFloat(prevMonthFee.total_due || 0) - parseFloat(prevMonthFee.paid_amount || 0)) : 0) ? '❌ WRONG!' : '✓ CORRECT'}`);
       console.log(`  - total_due: ${currentMonthFee.total_due}`);
       console.log(`  - paid_amount: ${currentMonthFee.paid_amount}`);
       console.log(`  - balance: ${currentMonthFee.balance}`);
@@ -145,10 +145,10 @@ export const diagnoseCarryForward = async (req: AuthRequest, res: Response) => {
         fee_payments_sum: parseFloat((await db('fee_payments').where('fee_id', prevMonthFee.fee_id).sum('amount as total'))[0]?.total || 0),
         stored_paid_amount: parseFloat(prevMonthFee.paid_amount || 0),
         total_due: parseFloat(prevMonthFee.total_due || 0),
-        correct_carry_forward: Math.max(0, parseFloat(prevMonthFee.total_due || 0) - Math.max(
+        correct_carry_forward: parseFloat(prevMonthFee.total_due || 0) - Math.max(
           parseFloat((await db('fee_payments').where('fee_id', prevMonthFee.fee_id).sum('amount as total'))[0]?.total || 0),
           parseFloat(prevMonthFee.paid_amount || 0)
-        ))
+        )
       } : null
     });
   } catch (error: any) {
@@ -201,7 +201,7 @@ async function cascadeUpdateFutureMonths(studentId: number, hostelId: number, pa
         const storedPaidAmount = parseFloat(prevMonthFee.paid_amount || 0);
         const actualPaid = paymentsSum > 0 ? paymentsSum : storedPaidAmount;
         const totalDue = parseFloat(prevMonthFee.total_due || 0);
-        newCarryForward = Math.max(0, totalDue - actualPaid);
+        newCarryForward = totalDue - actualPaid;
       }
 
       const oldCarryForward = parseFloat(futureFee.carry_forward || 0);
@@ -301,7 +301,7 @@ async function getPreviousMonthBalance(studentId: number, prevMonth: string, que
         const storedPaidAmount = parseFloat(feeRecord.paid_amount || 0);
         const actualPaid = paymentsSum > 0 ? paymentsSum : storedPaidAmount;
         const totalDue = parseFloat(feeRecord.total_due || 0);
-        const feeBalance = Math.max(0, totalDue - actualPaid);
+        const feeBalance = totalDue - actualPaid;
 
         console.log(`[getPreviousMonthBalance] Student ${studentId}, found record at ${checkMonthStr}: totalDue=${totalDue}, actualPaid=${actualPaid}, balance=${feeBalance}, accumulated=${accumulatedUnpaid}`);
         return feeBalance + accumulatedUnpaid;

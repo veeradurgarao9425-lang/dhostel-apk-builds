@@ -61,14 +61,14 @@ export default function App() {
     !currentRoute.startsWith('Add');
 
   return (
-    <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <RefreshProvider>
-          <ThemeProvider>
-            <ConfirmationProvider>
-            <ToastProvider>
-              <SafeAreaProvider style={styles.container}>
+    <SafeAreaProvider style={styles.container}>
+      <ErrorBoundary>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <RefreshProvider>
+            <ThemeProvider>
+              <ConfirmationProvider>
+              <ToastProvider>
                 <NetworkManager>
                   <AppNavigator
                     onRouteChange={(routeName: string) => setCurrentRoute(routeName)}
@@ -76,14 +76,14 @@ export default function App() {
                 </NetworkManager>
                 {showChatbot && <HostelChatbot />}
                 <ThemedToast />
-              </SafeAreaProvider>
-            </ToastProvider>
-            </ConfirmationProvider>
-          </ThemeProvider>
-          </RefreshProvider>
-        </AuthProvider>
-      </QueryClientProvider>
-    </ErrorBoundary>
+              </ToastProvider>
+              </ConfirmationProvider>
+            </ThemeProvider>
+            </RefreshProvider>
+          </AuthProvider>
+        </QueryClientProvider>
+      </ErrorBoundary>
+    </SafeAreaProvider>
   );
 }
 

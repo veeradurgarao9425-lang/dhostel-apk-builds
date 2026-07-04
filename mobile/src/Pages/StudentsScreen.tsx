@@ -284,6 +284,7 @@ export default function StudentsScreen({ navigation, route }: any) {
         title: string;
         message: string;
     }>({ visible: false, student: null, targetStatus: 1, title: '', message: '' });
+    const [statusLoading, setStatusLoading] = useState(false);
 
     // Update activeTab if passed via params
     useEffect(() => {
@@ -741,11 +742,11 @@ export default function StudentsScreen({ navigation, route }: any) {
                 title={confirmDialog.title}
                 message={confirmDialog.message}
                 confirmLabel={t('students.yesProceed')}
-
+                loading={statusLoading}
                 onConfirm={async () => {
                     const { student, targetStatus } = confirmDialog;
-                    setConfirmDialog(p => ({ ...p, visible: false }));
                     if (!student) return;
+                    setStatusLoading(true);
                     try {
                         const res = await api.put(`/students/${student.student_id}`, { status: targetStatus });
                         if (res.data.success) {
@@ -760,6 +761,9 @@ export default function StudentsScreen({ navigation, route }: any) {
                         }
                     } catch (e) {
                         showApiError(e, 'Failed to update status');
+                    } finally {
+                        setStatusLoading(false);
+                        setConfirmDialog(p => ({ ...p, visible: false }));
                     }
                 }}
                 onCancel={() => setConfirmDialog(p => ({ ...p, visible: false }))}

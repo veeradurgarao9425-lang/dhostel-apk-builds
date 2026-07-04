@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
 import { Modal, View, Text, StyleSheet, TouchableOpacity, Animated, Pressable, Platform, ActivityIndicator } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from './ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -19,6 +20,7 @@ const ConfirmationContext = createContext<ConfirmationContextType | null>(null);
 
 export const ConfirmationProvider = ({ children }: { children: React.ReactNode }) => {
     const { theme, isDark } = useTheme();
+    const insets = useSafeAreaInsets();
     const [visible, setVisible] = useState(false);
     const [config, setConfig] = useState<ConfirmationConfig | null>(null);
     const [loading, setLoading] = useState(false);
@@ -134,7 +136,8 @@ export const ConfirmationProvider = ({ children }: { children: React.ReactNode }
                                 styles.card,
                                 {
                                     backgroundColor: theme.cardBg,
-                                    transform: [{ scale: scaleAnim }],
+                                    paddingBottom: Math.max(48, insets.bottom + 24),
+                                    transform: [{ translateY: scaleAnim.interpolate({ inputRange: [0, 1], outputRange: [300, 0] }) }],
                                     opacity: fadeAnim,
                                     shadowColor: isDark ? '#000' : '#475569',
                                     borderColor: isDark ? '#334155' : '#F1F5F9',
