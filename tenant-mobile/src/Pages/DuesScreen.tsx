@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import {
   StyleSheet, Text, TouchableOpacity, View, ScrollView,
-  RefreshControl, ActivityIndicator, StatusBar
+  RefreshControl, ActivityIndicator, StatusBar, LayoutAnimation, Platform, UIManager
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -106,6 +106,10 @@ const PAYMENT_TIPS = [
   { Icon: Receipt,     text: 'Always save your receipt / transaction ID.' },
   { Icon: ShieldCheck, text: 'Use UPI or net banking for instant confirmation.' },
 ];
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 export default function DuesScreen({ navigation }: any) {
   const { user, refreshUser } = useAuth();
@@ -316,7 +320,10 @@ export default function DuesScreen({ navigation }: any) {
             <TouchableOpacity
               key={tab}
               style={[styles.tab, activeTab === tab && styles.tabActive]}
-              onPress={() => setActiveTab(tab)}
+              onPress={() => {
+                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                setActiveTab(tab);
+              }}
               activeOpacity={0.7}
             >
               <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
@@ -740,11 +747,11 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg, letterSpacing: 0.8, textTransform: 'uppercase',
   },
   listCard:       { backgroundColor: WHITE, borderRadius: radius['2xl'], marginHorizontal: spacing.xl, borderWidth: 1, borderColor: colors.border, overflow: 'hidden', ...shadow.card },
-  listRow:        { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: 16 },
+  listRow:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, padding: 16 },
   listRowDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   listIconWrap:   { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  listTitle:      { fontSize: 14, fontWeight: '700', color: TEXT_DARK, marginBottom: 2 },
-  listSub:        { fontSize: 11, color: TEXT_MID, marginTop: 1, lineHeight: 16 },
+  listTitle:      { fontSize: 14, fontWeight: '700', color: TEXT_DARK, marginBottom: 2, flexShrink: 1 },
+  listSub:        { fontSize: 11, color: TEXT_MID, marginTop: 1, lineHeight: 16, flexShrink: 1 },
   listAmount:     { fontSize: 15, fontWeight: '800', color: TEXT_DARK, letterSpacing: -0.3, marginBottom: 4 },
 
   statusPill:     { paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.pill },

@@ -114,7 +114,7 @@ function StepperForm({ visible, onClose, onSubmit, hostelId }: { visible: boolea
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
   const [showCatPicker, setShowCatPicker] = useState(false);
-  const [prefDate, setPrefDate] = useState('');
+  const [prefDate, setPrefDate] = useState(new Date().toLocaleString());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [images, setImages] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -128,14 +128,20 @@ function StepperForm({ visible, onClose, onSubmit, hostelId }: { visible: boolea
       setCategory('');
       setTitle('');
       setDesc('');
-      setPrefDate('');
+      setPrefDate(new Date().toLocaleString());
       setImages([]);
     }
   }, [visible]);
 
   if (!visible) return null;
 
-  const nextStep = () => setStep(s => Math.min(3, s + 1));
+  const nextStep = () => {
+    if (step === 1 && (!category || !title.trim() || !desc.trim())) {
+      alert('Please fill in all mandatory fields (*)');
+      return;
+    }
+    setStep(s => Math.min(3, s + 1));
+  };
   const prevStep = () => setStep(s => Math.max(1, s - 1));
 
   const handleUpload = async () => {
@@ -199,7 +205,7 @@ function StepperForm({ visible, onClose, onSubmit, hostelId }: { visible: boolea
                   <Text style={s.heroSub}>Let us know what's not working so we can fix it.</Text>
                 </View>
 
-                <Text style={s.inputLbl}>Category</Text>
+                <Text style={s.inputLbl}>Category <Text style={{color: '#EF4444'}}>*</Text></Text>
                 <TouchableOpacity style={s.inputBox} onPress={() => setShowCatPicker(true)} activeOpacity={0.7}>
                   <Text style={{ color: category ? TEXT_DARK : TEXT_MID, fontSize: 15 }}>{category || 'Select Category'}</Text>
                   <ChevronDown size={20} color={TEXT_MID} />
@@ -214,7 +220,7 @@ function StepperForm({ visible, onClose, onSubmit, hostelId }: { visible: boolea
                   ))}
                 </View>
 
-                <Text style={s.inputLbl}>Title</Text>
+                <Text style={s.inputLbl}>Title <Text style={{color: '#EF4444'}}>*</Text></Text>
                 <TextInput 
                   style={s.inputBoxStyle} 
                   placeholder="e.g. Broken tap" 
@@ -223,7 +229,7 @@ function StepperForm({ visible, onClose, onSubmit, hostelId }: { visible: boolea
                   onChangeText={setTitle}
                 />
 
-                <Text style={s.inputLbl}>Description</Text>
+                <Text style={s.inputLbl}>Description <Text style={{color: '#EF4444'}}>*</Text></Text>
                 <View style={s.textAreaWrap}>
                   <TextInput
                     style={s.textAreaStyle}
@@ -423,8 +429,8 @@ export default function ComplaintsScreen({ navigation }: any) {
                       (activeTab === 'Open' && (status === 'Open' || status === 'In Progress')) ||
                       (activeTab === 'Resolved' && status === 'Resolved');
 
-    const matchesSearch = (c.title ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          (c.category ?? '').toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = String(c.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          String(c.category || '').toLowerCase().includes(searchQuery.toLowerCase());
 
     let matchesDate = true;
     if (dateFilter !== 'Any time') {
@@ -582,7 +588,7 @@ const s = StyleSheet.create({
   headerStats: { fontSize: 13, color: TEXT_MID, marginTop: 6, fontWeight: '600' },
   
   // Search
-  searchRow: { flexDirection: 'row', paddingHorizontal: 20, gap: 12, paddingBottom: 12 },
+  searchRow: { flexDirection: 'row', paddingHorizontal: 20, gap: 12, paddingBottom: 12, marginTop: -4 },
   searchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: WHITE, borderWidth: 1, borderColor: BORDER, borderRadius: 12, paddingHorizontal: 12, height: 44 },
   searchInput: { flex: 1, marginLeft: 8, fontSize: 14, color: TEXT_DARK },
   filterBtn: { width: 44, height: 44, backgroundColor: WHITE, borderWidth: 1, borderColor: BORDER, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },

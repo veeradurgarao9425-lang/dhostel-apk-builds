@@ -137,6 +137,11 @@ export async function registerPushTokenAsync(): Promise<void> {
       Constants?.expoConfig?.extra?.eas?.projectId ??
       Constants?.easConfig?.projectId;
 
+    if (!projectId) {
+      console.log('No projectId found for Push Notifications. Skipping push token registration.');
+      return;
+    }
+
     const tokenResponse = await Notifications.getExpoPushTokenAsync({ projectId });
     const token = tokenResponse.data;
     

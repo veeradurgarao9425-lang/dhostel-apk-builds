@@ -195,7 +195,22 @@ export default function HomeScreen({ navigation }: any) {
         setDueAmount(sum > 0 ? sum : 0);
         setRentDueDate(firstDueDate);
         setTotalRentAmount(latestRent);
-        setRecentPayments(payments.slice(0, 3)); // keep top 3
+        // Using the recentPayments array to store expenses for the recent activity UI
+        try {
+          const expRes = await api.get('/tenant-expenses');
+          if (expRes.data && expRes.data.success) {
+            const expList = expRes.data.data
+              .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
+              .slice(0, 3);
+            setRecentPayments(expList.map((e: any) => ({
+              id: String(e.expense_id),
+              amount: e.amount,
+              date: e.date,
+              title: e.title || e.category,
+              mode: 'Expense'
+            })));
+          }
+        } catch { }
       }
     } catch {
       // non-critical: dashboard still renders from cached user data
@@ -278,9 +293,9 @@ export default function HomeScreen({ navigation }: any) {
           const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
           const todayFull = dayNames[new Date().getDay()]; // e.g. 'Saturday'
 
-          // Filter rows for today — case-insensitive, trimmed
+          // Filter rows for today — map backend's days appropriately
           const todayRows = rows.filter(
-            (m: any) => m.day_of_week?.trim().toLowerCase() === todayFull.toLowerCase()
+            (m: any) => m.day_of_week?.trim().toLowerCase() === todayFull.toLowerCase() || m.day_of_week?.trim().toLowerCase() === todayFull.substring(0, 3).toLowerCase()
           );
 
           const find = (type: string) =>
@@ -338,12 +353,6 @@ export default function HomeScreen({ navigation }: any) {
             <View style={styles.headerRight}>
               <TouchableOpacity
                 style={styles.hBtn}
-                onPress={() => navigation.navigate("UIShowcase")}
-              >
-                <Layers size={22} color={WHITE} strokeWidth={2} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.hBtn}
                 onPress={() => navigation.navigate("Notifications")}
               >
                 <Bell size={24} color={WHITE} strokeWidth={1.5} />
@@ -391,25 +400,27 @@ export default function HomeScreen({ navigation }: any) {
           </TouchableOpacity>
         ) : (
           <TouchableOpacity 
-            style={[styles.globalCard, { marginHorizontal: 20, marginTop: 10, marginBottom: 16 }]}
+            style={[styles.globalCard, { marginHorizontal: 20, marginTop: 10, marginBottom: 16, padding: 18 }]}
             onPress={() => navigation.navigate('Expenses')}
             activeOpacity={0.8}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-              <View style={[styles.cardIconWrap, { backgroundColor: '#DBEAFE' }]}>
-                <Wallet size={20} color="#2563EB" />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+              <View style={[styles.cardIconWrap, { backgroundColor: spent > budget ? '#FEE2E2' : '#DBEAFE', width: 50, height: 50, borderRadius: 14 }]}>
+                <Zap size={24} color={spent > budget ? '#DC2626' : '#2563EB'} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, fontWeight: '700', color: TEXT_DARK }}>
-                  ₹{spent} of ₹{budget} spent
+                <Text style={{ fontSize: 12, fontWeight: '700', color: TEXT_MID, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
+                  My Budget
+                </Text>
+                <Text style={{ fontSize: 18, fontWeight: '800', color: TEXT_DARK }}>
+                  ₹{spent} <Text style={{ fontSize: 14, color: TEXT_MID, fontWeight: '600' }}>/ ₹{budget}</Text>
                 </Text>
               </View>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: spent > budget ? '#DC2626' : '#2563EB' }}>
-                {spent > budget ? 'Over Budget!' : `₹${budget - spent} left`}
-              </Text>
-            </View>
-            <View style={{ height: 8, backgroundColor: '#F1F5F9', borderRadius: 4, overflow: 'hidden' }}>
-              <Animated.View style={{ height: '100%', width: progressAnim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }), backgroundColor: spent > budget ? '#EF4444' : '#2245D4', borderRadius: 4 }} />
+              <View style={{ backgroundColor: spent > budget ? '#FEF2F2' : '#EFF6FF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 }}>
+                <Text style={{ fontSize: 12, fontWeight: '800', color: spent > budget ? '#DC2626' : '#2563EB' }}>
+                  {spent > budget ? 'OVER' : `${Math.round((spent/budget)*100)}%`}
+                </Text>
+              </View>
             </View>
           </TouchableOpacity>
         )}
@@ -419,7 +430,7 @@ export default function HomeScreen({ navigation }: any) {
         <FadeSlideIn delay={80}>
         <View style={styles.section}>
           <View style={[styles.globalCard, {
-            paddingVertical: 20,
+            paddingVertical: 12, // Decreased height
             paddingHorizontal: 20,
             flexDirection: "row",
             alignItems: "center",
@@ -429,12 +440,12 @@ export default function HomeScreen({ navigation }: any) {
           }]}>
             <View style={styles.overviewLeft}>
               {/* Label row with icon */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <View style={[styles.cardIconWrap, {
                   backgroundColor: dueAmount > 0 ? '#FEE2E2' : '#D1FAE5',
-                  width: 36, height: 36, borderRadius: 10,
+                  width: 32, height: 32, borderRadius: 10,
                 }]}>
-                  <AlertCircle size={18} color={dueAmount > 0 ? '#EF4444' : '#10B981'} />
+                  <AlertCircle size={16} color={dueAmount > 0 ? '#EF4444' : '#10B981'} />
                 </View>
                 <Text style={[styles.overviewLabel, { marginBottom: 0 }]}>
                   {dueAmount > 0 ? "Total Due" : "Monthly Rent"}
@@ -442,31 +453,31 @@ export default function HomeScreen({ navigation }: any) {
               </View>
 
               {/* Amount */}
-              <Text style={[styles.overviewAmount, dueAmount === 0 && { color: "#10B981" }]}>
+              <Text style={[styles.overviewAmount, dueAmount === 0 && { color: "#10B981" }, { fontSize: 28 }]}>
                 ₹ {(dueAmount > 0 ? dueAmount : (totalRentAmount || 0)).toLocaleString("en-IN")}
               </Text>
 
               {/* Sub-label */}
               {dueAmount > 0 ? (
-                <Text style={styles.overviewDate}>
+                <Text style={[styles.overviewDate, { marginBottom: 12 }]}>
                   📅 Due: {rentDueDate ? formatDate(rentDueDate) : "Not scheduled"}
                 </Text>
               ) : (
-                <Text style={[styles.overviewDate, { color: '#10B981' }]}>
+                <Text style={[styles.overviewDate, { color: '#10B981', marginBottom: 12 }]}>
                   ✓ All clear this month!
                 </Text>
               )}
 
               {/* Action button */}
               {dueAmount > 0 ? (
-                <TouchableOpacity style={styles.overviewBtn} onPress={() => navigation.navigate("Payments")}>
-                  <Text style={styles.overviewBtnText}>Pay Now</Text>
-                  <ArrowRight size={16} color={WHITE} />
+                <TouchableOpacity style={[styles.overviewBtn, { paddingVertical: 8, paddingHorizontal: 12 }]} onPress={() => navigation.navigate("Payments")}>
+                  <Text style={[styles.overviewBtnText, { fontSize: 12 }]}>Pay Now</Text>
+                  <ArrowRight size={14} color={WHITE} />
                 </TouchableOpacity>
               ) : (
-                <View style={[styles.overviewBtn, { backgroundColor: "#D1FAE5" }]}>
-                  <Check size={16} color="#10B981" strokeWidth={3} />
-                  <Text style={[styles.overviewBtnText, { color: "#10B981" }]}>Paid</Text>
+                <View style={[styles.overviewBtn, { backgroundColor: "#D1FAE5", paddingVertical: 8, paddingHorizontal: 12 }]}>
+                  <Check size={14} color="#10B981" strokeWidth={3} />
+                  <Text style={[styles.overviewBtnText, { color: "#10B981", fontSize: 12 }]}>Paid</Text>
                 </View>
               )}
             </View>
@@ -475,7 +486,7 @@ export default function HomeScreen({ navigation }: any) {
             <View style={styles.overviewRight}>
               <Image
                 source={require("../../assets/wallet_3d.png")}
-                style={{ width: 130, height: 130, position: "absolute", right: -8, bottom: -12 }}
+                style={{ width: 160, height: 160, position: "absolute", right: -20, bottom: -20 }} // Increased size
                 resizeMode="contain"
               />
             </View>
@@ -515,7 +526,7 @@ export default function HomeScreen({ navigation }: any) {
                       <Text style={[styles.menuTitle, isSkipped && { color: TEXT_MID, textDecorationLine: "line-through" }]}>
                         {activeMeal.title}
                       </Text>
-                      <Text style={[styles.menuSub, (isSkipped || isPlaceholder) && { color: TEXT_MID, fontStyle: isPlaceholder ? 'italic' : 'normal' }]} numberOfLines={2}>
+                      <Text style={[styles.menuSub, isSkipped && { color: TEXT_MID, textDecorationLine: "line-through" }, isPlaceholder && { fontStyle: 'italic' }]} numberOfLines={2}>
                         {activeMeal.sub}
                       </Text>
                     </View>
@@ -618,7 +629,7 @@ export default function HomeScreen({ navigation }: any) {
                     glowColor={sc.color}
                     flatColor={sc.color}
                     flatBg={sc.bg}
-                    size="sm"
+                    size="md"
                     entrance
                     style={{ marginBottom: 8 }}
                   />
@@ -644,14 +655,14 @@ export default function HomeScreen({ navigation }: any) {
             <View style={styles.globalCard}>
               {recentPayments.map((p, index) => (
                 <View key={p.id} style={[styles.activityItem, index > 0 && { borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 16 }]}>
-                  <View style={[styles.cardIconWrap, { width: 36, height: 36, borderRadius: 10, backgroundColor: '#DBEAFE', marginRight: 12 }]}>
-                    <CheckCircle2 size={18} color="#2563EB" />
+                  <View style={[styles.cardIconWrap, { width: 36, height: 36, borderRadius: 10, backgroundColor: '#FEE2E2', marginRight: 12 }]}>
+                    <Wallet size={18} color="#EF4444" />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.activityTitle}>Payment received ({p.mode})</Text>
+                    <Text style={styles.activityTitle}>{p.title || 'Expense added'}</Text>
                     <Text style={styles.activityDate}>{formatDate(p.date)}</Text>
                   </View>
-                  <Text style={[styles.activityAmount, { color: "#16A34A" }]}>₹ {p.amount}</Text>
+                  <Text style={[styles.activityAmount, { color: "#EF4444" }]}>₹ {p.amount}</Text>
                 </View>
               ))}
             </View>

@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.js';
 import db from '../config/database.js';
 import { sendNotificationToHostelOwner, sendNotificationToStudent } from '../utils/notification.js';
+import { io } from '../socket/index.js';
 
 // =======================
 // TENANT ENDPOINTS
@@ -36,8 +37,13 @@ export const createComplaint = async (req: AuthRequest, res: Response) => {
     const studentName = student ? `${student.first_name} ${student.last_name || ''}`.trim() : 'A student';
     const bedInfo = student?.bed_id ? ` (Bed: ${student.bed_id})` : '';
 
-    // Notify Owner
+    // Notify Owner via Push & Sockets
     try {
+      if (io) {
+        io.to(`hostel_${hostel_id}`).emit('new_complaint', {
+          complaint_id, title, category, studentName, bedInfo, created_at: new Date()
+        });
+      }
       await sendNotificationToHostelOwner(
         hostel_id,
         'Complaint',
@@ -125,8 +131,13 @@ export const updateComplaintStatus = async (req: AuthRequest, res: Response) => 
 
     await db('complaints').where('complaint_id', complaintId).update({ status });
 
-    // Notify Tenant
+    // Notify Tenant via Push & Sockets
     try {
+      if (io) {
+        io.to(`tenant_${complaint.student_id}`).emit('complaint_updated', {
+          complaint_id: complaint.complaint_id, status
+        });
+      }
       await sendNotificationToStudent(
         complaint.student_id,
         'Complaint',

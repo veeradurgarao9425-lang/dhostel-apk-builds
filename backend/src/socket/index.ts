@@ -78,10 +78,26 @@ export const setupSocket = (httpServer: HttpServer) => {
     if (user.role_id === 3 && user.room_id) {
       const roomKey = `room_${user.room_id}`;
       socket.join(roomKey);
-      console.log(`[SOCKET] User ${user.user_id} joined ${roomKey}`);
       
       // Notify others in room
       socket.to(roomKey).emit('user_online', { userId: user.user_id });
+    }
+
+    // Join hostel room for both Owner and Tenant to receive hostel-wide notifications (e.g. complaints, rent updates)
+    if (user.hostel_id) {
+      socket.join(`hostel_${user.hostel_id}`);
+    } else if (user.role_id === 2) {
+      // Owner might have multiple hostels, let's join all hostels they own
+      db('hostels').where('owner_id', user.user_id).select('hostel_id')
+        .then(hostels => {
+          hostels.forEach(h => socket.join(`hostel_${h.hostel_id}`));
+        })
+        .catch(console.error);
+    }
+
+    // Also let tenant join their own personal room for direct notifications
+    if (user.role_id === 3) {
+      socket.join(`tenant_${user.user_id}`);
     }
 
     // Typing Indicators

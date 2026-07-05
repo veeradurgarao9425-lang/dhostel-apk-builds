@@ -2,6 +2,7 @@ import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { sendNotificationToHostelOwner } from '../utils/notification.js';
+import { io } from '../socket/index.js';
 
 // Version marker to verify the fix is deployed
 const FIX_VERSION = 'v2.0-carry-forward-fix-2026-01-04';
@@ -1253,6 +1254,16 @@ export const recordPayment = async (req: AuthRequest, res: Response) => {
       console.log('[recordPayment] Updated values - paid_amount:', newTotalPaid, 'balance:', newBalance, 'status:', newFeeStatus);
 
       // Trigger push and in-app notification to owner
+      if (io) {
+        io.to(`hostel_${hostel_id}`).emit('new_payment', {
+          payment_id: paymentId,
+          amount,
+          studentName: `${student.first_name} ${student.last_name || ''}`.trim(),
+          student_id,
+          fee_month: paidFeeMonth,
+          created_at: new Date()
+        });
+      }
       sendNotificationToHostelOwner(
         hostel_id,
         'General',

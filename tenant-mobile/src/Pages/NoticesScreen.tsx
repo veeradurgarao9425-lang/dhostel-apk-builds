@@ -22,8 +22,8 @@ const TEXT_LIGHT= '#9CA3AF';
 const BG        = '#F8FAFD';
 const BORDER    = '#E8EDF5';
 
-type FilterTab = 'All' | 'Important' | 'Maintenance' | 'Food';
-const FILTER_TABS: FilterTab[] = ['All', 'Important', 'Maintenance', 'Food'];
+type FilterTab = 'All' | 'Important' | 'Maintenance' | 'Food' | 'General';
+const FILTER_TABS: FilterTab[] = ['All', 'Important', 'Maintenance', 'Food', 'General'];
 
 const categoryMeta: Record<string, { icon: any; iconColor: string; iconBg: string }> = {
   Important:   { icon: AlertCircle,     iconColor: '#E53935', iconBg: '#FDEAEA' },
