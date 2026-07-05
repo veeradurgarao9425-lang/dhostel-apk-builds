@@ -58,6 +58,47 @@ export const downloadAndSaveFile = async (
         }
 
         Toast.hide();
+
+        if (Platform.OS === 'android') {
+            try {
+                let dirUri = await AsyncStorage.getItem(SAF_DIR_KEY);
+                let permissions;
+
+                if (!dirUri) {
+                    permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+                    if (permissions.granted) {
+                        dirUri = permissions.directoryUri;
+                        await AsyncStorage.setItem(SAF_DIR_KEY, dirUri);
+                    }
+                }
+
+                if (dirUri) {
+                    try {
+                        const base64 = await FileSystem.readAsStringAsync(finalLocalUri, { encoding: FileSystem.EncodingType.Base64 });
+                        const safUri = await FileSystem.StorageAccessFramework.createFileAsync(dirUri, filename, mimeType);
+                        await FileSystem.writeAsStringAsync(safUri, base64, { encoding: FileSystem.EncodingType.Base64 });
+                        Alert.alert('Download Complete', `File saved successfully as:\n${filename}`);
+                        return; // Successfully saved
+                    } catch (innerErr) {
+                        // If stored permission was revoked, request again
+                        permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+                        if (permissions.granted) {
+                            dirUri = permissions.directoryUri;
+                            await AsyncStorage.setItem(SAF_DIR_KEY, dirUri);
+                            const base64 = await FileSystem.readAsStringAsync(finalLocalUri, { encoding: FileSystem.EncodingType.Base64 });
+                            const safUri = await FileSystem.StorageAccessFramework.createFileAsync(dirUri, filename, mimeType);
+                            await FileSystem.writeAsStringAsync(safUri, base64, { encoding: FileSystem.EncodingType.Base64 });
+                            Alert.alert('Download Complete', `File saved successfully as:\n${filename}`);
+                            return; // Successfully saved
+                        }
+                    }
+                }
+            } catch (safErr) {
+                console.warn('SAF error:', safErr);
+            }
+        }
+
+        // Fallback to Sharing if iOS or SAF failed/canceled
         const canShare = await Sharing.isAvailableAsync();
         if (canShare) {
             await Sharing.shareAsync(finalLocalUri, {
@@ -66,7 +107,7 @@ export const downloadAndSaveFile = async (
                 UTI: getUTI(mimeType),
             });
         } else {
-            Alert.alert('File Ready', `File saved as:\n${filename}`);
+            Alert.alert('File Ready', `File ready at:\n${finalLocalUri}`);
         }
 
     } catch (error: any) {

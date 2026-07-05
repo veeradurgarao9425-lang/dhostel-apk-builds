@@ -197,7 +197,7 @@ export default function PaymentReceiptScreen({ route, navigation }: any) {
               <Text style={[styles.actionText, { color: '#666666' }]}>Download</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Dues', { initialTab: 'Payment History' })}>
+            <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Main', { screen: 'Dues', params: { initialTab: 'Payment History' } })}>
               <View style={[styles.actionIcon, { backgroundColor: '#F3E8FF' }]}><Clock size={24} color="#9333EA" /></View>
               <Text style={[styles.actionText, { color: '#666666' }]}>View History</Text>
             </TouchableOpacity>
