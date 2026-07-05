@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { View, Text, Modal, Animated, PanResponder, StyleSheet, TouchableOpacity, Dimensions, KeyboardAvoidingView, Platform, Keyboard, ScrollView, TextInput } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Share2, Edit2, Copy, Download, Heart, Trash2, Smartphone, Monitor, Briefcase, Star, HelpCircle, CheckCircle, AlertCircle, Info, Search } from 'lucide-react-native';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -16,6 +17,7 @@ export interface BaseBottomSheetProps {
 }
 
 export function BaseBottomSheet({ visible, onClose, children, height, disableDrag = false }: BaseBottomSheetProps) {
+  const insets = useSafeAreaInsets();
   const [render, setRender] = useState(visible);
   const panY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
@@ -57,19 +59,29 @@ export function BaseBottomSheet({ visible, onClose, children, height, disableDra
 
   if (!render) return null;
 
+  const SheetContent = (
+    <Animated.View style={[bsStyles.sheet, { paddingBottom: insets.bottom + 100 }, height ? { height } : undefined, { transform: [{ translateY: panY }] }]}>
+      <View {...panResponder.panHandlers} style={bsStyles.dragZone}>
+        <View style={bsStyles.handle} />
+      </View>
+      {children}
+    </Animated.View>
+  );
+
   return (
-    <Modal visible={render} transparent animationType="none" onRequestClose={onClose}>
+    <Modal visible={render} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
       <Animated.View style={[bsStyles.overlay, { opacity: overlayOpacity }]}>
         <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
       </Animated.View>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={bsStyles.container} pointerEvents="box-none">
-        <Animated.View style={[bsStyles.sheet, height ? { height } : undefined, { transform: [{ translateY: panY }] }]}>
-          <View {...panResponder.panHandlers} style={bsStyles.dragZone}>
-            <View style={bsStyles.handle} />
-          </View>
-          {children}
-        </Animated.View>
-      </KeyboardAvoidingView>
+      {Platform.OS === 'ios' ? (
+        <KeyboardAvoidingView behavior="padding" style={bsStyles.container} pointerEvents="box-none">
+          {SheetContent}
+        </KeyboardAvoidingView>
+      ) : (
+        <View style={bsStyles.container} pointerEvents="box-none">
+          {SheetContent}
+        </View>
+      )}
     </Modal>
   );
 }
@@ -77,7 +89,7 @@ export function BaseBottomSheet({ visible, onClose, children, height, disableDra
 const bsStyles = StyleSheet.create({
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
   container: { flex: 1, justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingBottom: Platform.OS === 'ios' ? 40 : 24, shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 20 },
+  sheet: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, marginBottom: -100, shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 20 },
   dragZone: { alignItems: 'center', paddingVertical: 12, marginBottom: 8 },
   handle: { width: 40, height: 5, borderRadius: 3, backgroundColor: '#E2E8F0' },
 });
@@ -115,7 +127,7 @@ export function BaseDialog({ visible, onClose, children, dismissable = true }: B
   if (!render) return null;
 
   return (
-    <Modal visible={render} transparent animationType="none" onRequestClose={() => dismissable && onClose()}>
+    <Modal visible={render} transparent animationType="none" onRequestClose={() => dismissable && onClose()} statusBarTranslucent navigationBarTranslucent>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={bdStyles.container} pointerEvents="box-none">
         <Animated.View style={[bdStyles.overlay, { opacity }]}>
           <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => { if(dismissable) { Keyboard.dismiss(); onClose(); } }} />

@@ -14,7 +14,7 @@ import {
   Users, Search, X, Download, RefreshCw,
   Image as ImageIcon, Lightbulb, Wallet,
   CheckCircle2, XCircle, ArrowUpRight, FileText, ArrowRight,
-  AlertTriangle, Edit3, Target, Edit2, SlidersHorizontal,
+  AlertTriangle, Edit3, Target, Edit2, SlidersHorizontal, Check, Save, IndianRupee, ShieldCheck
 } from 'lucide-react-native';
 
 import { FilterSheet, BaseBottomSheet, ConfirmationDialog, Phase3EmptyState, MonthYearPickerSheet } from '../components/UIComponents';
@@ -106,52 +106,77 @@ function SetBudgetModal({ visible, currentBudget, onSave, onClose }: {
   }, [currentBudget, visible]);
 
   return (
-    <BaseBottomSheet visible={visible} onClose={onClose} height={480}>
-      <View style={bm.iconRow}>
-        <View style={bm.iconWrap}>
-          <Target size={24} color={BLUE} strokeWidth={2} />
-        </View>
-        <View>
-          <Text style={bm.title}>Set Monthly Budget</Text>
-          <Text style={bm.sub}>How much do you plan to spend in {new Date().toLocaleString('en-US', { month: 'short' })}?</Text>
-        </View>
-      </View>
+    <BaseBottomSheet visible={visible} onClose={onClose}>
+      <Text style={bm.titleLabel}>ENTER BUDGET AMOUNT</Text>
+      
       <View style={bm.inputWrap}>
-        <Text style={bm.rupee}>₹</Text>
+        <View style={bm.rupeeBadge}>
+          <IndianRupee size={22} color={BLUE} strokeWidth={2.5} />
+        </View>
         <TextInput
           style={bm.input}
           value={val}
           onChangeText={v => setVal(v.replace(/[^0-9]/g, ''))}
           keyboardType="numeric"
-          placeholder="Enter amount"
-          placeholderTextColor={TEXT_LIGHT}
+          placeholder="0"
+          placeholderTextColor="#94A3B8"
           autoFocus
-          selectTextOnFocus
+          selectionColor={BLUE}
         />
+        <View style={bm.editBadge}>
+          <Edit2 size={16} color={BLUE} strokeWidth={2} />
+        </View>
       </View>
-      <Text style={bm.presetLabel}>Quick Select</Text>
+
+      <View style={bm.successRow}>
+        <ShieldCheck size={16} color="#10B981" strokeWidth={2.5} />
+        <Text style={bm.successText}>You can edit or update this budget anytime</Text>
+      </View>
+
+      <Text style={bm.presetLabel}>QUICK SELECT</Text>
       <View style={bm.presetRow}>
-        {quick.map(q => (
-          <TouchableOpacity
-            key={q}
-            style={[bm.preset, val === String(q) && bm.presetActive]}
-            onPress={() => setVal(String(q))} activeOpacity={0.7}
-          >
-            <Text style={[bm.presetText, val === String(q) && bm.presetTextActive]}>
-              ₹{(q / 1000).toFixed(0)}k
-            </Text>
-          </TouchableOpacity>
-        ))}
+        {quick.map(q => {
+          const isSelected = val === String(q);
+          return (
+            <TouchableOpacity
+              key={q}
+              style={[bm.preset, isSelected && bm.presetActive]}
+              onPress={() => setVal(String(q))} activeOpacity={0.7}
+            >
+              <Text style={[bm.presetText, isSelected && bm.presetTextActive]}>
+                ₹{(q / 1000).toFixed(0)}k
+              </Text>
+              {isSelected && (
+                <View style={bm.presetCheckBadge}>
+                  <Check size={10} color={WHITE} strokeWidth={4} />
+                </View>
+              )}
+            </TouchableOpacity>
+          );
+        })}
       </View>
+
+      <View style={bm.infoBanner}>
+        <View style={bm.infoBannerIconWrap}>
+          <Lightbulb size={20} color={WHITE} strokeWidth={2} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={bm.infoBannerTitle}>Why set a budget?</Text>
+          <Text style={bm.infoBannerDesc}>Stay in control, track your spending and achieve your savings goals.</Text>
+        </View>
+      </View>
+
       <TouchableOpacity
         style={[bm.saveBtn, (!val || Number(val) < 100) && bm.saveBtnOff]}
         onPress={() => { if (val && Number(val) >= 100) { onSave(Number(val)); onClose(); } }}
         activeOpacity={0.85}
       >
+        <Save size={20} color={WHITE} strokeWidth={2} style={{ marginRight: 8 }} />
         <Text style={bm.saveBtnText}>Save Budget</Text>
       </TouchableOpacity>
-      <TouchableOpacity onPress={onClose} style={{ alignSelf: 'center', marginTop: 12, padding: 8 }}>
-        <Text style={{ color: TEXT_LIGHT, fontSize: 14, fontWeight: '600' }}>Cancel</Text>
+      
+      <TouchableOpacity onPress={onClose} style={bm.cancelBtn}>
+        <Text style={bm.cancelBtnText}>Cancel</Text>
       </TouchableOpacity>
     </BaseBottomSheet>
   );
@@ -1486,22 +1511,36 @@ const s = StyleSheet.create({
 const bm = StyleSheet.create({
   sheet:   { backgroundColor: WHITE, borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 48, shadowColor: '#000', shadowOffset: { width: 0, height: -6 }, shadowOpacity: 0.12, shadowRadius: 16, elevation: 12 },
   handle:  { width: 40, height: 5, backgroundColor: '#E2E8F0', borderRadius: 3, alignSelf: 'center', marginBottom: 24 },
-  iconRow: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 28 },
-  iconWrap:{ width: 56, height: 56, borderRadius: 18, backgroundColor: BLUE_SOFT, alignItems: 'center', justifyContent: 'center' },
-  title:   { fontSize: 22, fontWeight: '900', color: TEXT_DARK, marginBottom: 4 },
-  sub:     { fontSize: 14, color: TEXT_LIGHT, fontWeight: '600' },
-  inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderRadius: 20, borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 20, height: 72, marginBottom: 24 },
-  rupee:   { fontSize: 34, fontWeight: '800', color: BLUE, marginRight: 8 },
+  
+  titleLabel: { fontSize: 12, fontWeight: '800', color: '#94A3B8', marginBottom: 12, letterSpacing: 0.5 },
+  
+  inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: WHITE, borderRadius: 20, borderWidth: 1.5, borderColor: '#3B82F6', paddingHorizontal: 16, height: 72, marginBottom: 12 },
+  rupeeBadge: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#E0E7FF', alignItems: 'center', justifyContent: 'center', marginRight: 16 },
   input:   { flex: 1, fontSize: 40, fontWeight: '900', color: TEXT_DARK, padding: 0 },
-  presetLabel: { fontSize: 12, fontWeight: '800', color: TEXT_LIGHT, marginBottom: 12, letterSpacing: 0.5, textTransform: 'uppercase' },
-  presetRow: { flexDirection: 'row', gap: 10, marginBottom: 28, flexWrap: 'wrap' },
-  preset:      { paddingHorizontal: 18, paddingVertical: 10, backgroundColor: BG, borderRadius: 14, borderWidth: 1, borderColor: BORDER },
-  presetActive:{ backgroundColor: BLUE_SOFT, borderColor: BLUE },
-  presetText:  { fontSize: 14, fontWeight: '700', color: TEXT_MID },
-  presetTextActive: { color: BLUE },
-  saveBtn:   { backgroundColor: BLUE, borderRadius: 16, height: 56, alignItems: 'center', justifyContent: 'center', shadowColor: BLUE, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 5 },
-  saveBtnOff:{ backgroundColor: '#A0B4E8', shadowOpacity: 0 },
+  editBadge: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
+  
+  successRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 28, paddingHorizontal: 4 },
+  successText: { fontSize: 13, fontWeight: '500', color: '#64748B', marginLeft: 8 },
+
+  presetLabel: { fontSize: 12, fontWeight: '800', color: '#94A3B8', marginBottom: 12, letterSpacing: 0.5 },
+  presetRow: { flexDirection: 'row', gap: 10, marginBottom: 28, flexWrap: 'wrap', justifyContent: 'space-between' },
+  preset:      { flex: 1, minWidth: 50, height: 48, alignItems: 'center', justifyContent: 'center', backgroundColor: WHITE, borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0' },
+  presetActive:{ backgroundColor: '#EFF6FF', borderColor: '#3B82F6', borderWidth: 1.5 },
+  presetText:  { fontSize: 15, fontWeight: '700', color: '#475569' },
+  presetTextActive: { color: '#3B82F6' },
+  presetCheckBadge: { position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: 10, backgroundColor: '#3B82F6', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: WHITE },
+
+  infoBanner: { flexDirection: 'row', backgroundColor: '#F8FAFC', borderRadius: 16, padding: 16, marginBottom: 28, alignItems: 'center' },
+  infoBannerIconWrap: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#3B82F6', alignItems: 'center', justifyContent: 'center', marginRight: 12, shadowColor: '#3B82F6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
+  infoBannerTitle: { fontSize: 14, fontWeight: '800', color: '#1E40AF', marginBottom: 4 },
+  infoBannerDesc: { fontSize: 12, color: '#64748B', lineHeight: 18 },
+
+  saveBtn:   { flexDirection: 'row', backgroundColor: '#2563EB', borderRadius: 16, height: 56, alignItems: 'center', justifyContent: 'center', shadowColor: '#2563EB', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 6 },
+  saveBtnOff:{ backgroundColor: '#94A3B8', shadowOpacity: 0 },
   saveBtnText:{ color: WHITE, fontSize: 16, fontWeight: '800' },
+  
+  cancelBtn: { alignSelf: 'center', marginTop: 16, padding: 8 },
+  cancelBtnText: { color: '#94A3B8', fontSize: 16, fontWeight: '900' },
 });
 
 // ── Settle Up + Export shared styles ─────────────────────────────────────────

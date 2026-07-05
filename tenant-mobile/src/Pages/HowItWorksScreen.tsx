@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, CreditCard, Utensils, BellRing, MessageSquareWarning, PieChart } from 'lucide-react-native';
+import { ChevronLeft, CreditCard, Utensils, BellRing, MessageSquareWarning, PieChart, Users, FileText, QrCode, BedDouble, Star } from 'lucide-react-native';
 import IconGlowBadge from '../components/ui/IconGlowBadge';
 
 const BLUE = '#2245D4';
@@ -16,47 +16,72 @@ export default function HowItWorksScreen({ navigation }: any) {
     {
       id: 1,
       title: 'Expense Management',
-      desc: 'Set monthly budgets, track spending, view due splits, and easily categorize transactions.',
+      desc: 'Track your personal spending, view categorized charts, and manage your monthly budget.',
       icon: PieChart,
-      color: '#3B82F6',
-      bg: '#DBEAFE',
-      gradient: ['#2563EB', '#60A5FA'] as [string, string],
+      color: '#3B82F6', bg: '#DBEAFE', gradient: ['#2563EB', '#60A5FA'] as [string, string],
     },
     {
       id: 2,
-      title: 'Digital Payments',
-      desc: 'Pay your monthly rent and dues instantly right from your phone. No more cash hassles.',
-      icon: CreditCard,
-      color: '#10B981',
-      bg: '#D1FAE5',
-      gradient: ['#059669', '#34D399'] as [string, string],
+      title: 'Bill Splits',
+      desc: 'Easily split bills and shared expenses with your roommates and friends in the hostel.',
+      icon: Users,
+      color: '#8B5CF6', bg: '#EDE9FE', gradient: ['#7C3AED', '#A78BFA'] as [string, string],
     },
     {
       id: 3,
-      title: 'Smart Meal Tracking',
-      desc: 'Skip a meal with one tap in the app to notify the kitchen and save on your food expenses.',
-      icon: Utensils,
-      color: '#F59E0B',
-      bg: '#FEF3C7',
-      gradient: ['#D97706', '#FBBF24'] as [string, string],
+      title: 'Rent & Payments',
+      desc: 'Check your pending dues, monthly rent, and view your complete digital payment history.',
+      icon: CreditCard,
+      color: '#10B981', bg: '#D1FAE5', gradient: ['#059669', '#34D399'] as [string, string],
     },
     {
       id: 4,
-      title: 'Instant Complaints',
-      desc: 'Raise maintenance issues directly. Management will be notified instantly for quick resolution.',
-      icon: MessageSquareWarning,
-      color: '#EF4444',
-      bg: '#FEE2E2',
-      gradient: ['#DC2626', '#F87171'] as [string, string],
+      title: 'Mess Menu & Skip Meals',
+      desc: 'Check the daily food menu and skip meals in advance to notify the kitchen and save on food bills.',
+      icon: Utensils,
+      color: '#F59E0B', bg: '#FEF3C7', gradient: ['#D97706', '#FBBF24'] as [string, string],
     },
     {
       id: 5,
-      title: 'Live Notifications',
-      desc: 'Receive real-time alerts for hostel notices, payment receipts, and manager approvals.',
+      title: 'Gate Pass & Visitors',
+      desc: 'Apply for digital gate passes for night outs and pre-register your visitors for easy entry.',
+      icon: QrCode,
+      color: '#EC4899', bg: '#FCE7F3', gradient: ['#DB2777', '#F472B6'] as [string, string],
+    },
+    {
+      id: 6,
+      title: 'Instant Complaints',
+      desc: 'Raise maintenance issues instantly. The management is notified directly for quick resolution.',
+      icon: MessageSquareWarning,
+      color: '#EF4444', bg: '#FEE2E2', gradient: ['#DC2626', '#F87171'] as [string, string],
+    },
+    {
+      id: 7,
+      title: 'Hostel Notices',
+      desc: 'Receive real-time push notifications for important announcements and circulars from the admin.',
       icon: BellRing,
-      color: '#8B5CF6',
-      bg: '#EDE9FE',
-      gradient: ['#7C3AED', '#A78BFA'] as [string, string],
+      color: '#0EA5E9', bg: '#E0F2FE', gradient: ['#0284C7', '#38BDF8'] as [string, string],
+    },
+    {
+      id: 8,
+      title: 'Room Info',
+      desc: 'View your room details, bed assignments, and connect with your roommates.',
+      icon: BedDouble,
+      color: '#6366F1', bg: '#E0E7FF', gradient: ['#4F46E5', '#818CF8'] as [string, string],
+    },
+    {
+      id: 9,
+      title: 'Document KYC',
+      desc: 'Securely upload and manage your ID proofs and important verification documents.',
+      icon: FileText,
+      color: '#14B8A6', bg: '#CCFBF1', gradient: ['#0D9488', '#2DD4BF'] as [string, string],
+    },
+    {
+      id: 10,
+      title: 'Hostel Ratings',
+      desc: 'Provide feedback and rate the hostel facilities to help improve the living experience.',
+      icon: Star,
+      color: '#EAB308', bg: '#FEF9C3', gradient: ['#CA8A04', '#FACC15'] as [string, string],
     }
   ];
 
