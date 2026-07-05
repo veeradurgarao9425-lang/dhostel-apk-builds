@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { View, Text, Modal, Animated, PanResponder, StyleSheet, TouchableOpacity, Dimensions, KeyboardAvoidingView, Platform, Keyboard, ScrollView, TextInput } from 'react-native';
+import { View, Text, Modal, Animated, PanResponder, StyleSheet, TouchableOpacity, Dimensions, KeyboardAvoidingView, Platform, Keyboard, ScrollView, TextInput, Linking } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Share2, Edit2, Copy, Download, Heart, Trash2, Smartphone, Monitor, Briefcase, Star, HelpCircle, CheckCircle, AlertCircle, Info, Search } from 'lucide-react-native';
 
@@ -695,6 +695,7 @@ export function CardSkeleton() {
 // PHASE 3: ERROR & EMPTY STATES
 // ══════════════════════════════════════════════════════════════════════════════
 import { WifiOff, Server, Lock, Folder, CreditCard, FileText, Box, Bell, Speaker, RotateCcw, Settings, LogIn, ChevronRight } from 'lucide-react-native';
+import { useNetwork } from '../context/NetworkContext';
 
 export type EmptyStateVariant = 'dues' | 'expenses' | 'categories' | 'complaints' | 'notices' | 'search' | 'activity';
 export type ErrorStateVariant = 'offline' | 'server' | 'session' | 'nodata' | 'error';
@@ -745,35 +746,52 @@ export function Phase3EmptyState({ variant, onAction, onSecondaryAction }: { var
 }
 
 export function Phase3ErrorState({ variant, onAction, onSecondaryAction }: { variant: ErrorStateVariant, onAction?: () => void, onSecondaryAction?: () => void }) {
+  const { recheckNow, isConnected } = useNetwork();
+
   const getConfig = () => {
     switch (variant) {
-      case 'offline': return { icon: WifiOff, title: 'No Internet Connection', desc: 'Please check your internet connection and try again.', btn: 'Retry', secondaryBtn: 'Open Settings' };
-      case 'server': return { icon: Server, title: 'Something Went Wrong', desc: 'We are facing some issues on our end. Please try again later.', btn: 'Try Again', secondaryBtn: 'Contact Support' };
-      case 'session': return { icon: Lock, title: 'Session Expired', desc: 'Your session has expired for security reasons. Please login again to continue.', btn: 'Login Again' };
-      case 'nodata': return { icon: Folder, title: 'No Data Found', desc: 'There is no data to display here at the moment.', btn: 'Refresh' };
-      case 'error': default: return { icon: AlertCircle, title: 'Oops! Something Went Wrong', desc: "We didn't expect this. Please try again or contact support if the problem continues.", btn: 'Try Again', secondaryBtn: 'Contact Support' };
+      case 'offline': return { icon: WifiOff, iconColor: '#EF4444', iconBg: '#FEE2E2', title: 'No Internet Connection', desc: 'Please check your internet connection and try again.', btn: 'Retry Connection', secondaryBtn: 'Open Settings' };
+      case 'server': return { icon: Server, iconColor: '#2245D4', iconBg: '#EEF2FF', title: 'Something Went Wrong', desc: 'We are facing some issues on our end. Please try again later.', btn: 'Try Again', secondaryBtn: 'Contact Support' };
+      case 'session': return { icon: Lock, iconColor: '#2245D4', iconBg: '#EEF2FF', title: 'Session Expired', desc: 'Your session has expired for security reasons. Please login again to continue.', btn: 'Login Again' };
+      case 'nodata': return { icon: Folder, iconColor: '#2245D4', iconBg: '#EEF2FF', title: 'No Data Found', desc: 'There is no data to display here at the moment.', btn: 'Refresh' };
+      case 'error': default: return { icon: AlertCircle, iconColor: '#2245D4', iconBg: '#EEF2FF', title: 'Oops! Something Went Wrong', desc: "We didn't expect this. Please try again or contact support if the problem continues.", btn: 'Try Again', secondaryBtn: 'Contact Support' };
     }
   };
   const config = getConfig();
   const Icon = config.icon;
 
+  const handlePrimary = () => {
+    if (variant === 'offline') {
+      recheckNow();
+    }
+    onAction?.();
+  };
+
+  const handleSecondary = () => {
+    if (variant === 'offline') {
+      Linking.openSettings();
+      return;
+    }
+    onSecondaryAction?.();
+  };
+
   return (
     <View style={eStyles.container}>
       <View style={eStyles.iconContainer}>
-        <View style={eStyles.iconBg} />
-        <Icon size={48} color="#2245D4" style={{ position: 'absolute' }} />
+        <View style={[eStyles.iconBg, { backgroundColor: config.iconBg || '#EEF2FF' }]} />
+        <Icon size={48} color={config.iconColor || '#2245D4'} style={{ position: 'absolute' }} />
         <View style={eStyles.bubble1} />
         <View style={eStyles.bubble2} />
       </View>
       <Text style={eStyles.title}>{config.title}</Text>
       <Text style={eStyles.desc}>{config.desc}</Text>
-      
-      <TouchableOpacity style={eStyles.btn} onPress={onAction} activeOpacity={0.8}>
+
+      <TouchableOpacity style={eStyles.btn} onPress={handlePrimary} activeOpacity={0.8}>
         <Text style={eStyles.btnText}>{config.btn}</Text>
       </TouchableOpacity>
-      
+
       {config.secondaryBtn && (
-        <TouchableOpacity style={{ marginTop: 16 }} onPress={onSecondaryAction} activeOpacity={0.6}>
+        <TouchableOpacity style={{ marginTop: 16 }} onPress={handleSecondary} activeOpacity={0.6}>
           <Text style={eStyles.textLink}>{config.secondaryBtn}</Text>
         </TouchableOpacity>
       )}

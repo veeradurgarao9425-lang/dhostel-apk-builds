@@ -258,46 +258,55 @@ export default function HomeScreen({ navigation }: any) {
   };
 
 
-    const [todaysMeals, setTodaysMeals] = useState<any>({
+  // ── Mess menu: fetch on every screen focus so owner changes appear immediately ──
+  const [todaysMeals, setTodaysMeals] = useState<any>({
     breakfast: { items: 'Menu not updated' },
-    lunch: { items: 'Menu not updated' },
-    dinner: { items: 'Menu not updated' }
+    lunch:     { items: 'Menu not updated' },
+    dinner:    { items: 'Menu not updated' },
   });
 
-  useEffect(() => {
-    if (!user?.hostel_id) return;
-    const fetchMenu = async () => {
-      try {
-        const res = await api.get('/mess-menu/' + user.hostel_id);
-        if (res.data?.success) {
-          const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-          const today = days[new Date().getDay()];
-          const todayItems: any[] = (res.data.menu || []).filter((m: any) => m.day_of_week === today);
-          if (todayItems.length > 0) {
-            const find = (type: string) =>
-              todayItems.find((m: any) => m.meal_type?.toLowerCase() === type.toLowerCase())?.items || 'Menu not updated';
-            setTodaysMeals({
-              breakfast: { items: find('Breakfast') },
-              lunch:     { items: find('Lunch') },
-              dinner:    { items: find('Dinner') },
-            });
-          }
+  useFocusEffect(
+    useCallback(() => {
+      if (!user?.hostel_id) return;
+      const fetchMenu = async () => {
+        try {
+          const res = await api.get('/mess-menu/' + user.hostel_id);
+          const rows: any[] = res.data?.menu || res.data?.data || [];
+          if (rows.length === 0) return;
+
+          // Map full weekday names → JS getDay() index
+          const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+          const todayFull = dayNames[new Date().getDay()]; // e.g. 'Saturday'
+
+          // Filter rows for today — case-insensitive, trimmed
+          const todayRows = rows.filter(
+            (m: any) => m.day_of_week?.trim().toLowerCase() === todayFull.toLowerCase()
+          );
+
+          const find = (type: string) =>
+            todayRows.find((m: any) => m.meal_type?.trim().toLowerCase() === type.toLowerCase())?.items || 'Menu not updated';
+
+          setTodaysMeals({
+            breakfast: { items: find('breakfast') },
+            lunch:     { items: find('lunch') },
+            dinner:    { items: find('dinner') },
+          });
+        } catch (err) {
+          console.error('Error fetching mess menu:', err);
         }
-      } catch (err) {
-        console.error('Error fetching mess menu:', err);
-      }
-    };
-    fetchMenu();
-  }, [user]);
+      };
+      fetchMenu();
+    }, [user?.hostel_id])
+  );
 
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const todayDay = days[new Date().getDay()];
   const todayMenu = todaysMeals;
 
   const meals: { key: "morning" | "lunch" | "dinner"; title: string; sub: string; time: string; Icon: any; bg: string; iconBg: string; color: string; gradient: [string, string] }[] = [
-    { key: "morning", title: "Morning", sub: todayMenu.breakfast.items, time: "8:00 AM - 10:00 AM", Icon: Sun, bg: "#FFFBF5", iconBg: "#FFEDD5", color: "#F97316", gradient: ["#EA580C", "#FB923C"] },
-    { key: "lunch", title: "Lunch", sub: todayMenu.lunch.items, time: "12:00 PM - 2:00 PM", Icon: Utensils, bg: "#FFF1F2", iconBg: "#FFE4E6", color: "#E11D48", gradient: ["#BE123C", "#FB7185"] },
-    { key: "dinner", title: "Dinner", sub: todayMenu.dinner.items, time: "8:00 PM - 11:00 PM", Icon: ConciergeBell, bg: "#ECFDF5", iconBg: "#D1FAE5", color: "#059669", gradient: ["#047857", "#34D399"] },
+    { key: "morning", title: "Morning", sub: todayMenu.breakfast.items, time: "8:00 AM - 10:00 AM", Icon: Sun, bg: "#FFFFFF", iconBg: "#DBEAFE", color: "#2563EB", gradient: ["#3B82F6", "#60A5FA"] },
+    { key: "lunch", title: "Lunch", sub: todayMenu.lunch.items, time: "12:00 PM - 2:00 PM", Icon: Utensils, bg: "#FFFFFF", iconBg: "#DBEAFE", color: "#2563EB", gradient: ["#3B82F6", "#60A5FA"] },
+    { key: "dinner", title: "Dinner", sub: todayMenu.dinner.items, time: "8:00 PM - 11:00 PM", Icon: ConciergeBell, bg: "#FFFFFF", iconBg: "#DBEAFE", color: "#2563EB", gradient: ["#3B82F6", "#60A5FA"] },
   ];
 
   const shortcuts: { id: string; name: string; icon: any; nav: string; bg: string; color: string; gradient: [string, string] }[] = [
@@ -367,61 +376,40 @@ export default function HomeScreen({ navigation }: any) {
         <FadeSlideIn delay={0}>
         {budget === 0 ? (
           <TouchableOpacity 
-            style={{ 
-              marginHorizontal: 20, 
-              marginTop: 10, 
-              marginBottom: 16, 
-              backgroundColor: '#FFFBEB', 
-              borderRadius: 16, 
-              borderWidth: 1, 
-              borderColor: '#FDE68A', 
-              padding: 14, 
-              flexDirection: 'row', 
-              alignItems: 'center', 
-              gap: 12 
-            }}
+            style={[styles.globalCard, { marginHorizontal: 20, marginTop: 10, marginBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }]}
             onPress={() => navigation.navigate('Expenses')}
             activeOpacity={0.8}
           >
-            <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#FEF3C7', alignItems: 'center', justifyContent: 'center' }}>
-              <Wallet size={18} color="#D97706" />
+            <View style={[styles.cardIconWrap, { backgroundColor: '#DBEAFE' }]}>
+              <Wallet size={20} color="#2563EB" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13, fontWeight: '700', color: '#B45309' }}>Monthly Budget Not Set</Text>
-              <Text style={{ fontSize: 11, color: '#D97706', marginTop: 1 }}>Tap to set a budget and track personal expenses</Text>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: TEXT_DARK }}>Monthly Budget Not Set</Text>
+              <Text style={{ fontSize: 12, color: TEXT_MID, marginTop: 2 }}>Tap to track personal expenses</Text>
             </View>
-            <ChevronRight size={16} color="#D97706" strokeWidth={2.5} />
+            <ChevronRight size={18} color="#2563EB" strokeWidth={2.5} />
           </TouchableOpacity>
         ) : (
           <TouchableOpacity 
-            style={{ 
-              marginHorizontal: 20, 
-              marginTop: 10, 
-              marginBottom: 16, 
-              backgroundColor: '#EFF6FF', 
-              borderRadius: 16, 
-              borderWidth: 1, 
-              borderColor: '#BFDBFE', 
-              padding: 14, 
-            }}
+            style={[styles.globalCard, { marginHorizontal: 20, marginTop: 10, marginBottom: 16 }]}
             onPress={() => navigation.navigate('Expenses')}
             activeOpacity={0.8}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-              <View style={{ width: 30, height: 30, borderRadius: 8, backgroundColor: '#DBEAFE', alignItems: 'center', justifyContent: 'center' }}>
-                <Wallet size={16} color="#2563EB" />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+              <View style={[styles.cardIconWrap, { backgroundColor: '#DBEAFE' }]}>
+                <Wallet size={20} color="#2563EB" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 13, fontWeight: '700', color: '#1E40AF' }}>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: TEXT_DARK }}>
                   ₹{spent} of ₹{budget} spent
                 </Text>
               </View>
-              <Text style={{ fontSize: 11, fontWeight: '700', color: spent > budget ? '#DC2626' : '#2563EB' }}>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: spent > budget ? '#DC2626' : '#2563EB' }}>
                 {spent > budget ? 'Over Budget!' : `₹${budget - spent} left`}
               </Text>
             </View>
-            <View style={{ height: 6, backgroundColor: '#E2E8F0', borderRadius: 3, overflow: 'hidden' }}>
-              <Animated.View style={{ height: '100%', width: progressAnim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }), backgroundColor: spent > budget ? '#EF4444' : '#3B82F6', borderRadius: 3 }} />
+            <View style={{ height: 8, backgroundColor: '#F1F5F9', borderRadius: 4, overflow: 'hidden' }}>
+              <Animated.View style={{ height: '100%', width: progressAnim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }), backgroundColor: spent > budget ? '#EF4444' : '#2245D4', borderRadius: 4 }} />
             </View>
           </TouchableOpacity>
         )}
@@ -430,42 +418,64 @@ export default function HomeScreen({ navigation }: any) {
         {/* ── Total Due Overview Card ── */}
         <FadeSlideIn delay={80}>
         <View style={styles.section}>
-          <View style={styles.overviewCard}>
+          <View style={[styles.globalCard, {
+            paddingVertical: 20,
+            paddingHorizontal: 20,
+            flexDirection: "row",
+            alignItems: "center",
+            overflow: 'hidden',
+            backgroundColor: dueAmount > 0 ? '#FFF5F5' : WHITE,
+            borderColor: dueAmount > 0 ? '#FECACA' : BORDER,
+          }]}>
             <View style={styles.overviewLeft}>
-              <Text style={styles.overviewLabel}>
-                {dueAmount > 0 ? "Total Due" : "Monthly Rent"}
+              {/* Label row with icon */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                <View style={[styles.cardIconWrap, {
+                  backgroundColor: dueAmount > 0 ? '#FEE2E2' : '#D1FAE5',
+                  width: 36, height: 36, borderRadius: 10,
+                }]}>
+                  <AlertCircle size={18} color={dueAmount > 0 ? '#EF4444' : '#10B981'} />
+                </View>
+                <Text style={[styles.overviewLabel, { marginBottom: 0 }]}>
+                  {dueAmount > 0 ? "Total Due" : "Monthly Rent"}
+                </Text>
+              </View>
+
+              {/* Amount */}
+              <Text style={[styles.overviewAmount, dueAmount === 0 && { color: "#10B981" }]}>
+                ₹ {(dueAmount > 0 ? dueAmount : (totalRentAmount || 0)).toLocaleString("en-IN")}
               </Text>
-              <Text style={[styles.overviewAmount, dueAmount === 0 && { color: "#22C55E" }]}>
-                ₹ {dueAmount > 0 ? dueAmount.toLocaleString("en-IN") : (totalRentAmount || 0).toLocaleString("en-IN")}
-              </Text>
+
+              {/* Sub-label */}
               {dueAmount > 0 ? (
                 <Text style={styles.overviewDate}>
-                  Due Date: {rentDueDate ? formatDate(rentDueDate) : "N/A"}
+                  📅 Due: {rentDueDate ? formatDate(rentDueDate) : "Not scheduled"}
                 </Text>
               ) : (
-                <Text style={styles.overviewDate}>
-                  Status: All clear this month!
+                <Text style={[styles.overviewDate, { color: '#10B981' }]}>
+                  ✓ All clear this month!
                 </Text>
               )}
+
+              {/* Action button */}
               {dueAmount > 0 ? (
-                <TouchableOpacity
-                  style={styles.overviewBtn}
-                  onPress={() => navigation.navigate("Payments")}
-                >
+                <TouchableOpacity style={styles.overviewBtn} onPress={() => navigation.navigate("Payments")}>
                   <Text style={styles.overviewBtnText}>Pay Now</Text>
                   <ArrowRight size={16} color={WHITE} />
                 </TouchableOpacity>
               ) : (
-                <View style={[styles.overviewBtn, { backgroundColor: "#DCFCE7" }]}>
-                  <Check size={16} color="#22C55E" strokeWidth={3} />
-                  <Text style={[styles.overviewBtnText, { color: "#22C55E" }]}>Paid</Text>
+                <View style={[styles.overviewBtn, { backgroundColor: "#D1FAE5" }]}>
+                  <Check size={16} color="#10B981" strokeWidth={3} />
+                  <Text style={[styles.overviewBtnText, { color: "#10B981" }]}>Paid</Text>
                 </View>
               )}
             </View>
+
+            {/* Wallet illustration — larger */}
             <View style={styles.overviewRight}>
               <Image
                 source={require("../../assets/wallet_3d.png")}
-                style={styles.walletImg}
+                style={{ width: 130, height: 130, position: "absolute", right: -8, bottom: -12 }}
                 resizeMode="contain"
               />
             </View>
@@ -478,12 +488,9 @@ export default function HomeScreen({ navigation }: any) {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Next Meal</Text>
-            <TouchableOpacity
-              style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
-              onPress={() => navigation.navigate("FullMenu")}
-            >
+            <TouchableOpacity style={{ flexDirection: "row", alignItems: "center", gap: 4 }} onPress={() => navigation.navigate("FullMenu")}>
               <Text style={styles.viewAllText}>Full Menu</Text>
-              <ArrowRight size={14} color="#A0522D" strokeWidth={2.5} />
+              <ArrowRight size={14} color={BLUE} strokeWidth={2.5} />
             </TouchableOpacity>
           </View>
 
@@ -491,64 +498,64 @@ export default function HomeScreen({ navigation }: any) {
             const activeMeal = meals[currentMealIdx];
             const isSkipped = skipped[activeMeal.key];
             const MealIcon = activeMeal.Icon;
+            const isPlaceholder = activeMeal.sub === 'Menu not updated';
+            
             return (
               <TouchableOpacity
                 activeOpacity={0.9}
                 onPress={handleNextMeal}
-                style={[styles.nextMealCard, { backgroundColor: activeMeal.bg }, isSkipped && { opacity: 0.8, backgroundColor: "#F1F5F9" }]}
+                style={[styles.globalCard, isSkipped && { opacity: 0.8, backgroundColor: "#F8FAFD" }]}
               >
                 <View style={styles.nmHeader}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1 }}>
-                    <IconGlowBadge
-                      Icon={MealIcon}
-                      gradient={activeMeal.gradient}
-                      glowColor={activeMeal.color}
-                      flatColor="#94A3B8"
-                      flatBg="#E2E8F0"
-                      active={!isSkipped}
-                      size="sm"
-                    />
+                    <View style={[styles.cardIconWrap, { backgroundColor: activeMeal.iconBg }]}>
+                      <MealIcon size={20} color={activeMeal.color} strokeWidth={2} />
+                    </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.menuTitle, isSkipped && { color: "#94A3B8", textDecorationLine: "line-through" }]}>
+                      <Text style={[styles.menuTitle, isSkipped && { color: TEXT_MID, textDecorationLine: "line-through" }]}>
                         {activeMeal.title}
                       </Text>
-                      <Text style={[styles.menuSub, isSkipped && { color: "#94A3B8" }]} numberOfLines={2}>{activeMeal.sub}</Text>
+                      <Text style={[styles.menuSub, (isSkipped || isPlaceholder) && { color: TEXT_MID, fontStyle: isPlaceholder ? 'italic' : 'normal' }]} numberOfLines={2}>
+                        {activeMeal.sub}
+                      </Text>
                     </View>
                   </View>
 
-                  <TouchableOpacity
-                    style={[
-                      styles.skipTickBtn, 
-                      isSkipped && { borderColor: activeMeal.color, backgroundColor: activeMeal.iconBg }
-                    ]}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      handleMessSkip(activeMeal.key);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    {isSkipped ? (
-                      <Check size={18} color={activeMeal.color} strokeWidth={4} />
-                    ) : (
-                      <Check size={18} color="#D1D5DB" strokeWidth={3} />
-                    )}
-                  </TouchableOpacity>
+                  <View style={{ alignItems: 'center' }}>
+                    <TouchableOpacity
+                      style={[
+                        styles.skipTickBtn, 
+                        isSkipped && { borderColor: activeMeal.color, backgroundColor: activeMeal.iconBg }
+                      ]}
+                      onPress={(e) => { e.stopPropagation(); handleMessSkip(activeMeal.key); }}
+                      activeOpacity={0.7}
+                    >
+                      {isSkipped ? (
+                        <Check size={16} color={activeMeal.color} strokeWidth={3} />
+                      ) : (
+                        <Check size={16} color="#D1D5DB" strokeWidth={3} />
+                      )}
+                    </TouchableOpacity>
+                    <Text style={{ fontSize: 10, color: TEXT_MID, marginTop: 4, fontWeight: '600' }}>
+                      {isSkipped ? 'Skipped' : 'Skip'}
+                    </Text>
+                  </View>
                 </View>
 
                 <View style={[styles.nmFooter, isSkipped && { borderTopColor: "#E2E8F0" }]}>
                   <View style={styles.timeNav}>
                     <TouchableOpacity onPress={(e) => { e.stopPropagation(); handlePrevMeal(); }} style={styles.arrowBtn}>
-                      <ChevronLeft size={20} color={isSkipped ? "#94A3B8" : TEXT_DARK} strokeWidth={2.5} />
+                      <ChevronLeft size={20} color={isSkipped ? TEXT_MID : TEXT_DARK} strokeWidth={2.5} />
                     </TouchableOpacity>
-                    <Text style={[styles.timeNavText, isSkipped && { color: "#94A3B8" }]}>{activeMeal.time}</Text>
+                    <Text style={[styles.timeNavText, isSkipped && { color: TEXT_MID }]}>{activeMeal.time}</Text>
                     <TouchableOpacity onPress={(e) => { e.stopPropagation(); handleNextMeal(); }} style={styles.arrowBtn}>
-                      <ChevronRight size={20} color={isSkipped ? "#94A3B8" : TEXT_DARK} strokeWidth={2.5} />
+                      <ChevronRight size={20} color={isSkipped ? TEXT_MID : TEXT_DARK} strokeWidth={2.5} />
                     </TouchableOpacity>
                   </View>
 
                   {isSkipped && (
                     <TouchableOpacity onPress={(e) => { e.stopPropagation(); navigation.navigate("AddExpense", { defaultCategory: "Food" }); }}>
-                      <Text style={styles.orderOutsideText}>Order outside instead?</Text>
+                      <Text style={styles.orderOutsideText}>Order outside?</Text>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -569,25 +576,20 @@ export default function HomeScreen({ navigation }: any) {
           </View>
 
           <TouchableOpacity
-            style={styles.messageCard}
+            style={[styles.globalCard, { flexDirection: "row", alignItems: "center" }]}
             onPress={() => navigation.navigate("Notices")}
           >
-            <IconGlowBadge
-              Icon={Mail}
-              gradient={['#1E3A8A', '#3B82F6']}
-              glowColor={BLUE}
-              size="sm"
-              entrance
-              style={{ marginRight: 12 }}
-            />
+            <View style={[styles.cardIconWrap, { backgroundColor: '#E0E7FF', marginRight: 16 }]}>
+              <Mail size={20} color="#4F46E5" />
+            </View>
             <View style={styles.messageContent}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
                   <Text style={styles.messageTitle} numberOfLines={1}>
                     {recentNotices[0]?.title || "Welcome!"}
                   </Text>
-                  <View style={styles.newBadge}>
-                    <Text style={styles.newBadgeTxt}>New</Text>
+                  <View style={[styles.newBadge, { backgroundColor: '#DBEAFE' }]}>
+                    <Text style={[styles.newBadgeTxt, { color: '#2563EB' }]}>New</Text>
                   </View>
                 </View>
                 <Text style={styles.messageTime}>
@@ -638,31 +640,26 @@ export default function HomeScreen({ navigation }: any) {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.activityCard}>
-            {recentPayments.length > 0 ? (
-              recentPayments.map((p, index) => (
+          {recentPayments.length > 0 ? (
+            <View style={styles.globalCard}>
+              {recentPayments.map((p, index) => (
                 <View key={p.id} style={[styles.activityItem, index > 0 && { borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 16 }]}>
-                  <IconGlowBadge
-                    Icon={CheckCircle2}
-                    gradient={['#16A34A', '#4ADE80']}
-                    glowColor="#22C55E"
-                    size="sm"
-                    entrance
-                    style={{ marginRight: 12 }}
-                  />
+                  <View style={[styles.cardIconWrap, { width: 36, height: 36, borderRadius: 10, backgroundColor: '#DBEAFE', marginRight: 12 }]}>
+                    <CheckCircle2 size={18} color="#2563EB" />
+                  </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.activityTitle}>Payment received ({p.mode})</Text>
                     <Text style={styles.activityDate}>{formatDate(p.date)}</Text>
                   </View>
-                  <Text style={[styles.activityAmount, { color: "#22C55E" }]}>₹ {p.amount}</Text>
+                  <Text style={[styles.activityAmount, { color: "#16A34A" }]}>₹ {p.amount}</Text>
                 </View>
-              ))
-            ) : (
-              <View style={{ paddingTop: 20 }}>
-                <Phase3EmptyState variant="activity" />
-              </View>
-            )}
-          </View>
+              ))}
+            </View>
+          ) : (
+            <View style={{ paddingTop: 10 }}>
+              <Phase3EmptyState variant="activity" />
+            </View>
+          )}
         </View>
         </FadeSlideIn>
       </ScrollView>
@@ -671,8 +668,35 @@ export default function HomeScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: WHITE },
-  headerSection: { backgroundColor: BLUE, paddingBottom: 16 },
+  root: { flex: 1, backgroundColor: BG },
+  
+  // ── Global Standardized Card ──
+  globalCard: {
+    backgroundColor: WHITE,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: BORDER,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  cardIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  headerSection: { 
+    backgroundColor: BLUE, 
+    paddingBottom: 20,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+  },
   header: {
     flexDirection: "row", alignItems: "center",
     paddingHorizontal: 20, paddingTop: 12,
@@ -680,18 +704,18 @@ const styles = StyleSheet.create({
   hAvatar: {
     width: 44, height: 44, borderRadius: 22,
     backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center", alignItems: "center", marginLeft: 12,
+    justifyContent: "center", alignItems: "center",
   },
   hAvatarText: { color: WHITE, fontWeight: "700", fontSize: 16 },
   headerGreeting: { fontSize: 18, fontWeight: "700", color: WHITE },
   headerSub: { fontSize: 13, color: "rgba(255,255,255,0.8)", marginTop: 2 },
-  headerRight: { flexDirection: "row", alignItems: "center" },
-  hBtn: { padding: 8, position: "relative" },
+  headerRight: { flexDirection: "row", alignItems: "center", gap: 12 },
+  hBtn: { padding: 4, position: "relative" },
   notificationDot: {
-    position: "absolute", top: 8, right: 8,
-    width: 8, height: 8, borderRadius: 4,
+    position: "absolute", top: 4, right: 4,
+    width: 10, height: 10, borderRadius: 5,
     backgroundColor: "#EF4444",
-    borderWidth: 1.5, borderColor: BLUE,
+    borderWidth: 2, borderColor: WHITE,
   },
   section: { paddingHorizontal: 20, marginBottom: 24 },
   sectionHeader: {
@@ -709,18 +733,18 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05, shadowRadius: 10, elevation: 2,
     borderWidth: 1, borderColor: BORDER,
   },
-  overviewLeft: { width: '60%' },
-  overviewLabel: { fontSize: 14, color: TEXT_MID, fontWeight: "700", marginBottom: 6 },
-  overviewAmount: { fontSize: 28, fontWeight: "900", color: "#E11D48", marginBottom: 6 },
-  overviewDate: { fontSize: 13, color: TEXT_MID, marginBottom: 16, fontWeight: "700" },
+  overviewLeft: { width: '58%' },
+  overviewLabel: { fontSize: 13, color: TEXT_MID, fontWeight: "700", marginBottom: 6 },
+  overviewAmount: { fontSize: 32, fontWeight: "900", color: "#E11D48", marginBottom: 6, letterSpacing: -1 },
+  overviewDate: { fontSize: 12, color: TEXT_MID, marginBottom: 16, fontWeight: "600" },
   overviewBtn: {
     backgroundColor: BLUE, alignSelf: "flex-start",
-    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
+    paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20,
     flexDirection: "row", alignItems: "center", gap: 6,
   },
   overviewBtnText: { color: WHITE, fontSize: 13, fontWeight: "700" },
-  overviewRight: { width: '40%', height: 110, justifyContent: "center", alignItems: "center" },
-  walletImg: { width: 115, height: 115, position: "absolute", right: -5, bottom: -10 },
+  overviewRight: { width: '42%', height: 130, justifyContent: "center", alignItems: "center" },
+  walletImg: { width: 130, height: 130, position: "absolute", right: -8, bottom: -12 },
 
   // Message card
   messageCard: {

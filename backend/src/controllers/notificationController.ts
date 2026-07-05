@@ -9,53 +9,48 @@ export const registerToken = async (req: AuthRequest, res: Response) => {
     const { push_token, device_name, platform } = req.body;
 
     if (!user || !user.user_id) {
-      return res.status(401).json({
-        success: false,
-        error: 'Unauthorized'
-      });
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
 
     if (!push_token) {
-      return res.status(400).json({
-        success: false,
-        error: 'push_token is required'
-      });
+      return res.status(400).json({ success: false, error: 'push_token is required' });
+    }
+
+    // Tenants (role_id 3) store by student_id; owners/staff store by user_id
+    const isTenant = user.role_id === 3;
+    const upsertData: any = {
+      push_token,
+      device_name: device_name || null,
+      platform: platform || null,
+      updated_at: new Date(),
+    };
+
+    if (isTenant) {
+      upsertData.student_id = user.user_id;  // for tenants, user_id IS the student_id in JWT
+      upsertData.user_id = null;
+    } else {
+      upsertData.user_id = user.user_id;
+      upsertData.student_id = null;
     }
 
     const existing = await db('user_push_tokens').where({ push_token }).first();
 
     if (existing) {
-      // Update entry if user changed
-      await db('user_push_tokens')
-        .where({ push_token })
-        .update({
-          user_id: user.user_id,
-          device_name: device_name || existing.device_name,
-          platform: platform || existing.platform,
-          updated_at: new Date()
-        });
+      await db('user_push_tokens').where({ push_token }).update(upsertData);
     } else {
       await db('user_push_tokens').insert({
-        user_id: user.user_id,
-        push_token,
-        device_name: device_name || null,
-        platform: platform || null,
-        created_at: new Date()
+        ...upsertData,
+        created_at: new Date(),
       });
     }
 
-    res.json({
-      success: true,
-      message: 'Push token registered successfully'
-    });
+    res.json({ success: true, message: 'Push token registered successfully' });
   } catch (error: any) {
     console.error('Register push token error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to register push token'
-    });
+    res.status(500).json({ success: false, error: 'Failed to register push token' });
   }
 };
+
 
 // Deregister push token
 export const deregisterToken = async (req: AuthRequest, res: Response) => {

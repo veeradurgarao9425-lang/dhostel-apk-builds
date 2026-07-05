@@ -9,6 +9,7 @@ import {
   StatusBar,
   Dimensions,
   Animated,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
@@ -43,9 +44,24 @@ const TEXT_MID  = "#6B7280";
 const PAGE_BG   = "#F0F4FF";
 
 export default function PendingApprovalScreen({ navigation }: any) {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const insets = useSafeAreaInsets();
   const firstName = (user?.name || "Tenant").split(" ")[0];
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refreshUser();
+    setRefreshing(false);
+  }, [refreshUser]);
+
+  // Fast auto-polling every 3 seconds so the redirect is nearly instant upon owner approval
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refreshUser();
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [refreshUser]);
 
   const helpShortcuts = [
     { id: 'features', name: 'How it works', icon: Sparkles, nav: 'HowItWorksScreen', bg: '#FEF3C7', color: '#D97706', gradient: ['#D97706', '#F59E0B'] as [string, string] },
@@ -120,70 +136,55 @@ export default function PendingApprovalScreen({ navigation }: any) {
         showsVerticalScrollIndicator={false}
         style={styles.sheet}
         contentContainerStyle={styles.sheetContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[BLUE]} />
+        }
       >
 
         {/* ── Budget Card ── */}
         <View>
           {budget === 0 ? (
-            <TouchableOpacity
-              style={styles.budgetEmpty}
-              onPress={() => navigation?.navigate?.("Expenses")}
-              activeOpacity={0.85}
-            >
-              <View style={styles.budgetEmptyIcon}>
-                <Wallet size={20} color="#D97706" strokeWidth={2} />
+            <TouchableOpacity style={styles.budgetCard} onPress={() => navigation?.navigate?.("Expenses")} activeOpacity={0.85}>
+              <View style={styles.budgetCardInner}>
+                <View style={styles.budgetIconWrap}>
+                  <Wallet size={20} color={BLUE} strokeWidth={2.5} />
+                </View>
+                <View style={{ flex: 1, marginLeft: 12, justifyContent: 'center' }}>
+                  <Text style={styles.state1Title}>Set Monthly Budget</Text>
+                  <Text style={styles.state1Sub}>Track your personal spending this month</Text>
+                </View>
+                <ChevronRight size={18} color="#94A3B8" strokeWidth={2.5} />
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.budgetEmptyTitle}>Set Monthly Budget</Text>
-                <Text style={styles.budgetEmptySub}>
-                  Track your spending this month
-                </Text>
-              </View>
-              <ChevronRight size={16} color="#D97706" strokeWidth={2.5} />
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity
-              style={styles.card}
-              onPress={() => navigation?.navigate?.("Expenses")}
-              activeOpacity={0.85}
-            >
-              <View style={styles.budgetRow}>
+            <TouchableOpacity style={styles.budgetCard} onPress={() => navigation?.navigate?.("Expenses")} activeOpacity={0.85}>
+              <View style={[styles.budgetCardInner, { alignItems: 'flex-start' }]}>
                 <View style={styles.budgetIconWrap}>
-                  <TrendingUp size={18} color={BLUE} strokeWidth={2.5} />
+                  <TrendingUp size={20} color={BLUE} strokeWidth={2.5} />
                 </View>
                 <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={styles.budgetLabel}>Monthly Budget</Text>
-                  <Text style={styles.budgetMeta}>
-                    {isOver
-                      ? "⚠️ Over budget"
-                      : `₹${remaining.toLocaleString("en-IN")} remaining`}
-                  </Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+                    <Text style={styles.state2LabelLeft}>₹{spent.toLocaleString("en-IN")} of ₹{budget.toLocaleString("en-IN")} spent</Text>
+                    <Text style={styles.state2LabelRight}>
+                      {isOver ? "⚠️ Over" : `₹${remaining.toLocaleString("en-IN")} left`}
+                    </Text>
+                  </View>
+                  <View style={styles.barTrack}>
+                    <Animated.View
+                      style={[
+                        styles.barFill,
+                        {
+                          width: progressAnim.interpolate({
+                            inputRange: [0, 100],
+                            outputRange: ["0%", "100%"],
+                          }),
+                          backgroundColor: barColor,
+                        },
+                      ]}
+                    />
+                  </View>
+                  <Text style={styles.state2Percent}>{Math.round(percentage)}%</Text>
                 </View>
-                <Text style={[styles.budgetPercent, { color: barColor }]}>
-                  {Math.round(percentage)}%
-                </Text>
-              </View>
-              <View style={styles.barTrack}>
-                <Animated.View
-                  style={[
-                    styles.barFill,
-                    {
-                      width: progressAnim.interpolate({
-                        inputRange: [0, 100],
-                        outputRange: ["0%", "100%"],
-                      }),
-                      backgroundColor: barColor,
-                    },
-                  ]}
-                />
-              </View>
-              <View style={styles.budgetAmounts}>
-                <Text style={styles.budgetAmountLeft}>
-                  ₹{spent.toLocaleString("en-IN")} spent
-                </Text>
-                <Text style={styles.budgetAmountRight}>
-                  of ₹{budget.toLocaleString("en-IN")}
-                </Text>
               </View>
             </TouchableOpacity>
           )}
@@ -299,10 +300,11 @@ export default function PendingApprovalScreen({ navigation }: any) {
           { paddingBottom: Math.max(insets.bottom, 8) }
         ]}
       >
-        <TouchableOpacity 
-          style={styles.tabItem} 
-          activeOpacity={0.7}
-          onPress={() => navigation?.navigate?.("Home")}
+        <TouchableOpacity
+          style={styles.tabItem}
+          activeOpacity={0.8}
+          // Do nothing on tap because we are already on the PendingApproval "Home"
+          onPress={() => {}} 
         >
           <View style={[styles.iconWrap, styles.iconWrapActive]}>
             <HomeIcon size={24} color={BLUE} strokeWidth={2.5} />
@@ -310,13 +312,13 @@ export default function PendingApprovalScreen({ navigation }: any) {
           <Text style={[styles.tabLabel, styles.tabLabelActive]}>Home</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={styles.tabItem} 
+        <TouchableOpacity
+          style={styles.tabItem}
           activeOpacity={0.7}
           onPress={() => navigation?.navigate?.("Expenses")}
         >
           <View style={styles.iconWrap}>
-            <Wallet size={24} color={TEXT_MID} strokeWidth={1.8} />
+            <TrendingUp size={24} color={TEXT_MID} strokeWidth={2} />
           </View>
           <Text style={styles.tabLabel}>Expenses</Text>
         </TouchableOpacity>
@@ -419,36 +421,33 @@ const styles = StyleSheet.create({
   },
 
   // ── Budget ───────────────────────────────────────────────────
-  budgetEmpty: {
-    flexDirection: "row", alignItems: "center", gap: 12,
-    backgroundColor: "#FFFBEB",
-    borderRadius: 16, borderWidth: 1, borderColor: "#FDE68A",
-    paddingHorizontal: 16, paddingVertical: 14,
-    ...CARD_SHADOW,
+  budgetCard: {
+    backgroundColor: WHITE,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0', // subtle 1px border as requested
   },
-  budgetEmptyIcon: {
-    width: 40, height: 40, borderRadius: 12,
-    backgroundColor: "#FEF3C7", alignItems: "center", justifyContent: "center",
+  budgetCardInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  budgetEmptyTitle: { fontSize: 14, fontWeight: "700", color: "#92400E" },
-  budgetEmptySub:   { fontSize: 11, color: "#D97706", marginTop: 2 },
-
-  budgetRow: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
   budgetIconWrap: {
-    width: 40, height: 40, borderRadius: 12,
-    backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center",
+    width: 44, height: 44, borderRadius: 12,
+    backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center',
   },
-  budgetLabel:       { fontSize: 13, fontWeight: "700", color: TEXT_DARK },
-  budgetMeta:        { fontSize: 11, color: TEXT_MID, marginTop: 2 },
-  budgetPercent:     { fontSize: 20, fontWeight: "900" },
+  state1Title: { fontSize: 15, fontWeight: '700', color: TEXT_DARK },
+  state1Sub:   { fontSize: 12, color: TEXT_MID, marginTop: 2 },
+  
+  state2LabelLeft:  { fontSize: 13, fontWeight: '800', color: TEXT_DARK },
+  state2LabelRight: { fontSize: 12, fontWeight: '600', color: TEXT_MID },
   barTrack: {
-    height: 7, backgroundColor: "#EEF2FF",
-    borderRadius: 4, overflow: "hidden", marginBottom: 8,
+    height: 8, backgroundColor: '#F1F5F9', // light neutral gray
+    borderRadius: 4, overflow: 'hidden', 
+    marginBottom: 6,
   },
-  barFill: { height: "100%", borderRadius: 4 },
-  budgetAmounts:      { flexDirection: "row", justifyContent: "space-between" },
-  budgetAmountLeft:   { fontSize: 11, color: TEXT_DARK, fontWeight: "700" },
-  budgetAmountRight:  { fontSize: 11, color: TEXT_MID },
+  barFill: { height: '100%', borderRadius: 4 },
+  state2Percent: { fontSize: 11, fontWeight: '600', color: '#94A3B8', textAlign: 'right' },
 
   // ── Stepper ──────────────────────────────────────────────────
   stepsRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "center" },

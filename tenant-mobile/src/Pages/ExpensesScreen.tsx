@@ -14,7 +14,8 @@ import {
   Users, Search, X, Download, RefreshCw,
   Image as ImageIcon, Lightbulb, Wallet,
   CheckCircle2, XCircle, ArrowUpRight, FileText, ArrowRight,
-  AlertTriangle, Edit3, Target, Edit2, SlidersHorizontal, Check, Save, IndianRupee, ShieldCheck
+  AlertTriangle, Edit3, Target, Edit2, SlidersHorizontal, Check, Save, IndianRupee, ShieldCheck,
+  Smartphone, Laptop, Watch, Camera, Calendar, HelpCircle, ArrowLeft, PiggyBank
 } from 'lucide-react-native';
 
 import { FilterSheet, BaseBottomSheet, ConfirmationDialog, Phase3EmptyState, MonthYearPickerSheet } from '../components/UIComponents';
@@ -48,12 +49,12 @@ const DANGER      = '#EF4444';
 const DANGER_BG   = '#FEE2E2';
 
 const CATS: Record<string, { color: string; bg: string; Icon: any }> = {
-  Food:          { color: '#EF5350', bg: '#FDEAEA', Icon: Utensils },
-  Transport:     { color: BLUE,      bg: BLUE_SOFT,  Icon: Car },
-  Shopping:      { color: '#43A047', bg: '#EAF5EA',  Icon: ShoppingBag },
-  Bills:         { color: '#FB8C00', bg: '#FFF3E0',  Icon: Receipt },
-  Entertainment: { color: '#8E24AA', bg: '#F4E5FA',  Icon: Film },
-  Others:        { color: '#546E7A', bg: '#ECEFF1',  Icon: MoreHorizontal },
+  Food:          { color: '#FF6B35', bg: '#FFF0EA', Icon: Utensils },
+  Transport:     { color: '#4F6DFF', bg: '#EEF2FF', Icon: Car },
+  Shopping:      { color: '#22C55E', bg: '#DCFCE7', Icon: ShoppingBag },
+  Bills:         { color: '#6B7280', bg: '#F3F4F6', Icon: Receipt },
+  Entertainment: { color: '#C026D3', bg: '#FAE8FF', Icon: Film },
+  Others:        { color: '#6B7280', bg: '#F3F4F6', Icon: MoreHorizontal },
 };
 
 // ── Static data ───────────────────────────────────────────────────────────────
@@ -182,74 +183,200 @@ function SetBudgetModal({ visible, currentBudget, onSave, onClose }: {
   );
 }
 
-// ── Set Goal Modal ────────────────────────────────────────────────────────────
+// ── Create Savings Goal Full Screen Modal ──────────────────────────────────────
 function SetGoalModal({ visible, currentName, currentTarget, onSave, onClose }: {
   visible: boolean; currentName: string; currentTarget: number;
   onSave: (name: string, target: number) => void; onClose: () => void;
 }) {
   const [name, setName] = useState(currentName);
-  const [target, setTarget] = useState(String(currentTarget));
+  const [target, setTarget] = useState(currentTarget > 0 ? String(currentTarget) : '');
+  const [activeIcon, setActiveIcon] = useState('Shoes');
+  const [targetDate, setTargetDate] = useState<Date | null>(null);
+
+  const icons = [
+    { id: 'Shoes', icon: <ShoppingBag size={24} color={activeIcon === 'Shoes' ? '#4F46E5' : '#64748B'} />, label: 'Shoes' },
+    { id: 'Phone', icon: <Smartphone size={24} color={activeIcon === 'Phone' ? '#4F46E5' : '#64748B'} />, label: 'Phone' },
+    { id: 'Bike', icon: <Car size={24} color={activeIcon === 'Bike' ? '#4F46E5' : '#64748B'} />, label: 'Bike' },
+    { id: 'Laptop', icon: <Laptop size={24} color={activeIcon === 'Laptop' ? '#4F46E5' : '#64748B'} />, label: 'Laptop' },
+    { id: 'Watch', icon: <Watch size={24} color={activeIcon === 'Watch' ? '#4F46E5' : '#64748B'} />, label: 'Watch' },
+    { id: 'Custom', icon: <Plus size={24} color={activeIcon === 'Custom' ? '#4F46E5' : '#64748B'} />, label: 'Custom' },
+  ];
+
+  const handleSelectIcon = (id: string) => {
+    setActiveIcon(id);
+    if (id !== 'Custom') setName(id);
+  };
+
+  // Mock setting date to 3 months from now for the UI
+  const handleSetDate = () => {
+    const d = new Date();
+    d.setMonth(d.getMonth() + 3);
+    setTargetDate(d);
+  };
+
+  const daysRemaining = targetDate ? Math.max(1, Math.ceil((targetDate.getTime() - new Date().getTime()) / (1000 * 3600 * 24))) : 0;
+  const dailyTarget = target && daysRemaining > 0 ? Math.ceil(Number(target) / daysRemaining) : 0;
 
   return (
-    <BaseBottomSheet visible={visible} onClose={onClose} height={560}>
-      <View style={bm.iconRow}>
-        <View style={[bm.iconWrap, { backgroundColor: '#DCFCE7' }]}>
-          <Target size={24} color="#16A34A" strokeWidth={2} />
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
+        
+        {/* Header */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 60, paddingBottom: 20, backgroundColor: WHITE }}>
+          <TouchableOpacity onPress={onClose} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' }}>
+            <ArrowLeft size={20} color="#4F46E5" />
+          </TouchableOpacity>
+          <View style={{ alignItems: 'center' }}>
+            <Text style={{ fontSize: 18, fontWeight: '800', color: '#0F172A' }}>Create Savings Goal</Text>
+            <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '500', marginTop: 2 }}>Let's plan your next achievement ✨</Text>
+          </View>
+          <TouchableOpacity style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center' }}>
+            <HelpCircle size={20} color="#64748B" />
+          </TouchableOpacity>
         </View>
-        <View>
-          <Text style={bm.title}>Set Savings Goal</Text>
-          <Text style={bm.sub}>What are you saving up for?</Text>
-        </View>
-      </View>
-      <View style={[bm.inputWrap, { marginBottom: 12 }]}>
-        <TextInput
-          style={[bm.input, { textAlign: 'left', paddingLeft: 16, fontSize: 20 }]}
-          value={name}
-          onChangeText={setName}
-          placeholder="e.g. New Mobile"
-          placeholderTextColor="#CBD5E1"
-        />
-      </View>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
-        {[
-          { label: '📱 Gadget' },
-          { label: '✈️ Travel' },
-          { label: '👟 Fashion' },
-          { label: '📚 Education' },
-          { label: '💰 Emergency' }
-        ].map(p => (
-          <TouchableOpacity
-            key={p.label}
-            style={{ paddingHorizontal: 12, paddingVertical: 8, backgroundColor: name === p.label ? '#DCFCE7' : '#F1F5F9', borderRadius: 12, borderWidth: 1, borderColor: name === p.label ? '#22C55E' : 'transparent' }}
-            onPress={() => setName(p.label)}
-            activeOpacity={0.7}
+
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+          
+          {/* Quick Select Icons */}
+          <Text style={{ fontSize: 16, fontWeight: '800', color: '#0F172A', marginBottom: 12 }}>What are you saving for?</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 12 }}>
+            {icons.map(item => (
+              <TouchableOpacity
+                key={item.id}
+                onPress={() => handleSelectIcon(item.id)}
+                style={{ width: 72, height: 84, backgroundColor: WHITE, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: activeIcon === item.id ? '#4F46E5' : '#F1F5F9' }}
+              >
+                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: activeIcon === item.id ? '#EEF2FF' : '#F8FAFC', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+                  {item.icon}
+                </View>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: activeIcon === item.id ? '#4F46E5' : '#64748B' }}>{item.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          {/* Form Fields */}
+          <View style={{ backgroundColor: WHITE, borderRadius: 20, padding: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <View style={{ backgroundColor: '#EEF2FF', padding: 4, borderRadius: 6 }}><Target size={14} color="#4F46E5" /></View>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#0F172A' }}>Goal Name</Text>
+              </View>
+              <Text style={{ fontSize: 12, color: '#94A3B8', fontWeight: '500' }}>{name.length}/30</Text>
+            </View>
+            <TextInput
+              style={{ backgroundColor: '#F8FAFC', borderRadius: 12, paddingHorizontal: 16, height: 52, fontSize: 15, color: '#0F172A', fontWeight: '600', borderWidth: 1, borderColor: '#E2E8F0' }}
+              value={name}
+              onChangeText={val => setName(val.substring(0, 30))}
+              placeholder="e.g., Nike Air Jordan Shoes"
+              placeholderTextColor="#94A3B8"
+            />
+          </View>
+
+          <View style={{ backgroundColor: WHITE, borderRadius: 20, padding: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+              <View style={{ backgroundColor: '#DCFCE7', padding: 4, borderRadius: 6 }}><Target size={14} color="#16A34A" /></View>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: '#0F172A' }}>Target Amount</Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderRadius: 12, paddingHorizontal: 16, height: 52, borderWidth: 1, borderColor: '#E2E8F0' }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#64748B', marginRight: 8 }}>₹</Text>
+              <TextInput
+                style={{ flex: 1, fontSize: 16, color: '#0F172A', fontWeight: '700', padding: 0 }}
+                value={target}
+                onChangeText={v => setTarget(v.replace(/[^0-9]/g, ''))}
+                keyboardType="numeric"
+                placeholder="0"
+                placeholderTextColor="#94A3B8"
+              />
+            </View>
+            <Text style={{ fontSize: 11, color: '#94A3B8', marginTop: 8, fontWeight: '500' }}>How much do you need to save?</Text>
+          </View>
+
+          <View style={{ backgroundColor: WHITE, borderRadius: 20, padding: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+              <View style={{ backgroundColor: '#F3E8FF', padding: 4, borderRadius: 6 }}><Calendar size={14} color="#9333EA" /></View>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: '#0F172A' }}>Target Date</Text>
+            </View>
+            <TouchableOpacity onPress={handleSetDate} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F8FAFC', borderRadius: 12, paddingHorizontal: 16, height: 52, borderWidth: 1, borderColor: '#E2E8F0' }}>
+              <Text style={{ fontSize: 15, color: targetDate ? '#0F172A' : '#94A3B8', fontWeight: targetDate ? '600' : '500' }}>
+                {targetDate ? targetDate.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Select target date'}
+              </Text>
+              <Calendar size={18} color="#94A3B8" />
+            </TouchableOpacity>
+            <Text style={{ fontSize: 11, color: '#94A3B8', marginTop: 8, fontWeight: '500' }}>When do you want to achieve this goal?</Text>
+          </View>
+
+          <View style={{ backgroundColor: WHITE, borderRadius: 20, padding: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+              <View style={{ backgroundColor: '#FCE7F3', padding: 4, borderRadius: 6 }}><PiggyBank size={14} color="#DB2777" /></View>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: '#0F172A' }}>Daily Savings Target <Text style={{ color: '#94A3B8', fontWeight: '500', fontSize: 12 }}>(Optional)</Text></Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderRadius: 12, paddingHorizontal: 16, height: 52, borderWidth: 1, borderColor: '#E2E8F0', opacity: 0.8 }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#64748B', marginRight: 8 }}>₹</Text>
+              <TextInput
+                style={{ flex: 1, fontSize: 16, color: '#0F172A', fontWeight: '700', padding: 0 }}
+                value={dailyTarget > 0 ? String(dailyTarget) : '0'}
+                editable={false}
+              />
+            </View>
+            <Text style={{ fontSize: 11, color: '#94A3B8', marginTop: 8, fontWeight: '500' }}>We'll calculate how much you need to save daily</Text>
+          </View>
+
+          <View style={{ backgroundColor: WHITE, borderRadius: 20, padding: 16, marginBottom: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+              <View style={{ backgroundColor: '#EEF2FF', padding: 4, borderRadius: 6 }}><ImageIcon size={14} color="#4F46E5" /></View>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: '#0F172A' }}>Add Image <Text style={{ color: '#94A3B8', fontWeight: '500', fontSize: 12 }}>(Optional)</Text></Text>
+            </View>
+            <TouchableOpacity style={{ height: 120, backgroundColor: '#F8FAFC', borderRadius: 16, borderWidth: 2, borderColor: '#E2E8F0', borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#4F46E5', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+                <Camera size={20} color={WHITE} />
+              </View>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#0F172A' }}>Tap to upload image</Text>
+              <Text style={{ fontSize: 11, color: '#94A3B8', fontWeight: '500', marginTop: 2 }}>PNG, JPG up to 5MB</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Goal Summary Card */}
+          <View style={{ backgroundColor: '#F8FAFC', borderRadius: 20, padding: 20, borderWidth: 1, borderColor: '#EEF2FF', marginBottom: 20 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+              <BarChart2 size={16} color="#4F46E5" />
+              <Text style={{ fontSize: 12, fontWeight: '800', color: '#4F46E5', textTransform: 'uppercase', letterSpacing: 0.5 }}>Goal Summary</Text>
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <View style={{ flex: 1, alignItems: 'center' }}>
+                <Target size={20} color="#4F46E5" opacity={0.7} style={{ marginBottom: 6 }} />
+                <Text style={{ fontSize: 11, color: '#64748B', fontWeight: '600', marginBottom: 2 }}>Target Amount</Text>
+                <Text style={{ fontSize: 14, fontWeight: '800', color: '#0F172A' }}>₹ {target || '0'}</Text>
+              </View>
+              <View style={{ width: 1, height: 40, backgroundColor: '#E2E8F0' }} />
+              <View style={{ flex: 1, alignItems: 'center' }}>
+                <Calendar size={20} color="#4F46E5" opacity={0.7} style={{ marginBottom: 6 }} />
+                <Text style={{ fontSize: 11, color: '#64748B', fontWeight: '600', marginBottom: 2 }}>Target Date</Text>
+                <Text style={{ fontSize: 14, fontWeight: '800', color: '#0F172A' }}>{targetDate ? targetDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : 'Not set'}</Text>
+              </View>
+              <View style={{ width: 1, height: 40, backgroundColor: '#E2E8F0' }} />
+              <View style={{ flex: 1, alignItems: 'center' }}>
+                <PiggyBank size={20} color="#4F46E5" opacity={0.7} style={{ marginBottom: 6 }} />
+                <Text style={{ fontSize: 11, color: '#64748B', fontWeight: '600', marginBottom: 2 }}>Daily Target</Text>
+                <Text style={{ fontSize: 14, fontWeight: '800', color: '#0F172A' }}>₹ {dailyTarget} <Text style={{ fontSize: 11, color: '#64748B', fontWeight: '600' }}>/ day</Text></Text>
+              </View>
+            </View>
+          </View>
+
+        </ScrollView>
+
+        <View style={{ padding: 20, paddingBottom: 40, backgroundColor: WHITE, borderTopWidth: 1, borderTopColor: '#F1F5F9' }}>
+          <TouchableOpacity 
+            style={{ backgroundColor: '#6366F1', height: 56, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', shadowColor: '#6366F1', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 8 }}
+            onPress={() => onSave(name || 'My Goal', Number(target) || 1000)}
+            activeOpacity={0.85}
           >
-            <Text style={{ fontSize: 13, fontWeight: '600', color: name === p.label ? '#16A34A' : TEXT_MID }}>{p.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-      <View style={bm.inputWrap}>
-        <Text style={bm.rupee}>₹</Text>
-        <TextInput
-          style={bm.input}
-          value={target}
-          onChangeText={v => setTarget(v.replace(/[^0-9]/g, ''))}
-          keyboardType="numeric"
-          placeholder="15000"
-          placeholderTextColor="#CBD5E1"
-        />
-      </View>
-      <View style={{ marginTop: 24, paddingBottom: 16 }}>
-        <View style={{ flexDirection: 'row', gap: 12 }}>
-          <TouchableOpacity style={[bm.saveBtn, { backgroundColor: '#F1F5F9', flex: 1 }]} onPress={onClose} activeOpacity={0.85}>
-            <Text style={[bm.saveBtnText, { color: TEXT_DARK }]}>Cancel</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[bm.saveBtn, { flex: 1, backgroundColor: '#16A34A' }]} onPress={() => onSave(name || 'My Goal', Number(target) || 1000)} activeOpacity={0.85}>
-            <Text style={bm.saveBtnText}>Save Goal</Text>
+            <Plus size={18} color={WHITE} strokeWidth={2.5} style={{ marginRight: 8 }} />
+            <Text style={{ color: WHITE, fontSize: 16, fontWeight: '800' }}>Create Goal</Text>
           </TouchableOpacity>
         </View>
+
       </View>
-    </BaseBottomSheet>
+    </Modal>
   );
 }
 
@@ -374,6 +501,7 @@ export default function ExpensesScreen({ navigation }: any) {
   const [breakdown, setBreakdown] = useState<any[]>([]);
   const [monthlyData, setMonthlyData] = useState<any[]>([]);
   const [maxAmt, setMaxAmt] = useState(0);
+  const [globalRecent, setGlobalRecent] = useState<any[]>([]);
 
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showMonthPicker, setShowMonthPicker] = useState(false);
@@ -397,7 +525,7 @@ export default function ExpensesScreen({ navigation }: any) {
           title: e.title,
           time: (() => {
             try {
-              const d = new Date(e.date);
+              const d = new Date(e.created_at || e.date);
               if (isNaN(d.getTime())) return e.date;
               const dateStr = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
               const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
@@ -406,7 +534,7 @@ export default function ExpensesScreen({ navigation }: any) {
               return String(e.date);
             }
           })(),
-          cat: e.category,
+          cat: e.category ? (e.category.trim().charAt(0).toUpperCase() + e.category.trim().slice(1).toLowerCase()) : 'Others',
           amt: Number(e.amount),
           shared: false,
           recurring: false,
@@ -422,7 +550,19 @@ export default function ExpensesScreen({ navigation }: any) {
           }
           const eDate = new Date(e.date_raw);
           return eDate.getMonth() === selectedDate.getMonth() && eDate.getFullYear() === selectedDate.getFullYear();
+        }).sort((a: any, b: any) => {
+          const dateDiff = new Date(b.date_raw).getTime() - new Date(a.date_raw).getTime();
+          if (dateDiff !== 0) return dateDiff;
+          return Number(b.id) - Number(a.id);
         });
+
+        // Global recent without month filter
+        const globallySorted = [...formatted].sort((a: any, b: any) => {
+          const dateDiff = new Date(b.date_raw).getTime() - new Date(a.date_raw).getTime();
+          if (dateDiff !== 0) return dateDiff;
+          return Number(b.id) - Number(a.id);
+        });
+        setGlobalRecent(globallySorted);
 
         setExpenses(monthlyFiltered);
 
@@ -452,14 +592,17 @@ export default function ExpensesScreen({ navigation }: any) {
           .reduce((sum: number, e: any) => sum + e.amt, 0);
         setTodaySpent(tSpent);
 
-        const brk = Object.keys(catMap).map(k => ({
-          name: k,
-          amount: catMap[k],
-          pct: total > 0 ? Math.round((catMap[k] / total) * 100) : 0,
-          color: CATS[k] ? CATS[k].color : CATS['Others'].color,
-          bg: CATS[k] ? CATS[k].bg : CATS['Others'].bg,
-          Icon: CATS[k] ? CATS[k].Icon : CATS['Others'].Icon,
-        })).sort((a: any, b: any) => b.amount - a.amount);
+        const brk = Object.keys(catMap).map(k => {
+          const theme = getCategoryTheme(k);
+          return {
+            name: k,
+            amount: catMap[k],
+            pct: total > 0 ? Math.round((catMap[k] / total) * 100) : 0,
+            color: theme.color,
+            bg: theme.bg,
+            Icon: theme.Icon,
+          };
+        }).sort((a: any, b: any) => b.amount - a.amount);
         setBreakdown(brk);
 
         const now = selectedDate;
@@ -603,6 +746,7 @@ export default function ExpensesScreen({ navigation }: any) {
                 selectedDate={selectedDate}
                 todaySpent={todaySpent}
                 monthlyData={monthlyData}
+                globalRecent={globalRecent}
               />
             )}
             {tab === 'Categories' && <CategoriesTab expenses={expenses} monthTotal={monthTotal} breakdown={breakdown} navigation={navigation} selectedDate={selectedDate} />}
@@ -718,7 +862,7 @@ function MiniSparkline({ data, color = BLUE, height = 40 }: { data: any[]; color
 
 function OverviewTab({
   expenses, monthTotal, breakdown, navigation, activeCategory, onToggleCategory, onSettleUp, onReceiptOpen, budget, onEditBudget,
-  goalName, goalTarget, goalProgress, goalSaved, onEditGoal, onAddSavings, completedGoals, selectedDate, todaySpent = 0, monthlyData = []
+  goalName, goalTarget, goalProgress, goalSaved, onEditGoal, onAddSavings, completedGoals, selectedDate, todaySpent = 0, monthlyData = [], globalRecent = []
 }: any) {
   const prevMonthAmt = monthlyData[monthlyData.length - 2]?.amt || 0;
   const momPct = prevMonthAmt > 0 ? Math.round(((monthTotal - prevMonthAmt) / prevMonthAmt) * 100) : 0;
@@ -726,19 +870,16 @@ function OverviewTab({
   const [searchQ, setSearchQ]         = useState('');
   const [showSearch, setShowSearch]   = useState(false);
   const [showFilter, setShowFilter]   = useState(false);
-  const [catFilter, setCatFilter]     = useState<string | null>(null);
 
   const budgetPct  = budget > 0 ? Math.round((monthTotal / budget) * 100) : 0;
   const isWarn     = budgetPct >= 80;
   const barColor   = budgetPct >= 100 ? DANGER : isWarn ? WARN_COLOR : BLUE;
 
-  const filtered = useMemo(() => {
-    let r = expenses;
-    if (activeCategory) r = r.filter((x: any) => x.cat === activeCategory);
-    if (catFilter)      r = r.filter((x: any) => x.cat === catFilter);
-    if (searchQ.trim()) { const q = searchQ.toLowerCase(); r = r.filter((x: any) => x.title.toLowerCase().includes(q) || x.cat.toLowerCase().includes(q)); }
-    return r;
-  }, [activeCategory, catFilter, searchQ]);
+  const filteredRecent = useMemo(() => {
+    if (!searchQ.trim()) return globalRecent;
+    const q = searchQ.toLowerCase();
+    return globalRecent.filter((x: any) => x.title.toLowerCase().includes(q) || x.cat.toLowerCase().includes(q));
+  }, [globalRecent, searchQ]);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   useEffect(() => {
@@ -756,106 +897,102 @@ function OverviewTab({
 
   return (
     <>
-      {/* ── 1. Total Spent Donut Chart ── */}
+      {/* ── 1. Total Spent & Budget Card ── */}
       <FadeSlideIn delay={0}>
-      <View style={[s.overviewCard, { flexDirection: 'column', alignItems: 'center', position: 'relative' }]}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginBottom: 20 }}>
-          <Text style={s.overviewLabel}>Total Spent ({selectedDate.toLocaleString('en-US', { month: 'short' })})</Text>
-          {budget > 0 ? (
-            <TouchableOpacity onPress={onEditBudget} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#EEF2FF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#E0E7FF' }}>
-              <Edit3 size={14} color="#2245D4" />
-              <Text style={{ fontSize: 12, fontWeight: '700', color: '#2245D4' }}>Edit Budget</Text>
-            </TouchableOpacity>
-          ) : (
-            <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-              <TouchableOpacity onPress={onEditBudget} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#EFF6FF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#BFDBFE' }}>
-                <Plus size={14} color="#2563EB" strokeWidth={2.5} />
-                <Text style={{ fontSize: 12, fontWeight: '700', color: '#2563EB' }}>Add Budget</Text>
-              </TouchableOpacity>
-            </Animated.View>
-          )}
-        </View>
-        
-        <View style={{ width: 130, height: 130, justifyContent: 'center', alignItems: 'center', alignSelf: 'center', position: 'relative' }}>
-          <Svg width="130" height="130" viewBox="0 0 100 100">
-            {/* Background circle */}
-            <Circle cx="50" cy="50" r="40" stroke="#F1F5F9" strokeWidth="10" fill="transparent" />
-            {/* Progress circle */}
-            <Circle 
-              cx="50" cy="50" r="40" 
-              stroke="#2245D4" strokeWidth="10" 
-              fill="transparent" 
-              strokeDasharray={`${Math.min(budgetPct, 100) * 2.51} 251.2`}
-              strokeDashoffset="0"
-              strokeLinecap="round"
-              rotation="-90"
-              origin="50, 50"
-            />
-          </Svg>
-          {/* Inner Text */}
-          <View style={{ position: 'absolute', justifyContent: 'center', alignItems: 'center' }}>
-            <Text style={{ fontSize: 18, fontWeight: '800', color: TEXT_DARK }}>₹{monthTotal}</Text>
-            <Text style={{ fontSize: 10, color: TEXT_MID, marginTop: 2 }}>of ₹{budget > 0 ? budget : '—'}</Text>
+        <View style={[s.overviewCard, { padding: 0, overflow: 'hidden', borderWidth: 1, borderColor: '#E2E8F0' }]}>
+          
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20 }}>
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'flex-start' }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: '#64748B', marginBottom: 6 }}>
+                Total Spent in {selectedDate.toLocaleString('en-US', { month: 'long', year: 'numeric' })}
+              </Text>
+              
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                <Text style={{ fontSize: 32, fontWeight: '900', color: '#0F172A', letterSpacing: -1 }}>
+                  ₹{monthTotal.toLocaleString('en-IN')}
+                </Text>
+                {budget > 0 && (
+                  <>
+                    <Text style={{ fontSize: 16, fontWeight: '900', color: '#475569', marginLeft: 6, marginBottom: -4 }}>
+                      / ₹{budget > 100000 ? (budget/1000).toFixed(1)+'k' : budget.toLocaleString('en-IN')}
+                    </Text>
+                    <TouchableOpacity onPress={onEditBudget} style={{ marginLeft: 10, backgroundColor: '#EEF2FF', padding: 6, borderRadius: 10 }}>
+                      <Edit3 size={14} color="#4F46E5" strokeWidth={2.5} />
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
+              
+              {!budget && (
+                <Animated.View style={{ transform: [{ scale: pulseAnim }], marginTop: 8 }}>
+                  <TouchableOpacity onPress={onEditBudget} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#EEF2FF', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: '#C7D2FE' }}>
+                    <Plus size={14} color="#4F46E5" strokeWidth={2.5} />
+                    <Text style={{ fontSize: 12, fontWeight: '800', color: '#4F46E5' }}>Set Budget</Text>
+                  </TouchableOpacity>
+                </Animated.View>
+              )}
+            </View>
+
+            <View style={{ width: 90, height: 90, justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
+              <Svg width="90" height="90" viewBox="0 0 100 100">
+                <Circle cx="50" cy="50" r="40" stroke="#F1F5F9" strokeWidth="12" fill="transparent" />
+                <Circle 
+                  cx="50" cy="50" r="40" 
+                  stroke="#14B8A6" strokeWidth="12" 
+                  fill="transparent" 
+                  strokeDasharray={`${Math.min(budgetPct, 100) * 2.51} 251.2`}
+                  strokeDashoffset="0"
+                  strokeLinecap="round"
+                  rotation="-90"
+                  origin="50, 50"
+                />
+              </Svg>
+              <View style={{ position: 'absolute', justifyContent: 'center', alignItems: 'center' }}>
+                <Text style={{ fontSize: 18, fontWeight: '900', color: '#0F172A' }}>{budget > 0 ? budgetPct : 0}%</Text>
+                <Text style={{ fontSize: 9, color: '#64748B', marginTop: 1, fontWeight: '600' }}>of total</Text>
+              </View>
+            </View>
           </View>
-        </View>
 
-        {monthlyData && monthlyData.length > 1 && (
-          <View style={{ width: '100%', marginTop: 18 }}>
-            <Text style={{ fontSize: 10, fontWeight: '700', color: TEXT_LIGHT, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>
-              6-Month Trend
-            </Text>
-            <MiniSparkline data={monthlyData} color={momUp ? '#E11D48' : '#2245D4'} />
-          </View>
-        )}
-
-        <View style={{ flexDirection: 'column', gap: 10, marginTop: 16, alignSelf: 'stretch' }}>
-
-          <View style={[s.trendRow, { paddingHorizontal: 16, paddingVertical: 12, backgroundColor: budget > 0 ? (monthTotal > budget ? '#FEF2F2' : '#ECFDF5') : '#FFFBEB', borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: budget > 0 ? (monthTotal > budget ? 1 : 0) : 1, borderColor: budget > 0 ? (monthTotal > budget ? '#FCA5A5' : 'transparent') : '#FDE68A' }]}>
+          {/* Footer Section - "Safe to spend" & "vs last month" */}
+          <View style={{ backgroundColor: budget > 0 ? (monthTotal > budget ? '#FEF2F2' : '#F8FAFC') : '#F8FAFC', paddingHorizontal: 20, paddingVertical: 14, borderTopWidth: 1, borderTopColor: '#F1F5F9', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             {budget > 0 ? (
               <>
-                <Text style={{ fontSize: 13, color: monthTotal > budget ? '#DC2626' : '#059669', fontWeight: '800', flexShrink: 1 }}>
+                <Text style={{ fontSize: 12, color: monthTotal > budget ? '#DC2626' : '#64748B', fontWeight: '600' }}>
                   {monthTotal > budget ? (
                     "Over budget!"
                   ) : (
-                    `₹${Math.round((budget - monthTotal) / (30 - new Date().getDate() + 1))} safe to spend today`
+                    <>Safe to spend: <Text style={{ color: '#059669', fontWeight: '800' }}>₹{Math.round((budget - monthTotal) / (30 - new Date().getDate() + 1))}</Text> / day</>
                   )}
                 </Text>
-                
-                <View style={{ alignItems: 'flex-end', marginLeft: 8 }}>
-                  {prevMonthAmt > 0 && (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                      {momUp
-                        ? <TrendingUp size={10} color="#E11D48" strokeWidth={2.5} />
-                        : <TrendingDown size={10} color="#059669" strokeWidth={2.5} />}
-                      <Text style={{ fontSize: 9, fontWeight: '700', color: momUp ? '#E11D48' : '#059669', marginLeft: 3 }}>
-                        {Math.abs(momPct)}% vs last month
-                      </Text>
-                    </View>
-                  )}
-                  <View style={{ backgroundColor: monthTotal > budget ? '#FEE2E2' : '#D1FAE5', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
-                    <Text style={{ fontSize: 11, color: monthTotal > budget ? '#EF4444' : '#047857', fontWeight: '700' }}>
-                      ₹{todaySpent} spent today
+                {prevMonthAmt > 0 && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                    {momUp
+                      ? <TrendingUp size={10} color="#E11D48" strokeWidth={2.5} />
+                      : <TrendingDown size={10} color="#059669" strokeWidth={2.5} />}
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: momUp ? '#E11D48' : '#059669', marginLeft: 4 }}>
+                      {Math.abs(momPct)}% vs last month
                     </Text>
                   </View>
-                </View>
+                )}
               </>
             ) : (
-              <Text style={{ fontSize: 12, color: '#D97706', fontWeight: '700' }}>
-                Set budget to calculate daily limit
+              <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '600' }}>
+                Set a budget to track your daily safe spending limit.
               </Text>
             )}
           </View>
+          
         </View>
-      </View>
       </FadeSlideIn>
 
       {/* ── 2. Top Spending Category ── */}
       {breakdown.length > 0 && (() => {
-        const topCat = CATS[breakdown[0].name] || CATS['Others'];
+        const topCat = getCategoryTheme(breakdown[0].name);
         const TopIcon = topCat.Icon;
         return (
           <FadeSlideIn delay={80}>
-          <View style={[s.card, { backgroundColor: '#FFF0F2', borderColor: '#FFE4E6', padding: 14 }]}>
+          <View style={[s.card, { backgroundColor: topCat.bg, borderColor: topCat.bg, padding: 14 }]}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <View style={{ backgroundColor: topCat.color, padding: 6, borderRadius: 10, shadowColor: topCat.color, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 2 }}>
@@ -863,8 +1000,8 @@ function OverviewTab({
                 </View>
                 <Text style={{ fontSize: 11, fontWeight: '700', color: topCat.color, textTransform: 'uppercase', letterSpacing: 0.5 }}>Highest Spend</Text>
               </View>
-              <View style={{ backgroundColor: '#FFE4E6', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
-                <Text style={{ fontSize: 10, fontWeight: '800', color: '#E11D48' }}>{breakdown[0].pct}% of Total</Text>
+              <View style={{ backgroundColor: WHITE, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
+                <Text style={{ fontSize: 10, fontWeight: '800', color: topCat.color }}>{breakdown[0].pct}% of Total</Text>
               </View>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
@@ -872,7 +1009,7 @@ function OverviewTab({
                 <Text style={{ fontSize: 20, fontWeight: '800', color: TEXT_DARK, marginBottom: 1 }}>{breakdown[0].name}</Text>
                 <Text style={{ fontSize: 11, color: TEXT_MID }}>Most frequent expense</Text>
               </View>
-              <Text style={{ fontSize: 24, fontWeight: '900', color: '#E11D48', letterSpacing: -0.5 }}>₹{breakdown[0].amount.toLocaleString('en-IN')}</Text>
+              <Text style={{ fontSize: 24, fontWeight: '900', color: topCat.color, letterSpacing: -0.5 }}>₹{breakdown[0].amount.toLocaleString('en-IN')}</Text>
             </View>
           </View>
           </FadeSlideIn>
@@ -883,20 +1020,23 @@ function OverviewTab({
       <FadeSlideIn delay={140}>
       {goalTarget === 0 ? (
         <TouchableOpacity
-          style={[s.card, { backgroundColor: '#F0FDF4', borderColor: '#DCFCE7', padding: 16 }]}
+          style={[s.card, { backgroundColor: '#FFFFFF', borderColor: '#E5F5EB', paddingVertical: 14, paddingHorizontal: 16, borderRadius: 16, flexDirection: 'row', alignItems: 'center', overflow: 'hidden', borderWidth: 1 }]}
           activeOpacity={0.8}
           onPress={onEditGoal}
         >
-          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginBottom: 8 }}>
-            <View style={{ backgroundColor: '#22C55E', padding: 6, borderRadius: 10 }}>
-              <Target size={14} color={WHITE} strokeWidth={2.5} />
+          <View style={{ flex: 1, paddingRight: 110, zIndex: 1 }}>
+            <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center', marginBottom: 10 }}>
+              <View style={{ backgroundColor: '#10B981', padding: 5, borderRadius: 20 }}>
+                <Target size={14} color={WHITE} strokeWidth={2.5} />
+              </View>
+              <Text style={{ fontSize: 11, fontWeight: '800', color: '#10B981', textTransform: 'uppercase', letterSpacing: 0.8 }}>Savings Goal</Text>
             </View>
-            <Text style={{ fontSize: 11, fontWeight: '700', color: '#16A34A', textTransform: 'uppercase', letterSpacing: 0.5 }}>Savings Goal</Text>
+            <Text style={{ fontSize: 19, fontWeight: '800', color: '#0F172A', marginBottom: 4, letterSpacing: -0.5 }}>Set a savings goal</Text>
+            <Text style={{ fontSize: 13, color: '#475569', lineHeight: 18, marginBottom: 12 }}>Track what you're saving towards — a gadget, trip, or anything!</Text>
+            <Text style={{ fontSize: 14, fontWeight: '800', color: '#10B981' }}>Create Goal →</Text>
           </View>
-          <Text style={{ fontSize: 16, fontWeight: '700', color: TEXT_DARK, marginBottom: 4 }}>Set a savings goal</Text>
-          <Text style={{ fontSize: 13, color: TEXT_MID }}>Track what you're saving towards — a gadget, trip, or anything!</Text>
-          <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <Text style={{ fontSize: 13, fontWeight: '700', color: '#16A34A' }}>Tap to create a goal →</Text>
+          <View style={{ position: 'absolute', right: 10, height: '100%', width: 120, justifyContent: 'center', alignItems: 'center', zIndex: 0 }}>
+             <Image source={require('../../assets/savings_jar.jpeg')} style={{ width: 120, height: 120 }} resizeMode="contain" />
           </View>
         </TouchableOpacity>
       ) : (
@@ -1009,44 +1149,30 @@ function OverviewTab({
         </View>
       )}
 
-      {/* Category filter chips */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chipRow} style={{ marginBottom: 12 }}>
-        <TouchableOpacity style={[s.chip, !catFilter && s.chipActive]} onPress={() => setCatFilter(null)} activeOpacity={0.7}>
-          <Text style={[s.chipTxt, !catFilter && s.chipTxtActive]}>All</Text>
-        </TouchableOpacity>
-        {Object.entries(CATS).map(([name, meta]) => {
-          const act = catFilter === name;
-          return (
-            <TouchableOpacity key={name} style={[s.chip, act && { backgroundColor: meta.bg, borderColor: meta.color }]} onPress={() => setCatFilter(act ? null : name)} activeOpacity={0.7}>
-              <CategoryGlowBadge category={name} size="xs" active={act} />
-              <Text style={[s.chipTxt, act && { color: meta.color, fontWeight: '700' }]}>{name}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+      {/* Category filter chips - REMOVED since recent has no filters */}
 
       {/* Transaction list */}
-      {filtered.length > 0 ? (
-        <View style={s.txnCard}>
-          {filtered.slice(0, 5).map((item: any, i: number) => {
+      {filteredRecent.length > 0 ? (
+        <View style={{ gap: 8 }}>
+          {filteredRecent.slice(0, 5).map((item: any, i: number) => {
             const itemTheme = getCategoryTheme(item.cat);
             return (
-              <View key={item.id} style={[s.txnRow, i < filtered.length - 1 && s.txnDivider, { borderLeftWidth: 3, borderLeftColor: itemTheme.color }]}>
-                <CategoryGlowBadge category={item.cat} size="md" />
+              <View key={item.id} style={[s.txnCard, { marginBottom: 0, paddingVertical: 8, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 10, borderLeftWidth: 4, borderLeftColor: itemTheme.color, borderRadius: 14 }]}>
+                <CategoryGlowBadge category={item.cat} size="sm" />
                 <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 5 }}>
-                    <Text style={s.txnTitle}>{item.title}</Text>
-                    {item.shared    && <View style={s.sharedBadge}><Users size={9} color={BLUE} strokeWidth={2.5} /><Text style={s.sharedTxt}>Shared</Text></View>}
-                    {item.recurring && <View style={s.recurBadge}><RefreshCw size={9} color={SUCCESS} strokeWidth={2.5} /><Text style={s.recurTxt}>Monthly</Text></View>}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
+                    <Text style={[s.txnTitle, { fontSize: 13, marginBottom: 0 }]}>{item.title}</Text>
+                    {item.shared    && <View style={s.sharedBadge}><Users size={8} color={BLUE} strokeWidth={2.5} /><Text style={[s.sharedTxt, {fontSize: 8}]}>Shared</Text></View>}
+                    {item.recurring && <View style={s.recurBadge}><RefreshCw size={8} color={SUCCESS} strokeWidth={2.5} /><Text style={[s.recurTxt, {fontSize: 8}]}>Monthly</Text></View>}
                   </View>
-                  <Text style={s.txnTime}>{item.time}</Text>
+                  <Text style={[s.txnTime, { fontSize: 10, marginTop: 1 }]}>{item.time}</Text>
                 </View>
-                <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                  <Text style={s.txnAmt}>₹ {item.amt.toLocaleString('en-IN')}</Text>
+                <View style={{ alignItems: 'flex-end', gap: 2 }}>
+                  <Text style={[s.txnAmt, { fontSize: 13 }]}>₹ {item.amt.toLocaleString('en-IN')}</Text>
                   {item.hasReceipt && (
                     <TouchableOpacity style={s.receiptTag} onPress={() => item.receiptUri && onReceiptOpen(item.receiptUri)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                      <ImageIcon size={11} color={BLUE} strokeWidth={2} />
-                      <Text style={s.receiptTxt}>Receipt</Text>
+                      <ImageIcon size={10} color={BLUE} strokeWidth={2} />
+                      <Text style={[s.receiptTxt, { fontSize: 9 }]}>Receipt</Text>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -1146,12 +1272,19 @@ function CategoriesTab({ expenses, monthTotal, breakdown, navigation, selectedDa
   return (
     <>
       <FadeSlideIn delay={0}>
-      <View style={s.statRow}>
-        <View style={s.statCell}><Text style={s.statVal}>₹{monthTotal.toLocaleString('en-IN')}</Text><Text style={s.statLbl}>Total</Text></View>
-        <View style={s.statLine} />
-        <View style={s.statCell}><Text style={s.statVal}>{breakdown.length}</Text><Text style={s.statLbl}>Categories</Text></View>
-        <View style={s.statLine} />
-        <View style={s.statCell}><Text style={[s.statVal, { color: breakdown.length > 0 ? (breakdown[0].color || '#EF5350') : '#EF5350' }]}>{breakdown.length > 0 ? breakdown[0].name : '--'}</Text><Text style={s.statLbl}>Top Spend</Text></View>
+      <View style={[s.statRow, { backgroundColor: 'transparent', padding: 0, gap: 10, borderWidth: 0, shadowOpacity: 0 }]}>
+        <View style={[s.statCell, { backgroundColor: '#EEF2FF', paddingVertical: 14, borderRadius: 16, flex: 1 }]}>
+          <Text style={[s.statVal, { color: '#4F46E5', fontSize: 18 }]}>₹{monthTotal > 100000 ? (monthTotal/1000).toFixed(1)+'k' : monthTotal.toLocaleString('en-IN')}</Text>
+          <Text style={[s.statLbl, { color: '#6366F1' }]}>Total</Text>
+        </View>
+        <View style={[s.statCell, { backgroundColor: '#F0FDF4', paddingVertical: 14, borderRadius: 16, flex: 1 }]}>
+          <Text style={[s.statVal, { color: '#16A34A', fontSize: 18 }]}>{breakdown.length}</Text>
+          <Text style={[s.statLbl, { color: '#22C55E' }]}>Categories</Text>
+        </View>
+        <View style={[s.statCell, { backgroundColor: breakdown.length > 0 ? breakdown[0].bg : '#FFF7ED', paddingVertical: 14, borderRadius: 16, flex: 1 }]}>
+          <Text style={[s.statVal, { color: breakdown.length > 0 ? breakdown[0].color : '#EA580C', fontSize: 15 }]}>{breakdown.length > 0 ? breakdown[0].name : '--'}</Text>
+          <Text style={[s.statLbl, { color: breakdown.length > 0 ? breakdown[0].color : '#F97316' }]}>Top Spend</Text>
+        </View>
       </View>
       </FadeSlideIn>
 
@@ -1186,21 +1319,21 @@ function CategoriesTab({ expenses, monthTotal, breakdown, navigation, selectedDa
       )}
 
       <FadeSlideIn delay={240}>
-      <View style={s.txnCard}>
+      <View style={{ gap: 8, marginBottom: 16 }}>
         {breakdown.map((cat: any, i: number) => {
           return (
-            <TouchableOpacity key={cat.name} style={[s.txnRow, i < breakdown.length - 1 && s.txnDivider, { borderLeftWidth: 3, borderLeftColor: cat.color }]}
+            <TouchableOpacity key={cat.name} style={[s.txnCard, { marginBottom: 0, paddingVertical: 10, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 10, borderLeftWidth: 4, borderLeftColor: cat.color, borderRadius: 14 }]}
               onPress={() => navigation.navigate('CategoryDetail', { categoryName: cat.name, spent: cat.amount, totalPct: cat.pct, color: cat.color, bg: cat.bg, selectedDateStr: selectedDate.toISOString() })}
               activeOpacity={0.7}
             >
-              <CategoryGlowBadge category={cat.name} size="md" entrance />
+              <CategoryGlowBadge category={cat.name} size="sm" entrance />
               <View style={{ flex: 1 }}>
-                <Text style={s.txnTitle}>{cat.name}</Text>
+                <Text style={[s.txnTitle, { fontSize: 13, marginBottom: 0 }]}>{cat.name}</Text>
                 <View style={[s.catDetailBar]}><View style={[s.catDetailFill, { width: `${cat.pct}%` as any, backgroundColor: cat.color }]} /></View>
               </View>
-              <View style={{ alignItems: 'flex-end' }}>
-                <Text style={s.txnAmt}>₹{cat.amount.toLocaleString('en-IN')}</Text>
-                <Text style={[{ fontSize: 11, fontWeight: '700', color: cat.color }]}>{cat.pct}%</Text>
+              <View style={{ alignItems: 'flex-end', marginLeft: 8 }}>
+                <Text style={[s.txnAmt, { fontSize: 13 }]}>₹{cat.amount.toLocaleString('en-IN')}</Text>
+                <Text style={[{ fontSize: 10, fontWeight: '700', color: cat.color, marginTop: 2 }]}>{cat.pct}%</Text>
               </View>
             </TouchableOpacity>
           );
@@ -1284,21 +1417,23 @@ function AnalyticsTab({ expenses, monthTotal, monthlyData, maxAmt, breakdown }: 
   return (
     <>
       <FadeSlideIn delay={0}>
-      <View style={s.statRow}>
-        <View style={s.statCell}><Text style={s.statVal}>₹{dailyAvg.toLocaleString('en-IN')}</Text><Text style={s.statLbl}>Daily Avg</Text></View>
-        <View style={s.statLine} />
-        <View style={s.statCell}><Text style={s.statVal}>₹{monthTotal > 0 ? (monthTotal / 1000).toFixed(1) + 'k' : '0'}</Text><Text style={s.statLbl}>This Month</Text></View>
-        <View style={s.statLine} />
-        <View style={s.statCell}><Text style={[s.statVal, { color: isUp ? DANGER : SUCCESS }]}>{isUp ? '↑' : '↓'} {Math.abs(parseFloat(mom))}%</Text><Text style={s.statLbl}>Trend</Text></View>
+      <View style={[s.statRow, { backgroundColor: 'transparent', padding: 0, gap: 10, borderWidth: 0, shadowOpacity: 0 }]}>
+        <View style={[s.statCell, { backgroundColor: '#F0FDF4', paddingVertical: 14, borderRadius: 16, flex: 1 }]}>
+          <Text style={[s.statVal, { color: '#16A34A', fontSize: 16 }]}>₹{dailyAvg.toLocaleString('en-IN')}</Text>
+          <Text style={[s.statLbl, { color: '#22C55E' }]}>Daily Avg</Text>
+        </View>
+        <View style={[s.statCell, { backgroundColor: '#EEF2FF', paddingVertical: 14, borderRadius: 16, flex: 1 }]}>
+          <Text style={[s.statVal, { color: '#4F46E5', fontSize: 16 }]}>₹{monthTotal > 0 ? (monthTotal / 1000).toFixed(1) + 'k' : '0'}</Text>
+          <Text style={[s.statLbl, { color: '#6366F1' }]}>This Month</Text>
+        </View>
+        <View style={[s.statCell, { backgroundColor: isUp ? '#FEF2F2' : '#F0FDF4', paddingVertical: 14, borderRadius: 16, flex: 1 }]}>
+          <Text style={[s.statVal, { color: isUp ? DANGER : SUCCESS, fontSize: 16 }]}>{isUp ? '↑' : '↓'} {Math.abs(parseFloat(mom))}%</Text>
+          <Text style={[s.statLbl, { color: isUp ? '#EF4444' : '#22C55E' }]}>Trend</Text>
+        </View>
       </View>
       </FadeSlideIn>
 
-      <FadeSlideIn delay={80}>
-      <Text style={[s.sectionTitle, { marginBottom: 10 }]}>6-Month Trend</Text>
-      <View style={[s.card, { marginBottom: 16 }]}>
-        <TrendLine monthlyData={monthlyData} />
-      </View>
-      </FadeSlideIn>
+
 
       <FadeSlideIn delay={160}>
       <Text style={[s.sectionTitle, { marginBottom: 10 }]}>This Week's Activity</Text>
@@ -1309,22 +1444,24 @@ function AnalyticsTab({ expenses, monthTotal, monthlyData, maxAmt, breakdown }: 
 
       <FadeSlideIn delay={240}>
       <Text style={[s.sectionTitle, { marginBottom: 10 }]}>Where your money goes</Text>
-      <View style={[s.card, { padding: 0, overflow: 'hidden' }]}>
-        {topThree.length > 0 ? topThree.map((cat: any, i: number) => (
-          <View key={cat.name} style={[s.txnRow, i < topThree.length - 1 && s.txnDivider, { padding: 16 }]}>
-            <CategoryGlowBadge category={cat.name} size="sm" style={{ marginRight: 12 }} />
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: '700', color: TEXT_DARK }}>{cat.name}</Text>
-              <Text style={{ fontSize: 11, color: TEXT_LIGHT, marginTop: 2 }}>{cat.pct}% of total</Text>
+      {topThree.length > 0 ? (
+        <View style={[s.card, { padding: 0, overflow: 'hidden' }]}>
+          {topThree.map((cat: any, i: number) => (
+            <View key={cat.name} style={[s.txnRow, i < topThree.length - 1 && s.txnDivider, { padding: 16 }]}>
+              <CategoryGlowBadge category={cat.name} size="sm" style={{ marginRight: 12 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: TEXT_DARK }}>{cat.name}</Text>
+                <Text style={{ fontSize: 11, color: TEXT_LIGHT, marginTop: 2 }}>{cat.pct}% of total</Text>
+              </View>
+              <Text style={{ fontSize: 14, fontWeight: '800', color: TEXT_DARK }}>₹{cat.amount.toLocaleString('en-IN')}</Text>
             </View>
-            <Text style={{ fontSize: 14, fontWeight: '800', color: TEXT_DARK }}>₹{cat.amount.toLocaleString('en-IN')}</Text>
-          </View>
-        )) : (
-          <View style={{ paddingVertical: 32, alignItems: 'center' }}>
-            <Text style={{ fontSize: 13, color: TEXT_LIGHT, fontWeight: '500' }}>No spending data yet</Text>
-          </View>
-        )}
-      </View>
+          ))}
+        </View>
+      ) : (
+        <View style={{ paddingVertical: 20 }}>
+          <Phase3EmptyState variant="expenses" />
+        </View>
+      )}
       </FadeSlideIn>
     </>
   );

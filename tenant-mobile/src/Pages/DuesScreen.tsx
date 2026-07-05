@@ -1,15 +1,15 @@
 import React, { useCallback, useState } from 'react';
 import {
   StyleSheet, Text, TouchableOpacity, View, ScrollView,
-  RefreshControl, ActivityIndicator, Image, StatusBar
+  RefreshControl, ActivityIndicator, StatusBar
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   AlertCircle, CheckCircle2, Clock,
-  Wallet, CreditCard, XCircle, RotateCcw,
-  Bell, ArrowRight, Plus,
+  CreditCard, ArrowRight,
+  Bell, TrendingUp, ShieldCheck, Calendar,
+  Banknote, Receipt, ArrowUpRight, ArrowDownLeft,
 } from 'lucide-react-native';
 
 import { Phase3EmptyState, Phase3ErrorState } from '../components/UIComponents';
@@ -27,6 +27,7 @@ const BLUE_SOFT = '#EEF2FF';
 const WHITE     = '#FFFFFF';
 const TEXT_DARK = '#1A1A1A';
 const TEXT_MID  = '#666666';
+const TEXT_LIGHT = '#9CA3AF';
 const BORDER    = '#F1F5F9';
 const BG        = '#FAFAFC';
 
@@ -66,12 +67,45 @@ function formatDateStr(d: string | null): string {
   } catch { return d; }
 }
 
+/** Returns a short day-month label like "05 Jul" */
+function formatShortDate(d: string | null): string {
+  if (!d) return '';
+  try {
+    return new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+  } catch { return d || ''; }
+}
+
 const statusConfig: Record<string, { color: string; bg: string; label: string }> = {
   'Pending':        { color: colors.danger,  bg: colors.dangerSoft,  label: 'Pending' },
   'Partially Paid': { color: colors.warning, bg: colors.warningSoft, label: 'Partial' },
   'Fully Paid':     { color: colors.success, bg: colors.successSoft, label: 'Paid' },
   'Overdue':        { color: colors.danger,  bg: colors.dangerSoft,  label: 'Overdue' },
 };
+
+// Payment mode icon/color mapping (GPay / PhonePe / Paytm style)
+const modeStyle: Record<string, { color: string; bg: string; label: string }> = {
+  'upi':         { color: '#5F35B8', bg: '#EDE9FE', label: 'UPI' },
+  'gpay':        { color: '#34A853', bg: '#E8F5E9', label: 'Google Pay' },
+  'phonepay':    { color: '#5F35B8', bg: '#EDE9FE', label: 'PhonePe' },
+  'paytm':       { color: '#00BAF2', bg: '#E0F7FA', label: 'Paytm' },
+  'cash':        { color: '#F59E0B', bg: '#FEF3C7', label: 'Cash' },
+  'bank':        { color: '#3B82F6', bg: '#DBEAFE', label: 'Bank Transfer' },
+  'online':      { color: '#2245D4', bg: '#EEF2FF', label: 'Online' },
+  'default':     { color: '#6B7280', bg: '#F3F4F6', label: 'Payment' },
+};
+
+function getModeStyle(mode?: string) {
+  if (!mode) return modeStyle['default'];
+  const key = mode.toLowerCase().replace(/\s/g, '');
+  return modeStyle[key] || modeStyle['default'];
+}
+
+// ── Payment tips shown at bottom of "This Month Details" ─────────────────────
+const PAYMENT_TIPS = [
+  { Icon: Calendar,    text: 'Pay before the due date to avoid late fees.' },
+  { Icon: Receipt,     text: 'Always save your receipt / transaction ID.' },
+  { Icon: ShieldCheck, text: 'Use UPI or net banking for instant confirmation.' },
+];
 
 export default function DuesScreen({ navigation }: any) {
   const { user, refreshUser } = useAuth();
@@ -110,15 +144,30 @@ export default function DuesScreen({ navigation }: any) {
   const isAllocated    = !!user?.is_allocated;
   const pendingFees    = feeRecords.filter(f => f.fee_status !== 'Fully Paid');
   const paidFees       = feeRecords.filter(f => f.fee_status === 'Fully Paid');
-  
+
   const currentDate = new Date();
   const currentMonthStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
   const thisMonthFee = feeRecords.find(f => f.fee_month === currentMonthStr);
   const thisMonthDue = thisMonthFee ? thisMonthFee.balance : 0;
-  const thisMonthAmountDisplay = thisMonthDue > 0 ? thisMonthDue : (thisMonthFee?.total_due || user?.monthly_rent || 0);
-  
+
   const totalPaidAmount = feeRecords.reduce((sum, f) => sum + (Number(f.paid_amount) || 0), 0);
-  
+
+  // Hero card logic: single pending → merged; multiple → split
+  const singlePendingMode = pendingFees.length === 1;
+  const allPaid           = pendingFees.length === 0 && paidFees.length > 0;
+
+  // Payment History: all individual payment transactions from all fee records
+  const allPayments = feeRecords
+    .flatMap(fee =>
+      (fee.payments || []).map(p => ({
+        ...p,
+        fee_month: fee.fee_month,
+        fee_status: fee.fee_status,
+        total_due: fee.total_due,
+      }))
+    )
+    .sort((a, b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime());
+
   const filteredHistory = filterMonthYear
     ? feeRecords.filter(f => {
         const [y, m] = f.fee_month.split('-');
@@ -126,7 +175,14 @@ export default function DuesScreen({ navigation }: any) {
       })
     : feeRecords;
 
-  const firstName = (user?.name || 'Tenant').split(' ')[0];
+  // For GPay-style tab: group by month label
+  const filteredPayments = filterMonthYear
+    ? allPayments.filter(p => {
+        const d = new Date(p.payment_date);
+        return d.getFullYear() === filterMonthYear.getFullYear() && d.getMonth() === filterMonthYear.getMonth();
+      })
+    : allPayments;
+
   const initials  = (user?.name || 'V')
     .split(' ')
     .map((w: string) => w[0])
@@ -134,9 +190,101 @@ export default function DuesScreen({ navigation }: any) {
     .join('')
     .toUpperCase();
 
+  // ── Hero Card ────────────────────────────────────────────────────────────
+  const renderHeroSection = () => {
+    if (feeRecords.length === 0) return null;
+
+    if (allPaid) {
+      return (
+        <View style={styles.heroClear}>
+          <View style={[styles.heroIconBadge, { backgroundColor: colors.successSoft }]}>
+            <CheckCircle2 size={28} color={colors.success} strokeWidth={1.8} />
+          </View>
+          <View style={{ flex: 1, marginLeft: 14 }}>
+            <Text style={styles.heroClearTitle}>All Dues Cleared!</Text>
+            <Text style={styles.heroClearSub}>{"You're up to date for this month."}</Text>
+          </View>
+          <View style={styles.paidPill}>
+            <Text style={styles.paidPillText}>Paid</Text>
+          </View>
+        </View>
+      );
+    }
+
+    if (singlePendingMode && pendingFees[0]) {
+      const fee = pendingFees[0];
+      const cfg = statusConfig[fee.fee_status] || statusConfig['Pending'];
+      const isCurrentMonth = fee.fee_month === currentMonthStr;
+      return (
+        <View style={styles.heroSingle}>
+          <View style={styles.heroSingleTop}>
+            <View style={{ flex: 1, marginRight: 12 }}>
+              <Text style={styles.heroSingleLabel}>
+                {isCurrentMonth ? "This Month's Due" : `Due \u2014 ${formatMonth(fee.fee_month)}`}
+              </Text>
+              {fee.due_date ? (
+                <Text style={styles.heroSingleDate}>Due by {formatDateStr(fee.due_date)}</Text>
+              ) : null}
+            </View>
+            <View style={[styles.statusPill, { backgroundColor: cfg.bg }]}>
+              <Text style={[styles.statusPillText, { color: cfg.color }]}>{cfg.label}</Text>
+            </View>
+          </View>
+          <Text style={styles.heroSingleAmount}>{formatCurrency(fee.balance > 0 ? fee.balance : fee.total_due)}</Text>
+          {fee.paid_amount > 0 && (
+            <Text style={styles.heroSinglePartial}>
+              {formatCurrency(fee.paid_amount)} already paid
+            </Text>
+          )}
+          <TouchableOpacity style={styles.heroPayBtn} onPress={() => navigation.navigate('Payments')} activeOpacity={0.85}>
+            <CreditCard size={16} color={WHITE} strokeWidth={2} />
+            <Text style={styles.heroPayBtnText}>Pay Now</Text>
+            <ArrowRight size={15} color={WHITE} strokeWidth={2.5} />
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    // Multiple pending months → split two cards
+    return (
+      <View style={{ flexDirection: 'row', gap: 12, paddingHorizontal: 20, marginTop: 16, marginBottom: 4 }}>
+        <View style={[styles.splitCard, { flex: 1 }]}>
+          <Text style={styles.splitLabel}>This Month</Text>
+          <Text style={[styles.splitAmount, {
+            color: !thisMonthFee ? TEXT_MID : (thisMonthDue > 0 ? colors.danger : colors.success),
+          }]} numberOfLines={1} adjustsFontSizeToFit>
+            {formatCurrency(thisMonthDue > 0 ? thisMonthDue : (thisMonthFee?.total_due || user?.monthly_rent || 0))}
+          </Text>
+          <Text style={[styles.splitStatus, {
+            color: !thisMonthFee ? TEXT_MID : thisMonthDue > 0 ? colors.danger : colors.success
+          }]}>
+            {!thisMonthFee ? 'No dues yet' : thisMonthDue > 0 ? 'Unpaid' : 'Paid'}
+          </Text>
+        </View>
+        <View style={[styles.splitCard, { flex: 1 }]}>
+          <Text style={styles.splitLabel}>Total Pending</Text>
+          <Text style={[styles.splitAmount, { color: outstandingDue > 0 ? colors.danger : colors.success }]} numberOfLines={1} adjustsFontSizeToFit>
+            {formatCurrency(outstandingDue > 0 ? outstandingDue : totalPaidAmount)}
+          </Text>
+          {outstandingDue > 0 ? (
+            <TouchableOpacity
+              style={[styles.payNowBtn, { marginTop: 4 }]}
+              onPress={() => navigation.navigate('Payments')}
+            >
+              <Text style={styles.payNowBtnText}>Pay Now</Text>
+            </TouchableOpacity>
+          ) : (
+            <Text style={{ color: colors.success, fontSize: 12, fontWeight: '600', marginTop: 4 }}>Up to date</Text>
+          )}
+        </View>
+      </View>
+    );
+  };
+
   return (
     <View style={styles.safe}>
       <StatusBar barStyle="light-content" backgroundColor={BLUE} />
+
       {/* ── BLUE HEADER ── */}
       <View style={styles.headerSection}>
         <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
@@ -158,33 +306,8 @@ export default function DuesScreen({ navigation }: any) {
         </SafeAreaView>
       </View>
 
-      {/* ── Mini Cards ── */}
-      <View style={styles.section}>
-        <View style={{ flexDirection: 'row', gap: 12 }}>
-          <View style={[styles.overviewCard, { flex: 1, padding: 16, backgroundColor: WHITE, borderWidth: 1, borderColor: BORDER, flexDirection: 'column', alignItems: 'flex-start' }]}>
-            <Text style={[styles.overviewLabel, { color: TEXT_MID }]}>This Month</Text>
-            <Text style={[styles.overviewAmount, { color: !thisMonthFee ? TEXT_MID : (thisMonthDue > 0 ? colors.danger : colors.success), fontSize: 24, marginVertical: 4 }]} numberOfLines={1} adjustsFontSizeToFit>{formatCurrency(thisMonthAmountDisplay)}</Text>
-            {!thisMonthFee ? (
-              <Text style={{ color: TEXT_MID, fontSize: 12, fontWeight: '600' }}>No dues yet</Text>
-            ) : thisMonthDue > 0 ? (
-              <Text style={{ color: colors.danger, fontSize: 12, fontWeight: '600' }}>Unpaid</Text>
-            ) : (
-              <Text style={{ color: colors.success, fontSize: 12, fontWeight: '600' }}>Paid</Text>
-            )}
-          </View>
-          <View style={[styles.overviewCard, { flex: 1, padding: 16, backgroundColor: WHITE, borderWidth: 1, borderColor: BORDER, flexDirection: 'column', alignItems: 'flex-start' }]}>
-            <Text style={[styles.overviewLabel, { color: TEXT_MID }]}>{outstandingDue > 0 ? 'Total Pending' : 'Total Paid'}</Text>
-            <Text style={[styles.overviewAmount, { color: outstandingDue > 0 ? colors.danger : colors.success, fontSize: 24, marginVertical: 4 }]} numberOfLines={1} adjustsFontSizeToFit>{formatCurrency(outstandingDue > 0 ? outstandingDue : totalPaidAmount)}</Text>
-            {outstandingDue > 0 ? (
-              <TouchableOpacity onPress={() => navigation.navigate('Payments')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <Text style={{ color: colors.danger, fontSize: 12, fontWeight: '700' }}>Pay Now &rarr;</Text>
-              </TouchableOpacity>
-            ) : (
-              <Text style={{ color: colors.success, fontSize: 12, fontWeight: '600' }}>Up to date</Text>
-            )}
-          </View>
-        </View>
-      </View>
+      {/* ── Hero (outside scroll) ── */}
+      {!loading && !error && isAllocated && renderHeroSection()}
 
       {/* ── Tab Toggle ── */}
       <View style={styles.tabContainer}>
@@ -197,6 +320,7 @@ export default function DuesScreen({ navigation }: any) {
               activeOpacity={0.7}
             >
               <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
+              {activeTab === tab && <View style={styles.tabUnderline} />}
             </TouchableOpacity>
           ))}
         </View>
@@ -228,56 +352,88 @@ export default function DuesScreen({ navigation }: any) {
             <Phase3EmptyState variant="dues" onAction={() => setActiveTab('Payment History')} />
           </View>
         ) : activeTab === 'This Month Details' ? (
-          <View style={{ paddingBottom: 20 }}>
+          // ══════════════════════════════════════════════════════════════════
+          // THIS MONTH DETAILS TAB
+          // ══════════════════════════════════════════════════════════════════
+          <View style={{ paddingBottom: 24 }}>
+
+            {/* Paid banner (only when this month is fully paid) */}
             {thisMonthFee && thisMonthFee.balance <= 0 && thisMonthFee.paid_amount > 0 && (
-              <View style={{ marginTop: 20, paddingHorizontal: 20 }}>
+              <View style={{ marginTop: 16, paddingHorizontal: 20 }}>
                 <View style={[styles.listCard, { marginTop: 0 }]}>
-                  <Text style={[styles.groupLabel, { paddingHorizontal: 0 }]}>This Month's Payment</Text>
+                  <Text style={[styles.groupLabel, { paddingHorizontal: 0, marginTop: 0 }]}>This Month's Payment</Text>
                   <View style={[styles.listRow, { borderBottomWidth: 0, paddingHorizontal: 0 }]}>
                     <View style={[styles.listIconWrap, { backgroundColor: colors.successSoft }]}>
                       <CheckCircle2 size={16} color={colors.success} strokeWidth={1.5} />
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.listTitle}>Rent Paid for {formatMonth(thisMonthFee.fee_month)}</Text>
-                      <Text style={styles.listSub}>{thisMonthFee.payments && thisMonthFee.payments[0] ? `Paid on ${formatDateStr(thisMonthFee.payments[0].payment_date)}` : 'Paid successfully'}</Text>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={styles.listTitle} numberOfLines={1}>Rent Paid — {formatMonth(thisMonthFee.fee_month)}</Text>
+                      <Text style={styles.listSub} numberOfLines={1}>
+                        {thisMonthFee.payments && thisMonthFee.payments[0]
+                          ? `Paid on ${formatDateStr(thisMonthFee.payments[0].payment_date)}`
+                          : 'Paid successfully'}
+                      </Text>
                     </View>
-                    <View style={{ alignItems: 'flex-end', gap: 6 }}>
-                      <Text style={[styles.listAmount, { color: colors.success }]}>{formatCurrency(thisMonthFee.paid_amount || thisMonthFee.total_due)}</Text>
+                    <View style={{ alignItems: 'flex-end', flexShrink: 0 }}>
+                      <Text style={[styles.listAmount, { color: colors.success }]}>
+                        {formatCurrency(thisMonthFee.paid_amount || thisMonthFee.total_due)}
+                      </Text>
+                      <View style={styles.paidPill}><Text style={styles.paidPillText}>Paid</Text></View>
                     </View>
                   </View>
                 </View>
               </View>
             )}
 
+            {/* Pending dues list — NO "Pay Now" here (hero card has it for single due) */}
             {pendingFees.length > 0 ? (
               <>
                 <Text style={styles.groupLabel}>Pending Dues</Text>
                 <View style={styles.listCard}>
                   {pendingFees.map((fee, i) => {
                     const cfg = statusConfig[fee.fee_status] || statusConfig['Pending'];
+                    const isCurrentMonthFee = fee.fee_month === currentMonthStr;
+                    // Show Pay Now only when there are MULTIPLE pending (split mode — hero doesn't cover each item)
+                    const showItemPayBtn = !singlePendingMode;
                     return (
-                      <View key={fee.fee_id} style={[styles.listRow, i < pendingFees.length - 1 && styles.listRowDivider]}>
-                        <View style={[styles.listIconWrap, { backgroundColor: cfg.bg }]}>
+                      <View
+                        key={fee.fee_id}
+                        style={[
+                          styles.listRow,
+                          i < pendingFees.length - 1 && styles.listRowDivider,
+                          { alignItems: 'flex-start' },  // prevent overflow when sub text wraps
+                        ]}
+                      >
+                        <View style={[styles.listIconWrap, { backgroundColor: cfg.bg, marginTop: 2 }]}>
                           <AlertCircle size={16} color={cfg.color} strokeWidth={1.5} />
                         </View>
-                        <View style={{ flex: 1 }}>
+                        <View style={{ flex: 1, minWidth: 0, paddingRight: 8 }}>
                           <Text style={styles.listTitle}>{formatMonth(fee.fee_month)}</Text>
-                          <Text style={styles.listSub}>{fee.due_date ? `Due: ${formatDateStr(fee.due_date)}` : 'Rent Due'}</Text>
+                          <Text style={styles.listSub}>
+                            {isCurrentMonthFee ? 'Monthly Rent' : 'Carry-forward Due'}
+                            {fee.due_date ? `  ·  Due ${formatDateStr(fee.due_date)}` : ''}
+                          </Text>
                           {fee.paid_amount > 0 && (
-                            <Text style={[styles.listSub, { color: colors.success }]}>
-                              Partial paid: {formatCurrency(fee.paid_amount)}
+                            <Text style={[styles.listSub, { color: colors.success, marginTop: 2 }]}>
+                              {'Partial: ' + formatCurrency(fee.paid_amount)}
                               {fee.payments && fee.payments[0] ? ` on ${formatDateStr(fee.payments[0].payment_date)}` : ''}
                             </Text>
                           )}
                         </View>
-                        <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                        <View style={{ alignItems: 'flex-end', flexShrink: 0 }}>
                           <Text style={styles.listAmount}>{formatCurrency(fee.balance)}</Text>
-                          <View style={[styles.statusPill, { backgroundColor: cfg.bg }]}>
+                          <View style={[styles.statusPill, { backgroundColor: cfg.bg, marginBottom: showItemPayBtn ? 6 : 0 }]}>
                             <Text style={[styles.statusPillText, { color: cfg.color }]}>{cfg.label}</Text>
                           </View>
-                          <TouchableOpacity style={styles.payNowSmall} onPress={() => navigation.navigate('Payments')} activeOpacity={0.85}>
-                            <Text style={styles.payNowSmallText}>Pay Now</Text>
-                          </TouchableOpacity>
+                          {showItemPayBtn && (
+                            <TouchableOpacity
+                              style={styles.payNowBtn}
+                              onPress={() => navigation.navigate('Payments')}
+                              activeOpacity={0.85}
+                            >
+                              <Text style={styles.payNowBtnText}>Pay Now</Text>
+                            </TouchableOpacity>
+                          )}
                         </View>
                       </View>
                     );
@@ -289,26 +445,35 @@ export default function DuesScreen({ navigation }: any) {
                 <Phase3EmptyState variant="dues" onAction={() => setActiveTab('Payment History')} />
               </View>
             ) : null}
+
+            {/* Recently paid (preview, max 3) */}
             {paidFees.length > 0 && (
               <>
                 <Text style={styles.groupLabel}>Recently Paid</Text>
                 <View style={styles.listCard}>
                   {paidFees.slice(0, 3).map((fee, i) => (
-                    <View key={fee.fee_id} style={[styles.listRow, i < Math.min(paidFees.length, 3) - 1 && styles.listRowDivider]}>
-                      <View style={[styles.listIconWrap, { backgroundColor: colors.successSoft }]}>
+                    <View
+                      key={fee.fee_id}
+                      style={[
+                        styles.listRow,
+                        i < Math.min(paidFees.length, 3) - 1 && styles.listRowDivider,
+                        { alignItems: 'flex-start' },
+                      ]}
+                    >
+                      <View style={[styles.listIconWrap, { backgroundColor: colors.successSoft, marginTop: 2 }]}>
                         <CheckCircle2 size={16} color={colors.success} strokeWidth={1.5} />
                       </View>
-                      <View style={{ flex: 1 }}>
+                      <View style={{ flex: 1, minWidth: 0, paddingRight: 8 }}>
                         <Text style={styles.listTitle}>{formatMonth(fee.fee_month)}</Text>
                         {fee.payments[0] && (
                           <Text style={styles.listSub}>
-                            Paid on {formatDateStr(fee.payments[0].payment_date)}
+                            {'Paid on ' + formatDateStr(fee.payments[0].payment_date)}
                             {fee.payments[0].payment_mode ? ` · ${fee.payments[0].payment_mode}` : ''}
                           </Text>
                         )}
                       </View>
-                      <View style={{ alignItems: 'flex-end' }}>
-                        <Text style={styles.listAmount}>{formatCurrency(fee.paid_amount)}</Text>
+                      <View style={{ alignItems: 'flex-end', flexShrink: 0 }}>
+                        <Text style={[styles.listAmount, { color: colors.success }]}>{formatCurrency(fee.paid_amount)}</Text>
                         <View style={styles.paidPill}><Text style={styles.paidPillText}>Paid</Text></View>
                       </View>
                     </View>
@@ -316,100 +481,144 @@ export default function DuesScreen({ navigation }: any) {
                 </View>
               </>
             )}
+
+            {/* Payment Tips */}
+            <Text style={styles.groupLabel}>Quick Tips</Text>
+            <View style={[styles.listCard, { gap: 0 }]}>
+              {PAYMENT_TIPS.map(({ Icon, text }, i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.tipRow,
+                    i < PAYMENT_TIPS.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: BORDER },
+                  ]}
+                >
+                  <View style={[styles.listIconWrap, { backgroundColor: BLUE_SOFT, flexShrink: 0 }]}>
+                    <Icon size={15} color={BLUE} strokeWidth={1.8} />
+                  </View>
+                  <Text style={styles.tipText}>{text}</Text>
+                </View>
+              ))}
+            </View>
           </View>
+
         ) : (
-          <View style={{ paddingBottom: 20 }}>
-            {/* Summary chips */}
+          // ══════════════════════════════════════════════════════════════════
+          // PAYMENT HISTORY TAB — GPay / PhonePe style
+          // ══════════════════════════════════════════════════════════════════
+          <View style={{ paddingBottom: 24 }}>
+
+            {/* Summary row */}
             <View style={styles.tlSummaryRow}>
-              <View style={styles.tlSummaryChip}>
-                <Text style={styles.tlSummaryChipLabel}>Total Records</Text>
-                <Text style={styles.tlSummaryChipValue}>{feeRecords.length}</Text>
+              <View style={styles.tlSummaryCard}>
+                <View style={[styles.tlSummaryIcon, { backgroundColor: BLUE_SOFT }]}>
+                  <TrendingUp size={16} color={BLUE} strokeWidth={2} />
+                </View>
+                <View>
+                  <Text style={styles.tlSummaryLabel}>Records</Text>
+                  <Text style={[styles.tlSummaryValue, { color: BLUE }]}>{feeRecords.length}</Text>
+                </View>
               </View>
-              <View style={[styles.tlSummaryChip, { borderColor: colors.success }]}>
-                <Text style={[styles.tlSummaryChipLabel, { color: colors.success }]}>Total Paid</Text>
-                <Text style={[styles.tlSummaryChipValue, { color: colors.success }]}>{formatCurrency(totalPaidAmount)}</Text>
+              <View style={styles.tlSummaryCard}>
+                <View style={[styles.tlSummaryIcon, { backgroundColor: colors.successSoft }]}>
+                  <Banknote size={16} color={colors.success} strokeWidth={2} />
+                </View>
+                <View>
+                  <Text style={styles.tlSummaryLabel}>Total Paid</Text>
+                  <Text style={[styles.tlSummaryValue, { color: colors.success }]}>{formatCurrency(totalPaidAmount)}</Text>
+                </View>
               </View>
             </View>
 
-            {/* Filter */}
-            <View style={[styles.tlFilterRow, { paddingHorizontal: spacing.xl, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
-              <Text style={{ fontSize: 13, fontWeight: '700', color: TEXT_DARK }}>Payment History</Text>
+            {/* Filter row */}
+            <View style={styles.filterRow}>
+              <Text style={styles.filterTitle}>All Transactions</Text>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 {filterMonthYear && (
-                  <TouchableOpacity onPress={() => setFilterMonthYear(null)} style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: '#FEE2E2', flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#EF4444' }}>Clear</Text>
+                  <TouchableOpacity
+                    onPress={() => setFilterMonthYear(null)}
+                    style={styles.filterClearChip}
+                  >
+                    <Text style={styles.filterClearText}>Clear</Text>
                   </TouchableOpacity>
                 )}
-                <TouchableOpacity onPress={() => setShowPicker(true)} style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: BLUE_SOFT, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <CalendarIcon size={14} color={BLUE} />
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: BLUE }}>
-                    {filterMonthYear ? `${filterMonthYear.toLocaleString('default', { month: 'short' })} ${filterMonthYear.getFullYear()}` : 'Filter by Month'}
+                <TouchableOpacity
+                  onPress={() => setShowPicker(true)}
+                  style={styles.filterChip}
+                >
+                  <CalendarIcon size={13} color={BLUE} />
+                  <Text style={styles.filterChipText}>
+                    {filterMonthYear
+                      ? `${filterMonthYear.toLocaleString('default', { month: 'short' })} ${filterMonthYear.getFullYear()}`
+                      : 'Filter'}
                   </Text>
                 </TouchableOpacity>
               </View>
             </View>
 
-            {/* Timeline */}
+            {/* GPay-style transaction list */}
             {filteredHistory.length > 0 ? (
-              <View style={styles.tlContainer}>
-                {filteredHistory.map((fee, i) => {
+              <View style={styles.txContainer}>
+                {filteredHistory.map((fee) => {
                   const cfg = statusConfig[fee.fee_status] || statusConfig['Pending'];
-                  const isFirst = i === 0;
-                  const isLast  = i === filteredHistory.length - 1;
-                  const isPaid  = fee.fee_status === 'Fully Paid';
-                  const dateLabel = isPaid && fee.payments[0]
-                    ? `Paid on ${formatDateStr(fee.payments[0].payment_date)}`
-                    : fee.due_date
-                    ? `Due: ${formatDateStr(fee.due_date)}`
-                    : fee.fee_status;
+                  const isPaid = fee.fee_status === 'Fully Paid';
                   const awaitingVerification = fee.payments[0]?.verification_status === 'Pending';
+                  const modeS = getModeStyle(fee.payments[0]?.payment_mode);
 
                   return (
-                    <View key={fee.fee_id} style={styles.tlRow}>
-                      {/* Left: line + dot */}
-                      <View style={styles.tlLineCol}>
-                        {/* Top segment of line (hidden for first item) */}
-                        <View style={[styles.tlLineSegment, isFirst && { backgroundColor: 'transparent' }]} />
-                        {/* Dot */}
-                        <View style={[styles.tlDot, { backgroundColor: cfg.color, borderColor: cfg.bg }]} />
-                        {/* Bottom segment of line (hidden for last item) */}
-                        <View style={[styles.tlLineSegment, isLast && { backgroundColor: 'transparent' }]} />
+                    <View key={fee.fee_id} style={styles.txCard}>
+                      {/* Left icon circle */}
+                      <View style={[styles.txIconCircle, { backgroundColor: isPaid ? colors.successSoft : cfg.bg }]}>
+                        {isPaid
+                          ? <ArrowDownLeft size={20} color={colors.success} strokeWidth={2} />
+                          : <ArrowUpRight size={20} color={cfg.color} strokeWidth={2} />
+                        }
                       </View>
 
-                      {/* Right: card */}
-                      <View style={styles.tlCard}>
-                        {/* Top row: month + status badge */}
-                        <View style={styles.tlCardTopRow}>
-                          <Text style={styles.tlCardMonth}>{formatMonth(fee.fee_month)}</Text>
-                          <View style={[styles.statusPill, { backgroundColor: cfg.bg }]}>
-                            <Text style={[styles.statusPillText, { color: cfg.color }]}>{cfg.label}</Text>
-                          </View>
-                        </View>
-
-                        {/* Middle row: amount */}
-                        <Text style={[styles.tlCardAmount, { color: isPaid ? colors.success : cfg.color }]}>
-                          {formatCurrency(isPaid ? fee.paid_amount : fee.balance > 0 ? fee.balance : fee.total_due)}
+                      {/* Center: details */}
+                      <View style={{ flex: 1, minWidth: 0, paddingHorizontal: 12 }}>
+                        <Text style={styles.txTitle} numberOfLines={1}>
+                          {isPaid ? 'Rent Paid' : 'Rent Due'} — {formatMonth(fee.fee_month)}
                         </Text>
-
-                        {/* Bottom row: date */}
-                        <Text style={styles.tlCardDate}>{dateLabel}</Text>
-
-                        {/* Verification pending note */}
-                        {awaitingVerification && (
-                          <Text style={[styles.tlCardDate, { color: colors.warning, marginTop: 4 }]}>
-                            Proof submitted — awaiting verification
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                          {isPaid && fee.payments[0]?.payment_mode ? (
+                            <View style={[styles.modeBadge, { backgroundColor: modeS.bg }]}>
+                              <Text style={[styles.modeBadgeText, { color: modeS.color }]}>{modeS.label}</Text>
+                            </View>
+                          ) : null}
+                          <Text style={styles.txDate}>
+                            {isPaid && fee.payments[0]
+                              ? formatShortDate(fee.payments[0].payment_date)
+                              : fee.due_date ? `Due ${formatShortDate(fee.due_date)}` : cfg.label}
                           </Text>
+                        </View>
+                        {awaitingVerification && (
+                          <Text style={styles.txVerify}>⏳ Awaiting verification</Text>
                         )}
+                        {fee.payments[0]?.transaction_id ? (
+                          <Text style={styles.txId} numberOfLines={1}>
+                            {'Txn: ' + fee.payments[0].transaction_id}
+                          </Text>
+                        ) : null}
+                      </View>
 
-                        {/* Pay Now link for non-paid */}
-                        {!isPaid && (
+                      {/* Right: amount + status */}
+                      <View style={{ alignItems: 'flex-end', flexShrink: 0 }}>
+                        <Text style={[styles.txAmount, { color: isPaid ? colors.success : cfg.color }]}>
+                          {isPaid ? '+ ' : ''}{formatCurrency(isPaid ? fee.paid_amount : fee.balance > 0 ? fee.balance : fee.total_due)}
+                        </Text>
+                        {!isPaid ? (
                           <TouchableOpacity
+                            style={styles.payNowBtn}
                             onPress={() => navigation.navigate('Payments')}
-                            activeOpacity={0.7}
-                            style={styles.tlPayNow}
+                            activeOpacity={0.85}
                           >
-                            <Text style={styles.tlPayNowText}>Pay Now  →</Text>
+                            <Text style={styles.payNowBtnText}>Pay Now</Text>
                           </TouchableOpacity>
+                        ) : (
+                          <View style={styles.paidPill}>
+                            <Text style={styles.paidPillText}>Paid</Text>
+                          </View>
                         )}
                       </View>
                     </View>
@@ -418,28 +627,12 @@ export default function DuesScreen({ navigation }: any) {
               </View>
             ) : (
               <View style={{ padding: 40, alignItems: 'center' }}>
-                <Text style={{ color: TEXT_MID, fontSize: 14 }}>No records found for this year.</Text>
+                <Text style={{ color: TEXT_MID, fontSize: 14 }}>No records found for this period.</Text>
               </View>
             )}
           </View>
         )}
       </ScrollView>
-
-      {/* ── Sticky Pay Now ── */}
-      {outstandingDue > 0 && isAllocated && activeTab === 'This Month Details' && (
-        <View style={styles.stickyFooter}>
-          <TouchableOpacity style={styles.stickyBtn} onPress={() => navigation.navigate('Payments')} activeOpacity={0.88}>
-            <LinearGradient
-              colors={[colors.gradientStart, colors.gradientEnd]}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-              style={styles.stickyBtnGrad}
-            >
-              <Wallet size={20} color={WHITE} />
-              <Text style={styles.stickyBtnText}>Pay Now — {formatCurrency(outstandingDue)}</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
-      )}
 
       <CustomMonthYearPicker
         visible={showPicker}
@@ -463,83 +656,147 @@ const styles = StyleSheet.create({
   hBtn:           { padding: 8, position: 'relative' },
   notificationDot: { position: 'absolute', top: 8, right: 8, width: 8, height: 8, borderRadius: 4, backgroundColor: '#EF4444', borderWidth: 1.5, borderColor: BLUE },
 
-  section:       { paddingHorizontal: 20, marginTop: 16, marginBottom: 8 },
-  overviewCard: { backgroundColor: WHITE, borderRadius: 20, padding: 20, flexDirection: 'row', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
-  overviewLeft:   { flex: 1 },
-  overviewLabel:  { fontSize: 13, color: TEXT_MID, fontWeight: '500', marginBottom: 8 },
-  overviewAmount: { fontSize: 28, fontWeight: '800', color: '#E11D48', marginBottom: 8 },
-  overviewDate:   { fontSize: 12, color: TEXT_MID, marginBottom: 16 },
-  overviewBtn:    { backgroundColor: BLUE, alignSelf: 'flex-start', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  overviewBtnText:{ color: WHITE, fontSize: 13, fontWeight: '600' },
-  overviewRight:  { width: 100, height: 100, justifyContent: 'center', alignItems: 'center' },
-  walletImg:      { width: 110, height: 110, position: 'absolute', right: -10, bottom: -10 },
+  // ── Hero: single merged card ──────────────────────────────────────────────
+  heroSingle: {
+    backgroundColor: WHITE,
+    borderRadius: 20,
+    marginHorizontal: 20,
+    marginTop: 16,
+    marginBottom: 4,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: BORDER,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.07,
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  heroSingleTop:    { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 },
+  heroSingleLabel:  { fontSize: 13, fontWeight: '600', color: TEXT_MID, marginBottom: 3 },
+  heroSingleDate:   { fontSize: 11, color: TEXT_MID },
+  heroSingleAmount: { fontSize: 36, fontWeight: '900', color: colors.danger, letterSpacing: -1, marginBottom: 4 },
+  heroSinglePartial:{ fontSize: 12, color: colors.success, fontWeight: '600', marginBottom: 12 },
+  heroIconBadge:    { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
 
-  tabContainer: { paddingHorizontal: spacing.xl, paddingVertical: spacing.md, backgroundColor: BG },
+  heroClear: {
+    backgroundColor: colors.successSoft,
+    borderRadius: 20,
+    marginHorizontal: 20,
+    marginTop: 16,
+    marginBottom: 4,
+    padding: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+  },
+  heroClearTitle: { fontSize: 16, fontWeight: '800', color: colors.success, marginBottom: 2 },
+  heroClearSub:   { fontSize: 12, color: colors.success, opacity: 0.8 },
+
+  splitCard: {
+    backgroundColor: WHITE,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: BORDER,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  splitLabel:  { fontSize: 12, color: TEXT_MID, fontWeight: '600', marginBottom: 4 },
+  splitAmount: { fontSize: 22, fontWeight: '800', marginBottom: 4 },
+  splitStatus: { fontSize: 12, fontWeight: '600' },
+
+  // ── Pay Now button ─────────────────────────────────────────────────────────
+  heroPayBtn:     { backgroundColor: BLUE, borderRadius: 14, paddingHorizontal: 20, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 16 },
+  heroPayBtnText: { color: WHITE, fontWeight: '700', fontSize: 14 },
+  payNowBtn:      { backgroundColor: BLUE, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+  payNowBtnText:  { color: WHITE, fontWeight: '700', fontSize: 11 },
+
+  // ── Tab ───────────────────────────────────────────────────────────────────
+  tabContainer: { paddingHorizontal: spacing.xl, paddingTop: 12, paddingBottom: 0, backgroundColor: BG },
   tabRow:       { flexDirection: 'row', backgroundColor: colors.surfaceAlt, borderRadius: radius.lg, padding: 4 },
-  tab:          { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: radius.md },
-  tabActive:    { backgroundColor: WHITE, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, shadowOffset: { width: 0, height: 1 } },
+  tab:          { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: radius.md, position: 'relative' },
+  tabActive:    { backgroundColor: WHITE, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 3 },
   tabText:      { fontSize: 13, fontWeight: '600', color: colors.textMuted },
-  tabTextActive:{ color: BLUE, fontWeight: '700' },
+  tabTextActive:{ color: BLUE, fontWeight: '800' },
+  tabUnderline: { position: 'absolute', bottom: 4, left: '20%', right: '20%', height: 2.5, backgroundColor: BLUE, borderRadius: 2 },
 
-  scrollContent: { paddingBottom: 180 },
+  // ── Scroll ────────────────────────────────────────────────────────────────
+  scrollContent: { paddingBottom: 100 },
   loadingWrap:   { alignItems: 'center', paddingTop: 80, gap: spacing.md },
   loadingText:   { fontSize: 14, color: TEXT_MID, marginTop: 8 },
-  errorWrap:     { alignItems: 'center', paddingTop: 80, gap: spacing.md },
-  errorText:     { fontSize: 14, color: TEXT_MID, textAlign: 'center', paddingHorizontal: 40 },
-  retryBtn:      { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: BLUE_SOFT, borderRadius: radius.pill },
-  retryText:     { color: BLUE, fontWeight: '700', fontSize: 13 },
   emptyWrap:     { alignItems: 'center', paddingTop: 80, gap: spacing.md, paddingHorizontal: 40 },
   emptyTitle:    { fontSize: 18, fontWeight: '700', color: TEXT_DARK, textAlign: 'center' },
   emptyBody:     { fontSize: 14, color: TEXT_MID, textAlign: 'center', lineHeight: 20 },
 
-  groupLabel: { fontSize: 11, fontWeight: '700', color: colors.textSubtle, paddingHorizontal: spacing.xl, marginBottom: spacing.md, marginTop: spacing.lg, letterSpacing: 0.8, textTransform: 'uppercase' },
-  filterChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: BG, borderWidth: 1, borderColor: colors.border },
-  filterChipActive: { backgroundColor: BLUE, borderColor: BLUE },
-  filterChipText: { fontSize: 12, fontWeight: '600', color: TEXT_MID },
-  filterChipTextActive: { color: WHITE },
-  listCard:   { backgroundColor: WHITE, borderRadius: radius['2xl'], marginHorizontal: spacing.xl, borderWidth: 1, borderColor: colors.border, overflow: 'hidden', ...shadow.card },
+  // ── List cards (This Month tab) ───────────────────────────────────────────
+  groupLabel: {
+    fontSize: 11, fontWeight: '700', color: colors.textSubtle,
+    paddingHorizontal: spacing.xl, marginBottom: spacing.md,
+    marginTop: spacing.lg, letterSpacing: 0.8, textTransform: 'uppercase',
+  },
+  listCard:       { backgroundColor: WHITE, borderRadius: radius['2xl'], marginHorizontal: spacing.xl, borderWidth: 1, borderColor: colors.border, overflow: 'hidden', ...shadow.card },
   listRow:        { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: 16 },
   listRowDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   listIconWrap:   { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  listTitle:  { fontSize: 14, fontWeight: '700', color: TEXT_DARK, marginBottom: 2 },
-  listSub:    { fontSize: 11, color: TEXT_MID, marginTop: 2 },
-  listAmount: { fontSize: 15, fontWeight: '800', color: TEXT_DARK, letterSpacing: -0.3, marginBottom: 4 },
+  listTitle:      { fontSize: 14, fontWeight: '700', color: TEXT_DARK, marginBottom: 2 },
+  listSub:        { fontSize: 11, color: TEXT_MID, marginTop: 1, lineHeight: 16 },
+  listAmount:     { fontSize: 15, fontWeight: '800', color: TEXT_DARK, letterSpacing: -0.3, marginBottom: 4 },
 
-  payNowSmall:     { backgroundColor: BLUE, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 6 },
-  payNowSmallText: { color: WHITE, fontWeight: '700', fontSize: 12 },
-  statusPill:      { paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.pill },
-  statusPillText:  { fontSize: 10, fontWeight: '700' },
-  paidPill:        { backgroundColor: colors.successSoft, paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.pill },
-  paidPillText:    { color: colors.success, fontSize: 10, fontWeight: '700' },
+  statusPill:     { paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.pill },
+  statusPillText: { fontSize: 10, fontWeight: '700' },
+  paidPill:       { backgroundColor: colors.successSoft, paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.pill },
+  paidPillText:   { color: colors.success, fontSize: 10, fontWeight: '700' },
 
-  stickyFooter: { position: 'absolute', bottom: 90, left: spacing.xl, right: spacing.xl, ...shadow.raised, borderRadius: radius.lg },
-  stickyBtn:    { borderRadius: radius.lg, overflow: 'hidden' },
-  stickyBtnGrad:{ height: 54, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, borderRadius: radius.lg },
-  stickyBtnText:{ color: WHITE, fontWeight: '700', fontSize: 16 },
+  tipRow:  { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
+  tipText: { flex: 1, fontSize: 13, color: TEXT_MID, fontWeight: '500', lineHeight: 18 },
 
-  fab: { position: 'absolute', bottom: 160, right: 20, width: 52, height: 52, borderRadius: 26, backgroundColor: BLUE, alignItems: 'center', justifyContent: 'center', shadowColor: BLUE_DARK, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 12, elevation: 8 },
+  // ── Payment History summary ───────────────────────────────────────────────
+  tlSummaryRow:  { flexDirection: 'row', gap: 12, paddingHorizontal: spacing.xl, marginTop: spacing.lg, marginBottom: spacing.sm },
+  tlSummaryCard: {
+    flex: 1, backgroundColor: WHITE, borderRadius: 16, padding: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderWidth: 1, borderColor: BORDER,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+  },
+  tlSummaryIcon:  { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  tlSummaryLabel: { fontSize: 11, fontWeight: '600', color: TEXT_MID, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
+  tlSummaryValue: { fontSize: 18, fontWeight: '800' },
 
-  // ── Timeline styles ──
-  tlSummaryRow:       { flexDirection: 'row', gap: 10, paddingHorizontal: spacing.xl, marginTop: spacing.lg, marginBottom: spacing.sm },
-  tlSummaryChip:      { flex: 1, backgroundColor: WHITE, borderRadius: radius.lg, borderWidth: 1.5, borderColor: BLUE, paddingVertical: 10, paddingHorizontal: 14, alignItems: 'center' },
-  tlSummaryChipLabel: { fontSize: 11, fontWeight: '600', color: BLUE, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4 },
-  tlSummaryChipValue: { fontSize: 18, fontWeight: '800', color: BLUE },
+  // Filter row
+  filterRow:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.xl, paddingVertical: 10, marginBottom: 4 },
+  filterTitle:     { fontSize: 13, fontWeight: '700', color: TEXT_DARK },
+  filterChip:      { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, backgroundColor: BLUE_SOFT },
+  filterChipText:  { fontSize: 12, fontWeight: '700', color: BLUE },
+  filterClearChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, backgroundColor: '#FEE2E2' },
+  filterClearText: { fontSize: 12, fontWeight: '700', color: '#EF4444' },
 
-  tlFilterRow:  { paddingVertical: spacing.sm, marginBottom: spacing.sm },
-
-  tlContainer:  { paddingHorizontal: spacing.xl, paddingTop: 4 },
-  tlRow:        { flexDirection: 'row', alignItems: 'stretch', marginBottom: 4 },
-
-  tlLineCol:    { width: 28, alignItems: 'center', flexShrink: 0 },
-  tlLineSegment:{ flex: 1, width: 2, backgroundColor: BLUE, opacity: 0.25 },
-  tlDot:        { width: 12, height: 12, borderRadius: 6, borderWidth: 2.5, marginVertical: 2, flexShrink: 0 },
-
-  tlCard:       { flex: 1, backgroundColor: WHITE, borderRadius: radius.xl, borderWidth: 1, borderColor: BORDER, marginLeft: 12, marginBottom: 12, padding: 14, ...shadow.card },
-  tlCardTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
-  tlCardMonth:  { fontSize: 16, fontWeight: '800', color: TEXT_DARK },
-  tlCardAmount: { fontSize: 20, fontWeight: '800', letterSpacing: -0.5, marginBottom: 6 },
-  tlCardDate:   { fontSize: 11, color: TEXT_MID, fontWeight: '500' },
-
-  tlPayNow:     { alignSelf: 'flex-start', marginTop: 10 },
-  tlPayNowText: { fontSize: 12, fontWeight: '700', color: BLUE },
+  // ── GPay-style transaction cards ──────────────────────────────────────────
+  txContainer: { paddingHorizontal: spacing.xl, gap: 10 },
+  txCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: WHITE,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: BORDER,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  txIconCircle: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  txTitle:      { fontSize: 14, fontWeight: '700', color: TEXT_DARK },
+  txDate:       { fontSize: 11, color: TEXT_MID, fontWeight: '500' },
+  txId:         { fontSize: 10, color: TEXT_LIGHT, marginTop: 3 },
+  txVerify:     { fontSize: 11, color: colors.warning, fontWeight: '600', marginTop: 3 },
+  txAmount:     { fontSize: 16, fontWeight: '800', letterSpacing: -0.3, marginBottom: 6 },
+  modeBadge:    { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  modeBadgeText:{ fontSize: 10, fontWeight: '700' },
 });

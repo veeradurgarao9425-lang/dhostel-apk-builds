@@ -43,13 +43,12 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
     console.log(`[Notification] In-app notification saved. ID: ${notificationId} for User: ${userId || 'N/A'}, Student: ${studentId || 'N/A'}`);
 
     // 2. Fetch push tokens for this user/student
-    let userTokens = [];
+    let userTokens: any[] = [];
     if (userId) {
       userTokens = await db('user_push_tokens').where({ user_id: userId }).select('push_token');
     } else if (studentId) {
-      // Assuming a table student_push_tokens exists or is reused. For now we just don't have push tokens for students.
-      // If we implement tenant push tokens later, it goes here.
-      // userTokens = await db('student_push_tokens').where({ student_id: studentId }).select('push_token');
+      // Tenants register their push tokens with student_id in user_push_tokens
+      userTokens = await db('user_push_tokens').where({ student_id: studentId }).select('push_token');
     }
 
     if (!userTokens || userTokens.length === 0) {

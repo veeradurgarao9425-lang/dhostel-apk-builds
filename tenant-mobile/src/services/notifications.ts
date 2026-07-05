@@ -10,6 +10,9 @@
  */
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
+import * as Device from 'expo-device';
+import api from './api';
 import { formatCurrency } from '../utils/format';
 
 // Foreground presentation: show banner + list, play a sound.
@@ -111,5 +114,41 @@ export async function syncDueReminders(opts: {
     } catch {
       // ignore individual scheduling failures
     }
+  }
+}
+
+/**
+ * Registers the device for push notifications with Expo, and sends the token to our backend.
+ */
+export async function registerPushTokenAsync(): Promise<void> {
+  try {
+    if (!Device.isDevice) {
+      console.log('Must use physical device for Push Notifications');
+      return;
+    }
+
+    const granted = await ensureNotificationPermission();
+    if (!granted) {
+      console.log('Failed to get push token for push notification (permission not granted)!');
+      return;
+    }
+
+    const projectId =
+      Constants?.expoConfig?.extra?.eas?.projectId ??
+      Constants?.easConfig?.projectId;
+
+    const tokenResponse = await Notifications.getExpoPushTokenAsync({ projectId });
+    const token = tokenResponse.data;
+    
+    if (token) {
+      await api.post('/notifications/register-token', {
+        push_token: token,
+        device_name: Device.modelName || 'Tenant Device',
+        platform: Platform.OS,
+      });
+      console.log('Push token registered successfully:', token);
+    }
+  } catch (error) {
+    console.error('Error in registerPushTokenAsync:', error);
   }
 }

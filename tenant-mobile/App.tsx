@@ -1,12 +1,16 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
-import { AuthProvider } from './src/context/AuthContext';
+import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { ToastProvider } from './src/context/ToastContext';
 import { NetworkProvider } from './src/context/NetworkContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { CustomToast, ToastVariant } from './src/components/ui/CustomToast';
+import SplashScreenView from './src/components/SplashScreenView';
+import * as SplashScreen from 'expo-splash-screen';
+
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 const ThemedToast = () => {
   const renderToast = (variant: ToastVariant, props: any) => (
@@ -38,13 +42,34 @@ const ThemedToast = () => {
   return <Toast config={toastConfig} position="top" topOffset={50} />;
 };
 
+/** Inner wrapper that reads auth loading state for the splash */
+function InnerApp() {
+  const { loading } = useAuth();
+  // Keep splash visible for at least 1.5s as a brand moment
+  const [minDelayDone, setMinDelayDone] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setMinDelayDone(true), 1500);
+    return () => clearTimeout(t);
+  }, []);
+
+  const isReady = !loading && minDelayDone;
+
+  return (
+    <>
+      <AppNavigator />
+      <SplashScreenView isReady={isReady} />
+    </>
+  );
+}
+
 export default function App() {
   return (
     <ToastProvider>
       <NetworkProvider>
         <AuthProvider>
           <SafeAreaProvider style={styles.container}>
-            <AppNavigator />
+            <InnerApp />
             <ThemedToast />
           </SafeAreaProvider>
         </AuthProvider>

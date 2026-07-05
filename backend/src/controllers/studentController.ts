@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
-import { sendNotificationToHostelOwner } from '../utils/notification.js';
+import { sendNotificationToHostelOwner, sendNotificationToStudent } from '../utils/notification.js';
 import { kickUserFromRoomChat } from '../socket/index.js';
 
 // Helper function to convert ISO datetime string to date-only format (YYYY-MM-DD)
@@ -923,6 +923,14 @@ export const allocateRoom = async (req: AuthRequest, res: Response) => {
     await db('rooms')
       .where({ room_id })
       .increment('occupied_beds', 1);
+
+    // Send push notification to tenant
+    sendNotificationToStudent(
+      parseInt(studentId),
+      'System Alert',
+      'Room Allocated!',
+      `You have been assigned to room ${room.room_number}. You now have full access to the hostel app.`
+    ).catch(err => console.error('Failed to send room allocation notification:', err));
 
     res.json({
       success: true,

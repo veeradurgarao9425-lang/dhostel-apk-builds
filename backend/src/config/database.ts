@@ -845,6 +845,20 @@ async function patchDatabaseSchema() {
       console.error('[schema-patch] Error checking/creating tenant_saving_goals table:', e.message);
     }
 
+    // 24. Ensure image_urls column exists in complaints
+    try {
+      if (tableNamesLower.includes('complaints')) {
+        const columns = await db.raw("SHOW COLUMNS FROM complaints");
+        const columnNames = columns[0].map((c: any) => c.Field.toLowerCase());
+        if (!columnNames.includes('image_urls')) {
+          console.log('[schema-patch] Adding image_urls column to complaints...');
+          await db.raw("ALTER TABLE complaints ADD COLUMN image_urls TEXT NULL AFTER description");
+        }
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error checking/adding image_urls column to complaints:', e.message);
+    }
+
     console.log('[schema-patch] Schema check and patch complete.');
   } catch (err: any) {
     console.error('[schema-patch] Critical error during schema patching:', err.message);

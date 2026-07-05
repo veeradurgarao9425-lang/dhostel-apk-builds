@@ -395,6 +395,13 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                         setStudent((prev: any) => ({ ...prev, status: nextStatus }));
                         showSuccess(`${student.first_name} is now ${nextStatus === 1 ? 'active' : 'inactive'}.`);
                         fetchStudentDetails(); // refresh details to sync billing fee histories
+                        
+                        // Automatically prompt for room allocation if approving a QR signup
+                        if (currentStatus === 3 && nextStatus === 1) {
+                            setTimeout(() => {
+                                goAllocateRoom();
+                            }, 500);
+                        }
                     }
                 } catch (e: any) {
                     showApiError(e, 'Failed to update status');
@@ -403,7 +410,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                 }
             }
         });
-    }, [student, fetchStudentDetails, confirm]);
+    }, [student, fetchStudentDetails, confirm, goAllocateRoom]);
 
     // ── Schedule Vacancy Notice ───────────────────────────────────────────
     const handleSetVacancyNotice = useCallback(async () => {

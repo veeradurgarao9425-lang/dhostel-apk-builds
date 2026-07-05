@@ -15,90 +15,90 @@ export interface CategoryTheme {
 
 export const CATEGORY_THEME: Record<string, CategoryTheme> = {
   Entertainment: {
-    Icon: Film, color: '#8E24AA', bg: '#F4E5FA',
-    gradient: ['#6A1B9A', '#AB47BC', '#FF4D9E'],
-    glowColor: '#FF2E88',
+    Icon: Film, color: '#C026D3', bg: '#FAE8FF',
+    gradient: ['#D946EF', '#C026D3'],
+    glowColor: '#E879F9',
     premium: true,
   },
   Food: {
-    Icon: Utensils, color: '#EF5350', bg: '#FDEAEA',
-    gradient: ['#F4511E', '#FF8A65'],
-    glowColor: '#FF7043',
+    Icon: Utensils, color: '#FF6B35', bg: '#FFF0EA',
+    gradient: ['#FF8A65', '#FF6B35'],
+    glowColor: '#FF8A65',
   },
   Transport: {
-    Icon: Car, color: '#2245D4', bg: '#EEF3FF',
-    gradient: ['#3E5CE0', '#7B93FF'],
-    glowColor: '#3E5CE0',
+    Icon: Car, color: '#4F6DFF', bg: '#EEF2FF',
+    gradient: ['#6B86FF', '#4F6DFF'],
+    glowColor: '#6B86FF',
   },
   Shopping: {
-    Icon: ShoppingBag, color: '#43A047', bg: '#EAF5EA',
-    gradient: ['#43A047', '#81C784'],
-    glowColor: '#43A047',
+    Icon: ShoppingBag, color: '#22C55E', bg: '#DCFCE7',
+    gradient: ['#4ADE80', '#22C55E'],
+    glowColor: '#4ADE80',
   },
   Bills: {
-    Icon: Receipt, color: '#FB8C00', bg: '#FFF3E0',
-    gradient: ['#FB8C00', '#FFB74D'],
-    glowColor: '#FFA726',
+    Icon: Receipt, color: '#6B7280', bg: '#F3F4F6',
+    gradient: ['#9CA3AF', '#6B7280'],
+    glowColor: '#9CA3AF',
   },
   Health: {
-    Icon: HeartPulse, color: '#E53935', bg: '#FDEAEA',
-    gradient: ['#E53935', '#FF7B72'],
-    glowColor: '#EF5350',
+    Icon: HeartPulse, color: '#F43F5E', bg: '#FFE4E6',
+    gradient: ['#FB7185', '#F43F5E'],
+    glowColor: '#FB7185',
   },
   Coffee: {
-    Icon: Coffee, color: '#795548', bg: '#EFEBE9',
-    gradient: ['#795548', '#A98274'],
+    Icon: Coffee, color: '#8D6E63', bg: '#EFEBE9',
+    gradient: ['#A1887F', '#8D6E63'],
     glowColor: '#A1887F',
   },
   Travel: {
-    Icon: Plane, color: '#0288D1', bg: '#E1F5FE',
-    gradient: ['#0288D1', '#4FC3F7'],
-    glowColor: '#29B6F6',
+    Icon: Plane, color: '#0EA5E9', bg: '#E0F2FE',
+    gradient: ['#38BDF8', '#0EA5E9'],
+    glowColor: '#38BDF8',
   },
   Rent: {
-    Icon: Home, color: '#546E7A', bg: '#ECEFF1',
-    gradient: ['#546E7A', '#8EACBB'],
+    Icon: Home, color: '#607D8B', bg: '#ECEFF1',
+    gradient: ['#78909C', '#607D8B'],
     glowColor: '#78909C',
   },
   Utilities: {
-    Icon: Zap, color: '#F9A825', bg: '#FFFDE7',
-    gradient: ['#F9A825', '#FFCA28'],
-    glowColor: '#FFCA28',
+    Icon: Zap, color: '#FACC15', bg: '#FEF9C3',
+    gradient: ['#FDE047', '#FACC15'],
+    glowColor: '#FDE047',
   },
   Gifts: {
-    Icon: Gift, color: '#00897B', bg: '#E0F2F1',
-    gradient: ['#00897B', '#4DB6AC'],
-    glowColor: '#26A69A',
+    Icon: Gift, color: '#EC4899', bg: '#FCE7F3',
+    gradient: ['#F472B6', '#EC4899'],
+    glowColor: '#F472B6',
   },
   Education: {
-    Icon: BookOpen, color: '#3949AB', bg: '#E8EAF6',
-    gradient: ['#3F51B5', '#7986CB'],
-    glowColor: '#5C6BC0',
+    Icon: BookOpen, color: '#6366F1', bg: '#E0E7FF',
+    gradient: ['#818CF8', '#6366F1'],
+    glowColor: '#818CF8',
   },
   Gym: {
-    Icon: Dumbbell, color: '#F4511E', bg: '#FBE9E7',
-    gradient: ['#E64A19', '#FF8A65'],
-    glowColor: '#FF7043',
+    Icon: Dumbbell, color: '#0D9488', bg: '#CCFBF1',
+    gradient: ['#14B8A6', '#0D9488'],
+    glowColor: '#14B8A6',
   },
   Pets: {
-    Icon: Dog, color: '#6D4C41', bg: '#EFEBE9',
-    gradient: ['#795548', '#A1887F'],
-    glowColor: '#A1887F',
+    Icon: Dog, color: '#D97706', bg: '#FEF3C7',
+    gradient: ['#F59E0B', '#D97706'],
+    glowColor: '#F59E0B',
   },
   Family: {
-    Icon: Users, color: '#D81B60', bg: '#FCE4EC',
-    gradient: ['#D81B60', '#F06292'],
-    glowColor: '#E91E63',
+    Icon: Users, color: '#8B5CF6', bg: '#EDE9FE',
+    gradient: ['#A78BFA', '#8B5CF6'],
+    glowColor: '#A78BFA',
   },
   Fuel: {
-    Icon: Fuel, color: '#FF9800', bg: '#FFF3E0',
-    gradient: ['#F57C00', '#FFB74D'],
-    glowColor: '#FF9800',
+    Icon: Fuel, color: '#F59E0B', bg: '#FEF3C7',
+    gradient: ['#FBBF24', '#F59E0B'],
+    glowColor: '#FBBF24',
   },
   Others: {
-    Icon: MoreHorizontal, color: '#546E7A', bg: '#ECEFF1',
-    gradient: ['#607D8B', '#90A4AE'],
-    glowColor: '#78909C',
+    Icon: MoreHorizontal, color: '#6B7280', bg: '#F3F4F6',
+    gradient: ['#9CA3AF', '#6B7280'],
+    glowColor: '#9CA3AF',
   },
 };
 
@@ -126,5 +126,8 @@ export function getCategoryHeroImage(category: string) {
 export const DEFAULT_CATEGORY_THEME = CATEGORY_THEME.Others;
 
 export function getCategoryTheme(name?: string | null): CategoryTheme {
-  return (name && CATEGORY_THEME[name]) || DEFAULT_CATEGORY_THEME;
+  if (!name) return DEFAULT_CATEGORY_THEME;
+  const normalized = name.trim().toLowerCase();
+  const matchedKey = Object.keys(CATEGORY_THEME).find(k => k.toLowerCase() === normalized);
+  return matchedKey ? CATEGORY_THEME[matchedKey] : DEFAULT_CATEGORY_THEME;
 }

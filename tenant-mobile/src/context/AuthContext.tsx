@@ -2,7 +2,7 @@ import React, { createContext, useState, useEffect, useContext } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import api from '../services/api';
-import { syncDueReminders } from '../services/notifications';
+import { syncDueReminders, registerPushTokenAsync } from '../services/notifications';
 
 type TenantUser = {
   id: string | number;
@@ -86,6 +86,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           const parsedUser = JSON.parse(storedUser);
           api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
           setUser(parsedUser);
+          
+          // Fetch fresh user data (e.g. room_id) to prevent flashing PendingApproval screen on startup
+          if (storedToken !== 'mock-test-token-123') {
+            try {
+              const response = await api.get('/auth/tenant/me');
+              if (response.data?.data) {
+                const fresh = response.data.data;
+                const merged = { ...parsedUser, ...fresh };
+                setUser(merged);
+                AsyncStorage.setItem('user', JSON.stringify(merged)).catch(() => {});
+              }
+            } catch (e) {
+              if (__DEV__) console.log('Silent refresh failed on startup', e);
+            }
+            
+            // Register for push notifications on startup
+            registerPushTokenAsync().catch(() => {});
+          }
         }
       } catch (error) {
         if (__DEV__) console.error('Failed to load auth state from storage', error);
@@ -189,25 +207,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUser(userData);
         await AsyncStorage.setItem('token', token);
         await AsyncStorage.setItem('user', JSON.stringify(userData));
+        
         // Register push notification token (fire-and-forget)
-        try {
-          const { status: existingStatus } = await import('expo-notifications').then(m => m.getPermissionsAsync());
-          let finalStatus = existingStatus;
-          if (existingStatus !== 'granted') {
-            const { status } = await import('expo-notifications').then(m => m.requestPermissionsAsync());
-            finalStatus = status;
-          }
-          if (finalStatus === 'granted') {
-            const { data: pushToken } = await import('expo-notifications').then(m => m.getExpoPushTokenAsync());
-            await api.post('/notifications/register-token', {
-              push_token: pushToken,
-              device_name: 'Tenant App',
-              platform: Platform.OS,
-            });
-          }
-        } catch (pushErr) {
-          if (__DEV__) console.log('Push token registration skipped:', pushErr);
-        }
+        registerPushTokenAsync().catch(() => {});
+        
         return { error: null, user: userData };
       }
       return { error: body?.error || body?.message || 'Verification failed' };
