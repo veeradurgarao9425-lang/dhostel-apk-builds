@@ -249,6 +249,7 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
       status,
       room_id,
       bed_id,
+      bed_number,
       floor_number,
       monthly_rent
     } = req.body;
@@ -371,6 +372,7 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
       status: typeof status === 'number' ? status : (status === 'Active' ? 1 : 0),
       room_id: room_id || null,
       bed_id: bed_id || null,
+      bed_number: bed_number || null,
       monthly_rent: roomDetails ? roomDetails.rent_per_bed : (monthly_rent || 0),
       floor_number: floor_number || null,
       created_at: new Date()

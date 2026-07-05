@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import {
   StyleSheet, Text, TouchableOpacity, View, ScrollView,
   RefreshControl, ActivityIndicator, StatusBar, LayoutAnimation, Platform, UIManager
@@ -15,6 +15,7 @@ import {
 import { Phase3EmptyState, Phase3ErrorState } from '../components/UIComponents';
 import { CustomMonthYearPicker } from '../components/pickers/CustomMonthYearPicker';
 import { Calendar as CalendarIcon } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { useAuth } from '../context/AuthContext';
 import { colors, radius, spacing, shadow } from '../theme';
@@ -29,9 +30,9 @@ const TEXT_DARK = '#1A1A1A';
 const TEXT_MID  = '#666666';
 const TEXT_LIGHT = '#9CA3AF';
 const BORDER    = '#F1F5F9';
-const BG        = '#FAFAFC';
+const BG        = '#FFFFFF';
 
-type TabKey = 'This Month Details' | 'Payment History';
+type TabKey = 'This Month' | 'Payment History';
 
 type FeeRecord = {
   fee_id: number;
@@ -100,21 +101,21 @@ function getModeStyle(mode?: string) {
   return modeStyle[key] || modeStyle['default'];
 }
 
-// ── Payment tips shown at bottom of "This Month Details" ─────────────────────
+// ── Payment tips shown at bottom of "This Month" ─────────────────────
 const PAYMENT_TIPS = [
-  { Icon: Calendar,    text: 'Pay before the due date to avoid late fees.' },
-  { Icon: Receipt,     text: 'Always save your receipt / transaction ID.' },
-  { Icon: ShieldCheck, text: 'Use UPI or net banking for instant confirmation.' },
+  { Icon: Calendar,    title: 'Avoid Late Fees', text: 'Pay before the due date to avoid late fees.', colors: ['#4F46E5', '#818CF8'] },
+  { Icon: Receipt,     title: 'Keep Records', text: 'Always save your receipt or transaction ID.', colors: ['#059669', '#34D399'] },
+  { Icon: ShieldCheck, title: 'Instant Confirm', text: 'Use UPI or net banking for instant confirmation.', colors: ['#D97706', '#FBBF24'] },
 ];
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-export default function DuesScreen({ navigation }: any) {
+export default function DuesScreen({ route, navigation }: any) {
   const { user, refreshUser } = useAuth();
   const [refreshing, setRefreshing]   = useState(false);
-  const [activeTab, setActiveTab]     = useState<TabKey>('This Month Details');
+  const [activeTab, setActiveTab]     = useState<TabKey>(route?.params?.initialTab || 'This Month');
   const [feeRecords, setFeeRecords]   = useState<FeeRecord[]>([]);
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState<string | null>(null);
@@ -137,6 +138,12 @@ export default function DuesScreen({ navigation }: any) {
   useFocusEffect(
     useCallback(() => { refreshUser(); fetchFees(); }, []),
   );
+
+  useEffect(() => {
+    if (route?.params?.initialTab) {
+      setActiveTab(route.params.initialTab);
+    }
+  }, [route?.params?.initialTab]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -316,7 +323,7 @@ export default function DuesScreen({ navigation }: any) {
       {/* ── Tab Toggle ── */}
       <View style={styles.tabContainer}>
         <View style={styles.tabRow}>
-          {(['This Month Details', 'Payment History'] as TabKey[]).map((tab) => (
+          {(['This Month', 'Payment History'] as TabKey[]).map((tab) => (
             <TouchableOpacity
               key={tab}
               style={[styles.tab, activeTab === tab && styles.tabActive]}
@@ -327,7 +334,6 @@ export default function DuesScreen({ navigation }: any) {
               activeOpacity={0.7}
             >
               <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
-              {activeTab === tab && <View style={styles.tabUnderline} />}
             </TouchableOpacity>
           ))}
         </View>
@@ -358,18 +364,18 @@ export default function DuesScreen({ navigation }: any) {
           <View style={{ marginTop: 60 }}>
             <Phase3EmptyState variant="dues" onAction={() => setActiveTab('Payment History')} />
           </View>
-        ) : activeTab === 'This Month Details' ? (
+        ) : activeTab === 'This Month' ? (
           // ══════════════════════════════════════════════════════════════════
-          // THIS MONTH DETAILS TAB
+          // THIS MONTH TAB
           // ══════════════════════════════════════════════════════════════════
           <View style={{ paddingBottom: 24 }}>
 
             {/* Paid banner (only when this month is fully paid) */}
             {thisMonthFee && thisMonthFee.balance <= 0 && thisMonthFee.paid_amount > 0 && (
-              <View style={{ marginTop: 16, paddingHorizontal: 20 }}>
-                <View style={[styles.listCard, { marginTop: 0 }]}>
-                  <Text style={[styles.groupLabel, { paddingHorizontal: 0, marginTop: 0 }]}>This Month's Payment</Text>
-                  <View style={[styles.listRow, { borderBottomWidth: 0, paddingHorizontal: 0 }]}>
+              <>
+                <Text style={styles.groupLabel}>This Month's Payment</Text>
+                <View style={styles.listCard}>
+                  <View style={[styles.listRow, { borderBottomWidth: 0 }]}>
                     <View style={[styles.listIconWrap, { backgroundColor: colors.successSoft }]}>
                       <CheckCircle2 size={16} color={colors.success} strokeWidth={1.5} />
                     </View>
@@ -389,7 +395,7 @@ export default function DuesScreen({ navigation }: any) {
                     </View>
                   </View>
                 </View>
-              </View>
+              </>
             )}
 
             {/* Pending dues list — NO "Pay Now" here (hero card has it for single due) */}
@@ -459,8 +465,10 @@ export default function DuesScreen({ navigation }: any) {
                 <Text style={styles.groupLabel}>Recently Paid</Text>
                 <View style={styles.listCard}>
                   {paidFees.slice(0, 3).map((fee, i) => (
-                    <View
+                    <TouchableOpacity
                       key={fee.fee_id}
+                      activeOpacity={0.7}
+                      onPress={() => navigation.navigate('PaymentReceipt', { fee, isPaid: true })}
                       style={[
                         styles.listRow,
                         i < Math.min(paidFees.length, 3) - 1 && styles.listRowDivider,
@@ -483,29 +491,36 @@ export default function DuesScreen({ navigation }: any) {
                         <Text style={[styles.listAmount, { color: colors.success }]}>{formatCurrency(fee.paid_amount)}</Text>
                         <View style={styles.paidPill}><Text style={styles.paidPillText}>Paid</Text></View>
                       </View>
-                    </View>
+                    </TouchableOpacity>
                   ))}
                 </View>
               </>
             )}
 
             {/* Payment Tips */}
-            <Text style={styles.groupLabel}>Quick Tips</Text>
-            <View style={[styles.listCard, { gap: 0 }]}>
-              {PAYMENT_TIPS.map(({ Icon, text }, i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.tipRow,
-                    i < PAYMENT_TIPS.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: BORDER },
-                  ]}
-                >
-                  <View style={[styles.listIconWrap, { backgroundColor: BLUE_SOFT, flexShrink: 0 }]}>
-                    <Icon size={15} color={BLUE} strokeWidth={1.8} />
+            <View style={{ marginTop: 20, marginBottom: 10 }}>
+              <Text style={styles.groupLabel}>Quick Tips</Text>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false} 
+                contentContainerStyle={{ paddingHorizontal: 20, gap: 12, paddingBottom: 16 }}
+                snapToInterval={280}
+                decelerationRate="fast"
+              >
+                {PAYMENT_TIPS.map(({ Icon, title, text, colors }, i) => (
+                  <View key={i} style={{ width: 268, borderRadius: 16, overflow: 'hidden', shadowColor: colors[0], shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 4 }}>
+                    <LinearGradient colors={colors} start={{x: 0, y: 0}} end={{x: 1, y: 1}} style={{ padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                      <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' }}>
+                        <Icon size={22} color="#FFFFFF" strokeWidth={2} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '800', marginBottom: 2 }}>{title}</Text>
+                        <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 11, lineHeight: 16 }}>{text}</Text>
+                      </View>
+                    </LinearGradient>
                   </View>
-                  <Text style={styles.tipText}>{text}</Text>
-                </View>
-              ))}
+                ))}
+              </ScrollView>
             </View>
           </View>
 
@@ -573,7 +588,12 @@ export default function DuesScreen({ navigation }: any) {
                   const modeS = getModeStyle(fee.payments[0]?.payment_mode);
 
                   return (
-                    <View key={fee.fee_id} style={styles.txCard}>
+                    <TouchableOpacity 
+                      key={fee.fee_id} 
+                      style={styles.txCard}
+                      activeOpacity={0.7}
+                      onPress={() => navigation.navigate('PaymentReceipt', { fee, isPaid })}
+                    >
                       {/* Left icon circle */}
                       <View style={[styles.txIconCircle, { backgroundColor: isPaid ? colors.successSoft : cfg.bg }]}>
                         {isPaid
@@ -612,7 +632,7 @@ export default function DuesScreen({ navigation }: any) {
                       {/* Right: amount + status */}
                       <View style={{ alignItems: 'flex-end', flexShrink: 0 }}>
                         <Text style={[styles.txAmount, { color: isPaid ? colors.success : cfg.color }]}>
-                          {isPaid ? '+ ' : ''}{formatCurrency(isPaid ? fee.paid_amount : fee.balance > 0 ? fee.balance : fee.total_due)}
+                          {formatCurrency(isPaid ? fee.paid_amount : fee.balance > 0 ? fee.balance : fee.total_due)}
                         </Text>
                         {!isPaid ? (
                           <TouchableOpacity
@@ -628,7 +648,7 @@ export default function DuesScreen({ navigation }: any) {
                           </View>
                         )}
                       </View>
-                    </View>
+                    </TouchableOpacity>
                   );
                 })}
               </View>
@@ -724,13 +744,12 @@ const styles = StyleSheet.create({
   payNowBtnText:  { color: WHITE, fontWeight: '700', fontSize: 11 },
 
   // ── Tab ───────────────────────────────────────────────────────────────────
-  tabContainer: { paddingHorizontal: spacing.xl, paddingTop: 12, paddingBottom: 0, backgroundColor: BG },
+  tabContainer: { paddingHorizontal: spacing.xl, paddingTop: 12, paddingBottom: 16, backgroundColor: BG },
   tabRow:       { flexDirection: 'row', backgroundColor: colors.surfaceAlt, borderRadius: radius.lg, padding: 4 },
-  tab:          { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: radius.md, position: 'relative' },
+  tab:          { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: radius.md, position: 'relative' },
   tabActive:    { backgroundColor: WHITE, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 3 },
-  tabText:      { fontSize: 13, fontWeight: '600', color: colors.textMuted },
+  tabText:      { fontSize: 13, fontWeight: '700', color: colors.textMuted },
   tabTextActive:{ color: BLUE, fontWeight: '800' },
-  tabUnderline: { position: 'absolute', bottom: 4, left: '20%', right: '20%', height: 2.5, backgroundColor: BLUE, borderRadius: 2 },
 
   // ── Scroll ────────────────────────────────────────────────────────────────
   scrollContent: { paddingBottom: 100 },

@@ -18,6 +18,7 @@ type TenantUser = {
   is_allocated?: boolean;
   room_id?: number | null;
   room_number?: string | null;
+  bed_number?: string | null;
   monthly_rent?: number | null;
   outstanding_due?: number;
   next_due_date?: string | null;

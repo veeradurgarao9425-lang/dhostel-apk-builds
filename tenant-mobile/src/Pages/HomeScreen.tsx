@@ -49,6 +49,8 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { Phase3EmptyState } from '../components/UIComponents';
 import IconGlowBadge from '../components/ui/IconGlowBadge';
+import CategoryGlowBadge from '../components/ui/CategoryGlowBadge';
+import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from "../services/api";
 
@@ -195,22 +197,34 @@ export default function HomeScreen({ navigation }: any) {
         setDueAmount(sum > 0 ? sum : 0);
         setRentDueDate(firstDueDate);
         setTotalRentAmount(latestRent);
-        // Using the recentPayments array to store expenses for the recent activity UI
+        // Using the recentPayments array to store expenses & payments for the recent activity UI
         try {
           const expRes = await api.get('/tenant-expenses');
+          let combined = payments.map((p: any) => ({
+            id: 'pay_'+p.id,
+            amount: p.amount,
+            date: p.date,
+            title: `Payment: ${p.mode}`,
+            mode: 'Payment',
+            cat: 'Payment',
+          }));
+          
           if (expRes.data && expRes.data.success) {
-            const expList = expRes.data.data
-              .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
-              .slice(0, 3);
-            setRecentPayments(expList.map((e: any) => ({
-              id: String(e.expense_id),
+            const expList = expRes.data.data.map((e: any) => ({
+              id: 'exp_'+e.expense_id,
               amount: e.amount,
               date: e.date,
               title: e.title || e.category,
-              mode: 'Expense'
-            })));
+              mode: 'Expense',
+              cat: e.category ? (e.category.trim().charAt(0).toUpperCase() + e.category.trim().slice(1).toLowerCase()) : 'Others',
+            }));
+            combined = [...combined, ...expList];
           }
-        } catch { }
+          combined.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+          setRecentPayments(combined.slice(0, 4));
+        } catch { 
+           setRecentPayments(payments.slice(0, 4).map(p => ({...p, title: `Payment: ${p.mode}`, cat: 'Payment'})));
+        }
       }
     } catch {
       // non-critical: dashboard still renders from cached user data
@@ -318,10 +332,10 @@ export default function HomeScreen({ navigation }: any) {
   const todayDay = days[new Date().getDay()];
   const todayMenu = todaysMeals;
 
-  const meals: { key: "morning" | "lunch" | "dinner"; title: string; sub: string; time: string; Icon: any; bg: string; iconBg: string; color: string; gradient: [string, string] }[] = [
-    { key: "morning", title: "Morning", sub: todayMenu.breakfast.items, time: "8:00 AM - 10:00 AM", Icon: Sun, bg: "#FFFFFF", iconBg: "#DBEAFE", color: "#2563EB", gradient: ["#3B82F6", "#60A5FA"] },
-    { key: "lunch", title: "Lunch", sub: todayMenu.lunch.items, time: "12:00 PM - 2:00 PM", Icon: Utensils, bg: "#FFFFFF", iconBg: "#DBEAFE", color: "#2563EB", gradient: ["#3B82F6", "#60A5FA"] },
-    { key: "dinner", title: "Dinner", sub: todayMenu.dinner.items, time: "8:00 PM - 11:00 PM", Icon: ConciergeBell, bg: "#FFFFFF", iconBg: "#DBEAFE", color: "#2563EB", gradient: ["#3B82F6", "#60A5FA"] },
+  const meals: { key: "morning" | "lunch" | "dinner"; title: string; sub: string; time: string; Icon: any; bg: string; iconBg: string; color: string; gradient: [string, string]; lightBg: string; lightIconBg: string; }[] = [
+    { key: "morning", title: "Morning", sub: todayMenu.breakfast.items, time: "8:00 AM - 10:00 AM", Icon: Sun, bg: "#FFFFFF", iconBg: "#DBEAFE", color: "#EA580C", gradient: ["#3B82F6", "#60A5FA"], lightBg: "#FFFAF0", lightIconBg: "#FFE6C6" },
+    { key: "lunch", title: "Lunch", sub: todayMenu.lunch.items, time: "12:00 PM - 2:00 PM", Icon: Utensils, bg: "#FFFFFF", iconBg: "#DBEAFE", color: "#4F46E5", gradient: ["#3B82F6", "#60A5FA"], lightBg: "#EEF2FF", lightIconBg: "#E0E7FF" },
+    { key: "dinner", title: "Dinner", sub: todayMenu.dinner.items, time: "8:00 PM - 11:00 PM", Icon: ConciergeBell, bg: "#FFFFFF", iconBg: "#DBEAFE", color: "#7C3AED", gradient: ["#3B82F6", "#60A5FA"], lightBg: "#F5F3FF", lightIconBg: "#EDE9FE" },
   ];
 
   const shortcuts: { id: string; name: string; icon: any; nav: string; bg: string; color: string; gradient: [string, string] }[] = [
@@ -385,43 +399,46 @@ export default function HomeScreen({ navigation }: any) {
         <FadeSlideIn delay={0}>
         {budget === 0 ? (
           <TouchableOpacity 
-            style={[styles.globalCard, { marginHorizontal: 20, marginTop: 10, marginBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }]}
+            style={[styles.globalCard, { marginHorizontal: 20, marginTop: 10, marginBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12 }]}
             onPress={() => navigation.navigate('Expenses')}
             activeOpacity={0.8}
           >
-            <View style={[styles.cardIconWrap, { backgroundColor: '#DBEAFE' }]}>
-              <Wallet size={20} color="#2563EB" />
-            </View>
+            <IconGlowBadge Icon={Wallet} gradient={['#3B82F6', '#60A5FA']} glowColor="#2563EB" flatColor="#2563EB" flatBg="#FFFFFF" size="sm" />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: '700', color: TEXT_DARK }}>Monthly Budget Not Set</Text>
-              <Text style={{ fontSize: 12, color: TEXT_MID, marginTop: 2 }}>Tap to track personal expenses</Text>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: TEXT_DARK }}>Monthly Budget Not Set</Text>
+              <Text style={{ fontSize: 11, color: TEXT_MID, marginTop: 2 }}>Tap to track personal expenses</Text>
             </View>
-            <ChevronRight size={18} color="#2563EB" strokeWidth={2.5} />
+            <ChevronRight size={16} color="#2563EB" strokeWidth={2.5} />
           </TouchableOpacity>
         ) : (
           <TouchableOpacity 
-            style={[styles.globalCard, { marginHorizontal: 20, marginTop: 10, marginBottom: 16, padding: 18 }]}
+            style={[styles.globalCard, { marginHorizontal: 20, marginTop: 10, marginBottom: 16, padding: 0, overflow: 'hidden', borderWidth: 0 }]}
             onPress={() => navigation.navigate('Expenses')}
             activeOpacity={0.8}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-              <View style={[styles.cardIconWrap, { backgroundColor: spent > budget ? '#FEE2E2' : '#DBEAFE', width: 50, height: 50, borderRadius: 14 }]}>
-                <Zap size={24} color={spent > budget ? '#DC2626' : '#2563EB'} />
+            <LinearGradient colors={spent > budget ? ['#FEF2F2', '#FEE2E2'] : ['#FFF1F2', '#FFE4E6']} style={{ padding: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View style={{ backgroundColor: spent > budget ? '#FECACA' : '#FECDD3', width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }}>
+                  <Zap size={16} color={spent > budget ? '#DC2626' : '#E11D48'} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 10, fontWeight: '700', color: spent > budget ? '#DC2626' : '#E11D48', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 1 }}>
+                    My Budget
+                  </Text>
+                  <Text style={{ fontSize: 14, fontWeight: '800', color: spent > budget ? '#991B1B' : '#9F1239' }}>
+                    ₹{spent} <Text style={{ fontSize: 11, color: spent > budget ? '#B91C1C' : '#BE123C', fontWeight: '600' }}>/ ₹{budget}</Text>
+                  </Text>
+                </View>
+                <View style={{ backgroundColor: spent > budget ? '#DC2626' : '#E11D48', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
+                  <Text style={{ fontSize: 10, fontWeight: '800', color: '#FFFFFF' }}>
+                    {spent > budget ? 'OVER' : `${Math.round((spent/budget)*100)}%`}
+                  </Text>
+                </View>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: TEXT_MID, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
-                  My Budget
-                </Text>
-                <Text style={{ fontSize: 18, fontWeight: '800', color: TEXT_DARK }}>
-                  ₹{spent} <Text style={{ fontSize: 14, color: TEXT_MID, fontWeight: '600' }}>/ ₹{budget}</Text>
-                </Text>
+              <View style={{ marginTop: 10, height: 4, backgroundColor: spent > budget ? '#FECACA' : '#FECDD3', borderRadius: 2, overflow: 'hidden' }}>
+                <Animated.View style={{ height: '100%', width: progressAnim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }), backgroundColor: spent > budget ? '#DC2626' : '#E11D48', borderRadius: 2 }} />
               </View>
-              <View style={{ backgroundColor: spent > budget ? '#FEF2F2' : '#EFF6FF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 }}>
-                <Text style={{ fontSize: 12, fontWeight: '800', color: spent > budget ? '#DC2626' : '#2563EB' }}>
-                  {spent > budget ? 'OVER' : `${Math.round((spent/budget)*100)}%`}
-                </Text>
-              </View>
-            </View>
+            </LinearGradient>
           </TouchableOpacity>
         )}
         </FadeSlideIn>
@@ -435,17 +452,17 @@ export default function HomeScreen({ navigation }: any) {
             flexDirection: "row",
             alignItems: "center",
             overflow: 'hidden',
-            backgroundColor: dueAmount > 0 ? '#FFF5F5' : WHITE,
-            borderColor: dueAmount > 0 ? '#FECACA' : BORDER,
+            backgroundColor: dueAmount === 0 ? '#F0FDF4' : (dueAmount < totalRentAmount ? '#FFF7ED' : '#FEF2F2'),
+            borderColor: dueAmount === 0 ? '#BBF7D0' : (dueAmount < totalRentAmount ? '#FED7AA' : '#FECACA'),
           }]}>
             <View style={styles.overviewLeft}>
               {/* Label row with icon */}
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <View style={[styles.cardIconWrap, {
-                  backgroundColor: dueAmount > 0 ? '#FEE2E2' : '#D1FAE5',
+                  backgroundColor: dueAmount === 0 ? '#D1FAE5' : (dueAmount < totalRentAmount ? '#FFEDD5' : '#FEE2E2'),
                   width: 32, height: 32, borderRadius: 10,
                 }]}>
-                  <AlertCircle size={16} color={dueAmount > 0 ? '#EF4444' : '#10B981'} />
+                  {dueAmount === 0 ? <CheckCircle2 size={16} color="#10B981" /> : <AlertCircle size={16} color={dueAmount < totalRentAmount ? '#EA580C' : '#EF4444'} />}
                 </View>
                 <Text style={[styles.overviewLabel, { marginBottom: 0 }]}>
                   {dueAmount > 0 ? "Total Due" : "Monthly Rent"}
@@ -453,18 +470,14 @@ export default function HomeScreen({ navigation }: any) {
               </View>
 
               {/* Amount */}
-              <Text style={[styles.overviewAmount, dueAmount === 0 && { color: "#10B981" }, { fontSize: 28 }]}>
+              <Text style={[styles.overviewAmount, dueAmount === 0 ? { color: "#16A34A" } : (dueAmount < totalRentAmount ? { color: "#EA580C" } : { color: "#E11D48" }), { fontSize: 28 }]}>
                 ₹ {(dueAmount > 0 ? dueAmount : (totalRentAmount || 0)).toLocaleString("en-IN")}
               </Text>
 
               {/* Sub-label */}
-              {dueAmount > 0 ? (
+              {dueAmount > 0 && (
                 <Text style={[styles.overviewDate, { marginBottom: 12 }]}>
                   📅 Due: {rentDueDate ? formatDate(rentDueDate) : "Not scheduled"}
-                </Text>
-              ) : (
-                <Text style={[styles.overviewDate, { color: '#10B981', marginBottom: 12 }]}>
-                  ✓ All clear this month!
                 </Text>
               )}
 
@@ -486,7 +499,7 @@ export default function HomeScreen({ navigation }: any) {
             <View style={styles.overviewRight}>
               <Image
                 source={require("../../assets/wallet_3d.png")}
-                style={{ width: 160, height: 160, position: "absolute", right: -20, bottom: -20 }} // Increased size
+                style={{ width: 120, height: 120, position: "absolute", right: -10, bottom: -15 }} // Decreased size
                 resizeMode="contain"
               />
             </View>
@@ -515,60 +528,46 @@ export default function HomeScreen({ navigation }: any) {
               <TouchableOpacity
                 activeOpacity={0.9}
                 onPress={handleNextMeal}
-                style={[styles.globalCard, isSkipped && { opacity: 0.8, backgroundColor: "#F8FAFD" }]}
+                style={[styles.globalCard, { padding: 16, backgroundColor: isSkipped ? '#F9FAFB' : activeMeal.lightBg, borderWidth: 0 }, isSkipped && { opacity: 0.8 }]}
               >
                 <View style={styles.nmHeader}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1 }}>
-                    <View style={[styles.cardIconWrap, { backgroundColor: activeMeal.iconBg }]}>
-                      <MealIcon size={20} color={activeMeal.color} strokeWidth={2} />
+                    <View style={[styles.cardIconWrap, { backgroundColor: isSkipped ? '#F3F4F6' : activeMeal.lightIconBg, borderRadius: 12, width: 44, height: 44 }]}>
+                      <MealIcon size={22} color={isSkipped ? TEXT_MID : activeMeal.color} strokeWidth={2.5} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.menuTitle, isSkipped && { color: TEXT_MID, textDecorationLine: "line-through" }]}>
+                      <Text style={[styles.menuTitle, { color: isSkipped ? TEXT_MID : TEXT_DARK, fontSize: 16, marginBottom: 2 }, isSkipped && { textDecorationLine: "line-through" }]}>
                         {activeMeal.title}
                       </Text>
-                      <Text style={[styles.menuSub, isSkipped && { color: TEXT_MID, textDecorationLine: "line-through" }, isPlaceholder && { fontStyle: 'italic' }]} numberOfLines={2}>
+                      <Text style={[styles.menuSub, { color: TEXT_MID, fontSize: 13 }, isSkipped && { textDecorationLine: "line-through" }, isPlaceholder && { fontStyle: 'italic' }]} numberOfLines={2}>
                         {activeMeal.sub}
                       </Text>
                     </View>
                   </View>
-
-                  <View style={{ alignItems: 'center' }}>
+                  <View style={{ alignItems: 'center', alignSelf: 'flex-start' }}>
                     <TouchableOpacity
                       style={[
                         styles.skipTickBtn, 
-                        isSkipped && { borderColor: activeMeal.color, backgroundColor: activeMeal.iconBg }
+                        { width: 24, height: 24, borderRadius: 12, borderWidth: 1.5, borderColor: isSkipped ? '#D1D5DB' : '#E5E7EB', backgroundColor: isSkipped ? '#F3F4F6' : WHITE }
                       ]}
                       onPress={(e) => { e.stopPropagation(); handleMessSkip(activeMeal.key); }}
                       activeOpacity={0.7}
                     >
-                      {isSkipped ? (
-                        <Check size={16} color={activeMeal.color} strokeWidth={3} />
-                      ) : (
-                        <Check size={16} color="#D1D5DB" strokeWidth={3} />
-                      )}
+                      <Check size={14} color={isSkipped ? TEXT_MID : '#D1D5DB'} strokeWidth={3} />
                     </TouchableOpacity>
-                    <Text style={{ fontSize: 10, color: TEXT_MID, marginTop: 4, fontWeight: '600' }}>
-                      {isSkipped ? 'Skipped' : 'Skip'}
-                    </Text>
                   </View>
                 </View>
+                
+                <View style={{ height: 1, backgroundColor: isSkipped ? '#E5E7EB' : 'rgba(0,0,0,0.04)', marginVertical: 14 }} />
 
-                <View style={[styles.nmFooter, isSkipped && { borderTopColor: "#E2E8F0" }]}>
-                  <View style={styles.timeNav}>
-                    <TouchableOpacity onPress={(e) => { e.stopPropagation(); handlePrevMeal(); }} style={styles.arrowBtn}>
-                      <ChevronLeft size={20} color={isSkipped ? TEXT_MID : TEXT_DARK} strokeWidth={2.5} />
-                    </TouchableOpacity>
-                    <Text style={[styles.timeNavText, isSkipped && { color: TEXT_MID }]}>{activeMeal.time}</Text>
-                    <TouchableOpacity onPress={(e) => { e.stopPropagation(); handleNextMeal(); }} style={styles.arrowBtn}>
-                      <ChevronRight size={20} color={isSkipped ? TEXT_MID : TEXT_DARK} strokeWidth={2.5} />
-                    </TouchableOpacity>
-                  </View>
-
-                  {isSkipped && (
-                    <TouchableOpacity onPress={(e) => { e.stopPropagation(); navigation.navigate("AddExpense", { defaultCategory: "Food" }); }}>
-                      <Text style={styles.orderOutsideText}>Order outside?</Text>
-                    </TouchableOpacity>
-                  )}
+                <View style={[styles.nmFooter, { marginTop: 0, paddingTop: 0, borderTopWidth: 0, justifyContent: 'flex-start', gap: 12 }]}>
+                  <TouchableOpacity onPress={(e) => { e.stopPropagation(); handlePrevMeal(); }} style={[styles.arrowBtn, { backgroundColor: isSkipped ? '#F3F4F6' : 'rgba(0,0,0,0.03)', borderRadius: 8, padding: 6 }]}>
+                    <ChevronLeft size={18} color={isSkipped ? TEXT_MID : TEXT_DARK} strokeWidth={3} />
+                  </TouchableOpacity>
+                  <Text style={[styles.timeNavText, { color: isSkipped ? TEXT_MID : TEXT_DARK, fontSize: 13, fontWeight: '700' }]}>{activeMeal.time}</Text>
+                  <TouchableOpacity onPress={(e) => { e.stopPropagation(); handleNextMeal(); }} style={[styles.arrowBtn, { backgroundColor: isSkipped ? '#F3F4F6' : 'rgba(0,0,0,0.03)', borderRadius: 8, padding: 6 }]}>
+                    <ChevronRight size={18} color={isSkipped ? TEXT_MID : TEXT_DARK} strokeWidth={3} />
+                  </TouchableOpacity>
                 </View>
               </TouchableOpacity>
             );
@@ -580,37 +579,39 @@ export default function HomeScreen({ navigation }: any) {
         <FadeSlideIn delay={240}>
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Today's Message</Text>
+            <Text style={styles.sectionTitle}>Important Notice</Text>
             <TouchableOpacity onPress={() => navigation.navigate("Notices")}>
               <Text style={styles.viewAllText}>View All</Text>
             </TouchableOpacity>
           </View>
 
           <TouchableOpacity
-            style={[styles.globalCard, { flexDirection: "row", alignItems: "center" }]}
+            style={[styles.globalCard, { padding: 0, overflow: 'hidden', borderWidth: 0 }]}
             onPress={() => navigation.navigate("Notices")}
           >
-            <View style={[styles.cardIconWrap, { backgroundColor: '#E0E7FF', marginRight: 16 }]}>
-              <Mail size={20} color="#4F46E5" />
-            </View>
-            <View style={styles.messageContent}>
-              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
-                  <Text style={styles.messageTitle} numberOfLines={1}>
-                    {recentNotices[0]?.title || "Welcome!"}
-                  </Text>
-                  <View style={[styles.newBadge, { backgroundColor: '#DBEAFE' }]}>
-                    <Text style={[styles.newBadgeTxt, { color: '#2563EB' }]}>New</Text>
+            <LinearGradient colors={['#FEF2F2', '#FEE2E2']} style={{ padding: 16, flexDirection: "row", alignItems: "center" }}>
+              <View style={[styles.cardIconWrap, { backgroundColor: '#FECACA', marginRight: 16 }]}>
+                <Megaphone size={20} color="#DC2626" />
+              </View>
+              <View style={styles.messageContent}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
+                    <Text style={[styles.messageTitle, { color: '#7F1D1D' }]} numberOfLines={1}>
+                      {recentNotices[0]?.title || "Welcome!"}
+                    </Text>
+                    <View style={[styles.newBadge, { backgroundColor: '#EF4444' }]}>
+                      <Text style={[styles.newBadgeTxt, { color: '#FFFFFF' }]}>New</Text>
+                    </View>
                   </View>
+                  <Text style={[styles.messageTime, { color: '#DC2626' }]}>
+                    {recentNotices[0]?.date ? formatTime(recentNotices[0].date) : "09:00 AM"}
+                  </Text>
                 </View>
-                <Text style={styles.messageTime}>
-                  {recentNotices[0]?.date ? formatTime(recentNotices[0].date) : "09:00 AM"}
+                <Text style={[styles.messageBody, { color: '#991B1B' }]} numberOfLines={2}>
+                  {recentNotices[0]?.body || "Welcome to the hostel app. Check here for daily updates."}
                 </Text>
               </View>
-              <Text style={styles.messageBody} numberOfLines={2}>
-                {recentNotices[0]?.body || "Welcome to the hostel app. Check here for daily updates."}
-              </Text>
-            </View>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
         </FadeSlideIn>
@@ -652,17 +653,28 @@ export default function HomeScreen({ navigation }: any) {
           </View>
 
           {recentPayments.length > 0 ? (
-            <View style={styles.globalCard}>
-              {recentPayments.map((p, index) => (
-                <View key={p.id} style={[styles.activityItem, index > 0 && { borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 16 }]}>
-                  <View style={[styles.cardIconWrap, { width: 36, height: 36, borderRadius: 10, backgroundColor: '#FEE2E2', marginRight: 12 }]}>
-                    <Wallet size={18} color="#EF4444" />
-                  </View>
+            <View style={{ gap: 12 }}>
+              {recentPayments.map((p) => (
+                <View key={p.id} style={[styles.globalCard, { paddingVertical: 12, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 12, borderLeftWidth: 4, borderLeftColor: p.mode === 'Payment' ? '#10B981' : '#3B82F6', borderRadius: 14 }]}>
+                  {p.mode === 'Payment' ? (
+                     <View style={[styles.cardIconWrap, { width: 44, height: 44, borderRadius: 14, backgroundColor: '#D1FAE5' }]}>
+                        <Wallet size={20} color="#10B981" />
+                     </View>
+                  ) : (
+                     <CategoryGlowBadge category={p.cat} size="sm" />
+                  )}
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.activityTitle}>{p.title || 'Expense added'}</Text>
-                    <Text style={styles.activityDate}>{formatDate(p.date)}</Text>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: TEXT_DARK, marginBottom: 2 }}>{p.title}</Text>
+                    <Text style={{ fontSize: 11, color: TEXT_MID, fontWeight: '500' }}>{formatDate(p.date)} • {formatTime(p.date)}</Text>
                   </View>
-                  <Text style={[styles.activityAmount, { color: "#EF4444" }]}>₹ {p.amount}</Text>
+                  <View style={{ alignItems: 'flex-end', gap: 2 }}>
+                    <Text style={{ fontSize: 15, fontWeight: '800', color: TEXT_DARK, letterSpacing: -0.3 }}>
+                      {p.mode === 'Payment' ? '+' : '-'}₹{p.amount.toLocaleString('en-IN')}
+                    </Text>
+                    <Text style={{ fontSize: 10, fontWeight: '700', color: p.mode === 'Payment' ? '#10B981' : '#EF4444' }}>
+                      {p.mode === 'Payment' ? 'Paid' : 'Expense'}
+                    </Text>
+                  </View>
                 </View>
               ))}
             </View>

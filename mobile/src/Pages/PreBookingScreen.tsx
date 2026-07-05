@@ -466,22 +466,22 @@ export default function PreBookingScreen({ navigation, route }: any) {
 
     const fetchBeds = useCallback(async (roomId: string) => {
         setBedsLoading(true);
-        try {
-            const res = await api.get(`/rooms/${roomId}/beds`);
-            if (res.data.success) {
-                setBeds(res.data.data);
-                return;
-            }
-        } catch {}
         const room = rooms.find(r => r.room_id?.toString() === roomId);
-        const cap = room?.capacity ?? 1;
-        const fake = Array.from({ length: Number(cap) }, (_, i) => ({
-            bed_id: `${roomId}_${i + 1}`,
-            bed_name: `${room?.room_number}${String.fromCharCode(65 + i)}`,
-            status: i < (room?.available_beds ?? cap) ? 'available' : 'occupied',
-            student_id: i < (room?.available_beds ?? cap) ? null : 1,
-        }));
-        setBeds(fake);
+        const cap = room?.total_capacity ?? room?.capacity ?? 4;
+        const occupiedList = room?.occupied_beds_list || [];
+        const bedLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+        
+        const bedsData = Array.from({ length: Number(cap) }, (_, i) => {
+            const bedNumber = bedLetters[i] || `Bed ${i+1}`;
+            const isOccupied = occupiedList.includes(bedNumber);
+            return {
+                bed_id: bedNumber,
+                bed_name: `Bed ${bedNumber}`,
+                status: isOccupied ? 'occupied' : 'available',
+                student_id: isOccupied ? 1 : null,
+            };
+        });
+        setBeds(bedsData);
         setBedsLoading(false);
     }, [rooms]);
 
@@ -519,6 +519,7 @@ export default function PreBookingScreen({ navigation, route }: any) {
                 admission_date: formData.expected_join_date,
                 room_id: parseInt(formData.room_id),
                 bed_id: formData.bed_id || null,
+                bed_number: formData.bed_id || null,
                 status: 2,
                 admission_fee: 0,
                 admission_status: 0,

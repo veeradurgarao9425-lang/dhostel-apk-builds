@@ -42,6 +42,7 @@ import RatingScreen from '../Pages/RatingScreen';
 import AddCategoryScreen from '../Pages/AddCategoryScreen';
 import CategoryDetailScreen from '../Pages/CategoryDetailScreen';
 import TransactionsListScreen from '../Pages/TransactionsListScreen';
+import PaymentReceiptScreen from '../Pages/PaymentReceiptScreen';
 import AllExpensesScreen from '../Pages/AllExpensesScreen';
 import SettingsScreen from '../Pages/SettingsScreen';
 import UIShowcaseScreen from '../Pages/UIShowcaseScreen';
@@ -143,6 +144,7 @@ export default function AppNavigator() {
             <Stack.Screen name="AddCategory" component={AddCategoryScreen} />
             <Stack.Screen name="CategoryDetail" component={CategoryDetailScreen} />
             <Stack.Screen name="TransactionsList" component={TransactionsListScreen} />
+            <Stack.Screen name="PaymentReceipt" component={PaymentReceiptScreen} />
             <Stack.Screen name="HelpScreen" component={HelpScreen} />
             <Stack.Screen name="PrivacyPolicyScreen" component={PrivacyPolicyScreen} />
             <Stack.Screen name="VisitorPass" component={VisitorPassScreen} />

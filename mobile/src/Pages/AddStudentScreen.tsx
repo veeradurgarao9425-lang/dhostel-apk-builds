@@ -790,22 +790,22 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
 
     const fetchBeds = useCallback(async (roomId: string, roomData?: any) => {
         setBedsLoading(true);
-        try {
-            const res = await api.get(`/rooms/${roomId}/beds`);
-            if (res.data.success) { setBeds(res.data.data); setBedsLoading(false); return; }
-        } catch { }
-        // Fallback: generate fake beds from room data
-        // Use passed roomData first, then search availableRooms
         const room = roomData || availableRooms.find(r => r.room_id?.toString() === roomId);
         const cap = room?.total_capacity ?? room?.capacity ?? 4;
-        const occupiedCount = room?.occupied_beds ?? 0;
-        const fake = Array.from({ length: Number(cap) }, (_, i) => ({
-            bed_id: `${roomId}_${i + 1}`,
-            bed_name: `Bed ${i + 1}`,
-            status: i >= occupiedCount ? 'available' : 'occupied',
-            student_id: i >= occupiedCount ? null : 1,
-        }));
-        setBeds(fake);
+        const occupiedList = room?.occupied_beds_list || [];
+        const bedLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+        
+        const bedsData = Array.from({ length: Number(cap) }, (_, i) => {
+            const bedNumber = bedLetters[i] || `Bed ${i+1}`;
+            const isOccupied = occupiedList.includes(bedNumber);
+            return {
+                bed_id: bedNumber,
+                bed_name: `Bed ${bedNumber}`,
+                status: isOccupied ? 'occupied' : 'available',
+                student_id: isOccupied ? 1 : null,
+            };
+        });
+        setBeds(bedsData);
         setBedsLoading(false);
     }, [availableRooms]);
 
@@ -916,6 +916,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 status: isEdit ? student.status : 1,
                 room_id: formData.room_id ? parseInt(formData.room_id) : null,
                 bed_id: formData.bed_id || null,
+                bed_number: formData.bed_id || null,
                 floor_number: formData.floor_number ? parseInt(formData.floor_number) : null,
                 id_proof_type: formData.id_proof_type_id || null,
                 guardian_relation: formData.guardian_relation_id || null,

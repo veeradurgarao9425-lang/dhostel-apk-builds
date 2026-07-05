@@ -49,8 +49,13 @@ export const getRooms = async (req: AuthRequest, res: Response) => {
         db.raw(`(
           SELECT COUNT(*)
           FROM students
-          WHERE students.room_id = r.room_id AND students.status = 1
-        ) as occupied_count`)
+          WHERE students.room_id = r.room_id AND students.status IN (1, 2)
+        ) as occupied_count`),
+        db.raw(`(
+          SELECT GROUP_CONCAT(bed_number)
+          FROM students
+          WHERE students.room_id = r.room_id AND students.status IN (1, 2) AND bed_number IS NOT NULL
+        ) as occupied_beds_list_raw`)
       );
 
 
@@ -100,15 +105,18 @@ export const getRooms = async (req: AuthRequest, res: Response) => {
 
       // Calculate available beds: Total Capacity - Occupied
       const availableBeds = Math.max(0, totalCapacity - occupiedCount);
+      
+      const occupiedBedsList = room.occupied_beds_list_raw ? room.occupied_beds_list_raw.split(',') : [];
 
       // Clean up the temporary select properties we don't want returned directly
-      const { occupied_count, room_type_description, ...restRoom } = room;
+      const { occupied_count, occupied_beds_list_raw, room_type_description, ...restRoom } = room;
 
       return {
         ...restRoom,
         amenities: amenitiesArray,
         available_beds: availableBeds,
         occupied_beds: occupiedCount,
+        occupied_beds_list: occupiedBedsList,
         capacity: totalCapacity, // For StudentsPage expectations
         total_capacity: totalCapacity // For RoomsPage expectations
       };
@@ -176,8 +184,8 @@ export const getRoomById = async (req: AuthRequest, res: Response) => {
     console.log('[getRoomById] Fetching occupants for room:', roomId);
     const students = await db('students')
       .where('room_id', roomId)
-      .where('status', 1)
-      .select('student_id', 'first_name', 'last_name', 'phone');
+      .whereIn('status', [1, 2])
+      .select('student_id', 'first_name', 'last_name', 'phone', 'bed_number');
 
     const occupiedCount = students.length;
 
@@ -197,7 +205,8 @@ export const getRoomById = async (req: AuthRequest, res: Response) => {
     if (totalCapacity <= 0) totalCapacity = 2; // final fallback
 
     const availableBeds = Math.max(0, totalCapacity - occupiedCount);
-    console.log('[getRoomById] Result:', { room: (room as any).room_number, cap: totalCapacity, occ: occupiedCount });
+
+    const occupiedBedsList = students.map(s => s.bed_number).filter(Boolean);
 
     res.json({
       success: true,
@@ -206,6 +215,7 @@ export const getRoomById = async (req: AuthRequest, res: Response) => {
         amenities: amenitiesArray,
         available_beds: availableBeds,
         occupied_beds: occupiedCount,
+        occupied_beds_list: occupiedBedsList,
         capacity: totalCapacity,
         total_capacity: totalCapacity,
         occupants: students
