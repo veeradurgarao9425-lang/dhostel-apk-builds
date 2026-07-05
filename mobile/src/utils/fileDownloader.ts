@@ -77,7 +77,7 @@ export const downloadAndSaveFile = async (
                         const base64 = await FileSystem.readAsStringAsync(finalLocalUri, { encoding: FileSystem.EncodingType.Base64 });
                         const safUri = await FileSystem.StorageAccessFramework.createFileAsync(dirUri, filename, mimeType);
                         await FileSystem.writeAsStringAsync(safUri, base64, { encoding: FileSystem.EncodingType.Base64 });
-                        Alert.alert('Download Complete', `File saved successfully as:\n${filename}`);
+                        Toast.show({ type: 'success', text1: 'Download Complete', text2: `Saved ${filename}` });
                         return; // Successfully saved
                     } catch (innerErr) {
                         // If stored permission was revoked, request again
@@ -88,7 +88,7 @@ export const downloadAndSaveFile = async (
                             const base64 = await FileSystem.readAsStringAsync(finalLocalUri, { encoding: FileSystem.EncodingType.Base64 });
                             const safUri = await FileSystem.StorageAccessFramework.createFileAsync(dirUri, filename, mimeType);
                             await FileSystem.writeAsStringAsync(safUri, base64, { encoding: FileSystem.EncodingType.Base64 });
-                            Alert.alert('Download Complete', `File saved successfully as:\n${filename}`);
+                            Toast.show({ type: 'success', text1: 'Download Complete', text2: `Saved ${filename}` });
                             return; // Successfully saved
                         }
                     }
