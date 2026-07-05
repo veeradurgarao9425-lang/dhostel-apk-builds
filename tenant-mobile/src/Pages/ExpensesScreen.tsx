@@ -357,11 +357,9 @@ export default function ExpensesScreen({ navigation }: any) {
     try {
       if (!silent) setLoading(true);
       try {
-        const saved = await AsyncStorage.getItem('tenant_budget');
-        if (saved) {
-          setBudget(Number(saved));
-        } else {
-          setBudget(0);
+        const res = await api.get('/tenant-expenses/budget');
+        if (res.data?.success) {
+          setBudget(Number(res.data.data.amount));
         }
       } catch (e) {
         console.error('Failed to load budget', e);
@@ -476,13 +474,13 @@ export default function ExpensesScreen({ navigation }: any) {
   useEffect(() => {
     const loadBudget = async () => {
       try {
-        const saved = await AsyncStorage.getItem('tenant_budget');
-        if (saved) {
-          setBudget(Number(saved));
-        } else {
-          // No budget set yet — set to 0 and trigger the setup prompt
-          setBudget(0);
-          setShowBudget(true);
+        const res = await api.get('/tenant-expenses/budget');
+        if (res.data?.success) {
+          const amt = Number(res.data.data.amount);
+          setBudget(amt);
+          if (amt === 0) {
+            setShowBudget(true);
+          }
         }
       } catch (e) {
         console.error('Failed to load budget', e);
@@ -598,7 +596,7 @@ export default function ExpensesScreen({ navigation }: any) {
         setBudget(val);
         setShowBudget(false);
         try {
-          await AsyncStorage.setItem('tenant_budget', String(val));
+          await api.post('/tenant-expenses/budget', { amount: val });
         } catch (e) {
           console.error('Failed to save budget', e);
         }

@@ -98,8 +98,10 @@ export default function HomeScreen({ navigation }: any) {
     useCallback(() => {
       const loadData = async () => {
         try {
-          const savedBudget = await AsyncStorage.getItem('tenant_budget');
-          setBudget(savedBudget ? Number(savedBudget) : 0);
+          const budgetRes = await api.get('/tenant-expenses/budget');
+          if (budgetRes.data?.success) {
+            setBudget(Number(budgetRes.data.data.amount));
+          }
         } catch (e) {
           console.error('Failed to load budget on focus:', e);
         }

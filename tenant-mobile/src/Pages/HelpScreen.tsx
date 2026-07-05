@@ -7,6 +7,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { ChevronLeft } from 'lucide-react-native';
 import { colors } from '../theme';
 
 const BLUE = '#2245D4';
@@ -104,7 +105,7 @@ export default function HelpScreen() {
         {/* Header */}
         <View style={s.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} activeOpacity={0.7}>
-            <Ionicons name="arrow-back" size={24} color={WHITE} />
+            <ChevronLeft size={28} color={WHITE} strokeWidth={2.5} />
           </TouchableOpacity>
           <View style={s.headerTitleWrap}>
             <Text style={s.headerTitle}>Need Help?</Text>

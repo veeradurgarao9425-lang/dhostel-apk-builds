@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   StyleSheet,
   Text,
@@ -8,8 +8,10 @@ import {
   ScrollView,
   StatusBar,
   Dimensions,
+  Animated,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
 import {
   Bell,
   FileSignature,
@@ -19,196 +21,547 @@ import {
   MessageSquare,
   AlertCircle,
   FileText,
+  Wallet,
+  ChevronRight,
+  TrendingUp,
+  Clock,
+  HelpCircle,
+  ShieldCheck,
+  Sparkles,
 } from "lucide-react-native";
 import { useAuth } from "../context/AuthContext";
+import api from "../services/api";
+import IconGlowBadge from "../components/ui/IconGlowBadge";
 
 const { width } = Dimensions.get("window");
 
-const BLUE = "#2245D4";
-const WHITE = "#FFFFFF";
+const BLUE      = "#2245D4";
+const BLUE_DARK = "#1A35A8";
+const WHITE     = "#FFFFFF";
 const TEXT_DARK = "#1A1A1A";
-const TEXT_MID = "#666666";
+const TEXT_MID  = "#6B7280";
+const PAGE_BG   = "#F0F4FF";
 
 export default function PendingApprovalScreen({ navigation }: any) {
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const firstName = (user?.name || "Tenant").split(" ")[0];
 
-  return (
-    <View style={{ flex: 1, backgroundColor: WHITE }}>
-      <StatusBar barStyle="light-content" backgroundColor={BLUE} />
+  const helpShortcuts = [
+    { id: 'features', name: 'How it works', icon: Sparkles, nav: 'HowItWorksScreen', bg: '#FEF3C7', color: '#D97706', gradient: ['#D97706', '#F59E0B'] as [string, string] },
+    { id: 'documents', name: 'My\nDocuments', icon: FileText, nav: 'Documents', bg: '#EDE9FE', color: '#8B5CF6', gradient: ['#7C3AED', '#A78BFA'] as [string, string] },
+    { id: 'help', name: 'Need help', icon: HelpCircle, nav: 'HelpScreen', bg: '#E0F2FE', color: '#0EA5E9', gradient: ['#0284C7', '#38BDF8'] as [string, string] },
+    { id: 'security', name: 'Security\n& Policy', icon: ShieldCheck, nav: 'PrivacyPolicyScreen', bg: '#DCFCE7', color: '#22C55E', gradient: ['#16A34A', '#4ADE80'] as [string, string] },
+  ];
 
-      {/* Blue Header */}
-      <SafeAreaView edges={["top"]} style={{ backgroundColor: BLUE }}>
-        <View style={{ paddingHorizontal: 20, paddingBottom: 16, paddingTop: 8 }}>
-          <Text style={{ fontSize: 18, fontWeight: "700", color: WHITE }}>
-            Hi, {firstName} 👋
-          </Text>
-          <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.8)", marginTop: 2 }}>
-            Application Status
-          </Text>
+  const [budget, setBudget] = useState(0);
+  const [spent,  setSpent]  = useState(0);
+  const progressAnim = useRef(new Animated.Value(0)).current;
+
+  const percentage = budget > 0 ? Math.min((spent / budget) * 100, 100) : 0;
+  const isOver     = spent > budget && budget > 0;
+  const remaining  = budget - spent;
+
+  useEffect(() => {
+    Animated.timing(progressAnim, {
+      toValue: percentage,
+      duration: 1200,
+      useNativeDriver: false,
+    }).start();
+  }, [percentage]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const load = async () => {
+        try {
+          const budgetRes = await api.get("/tenant-expenses/budget");
+          if (budgetRes.data?.success) setBudget(Number(budgetRes.data.data.amount));
+        } catch {}
+        try {
+          const res = await api.get("/tenant-expenses");
+          if (res.data?.success) {
+            const now = new Date();
+            const monthly = (res.data.data || []).filter((e: any) => {
+              const d = new Date(e.date);
+              return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+            });
+            setSpent(monthly.reduce((s: number, e: any) => s + Number(e.amount), 0));
+          }
+        } catch {}
+      };
+      load();
+    }, [])
+  );
+
+  const barColor = isOver ? "#EF4444" : percentage > 80 ? "#F59E0B" : "#22C55E";
+
+  return (
+    <View style={styles.root}>
+      <StatusBar barStyle="light-content" backgroundColor={BLUE_DARK} />
+
+      {/* ── SafeAreaView: ONLY handles the top bar ── */}
+      <SafeAreaView edges={["top"]} style={styles.safeHeader}>
+        <View style={styles.topBar}>
+          <View>
+            <Text style={styles.greeting}>Hi, {firstName} 👋</Text>
+            <Text style={styles.subLabel}>Application Status</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.avatar}
+            onPress={() => navigation?.navigate?.("Profile")}
+          >
+            <Text style={styles.avatarText}>{firstName[0].toUpperCase()}</Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
 
+      {/* ── Scrollable content area ── */}
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        style={styles.sheet}
+        contentContainerStyle={styles.sheetContent}
       >
-        {/* Application Status Badge */}
-        <View style={{ paddingHorizontal: 20, paddingTop: 20, marginBottom: 16 }}>
-          <View style={styles.badge}>
-            <View style={styles.badgeDot} />
-            <Text style={styles.badgeText}>Application Under Review</Text>
-          </View>
+
+        {/* ── Budget Card ── */}
+        <View>
+          {budget === 0 ? (
+            <TouchableOpacity
+              style={styles.budgetEmpty}
+              onPress={() => navigation?.navigate?.("Expenses")}
+              activeOpacity={0.85}
+            >
+              <View style={styles.budgetEmptyIcon}>
+                <Wallet size={20} color="#D97706" strokeWidth={2} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.budgetEmptyTitle}>Set Monthly Budget</Text>
+                <Text style={styles.budgetEmptySub}>
+                  Track your spending this month
+                </Text>
+              </View>
+              <ChevronRight size={16} color="#D97706" strokeWidth={2.5} />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.card}
+              onPress={() => navigation?.navigate?.("Expenses")}
+              activeOpacity={0.85}
+            >
+              <View style={styles.budgetRow}>
+                <View style={styles.budgetIconWrap}>
+                  <TrendingUp size={18} color={BLUE} strokeWidth={2.5} />
+                </View>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={styles.budgetLabel}>Monthly Budget</Text>
+                  <Text style={styles.budgetMeta}>
+                    {isOver
+                      ? "⚠️ Over budget"
+                      : `₹${remaining.toLocaleString("en-IN")} remaining`}
+                  </Text>
+                </View>
+                <Text style={[styles.budgetPercent, { color: barColor }]}>
+                  {Math.round(percentage)}%
+                </Text>
+              </View>
+              <View style={styles.barTrack}>
+                <Animated.View
+                  style={[
+                    styles.barFill,
+                    {
+                      width: progressAnim.interpolate({
+                        inputRange: [0, 100],
+                        outputRange: ["0%", "100%"],
+                      }),
+                      backgroundColor: barColor,
+                    },
+                  ]}
+                />
+              </View>
+              <View style={styles.budgetAmounts}>
+                <Text style={styles.budgetAmountLeft}>
+                  ₹{spent.toLocaleString("en-IN")} spent
+                </Text>
+                <Text style={styles.budgetAmountRight}>
+                  of ₹{budget.toLocaleString("en-IN")}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
         </View>
 
-        {/* 3D House Illustration */}
-        <View style={{ alignItems: "center", marginBottom: 20 }}>
+        {/* ── Illustration — enclosed in a white card to avoid background mixing ── */}
+        <View style={[styles.card, styles.illustrationCard, styles.sectionGap]}>
+          {/* Status pill — placed at top right corner */}
+          <View style={styles.pillContent}>
+            <View style={styles.pillDotContent} />
+            <Text style={styles.pillTextContent}>Application Under Review</Text>
+          </View>
+
           <Image
             source={require("../../assets/house_hourglass_3d.png")}
-            style={{ width: 240, height: 200 }}
+            style={styles.heroImgLarge}
             resizeMode="contain"
           />
         </View>
 
-        {/* Title & Description */}
-        <View style={{ alignItems: "center", paddingHorizontal: 32, marginBottom: 24 }}>
+        {/* Title & subtitle moved here */}
+        <View style={styles.sectionGap}>
           <Text style={styles.title}>We're reviewing your application</Text>
           <Text style={styles.subtitle}>
-            Your application is currently pending owner approval. Once it's approved and a room is assigned, you'll get full access to all features.
+            Your application is pending owner approval. Once approved and a room
+            is assigned, you'll get full access.
           </Text>
         </View>
 
-        {/* What happens next? Steps */}
-        <View style={styles.stepsCard}>
-          <Text style={styles.stepsTitle}>What happens next?</Text>
-          <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "center" }}>
-            {/* Step 1 */}
+        {/* ── What happens next ── */}
+        <View style={[styles.card, styles.sectionGap]}>
+          <Text style={styles.cardTitle}>What happens next?</Text>
+          <View style={styles.stepsRow}>
+            {/* Step 1 — done */}
             <View style={styles.step}>
               <View style={[styles.stepCircle, { backgroundColor: BLUE }]}>
-                <FileSignature size={22} color={WHITE} strokeWidth={2} />
+                <FileSignature size={18} color={WHITE} strokeWidth={2} />
               </View>
               <Text style={styles.stepLabel}>Application{"\n"}Submitted</Text>
-              <View style={[styles.stepBadge, { backgroundColor: "#DCFCE7" }]}>
-                <CheckCircle2 size={13} color="#22C55E" strokeWidth={2.5} />
+              <View style={styles.stepDone}>
+                <CheckCircle2 size={11} color="#22C55E" strokeWidth={2.5} />
               </View>
             </View>
 
-            {/* Connector 1 */}
             <View style={styles.connector} />
 
-            {/* Step 2 - ACTIVE */}
+            {/* Step 2 — active */}
             <View style={styles.step}>
-              <View style={[styles.stepCircle, { backgroundColor: BLUE, borderWidth: 3, borderColor: "#BFDBFE" }]}>
-                <User2 size={22} color={WHITE} strokeWidth={2} />
+              <View style={[styles.stepCircle, styles.stepCircleActive]}>
+                <User2 size={18} color={WHITE} strokeWidth={2} />
               </View>
-              <Text style={[styles.stepLabel, { color: TEXT_DARK, fontWeight: "700" }]}>
-                Under Owner{"\n"}Review
+              <Text style={[styles.stepLabel, { color: BLUE, fontWeight: "700" }]}>
+                Owner{"\n"}Review
               </Text>
-              <View style={[styles.stepBadge, { backgroundColor: "#EFF6FF", borderWidth: 1.5, borderColor: "#93C5FD" }]}>
-                <Text style={{ fontSize: 9, color: BLUE, fontWeight: "800" }}>•••</Text>
+              <View style={styles.stepActive}>
+                <Clock size={10} color={BLUE} strokeWidth={2.5} />
               </View>
             </View>
 
-            {/* Connector 2 */}
             <View style={[styles.connector, { borderColor: "#CBD5E1" }]} />
 
-            {/* Step 3 - PENDING */}
+            {/* Step 3 — pending */}
             <View style={styles.step}>
-              <View style={[styles.stepCircle, { backgroundColor: "#F1F5F9" }]}>
-                <HomeIcon size={22} color="#94A3B8" strokeWidth={2} />
+              <View style={[styles.stepCircle, { backgroundColor: "#EEF2FF" }]}>
+                <HomeIcon size={18} color="#94A3B8" strokeWidth={2} />
               </View>
               <Text style={[styles.stepLabel, { color: "#94A3B8" }]}>
-                Room Assigned{"\n"}& Access Granted
+                Room{"\n"}Assigned
               </Text>
-              <View style={[styles.stepBadge, { borderWidth: 2, borderColor: "#CBD5E1" }]} />
+              <View style={styles.stepPending} />
             </View>
           </View>
         </View>
 
-        {/* Notification Banner */}
-        <View style={styles.notifBanner}>
+        {/* ── Notification Banner ── */}
+        <View style={[styles.notifBanner, styles.sectionGap]}>
           <View style={styles.notifIcon}>
-            <Bell size={18} color="#D97706" strokeWidth={2} />
+            <Bell size={16} color="#D97706" strokeWidth={2} />
           </View>
           <Text style={styles.notifText}>
-            You'll get a notification once your application is approved.
+            You'll receive a notification as soon as your application is
+            approved.
           </Text>
         </View>
 
-        {/* While you wait */}
-        <View style={{ paddingHorizontal: 20 }}>
-          <Text style={styles.waitTitle}>While you wait...</Text>
-          <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-            {[
-              { icon: FileText, label: "Learn\nHow it Works", bg: "#EFF6FF", color: "#2563EB" },
-              { icon: MessageSquare, label: "Contact\nSupport", bg: "#F0FDF4", color: "#16A34A" },
-              { icon: FileSignature, label: "Privacy &\nPolicy", bg: "#FDF4FF", color: "#9333EA" },
-              { icon: AlertCircle, label: "Need\nHelp?", bg: "#FFF7ED", color: "#EA580C" },
-            ].map((item, i) => (
-              <TouchableOpacity key={i} style={styles.waitItem} activeOpacity={0.7}>
-                <View style={[styles.waitIcon, { backgroundColor: item.bg }]}>
-                  <item.icon size={22} color={item.color} strokeWidth={2} />
-                </View>
-                <Text style={styles.waitLabel}>{item.label}</Text>
+        {/* ── Help & Security Shortcuts ── */}
+        <View style={[styles.sectionGap, { marginTop: 32 }]}>
+          <Text style={styles.sectionTitle}>Explore & Resources</Text>
+          <View style={styles.shortcutGrid}>
+            {helpShortcuts.map((sc) => (
+              <TouchableOpacity key={sc.id} style={styles.shortcutItem} onPress={() => navigation?.navigate?.(sc.nav)}>
+                <IconGlowBadge
+                  Icon={sc.icon}
+                  gradient={sc.gradient}
+                  glowColor={sc.color}
+                  flatColor={sc.color}
+                  flatBg={sc.bg}
+                  size="sm"
+                  entrance
+                  style={{ marginBottom: 8 }}
+                />
+                <Text style={styles.shortcutText}>{sc.name}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
       </ScrollView>
+
+      {/* ── Fixed Bottom Tab Bar (Only Home and Expenses) ── */}
+      <View 
+        style={[
+          styles.bottomTabBar, 
+          { paddingBottom: Math.max(insets.bottom, 8) }
+        ]}
+      >
+        <TouchableOpacity 
+          style={styles.tabItem} 
+          activeOpacity={0.7}
+          onPress={() => navigation?.navigate?.("Home")}
+        >
+          <View style={[styles.iconWrap, styles.iconWrapActive]}>
+            <HomeIcon size={24} color={BLUE} strokeWidth={2.5} />
+          </View>
+          <Text style={[styles.tabLabel, styles.tabLabelActive]}>Home</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.tabItem} 
+          activeOpacity={0.7}
+          onPress={() => navigation?.navigate?.("Expenses")}
+        >
+          <View style={styles.iconWrap}>
+            <Wallet size={24} color={TEXT_MID} strokeWidth={1.8} />
+          </View>
+          <Text style={styles.tabLabel}>Expenses</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
 
+const CARD_SHADOW = {
+  elevation: 3,
+  shadowColor: "#1A35A8",
+  shadowOpacity: 0.08,
+  shadowRadius: 10,
+  shadowOffset: { width: 0, height: 4 },
+};
+
 const styles = StyleSheet.create({
-  badge: {
+  root: { flex: 1, backgroundColor: PAGE_BG },
+
+  // ── SafeAreaView — top bar only ───────────────────────
+  safeHeader: { backgroundColor: BLUE },
+
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingTop: 4,
+    paddingBottom: 12,
+  },
+  greeting:  { fontSize: 18, fontWeight: "800", color: WHITE },
+  subLabel:  { fontSize: 12, color: "rgba(255,255,255,0.7)", marginTop: 2 },
+  avatar: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    alignItems: "center", justifyContent: "center",
+  },
+  avatarText: { color: WHITE, fontWeight: "700", fontSize: 15 },
+
+  // Illustration inside white card
+  illustrationCard: {
+    alignItems: "center",
+    paddingVertical: 24,
+  },
+  heroImgLarge: { width: 220, height: 195 },
+
+  // ── Scroll area ──────────────────────────────────────────────
+  sheet: { flex: 1 },
+  sheetContent: {
+    paddingTop: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 120, // increased to ensure content is not hidden behind the absolute tab bar
+  },
+
+  // Pill content style
+  pillContent: {
+    position: "absolute",
+    top: 12,
+    right: 12,
     flexDirection: "row", alignItems: "center", gap: 6,
-    backgroundColor: "#DCFCE7", paddingHorizontal: 12,
-    paddingVertical: 6, borderRadius: 20, alignSelf: "flex-start",
+    backgroundColor: "#DCFCE7",
+    paddingHorizontal: 12, paddingVertical: 6,
+    borderRadius: 20,
+    zIndex: 10,
   },
-  badgeDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#22C55E" },
-  badgeText: { fontSize: 12, fontWeight: "700", color: "#16A34A" },
+  pillDotContent:  { width: 7, height: 7, borderRadius: 4, backgroundColor: "#16A34A" },
+  pillTextContent: { fontSize: 10, fontWeight: "700", color: "#16A34A" },
+
   title: {
-    fontSize: 22, fontWeight: "800", color: TEXT_DARK,
-    textAlign: "center", marginBottom: 10,
+    fontSize: 20,
+    fontWeight: "800",
+    color: TEXT_DARK,
+    textAlign: "center",
+    lineHeight: 28,
+    marginBottom: 8,
   },
-  subtitle: { fontSize: 14, color: TEXT_MID, textAlign: "center", lineHeight: 22 },
-  stepsCard: {
-    marginHorizontal: 20, backgroundColor: "#FAFBFF",
-    borderRadius: 18, borderWidth: 1, borderColor: "#E8EDF8",
-    padding: 20, marginBottom: 16,
+  subtitle: {
+    fontSize: 13,
+    color: TEXT_MID,
+    textAlign: "center",
+    lineHeight: 20,
+    paddingHorizontal: 8,
   },
-  stepsTitle: {
-    fontSize: 15, fontWeight: "700", color: "#1E3A8A",
-    textAlign: "center", marginBottom: 20,
+
+  sectionGap: { marginTop: 16 },
+
+  // ── Shared card ──────────────────────────────────────────────
+  card: {
+    backgroundColor: WHITE,
+    borderRadius: 16,
+    padding: 16,
+    ...CARD_SHADOW,
   },
-  step: { alignItems: "center", width: 90 },
-  stepCircle: {
-    width: 48, height: 48, borderRadius: 24,
-    alignItems: "center", justifyContent: "center", marginBottom: 8,
+  cardTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: BLUE_DARK,
+    textAlign: "center",
+    marginBottom: 16,
   },
-  stepLabel: { fontSize: 11, color: "#475569", textAlign: "center", fontWeight: "600" },
-  stepBadge: {
-    width: 20, height: 20, borderRadius: 10,
-    alignItems: "center", justifyContent: "center", marginTop: 6,
+
+  // ── Budget ───────────────────────────────────────────────────
+  budgetEmpty: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    backgroundColor: "#FFFBEB",
+    borderRadius: 16, borderWidth: 1, borderColor: "#FDE68A",
+    paddingHorizontal: 16, paddingVertical: 14,
+    ...CARD_SHADOW,
   },
-  connector: {
-    flex: 1, height: 2, borderWidth: 1,
-    borderColor: "#2245D4", borderStyle: "dashed",
-    marginTop: 24, marginHorizontal: 4,
-  },
-  notifBanner: {
-    marginHorizontal: 20, backgroundColor: "#FFFBEB",
-    borderRadius: 14, borderWidth: 1, borderColor: "#FDE68A",
-    padding: 14, flexDirection: "row", alignItems: "center",
-    gap: 12, marginBottom: 28,
-  },
-  notifIcon: {
-    width: 36, height: 36, borderRadius: 10,
+  budgetEmptyIcon: {
+    width: 40, height: 40, borderRadius: 12,
     backgroundColor: "#FEF3C7", alignItems: "center", justifyContent: "center",
   },
-  notifText: { flex: 1, fontSize: 13, color: "#92400E", fontWeight: "600", lineHeight: 20 },
-  waitTitle: { fontSize: 15, fontWeight: "700", color: TEXT_DARK, marginBottom: 16 },
-  waitItem: { alignItems: "center", width: "23%" },
-  waitIcon: { width: 52, height: 52, borderRadius: 14, alignItems: "center", justifyContent: "center", marginBottom: 6 },
-  waitLabel: { fontSize: 10, color: TEXT_MID, textAlign: "center", fontWeight: "600", lineHeight: 14 },
+  budgetEmptyTitle: { fontSize: 14, fontWeight: "700", color: "#92400E" },
+  budgetEmptySub:   { fontSize: 11, color: "#D97706", marginTop: 2 },
+
+  budgetRow: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
+  budgetIconWrap: {
+    width: 40, height: 40, borderRadius: 12,
+    backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center",
+  },
+  budgetLabel:       { fontSize: 13, fontWeight: "700", color: TEXT_DARK },
+  budgetMeta:        { fontSize: 11, color: TEXT_MID, marginTop: 2 },
+  budgetPercent:     { fontSize: 20, fontWeight: "900" },
+  barTrack: {
+    height: 7, backgroundColor: "#EEF2FF",
+    borderRadius: 4, overflow: "hidden", marginBottom: 8,
+  },
+  barFill: { height: "100%", borderRadius: 4 },
+  budgetAmounts:      { flexDirection: "row", justifyContent: "space-between" },
+  budgetAmountLeft:   { fontSize: 11, color: TEXT_DARK, fontWeight: "700" },
+  budgetAmountRight:  { fontSize: 11, color: TEXT_MID },
+
+  // ── Stepper ──────────────────────────────────────────────────
+  stepsRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "center" },
+  step:     { alignItems: "center", width: 80 },
+  stepCircle: {
+    width: 44, height: 44, borderRadius: 22,
+    alignItems: "center", justifyContent: "center", marginBottom: 6,
+  },
+  stepCircleActive: {
+    backgroundColor: BLUE,
+    borderWidth: 2, borderColor: "#BFDBFE",
+    // optical compensation: border doesn't change outer size because we account for it
+  },
+  stepLabel: {
+    fontSize: 10, color: "#64748B", textAlign: "center",
+    fontWeight: "600", lineHeight: 14,
+  },
+  stepDone: {
+    width: 18, height: 18, borderRadius: 9,
+    backgroundColor: "#DCFCE7",
+    alignItems: "center", justifyContent: "center", marginTop: 6,
+  },
+  stepActive: {
+    width: 18, height: 18, borderRadius: 9,
+    backgroundColor: "#EEF2FF", borderWidth: 2, borderColor: "#93C5FD",
+    alignItems: "center", justifyContent: "center", marginTop: 6,
+  },
+  stepPending: {
+    width: 18, height: 18, borderRadius: 9,
+    borderWidth: 2, borderColor: "#CBD5E1", marginTop: 6,
+  },
+  // connector centers on circle: marginTop = circleHeight/2 = 44/2 = 22
+  connector: {
+    flex: 1, height: 0,
+    borderTopWidth: 1.5, borderColor: BLUE,
+    borderStyle: "dashed",
+    marginTop: 22, marginHorizontal: 2,
+  },
+
+  // ── Notification ─────────────────────────────────────────────
+  notifBanner: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    backgroundColor: "#FFFBEB",
+    borderRadius: 16, borderWidth: 1, borderColor: "#FDE68A",
+    padding: 14,
+    ...CARD_SHADOW,
+    shadowColor: "#D97706",
+    shadowOpacity: 0.1,
+  },
+  notifIcon: {
+    width: 34, height: 34, borderRadius: 10,
+    backgroundColor: "#FEF3C7", alignItems: "center", justifyContent: "center",
+  },
+  notifText: {
+    fontSize: 13,
+    color: "#92400E",
+    fontWeight: "500",
+    flex: 1,
+    lineHeight: 18,
+  },
+
+  // ── Shortcuts UI ─────────────────────────────────────────────────────
+  sectionTitle: { fontSize: 16, fontWeight: "700", color: TEXT_DARK, marginBottom: 16 },
+  shortcutGrid: { flexDirection: "row", flexWrap: "wrap", gap: 24, justifyContent: "flex-start", paddingHorizontal: 4 },
+  shortcutItem: { alignItems: "center", width: 70, marginBottom: 12 },
+  shortcutText: { fontSize: 11, color: TEXT_DARK, fontWeight: "600", textAlign: "center", lineHeight: 14 },
+
+  // ── Fixed Bottom Tab Bar ───────────────────────────────────────────
+  bottomTabBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'flex-start',
+    backgroundColor: WHITE,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    paddingTop: 8,
+    minHeight: 64,
+    // Add shadow so it looks elevated above the scroll content
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: -4 },
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 4,
+    position: 'relative',
+    minHeight: 56,
+  },
+  iconWrap: {
+    width: 52,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconWrapActive: {
+    backgroundColor: '#EEF2FF', // primarySoft
+  },
+  tabLabel: {
+    fontSize: 11,
+    letterSpacing: 0.1,
+    color: TEXT_MID,
+    fontWeight: '600',
+  },
+  tabLabelActive: {
+    fontWeight: '800',
+    color: BLUE, // primary
+  },
 });

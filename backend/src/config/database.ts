@@ -811,6 +811,40 @@ async function patchDatabaseSchema() {
       console.error('[schema-patch] Error checking/creating splits_expenses table:', e.message);
     }
 
+    // 22. Ensure tenant_budgets table exists
+    try {
+      if (!tableNamesLower.includes('tenant_budgets')) {
+        console.log('[schema-patch] creating missing tenant_budgets table...');
+        await db.raw(`
+          CREATE TABLE tenant_budgets (
+            student_id INT PRIMARY KEY,
+            amount DECIMAL(10, 2) NOT NULL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error checking/creating tenant_budgets table:', e.message);
+    }
+
+    // 23. Ensure tenant_saving_goals table exists
+    try {
+      if (!tableNamesLower.includes('tenant_saving_goals')) {
+        console.log('[schema-patch] creating missing tenant_saving_goals table...');
+        await db.raw(`
+          CREATE TABLE tenant_saving_goals (
+            student_id INT PRIMARY KEY,
+            amount DECIMAL(10, 2) NOT NULL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error checking/creating tenant_saving_goals table:', e.message);
+    }
+
     console.log('[schema-patch] Schema check and patch complete.');
   } catch (err: any) {
     console.error('[schema-patch] Critical error during schema patching:', err.message);

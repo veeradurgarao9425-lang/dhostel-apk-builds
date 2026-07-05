@@ -792,7 +792,14 @@ export const authController = {
       console.log(`${'='.repeat(60)}\n`);
 
       // Send the OTP via email
-      await sendOtpEmail(email, otp);
+      try {
+        await sendOtpEmail(email, otp);
+      } catch (emailError: any) {
+        console.error('⚠️ Could not send email:', emailError.message);
+        if (process.env.NODE_ENV !== 'development') {
+          throw emailError;
+        }
+      }
 
       return res.status(200).json({
         success: true,
@@ -962,11 +969,17 @@ export const authController = {
           await sendOtpEmail(identifier, otp);
         } catch (emailErr: any) {
           console.error('Failed to send OTP email, but OTP was generated:', emailErr.message);
-          return res.status(500).json({ success: false, error: `Brevo Error: ${emailErr.message}` });
+          if (process.env.NODE_ENV !== 'development') {
+            return res.status(500).json({ success: false, error: `Email Error: ${emailErr.message}` });
+          }
         }
       }
 
-      return res.json({ success: true, message: 'OTP sent successfully' });
+      return res.json({ 
+        success: true, 
+        message: 'OTP sent successfully',
+        ...(process.env.NODE_ENV === 'development' && { dev_otp: otp })
+      });
     } catch (error: any) {
       console.error('tenantSendOtp error:', error);
       return res.status(500).json({ success: false, error: error.message || 'Internal server error' });

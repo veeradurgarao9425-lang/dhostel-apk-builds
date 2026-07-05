@@ -46,6 +46,8 @@ import UIShowcaseScreen from '../Pages/UIShowcaseScreen';
 import SearchScreen from '../Pages/SearchScreen';
 import NotesScreen from '../Pages/NotesScreen';
 import PendingApprovalScreen from '../Pages/PendingApprovalScreen';
+import PrivacyPolicyScreen from '../Pages/PrivacyPolicyScreen';
+import HowItWorksScreen from '../Pages/HowItWorksScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -97,7 +99,18 @@ export default function AppNavigator() {
     <NavigationContainer ref={navigationRef} theme={navTheme}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {isPendingApproval ? (
-          <Stack.Screen name="PendingApproval" component={PendingApprovalScreen} />
+          <>
+            <Stack.Screen name="PendingApproval" component={PendingApprovalScreen} />
+            <Stack.Screen name="HelpScreen" component={HelpScreen} />
+            <Stack.Screen name="HowItWorksScreen" component={HowItWorksScreen} />
+            <Stack.Screen name="PrivacyPolicyScreen" component={PrivacyPolicyScreen} />
+            <Stack.Screen name="Documents" component={DocumentsScreen} />
+            <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen name="Expenses" component={ExpensesScreen} />
+            <Stack.Screen name="AllExpenses" component={AllExpensesScreen} />
+            <Stack.Screen name="AddExpense" component={AddExpenseScreen} />
+            <Stack.Screen name="TransactionsList" component={TransactionsListScreen} />
+          </>
         ) : user ? (
           <>
             <Stack.Screen name="Main" component={MainTabs} />
@@ -122,6 +135,7 @@ export default function AppNavigator() {
             <Stack.Screen name="CategoryDetail" component={CategoryDetailScreen} />
             <Stack.Screen name="TransactionsList" component={TransactionsListScreen} />
             <Stack.Screen name="HelpScreen" component={HelpScreen} />
+            <Stack.Screen name="PrivacyPolicyScreen" component={PrivacyPolicyScreen} />
             <Stack.Screen name="VisitorPass" component={VisitorPassScreen} />
             <Stack.Screen name="Rating" component={RatingScreen} />
             <Stack.Screen name="Notes" component={NotesScreen} />

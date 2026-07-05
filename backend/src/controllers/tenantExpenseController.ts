@@ -113,3 +113,61 @@ export const updateSavingGoal = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({ success: false, error: 'Failed to update saving goal.' });
   }
 };
+
+export const getTenantBudget = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user || user.role_id !== 3) {
+      return res.status(403).json({ success: false, error: 'Unauthorized.' });
+    }
+
+    let budget = await db('tenant_budgets').where('student_id', user.user_id).first();
+    
+    // Default fallback if not found
+    if (!budget) {
+      budget = { student_id: user.user_id, amount: 0 };
+    }
+
+    return res.json({ success: true, data: budget });
+  } catch (error: any) {
+    if (error?.code === 'ER_NO_SUCH_TABLE') return res.json({ success: true, data: { amount: 0 } });
+    console.error('Error fetching tenant budget:', error);
+    return res.status(500).json({ success: false, error: 'Failed to fetch tenant budget.' });
+  }
+};
+
+export const updateTenantBudget = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user || user.role_id !== 3) {
+      return res.status(403).json({ success: false, error: 'Unauthorized.' });
+    }
+
+    const { amount } = req.body;
+    if (amount === undefined || amount === null) {
+      return res.status(400).json({ success: false, error: 'Amount is required' });
+    }
+
+    const existing = await db('tenant_budgets').where('student_id', user.user_id).first();
+
+    if (existing) {
+      await db('tenant_budgets')
+        .where('student_id', user.user_id)
+        .update({ amount: parseFloat(amount), updated_at: new Date() });
+    } else {
+      await db('tenant_budgets').insert({
+        student_id: user.user_id,
+        amount: parseFloat(amount),
+        created_at: new Date(),
+        updated_at: new Date()
+      });
+    }
+
+    const updated = await db('tenant_budgets').where('student_id', user.user_id).first();
+    return res.json({ success: true, data: updated, message: 'Tenant budget updated successfully' });
+  } catch (error: any) {
+    console.error('Error updating tenant budget:', error);
+    return res.status(500).json({ success: false, error: 'Failed to update tenant budget.' });
+  }
+};
+
