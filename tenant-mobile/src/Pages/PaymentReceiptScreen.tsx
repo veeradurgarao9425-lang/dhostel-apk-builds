@@ -69,7 +69,7 @@ export default function PaymentReceiptScreen({ route, navigation }: any) {
   const handleDownload = async () => {
     try {
       const { uri } = await Print.printToFileAsync({ html: htmlContent });
-      const filename = \`receipt_\${transactionId.replace(/[^a-zA-Z0-9-_]/g, '_')}.pdf\`;
+      const filename = `receipt_${transactionId.replace(/[^a-zA-Z0-9-_]/g, '_')}.pdf`;
       await downloadAndSaveFile(uri, filename, 'application/pdf', true);
     } catch (error) {
       console.error('Error saving PDF:', error);
