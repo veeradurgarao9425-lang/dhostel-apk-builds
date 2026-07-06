@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowLeft, ChefHat, Info, Calendar as CalendarIcon, List, ChevronLeft, ChevronRight, CheckCircle2, XCircle } from 'lucide-react-native';
+import { ArrowLeft, ChefHat, Info, Calendar as CalendarIcon, List, ChevronLeft, ChevronRight, CheckCircle2, XCircle, Sun, Utensils, ConciergeBell } from 'lucide-react-native';
 import { Calendar } from 'react-native-calendars';
 import { CustomMonthYearPicker } from '../components/pickers/CustomMonthYearPicker';
 import { colors, radius, spacing, shadow } from '../theme';
@@ -60,9 +60,9 @@ function formatDateToYMD(d: Date) {
 }
 
 const MEALS = [
-  { key: 'breakfast' as const, label: 'Breakfast', emoji: '☀️', color: '#F59E0B', bg: '#FFF4E5' },
-  { key: 'lunch' as const, label: 'Lunch', emoji: '🍛', color: '#10B981', bg: '#E9FBF3' },
-  { key: 'dinner' as const, label: 'Dinner', emoji: '🌙', color: colors.primary, bg: colors.primarySoft },
+  { key: 'breakfast', label: 'Breakfast', time: '08:00 AM - 10:00 AM', Icon: Sun, color: '#EA580C', bg: '#FFFAF0', iconBg: '#FFE6C6' },
+  { key: 'lunch', label: 'Lunch', time: '12:30 PM - 02:30 PM', Icon: Utensils, color: '#10B981', bg: '#ECFDF5', iconBg: '#D1FAE5' },
+  { key: 'dinner', label: 'Dinner', time: '07:30 PM - 09:30 PM', Icon: ConciergeBell, color: '#7C3AED', bg: '#F5F3FF', iconBg: '#EDE9FE' },
 ];
 
 export default function FullMenuScreen({ navigation }: any) {
@@ -84,7 +84,17 @@ export default function FullMenuScreen({ navigation }: any) {
         const rows: any[] = res.data?.menu ?? [];
         const mapped: WeekMenu = {};
         rows.forEach((row) => {
-          const shortKey = DAY_NAME_TO_SHORT[row.day_of_week];
+          const rawDay = (row.day_of_week || '').trim();
+          let shortKey = '';
+          Object.keys(DAY_NAME_TO_SHORT).forEach(full => {
+            if (
+              rawDay.toLowerCase() === full.toLowerCase() || 
+              rawDay.toLowerCase() === DAY_NAME_TO_SHORT[full].toLowerCase()
+            ) {
+              shortKey = DAY_NAME_TO_SHORT[full];
+            }
+          });
+
           if (!shortKey) return;
           if (!mapped[shortKey]) {
             mapped[shortKey] = {
@@ -177,51 +187,68 @@ export default function FullMenuScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <LinearGradient colors={[BLUE, BLUE_DARK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
+      <View style={[styles.header, { backgroundColor: BLUE }]}>
         <View style={styles.hCircle1} />
         <View style={styles.hCircle2} />
         <View style={styles.headerRow}>
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
-            <ArrowLeft size={20} color="#fff" />
+            <ChevronLeft size={24} color="#fff" strokeWidth={3} />
           </TouchableOpacity>
           <View style={{ flex: 1, marginLeft: 16 }}>
-            <Text style={styles.headerEyebrow}>Mess Schedule</Text>
             <Text style={styles.headerTitle}>My Meals</Text>
+            <Text style={styles.headerSub}>Check your daily mess schedule here</Text>
           </View>
-          <TouchableOpacity style={styles.chefIconWrap} onPress={() => setShowPicker(true)}>
-            <CalendarIcon size={20} color="#fff" />
-          </TouchableOpacity>
         </View>
-        
-        {/* Toggle View */}
-        <View style={styles.toggleContainer}>
+      </View>
+
+      {/* Toggle View Below Header */}
+      <View style={{ padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: colors.border }}>
+        <View style={{ flexDirection: 'row', backgroundColor: '#F1F5F9', borderRadius: 12, padding: 4 }}>
           <TouchableOpacity 
             style={[styles.toggleBtn, viewMode === 'menu' && styles.toggleBtnActive]} 
             onPress={() => setViewMode('menu')}
           >
-            <List size={16} color={viewMode === 'menu' ? BLUE : '#fff'} />
-            <Text style={[styles.toggleText, viewMode === 'menu' && styles.toggleTextActive]}>Weekly Menu</Text>
+            <List size={16} color={viewMode === 'menu' ? BLUE : '#64748B'} />
+            <Text style={[styles.toggleText, { color: viewMode === 'menu' ? BLUE : '#64748B' }]}>Weekly Menu</Text>
           </TouchableOpacity>
           <TouchableOpacity 
             style={[styles.toggleBtn, viewMode === 'calendar' && styles.toggleBtnActive]} 
             onPress={() => setViewMode('calendar')}
           >
-            <CalendarIcon size={16} color={viewMode === 'calendar' ? BLUE : '#fff'} />
-            <Text style={[styles.toggleText, viewMode === 'calendar' && styles.toggleTextActive]}>Calendar</Text>
+            <CalendarIcon size={16} color={viewMode === 'calendar' ? BLUE : '#64748B'} />
+            <Text style={[styles.toggleText, { color: viewMode === 'calendar' ? BLUE : '#64748B' }]}>Calendar</Text>
           </TouchableOpacity>
         </View>
-      </LinearGradient>
+      </View>
 
       {viewMode === 'menu' ? (
         <>
           <View style={styles.monthHeaderRow}>
-            <TouchableOpacity onPress={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}>
+            <TouchableOpacity onPress={() => {
+              const d = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
+              setCurrentMonth(d);
+              setSelectedDate(d);
+            }}>
               <ChevronLeft size={20} color={colors.text} />
             </TouchableOpacity>
             <Text style={styles.monthHeaderText}>{currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}</Text>
-            <TouchableOpacity onPress={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}>
-              <ChevronRight size={20} color={colors.text} />
-            </TouchableOpacity>
+            {(() => {
+              const now = new Date();
+              const isFutureMonth = currentMonth.getFullYear() > now.getFullYear() || (currentMonth.getFullYear() === now.getFullYear() && currentMonth.getMonth() >= now.getMonth());
+              return (
+                <TouchableOpacity 
+                  disabled={isFutureMonth}
+                  style={{ opacity: isFutureMonth ? 0.3 : 1 }}
+                  onPress={() => {
+                    const d = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
+                    setCurrentMonth(d);
+                    setSelectedDate(d);
+                  }}
+                >
+                  <ChevronRight size={20} color={colors.text} />
+                </TouchableOpacity>
+              );
+            })()}
           </View>
           <View style={styles.dayTabsWrapper}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dayTabsScroll}>
@@ -249,9 +276,6 @@ export default function FullMenuScreen({ navigation }: any) {
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-            <View style={styles.dayTitleRow}>
-              <Text style={styles.dayFullName}>{selectedDate.toLocaleString('default', { weekday: 'long' })}, {selectedDate.getDate()} {selectedDate.toLocaleString('default', { month: 'long' })}</Text>
-            </View>
 
             {loading ? (
               <View style={styles.centeredState}>
@@ -265,21 +289,34 @@ export default function FullMenuScreen({ navigation }: any) {
             ) : (
               MEALS.map((meal) => {
                 const slot = dayMenu[meal.key];
-                const itemsText = slot.items
-                  ? slot.items.split(',').map((s: string) => s.trim()).join('  •  ')
-                  : '—';
+                const itemsArr = slot.items ? slot.items.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0) : [];
                 const isSkipped = skipTypes.includes(meal.key);
                 return (
                   <View key={meal.key} style={[styles.mealCard, isSkipped && { opacity: 0.6 }]}>
-                    <View style={[styles.mealHeader, { backgroundColor: isSkipped ? '#FEE2E2' : meal.bg }]}>
+                    <View style={[styles.mealHeader, { backgroundColor: isSkipped ? '#F9FAFB' : meal.bg }]}>
                       <View style={styles.mealHeaderLeft}>
-                        <Text style={styles.mealEmoji}>{meal.emoji}</Text>
-                        <Text style={[styles.mealLabel, { color: isSkipped ? '#EF4444' : meal.color }]}>{meal.label}</Text>
+                        <View style={{ backgroundColor: isSkipped ? '#F3F4F6' : meal.iconBg, borderRadius: 12, width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}>
+                          <meal.Icon size={18} color={isSkipped ? '#9CA3AF' : meal.color} strokeWidth={2.5} />
+                        </View>
+                        <Text style={[styles.mealLabel, { color: isSkipped ? '#9CA3AF' : meal.color }]}>{meal.label}</Text>
                       </View>
-                      <Text style={[styles.mealTime, { color: isSkipped ? '#EF4444' : meal.color }]}>{slot.time}</Text>
+                      <Text style={[styles.mealTime, { color: isSkipped ? '#9CA3AF' : meal.color }]}>{slot.time}</Text>
                     </View>
                     <View style={styles.mealBody}>
-                      <Text style={[styles.mealItems, isSkipped && { textDecorationLine: 'line-through', color: colors.textMuted }]}>{itemsText}</Text>
+                      {itemsArr.length > 0 ? (
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                          {itemsArr.map((item, idx) => {
+                            const colorTheme = isSkipped ? { bg: '#F1F5F9', text: '#94A3B8' } : { bg: meal.bg, text: meal.color };
+                            return (
+                              <View key={idx} style={{ backgroundColor: colorTheme.bg, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 }}>
+                                <Text style={[{ fontSize: 13, fontWeight: '700', color: colorTheme.text }, isSkipped && { textDecorationLine: 'line-through' }]}>{item}</Text>
+                              </View>
+                            );
+                          })}
+                        </View>
+                      ) : (
+                        <Text style={styles.mealItems}>—</Text>
+                      )}
                       {isSkipped && (
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
                           <XCircle size={14} color="#EF4444" />
@@ -351,12 +388,12 @@ export default function FullMenuScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  header: { paddingHorizontal: spacing.xl, paddingTop: Platform.OS === 'ios' ? 12 : 20, paddingBottom: 24, overflow: 'hidden' },
+  header: { paddingHorizontal: spacing.xl, paddingTop: Platform.OS === 'ios' ? 12 : 20, paddingBottom: 12, overflow: 'hidden' },
   hCircle1: { position: 'absolute', width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(255,255,255,0.07)', top: -40, right: -20 },
   hCircle2: { position: 'absolute', width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(255,255,255,0.05)', bottom: 10, right: 60 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 0 },
   backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
-  headerEyebrow: { fontSize: 13, color: 'rgba(255,255,255,0.8)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+  headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 2, fontWeight: '500' },
   headerTitle: { fontSize: 24, fontWeight: '800', color: '#fff', letterSpacing: -0.5 },
   chefIconWrap: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
   

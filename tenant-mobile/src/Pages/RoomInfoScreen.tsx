@@ -7,7 +7,7 @@ import { ChevronLeft, FileText, CheckCircle2, Wrench, Clock, Plus, Trash2, Home 
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 
-const BLUE      = '#2245D4';
+const BLUE      = '#2952F3';
 const BLUE_SOFT = '#EEF2FF';
 const WHITE     = '#FFFFFF';
 const TEXT_DARK = '#1A1A1A';
@@ -70,8 +70,9 @@ export default function RoomInfoScreen({ route, navigation }: any) {
           api.get('/fees/my-fees'),
         ]);
         if (!cancelled) {
-          setRoom(roomRes.data);
-          setFees(Array.isArray(feesRes.data) ? feesRes.data : []);
+          setRoom(roomRes.data?.data || roomRes.data);
+          const feesData = feesRes.data?.data || feesRes.data;
+          setFees(Array.isArray(feesData) ? feesData : []);
         }
       } catch (err: any) {
         if (!cancelled) {
@@ -191,14 +192,16 @@ export default function RoomInfoScreen({ route, navigation }: any) {
       </View>
 
       {/* ── TABS ── */}
-      <View style={s.tabScroll}>
+      <View style={{ backgroundColor: WHITE, paddingVertical: 12 }}>
         <View style={s.tabContainer}>
-          <Animated.View style={[s.tabIndicator, { left: indicatorLeft, width: tabW }]} />
-          {tabs.map(t => (
-            <TouchableOpacity key={t} style={s.tab} onPress={() => handleTab(t)}>
-              <Text style={[s.tabTxt, activeTab === t && s.activeTabTxt]} numberOfLines={1}>{t}</Text>
-            </TouchableOpacity>
-          ))}
+          {tabs.map(t => {
+            const isActive = activeTab === t;
+            return (
+              <TouchableOpacity key={t} style={[s.tab, isActive && s.activeTab]} onPress={() => handleTab(t)} activeOpacity={0.8}>
+                <Text style={[s.tabTxt, isActive && s.activeTabTxt]} numberOfLines={1}>{t}</Text>
+              </TouchableOpacity>
+            )
+          })}
         </View>
       </View>
 
@@ -214,24 +217,39 @@ export default function RoomInfoScreen({ route, navigation }: any) {
         {activeTab === 'Details' && (
           <>
             {/* ── HERO ── */}
-            <View style={{ backgroundColor: BLUE, padding: 24, borderRadius: 20, marginBottom: 20, flexDirection: 'row', alignItems: 'center', shadowColor: BLUE, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 8 }}>
-              <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: 16, borderRadius: 32, marginRight: 20 }}>
-                <HomeIcon size={40} color={WHITE} strokeWidth={1.5} />
+            <View style={{ backgroundColor: BLUE, padding: 24, borderRadius: 24, marginBottom: 20, shadowColor: '#1E3A8A', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 16, elevation: 8 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: 16, borderRadius: 24, marginRight: 20 }}>
+                  <HomeIcon size={40} color={WHITE} strokeWidth={1.5} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 }}>Room Assigned</Text>
+                  <Text style={{ fontSize: 36, color: WHITE, fontWeight: '800', marginTop: 4 }}>{room?.room_number ?? user?.room_number ?? '—'}</Text>
+                </View>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 }}>Room Assigned</Text>
-                <Text style={{ fontSize: 32, color: WHITE, fontWeight: '800', marginTop: 4 }}>{room?.room_number ?? user?.room_number ?? '—'}</Text>
+              
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 20, gap: 12 }}>
+                {(room?.room_type_name || room?.room_type) && (
+                  <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 }}>
+                    <Text style={{ color: WHITE, fontSize: 12, fontWeight: '700' }}>{room?.room_type_name || room?.room_type}</Text>
+                  </View>
+                )}
+                <View style={{ backgroundColor: '#10B981', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 }}>
+                  <Text style={{ color: WHITE, fontSize: 12, fontWeight: '700' }}>Occupied</Text>
+                </View>
               </View>
             </View>
 
             {/* Room Information */}
             <Text style={s.sectionLbl}>Room Information</Text>
             <View style={s.infoCard}>
-              <View style={s.detailRow}><Text style={s.detailLbl}>Room Number</Text><Text style={s.detailVal}>{room?.room_number ?? '—'}</Text></View>
-              <View style={s.detailRow}><Text style={s.detailLbl}>Room Type</Text><Text style={s.detailVal}>{room?.room_type ?? '—'}</Text></View>
+              <View style={s.detailRow}><Text style={s.detailLbl}>Room Number</Text><Text style={s.detailVal}>{room?.room_number ?? user?.room_number ?? '—'}</Text></View>
               <View style={s.detailRow}><Text style={s.detailLbl}>Floor</Text><Text style={s.detailVal}>{room?.floor_number != null ? `${room.floor_number}` : '—'}</Text></View>
-              <View style={s.detailRow}><Text style={s.detailLbl}>Capacity</Text><Text style={s.detailVal}>{room?.capacity != null ? `${room.capacity} person${room.capacity !== 1 ? 's' : ''}` : '—'}</Text></View>
-              <View style={s.detailRow}><Text style={s.detailLbl}>Status</Text><Text style={[s.detailVal, { color: room?.status?.toLowerCase() === 'occupied' ? SUCCESS : TEXT_MID, textTransform: 'capitalize' }]}>{room?.status ?? '—'}</Text></View>
+              <View style={[s.detailRow, { borderBottomWidth: 0 }]}><Text style={s.detailLbl}>Capacity</Text><Text style={s.detailVal}>{room?.capacity != null ? `${room.capacity} person${room.capacity !== 1 ? 's' : ''}` : '—'}</Text></View>
+            </View>
+            <View style={{ marginBottom: 24, flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0F9FF', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 }}>
+              <AlertCircle size={14} color="#0284C7" style={{ marginRight: 6 }} />
+              <Text style={{ fontSize: 12, color: '#0369A1', flex: 1 }}>Note: For any discrepancies in room details, please contact the hostel admin.</Text>
             </View>
 
             {/* Rent Information */}
@@ -284,7 +302,7 @@ export default function RoomInfoScreen({ route, navigation }: any) {
                     <Text style={s.historySub}>Due {formatDueDate(fee.due_date)}</Text>
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={s.historyAmount}>₹ {fee.monthly_rent ?? '—'}</Text>
+                    <Text style={s.historyAmount}>₹ {fee.total_amount || fee.monthly_rent ? fee.total_amount || fee.monthly_rent : '—'}</Text>
                     <Text style={{ fontSize: 12, fontWeight: '700', color: feeStatusColor(fee.fee_status), marginTop: 4, textTransform: 'capitalize' }}>{fee.fee_status ?? '—'}</Text>
                   </View>
                 </View>
@@ -359,23 +377,23 @@ const s = StyleSheet.create({
   backBtnMinimal: { padding: 8, marginLeft: -8 },
   headerTitleCenter: { fontSize: 18, fontWeight: '800', color: WHITE },
 
-  tabScroll: { backgroundColor: WHITE, borderBottomWidth: 1, borderBottomColor: BORDER },
-  tabContainer: { flexDirection: 'row', width: '100%', position: 'relative' },
-  tabIndicator: { position: 'absolute', bottom: 0, height: 3, backgroundColor: BLUE, borderRadius: 3, zIndex: 2 },
-  tab: { flex: 1, paddingVertical: 14, alignItems: 'center' },
+  
+  tabContainer: { flexDirection: 'row', backgroundColor: '#EEF2FF', borderRadius: 12, padding: 4, marginHorizontal: 20 },
+  activeTab: { backgroundColor: '#FFFFFF', shadowColor: '#1F2937', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2 },
+  tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 10 },
   tabTxt: { fontSize: 13, fontWeight: '600', color: TEXT_MID },
-  activeTabTxt: { color: BLUE, fontWeight: '800' },
+  activeTabTxt: { color: '#2952F3', fontWeight: '800' },
 
   scroll: { padding: 20, paddingBottom: 40 },
 
   sectionLbl: { fontSize: 14, fontWeight: '800', color: TEXT_DARK, marginBottom: 12, marginLeft: 4 },
 
-  infoCard: { backgroundColor: WHITE, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 8, marginBottom: 24, borderWidth: 1, borderColor: BORDER },
+  infoCard: { backgroundColor: WHITE, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 8, marginBottom: 8, borderWidth: 1, borderColor: BORDER, borderLeftWidth: 4, borderLeftColor: '#2952F3', shadowColor: '#1F2937', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.02, shadowRadius: 8, elevation: 1 },
   detailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12 },
   detailLbl: { fontSize: 14, color: TEXT_MID, fontWeight: '500' },
   detailVal: { fontSize: 14, color: TEXT_DARK, fontWeight: '600' },
 
-  historyCard: { backgroundColor: WHITE, borderRadius: 16, padding: 16, marginBottom: 16, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: BORDER },
+  historyCard: { backgroundColor: WHITE, borderRadius: 16, padding: 16, marginBottom: 16, flexDirection: 'row', alignItems: 'center', shadowColor: '#1F2937', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 2 },
   historyIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#DCFCE7', justifyContent: 'center', alignItems: 'center' },
   historyTitle: { fontSize: 15, fontWeight: '700', color: TEXT_DARK, marginBottom: 4 },
   historySub: { fontSize: 13, color: TEXT_MID },

@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import {
-  AlertCircle, CheckCircle2, Clock,
+  AlertCircle, CheckCircle2, Clock, Check,
   CreditCard, ArrowRight,
   Bell, TrendingUp, ShieldCheck, Calendar,
   Banknote, Receipt, ArrowUpRight, ArrowDownLeft,
@@ -103,9 +103,9 @@ function getModeStyle(mode?: string) {
 
 // ── Payment tips shown at bottom of "This Month" ─────────────────────
 const PAYMENT_TIPS = [
-  { Icon: Calendar,    title: 'Avoid Late Fees', text: 'Pay before the due date to avoid late fees.', colors: ['#4F46E5', '#818CF8'] },
-  { Icon: Receipt,     title: 'Keep Records', text: 'Always save your receipt or transaction ID.', colors: ['#059669', '#34D399'] },
-  { Icon: ShieldCheck, title: 'Instant Confirm', text: 'Use UPI or net banking for instant confirmation.', colors: ['#D97706', '#FBBF24'] },
+  { Icon: Calendar, title: 'Avoid Late Fees', text: 'Pay before the due date to avoid late fees.', bg: '#F5F7FF', iconBg: '#E0E7FF', iconColor: '#4338CA', textColor: '#1E3A8A', descColor: '#475569' },
+  { Icon: Receipt,  title: 'Keep Records', text: 'Always save your transactions.', bg: '#F0FDF4', iconBg: '#DCFCE7', iconColor: '#15803D', textColor: '#14532D', descColor: '#475569' },
+  { Icon: ShieldCheck, title: 'Instant Confirm', text: 'Use UPI or net banking for instant confirmation.', bg: '#FFFBEB', iconBg: '#FEF3C7', iconColor: '#D97706', textColor: '#92400E', descColor: '#475569' },
 ];
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -208,10 +208,10 @@ export default function DuesScreen({ route, navigation }: any) {
     if (allPaid) {
       return (
         <View style={styles.heroClear}>
-          <View style={[styles.heroIconBadge, { backgroundColor: colors.successSoft }]}>
-            <CheckCircle2 size={28} color={colors.success} strokeWidth={1.8} />
+          <View style={styles.heroIconBadge}>
+            <Check size={22} color="#FFFFFF" strokeWidth={3} />
           </View>
-          <View style={{ flex: 1, marginLeft: 14 }}>
+          <View style={{ flex: 1, marginLeft: 12 }}>
             <Text style={styles.heroClearTitle}>All Dues Cleared!</Text>
             <Text style={styles.heroClearSub}>{"You're up to date for this month."}</Text>
           </View>
@@ -318,26 +318,34 @@ export default function DuesScreen({ route, navigation }: any) {
       </View>
 
       {/* ── Hero (outside scroll) ── */}
-      {!loading && !error && isAllocated && renderHeroSection()}
+      {loading ? (
+        <View style={{ height: 160, backgroundColor: '#F1F5F9', borderRadius: 20, marginHorizontal: 20, marginTop: 16, marginBottom: 4, opacity: 0.6 }} />
+      ) : (!error && isAllocated && renderHeroSection())}
 
       {/* ── Tab Toggle ── */}
-      <View style={styles.tabContainer}>
-        <View style={styles.tabRow}>
-          {(['This Month', 'Payment History'] as TabKey[]).map((tab) => (
-            <TouchableOpacity
-              key={tab}
-              style={[styles.tab, activeTab === tab && styles.tabActive]}
-              onPress={() => {
-                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                setActiveTab(tab);
-              }}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
-            </TouchableOpacity>
-          ))}
+      {loading ? (
+        <View style={styles.tabContainer}>
+          <View style={{ height: 46, backgroundColor: '#F1F5F9', borderRadius: 14, marginHorizontal: 20, opacity: 0.8 }} />
         </View>
-      </View>
+      ) : (
+        <View style={styles.tabContainer}>
+          <View style={styles.tabRow}>
+            {(['This Month', 'Payment History'] as TabKey[]).map((tab) => (
+              <TouchableOpacity
+                key={tab}
+                style={[styles.tab, activeTab === tab && styles.tabActive]}
+                onPress={() => {
+                  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                  setActiveTab(tab);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
 
       {/* ── Content ── */}
       <ScrollView
@@ -346,9 +354,11 @@ export default function DuesScreen({ route, navigation }: any) {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={BLUE} colors={[BLUE]} />}
       >
         {loading ? (
-          <View style={styles.loadingWrap}>
-            <ActivityIndicator color={BLUE} size="large" />
-            <Text style={styles.loadingText}>Loading your fee records…</Text>
+          <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
+            {/* List Item Skeletons */}
+            <View style={{ height: 75, backgroundColor: '#F8FAFC', borderRadius: 16, marginBottom: 12, opacity: 0.7 }} />
+            <View style={{ height: 75, backgroundColor: '#F8FAFC', borderRadius: 16, marginBottom: 12, opacity: 0.7 }} />
+            <View style={{ height: 75, backgroundColor: '#F8FAFC', borderRadius: 16, opacity: 0.7 }} />
           </View>
         ) : error ? (
           <View style={{ marginTop: 60 }}>
@@ -507,17 +517,15 @@ export default function DuesScreen({ route, navigation }: any) {
                 snapToInterval={280}
                 decelerationRate="fast"
               >
-                {PAYMENT_TIPS.map(({ Icon, title, text, colors }, i) => (
-                  <View key={i} style={{ width: 268, borderRadius: 16, overflow: 'hidden', shadowColor: colors[0], shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 4 }}>
-                    <LinearGradient colors={colors} start={{x: 0, y: 0}} end={{x: 1, y: 1}} style={{ padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                      <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' }}>
-                        <Icon size={22} color="#FFFFFF" strokeWidth={2} />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '800', marginBottom: 2 }}>{title}</Text>
-                        <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 11, lineHeight: 16 }}>{text}</Text>
-                      </View>
-                    </LinearGradient>
+                {PAYMENT_TIPS.map(({ Icon, title, text, bg, iconBg, iconColor, textColor, descColor }, i) => (
+                  <View key={i} style={{ width: 268, borderRadius: 16, backgroundColor: bg, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: iconBg }}>
+                    <View style={{ backgroundColor: iconBg, width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}>
+                      <Icon size={22} color={iconColor} strokeWidth={2.5} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: textColor, fontSize: 14, fontWeight: '800', marginBottom: 2 }}>{title}</Text>
+                      <Text style={{ color: descColor, fontSize: 12, lineHeight: 16 }}>{text}</Text>
+                    </View>
                   </View>
                 ))}
               </ScrollView>
@@ -707,19 +715,20 @@ const styles = StyleSheet.create({
   heroIconBadge:    { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
 
   heroClear: {
-    backgroundColor: colors.successSoft,
-    borderRadius: 20,
+    backgroundColor: '#F0FDF4',
+    borderRadius: 12,
     marginHorizontal: 20,
     marginTop: 16,
     marginBottom: 4,
-    padding: 18,
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#BBF7D0',
+    borderColor: '#DCFCE7',
   },
-  heroClearTitle: { fontSize: 16, fontWeight: '800', color: colors.success, marginBottom: 2 },
-  heroClearSub:   { fontSize: 12, color: colors.success, opacity: 0.8 },
+  heroIconBadge: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center' },
+  heroClearTitle: { fontSize: 16, fontWeight: '700', color: '#166534', marginBottom: 2 },
+  heroClearSub:   { fontSize: 13, color: '#475569' },
 
   splitCard: {
     backgroundColor: WHITE,

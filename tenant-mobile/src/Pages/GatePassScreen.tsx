@@ -246,7 +246,7 @@ export default function GatePassScreen({ navigation }: any) {
       </ScrollView>
 
       {/* FAB */}
-      {!loading && (
+      {!loading && leaveRequests.length > 0 && (
         <TouchableOpacity
           style={s.fab}
           onPress={() => setShowForm(true)}

@@ -2,7 +2,6 @@ import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Home, CreditCard, PieChart, Megaphone } from 'lucide-react-native';
-import { colors, shadow, radius } from '../theme/index';
 
 // ── 4-tab configuration ───────────────────────────────────────────────────────
 const TABS = [
@@ -13,6 +12,9 @@ const TABS = [
 ];
 
 const TAB_BAR_HEIGHT = 64;
+const PRIMARY_BLUE = '#2952F3';
+const PRIMARY_SOFT = '#EEF2FF';
+const GREY = '#6B7280';
 
 const BottomTabNavigator = ({ state, navigation }: any) => {
   const insets = useSafeAreaInsets();
@@ -57,7 +59,7 @@ const BottomTabNavigator = ({ state, navigation }: any) => {
             <View style={[styles.iconWrap, isActive && styles.iconWrapActive]}>
               <Icon
                 size={24}
-                color={isActive ? colors.primary : colors.textMuted}
+                color={isActive ? PRIMARY_BLUE : GREY}
                 strokeWidth={isActive ? 2.5 : 1.8}
               />
             </View>
@@ -66,7 +68,7 @@ const BottomTabNavigator = ({ state, navigation }: any) => {
             <Text
               style={[
                 styles.label,
-                { color: isActive ? colors.primary : colors.textMuted },
+                { color: isActive ? PRIMARY_BLUE : GREY },
                 isActive && styles.labelActive,
               ]}
               numberOfLines={1}
@@ -86,15 +88,18 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 0,
     paddingTop: 8,
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'flex-start',
     minHeight: TAB_BAR_HEIGHT,
-    ...shadow.header,
+    shadowColor: '#1F2937',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 16,
+    elevation: 8,
   },
   tabItem: {
     flex: 1,
@@ -103,7 +108,6 @@ const styles = StyleSheet.create({
     position: 'relative',
     minHeight: TAB_BAR_HEIGHT - 8,
   },
-  // Active pill background (soft brown)
   iconWrap: {
     width: 52,
     height: 32,
@@ -112,16 +116,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconWrapActive: {
-    backgroundColor: colors.primarySoft,
+    backgroundColor: PRIMARY_SOFT,
   },
   label: {
     fontSize: 11,
     letterSpacing: 0.1,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   labelActive: {
-    fontWeight: '800',
-    color: colors.primary,
+    fontWeight: '700',
+    color: PRIMARY_BLUE,
   },
 });
 

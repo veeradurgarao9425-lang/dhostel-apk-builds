@@ -61,14 +61,14 @@ function FadeSlideIn({ children, delay = 0, style }: { children: React.ReactNode
 }
 
 // ── Ocean Blue Palette ────────────────────────────────────────────────────────
-const BLUE = "#2245D4";
+const BLUE = "#2952F3";
 const BLUE_DARK = "#1E3A8A";
 const BLUE_SOFT = "#EEF2FF";
 const WHITE = "#FFFFFF";
-const TEXT_DARK = "#1A1A1A";
-const TEXT_MID = "#666666";
+const TEXT_DARK = "#1F2937";
+const TEXT_MID = "#6B7280";
 const BORDER = "#F1F5F9";
-const BG = "#F8FAFD";
+const BG = "#F8FAFC";
 
 export default function HomeScreen({ navigation }: any) {
   const { user, refreshUser } = useAuth();
@@ -334,7 +334,7 @@ export default function HomeScreen({ navigation }: any) {
 
   const meals: { key: "morning" | "lunch" | "dinner"; title: string; sub: string; time: string; Icon: any; bg: string; iconBg: string; color: string; gradient: [string, string]; lightBg: string; lightIconBg: string; }[] = [
     { key: "morning", title: "Morning", sub: todayMenu.breakfast.items, time: "8:00 AM - 10:00 AM", Icon: Sun, bg: "#FFFFFF", iconBg: "#DBEAFE", color: "#EA580C", gradient: ["#3B82F6", "#60A5FA"], lightBg: "#FFFAF0", lightIconBg: "#FFE6C6" },
-    { key: "lunch", title: "Lunch", sub: todayMenu.lunch.items, time: "12:00 PM - 2:00 PM", Icon: Utensils, bg: "#FFFFFF", iconBg: "#DBEAFE", color: "#4F46E5", gradient: ["#3B82F6", "#60A5FA"], lightBg: "#EEF2FF", lightIconBg: "#E0E7FF" },
+    { key: "lunch", title: "Lunch", sub: todayMenu.lunch.items, time: "12:00 PM - 2:00 PM", Icon: Utensils, bg: "#FFFFFF", iconBg: "#DBEAFE", color: "#10B981", gradient: ["#10B981", "#34D399"], lightBg: "#ECFDF5", lightIconBg: "#D1FAE5" },
     { key: "dinner", title: "Dinner", sub: todayMenu.dinner.items, time: "8:00 PM - 11:00 PM", Icon: ConciergeBell, bg: "#FFFFFF", iconBg: "#DBEAFE", color: "#7C3AED", gradient: ["#3B82F6", "#60A5FA"], lightBg: "#F5F3FF", lightIconBg: "#EDE9FE" },
   ];
 
@@ -416,29 +416,39 @@ export default function HomeScreen({ navigation }: any) {
             onPress={() => navigation.navigate('Expenses')}
             activeOpacity={0.8}
           >
-            <LinearGradient colors={spent > budget ? ['#FEF2F2', '#FEE2E2'] : ['#FFF1F2', '#FFE4E6']} style={{ padding: 12 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <View style={{ backgroundColor: spent > budget ? '#FECACA' : '#FECDD3', width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }}>
-                  <Zap size={16} color={spent > budget ? '#DC2626' : '#E11D48'} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 10, fontWeight: '700', color: spent > budget ? '#DC2626' : '#E11D48', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 1 }}>
-                    My Budget
-                  </Text>
-                  <Text style={{ fontSize: 14, fontWeight: '800', color: spent > budget ? '#991B1B' : '#9F1239' }}>
-                    ₹{spent} <Text style={{ fontSize: 11, color: spent > budget ? '#B91C1C' : '#BE123C', fontWeight: '600' }}>/ ₹{budget}</Text>
-                  </Text>
-                </View>
-                <View style={{ backgroundColor: spent > budget ? '#DC2626' : '#E11D48', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
-                  <Text style={{ fontSize: 10, fontWeight: '800', color: '#FFFFFF' }}>
-                    {spent > budget ? 'OVER' : `${Math.round((spent/budget)*100)}%`}
-                  </Text>
-                </View>
-              </View>
-              <View style={{ marginTop: 10, height: 4, backgroundColor: spent > budget ? '#FECACA' : '#FECDD3', borderRadius: 2, overflow: 'hidden' }}>
-                <Animated.View style={{ height: '100%', width: progressAnim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }), backgroundColor: spent > budget ? '#DC2626' : '#E11D48', borderRadius: 2 }} />
-              </View>
-            </LinearGradient>
+            {(() => {
+              const pct = (spent / budget) * 100;
+              // Green < 50%, Amber 50-89%, Red >= 90%
+              let theme = { grad: ['#F0FDF4', '#DCFCE7'], bg: '#BBF7D0', icon: '#16A34A', text: '#15803D', label: '#14532D' };
+              if (pct >= 50 && pct < 90) theme = { grad: ['#FFFBEB', '#FEF3C7'], bg: '#FDE68A', icon: '#D97706', text: '#B45309', label: '#78350F' };
+              if (pct >= 90) theme = { grad: ['#FEF2F2', '#FEE2E2'], bg: '#FECACA', icon: '#DC2626', text: '#B91C1C', label: '#7F1D1D' };
+              
+              return (
+                <LinearGradient colors={theme.grad} style={{ padding: 12 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <View style={{ backgroundColor: theme.bg, width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }}>
+                      <Zap size={16} color={theme.icon} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: theme.icon, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 1 }}>
+                        My Budget
+                      </Text>
+                      <Text style={{ fontSize: 14, fontWeight: '800', color: theme.label }}>
+                        ₹{spent} <Text style={{ fontSize: 11, color: theme.text, fontWeight: '600' }}>/ ₹{budget}</Text>
+                      </Text>
+                    </View>
+                    <View style={{ backgroundColor: theme.icon, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
+                      <Text style={{ fontSize: 10, fontWeight: '800', color: '#FFFFFF' }}>
+                        {spent > budget ? 'OVER' : `${Math.round(pct)}%`}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={{ marginTop: 10, height: 4, backgroundColor: theme.bg, borderRadius: 2, overflow: 'hidden' }}>
+                    <Animated.View style={{ height: '100%', width: progressAnim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }), backgroundColor: theme.icon, borderRadius: 2 }} />
+                  </View>
+                </LinearGradient>
+              );
+            })()}
           </TouchableOpacity>
         )}
         </FadeSlideIn>
@@ -525,51 +535,77 @@ export default function HomeScreen({ navigation }: any) {
             const isPlaceholder = activeMeal.sub === 'Menu not updated';
             
             return (
-              <TouchableOpacity
-                activeOpacity={0.9}
-                onPress={handleNextMeal}
-                style={[styles.globalCard, { padding: 16, backgroundColor: isSkipped ? '#F9FAFB' : activeMeal.lightBg, borderWidth: 0 }, isSkipped && { opacity: 0.8 }]}
-              >
-                <View style={styles.nmHeader}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1 }}>
-                    <View style={[styles.cardIconWrap, { backgroundColor: isSkipped ? '#F3F4F6' : activeMeal.lightIconBg, borderRadius: 12, width: 44, height: 44 }]}>
-                      <MealIcon size={22} color={isSkipped ? TEXT_MID : activeMeal.color} strokeWidth={2.5} />
+                <View style={{ minHeight: 190 }}>
+                  <TouchableOpacity
+                    activeOpacity={0.9}
+                    onPress={handleNextMeal}
+                    style={[styles.globalCard, { padding: 16, backgroundColor: isSkipped ? '#F9FAFB' : activeMeal.lightBg, borderWidth: 0 }, isSkipped && { opacity: 0.8 }]}
+                  >
+                    <View style={styles.nmHeader}>
+                      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, flex: 1 }}>
+                        <View style={[styles.cardIconWrap, { backgroundColor: isSkipped ? '#F3F4F6' : activeMeal.lightIconBg, borderRadius: 12, width: 44, height: 44 }]}>
+                          <MealIcon size={22} color={isSkipped ? TEXT_MID : activeMeal.color} strokeWidth={2.5} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.menuTitle, { color: isSkipped ? TEXT_MID : TEXT_DARK, fontSize: 16, marginBottom: 6 }, isSkipped && { textDecorationLine: "line-through" }]}>
+                            {activeMeal.title}
+                          </Text>
+                          {(() => {
+                            const isPlaceholder = activeMeal.sub === 'Menu not updated' || !activeMeal.sub;
+                            if (isPlaceholder) {
+                              return (
+                                <View style={{ justifyContent: 'flex-start' }}>
+                                  <Text style={[styles.menuSub, { color: TEXT_MID, fontSize: 13, fontStyle: 'italic' }]} numberOfLines={2}>
+                                    {activeMeal.sub || 'Menu not updated'}
+                                  </Text>
+                                </View>
+                              );
+                            }
+                            
+                            const itemsArr = activeMeal.sub.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0);
+                            const colorTheme = isSkipped ? { bg: '#F3F4F6', text: '#9CA3AF' } : { bg: activeMeal.lightIconBg, text: activeMeal.color };
+                            
+                            return (
+                              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                                {itemsArr.map((item: string, idx: number) => (
+                                  <View key={idx} style={{ backgroundColor: colorTheme.bg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
+                                    <Text style={[{ fontSize: 11, fontWeight: '700', color: colorTheme.text }, isSkipped && { textDecorationLine: 'line-through' }]}>
+                                      {item}
+                                    </Text>
+                                  </View>
+                                ))}
+                              </View>
+                            );
+                          })()}
+                        </View>
+                      </View>
+                      <View style={{ alignItems: 'center', alignSelf: 'flex-start' }}>
+                        <TouchableOpacity
+                          style={[
+                            styles.skipTickBtn, 
+                            { width: 24, height: 24, borderRadius: 12, borderWidth: 1.5, borderColor: isSkipped ? '#D1D5DB' : '#E5E7EB', backgroundColor: isSkipped ? '#F3F4F6' : WHITE }
+                          ]}
+                          onPress={(e) => { e.stopPropagation(); handleMessSkip(activeMeal.key); }}
+                          activeOpacity={0.7}
+                        >
+                          <Check size={14} color={isSkipped ? TEXT_MID : '#D1D5DB'} strokeWidth={3} />
+                        </TouchableOpacity>
+                      </View>
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.menuTitle, { color: isSkipped ? TEXT_MID : TEXT_DARK, fontSize: 16, marginBottom: 2 }, isSkipped && { textDecorationLine: "line-through" }]}>
-                        {activeMeal.title}
-                      </Text>
-                      <Text style={[styles.menuSub, { color: TEXT_MID, fontSize: 13 }, isSkipped && { textDecorationLine: "line-through" }, isPlaceholder && { fontStyle: 'italic' }]} numberOfLines={2}>
-                        {activeMeal.sub}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={{ alignItems: 'center', alignSelf: 'flex-start' }}>
-                    <TouchableOpacity
-                      style={[
-                        styles.skipTickBtn, 
-                        { width: 24, height: 24, borderRadius: 12, borderWidth: 1.5, borderColor: isSkipped ? '#D1D5DB' : '#E5E7EB', backgroundColor: isSkipped ? '#F3F4F6' : WHITE }
-                      ]}
-                      onPress={(e) => { e.stopPropagation(); handleMessSkip(activeMeal.key); }}
-                      activeOpacity={0.7}
-                    >
-                      <Check size={14} color={isSkipped ? TEXT_MID : '#D1D5DB'} strokeWidth={3} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-                
-                <View style={{ height: 1, backgroundColor: isSkipped ? '#E5E7EB' : 'rgba(0,0,0,0.04)', marginVertical: 14 }} />
+                    
+                    <View style={{ height: 1, backgroundColor: isSkipped ? '#E5E7EB' : 'rgba(0,0,0,0.04)', marginVertical: 14 }} />
 
-                <View style={[styles.nmFooter, { marginTop: 0, paddingTop: 0, borderTopWidth: 0, justifyContent: 'flex-start', gap: 12 }]}>
-                  <TouchableOpacity onPress={(e) => { e.stopPropagation(); handlePrevMeal(); }} style={[styles.arrowBtn, { backgroundColor: isSkipped ? '#F3F4F6' : 'rgba(0,0,0,0.03)', borderRadius: 8, padding: 6 }]}>
-                    <ChevronLeft size={18} color={isSkipped ? TEXT_MID : TEXT_DARK} strokeWidth={3} />
-                  </TouchableOpacity>
-                  <Text style={[styles.timeNavText, { color: isSkipped ? TEXT_MID : TEXT_DARK, fontSize: 13, fontWeight: '700' }]}>{activeMeal.time}</Text>
-                  <TouchableOpacity onPress={(e) => { e.stopPropagation(); handleNextMeal(); }} style={[styles.arrowBtn, { backgroundColor: isSkipped ? '#F3F4F6' : 'rgba(0,0,0,0.03)', borderRadius: 8, padding: 6 }]}>
-                    <ChevronRight size={18} color={isSkipped ? TEXT_MID : TEXT_DARK} strokeWidth={3} />
+                    <View style={[styles.nmFooter, { marginTop: 0, paddingTop: 0, borderTopWidth: 0, justifyContent: 'flex-start', gap: 12 }]}>
+                      <TouchableOpacity onPress={(e) => { e.stopPropagation(); handlePrevMeal(); }} style={[styles.arrowBtn, { backgroundColor: isSkipped ? '#F3F4F6' : 'rgba(0,0,0,0.03)', borderRadius: 8, padding: 6 }]}>
+                        <ChevronLeft size={18} color={isSkipped ? TEXT_MID : TEXT_DARK} strokeWidth={3} />
+                      </TouchableOpacity>
+                      <Text style={[styles.timeNavText, { color: isSkipped ? TEXT_MID : TEXT_DARK, fontSize: 13, fontWeight: '700' }]}>{activeMeal.time}</Text>
+                      <TouchableOpacity onPress={(e) => { e.stopPropagation(); handleNextMeal(); }} style={[styles.arrowBtn, { backgroundColor: isSkipped ? '#F3F4F6' : 'rgba(0,0,0,0.03)', borderRadius: 8, padding: 6 }]}>
+                        <ChevronRight size={18} color={isSkipped ? TEXT_MID : TEXT_DARK} strokeWidth={3} />
+                      </TouchableOpacity>
+                    </View>
                   </TouchableOpacity>
                 </View>
-              </TouchableOpacity>
             );
           })()}
         </View>
@@ -580,7 +616,7 @@ export default function HomeScreen({ navigation }: any) {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Important Notice</Text>
-            <TouchableOpacity onPress={() => navigation.navigate("Notices")}>
+            <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} onPress={() => navigation.navigate("Notices")}>
               <Text style={styles.viewAllText}>View All</Text>
             </TouchableOpacity>
           </View>
@@ -589,25 +625,25 @@ export default function HomeScreen({ navigation }: any) {
             style={[styles.globalCard, { padding: 0, overflow: 'hidden', borderWidth: 0 }]}
             onPress={() => navigation.navigate("Notices")}
           >
-            <LinearGradient colors={['#FEF2F2', '#FEE2E2']} style={{ padding: 16, flexDirection: "row", alignItems: "center" }}>
-              <View style={[styles.cardIconWrap, { backgroundColor: '#FECACA', marginRight: 16 }]}>
-                <Megaphone size={20} color="#DC2626" />
+            <LinearGradient colors={['#FFF1F2', '#FFE4E6']} style={{ padding: 16, flexDirection: "row", alignItems: "center" }}>
+              <View style={[styles.cardIconWrap, { backgroundColor: '#FDA4AF', marginRight: 16 }]}>
+                <Megaphone size={20} color="#BE123C" />
               </View>
               <View style={styles.messageContent}>
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
-                    <Text style={[styles.messageTitle, { color: '#7F1D1D' }]} numberOfLines={1}>
+                    <Text style={[styles.messageTitle, { color: '#881337' }]} numberOfLines={1}>
                       {recentNotices[0]?.title || "Welcome!"}
                     </Text>
-                    <View style={[styles.newBadge, { backgroundColor: '#EF4444' }]}>
+                    <View style={[styles.newBadge, { backgroundColor: '#E11D48' }]}>
                       <Text style={[styles.newBadgeTxt, { color: '#FFFFFF' }]}>New</Text>
                     </View>
                   </View>
-                  <Text style={[styles.messageTime, { color: '#DC2626' }]}>
+                  <Text style={[styles.messageTime, { color: '#E11D48' }]}>
                     {recentNotices[0]?.date ? formatTime(recentNotices[0].date) : "09:00 AM"}
                   </Text>
                 </View>
-                <Text style={[styles.messageBody, { color: '#991B1B' }]} numberOfLines={2}>
+                <Text style={[styles.messageBody, { color: '#BE123C' }]} numberOfLines={2}>
                   {recentNotices[0]?.body || "Welcome to the hostel app. Check here for daily updates."}
                 </Text>
               </View>
@@ -647,7 +683,7 @@ export default function HomeScreen({ navigation }: any) {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Activity</Text>
-            <TouchableOpacity onPress={() => navigation.navigate("Expenses")}>
+            <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} onPress={() => navigation.navigate("Expenses")}>
               <Text style={styles.viewAllText}>View All</Text>
             </TouchableOpacity>
           </View>
@@ -695,16 +731,15 @@ const styles = StyleSheet.create({
   
   // ── Global Standardized Card ──
   globalCard: {
-    backgroundColor: WHITE,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: BORDER,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 0,
+    shadowColor: "#1F2937",
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowRadius: 16,
+    elevation: 3,
   },
   cardIconWrap: {
     width: 44,
@@ -746,7 +781,7 @@ const styles = StyleSheet.create({
     alignItems: "center", marginBottom: 12,
   },
   sectionTitle: { fontSize: 16, fontWeight: "700", color: TEXT_DARK, marginBottom: 12 },
-  viewAllText: { fontSize: 13, color: BLUE, fontWeight: "600" },
+  viewAllText: { fontSize: 14, color: "#2952F3", fontWeight: "500" },
 
   // Overview card
   overviewCard: {

@@ -24,7 +24,17 @@
     "splash": {
       "image": "./assets/HostixNew.jpeg",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    }
+      "backgroundColor": "#2245D4"
+    },
+    "plugins": [
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow Hostix to save receipts to your device.",
+          "savePhotosPermission": "Allow Hostix to save receipts to your Downloads.",
+          "isAccessMediaLocationEnabled": false
+        }
+      ]
+    ]
   }
 }

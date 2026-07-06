@@ -1,26 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import {
-  StyleSheet, Text, TouchableOpacity, View, ScrollView, Image, StatusBar, Modal, TextInput, KeyboardAvoidingView, Platform, Dimensions, ActivityIndicator
+  StyleSheet, Text, TouchableOpacity, View, ScrollView, Image, StatusBar, Modal, TextInput, KeyboardAvoidingView, Platform, Dimensions, ActivityIndicator, ToastAndroid, Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, Plus, FileImage, X, UploadCloud, ChevronDown, Calendar, CheckCircle2, Search, Filter, Wrench, ClipboardList, Check, Edit2 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { CustomDateTimePicker } from '../components/pickers/CustomDateTimePicker';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import api from '../services/api';
 import { AppHeader } from '../components/ui';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
 
 // Theme Constants
-const BLUE = '#2245D4';
-const BLUE_SOFT = '#EEF3FF';
+const BLUE = '#2952F3';
+const BLUE_SOFT = '#EEF2FF';
 const BLUE_LIGHT = '#F8FAFC';
 const WHITE = '#FFFFFF';
-const TEXT_DARK = '#1C1C1C';
+const TEXT_DARK = '#1F2937';
 const TEXT_MID = '#6B7280';
 const BORDER = '#E5E7EB';
-const BG = '#FAF8F5';
+const BG = '#F7F9FC';
 
 const SUCCESS = '#22C55E';
 const SUCCESS_BG = '#DCFCE7';
@@ -34,9 +36,22 @@ const FILTER_TABS: FilterTab[] = ['All', 'Open', 'Resolved'];
 
 
 const statusConfig: Record<string, { bg: string; text: string; }> = {
-  Open: { bg: WARN_BG, text: WARN },
-  'In Progress': { bg: IN_PROGRESS_BG, text: IN_PROGRESS },
-  Resolved: { bg: SUCCESS_BG, text: SUCCESS },
+  Open: { bg: '#FEF3C7', text: '#F5A623' },
+  'In Progress': { bg: '#DBEAFE', text: '#2952F3' },
+  Resolved: { bg: '#D1FAE5', text: '#16C47F' },
+  Rejected: { bg: '#FEE2E2', text: '#EF4444' },
+};
+
+import { Settings, Wifi, Zap, Droplets, Grid } from 'lucide-react-native';
+
+const getCategoryIcon = (cat: string) => {
+  if (!cat) return <Wrench size={22} color={BLUE} />;
+  const c = cat.toLowerCase();
+  if (c.includes('wifi') || c.includes('network')) return <Wifi size={22} color={BLUE} />;
+  if (c.includes('elect')) return <Zap size={22} color={BLUE} />;
+  if (c.includes('plumb') || c.includes('water')) return <Droplets size={22} color={BLUE} />;
+  if (c.includes('clean')) return <Grid size={22} color={BLUE} />;
+  return <Wrench size={22} color={BLUE} />;
 };
 
 function ComplaintDetailView({ complaint, onClose }: { complaint: any; onClose: () => void }) {
@@ -51,11 +66,11 @@ function ComplaintDetailView({ complaint, onClose }: { complaint: any; onClose: 
       <SafeAreaView edges={['top']} style={{ backgroundColor: WHITE }}>
         <View style={s.headerCenter}>
           <TouchableOpacity onPress={onClose} style={s.backBtnMinimal}>
-            <ChevronLeft size={28} color={TEXT_DARK} strokeWidth={3} />
+            <ChevronLeft size={28} color={TEXT_DARK} strokeWidth={2.5} />
           </TouchableOpacity>
           <Text style={s.headerTitleCenter}>Complaint Details</Text>
-          <TouchableOpacity style={s.backBtnMinimal}>
-            <Edit2 size={22} color={BLUE} />
+          <TouchableOpacity style={s.backBtnMinimal} activeOpacity={0.7}>
+            <Edit2 size={20} color={BLUE} />
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -108,6 +123,7 @@ function ComplaintDetailView({ complaint, onClose }: { complaint: any; onClose: 
 }
 
 function StepperForm({ visible, onClose, onSubmit, hostelId }: { visible: boolean; onClose: () => void; onSubmit: () => void; hostelId?: number }) {
+  const { showError, showSuccess } = useToast();
   const [step, setStep] = useState(1);
   const [priority, setPriority] = useState('Medium');
   const [category, setCategory] = useState('');
@@ -137,7 +153,7 @@ function StepperForm({ visible, onClose, onSubmit, hostelId }: { visible: boolea
 
   const nextStep = () => {
     if (step === 1 && (!category || !title.trim() || !desc.trim())) {
-      alert('Please fill in all mandatory fields (*)');
+      showError('Please fill in all mandatory fields (*)');
       return;
     }
     setStep(s => Math.min(3, s + 1));
@@ -168,13 +184,20 @@ function StepperForm({ visible, onClose, onSubmit, hostelId }: { visible: boolea
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={[s.modalOverlayFull, { backgroundColor: WHITE }]}>
+        {submitting && (
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.7)', zIndex: 10, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={BLUE} />
+            <Text style={{ marginTop: 12, fontSize: 16, fontWeight: '600', color: TEXT_DARK }}>Submitting Complaint...</Text>
+          </View>
+        )}
+        <StatusBar barStyle="dark-content" backgroundColor={WHITE} />
         <SafeAreaView style={s.modalContainerFull} edges={['top', 'bottom']}>
           <View style={s.formHeader}>
             <TouchableOpacity onPress={onClose} style={s.backBtnMinimal}>
-              <ChevronLeft size={28} color={TEXT_DARK} strokeWidth={3} />
+              <X size={26} color={TEXT_DARK} strokeWidth={2.5} />
             </TouchableOpacity>
             <Text style={s.headerTitleCenter}>New Complaint</Text>
-            <View style={{ width: 24 }} />
+            <View style={{ width: 28 }} />
           </View>
 
           {/* Stepper Indicator */}
@@ -321,8 +344,8 @@ function StepperForm({ visible, onClose, onSubmit, hostelId }: { visible: boolea
           </ScrollView>
 
           <View style={[s.formFooter, { paddingBottom: Platform.OS === 'ios' ? 40 : 24 }]}>
-            <TouchableOpacity
-              style={[s.btnBlue, { flex: 1, paddingVertical: 14 }, submitting && { opacity: 0.6 }]}
+            <TouchableOpacity 
+              style={[s.btnBlue, { flex: 1, marginLeft: step > 1 ? 12 : 0 }, submitting && { opacity: 0.7 }]} 
               disabled={submitting}
               onPress={step < 3 ? nextStep : async () => {
                 setSubmitting(true);
@@ -464,17 +487,31 @@ export default function ComplaintsScreen({ navigation }: any) {
       <StatusBar barStyle="light-content" backgroundColor={BLUE} />
       
       {/* ── HEADER ── */}
-      <View style={{ backgroundColor: BLUE }}>
+      <LinearGradient colors={['#2952F3', '#1E3A8A']} style={s.headerGradient}>
         <SafeAreaView edges={['top']}>
-          <AppHeader
-            title="Complaints"
-            subtitle={`Applied: ${totalCount} • Pending: ${pendingCount} • Resolved: ${resolvedCount}`}
-            hideActions={true}
-            onPressBack={() => navigation.goBack()}
-            variant="primary"
-          />
+          <View style={s.headerTop}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtnMinimal}>
+              <ChevronLeft size={28} color="#FFFFFF" strokeWidth={2.5} />
+            </TouchableOpacity>
+            <Text style={s.headerTitleBig}>Complaints</Text>
+            <View style={{ width: 28 }} />
+          </View>
+          <View style={s.statsRow}>
+            <View style={s.statChip}>
+              <ClipboardList size={14} color={BLUE} />
+              <Text style={[s.statChipTxt, { color: BLUE }]}>All {totalCount}</Text>
+            </View>
+            <View style={[s.statChip, { backgroundColor: '#FEF3C7' }]}>
+              <Wrench size={14} color="#F5A623" />
+              <Text style={[s.statChipTxt, { color: '#F5A623' }]}>Open {pendingCount}</Text>
+            </View>
+            <View style={[s.statChip, { backgroundColor: '#D1FAE5' }]}>
+              <CheckCircle2 size={14} color="#16C47F" />
+              <Text style={[s.statChipTxt, { color: '#16C47F' }]}>Resolved {resolvedCount}</Text>
+            </View>
+          </View>
         </SafeAreaView>
-      </View>
+      </LinearGradient>
 
       {/* ── SEARCH & FILTER ── */}
       <View style={s.searchRow}>
@@ -496,17 +533,32 @@ export default function ComplaintsScreen({ navigation }: any) {
       {/* ── TABS ── */}
       <View style={s.tabWrapper}>
         <View style={s.tabContainer}>
-          {FILTER_TABS.map((tab) => (
-            <TouchableOpacity
-              key={tab}
-              style={[s.tab, activeTab === tab && s.tabActive]}
-              onPress={() => setActiveTab(tab)}
-              activeOpacity={0.8}
-            >
-              <Text style={[s.tabText, activeTab === tab && s.tabTextActive]}>{tab}</Text>
-            </TouchableOpacity>
-          ))}
+          {FILTER_TABS.map((tab) => {
+            const count = tab === 'All' ? totalCount : tab === 'Open' ? pendingCount : resolvedCount;
+            const isActive = activeTab === tab;
+            return (
+              <TouchableOpacity
+                key={tab}
+                style={[s.tab, isActive && s.tabActive]}
+                onPress={() => setActiveTab(tab)}
+                activeOpacity={0.8}
+              >
+                <Text style={[s.tabText, isActive && s.tabTextActive]}>{tab} ({count})</Text>
+              </TouchableOpacity>
+            )
+          })}
         </View>
+        
+        {dateFilter !== 'Any time' && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, paddingHorizontal: 4 }}>
+            <View style={{ backgroundColor: '#E0E7FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={{ fontSize: 12, color: BLUE, fontWeight: '600', marginRight: 6 }}>Date: {dateFilter}</Text>
+              <TouchableOpacity onPress={() => setDateFilter('Any time')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <X size={14} color={BLUE} strokeWidth={3} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
       </View>
 
       {/* ── LIST ── */}
@@ -525,16 +577,20 @@ export default function ComplaintsScreen({ navigation }: any) {
               const statusKey = c.status ?? 'Open';
               const status = statusConfig[statusKey] ?? statusConfig['Open'];
               const dateStr = c.created_at ? new Date(c.created_at).toLocaleString() : '';
+              
               return (
                 <TouchableOpacity
                   key={c.complaint_id ?? c.id}
                   style={s.listCard}
                   onPress={() => setSelectedComplaint({ ...c, date: dateStr, note: c.description })}
-                  activeOpacity={0.7}
+                  activeOpacity={0.8}
                 >
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                    <View>
-                      <Text style={s.cardTitle}>{c.title}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                    <View style={s.iconWrap}>
+                      {getCategoryIcon(c.category || '')}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.cardTitle} numberOfLines={1}>{c.title}</Text>
                       <Text style={s.cardDate}>{dateStr}</Text>
                     </View>
                     <View style={[s.statusPill, { backgroundColor: status.bg }]}>
@@ -549,8 +605,10 @@ export default function ComplaintsScreen({ navigation }: any) {
       )}
 
       {/* ── FLOATING ADD BTN ── */}
-      <TouchableOpacity style={s.fab} onPress={() => setShowForm(true)} activeOpacity={0.85}>
-        <Plus size={24} color={WHITE} strokeWidth={3} />
+      <TouchableOpacity style={s.fabWrapper} onPress={() => setShowForm(true)} activeOpacity={0.85}>
+        <LinearGradient colors={['#2952F3', '#1E3A8A']} style={s.fab}>
+          <Plus size={28} color={WHITE} strokeWidth={3} />
+        </LinearGradient>
       </TouchableOpacity>
 
       <StepperForm
@@ -579,43 +637,51 @@ export default function ComplaintsScreen({ navigation }: any) {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: BG },
+  root: { flex: 1, backgroundColor: '#F7F9FC' },
   
   // Header
+  headerGradient: { borderBottomLeftRadius: 24, borderBottomRightRadius: 24, paddingBottom: 24 },
+  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, marginTop: 8 },
+  headerTitleBig: { fontSize: 22, fontWeight: '800', color: WHITE, letterSpacing: -0.5 },
+  statsRow: { flexDirection: 'row', paddingHorizontal: 20, gap: 12, marginTop: 8 },
+  statChip: { flex: 1, backgroundColor: '#FFFFFF', borderRadius: 16, paddingVertical: 10, paddingHorizontal: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4 },
+  statChipTxt: { fontSize: 13, fontWeight: '700', color: TEXT_DARK },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 12, marginTop: 12 },
   backBtnMinimal: { padding: 4, marginLeft: -4 },
   headerTitle: { fontSize: 24, fontWeight: '800', color: TEXT_DARK },
   headerStats: { fontSize: 13, color: TEXT_MID, marginTop: 6, fontWeight: '600' },
   
   // Search
-  searchRow: { flexDirection: 'row', paddingHorizontal: 20, gap: 12, paddingBottom: 12, marginTop: -4 },
-  searchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: WHITE, borderWidth: 1, borderColor: BORDER, borderRadius: 12, paddingHorizontal: 12, height: 44 },
-  searchInput: { flex: 1, marginLeft: 8, fontSize: 14, color: TEXT_DARK },
-  filterBtn: { width: 44, height: 44, backgroundColor: WHITE, borderWidth: 1, borderColor: BORDER, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  searchRow: { flexDirection: 'row', paddingHorizontal: 20, gap: 12, paddingBottom: 4, marginTop: 12 },
+  searchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: WHITE, borderRadius: 20, paddingHorizontal: 16, height: 52, shadowColor: '#1F2937', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 2, borderWidth: 0 },
+  searchInput: { flex: 1, marginLeft: 8, fontSize: 15, color: TEXT_DARK },
+  filterBtn: { width: 52, height: 52, backgroundColor: '#EEF2FF', borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
 
   // Tabs
-  tabWrapper: { paddingHorizontal: 20, marginTop: 12, marginBottom: 8 },
-  tabContainer: { flexDirection: 'row', backgroundColor: WHITE, borderRadius: 24, padding: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, borderWidth: 1, borderColor: '#F3F4F6' },
+  tabWrapper: { paddingHorizontal: 20, marginTop: 4, marginBottom: 4 },
+  tabContainer: { flexDirection: 'row', backgroundColor: WHITE, borderRadius: 24, padding: 4, shadowColor: '#1F2937', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 2 },
   tab: { flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 20 },
   tabActive: { backgroundColor: BLUE },
-  tabText: { fontSize: 14, fontWeight: '700', color: TEXT_MID },
+  tabText: { fontSize: 14, fontWeight: '600', color: TEXT_MID },
   tabTextActive: { color: WHITE },
 
   // List Cards
-  listContent: { padding: 20, paddingBottom: 100 },
-  listCard: { backgroundColor: WHITE, borderRadius: 20, padding: 20, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 1, borderWidth: 1, borderColor: '#F3F4F6' },
-  cardTitle: { fontSize: 16, fontWeight: '800', color: TEXT_DARK, marginBottom: 4 },
-  cardDate: { fontSize: 12, color: TEXT_MID, marginTop: 2 },
+  listContent: { padding: 16, paddingTop: 8, paddingBottom: 100 },
+  listCard: { backgroundColor: WHITE, borderRadius: 24, padding: 20, marginBottom: 16, shadowColor: '#1F2937', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.04, shadowRadius: 20, elevation: 2 },
+  iconWrap: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#EEF2FF', justifyContent: 'center', alignItems: 'center' },
+  cardTitle: { fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 4 },
+  cardDate: { fontSize: 12, color: TEXT_MID, fontWeight: '500' },
   
-  statusPill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
-  statusPillTxt: { fontSize: 11, fontWeight: '800' },
+  statusPill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, alignSelf: 'flex-start' },
+  statusPillTxt: { fontSize: 12, fontWeight: '700' },
 
   // FAB
-  fab: { position: 'absolute', bottom: 100, right: 24, width: 56, height: 56, borderRadius: 28, backgroundColor: BLUE, justifyContent: 'center', alignItems: 'center', shadowColor: BLUE, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
+  fabWrapper: { position: 'absolute', bottom: 100, right: 24, width: 64, height: 64, borderRadius: 32, shadowColor: '#2952F3', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 16, elevation: 8 },
+  fab: { flex: 1, borderRadius: 32, justifyContent: 'center', alignItems: 'center' },
 
   // Details View
   headerCenter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 12 },
-  headerTitleCenter: { fontSize: 18, fontWeight: '800', color: TEXT_DARK },
+  headerTitleCenter: { fontSize: 17, fontWeight: '700', color: TEXT_DARK, letterSpacing: -0.3 },
   detailTopBlock: { backgroundColor: BLUE_LIGHT, borderRadius: 20, padding: 24, marginBottom: 24 },
   detailTitle: { fontSize: 18, fontWeight: '800', color: TEXT_DARK, flex: 1, paddingRight: 16 },
   detailDate: { fontSize: 12, color: TEXT_MID, marginTop: 8 },
