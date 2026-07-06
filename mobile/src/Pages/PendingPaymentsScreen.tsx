@@ -45,6 +45,8 @@ interface DueTenant {
     daysOverdue: number;
     isOverdue: boolean;
     status: string;
+    carryForward: number;
+    monthlyRent: number;
     breakdown?: { month: string; amount: number; dueDate: string }[];
 }
 
@@ -144,7 +146,7 @@ const RemindModal = ({ visible, tenant, onClose }: {
     );
 };
 
-// ─── Tenant Due Card (matches reference image exactly) ────────────────────────
+// ─── Tenant Due Card (simplified: 2-line info + optional carry-forward note + labeled actions) ──
 const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect, isDark, theme, fontSize }: {
     item: DueTenant;
     themeColor: string;
@@ -154,19 +156,11 @@ const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect, isDar
     theme: any;
     fontSize: number;
 }) => {
-    const { t } = useTranslation();
     const palette = avatarPalette(item.name);
     const accentColor = item.isOverdue ? '#DC2626' : '#D97706';
     const tagLabel = item.isOverdue
         ? `${item.daysOverdue}d overdue`
-        : `Due: ${item.dueDate}`;
-
-    const getBadgeStyle = () => {
-        if (item.isOverdue) return { bg: '#FEE2E2', text: '#DC2626', label: 'Overdue' };
-        if (item.paidAmount > 0) return { bg: '#FFEDD5', text: '#EA580C', label: 'Partly Paid' };
-        return { bg: '#FEE2E2', text: '#DC2626', label: 'Unpaid' };
-    };
-    const badgeStyle = getBadgeStyle();
+        : `Due ${item.dueDate}`;
 
     const isDarkBg = isDark ? '#1E293B' : '#FFF';
 
@@ -181,123 +175,67 @@ const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect, isDar
             <View style={[card.accentBar, { backgroundColor: accentColor }]} />
 
             <View style={card.body}>
-                <SkylineDecoration />
-                {/* ── Top row: Avatar | Name+Room | Badge ── */}
+                {/* ── Top row: Avatar | Name+Room · Status | Amount ── */}
                 <View style={card.topRow}>
-                    {/* Avatar */}
                     <View style={[card.avatar, { backgroundColor: palette.bg }]}>
                         <Text style={[card.avatarTxt, { color: palette.text }]}>
                             {item.name[0].toUpperCase()}
                         </Text>
                     </View>
 
-                    {/* Info */}
                     <View style={card.infoCol}>
                         <Text style={[card.name, { color: isDark ? '#F8FAFC' : '#1F2937', fontSize: fontSize + 1 }]} numberOfLines={1}>
                             {item.name}
                         </Text>
-                        <Text style={[card.roomTxt, { color: '#6B7280', fontSize: fontSize - 2 }]} numberOfLines={1}>
-                            Room {item.room} · {(item as any).displayMonth || item.feeMonth}
+                        <Text style={[card.roomTxt, { color: accentColor, fontSize: fontSize - 2 }]} numberOfLines={1}>
+                            Room {item.room} · {tagLabel}
                         </Text>
                     </View>
 
-                    {/* Right: Badge */}
-                    <View style={{ alignItems: 'flex-end', justifyContent: 'center', gap: 6 }}>
-                        <View style={[card.badge, { backgroundColor: badgeStyle.bg, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 }]}>
-                            <Text style={[card.badgeTxt, { color: badgeStyle.text, fontSize: 12, fontWeight: '800' }]}>{badgeStyle.label}</Text>
-                        </View>
-                        <Text style={{ fontSize: 10, color: '#6B7280', fontWeight: '600' }}>{tagLabel}</Text>
+                    <View style={{ alignItems: 'flex-end' }}>
+                        <Text style={[card.amountBig, { color: accentColor, fontSize: fontSize + 3 }]} numberOfLines={1}>
+                            ₹{item.dueAmount.toLocaleString('en-IN')}
+                        </Text>
+                        {item.paidAmount > 0 && (
+                            <Text style={{ fontSize: 10, color: '#10B981', marginTop: 2, fontWeight: '600' }}>Paid ₹{item.paidAmount}</Text>
+                        )}
                     </View>
                 </View>
+
+                {/* ── Optional: carry-forward note, only when relevant ── */}
+                {item.carryForward > 0 && (
+                    <Text style={[card.carryNote, { color: isDark ? '#94A3B8' : '#64748B' }]} numberOfLines={1}>
+                        Includes ₹{item.carryForward.toLocaleString('en-IN')} carried forward + ₹{item.monthlyRent.toLocaleString('en-IN')} this month
+                    </Text>
+                )}
 
                 {/* ── Divider ── */}
-                <View style={[card.divider, { backgroundColor: '#ECECEC' }]} />
+                <View style={[card.divider, { backgroundColor: isDark ? '#334155' : '#ECECEC' }]} />
 
-                {/* ── Bottom row: Stats | Actions ── */}
-                <View style={card.bottomRow}>
-                    {/* Totals */}
-                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, justifyContent: 'space-between' }}>
-                        <View style={card.statCol}>
-                            <Text style={[card.statLabel, { color: '#EF4444', fontSize: 10, fontWeight: '700' }]} numberOfLines={1}>Prev Overdue</Text>
-                            <Text style={[card.statVal, { color: '#EF4444', fontWeight: '800' }]} numberOfLines={1}>
-                                ₹{item.carryForward.toLocaleString('en-IN')}
-                            </Text>
-                        </View>
-                        <View style={card.statCol}>
-                            <Text style={[card.statLabel, { color: '#6B7280', fontSize: 10 }]} numberOfLines={1}>This Month</Text>
-                            <Text style={[card.statVal, { color: isDark ? '#F8FAFC' : '#1F2937' }]} numberOfLines={1}>
-                                ₹{item.monthlyRent.toLocaleString('en-IN')}
-                            </Text>
-                        </View>
-                        <View style={card.statCol}>
-                            <Text style={[card.statLabel, { color: accentColor, fontWeight: '700' }]} numberOfLines={1}>Total Due</Text>
-                            <Text style={[card.statVal, { color: accentColor, fontSize: fontSize + 2, fontWeight: '800' }]} numberOfLines={1}>
-                                ₹{item.dueAmount.toLocaleString('en-IN')}
-                            </Text>
-                            {item.paidAmount > 0 && (
-                                <Text style={{ fontSize: 9, color: '#10B981', marginTop: 2, fontWeight: '600' }}>Paid: ₹{item.paidAmount}</Text>
-                            )}
-                        </View>
-                    </View>
+                {/* ── Actions: full-width labeled buttons ── */}
+                <View style={card.actionsRow}>
+                    <TouchableOpacity
+                        style={[card.actionBtn, { borderColor: theme.primary, borderWidth: 1.5, backgroundColor: 'transparent' }]}
+                        onPress={() => onRemind(item)}
+                        activeOpacity={0.75}
+                    >
+                        <Ionicons name="notifications-outline" size={16} color={theme.primary} />
+                        <Text style={[card.actionBtnText, { color: theme.primary }]}>Remind</Text>
+                    </TouchableOpacity>
 
-                    {/* Spacer */}
-                    <View style={{ width: 16 }} />
-
-                    {/* Action buttons */}
-                    <View style={{ flexDirection: 'row', gap: 10 }}>
-                        <TouchableOpacity
-                            style={[card.iconBtn, { borderColor: theme.primary, backgroundColor: '#FFFFFF', borderWidth: 1.5 }]}
-                            onPress={() => onRemind(item)}
-                            activeOpacity={0.75}
-                        >
-                            <Ionicons name="notifications" size={18} color={theme.primary} />
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={[card.iconBtn, { backgroundColor: theme.primary, borderWidth: 0 }]}
-                            onPress={() => onCollect(item)}
-                            activeOpacity={0.75}
-                        >
-                            <MaterialCommunityIcons name="currency-inr" size={18} color="#FFFFFF" />
-                        </TouchableOpacity>
-                    </View>
+                    <TouchableOpacity
+                        style={[card.actionBtn, { backgroundColor: theme.primary }]}
+                        onPress={() => onCollect(item)}
+                        activeOpacity={0.75}
+                    >
+                        <MaterialCommunityIcons name="currency-inr" size={16} color="#FFFFFF" />
+                        <Text style={[card.actionBtnText, { color: '#FFFFFF' }]}>Collect</Text>
+                    </TouchableOpacity>
                 </View>
-
-                {/* ── Breakdown: always show if there's data ── */}
-                {item.breakdown && item.breakdown.length > 0 && (
-                    <View style={{ marginTop: 8, padding: 8, backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderRadius: 8, borderLeftWidth: 3, borderLeftColor: accentColor }}>
-                        <Text style={{ fontSize: fontSize - 3, color: isDark ? '#94A3B8' : '#64748B', fontWeight: '700', marginBottom: 4 }}>
-                            📋 Payment breakdown:
-                        </Text>
-                        {item.breakdown.map((b: any, i: number) => (
-                            <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 1 }}>
-                                <Text style={{ fontSize: fontSize - 3, color: (b as any).isPast ? '#DC2626' : (isDark ? '#CBD5E1' : '#475569') }}>
-                                    {(b as any).isPast ? '⚠ ' : '• '}{b.month}
-                                </Text>
-                                <Text style={{ fontSize: fontSize - 3, fontWeight: '700', color: (b as any).isPast ? '#DC2626' : accentColor }}>
-                                    ₹{b.amount.toLocaleString('en-IN')}
-                                </Text>
-                            </View>
-                        ))}
-                        <View style={{ marginTop: 4, borderTopWidth: 1, borderTopColor: isDark ? '#334155' : '#E2E8F0', paddingTop: 4, flexDirection: 'row', justifyContent: 'space-between' }}>
-                            <Text style={{ fontSize: fontSize - 3, fontWeight: '800', color: isDark ? '#F8FAFC' : '#1F2937' }}>Total Due</Text>
-                            <Text style={{ fontSize: fontSize - 3, fontWeight: '800', color: accentColor }}>₹{item.dueAmount.toLocaleString('en-IN')}</Text>
-                        </View>
-                    </View>
-                )}
             </View>
         </View>
     );
 });
-
-// ─── Skyline SVG decoration ───────────────────────────────────────────────────
-const SkylineDecoration = () => (
-    <View style={{ position: 'absolute', bottom: 0, right: 0, left: 0, height: 60, opacity: 0.04 }} pointerEvents="none">
-        <Svg width="100%" height="100%" viewBox="0 0 400 60" preserveAspectRatio="none">
-            <Path fill="#1F2937" d="M0,60 L0,50 L20,50 L20,60 M20,60 L20,30 L60,30 L60,60 M60,60 L60,20 L90,20 L90,60 M90,60 L90,40 L120,40 L120,60 M120,60 L120,10 L160,10 L160,60 M160,60 L160,25 L190,25 L190,60 M190,60 L190,45 L220,45 L220,60 M220,60 L220,15 L260,15 L260,60 M260,60 L260,5 L310,5 L310,60 M310,60 L310,35 L340,35 L340,60 M340,60 L340,25 L380,25 L380,60 M380,60 L380,40 L400,40 L400,60" />
-        </Svg>
-    </View>
-);
 
 // ─── Wave SVG decoration (pure View-based) ────────────────────────────────────
 const WaveDecoration = ({ color }: { color: string }) => (
@@ -995,34 +933,28 @@ const card = StyleSheet.create({
     avatarTxt: { fontSize: 18, fontWeight: '900' },
     infoCol: { flex: 1, justifyContent: 'center' },
     name: { fontSize: 16, fontWeight: '800', marginBottom: 2 },
-    roomTxt: { fontSize: 12, fontWeight: '600' },
-    badge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        alignSelf: 'flex-start',
-        gap: 4,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 8,
-    },
-    badgeTxt: { fontSize: 11, fontWeight: '700' },
-    
-    divider: { height: 1, marginBottom: 16 },
+    roomTxt: { fontSize: 12, fontWeight: '700' },
+    amountBig: { fontWeight: '900' },
+    carryNote: { fontSize: 11, fontWeight: '600', marginBottom: 12 },
 
-    bottomRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    statCol: { alignItems: 'flex-start', flex: 1 },
-    statLabel: { fontSize: 11, fontWeight: '600', textTransform: 'capitalize', marginBottom: 2 },
-    statVal: { fontSize: 14, fontWeight: '800' },
+    divider: { height: 1, marginBottom: 14 },
 
-    iconBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: 16,
+    actionsRow: {
+        flexDirection: 'row',
+        gap: 10,
+    },
+    actionBtn: {
+        flex: 1,
+        flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
+        gap: 6,
+        height: 42,
+        borderRadius: 12,
+    },
+    actionBtnText: {
+        fontSize: 13,
+        fontWeight: '700',
     },
 });
 
