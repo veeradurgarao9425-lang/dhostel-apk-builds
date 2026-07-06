@@ -6,6 +6,7 @@ import { FileText, FileCheck2, Receipt, IdCard, Download, File, ArrowLeft } from
 
 import { useToast } from '../context/ToastContext';
 import { Phase3ErrorState, DocumentsSkeleton } from '../components/UIComponents';
+import { AppHeader, EmptyState } from '../components/ui';
 import { OfflineBanner } from '../components/NetworkComponents';
 import { DownloadProgressSheet, FileErrorState } from '../components/MediaComponents';
 import api from '../services/api';
@@ -118,20 +119,11 @@ export default function DocumentsScreen({ navigation }: any) {
     <View style={{ flex: 1, backgroundColor: BG }}>
       <StatusBar barStyle="light-content" backgroundColor={BLUE} />
 
-      {/* ── HEADER ── */}
-      <View style={s.headerSection}>
-        <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
-          <View style={s.headerTop}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtnLight} activeOpacity={0.7}>
-              <ArrowLeft size={24} color={WHITE} strokeWidth={2.5} />
-            </TouchableOpacity>
-            <View style={{ flex: 1, marginLeft: 16 }}>
-              <Text style={s.headerGreeting}>Documents</Text>
-              <Text style={s.headerSub}>KYC, agreements & receipts</Text>
-            </View>
-          </View>
-        </SafeAreaView>
-      </View>
+      <AppHeader
+        title="My Documents"
+        subtitle="Manage your ID and agreements"
+        showBack={navigation.canGoBack()}
+      />
 
       {/* ── Offline Banner ── */}
       <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
@@ -159,7 +151,16 @@ export default function DocumentsScreen({ navigation }: any) {
         </ScrollView>
       )}
 
-      <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[
+          s.scroll, 
+          { flexGrow: 1 },
+          (documents.length === 0 || (!loading && !error && activeFilter !== 'All' && documents.filter(d => d.type === activeFilter).length === 0)) 
+            ? { justifyContent: 'center' } 
+            : {}
+        ]} 
+        showsVerticalScrollIndicator={false}
+      >
         {loading ? (
           <DocumentsSkeleton />
         ) : error ? (
@@ -168,8 +169,8 @@ export default function DocumentsScreen({ navigation }: any) {
           </View>
         ) : documents.length === 0 ? (
           <View style={s.emptyCard}>
-            <View style={s.emptyIconWrap}>
-              <FileText size={32} color={TEXT_MID} />
+            <View style={[s.emptyIconWrap, { backgroundColor: BLUE_SOFT }]}>
+              <FileText size={32} color={BLUE} />
             </View>
             <Text style={s.emptyTitle}>No Documents Found</Text>
             <Text style={s.emptySub}>Your rental agreement, payment receipts, and KYC documents will appear here once verified.</Text>
@@ -179,7 +180,10 @@ export default function DocumentsScreen({ navigation }: any) {
         {!loading && !error && documents.length > 0 && (() => {
           const filtered = activeFilter === 'All' ? documents : documents.filter(d => d.type === activeFilter);
           if (filtered.length === 0) return (
-            <View style={[s.emptyCard, { borderStyle: 'solid', marginTop: 8 }]}>
+            <View style={s.emptyCard}>
+              <View style={[s.emptyIconWrap, { backgroundColor: '#F1F5F9' }]}>
+                <FileText size={32} color={TEXT_MID} />
+              </View>
               <Text style={s.emptyTitle}>No {activeFilter} Documents</Text>
               <Text style={s.emptySub}>No documents of this type found.</Text>
             </View>

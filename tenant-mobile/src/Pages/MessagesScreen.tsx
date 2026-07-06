@@ -8,6 +8,7 @@ import { MessageCircle, ChevronRight, Hash, Users, AlertCircle } from 'lucide-re
 import { useAuth } from '../context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme';
+import AppHeader from '../components/ui/AppHeader';
 
 const BLUE = '#2245D4';
 const WHITE = '#FFFFFF';
@@ -33,14 +34,11 @@ export default function MessagesScreen() {
       <StatusBar barStyle="light-content" backgroundColor={BLUE} />
       
       {/* Header */}
-      <View style={{ backgroundColor: BLUE }}>
-        <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>Messages</Text>
-            <Text style={styles.headerSub}>Your chats & direct messages</Text>
-          </View>
-        </SafeAreaView>
-      </View>
+      <AppHeader
+        title="Messages"
+        subtitle="Your chats & direct messages"
+        showBack={navigation.canGoBack()}
+      />
 
       <View style={styles.container}>
         <Text style={styles.sectionTitle}>Groups</Text>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, StatusBar, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, Plus, FileText, Trash2 } from 'lucide-react-native';
+import AppHeader from '../components/ui/AppHeader';
 
 const BLUE = '#2245D4';
 const BLUE_SOFT = '#EEF2FF';
@@ -31,17 +32,11 @@ export default function NotesScreen({ navigation }: any) {
     <View style={s.root}>
       <StatusBar barStyle="light-content" backgroundColor={BLUE} />
       
-      <View style={{ backgroundColor: BLUE }}>
-        <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
-          <View style={s.headerCenter}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtnMinimal}>
-              <ChevronLeft size={28} color={WHITE} strokeWidth={3} />
-            </TouchableOpacity>
-            <Text style={s.headerTitleCenter}>My Notes</Text>
-            <View style={{ width: 44 }} />
-          </View>
-        </SafeAreaView>
-      </View>
+      <AppHeader
+        title="My Notes"
+        subtitle="Keep track of important things"
+        showBack={navigation.canGoBack()}
+      />
 
       <ScrollView contentContainerStyle={s.content}>
         {isAdding ? (

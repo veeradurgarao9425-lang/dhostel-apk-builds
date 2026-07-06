@@ -1,17 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import {
-  StyleSheet, Text, TouchableOpacity, View, ScrollView, StatusBar, ActivityIndicator
+  StyleSheet, Text, TouchableOpacity, View, ScrollView, StatusBar, ActivityIndicator, FlatList
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Bell, AlertCircle, Wrench, UtensilsCrossed,
-  ChevronRight, SlidersHorizontal, Plus,
+  ChevronRight, SlidersHorizontal, Plus, Calendar
 } from 'lucide-react-native';
 import api from '../services/api';
 import { mockNotices } from '../data/dummyData';
-import { Phase3EmptyState, Phase3ErrorState } from '../components/UIComponents';
+import { AppHeader, EmptyState, SkeletonNotificationRow } from '../components/ui';
 import { CustomMonthYearPicker } from '../components/pickers/CustomMonthYearPicker';
-import { Calendar } from 'lucide-react-native';
 
 const BLUE      = '#2245D4';
 const BLUE_SOFT = '#EEF3FF';
@@ -91,42 +90,29 @@ export default function NoticesScreen({ navigation }: any) {
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor={BLUE} />
 
-      {/* ── Blue Header ── */}
-      <View style={styles.headerWrap}>
-        <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
-          <View style={styles.header}>
-            <View>
-              <Text style={styles.headerGreeting}>Notices</Text>
-              <Text style={styles.headerSub}>
-                {selectedMonth 
-                  ? `Showing notices for ${selectedMonth.toLocaleString('default', { month: 'short' })} ${selectedMonth.getFullYear()}` 
-                  : 'Latest hostel announcements'}
-              </Text>
-            </View>
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <TouchableOpacity style={styles.hBtn} onPress={() => setShowPicker(true)}>
-                <Calendar size={20} color={WHITE} />
-                {selectedMonth && <View style={styles.filterDot} />}
+      <AppHeader
+        title="Notices"
+        subtitle={selectedMonth 
+          ? `Showing notices for ${selectedMonth.toLocaleString('default', { month: 'short' })} ${selectedMonth.getFullYear()}` 
+          : 'Latest hostel announcements'}
+        showBack={navigation.canGoBack()}
+        rightComponent={
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <TouchableOpacity style={styles.hBtn} onPress={() => setShowPicker(true)}>
+              <Calendar size={20} color={WHITE} />
+              {selectedMonth && <View style={styles.filterDot} />}
+            </TouchableOpacity>
+            {selectedMonth && (
+              <TouchableOpacity style={styles.hBtn} onPress={() => setSelectedMonth(null)}>
+                <Plus size={20} color={WHITE} style={{ transform: [{ rotate: '45deg' }] }} />
               </TouchableOpacity>
-              {selectedMonth && (
-                <TouchableOpacity style={styles.hBtn} onPress={() => setSelectedMonth(null)}>
-                  <Plus size={20} color={WHITE} style={{ transform: [{ rotate: '45deg' }] }} />
-                </TouchableOpacity>
-              )}
-            </View>
+            )}
           </View>
-        </SafeAreaView>
-      </View>
-
-      <CustomMonthYearPicker 
-        visible={showPicker}
-        onClose={() => setShowPicker(false)}
-        onConfirm={(d) => setSelectedMonth(d)}
-        initialDate={selectedMonth || new Date()}
+        }
       />
 
-      {/* ── Filter Chips with Count Badges ── */}
-      <View style={styles.filterScroll}>
+      {/* ── Tabs Outside Header ── */}
+      <View style={{ paddingTop: 12, paddingBottom: 4 }}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContainer}>
           {FILTER_TABS.map(tab => {
             const isActive = activeFilter === tab;
@@ -150,23 +136,46 @@ export default function NoticesScreen({ navigation }: any) {
         </ScrollView>
       </View>
 
+      <CustomMonthYearPicker 
+        visible={showPicker}
+        onClose={() => setShowPicker(false)}
+        onConfirm={(d) => setSelectedMonth(d)}
+        initialDate={selectedMonth || new Date()}
+      />
+
+
+
       {/* ── Notices List ── */}
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
-        <View style={styles.noticesWrapper}>
-          {loading ? (
-            <View style={{ marginTop: 60, alignItems: 'center' }}>
-              <ActivityIndicator size="large" color={BLUE} />
-            </View>
-          ) : error ? (
-            <View style={{ marginTop: 60 }}>
-              <Phase3ErrorState variant="server" onAction={fetchNotices} />
-            </View>
-          ) : filtered.length > 0 ? (
-            filtered.map(notice => {
+      <View style={{ flex: 1 }}>
+        {loading ? (
+          <View style={{ padding: 16 }}>
+            <SkeletonNotificationRow />
+            <SkeletonNotificationRow />
+            <SkeletonNotificationRow />
+          </View>
+        ) : error ? (
+          <View style={{ marginTop: 60 }}>
+            <Text style={{ textAlign: 'center', color: TEXT_MID }}>Network error occurred.</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={filtered}
+            keyExtractor={item => item.id}
+            contentContainerStyle={styles.noticesWrapper}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={
+              <EmptyState
+                icon={Bell}
+                title="No notices found"
+                message="Your hostel announcements will appear here."
+                action={{ label: "Refresh", onPress: fetchNotices }}
+              />
+            }
+            renderItem={({ item: notice }) => {
               const meta = categoryMeta[notice.category] || categoryMeta.General;
               const Icon = meta.icon;
               return (
-                <TouchableOpacity key={notice.id} style={styles.noticeCard} activeOpacity={0.7}>
+                <TouchableOpacity style={styles.noticeCard} activeOpacity={0.7}>
                   <View style={[styles.noticeIconWrap, { backgroundColor: meta.iconBg }]}>
                     <Icon size={18} color={meta.iconColor} />
                   </View>
@@ -178,12 +187,10 @@ export default function NoticesScreen({ navigation }: any) {
                   <ChevronRight size={18} color="#CBD5E0" />
                 </TouchableOpacity>
               );
-            })
-          ) : (
-            <Phase3EmptyState variant="notices" onAction={fetchNotices} />
-          )}
-        </View>
-      </ScrollView>
+            }}
+          />
+        )}
+      </View>
 
     </View>
   );

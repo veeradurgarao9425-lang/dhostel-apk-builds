@@ -1,14 +1,14 @@
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Home, CreditCard, PieChart, Megaphone } from 'lucide-react-native';
+import { Home, Wallet, TrendingUp, Megaphone, House, BadgeIndianRupee, ReceiptText, HandCoins, FileSpreadsheet, ClipboardList, MessageSquareWarning, BellDot, Sparkles, CircleDollarSign, Landmark } from 'lucide-react-native';
 
 // ── 4-tab configuration ───────────────────────────────────────────────────────
 const TABS = [
-  { label: 'Home', route: 'Home', Icon: Home },
-  { label: 'Dues', route: 'Dues', Icon: CreditCard },
-  { label: 'Expenses', route: 'Expenses', Icon: PieChart },
-  { label: 'Notices', route: 'Notices', Icon: Megaphone },
+  { label: "Home", route: "Home", Icon: House },
+  { label: "Dues", route: "Dues", Icon: HandCoins },
+  { label: "Expenses", route: "Expenses", Icon: ReceiptText },
+  { label: "Notices", route: "Notices", Icon: Megaphone },
 ];
 
 const TAB_BAR_HEIGHT = 64;

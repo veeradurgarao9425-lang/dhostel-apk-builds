@@ -5,10 +5,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { ArrowLeft, CheckCircle, Ticket, QrCode, X, Plus, XCircle } from 'lucide-react-native';
+import { ArrowLeft, CheckCircle, Ticket, QrCode, X, Plus, XCircle, Calendar } from 'lucide-react-native';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { AppHeader, EmptyState, SkeletonListRow, LoaderOverlay } from '../components/ui';
+import DateTimePickerModal from "react-native-modal-datetime-picker";
 
 const BLUE      = '#2245D4';
 const BLUE_SOFT = '#EEF2FF';
@@ -39,12 +41,46 @@ export default function GatePassScreen({ navigation }: any) {
 
   // Form State
   const [reason, setReason] = useState('');
-  const [returnTime, setReturnTime] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  // Date Filter State
+  const [showDateFilter, setShowDateFilter] = useState(false);
+  const [filterDate, setFilterDate] = useState('');
+  
+  const [isStartDatePickerVisible, setStartDatePickerVisible] = useState(false);
+  const [isEndDatePickerVisible, setEndDatePickerVisible] = useState(false);
+  const [isFilterDatePickerVisible, setFilterDatePickerVisible] = useState(false);
+
+  const handleConfirmStartDate = (date: Date) => {
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    setStartDate(`${yyyy}-${mm}-${dd}`);
+    setStartDatePickerVisible(false);
+  };
+
+  const handleConfirmEndDate = (date: Date) => {
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    setEndDate(`${yyyy}-${mm}-${dd}`);
+    setEndDatePickerVisible(false);
+  };
+
+  const handleConfirmFilterDate = (date: Date) => {
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    setFilterDate(`${yyyy}-${mm}-${dd}`);
+    setFilterDatePickerVisible(false);
+  };
 
   const fetchLeaveRequests = async () => {
     try {
       const res = await api.get('/requests/leave/tenant');
-      const requests: any[] = res.data?.requests || res.data?.data || res.data || [];
+      const requestsData = res.data?.requests || res.data?.data || res.data;
+      const requests: any[] = Array.isArray(requestsData) ? requestsData : [];
       setLeaveRequests(requests);
 
       if (requests.length === 0) {
@@ -77,14 +113,29 @@ export default function GatePassScreen({ navigation }: any) {
 
   useFocusEffect(useCallback(() => { fetchLeaveRequests(); }, []));
 
+  const openForm = () => {
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    setStartDate(today);
+    setEndDate(today);
+    setReason('');
+    setShowForm(true);
+  };
+
   const submitRequest = async () => {
-    if (!reason.trim() || !returnTime.trim()) return;
+    if (!reason.trim() || !startDate || !endDate) return;
     setSubmitting(true);
     try {
-      await api.post('/requests/leave/tenant', { reason: reason.trim(), return_time: returnTime.trim() });
+      await api.post('/requests/leave/tenant', { 
+        hostel_id: user?.hostel_id,
+        reason: reason.trim(), 
+        start_date: startDate,
+        end_date: endDate
+      });
       setShowForm(false);
       setReason('');
-      setReturnTime('');
+      setStartDate('');
+      setEndDate('');
       await fetchLeaveRequests();
       setStatus('pending');
     } catch {
@@ -98,20 +149,16 @@ export default function GatePassScreen({ navigation }: any) {
     <View style={{ flex: 1, backgroundColor: BG }}>
       <StatusBar barStyle="light-content" backgroundColor={BLUE} />
       
-      {/* ── HEADER ── */}
-      <View style={s.headerSection}>
-        <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
-          <View style={s.headerTop}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtnLight}>
-              <ArrowLeft size={24} color={WHITE} />
-            </TouchableOpacity>
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={s.headerGreeting}>Gate Pass</Text>
-              <Text style={s.headerSub}>Outing & leave requests</Text>
-            </View>
-          </View>
-        </SafeAreaView>
-      </View>
+      <AppHeader
+        title="Gate Pass"
+        subtitle="Manage your out-passes and leave requests"
+        showBack={navigation.canGoBack()}
+        rightComponent={
+          <TouchableOpacity onPress={() => setShowDateFilter(true)} style={{ padding: 8, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 12 }}>
+            <Calendar size={20} color={WHITE} />
+          </TouchableOpacity>
+        }
+      />
 
       {/* ── Filter chips ── */}
       {!loading && leaveRequests.length > 0 && (
@@ -141,11 +188,13 @@ export default function GatePassScreen({ navigation }: any) {
         </ScrollView>
       )}
 
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 120, flexGrow: 1 }}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: 120, flexGrow: 1 }}>
 
         {loading && (
-          <View style={s.emptyState}>
-            <ActivityIndicator size="large" color={BLUE} />
+          <View style={{ gap: 12 }}>
+            <SkeletonListRow />
+            <SkeletonListRow />
+            <SkeletonListRow />
           </View>
         )}
 
@@ -190,10 +239,12 @@ export default function GatePassScreen({ navigation }: any) {
         {/* Empty state — no requests at all */}
         {!loading && leaveRequests.length === 0 && (
           <View style={s.emptyState}>
-            <View style={s.iconWrap}><Ticket size={40} color={BLUE} /></View>
+            <View style={s.iconWrap}>
+              <Ticket size={32} color={BLUE} />
+            </View>
             <Text style={s.emptyTitle}>No Requests Yet</Text>
             <Text style={s.emptySub}>Request a late pass or weekend leave if you plan to stay out past curfew.</Text>
-            <TouchableOpacity style={s.primaryBtn} onPress={() => setShowForm(true)}>
+            <TouchableOpacity style={[s.primaryBtn, { paddingVertical: 14 }]} onPress={() => setShowForm(true)} activeOpacity={0.8}>
               <Text style={s.primaryBtnTxt}>Request Gate Pass</Text>
             </TouchableOpacity>
           </View>
@@ -201,14 +252,21 @@ export default function GatePassScreen({ navigation }: any) {
 
         {/* History list */}
         {!loading && leaveRequests.length > 0 && (() => {
-          const filtered = activeFilter === 'All'
+          let filtered = activeFilter === 'All'
             ? leaveRequests
             : leaveRequests.filter(r => r.status === activeFilter);
+          
+          if (filterDate.trim() !== '') {
+            filtered = filtered.filter(r => r.created_at && r.created_at.startsWith(filterDate.trim()));
+          }
+
           if (filtered.length === 0) return (
-            <View style={{ alignItems: 'center', paddingTop: 40 }}>
-              <XCircle size={48} color="#CBD5E1" />
-              <Text style={{ fontSize: 15, fontWeight: '700', color: TEXT_MID, marginTop: 16 }}>No {activeFilter} requests</Text>
-              <Text style={{ fontSize: 13, color: '#9CA3AF', marginTop: 8 }}>Try a different filter</Text>
+            <View style={s.emptyState}>
+              <View style={[s.iconWrap, { backgroundColor: '#F1F5F9' }]}>
+                <XCircle size={32} color={TEXT_MID} />
+              </View>
+              <Text style={s.emptyTitle}>No {activeFilter} requests</Text>
+              <Text style={[s.emptySub, { marginBottom: 0 }]}>Try a different filter</Text>
             </View>
           );
           return (
@@ -246,10 +304,10 @@ export default function GatePassScreen({ navigation }: any) {
       </ScrollView>
 
       {/* FAB */}
-      {!loading && leaveRequests.length > 0 && (
+      {!loading && !showForm && leaveRequests.length > 0 && (
         <TouchableOpacity
           style={s.fab}
-          onPress={() => setShowForm(true)}
+          onPress={openForm}
           activeOpacity={0.85}
         >
           <Plus size={24} color={WHITE} strokeWidth={3} />
@@ -276,14 +334,26 @@ export default function GatePassScreen({ navigation }: any) {
               onChangeText={setReason} 
             />
 
-            <Text style={s.inputLbl}>Expected Return Time</Text>
-            <TextInput 
-              style={s.input} 
-              placeholder="e.g. 11:30 PM" 
-              placeholderTextColor="#94A3B8" 
-              value={returnTime} 
-              onChangeText={setReturnTime} 
-            />
+            <View style={{ flexDirection: 'row', gap: 16, marginBottom: 24 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.inputLbl}>Start Date</Text>
+                <TouchableOpacity
+                  style={[s.input, { justifyContent: 'center', marginBottom: 0 }]}
+                  onPress={() => setStartDatePickerVisible(true)}
+                >
+                  <Text style={{ fontSize: 15, color: startDate ? TEXT_DARK : '#9CA3AF' }}>{startDate || 'Select Date'}</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.inputLbl}>End Date</Text>
+                <TouchableOpacity
+                  style={[s.input, { justifyContent: 'center', marginBottom: 0 }]}
+                  onPress={() => setEndDatePickerVisible(true)}
+                >
+                  <Text style={{ fontSize: 15, color: endDate ? TEXT_DARK : '#9CA3AF' }}>{endDate || 'Select Date'}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
 
             <TouchableOpacity
               style={[s.primaryBtn, { marginTop: 32 }, submitting && { opacity: 0.7 }]}
@@ -299,6 +369,57 @@ export default function GatePassScreen({ navigation }: any) {
         </View>
       </Modal>
 
+      {/* ── DATE FILTER MODAL ── */}
+      <Modal visible={showDateFilter} animationType="fade" transparent>
+        <View style={[s.modalOverlay, { backgroundColor: 'transparent', justifyContent: 'center', padding: 24 }]}>
+          <View style={{ backgroundColor: WHITE, borderRadius: 24, padding: 24, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 24 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <Text style={s.sheetTitle}>Filter by Date</Text>
+              <TouchableOpacity onPress={() => setShowDateFilter(false)}>
+                <X size={20} color={TEXT_MID} />
+              </TouchableOpacity>
+            </View>
+            <Text style={s.inputLbl}>Date</Text>
+            <TouchableOpacity
+              style={[s.input, { marginBottom: 24, justifyContent: 'center' }]}
+              onPress={() => setFilterDatePickerVisible(true)}
+            >
+              <Text style={{ fontSize: 15, color: filterDate ? TEXT_DARK : '#9CA3AF' }}>{filterDate || 'Select Date'}</Text>
+            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity style={{ flex: 1, paddingVertical: 14, borderRadius: 16, backgroundColor: '#F1F5F9', alignItems: 'center' }} onPress={() => { setFilterDate(''); setShowDateFilter(false); }}>
+                <Text style={{ color: TEXT_DARK, fontWeight: '700' }}>Clear</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={{ flex: 1, paddingVertical: 14, borderRadius: 16, backgroundColor: BLUE, alignItems: 'center' }} onPress={() => setShowDateFilter(false)}>
+                <Text style={{ color: WHITE, fontWeight: '700' }}>Apply</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <DateTimePickerModal
+        isVisible={isStartDatePickerVisible}
+        mode="date"
+        onConfirm={handleConfirmStartDate}
+        onCancel={() => setStartDatePickerVisible(false)}
+      />
+
+      <DateTimePickerModal
+        isVisible={isEndDatePickerVisible}
+        mode="date"
+        onConfirm={handleConfirmEndDate}
+        onCancel={() => setEndDatePickerVisible(false)}
+      />
+      
+      <DateTimePickerModal
+        isVisible={isFilterDatePickerVisible}
+        mode="date"
+        onConfirm={handleConfirmFilterDate}
+        onCancel={() => setFilterDatePickerVisible(false)}
+      />
+
+      <LoaderOverlay visible={submitting} message="Submitting Request..." />
     </View>
   );
 }
@@ -310,10 +431,10 @@ const s = StyleSheet.create({
   headerGreeting: { fontSize: 22, fontWeight: '800', color: WHITE },
   headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
 
-  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  iconWrap: { width: 80, height: 80, borderRadius: 40, backgroundColor: BLUE_SOFT, justifyContent: 'center', alignItems: 'center', marginBottom: 24 },
-  emptyTitle: { fontSize: 22, fontWeight: '800', color: TEXT_DARK, marginBottom: 12 },
-  emptySub: { fontSize: 15, color: TEXT_MID, textAlign: 'center', lineHeight: 22, paddingHorizontal: 20, marginBottom: 40 },
+  emptyState: { backgroundColor: WHITE, borderRadius: 24, padding: 32, alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0', borderStyle: 'dashed', marginTop: 20 },
+  iconWrap: { width: 64, height: 64, borderRadius: 32, backgroundColor: BLUE_SOFT, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: TEXT_DARK, marginBottom: 8 },
+  emptySub: { fontSize: 14, color: TEXT_MID, textAlign: 'center', lineHeight: 20, marginBottom: 20 },
 
   primaryBtn: { backgroundColor: BLUE, paddingVertical: 18, paddingHorizontal: 32, borderRadius: 20, alignItems: 'center', width: '100%', shadowColor: BLUE, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
   primaryBtnTxt: { color: WHITE, fontSize: 16, fontWeight: '800' },
@@ -344,8 +465,8 @@ const s = StyleSheet.create({
   fab: { position: 'absolute', bottom: 100, right: 24, width: 56, height: 56, borderRadius: 28, backgroundColor: BLUE, justifyContent: 'center', alignItems: 'center', shadowColor: BLUE, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
 
   // Modal
-  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(15,23,42,0.6)' },
-  sheet: { backgroundColor: WHITE, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, paddingBottom: 40 },
+  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'transparent' },
+  sheet: { backgroundColor: WHITE, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, paddingBottom: 40, borderTopWidth: 1, borderLeftWidth: 1, borderRightWidth: 1, borderColor: '#E2E8F0', shadowColor: '#000', shadowOffset: { width: 0, height: -10 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 24 },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
   sheetTitle: { fontSize: 20, fontWeight: '800', color: TEXT_DARK },
   closeBtn: { padding: 8, backgroundColor: '#F1F5F9', borderRadius: 20 },

@@ -49,11 +49,9 @@ export default function ServicesScreen({ navigation }: any) {
   return (
     <Screen>
       <AppHeader
-        eyebrow="Daily life"
-        title="Services"
-        name={user?.name}
-        onPressBell={() => navigation.navigate('Notifications')}
-        onPressAvatar={() => navigation.navigate('Profile')}
+        title="Hostel Services"
+        subtitle="Request and track maintenance services"
+        showBack={navigation.canGoBack()}
       />
 
       {loading ? (

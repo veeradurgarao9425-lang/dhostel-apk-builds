@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  StyleSheet, Text, TouchableOpacity, View, ScrollView, Image, StatusBar, Modal, TextInput, KeyboardAvoidingView, Platform, Dimensions, ActivityIndicator, ToastAndroid, Alert
+  StyleSheet, Text, TouchableOpacity, View, ScrollView, Image, StatusBar, Modal, TextInput, KeyboardAvoidingView, Platform, Dimensions, ActivityIndicator, ToastAndroid, Alert, FlatList
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, Plus, FileImage, X, UploadCloud, ChevronDown, Calendar, CheckCircle2, Search, Filter, Wrench, ClipboardList, Check, Edit2 } from 'lucide-react-native';
@@ -9,7 +9,7 @@ import { CustomDateTimePicker } from '../components/pickers/CustomDateTimePicker
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import api from '../services/api';
-import { AppHeader } from '../components/ui';
+import { AppHeader, SkeletonListRow, EmptyState } from '../components/ui';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
@@ -45,13 +45,13 @@ const statusConfig: Record<string, { bg: string; text: string; }> = {
 import { Settings, Wifi, Zap, Droplets, Grid } from 'lucide-react-native';
 
 const getCategoryIcon = (cat: string) => {
-  if (!cat) return <Wrench size={22} color={BLUE} />;
+  if (!cat) return <Wrench size={20} color={BLUE} />;
   const c = cat.toLowerCase();
-  if (c.includes('wifi') || c.includes('network')) return <Wifi size={22} color={BLUE} />;
-  if (c.includes('elect')) return <Zap size={22} color={BLUE} />;
-  if (c.includes('plumb') || c.includes('water')) return <Droplets size={22} color={BLUE} />;
-  if (c.includes('clean')) return <Grid size={22} color={BLUE} />;
-  return <Wrench size={22} color={BLUE} />;
+  if (c.includes('wifi') || c.includes('network')) return <Wifi size={20} color={BLUE} />;
+  if (c.includes('elect')) return <Zap size={20} color={BLUE} />;
+  if (c.includes('plumb') || c.includes('water')) return <Droplets size={20} color={BLUE} />;
+  if (c.includes('clean')) return <Grid size={20} color={BLUE} />;
+  return <Wrench size={20} color={BLUE} />;
 };
 
 function ComplaintDetailView({ complaint, onClose }: { complaint: any; onClose: () => void }) {
@@ -62,46 +62,55 @@ function ComplaintDetailView({ complaint, onClose }: { complaint: any; onClose: 
 
   return (
     <View style={{ flex: 1, backgroundColor: WHITE }}>
-      <StatusBar barStyle="dark-content" backgroundColor={WHITE} />
-      <SafeAreaView edges={['top']} style={{ backgroundColor: WHITE }}>
-        <View style={s.headerCenter}>
-          <TouchableOpacity onPress={onClose} style={s.backBtnMinimal}>
-            <ChevronLeft size={28} color={TEXT_DARK} strokeWidth={2.5} />
+      <StatusBar barStyle="light-content" backgroundColor={BLUE} />
+      <AppHeader 
+        title="Complaint Details" 
+        onBack={onClose} 
+        style={{ paddingTop: Platform.OS === 'ios' ? 44 : 16, paddingBottom: 16 }}
+        rightComponent={
+          <TouchableOpacity style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }} activeOpacity={0.7}>
+            <Edit2 size={20} color={WHITE} />
           </TouchableOpacity>
-          <Text style={s.headerTitleCenter}>Complaint Details</Text>
-          <TouchableOpacity style={s.backBtnMinimal} activeOpacity={0.7}>
-            <Edit2 size={20} color={BLUE} />
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+        }
+      />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20 }}>
         
         {/* Prominent Title Block */}
         <View style={s.detailTopBlock}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
             <Text style={s.detailTitle}>{complaint.title}</Text>
             <View style={[s.statusPill, { backgroundColor: statusBg }]}>
               <Text style={[s.statusPillTxt, { color: statusColor }]}>{complaint.status}</Text>
             </View>
           </View>
-          <Text style={s.detailDate}>{complaint.date}</Text>
+          <Text style={s.detailDate}>Submitted on {complaint.date}</Text>
+        </View>
+
+        {/* Category & Priority Side-by-Side */}
+        <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
+          <View style={{ flex: 1, backgroundColor: WHITE, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 1 }}>
+            <Text style={{ fontSize: 12, color: TEXT_MID, fontWeight: '600', marginBottom: 8 }}>Category</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              {getCategoryIcon(complaint.category || '')}
+              <Text style={{ fontSize: 15, fontWeight: '700', color: TEXT_DARK }} numberOfLines={1}>{complaint.category || 'General'}</Text>
+            </View>
+          </View>
+          <View style={{ flex: 1, backgroundColor: WHITE, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 1 }}>
+            <Text style={{ fontSize: 12, color: TEXT_MID, fontWeight: '600', marginBottom: 8 }}>Priority</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: complaint.priority === 'High' ? '#EF4444' : complaint.priority === 'Medium' ? '#F97316' : '#10B981' }} />
+              <Text style={{ fontSize: 15, fontWeight: '700', color: TEXT_DARK }}>{complaint.priority || 'Medium'}</Text>
+            </View>
+          </View>
         </View>
 
         {/* Details List */}
         <View style={s.detailSection}>
           <Text style={s.detailLbl}>Description</Text>
-          <Text style={s.detailValText}>{complaint.note}</Text>
-        </View>
-
-        <View style={s.detailSection}>
-          <Text style={s.detailLbl}>Category</Text>
-          <Text style={s.detailValText}>{complaint.category}</Text>
-        </View>
-
-        <View style={s.detailSection}>
-          <Text style={s.detailLbl}>Priority</Text>
-          <Text style={s.detailValText}>{complaint.priority}</Text>
+          <View style={{ backgroundColor: WHITE, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 1 }}>
+            <Text style={s.detailValText}>{complaint.note || 'No description provided.'}</Text>
+          </View>
         </View>
 
         <View style={s.detailSection}>
@@ -134,6 +143,7 @@ function StepperForm({ visible, onClose, onSubmit, hostelId }: { visible: boolea
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [images, setImages] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors] = useState<{ category?: boolean, title?: boolean, desc?: boolean }>({});
   const categories = ['Maintenance', 'WiFi', 'Electrical', 'Food', 'Cleaning', 'Other'];
   
   // Reset form when opened
@@ -146,15 +156,23 @@ function StepperForm({ visible, onClose, onSubmit, hostelId }: { visible: boolea
       setDesc('');
       setPrefDate(new Date().toLocaleString());
       setImages([]);
+      setErrors({});
     }
   }, [visible]);
 
   if (!visible) return null;
 
   const nextStep = () => {
-    if (step === 1 && (!category || !title.trim() || !desc.trim())) {
-      showError('Please fill in all mandatory fields (*)');
-      return;
+    if (step === 1) {
+      const newErrors = {
+        category: !category,
+        title: !title.trim(),
+        desc: !desc.trim(),
+      };
+      setErrors(newErrors);
+      if (newErrors.category || newErrors.title || newErrors.desc) {
+        return;
+      }
     }
     setStep(s => Math.min(3, s + 1));
   };
@@ -190,16 +208,14 @@ function StepperForm({ visible, onClose, onSubmit, hostelId }: { visible: boolea
             <Text style={{ marginTop: 12, fontSize: 16, fontWeight: '600', color: TEXT_DARK }}>Submitting Complaint...</Text>
           </View>
         )}
-        <StatusBar barStyle="dark-content" backgroundColor={WHITE} />
-        <SafeAreaView style={s.modalContainerFull} edges={['top', 'bottom']}>
-          <View style={s.formHeader}>
-            <TouchableOpacity onPress={onClose} style={s.backBtnMinimal}>
-              <X size={26} color={TEXT_DARK} strokeWidth={2.5} />
-            </TouchableOpacity>
-            <Text style={s.headerTitleCenter}>New Complaint</Text>
-            <View style={{ width: 28 }} />
-          </View>
-
+        <StatusBar barStyle="light-content" backgroundColor={BLUE} />
+        <AppHeader 
+          title="New Complaint" 
+          onBack={onClose} 
+          showBack={true}
+          style={{ paddingTop: Platform.OS === 'ios' ? 44 : 16, paddingBottom: 16 }}
+        />
+        <SafeAreaView style={s.modalContainerFull} edges={['bottom']}>
           {/* Stepper Indicator */}
           <View style={s.stepperWrap}>
             <View style={s.stepLineWrap}>
@@ -229,10 +245,11 @@ function StepperForm({ visible, onClose, onSubmit, hostelId }: { visible: boolea
                 </View>
 
                 <Text style={s.inputLbl}>Category <Text style={{color: '#EF4444'}}>*</Text></Text>
-                <TouchableOpacity style={s.inputBox} onPress={() => setShowCatPicker(true)} activeOpacity={0.7}>
+                <TouchableOpacity style={[s.inputBox, errors.category && { borderColor: '#EF4444' }]} onPress={() => setShowCatPicker(true)} activeOpacity={0.7}>
                   <Text style={{ color: category ? TEXT_DARK : TEXT_MID, fontSize: 15 }}>{category || 'Select Category'}</Text>
                   <ChevronDown size={20} color={TEXT_MID} />
                 </TouchableOpacity>
+                {errors.category && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Please select a category</Text>}
 
                 <Text style={s.inputLbl}>Priority</Text>
                 <View style={s.priorityRow}>
@@ -245,26 +262,28 @@ function StepperForm({ visible, onClose, onSubmit, hostelId }: { visible: boolea
 
                 <Text style={s.inputLbl}>Title <Text style={{color: '#EF4444'}}>*</Text></Text>
                 <TextInput 
-                  style={s.inputBoxStyle} 
+                  style={[s.inputBoxStyle, errors.title && { borderColor: '#EF4444' }]} 
                   placeholder="e.g. Broken tap" 
                   placeholderTextColor={TEXT_MID}
                   value={title}
-                  onChangeText={setTitle}
+                  onChangeText={(t) => { setTitle(t.replace(/[^a-zA-Z0-9.,!? '"-]/g, '')); setErrors(e => ({...e, title: false})); }}
                 />
+                {errors.title && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Please enter a title</Text>}
 
                 <Text style={s.inputLbl}>Description <Text style={{color: '#EF4444'}}>*</Text></Text>
-                <View style={s.textAreaWrap}>
+                <View style={[s.textAreaWrap, errors.desc && { borderColor: '#EF4444' }]}>
                   <TextInput
                     style={s.textAreaStyle}
                     placeholder="Describe the issue..."
                     placeholderTextColor={TEXT_MID}
                     multiline
                     value={desc}
-                    onChangeText={setDesc}
+                    onChangeText={(t) => { setDesc(t.replace(/[^a-zA-Z0-9.,!? \n'"-]/g, '')); setErrors(e => ({...e, desc: false})); }}
                     maxLength={300}
                   />
                   <Text style={s.charCount}>{desc.length}/300</Text>
                 </View>
+                {errors.desc && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Please enter a description</Text>}
               </View>
             )}
 
@@ -486,32 +505,7 @@ export default function ComplaintsScreen({ navigation }: any) {
     <View style={s.root}>
       <StatusBar barStyle="light-content" backgroundColor={BLUE} />
       
-      {/* ── HEADER ── */}
-      <LinearGradient colors={['#2952F3', '#1E3A8A']} style={s.headerGradient}>
-        <SafeAreaView edges={['top']}>
-          <View style={s.headerTop}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtnMinimal}>
-              <ChevronLeft size={28} color="#FFFFFF" strokeWidth={2.5} />
-            </TouchableOpacity>
-            <Text style={s.headerTitleBig}>Complaints</Text>
-            <View style={{ width: 28 }} />
-          </View>
-          <View style={s.statsRow}>
-            <View style={s.statChip}>
-              <ClipboardList size={14} color={BLUE} />
-              <Text style={[s.statChipTxt, { color: BLUE }]}>All {totalCount}</Text>
-            </View>
-            <View style={[s.statChip, { backgroundColor: '#FEF3C7' }]}>
-              <Wrench size={14} color="#F5A623" />
-              <Text style={[s.statChipTxt, { color: '#F5A623' }]}>Open {pendingCount}</Text>
-            </View>
-            <View style={[s.statChip, { backgroundColor: '#D1FAE5' }]}>
-              <CheckCircle2 size={14} color="#16C47F" />
-              <Text style={[s.statChipTxt, { color: '#16C47F' }]}>Resolved {resolvedCount}</Text>
-            </View>
-          </View>
-        </SafeAreaView>
-      </LinearGradient>
+      <AppHeader title="Complaints" subtitle="Track and manage maintenance issues" showBack={navigation.canGoBack()} />
 
       {/* ── SEARCH & FILTER ── */}
       <View style={s.searchRow}>
@@ -532,22 +526,22 @@ export default function ComplaintsScreen({ navigation }: any) {
 
       {/* ── TABS ── */}
       <View style={s.tabWrapper}>
-        <View style={s.tabContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingVertical: 4 }}>
           {FILTER_TABS.map((tab) => {
             const count = tab === 'All' ? totalCount : tab === 'Open' ? pendingCount : resolvedCount;
             const isActive = activeTab === tab;
             return (
               <TouchableOpacity
                 key={tab}
-                style={[s.tab, isActive && s.tabActive]}
+                style={[{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: WHITE, borderWidth: 1, borderColor: BORDER }, isActive && { backgroundColor: BLUE, borderColor: BLUE }]}
                 onPress={() => setActiveTab(tab)}
                 activeOpacity={0.8}
               >
-                <Text style={[s.tabText, isActive && s.tabTextActive]}>{tab} ({count})</Text>
+                <Text style={[{ fontSize: 13, fontWeight: '700', color: TEXT_MID }, isActive && { color: WHITE }]}>{tab} ({count})</Text>
               </TouchableOpacity>
             )
           })}
-        </View>
+        </ScrollView>
         
         {dateFilter !== 'Any time' && (
           <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, paddingHorizontal: 4 }}>
@@ -562,53 +556,69 @@ export default function ComplaintsScreen({ navigation }: any) {
       </View>
 
       {/* ── LIST ── */}
-      {loading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={BLUE} />
-        </View>
-      ) : (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.listContent}>
-          {filtered.length === 0 ? (
-            <View style={{ alignItems: 'center', paddingTop: 60 }}>
-              <Text style={{ fontSize: 15, color: TEXT_MID, fontWeight: '600' }}>No complaints found</Text>
-            </View>
-          ) : (
-            filtered.map((c) => {
+      <View style={{ flex: 1 }}>
+        {loading ? (
+          <View style={{ padding: 16 }}>
+            <SkeletonListRow />
+            <SkeletonListRow />
+            <SkeletonListRow />
+          </View>
+        ) : (
+          <FlatList
+            data={filtered}
+            keyExtractor={item => String(item.complaint_id ?? item.id)}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={s.listContent}
+            ListEmptyComponent={
+              <EmptyState
+                icon={ClipboardList}
+                title="No complaints found"
+                message="Your maintenance requests will appear here."
+                action={{ label: "Refresh", onPress: fetchComplaints }}
+              />
+            }
+            renderItem={({ item: c }) => {
               const statusKey = c.status ?? 'Open';
               const status = statusConfig[statusKey] ?? statusConfig['Open'];
               const dateStr = c.created_at ? new Date(c.created_at).toLocaleString() : '';
               
               return (
                 <TouchableOpacity
-                  key={c.complaint_id ?? c.id}
                   style={s.listCard}
                   onPress={() => setSelectedComplaint({ ...c, date: dateStr, note: c.description })}
-                  activeOpacity={0.8}
+                  activeOpacity={0.9}
                 >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-                    <View style={s.iconWrap}>
-                      {getCategoryIcon(c.category || '')}
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={s.cardTitle} numberOfLines={1}>{c.title}</Text>
-                      <Text style={s.cardDate}>{dateStr}</Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, paddingRight: 12 }}>
+                      <View style={[s.iconWrap, { backgroundColor: '#F8FAFC' }]}>
+                        {getCategoryIcon(c.category || '')}
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.cardTitle} numberOfLines={1}>{c.title}</Text>
+                        <Text style={s.cardDate}>{dateStr}</Text>
+                      </View>
                     </View>
                     <View style={[s.statusPill, { backgroundColor: status.bg }]}>
                       <Text style={[s.statusPillTxt, { color: status.text }]}>{statusKey}</Text>
                     </View>
                   </View>
+
+                  {c.description ? (
+                    <Text style={{ fontSize: 14, color: TEXT_MID, lineHeight: 20 }} numberOfLines={2}>{c.description}</Text>
+                  ) : null}
+                  
                 </TouchableOpacity>
               );
-            })
-          )}
-        </ScrollView>
-      )}
+            }}
+          />
+        )}
+      </View>
 
       {/* ── FLOATING ADD BTN ── */}
       <TouchableOpacity style={s.fabWrapper} onPress={() => setShowForm(true)} activeOpacity={0.85}>
-        <LinearGradient colors={['#2952F3', '#1E3A8A']} style={s.fab}>
-          <Plus size={28} color={WHITE} strokeWidth={3} />
-        </LinearGradient>
+        <View style={s.fab}>
+          <Plus size={26} color={WHITE} strokeWidth={4} />
+        </View>
       </TouchableOpacity>
 
       <StepperForm
@@ -667,17 +677,17 @@ const s = StyleSheet.create({
 
   // List Cards
   listContent: { padding: 16, paddingTop: 8, paddingBottom: 100 },
-  listCard: { backgroundColor: WHITE, borderRadius: 24, padding: 20, marginBottom: 16, shadowColor: '#1F2937', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.04, shadowRadius: 20, elevation: 2 },
-  iconWrap: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#EEF2FF', justifyContent: 'center', alignItems: 'center' },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 4 },
+  listCard: { backgroundColor: WHITE, borderRadius: 20, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 1 },
+  iconWrap: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#EEF2FF', justifyContent: 'center', alignItems: 'center' },
+  cardTitle: { fontSize: 16, fontWeight: '800', color: '#0F172A' },
   cardDate: { fontSize: 12, color: TEXT_MID, fontWeight: '500' },
   
-  statusPill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, alignSelf: 'flex-start' },
-  statusPillTxt: { fontSize: 12, fontWeight: '700' },
+  statusPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  statusPillTxt: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
 
   // FAB
-  fabWrapper: { position: 'absolute', bottom: 100, right: 24, width: 64, height: 64, borderRadius: 32, shadowColor: '#2952F3', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 16, elevation: 8 },
-  fab: { flex: 1, borderRadius: 32, justifyContent: 'center', alignItems: 'center' },
+  fabWrapper: { position: 'absolute', bottom: 100, right: 24, width: 56, height: 56, borderRadius: 28, shadowColor: '#2952F3', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 6 },
+  fab: { flex: 1, borderRadius: 28, backgroundColor: BLUE, justifyContent: 'center', alignItems: 'center' },
 
   // Details View
   headerCenter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 12 },

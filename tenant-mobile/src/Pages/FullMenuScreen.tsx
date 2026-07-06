@@ -7,6 +7,7 @@ import {
   ScrollView,
   Platform,
   ActivityIndicator,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,6 +17,8 @@ import { CustomMonthYearPicker } from '../components/pickers/CustomMonthYearPick
 import { colors, radius, spacing, shadow } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
+import AppHeader from '../components/ui/AppHeader';
+import { SkeletonMessCard } from '../components/ui/SkeletonLoader';
 
 const BLUE = '#2245D4';
 const BLUE_DARK = '#1A36A8';
@@ -32,9 +35,9 @@ const DAY_NAME_TO_SHORT: Record<string, string> = {
 };
 
 const MEAL_TIMES = {
-  breakfast: '8:00 AM – 10:00 AM',
-  lunch: '12:00 PM – 2:00 PM',
-  dinner: '8:00 PM – 11:00 PM',
+  breakfast: '08:00 AM - 10:00 AM',
+  lunch: '12:30 PM - 02:30 PM',
+  dinner: '07:30 PM - 09:30 PM',
 };
 
 const DAY_FULL: Record<string, string> = {
@@ -75,6 +78,27 @@ export default function FullMenuScreen({ navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [markedDates, setMarkedDates] = useState<any>({});
   const [skipsRaw, setSkipsRaw] = useState<any[]>([]);
+  const flatListRef = React.useRef<FlatList>(null);
+
+  const daysInMonth = React.useMemo(() => getDaysInMonth(currentMonth.getFullYear(), currentMonth.getMonth()), [currentMonth]);
+
+  // When month or viewMode changes, scroll to today's date if it's the current month, otherwise the 1st
+  useEffect(() => {
+    if (viewMode === 'menu' && daysInMonth.length > 0 && flatListRef.current) {
+      const now = new Date();
+      let targetDate = selectedDate;
+      if (currentMonth.getMonth() === now.getMonth() && currentMonth.getFullYear() === now.getFullYear()) {
+         targetDate = now;
+      }
+      
+      const idx = daysInMonth.findIndex(d => formatDateToYMD(d) === formatDateToYMD(targetDate));
+      if (idx !== -1) {
+        setTimeout(() => {
+          flatListRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0 });
+        }, 100);
+      }
+    }
+  }, [currentMonth, daysInMonth, viewMode]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -173,7 +197,7 @@ export default function FullMenuScreen({ navigation }: any) {
     fetchData();
   }, [user?.hostel_id]);
 
-  const daysInMonth = getDaysInMonth(currentMonth.getFullYear(), currentMonth.getMonth());
+
   const selectedDayName = DAYS[selectedDate.getDay() === 0 ? 6 : selectedDate.getDay() - 1]; // map to Mon, Tue...
   const dayMenu: DayMenu | null = weekMenu[selectedDayName] ?? null;
   const hasMenu = Object.keys(weekMenu).length > 0;
@@ -186,20 +210,12 @@ export default function FullMenuScreen({ navigation }: any) {
   const skipTypes = skipsForSelected.map(s => s.meal_type.toLowerCase());
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={[styles.header, { backgroundColor: BLUE }]}>
-        <View style={styles.hCircle1} />
-        <View style={styles.hCircle2} />
-        <View style={styles.headerRow}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
-            <ChevronLeft size={24} color="#fff" strokeWidth={3} />
-          </TouchableOpacity>
-          <View style={{ flex: 1, marginLeft: 16 }}>
-            <Text style={styles.headerTitle}>My Meals</Text>
-            <Text style={styles.headerSub}>Check your daily mess schedule here</Text>
-          </View>
-        </View>
-      </View>
+    <View style={{ flex: 1, backgroundColor: '#F8FAFD' }}>
+      <AppHeader
+        title="My Meals"
+        subtitle="Check your daily mess schedule here"
+        showBack={navigation.canGoBack()}
+      />
 
       {/* Toggle View Below Header */}
       <View style={{ padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: colors.border }}>
@@ -208,15 +224,15 @@ export default function FullMenuScreen({ navigation }: any) {
             style={[styles.toggleBtn, viewMode === 'menu' && styles.toggleBtnActive]} 
             onPress={() => setViewMode('menu')}
           >
-            <List size={16} color={viewMode === 'menu' ? BLUE : '#64748B'} />
-            <Text style={[styles.toggleText, { color: viewMode === 'menu' ? BLUE : '#64748B' }]}>Weekly Menu</Text>
+            <List size={16} color={viewMode === 'menu' ? '#FFF' : '#64748B'} />
+            <Text style={[styles.toggleText, { color: viewMode === 'menu' ? '#FFF' : '#64748B' }]}>Weekly Menu</Text>
           </TouchableOpacity>
           <TouchableOpacity 
             style={[styles.toggleBtn, viewMode === 'calendar' && styles.toggleBtnActive]} 
             onPress={() => setViewMode('calendar')}
           >
-            <CalendarIcon size={16} color={viewMode === 'calendar' ? BLUE : '#64748B'} />
-            <Text style={[styles.toggleText, { color: viewMode === 'calendar' ? BLUE : '#64748B' }]}>Calendar</Text>
+            <CalendarIcon size={16} color={viewMode === 'calendar' ? '#FFF' : '#64748B'} />
+            <Text style={[styles.toggleText, { color: viewMode === 'calendar' ? '#FFF' : '#64748B' }]}>Calendar</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -251,8 +267,18 @@ export default function FullMenuScreen({ navigation }: any) {
             })()}
           </View>
           <View style={styles.dayTabsWrapper}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dayTabsScroll}>
-              {daysInMonth.map((day) => {
+            <FlatList
+              ref={flatListRef}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.dayTabsScroll}
+              data={daysInMonth}
+              keyExtractor={(day) => day.toISOString()}
+              initialScrollIndex={Math.max(0, daysInMonth.findIndex(d => 
+                formatDateToYMD(d) === formatDateToYMD(currentMonth.getMonth() === new Date().getMonth() && currentMonth.getFullYear() === new Date().getFullYear() ? new Date() : selectedDate)
+              ))}
+              getItemLayout={(data, index) => ({ length: 76, offset: 76 * index, index })}
+              renderItem={({ item: day }) => {
                 const isSelected = formatDateToYMD(day) === formatDateToYMD(selectedDate);
                 const dayNameShort = DAYS[day.getDay() === 0 ? 6 : day.getDay() - 1];
                 const isToday = formatDateToYMD(day) === formatDateToYMD(new Date());
@@ -260,7 +286,6 @@ export default function FullMenuScreen({ navigation }: any) {
                 const hasSkips = !!dayMarks;
                 return (
                   <TouchableOpacity
-                    key={day.toISOString()}
                     style={[styles.dayTab, isSelected && styles.dayTabActive]}
                     onPress={() => setSelectedDate(day)}
                     activeOpacity={0.8}
@@ -271,15 +296,17 @@ export default function FullMenuScreen({ navigation }: any) {
                     {hasSkips && !isToday && <View style={[styles.todayDot, { backgroundColor: dayMarks?.customStyles?.container?.backgroundColor || '#EAB308' }]} />}
                   </TouchableOpacity>
                 );
-              })}
-            </ScrollView>
+              }}
+            />
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
 
             {loading ? (
-              <View style={styles.centeredState}>
-                <ActivityIndicator size="large" color={colors.primary} />
+              <View style={{ gap: 16, marginTop: 10 }}>
+                <SkeletonMessCard />
+                <SkeletonMessCard />
+                <SkeletonMessCard />
               </View>
             ) : !hasMenu || !dayMenu ? (
               <View style={styles.centeredState}>
@@ -300,7 +327,9 @@ export default function FullMenuScreen({ navigation }: any) {
                         </View>
                         <Text style={[styles.mealLabel, { color: isSkipped ? '#9CA3AF' : meal.color }]}>{meal.label}</Text>
                       </View>
-                      <Text style={[styles.mealTime, { color: isSkipped ? '#9CA3AF' : meal.color }]}>{slot.time}</Text>
+                      <View style={{ backgroundColor: isSkipped ? '#F3F4F6' : '#FFFFFF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: isSkipped ? '#E5E7EB' : meal.iconBg }}>
+                        <Text style={[styles.mealTime, { color: isSkipped ? '#9CA3AF' : meal.color }]}>{slot.time}</Text>
+                      </View>
                     </View>
                     <View style={styles.mealBody}>
                       {itemsArr.length > 0 ? (
@@ -382,7 +411,7 @@ export default function FullMenuScreen({ navigation }: any) {
         }}
         initialDate={currentMonth}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -397,18 +426,17 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 24, fontWeight: '800', color: '#fff', letterSpacing: -0.5 },
   chefIconWrap: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
   
-  toggleContainer: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 12, padding: 4 },
+  toggleContainer: { flexDirection: 'row', backgroundColor: '#F1F5F9', borderRadius: 12, padding: 4 },
   toggleBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 10, borderRadius: 10 },
-  toggleBtnActive: { backgroundColor: '#fff' },
-  toggleText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  toggleTextActive: { color: BLUE },
+  toggleBtnActive: { backgroundColor: BLUE, shadowColor: BLUE, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
+  toggleText: { fontWeight: '700', fontSize: 14 },
 
   monthHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.xl, paddingVertical: 12, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
   monthHeaderText: { fontSize: 16, fontWeight: '700', color: colors.text },
 
   dayTabsWrapper: { backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
-  dayTabsScroll: { paddingHorizontal: spacing.xl, paddingVertical: 14, gap: spacing.md },
-  dayTab: { alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderRadius: radius.xl, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border, minWidth: 58, position: 'relative' },
+  dayTabsScroll: { paddingHorizontal: spacing.xl, paddingVertical: 14, gap: 12 },
+  dayTab: { alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRadius: radius.xl, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border, width: 64, position: 'relative' },
   dayTabActive: { backgroundColor: BLUE, borderColor: BLUE },
   dayTabDay: { fontSize: 13, fontWeight: '700', color: colors.textMuted },
   dayTabDayActive: { color: 'rgba(255,255,255,0.9)' },

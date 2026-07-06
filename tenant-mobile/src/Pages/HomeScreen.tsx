@@ -44,10 +44,19 @@ import {
   FileText,
   QrCode,
   User2,
-  Clock
+  Clock,
+  BedDouble,
+  CreditCard,
+  Wrench,
+  BookOpen,
+  LogOut,
+  Users,
+  UserPlus,
+  PieChart
 } from "lucide-react-native";
 
 import { useAuth } from "../context/AuthContext";
+import Svg, { Circle } from "react-native-svg";
 import { Phase3EmptyState } from '../components/UIComponents';
 import IconGlowBadge from '../components/ui/IconGlowBadge';
 import CategoryGlowBadge from '../components/ui/CategoryGlowBadge';
@@ -359,10 +368,10 @@ export default function HomeScreen({ navigation }: any) {
   const todayDay = days[new Date().getDay()];
   const todayMenu = todaysMeals;
 
-  const meals: { key: "morning" | "lunch" | "dinner"; title: string; sub: string; time: string; Icon: any; bg: string; iconBg: string; color: string; gradient: [string, string]; lightBg: string; lightIconBg: string; }[] = [
-    { key: "morning", title: "Morning", sub: todayMenu.breakfast.items, time: "8:00 AM - 10:00 AM", Icon: Sun, bg: "#FFFFFF", iconBg: "#DBEAFE", color: "#EA580C", gradient: ["#3B82F6", "#60A5FA"], lightBg: "#FFFAF0", lightIconBg: "#FFE6C6" },
-    { key: "lunch", title: "Lunch", sub: todayMenu.lunch.items, time: "12:00 PM - 2:00 PM", Icon: Utensils, bg: "#FFFFFF", iconBg: "#DBEAFE", color: "#10B981", gradient: ["#10B981", "#34D399"], lightBg: "#ECFDF5", lightIconBg: "#D1FAE5" },
-    { key: "dinner", title: "Dinner", sub: todayMenu.dinner.items, time: "8:00 PM - 11:00 PM", Icon: ConciergeBell, bg: "#FFFFFF", iconBg: "#DBEAFE", color: "#7C3AED", gradient: ["#3B82F6", "#60A5FA"], lightBg: "#F5F3FF", lightIconBg: "#EDE9FE" },
+  const meals: { key: "morning" | "lunch" | "dinner"; title: string; sub: string; time: string; Icon: any; iconColor: string; iconBg: string }[] = [
+    { key: "morning", title: "Breakfast", sub: todayMenu.breakfast.items, time: "8:00 AM - 10:00 AM", Icon: Sun, iconColor: "#EA580C", iconBg: "#FFEDD5" },
+    { key: "lunch", title: "Lunch", sub: todayMenu.lunch.items, time: "12:00 PM - 2:00 PM", Icon: Utensils, iconColor: "#10B981", iconBg: "#D1FAE5" },
+    { key: "dinner", title: "Dinner", sub: todayMenu.dinner.items, time: "8:00 PM - 11:00 PM", Icon: ConciergeBell, iconColor: "#7C3AED", iconBg: "#EDE9FE" },
   ];
 
   const shortcuts: { id: string; name: string; icon: any; nav: string; bg: string; color: string; gradient: [string, string] }[] = [
@@ -371,39 +380,39 @@ export default function HomeScreen({ navigation }: any) {
     { id: 'complaints', name: 'Complaints', icon: AlertCircle, nav: 'Complaints', bg: '#FEE2E2', color: '#EF4444', gradient: ['#DC2626', '#F87171'] },
     { id: 'documents', name: 'Documents', icon: FileSignature, nav: 'Documents', bg: '#F3E8FF', color: '#9333EA', gradient: ['#7E22CE', '#C084FC'] },
     { id: 'notes', name: 'Notes', icon: FileText, nav: 'Notes', bg: '#FEF3C7', color: '#D97706', gradient: ['#B45309', '#FBBF24'] },
-    { id: 'room', name: 'Room Info', icon: HomeIcon, nav: 'RoomInfo', bg: '#E0E7FF', color: '#4F46E5', gradient: ['#4338CA', '#818CF8'] },
+    { id: 'room', name: 'Room Info', icon: BedDouble, nav: 'RoomInfo', bg: '#E0E7FF', color: '#4F46E5', gradient: ['#4338CA', '#818CF8'] },
     { id: 'gatepass', name: 'Gate Pass', icon: QrCode, nav: 'GatePass', bg: '#E0F2FE', color: '#0EA5E9', gradient: ['#0284C7', '#38BDF8'] },
     { id: 'splits', name: 'Splits', icon: Briefcase, nav: 'Splits', bg: '#FFE4E6', color: '#E11D48', gradient: ['#BE123C', '#FB7185'] },
-    { id: 'visitor', name: 'Visitor Pass', icon: User2, nav: 'VisitorPass', bg: '#E0E7FF', color: '#4F46E5', gradient: ['#4338CA', '#818CF8'] },
+    { id: 'visitor', name: 'Visitor Pass', icon: UserPlus, nav: 'VisitorPass', bg: '#FEF3C7', color: '#D97706', gradient: ['#F59E0B', '#FCD34D'] },
   ];
 
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor={BLUE} />
 
-      {/* ── BLUE HEADER ── */}
-      <View style={styles.headerSection}>
+      {/* ── PREMIUM APP HEADER ── */}
+      <View style={[styles.headerSection, { backgroundColor: BLUE, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 }]}>
         <SafeAreaView edges={["top"]} style={{ backgroundColor: "transparent" }}>
           <View style={styles.header}>
             <View style={{ flex: 1, marginRight: 12 }}>
-              <Text style={styles.headerGreeting}>
+              <Text style={[styles.headerGreeting, { color: WHITE }]}>
                 Hi, {firstName} <Text style={{ fontSize: 18 }}>👋</Text>
               </Text>
-              <Text style={styles.headerSub}>Welcome Back!</Text>
+              <Text style={[styles.headerSub, { color: 'rgba(255,255,255,0.8)' }]}>Welcome Back!</Text>
             </View>
             <View style={styles.headerRight}>
               <TouchableOpacity
-                style={styles.hBtn}
+                style={[styles.hBtn, { backgroundColor: 'rgba(255,255,255,0.15)' }]}
                 onPress={() => navigation.navigate("Notifications")}
               >
                 <Bell size={24} color={WHITE} strokeWidth={1.5} />
-                {unreadNotifCount > 0 && <View style={styles.notificationDot} />}
+                {unreadNotifCount > 0 && <View style={[styles.notificationDot, { backgroundColor: '#EF4444', borderColor: BLUE }]} />}
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.hAvatar}
+                style={[styles.hAvatar, { backgroundColor: 'rgba(255,255,255,0.2)' }]}
                 onPress={() => navigation.navigate("Profile")}
               >
-                <Text style={styles.hAvatarText}>{initials}</Text>
+                <Text style={[styles.hAvatarText, { color: WHITE }]}>{initials}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -412,7 +421,7 @@ export default function HomeScreen({ navigation }: any) {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 160, paddingTop: 10 }}
+        contentContainerStyle={{ paddingBottom: 160, paddingTop: 16 }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -422,261 +431,213 @@ export default function HomeScreen({ navigation }: any) {
           />
         }
       >
-        {/* ── Budget Summary Banner ── */}
-        <FadeSlideIn delay={0}>
-        {budget === 0 ? (
-          <TouchableOpacity 
-            style={[styles.globalCard, { marginHorizontal: 20, marginTop: 10, marginBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12 }]}
-            onPress={() => navigation.navigate('Expenses')}
-            activeOpacity={0.8}
-          >
-            <IconGlowBadge Icon={Wallet} gradient={['#3B82F6', '#60A5FA']} glowColor="#2563EB" flatColor="#2563EB" flatBg="#FFFFFF" size="sm" />
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13, fontWeight: '700', color: TEXT_DARK }}>Monthly Budget Not Set</Text>
-              <Text style={{ fontSize: 11, color: TEXT_MID, marginTop: 2 }}>Tap to track personal expenses</Text>
-            </View>
-            <ChevronRight size={16} color="#2563EB" strokeWidth={2.5} />
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity 
-            style={[styles.globalCard, { marginHorizontal: 20, marginTop: 10, marginBottom: 16, padding: 0, overflow: 'hidden', borderWidth: 0 }]}
-            onPress={() => navigation.navigate('Expenses')}
-            activeOpacity={0.8}
-          >
-            {(() => {
-              const pct = (spent / budget) * 100;
-              // Green < 50%, Amber 50-89%, Red >= 90%
-              let theme = { grad: ['#F0FDF4', '#DCFCE7'], bg: '#BBF7D0', icon: '#16A34A', text: '#15803D', label: '#14532D' };
-              if (pct >= 50 && pct < 90) theme = { grad: ['#FFFBEB', '#FEF3C7'], bg: '#FDE68A', icon: '#D97706', text: '#B45309', label: '#78350F' };
-              if (pct >= 90) theme = { grad: ['#FEF2F2', '#FEE2E2'], bg: '#FECACA', icon: '#DC2626', text: '#B91C1C', label: '#7F1D1D' };
+        {/* ── Budget Progress Bar ── */}
+        <FadeSlideIn delay={40}>
+          <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate("Expenses")} style={styles.section}>
+            <View style={[styles.globalCard, { paddingVertical: 20, paddingHorizontal: 20 }]}>
               
-              return (
-                <LinearGradient colors={theme.grad} style={{ padding: 12 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                    <View style={{ backgroundColor: theme.bg, width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }}>
-                      <Zap size={16} color={theme.icon} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 10, fontWeight: '700', color: theme.icon, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 1 }}>
-                        My Budget
-                      </Text>
-                      <Text style={{ fontSize: 14, fontWeight: '800', color: theme.label }}>
-                        ₹{spent} <Text style={{ fontSize: 11, color: theme.text, fontWeight: '600' }}>/ ₹{budget}</Text>
-                      </Text>
-                    </View>
-                    <View style={{ backgroundColor: theme.icon, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
-                      <Text style={{ fontSize: 10, fontWeight: '800', color: '#FFFFFF' }}>
-                        {spent > budget ? 'OVER' : `${Math.round(pct)}%`}
-                      </Text>
-                    </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <View style={[styles.cardIconWrap, { backgroundColor: '#EEF2FF', width: 44, height: 44, borderRadius: 14 }]}>
+                    <Wallet size={20} color="#2952F3" />
                   </View>
-                  <View style={{ marginTop: 10, height: 4, backgroundColor: theme.bg, borderRadius: 2, overflow: 'hidden' }}>
-                    <Animated.View style={{ height: '100%', width: progressAnim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }), backgroundColor: theme.icon, borderRadius: 2 }} />
+                  <View>
+                    <Text style={{ fontSize: 16, fontWeight: '800', color: '#0F172A', marginBottom: 2 }}>Monthly Budget</Text>
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: '#64748B' }}>
+                      {budget > 0 ? `₹${(budget - spent > 0 ? budget - spent : 0).toLocaleString('en-IN')} remaining` : 'No budget set'}
+                    </Text>
                   </View>
-                </LinearGradient>
-              );
-            })()}
+                </View>
+                
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={{ fontSize: 18, fontWeight: '800', color: budget > 0 && spent > budget ? '#EF4444' : '#0F172A', letterSpacing: -0.5 }}>
+                    ₹{spent.toLocaleString('en-IN')}
+                  </Text>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#94A3B8' }}>
+                    / ₹{budget > 0 ? budget.toLocaleString('en-IN') : '0'}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={{ height: 8, backgroundColor: '#F1F5F9', borderRadius: 4, overflow: 'hidden' }}>
+                <Animated.View style={{
+                  height: '100%',
+                  borderRadius: 4,
+                  backgroundColor: budget > 0 && spent > budget ? '#EF4444' : '#2952F3',
+                  width: progressAnim.interpolate({
+                    inputRange: [0, 100],
+                    outputRange: ['0%', '100%']
+                  })
+                }} />
+              </View>
+              
+            </View>
           </TouchableOpacity>
-        )}
         </FadeSlideIn>
 
         {/* ── Total Due Overview Card ── */}
         <FadeSlideIn delay={80}>
-        <View style={styles.section}>
-          <View style={[styles.globalCard, {
-            paddingVertical: 12, // Decreased height
-            paddingHorizontal: 20,
-            flexDirection: "row",
-            alignItems: "center",
-            overflow: 'hidden',
-            backgroundColor: dueAmount === 0 ? '#F0FDF4' : (dueAmount < totalRentAmount ? '#FFF7ED' : '#FEF2F2'),
-            borderColor: dueAmount === 0 ? '#BBF7D0' : (dueAmount < totalRentAmount ? '#FED7AA' : '#FECACA'),
-          }]}>
-            <View style={styles.overviewLeft}>
-              {/* Label row with icon */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                <View style={[styles.cardIconWrap, {
-                  backgroundColor: dueAmount === 0 ? '#D1FAE5' : (dueAmount < totalRentAmount ? '#FFEDD5' : '#FEE2E2'),
-                  width: 32, height: 32, borderRadius: 10,
-                }]}>
-                  {dueAmount === 0 ? <CheckCircle2 size={16} color="#10B981" /> : <AlertCircle size={16} color={dueAmount < totalRentAmount ? '#EA580C' : '#EF4444'} />}
-                </View>
-                <Text style={[styles.overviewLabel, { marginBottom: 0 }]}>
-                  {dueAmount > 0 ? "Total Due" : "Monthly Rent"}
-                </Text>
-              </View>
-
-              {/* Amount */}
-              <Text style={[styles.overviewAmount, dueAmount === 0 ? { color: "#16A34A" } : (dueAmount < totalRentAmount ? { color: "#EA580C" } : { color: "#E11D48" }), { fontSize: 28 }]}>
-                ₹ {(dueAmount > 0 ? dueAmount : (totalRentAmount || 0)).toLocaleString("en-IN")}
-              </Text>
-
-              {/* Sub-label */}
-              {dueAmount > 0 && (
-                <Text style={[styles.overviewDate, { marginBottom: 12 }]}>
-                  📅 Due: {rentDueDate ? formatDate(rentDueDate) : "Not scheduled"}
-                </Text>
-              )}
-
-              {/* Action button */}
-              {dueAmount > 0 ? (
-                <TouchableOpacity style={[styles.overviewBtn, { paddingVertical: 8, paddingHorizontal: 12 }]} onPress={() => navigation.navigate("Payments")}>
-                  <Text style={[styles.overviewBtnText, { fontSize: 12 }]}>Pay Now</Text>
-                  <ArrowRight size={14} color={WHITE} />
-                </TouchableOpacity>
-              ) : (
-                <View style={[styles.overviewBtn, { backgroundColor: "#D1FAE5", paddingVertical: 8, paddingHorizontal: 12 }]}>
-                  <Check size={14} color="#10B981" strokeWidth={3} />
-                  <Text style={[styles.overviewBtnText, { color: "#10B981", fontSize: 12 }]}>Paid</Text>
-                </View>
-              )}
-            </View>
-
-            {/* Wallet illustration — larger */}
-            <View style={styles.overviewRight}>
-              <Image
-                source={require("../../assets/wallet_3d.png")}
-                style={{ width: 120, height: 120, position: "absolute", right: -10, bottom: -15 }} // Decreased size
-                resizeMode="contain"
-              />
-            </View>
-          </View>
-        </View>
-        </FadeSlideIn>
-
-        {/* ── Next Meal ──────────────────────────────────────────────── */}
-        <FadeSlideIn delay={160}>
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Next Meal</Text>
-            <TouchableOpacity style={{ flexDirection: "row", alignItems: "center", gap: 4 }} onPress={() => navigation.navigate("FullMenu")}>
-              <Text style={styles.viewAllText}>Full Menu</Text>
-              <ArrowRight size={14} color={BLUE} strokeWidth={2.5} />
-            </TouchableOpacity>
-          </View>
-
-          {(() => {
-            const activeMeal = meals[currentMealIdx];
-            const isSkipped = skipped[activeMeal.key];
-            const MealIcon = activeMeal.Icon;
-            const isPlaceholder = activeMeal.sub === 'Menu not updated';
-            
-            return (
-                <View style={{ minHeight: 190 }}>
-                  <TouchableOpacity
-                    activeOpacity={0.9}
-                    onPress={handleNextMeal}
-                    style={[styles.globalCard, { padding: 16, backgroundColor: isSkipped ? '#F9FAFB' : activeMeal.lightBg, borderWidth: 0 }, isSkipped && { opacity: 0.8 }]}
-                  >
-                    <View style={styles.nmHeader}>
-                      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, flex: 1 }}>
-                        <View style={[styles.cardIconWrap, { backgroundColor: isSkipped ? '#F3F4F6' : activeMeal.lightIconBg, borderRadius: 12, width: 44, height: 44 }]}>
-                          <MealIcon size={22} color={isSkipped ? TEXT_MID : activeMeal.color} strokeWidth={2.5} />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={[styles.menuTitle, { color: isSkipped ? TEXT_MID : TEXT_DARK, fontSize: 16, marginBottom: 6 }, isSkipped && { textDecorationLine: "line-through" }]}>
-                            {activeMeal.title}
-                          </Text>
-                          {(() => {
-                            const isPlaceholder = activeMeal.sub === 'Menu not updated' || !activeMeal.sub;
-                            if (isPlaceholder) {
-                              return (
-                                <View style={{ justifyContent: 'flex-start' }}>
-                                  <Text style={[styles.menuSub, { color: TEXT_MID, fontSize: 13, fontStyle: 'italic' }]} numberOfLines={2}>
-                                    {activeMeal.sub || 'Menu not updated'}
-                                  </Text>
-                                </View>
-                              );
-                            }
-                            
-                            const itemsArr = activeMeal.sub.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0);
-                            const colorTheme = isSkipped ? { bg: '#F3F4F6', text: '#9CA3AF' } : { bg: activeMeal.lightIconBg, text: activeMeal.color };
-                            
-                            return (
-                              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                                {itemsArr.map((item: string, idx: number) => (
-                                  <View key={idx} style={{ backgroundColor: colorTheme.bg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
-                                    <Text style={[{ fontSize: 11, fontWeight: '700', color: colorTheme.text }, isSkipped && { textDecorationLine: 'line-through' }]}>
-                                      {item}
-                                    </Text>
-                                  </View>
-                                ))}
-                              </View>
-                            );
-                          })()}
-                        </View>
-                      </View>
-                      <View style={{ alignItems: 'center', alignSelf: 'flex-start' }}>
-                        <TouchableOpacity
-                          style={[
-                            styles.skipTickBtn, 
-                            { width: 24, height: 24, borderRadius: 12, borderWidth: 1.5, borderColor: isSkipped ? '#D1D5DB' : '#E5E7EB', backgroundColor: isSkipped ? '#F3F4F6' : WHITE }
-                          ]}
-                          onPress={(e) => { e.stopPropagation(); handleMessSkip(activeMeal.key); }}
-                          activeOpacity={0.7}
-                        >
-                          <Check size={14} color={isSkipped ? TEXT_MID : '#D1D5DB'} strokeWidth={3} />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                    
-                    <View style={{ height: 1, backgroundColor: isSkipped ? '#E5E7EB' : 'rgba(0,0,0,0.04)', marginVertical: 14 }} />
-
-                    <View style={[styles.nmFooter, { marginTop: 0, paddingTop: 0, borderTopWidth: 0, justifyContent: 'flex-start', gap: 12 }]}>
-                      <TouchableOpacity onPress={(e) => { e.stopPropagation(); handlePrevMeal(); }} style={[styles.arrowBtn, { backgroundColor: isSkipped ? '#F3F4F6' : 'rgba(0,0,0,0.03)', borderRadius: 8, padding: 6 }]}>
-                        <ChevronLeft size={18} color={isSkipped ? TEXT_MID : TEXT_DARK} strokeWidth={3} />
-                      </TouchableOpacity>
-                      <Text style={[styles.timeNavText, { color: isSkipped ? TEXT_MID : TEXT_DARK, fontSize: 13, fontWeight: '700' }]}>{activeMeal.time}</Text>
-                      <TouchableOpacity onPress={(e) => { e.stopPropagation(); handleNextMeal(); }} style={[styles.arrowBtn, { backgroundColor: isSkipped ? '#F3F4F6' : 'rgba(0,0,0,0.03)', borderRadius: 8, padding: 6 }]}>
-                        <ChevronRight size={18} color={isSkipped ? TEXT_MID : TEXT_DARK} strokeWidth={3} />
-                      </TouchableOpacity>
-                    </View>
-                  </TouchableOpacity>
-                </View>
-            );
-          })()}
-        </View>
-        </FadeSlideIn>
-
-        {/* ── Today's Message ───────────────────────────────────────────────── */}
-        <FadeSlideIn delay={240}>
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Important Notice</Text>
-            <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} onPress={() => navigation.navigate("Notices")}>
-              <Text style={styles.viewAllText}>View All</Text>
-            </TouchableOpacity>
-          </View>
-
-          <TouchableOpacity
-            style={[styles.globalCard, { padding: 0, overflow: 'hidden', borderWidth: 0 }]}
-            onPress={() => navigation.navigate("Notices")}
-          >
-            <LinearGradient colors={['#FFF1F2', '#FFE4E6']} style={{ padding: 16, flexDirection: "row", alignItems: "center" }}>
-              <View style={[styles.cardIconWrap, { backgroundColor: '#FDA4AF', marginRight: 16 }]}>
-                <Megaphone size={20} color="#BE123C" />
-              </View>
-              <View style={styles.messageContent}>
-                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
-                    <Text style={[styles.messageTitle, { color: '#881337' }]} numberOfLines={1}>
-                      {recentNotices[0]?.title || "Welcome!"}
-                    </Text>
-                    <View style={[styles.newBadge, { backgroundColor: '#E11D48' }]}>
-                      <Text style={[styles.newBadgeTxt, { color: '#FFFFFF' }]}>New</Text>
-                    </View>
+          <View style={styles.section}>
+            <View style={[styles.globalCard, {
+              paddingVertical: 16,
+              paddingHorizontal: 20,
+              flexDirection: "row",
+              alignItems: "center",
+              overflow: 'hidden',
+              backgroundColor: dueAmount === 0 ? '#F0FDF4' : (dueAmount < totalRentAmount ? '#FFF7ED' : '#FEF2F2'),
+              borderColor: dueAmount === 0 ? '#BBF7D0' : (dueAmount < totalRentAmount ? '#FED7AA' : '#FECACA'),
+              borderWidth: 1,
+            }]}>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                  <View style={[styles.cardIconWrap, {
+                    backgroundColor: dueAmount === 0 ? '#D1FAE5' : (dueAmount < totalRentAmount ? '#FFEDD5' : '#FEE2E2'),
+                    width: 32, height: 32, borderRadius: 10,
+                  }]}>
+                    {dueAmount === 0 ? <CheckCircle2 size={16} color="#10B981" /> : <AlertCircle size={16} color={dueAmount < totalRentAmount ? '#EA580C' : '#EF4444'} />}
                   </View>
-                  <Text style={[styles.messageTime, { color: '#E11D48' }]}>
-                    {recentNotices[0]?.date ? formatTime(recentNotices[0].date) : "09:00 AM"}
+                  <Text style={[styles.overviewLabel, { marginBottom: 0 }]}>
+                    {dueAmount > 0 ? "Total Due" : "Monthly Rent"}
                   </Text>
                 </View>
-                <Text style={[styles.messageBody, { color: '#BE123C' }]} numberOfLines={2}>
-                  {recentNotices[0]?.body || "Welcome to the hostel app. Check here for daily updates."}
+                <Text style={[styles.overviewAmount, dueAmount === 0 ? { color: "#16A34A" } : (dueAmount < totalRentAmount ? { color: "#EA580C" } : { color: "#E11D48" }), { fontSize: 28 }]}>
+                  ₹ {(dueAmount > 0 ? dueAmount : (totalRentAmount || 0)).toLocaleString("en-IN")}
                 </Text>
+                {dueAmount > 0 && (
+                  <Text style={[styles.overviewDate, { marginBottom: 12 }]}>
+                    📅 Due: {rentDueDate ? formatDate(rentDueDate) : "Not scheduled"}
+                  </Text>
+                )}
+                {dueAmount > 0 ? (
+                  <TouchableOpacity style={[styles.overviewBtn, { backgroundColor: '#0a0a0a', paddingVertical: 10, paddingHorizontal: 16, marginTop: 4 }]} onPress={() => navigation.navigate("Payments")}>
+                    <Text style={[styles.overviewBtnText, { fontSize: 13, color: '#f5f4f2' }]}>Pay Now</Text>
+                    <ArrowRight size={16} color="#f5f4f2" />
+                  </TouchableOpacity>
+                ) : (
+                  <View style={[styles.overviewBtn, { backgroundColor: "#D1FAE5", paddingVertical: 10, paddingHorizontal: 16, marginTop: 4 }]}>
+                    <Check size={16} color="#10B981" strokeWidth={3} />
+                    <Text style={[styles.overviewBtnText, { color: "#10B981", fontSize: 13 }]}>Paid</Text>
+                  </View>
+                )}
               </View>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
+              <View style={{ width: 110, height: 110, justifyContent: "center", alignItems: "center" }}>
+                <Image source={require("../../assets/wallet_3d.png")} style={{ width: 120, height: 120, position: "absolute", right: -16 }} resizeMode="contain" />
+              </View>
+            </View>
+          </View>
+        </FadeSlideIn>
+
+        {/* ── BENTO GRID ── */}
+        <FadeSlideIn delay={160}>
+          <View style={styles.section}>
+            
+            {/* 1. Today's Menu Stacked Cards */}
+            <View style={{ marginBottom: 20 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, paddingHorizontal: 4 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Text style={{ fontSize: 16, fontWeight: '800', color: '#0F172A' }}>Today's Menu</Text>
+                  <View style={{ backgroundColor: '#EEF2FF', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: BLUE }}>
+                      {new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }} onPress={() => navigation.navigate("FullMenu")}>
+                  <Text style={{ fontSize: 13, color: BLUE, fontWeight: '700' }}>View All</Text>
+                  <ArrowRight size={14} color={BLUE} strokeWidth={2.5} />
+                </TouchableOpacity>
+              </View>
+
+              <View style={{ gap: 12 }}>
+                {meals.map((meal, idx) => {
+                  const MealIcon = meal.Icon;
+                  // Colors based on meal type for reference matching
+                  let bg = '#FFF7ED'; let iconWrapBg = '#FFEDD5'; let color = '#EA580C'; // Morning (Orange/Yellow)
+                  if (meal.key === 'lunch') { bg = '#FEF2F2'; iconWrapBg = '#FCE7E7'; color = '#EF4444'; } // Lunch (Red/Peach)
+                  if (meal.key === 'snacks') { bg = '#F5F3FF'; iconWrapBg = '#EDE9FE'; color = '#8B5CF6'; } // Snacks (Purple)
+                  if (meal.key === 'dinner') { bg = '#F0FDF4'; iconWrapBg = '#DCFCE7'; color = '#10B981'; } // Dinner (Green)
+                  
+                  const isPlaceholder = !meal.sub || meal.sub === 'Menu not updated';
+                  const displaySub = isPlaceholder ? 'Menu not updated' : meal.sub;
+
+                  return (
+                    <TouchableOpacity 
+                      key={idx}
+                      activeOpacity={0.9}
+                      onPress={() => navigation.navigate("FullMenu")}
+                      style={{
+                        backgroundColor: bg,
+                        borderRadius: 20,
+                        padding: 16,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between'
+                      }}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 14 }}>
+                        <View style={{ backgroundColor: iconWrapBg, width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center' }}>
+                          <MealIcon size={24} color={color} />
+                        </View>
+                        <View style={{ flex: 1, paddingRight: 8 }}>
+                          <Text style={{ fontSize: 16, fontWeight: '800', color: '#0F172A', marginBottom: 2 }}>{meal.title}</Text>
+                          <Text style={{ fontSize: 13, color: '#64748B', fontWeight: '500' }} numberOfLines={1}>{displaySub}</Text>
+                        </View>
+                      </View>
+                      <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: color }}>{meal.time.split(' - ')[0]}</Text>
+                        <View style={{ backgroundColor: '#FFFFFF', width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center', shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 }}>
+                          <ArrowRight size={14} color={color} strokeWidth={2.5} />
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* 2. Notice Card */}
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => navigation.navigate("Notices")}
+              style={{
+                backgroundColor: '#ffffff',
+                borderRadius: 20,
+                padding: 16,
+                borderWidth: 1, borderColor: '#F1F5F9',
+                shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 2,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 16
+              }}
+            >
+              <View style={[styles.cardIconWrap, { backgroundColor: '#EEF2FF', width: 48, height: 48, borderRadius: 14 }]}>
+                <Megaphone size={24} color={BLUE} />
+              </View>
+              {recentNotices.length > 0 ? (
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <Text style={{ color: '#0F172A', fontSize: 16, fontWeight: '800', flexShrink: 1 }} numberOfLines={1}>
+                      {recentNotices[0]?.title || "Welcome!"}
+                    </Text>
+                    <View style={{ backgroundColor: '#DBEAFE', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                      <Text style={{ color: BLUE, fontSize: 9, fontWeight: '800', textTransform: 'uppercase' }}>New</Text>
+                    </View>
+                  </View>
+                  <Text style={{ color: '#64748B', fontSize: 13, fontWeight: '500' }} numberOfLines={2}>
+                    {recentNotices[0]?.body || "Check here for daily updates."}
+                  </Text>
+                </View>
+              ) : (
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: '#0F172A', fontSize: 16, fontWeight: '800', marginBottom: 2 }}>Notices</Text>
+                  <Text style={{ color: '#64748B', fontSize: 13, fontWeight: '500' }}>No new notices at the moment</Text>
+                </View>
+              )}
+              <View style={{ backgroundColor: '#F8FAFC', width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' }}>
+                <ArrowRight size={16} color="#64748B" strokeWidth={2.5} />
+              </View>
+            </TouchableOpacity>
+          </View>
         </FadeSlideIn>
 
         {/* ── Shortcuts ────────────────────────────────────────────────────── */}
@@ -754,7 +715,7 @@ export default function HomeScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: BG },
+  root: { flex: 1, backgroundColor: '#F8FAFC' },
   
   // ── Global Standardized Card ──
   globalCard: {
@@ -791,11 +752,15 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center", alignItems: "center",
   },
-  hAvatarText: { color: WHITE, fontWeight: "700", fontSize: 16 },
-  headerGreeting: { fontSize: 18, fontWeight: "700", color: WHITE },
-  headerSub: { fontSize: 13, color: "rgba(255,255,255,0.8)", marginTop: 2 },
+  hAvatarText: { color: WHITE, fontSize: 16, fontWeight: "700" },
+  hBtn: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    justifyContent: "center", alignItems: "center",
+  },
+  headerGreeting: { fontSize: 24, fontWeight: "800", color: WHITE, letterSpacing: -0.5 },
+  headerSub: { fontSize: 14, color: BLUE_SOFT, marginTop: 4, fontWeight: "500" },
   headerRight: { flexDirection: "row", alignItems: "center", gap: 12 },
-  hBtn: { padding: 4, position: "relative" },
   notificationDot: {
     position: "absolute", top: 4, right: 4,
     width: 10, height: 10, borderRadius: 5,

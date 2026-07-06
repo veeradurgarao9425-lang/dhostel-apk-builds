@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Text,
   View,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -84,8 +85,8 @@ export default function SplashScreenView({ isReady }: Props) {
   return (
     <Animated.View style={[styles.container, { opacity }]} pointerEvents="none">
       <LinearGradient
-        colors={['#0F172A', '#1E3A8A', '#2245D4']}
-        locations={[0, 0.4, 1]}
+        colors={['#2952F3', '#1E3A8A']}
+        locations={[0, 1]}
         style={StyleSheet.absoluteFillObject}
       />
       
@@ -110,9 +111,7 @@ export default function SplashScreenView({ isReady }: Props) {
       </Animated.View>
 
       <Animated.View style={[styles.loaderWrap, { opacity: logoOpacity }]}>
-        <View style={styles.loaderTrack}>
-          <LoopingBar />
-        </View>
+        <ActivityIndicator size="large" color="#FFFFFF" />
         <Text style={styles.loaderText}>Loading your space…</Text>
       </Animated.View>
     </Animated.View>

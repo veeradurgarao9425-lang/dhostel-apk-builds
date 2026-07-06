@@ -15,6 +15,7 @@ import api from '../services/api';
 import { PaymentSkeleton } from '../components/UIComponents';
 import { OfflineBanner } from '../components/NetworkComponents';
 import { UploadProgressBar } from '../components/MediaComponents';
+import { AppHeader } from '../components/ui';
 
 const BLUE      = '#2245D4';
 const BLUE_SOFT = '#EEF2FF';
@@ -126,16 +127,7 @@ export default function PaymentScreen({ navigation }: any) {
   if (loading) {
     return (
       <View style={{ flex: 1, backgroundColor: BG }}>
-        <StatusBar barStyle="light-content" backgroundColor={BLUE} />
-        <View style={s.headerSection}>
-          <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
-            <View style={s.headerTop}>
-              <View style={s.backBtnLight}>
-                <ChevronLeft size={28} color={WHITE} strokeWidth={3} />
-              </View>
-            </View>
-          </SafeAreaView>
-        </View>
+        <AppHeader title="Pay Rent" subtitle="Clear your dues securely" showBack={true} />
         <PaymentSkeleton />
       </View>
     );
@@ -143,22 +135,11 @@ export default function PaymentScreen({ navigation }: any) {
 
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
-      <StatusBar barStyle="light-content" backgroundColor={BLUE} />
-
-      {/* ── HEADER ── */}
-      <View style={s.headerSection}>
-        <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
-          <View style={s.headerTop}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtnLight} activeOpacity={0.7}>
-              <ChevronLeft size={28} color={WHITE} strokeWidth={3} />
-            </TouchableOpacity>
-            <View style={{ flex: 1, marginLeft: 16 }}>
-              <Text style={s.headerGreeting}>Pay Rent</Text>
-              <Text style={s.headerSub}>Clear your dues securely</Text>
-            </View>
-          </View>
-        </SafeAreaView>
-      </View>
+      <AppHeader
+        title="Pay Rent"
+        subtitle="Clear your dues securely"
+        showBack={true}
+      />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">

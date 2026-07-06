@@ -21,6 +21,7 @@ import { useAuth } from '../context/AuthContext';
 import { colors, radius, spacing, shadow } from '../theme';
 import { formatCurrency } from '../utils/format';
 import api from '../services/api';
+import AppHeader from '../components/ui/AppHeader';
 
 const BLUE      = '#2245D4';
 const BLUE_DARK = '#1E3A8A';
@@ -208,7 +209,7 @@ export default function DuesScreen({ route, navigation }: any) {
     if (allPaid) {
       return (
         <View style={styles.heroClear}>
-          <View style={styles.heroIconBadge}>
+          <View style={styles.heroClearIconBadge}>
             <Check size={22} color="#FFFFFF" strokeWidth={3} />
           </View>
           <View style={{ flex: 1, marginLeft: 12 }}>
@@ -297,39 +298,31 @@ export default function DuesScreen({ route, navigation }: any) {
       <StatusBar barStyle="light-content" backgroundColor={BLUE} />
 
       {/* ── BLUE HEADER ── */}
-      <View style={styles.headerSection}>
-        <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
-          <View style={styles.headerTop}>
-            <View style={{ flex: 1, marginRight: 12 }}>
-              <Text style={styles.headerGreeting}>My Dues</Text>
-              <Text style={styles.headerSub}>Manage your monthly rent and fees</Text>
-            </View>
-            <View style={styles.headerRight}>
-              <TouchableOpacity style={styles.hBtn} onPress={() => navigation.navigate('Notifications')}>
-                <Bell size={24} color={WHITE} strokeWidth={1.5} />
-                <View style={styles.notificationDot} />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.hAvatar} onPress={() => navigation.navigate('Profile')}>
-                <Text style={styles.hAvatarText}>{initials}</Text>
-              </TouchableOpacity>
-            </View>
+      <AppHeader
+        title="My Dues"
+        subtitle="Manage your monthly rent and fees"
+        showBack={false}
+        rightComponent={
+          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+            <TouchableOpacity style={styles.hBtn} onPress={() => navigation.navigate('Notifications')}>
+              <Bell size={22} color={WHITE} strokeWidth={1.5} />
+              <View style={styles.notificationDot} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.hAvatar} onPress={() => navigation.navigate('Profile')}>
+              <Text style={styles.hAvatarText}>{initials}</Text>
+            </TouchableOpacity>
           </View>
-        </SafeAreaView>
-      </View>
+        }
+      />
 
-      {/* ── Hero (outside scroll) ── */}
+      {/* ── Tab Toggle Outside Header ── */}
       {loading ? (
-        <View style={{ height: 160, backgroundColor: '#F1F5F9', borderRadius: 20, marginHorizontal: 20, marginTop: 16, marginBottom: 4, opacity: 0.6 }} />
-      ) : (!error && isAllocated && renderHeroSection())}
-
-      {/* ── Tab Toggle ── */}
-      {loading ? (
-        <View style={styles.tabContainer}>
-          <View style={{ height: 46, backgroundColor: '#F1F5F9', borderRadius: 14, marginHorizontal: 20, opacity: 0.8 }} />
+        <View style={[styles.tabContainer, { backgroundColor: 'transparent' }]}>
+          <View style={{ height: 46, backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 14, marginHorizontal: 20 }} />
         </View>
       ) : (
-        <View style={styles.tabContainer}>
-          <View style={styles.tabRow}>
+        <View style={[styles.tabContainer, { backgroundColor: 'transparent' }]}>
+          <View style={[styles.tabRow, { backgroundColor: 'rgba(0,0,0,0.05)' }]}>
             {(['This Month', 'Payment History'] as TabKey[]).map((tab) => (
               <TouchableOpacity
                 key={tab}
@@ -340,12 +333,18 @@ export default function DuesScreen({ route, navigation }: any) {
                 }}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
+                <Text style={[styles.tabText, { color: 'rgba(0,0,0,0.6)' }, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
       )}
+
+      {/* ── Hero (outside scroll) ── */}
+      {loading ? (
+        <View style={{ height: 160, backgroundColor: '#F1F5F9', borderRadius: 20, marginHorizontal: 20, marginTop: 16, marginBottom: 4, opacity: 0.6 }} />
+      ) : (!error && isAllocated && renderHeroSection())}
+
 
       {/* ── Content ── */}
       <ScrollView
@@ -683,13 +682,13 @@ const styles = StyleSheet.create({
   safe:          { flex: 1, backgroundColor: BG },
   headerSection: { backgroundColor: BLUE, paddingBottom: 16 },
   headerTop: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 12 },
-  hAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center', marginLeft: 12 },
-  hAvatarText:    { color: WHITE, fontWeight: '700', fontSize: 16 },
+  hAvatar:        { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
+  hAvatarText:    { color: WHITE, fontSize: 15, fontWeight: '700' },
   headerGreeting: { fontSize: 18, fontWeight: '700', color: WHITE },
   headerSub:      { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
-  headerRight:    { flexDirection: 'row', alignItems: 'center' },
-  hBtn:           { padding: 8, position: 'relative' },
-  notificationDot: { position: 'absolute', top: 8, right: 8, width: 8, height: 8, borderRadius: 4, backgroundColor: '#EF4444', borderWidth: 1.5, borderColor: BLUE },
+  headerRight:    { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  hBtn:           { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', position: 'relative' },
+  notificationDot: { position: 'absolute', top: 8, right: 10, width: 8, height: 8, borderRadius: 4, backgroundColor: '#EF4444', borderWidth: 1.5, borderColor: BLUE },
 
   // ── Hero: single merged card ──────────────────────────────────────────────
   heroSingle: {
@@ -726,7 +725,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#DCFCE7',
   },
-  heroIconBadge: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center' },
+  heroClearIconBadge: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center' },
   heroClearTitle: { fontSize: 16, fontWeight: '700', color: '#166534', marginBottom: 2 },
   heroClearSub:   { fontSize: 13, color: '#475569' },
 

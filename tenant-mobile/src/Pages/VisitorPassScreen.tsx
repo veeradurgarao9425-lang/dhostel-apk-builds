@@ -9,6 +9,8 @@ import { ArrowLeft, Plus, User, Clock, Calendar, X, ChevronDown, Check, Filter }
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import api from '../services/api';
+import { AppHeader, EmptyState, SkeletonListRow, LoaderOverlay } from '../components/ui';
+import DateTimePickerModal from "react-native-modal-datetime-picker";
 
 const BLUE = '#2245D4';
 const WHITE = '#FFFFFF';
@@ -27,14 +29,45 @@ export default function VisitorPassScreen({ navigation }: any) {
   const [submitting, setSubmitting] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'All' | 'Pending' | 'Approved' | 'Rejected'>('All');
 
+  const [showDateFilter, setShowDateFilter] = useState(false);
+  const [filterDate, setFilterDate] = useState('');
+
   // Form state
   const [visitorName, setVisitorName] = useState('');
   const [relation, setRelation] = useState('');
   const [visitDate, setVisitDate] = useState('');
   const [visitTime, setVisitTime] = useState('');
   const [showRelationPicker, setShowRelationPicker] = useState(false);
+  const [isDatePickerVisible, setDatePickerVisible] = useState(false);
+  const [isTimePickerVisible, setTimePickerVisible] = useState(false);
+  const [isFilterDatePickerVisible, setFilterDatePickerVisible] = useState(false);
 
   const RELATIONS = ['Family', 'Friend', 'Colleague', 'Other'];
+
+  const handleConfirmDate = (date: Date) => {
+    // format to YYYY-MM-DD
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    setVisitDate(`${yyyy}-${mm}-${dd}`);
+    setDatePickerVisible(false);
+  };
+  
+  const handleConfirmTime = (date: Date) => {
+    // format to HH:MM
+    const hh = String(date.getHours()).padStart(2, '0');
+    const mm = String(date.getMinutes()).padStart(2, '0');
+    setVisitTime(`${hh}:${mm}`);
+    setTimePickerVisible(false);
+  };
+
+  const handleConfirmFilterDate = (date: Date) => {
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    setFilterDate(`${yyyy}-${mm}-${dd}`);
+    setFilterDatePickerVisible(false);
+  };
 
   const fetchRequests = async () => {
     try {
@@ -51,7 +84,10 @@ export default function VisitorPassScreen({ navigation }: any) {
   useFocusEffect(useCallback(() => { fetchRequests(); }, []));
 
   const resetForm = () => {
-    setVisitorName(''); setRelation(''); setVisitDate(''); setVisitTime('');
+    const now = new Date();
+    const currentDate = now.toISOString().split('T')[0];
+    const currentTime = now.toTimeString().substring(0, 5);
+    setVisitorName(''); setRelation(''); setVisitDate(currentDate); setVisitTime(currentTime);
   };
 
   const handleSubmit = async () => {
@@ -93,16 +129,16 @@ export default function VisitorPassScreen({ navigation }: any) {
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
       <StatusBar barStyle="light-content" backgroundColor={BLUE} />
-      <View style={{ backgroundColor: BLUE, paddingBottom: 20 }}>
-        <SafeAreaView edges={['top']}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 12 }}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 8, marginLeft: -8 }}>
-              <ArrowLeft size={24} color={WHITE} strokeWidth={2.5} />
-            </TouchableOpacity>
-            <Text style={{ flex: 1, fontSize: 22, fontWeight: '800', color: WHITE, marginLeft: 12 }}>Visitor Pass</Text>
-          </View>
-        </SafeAreaView>
-      </View>
+      <AppHeader
+        title="Visitor Pass"
+        subtitle="Request and track visitor entry passes"
+        showBack={navigation.canGoBack()}
+        rightComponent={
+          <TouchableOpacity onPress={() => setShowDateFilter(true)} style={{ padding: 8, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 12 }}>
+            <Calendar size={20} color={WHITE} />
+          </TouchableOpacity>
+        }
+      />
 
       {/* ── Filter chips ── */}
       {!loading && requests.length > 0 && (
@@ -133,28 +169,40 @@ export default function VisitorPassScreen({ navigation }: any) {
       )}
 
       {loading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={BLUE} />
-        </View>
+        <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }}>
+          <SkeletonListRow />
+          <SkeletonListRow />
+          <SkeletonListRow />
+          <SkeletonListRow />
+        </ScrollView>
       ) : (
         <ScrollView
           contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchRequests(); }} colors={[BLUE]} />}
         >
           {(() => {
-            const filtered = activeFilter === 'All' ? requests : requests.filter((r: any) => (r.status || 'Pending') === activeFilter);
+            let filtered = activeFilter === 'All' ? requests : requests.filter((r: any) => (r.status || 'Pending') === activeFilter);
+            if (filterDate.trim() !== '') {
+              filtered = filtered.filter((r: any) => r.created_at && r.created_at.startsWith(filterDate.trim()));
+            }
+            
             if (requests.length === 0) return (
-              <View style={{ alignItems: 'center', paddingTop: 60 }}>
-                <User size={56} color="#CBD5E1" />
-                <Text style={{ fontSize: 16, fontWeight: '700', color: TEXT_MID, marginTop: 16 }}>No visitor requests yet</Text>
-                <Text style={{ fontSize: 13, color: '#9CA3AF', marginTop: 8, textAlign: 'center' }}>Tap + to request a visitor pass</Text>
+              <View style={{ marginTop: 24 }}>
+                <EmptyState
+                  icon={User}
+                  title="No visitor requests yet"
+                  message="Tap + to request a visitor pass"
+                  action={{ label: "Request Visitor Pass", onPress: () => { resetForm(); setShowForm(true); } }}
+                />
               </View>
             );
             if (filtered.length === 0) return (
-              <View style={{ alignItems: 'center', paddingTop: 60 }}>
-                <Filter size={48} color="#CBD5E1" />
-                <Text style={{ fontSize: 16, fontWeight: '700', color: TEXT_MID, marginTop: 16 }}>No {activeFilter} requests</Text>
-                <Text style={{ fontSize: 13, color: '#9CA3AF', marginTop: 8, textAlign: 'center' }}>Try a different filter</Text>
+              <View style={{ marginTop: 24 }}>
+                <EmptyState
+                  icon={Filter}
+                  title={`No ${activeFilter} requests`}
+                  message="Try a different filter"
+                />
               </View>
             );
             return filtered.map((r: any, i: number) => {
@@ -187,16 +235,18 @@ export default function VisitorPassScreen({ navigation }: any) {
         </ScrollView>
       )}
 
-      <TouchableOpacity
-        style={{ position: 'absolute', bottom: 100, right: 24, width: 56, height: 56, borderRadius: 28, backgroundColor: BLUE, justifyContent: 'center', alignItems: 'center', shadowColor: BLUE, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 }}
-        onPress={() => { resetForm(); setShowForm(true); }}
-      >
-        <Plus size={24} color={WHITE} strokeWidth={3} />
-      </TouchableOpacity>
+      {!loading && !showForm && requests.length > 0 && (
+        <TouchableOpacity
+          style={{ position: 'absolute', bottom: 100, right: 24, width: 56, height: 56, borderRadius: 28, backgroundColor: BLUE, justifyContent: 'center', alignItems: 'center', shadowColor: BLUE, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 }}
+          onPress={() => { resetForm(); setShowForm(true); }}
+        >
+          <Plus size={24} color={WHITE} strokeWidth={3} />
+        </TouchableOpacity>
+      )}
 
       <Modal visible={showForm} transparent animationType="slide" onRequestClose={() => setShowForm(false)}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: WHITE, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 28, paddingBottom: Platform.OS === 'ios' ? 48 : 28 }}>
+        <View style={{ flex: 1, backgroundColor: 'transparent', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: WHITE, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 28, paddingBottom: Platform.OS === 'ios' ? 48 : 28, borderTopWidth: 1, borderLeftWidth: 1, borderRightWidth: 1, borderColor: '#E2E8F0', shadowColor: '#000', shadowOffset: { width: 0, height: -10 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 24 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
               <Text style={{ fontSize: 20, fontWeight: '800', color: TEXT_DARK }}>Request Visitor Pass</Text>
               <TouchableOpacity onPress={() => setShowForm(false)}>
@@ -219,17 +269,26 @@ export default function VisitorPassScreen({ navigation }: any) {
               <ChevronDown size={20} color={TEXT_MID} />
             </TouchableOpacity>
 
-            <Text style={{ fontSize: 13, fontWeight: '700', color: TEXT_MID, marginBottom: 8 }}>Visit Date (YYYY-MM-DD)</Text>
-            <TextInput
-              style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 14, paddingHorizontal: 16, height: 52, fontSize: 15, color: TEXT_DARK, marginBottom: 16 }}
-              value={visitDate} onChangeText={setVisitDate} placeholder="e.g. 2026-07-15" placeholderTextColor="#9CA3AF"
-            />
-
-            <Text style={{ fontSize: 13, fontWeight: '700', color: TEXT_MID, marginBottom: 8 }}>Visit Time (HH:MM)</Text>
-            <TextInput
-              style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 14, paddingHorizontal: 16, height: 52, fontSize: 15, color: TEXT_DARK, marginBottom: 24 }}
-              value={visitTime} onChangeText={setVisitTime} placeholder="e.g. 14:30" placeholderTextColor="#9CA3AF"
-            />
+            <View style={{ flexDirection: 'row', gap: 16, marginBottom: 24 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: TEXT_MID, marginBottom: 8 }}>Visit Date</Text>
+                <TouchableOpacity
+                  style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 14, paddingHorizontal: 16, height: 52, justifyContent: 'center' }}
+                  onPress={() => setDatePickerVisible(true)}
+                >
+                  <Text style={{ fontSize: 15, color: visitDate ? TEXT_DARK : '#9CA3AF' }}>{visitDate || 'Select Date'}</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: TEXT_MID, marginBottom: 8 }}>Visit Time</Text>
+                <TouchableOpacity
+                  style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 14, paddingHorizontal: 16, height: 52, justifyContent: 'center' }}
+                  onPress={() => setTimePickerVisible(true)}
+                >
+                  <Text style={{ fontSize: 15, color: visitTime ? TEXT_DARK : '#9CA3AF' }}>{visitTime || 'Select Time'}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
 
             <TouchableOpacity
               style={{ height: 54, backgroundColor: BLUE, borderRadius: 16, justifyContent: 'center', alignItems: 'center', opacity: submitting ? 0.6 : 1 }}
@@ -242,8 +301,8 @@ export default function VisitorPassScreen({ navigation }: any) {
       </Modal>
 
       <Modal visible={showRelationPicker} transparent animationType="fade">
-        <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 24 }} activeOpacity={1} onPress={() => setShowRelationPicker(false)}>
-          <View style={{ backgroundColor: WHITE, borderRadius: 20, padding: 20 }}>
+        <TouchableOpacity style={{ flex: 1, backgroundColor: 'transparent', justifyContent: 'center', padding: 24 }} activeOpacity={1} onPress={() => setShowRelationPicker(false)}>
+          <View style={{ backgroundColor: WHITE, borderRadius: 20, padding: 20, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 24 }}>
             <Text style={{ fontSize: 17, fontWeight: '800', color: TEXT_DARK, marginBottom: 16 }}>Select Relation</Text>
             {RELATIONS.map(r => (
               <TouchableOpacity key={r} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: BORDER }} onPress={() => { setRelation(r); setShowRelationPicker(false); }}>
@@ -254,6 +313,56 @@ export default function VisitorPassScreen({ navigation }: any) {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* ── DATE FILTER MODAL ── */}
+      <Modal visible={showDateFilter} animationType="fade" transparent>
+        <View style={{ flex: 1, backgroundColor: 'transparent', justifyContent: 'center', padding: 24 }}>
+          <View style={{ backgroundColor: WHITE, borderRadius: 24, padding: 24, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 24 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <Text style={{ fontSize: 20, fontWeight: '800', color: TEXT_DARK }}>Filter by Date</Text>
+              <TouchableOpacity onPress={() => setShowDateFilter(false)}>
+                <X size={20} color={TEXT_MID} />
+              </TouchableOpacity>
+            </View>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: TEXT_MID, marginBottom: 8 }}>Date</Text>
+            <TouchableOpacity
+              style={{ backgroundColor: '#F8FAFD', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 16, padding: 16, marginBottom: 24, justifyContent: 'center' }}
+              onPress={() => setFilterDatePickerVisible(true)}
+            >
+              <Text style={{ fontSize: 15, color: filterDate ? TEXT_DARK : '#9CA3AF', fontWeight: '500' }}>{filterDate || 'Select Date'}</Text>
+            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity style={{ flex: 1, paddingVertical: 14, borderRadius: 16, backgroundColor: '#F1F5F9', alignItems: 'center' }} onPress={() => { setFilterDate(''); setShowDateFilter(false); }}>
+                <Text style={{ color: TEXT_DARK, fontWeight: '700' }}>Clear</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={{ flex: 1, paddingVertical: 14, borderRadius: 16, backgroundColor: BLUE, alignItems: 'center' }} onPress={() => setShowDateFilter(false)}>
+                <Text style={{ color: WHITE, fontWeight: '700' }}>Apply</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <DateTimePickerModal
+        isVisible={isDatePickerVisible}
+        mode="date"
+        onConfirm={handleConfirmDate}
+        onCancel={() => setDatePickerVisible(false)}
+      />
+      
+      <DateTimePickerModal
+        isVisible={isTimePickerVisible}
+        mode="time"
+        onConfirm={handleConfirmTime}
+        onCancel={() => setTimePickerVisible(false)}
+      />
+      <DateTimePickerModal
+        isVisible={isFilterDatePickerVisible}
+        mode="date"
+        onConfirm={handleConfirmFilterDate}
+        onCancel={() => setFilterDatePickerVisible(false)}
+      />
+      <LoaderOverlay visible={submitting} message="Submitting Request..." />
     </View>
   );
 }

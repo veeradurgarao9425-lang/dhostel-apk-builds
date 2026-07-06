@@ -19,8 +19,8 @@ export const colors = {
   accent:       '#F97316',   // Secondary accent (Orange for contrast)
 
   // Gradient — used on headers and primary buttons
-  gradientStart: '#1E3A8A',
-  gradientEnd:   '#2245D4',
+  gradientStart: '#2952F3',
+  gradientEnd:   '#2952F3',
 
   // Surfaces
   bg:              '#FAFAFC',   // App background — near-white
