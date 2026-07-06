@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import api from '../services/api';
@@ -248,7 +248,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // Re-fetch the tenant's live profile/allocation/dues from the server and
   // merge it into the cached user. Called on dashboard focus & pull-to-refresh
   // so the UI reflects owner actions (e.g. room allocation) without re-login.
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     try {
       // --- Test Mode Bypass ---
       const token = await AsyncStorage.getItem('token');
@@ -271,7 +271,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (error) {
       if (__DEV__) console.error('Failed to refresh user', error);
     }
-  };
+  }, []);
 
   const updateTokenAndUser = async (token: string | null | undefined, updatedFields: Partial<TenantUser>) => {
     try {

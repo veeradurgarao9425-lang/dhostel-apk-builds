@@ -5,6 +5,7 @@ import { generateToken } from '../utils/jwt.js';
 import { AuthRequest } from '../middleware/auth.js';
 import jwt from 'jsonwebtoken';
 import { sendPasswordResetEmail, sendOtpEmail, sendEmail } from '../utils/email.js';
+import { sendNotificationToHostelOwner } from '../utils/notification.js';
 import crypto from 'crypto';
 
 export const authController = {
@@ -1133,6 +1134,15 @@ export const authController = {
 
       // Clear OTP just in case
       await db('otps').where('email', identifier).del();
+
+      sendNotificationToHostelOwner(
+        hostel_id,
+        'General',
+        'New Registration Awaiting Approval',
+        `${first_name}${last_name ? ' ' + last_name : ''} registered via QR code and is awaiting room allocation.`,
+        'Medium',
+        { id: student_id }
+      ).catch(err => console.error('Failed to send tenant registration notification:', err));
 
       // Issue JWT token immediately so they can log in
       const { generateToken } = await import('../utils/jwt.js');

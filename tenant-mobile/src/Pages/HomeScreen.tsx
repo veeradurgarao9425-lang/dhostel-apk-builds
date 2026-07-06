@@ -164,7 +164,14 @@ export default function HomeScreen({ navigation }: any) {
 
   useEffect(() => {
     fetchUnreadNotifCount();
-    const sub = DeviceEventEmitter.addListener('REFRESH_NOTIFICATIONS', fetchUnreadNotifCount);
+    // A push notification arriving (e.g. room allocated, payment verified) means
+    // something the owner did likely changed our own data too — refetch it live
+    // instead of waiting for the tenant to leave this screen and come back.
+    const sub = DeviceEventEmitter.addListener('REFRESH_NOTIFICATIONS', () => {
+      fetchUnreadNotifCount();
+      refreshUser();
+      fetchData();
+    });
     return () => sub.remove();
   }, [fetchUnreadNotifCount]);
 

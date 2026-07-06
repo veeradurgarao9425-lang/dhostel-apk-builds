@@ -39,6 +39,15 @@ export async function ensureNotificationPermission(): Promise<boolean> {
         importance: Notifications.AndroidImportance.HIGH,
         vibrationPattern: [0, 250, 250, 250],
       });
+      // The backend always sends server push notifications with channelId: 'default'
+      // (see backend/src/utils/notification.ts). Without a matching channel registered
+      // on the device, Android silently drops these to a low-importance fallback channel
+      // (delivered, but no heads-up popup/sound) — so this channel must exist too.
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'General notifications',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+      });
     }
     const current = await Notifications.getPermissionsAsync();
     if (current.granted) return true;
