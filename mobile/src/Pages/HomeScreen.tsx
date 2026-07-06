@@ -81,7 +81,6 @@ const QUICK_ACTIONS = [
     { label: 'Add Expense', icon: 'card-outline', color: '#D97706', bg: '#FEF3C7', route: 'AddExpense' },
     { label: 'Complaints', icon: 'construct-outline', color: '#DC2626', bg: '#FEE2E2', route: 'ComplaintsManagement' },
     { label: 'Bills', icon: 'document-text-outline', color: '#EA580C', bg: '#FFEDD5', route: 'BillReminders' },
-    { label: 'Mess Menu', icon: 'restaurant-outline', color: '#059669', bg: '#D1FAE5', route: 'MessMenuManagement' },
     { label: 'Staff', icon: 'people-outline', color: '#059669', bg: '#D1FAE5', route: 'AddStaff' },
 ];
 

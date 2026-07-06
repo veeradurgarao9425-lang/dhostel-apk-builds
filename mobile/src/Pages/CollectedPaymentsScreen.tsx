@@ -265,7 +265,7 @@ export default function CollectedPaymentsScreen() {
         return (
             <TouchableOpacity
                 key={item.id ?? idx}
-                style={s.premiumCard}
+                style={[s.premiumCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]}
                 onPress={() => {
                     if (item.student_id) {
                         navigation.navigate('TenantTransactions', { studentId: item.student_id, studentName: item.title });
@@ -281,7 +281,7 @@ export default function CollectedPaymentsScreen() {
                             <Ionicons name={iconName as any} size={18} color={textColor} />
                         </View>
                         <View style={s.cardNameBlock}>
-                            <Text style={s.cardNameText} numberOfLines={1}>{item.title}</Text>
+                            <Text style={[s.cardNameText, { color: isDark ? '#F8FAFC' : '#1E293B' }]} numberOfLines={1}>{item.title}</Text>
                             {(isRent && item.room_number) ? (
                                 <View style={[s.roomBadge, { backgroundColor: bgAvatar }]}>
                                     <Text style={[s.roomBadgeText, { color: textColor }]}>Room {item.room_number}</Text>
@@ -306,24 +306,24 @@ export default function CollectedPaymentsScreen() {
                         </View>
                     </View>
 
-                    <View style={s.columnsBlock}>
+                    <View style={[s.columnsBlock, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }]}>
                         <View style={s.colItem}>
                             <Text style={s.colLabel}>Total</Text>
-                            <Text style={s.colValue}>₹{(item.total_due ?? item.amount).toLocaleString('en-IN')}</Text>
+                            <Text style={[s.colValue, { color: isDark ? '#F8FAFC' : '#1E293B' }]}>₹{(item.total_due ?? item.amount).toLocaleString('en-IN')}</Text>
                         </View>
-                        <View style={s.colDivider} />
+                        <View style={[s.colDivider, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]} />
                         <View style={s.colItem}>
                             <Text style={[s.colLabel, { color: textColor }]}>Paid</Text>
                             <Text style={[s.colValue, { color: textColor }]}>₹{item.amount.toLocaleString('en-IN')}</Text>
                         </View>
-                        <View style={s.colDivider} />
+                        <View style={[s.colDivider, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]} />
                         <View style={s.colItem}>
                             <Text style={[s.colLabel, { color: '#DC2626' }]}>Pending</Text>
                             <Text style={[s.colValue, { color: '#DC2626' }]}>₹{(item.balance ?? 0).toLocaleString('en-IN')}</Text>
                         </View>
                     </View>
 
-                    <View style={s.cardFooterRow}>
+                    <View style={[s.cardFooterRow, { borderTopColor: isDark ? '#334155' : '#F1F5F9' }]}>
                         <View style={s.footerLeftGroup}>
                             <View style={s.footerMetaItem}>
                                 <Ionicons name="calendar-outline" size={13} color="#94A3B8" />
@@ -347,7 +347,7 @@ export default function CollectedPaymentsScreen() {
     };
 
     return (
-        <View style={s.root}>
+        <View style={[s.root, { backgroundColor: theme.background }]}>
             <FullScreenLoader visible={isExporting} />
             <StatusBar barStyle="light-content" />
 
@@ -364,7 +364,7 @@ export default function CollectedPaymentsScreen() {
                             <Ionicons name="chevron-down" size={12} color="#FFF" />
                         </TouchableOpacity>
                         
-                        <TouchableOpacity onPress={() => setShowExportModal(true)} style={s.exportBtn}>
+                        <TouchableOpacity onPress={() => setShowExportModal(true)} style={s.exportBtn} activeOpacity={0.75}>
                             <Download color="#FFF" size={18} />
                         </TouchableOpacity>
                     </View>
@@ -408,16 +408,16 @@ export default function CollectedPaymentsScreen() {
                         <View style={{ gap: 8, marginBottom: 8 }}>
                             {/* Retry button on error */}
                             {error && (
-                                <TouchableOpacity style={s.retryBtn} onPress={() => load(1, true)}>
+                                <TouchableOpacity style={[s.retryBtn, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]} onPress={() => load(1, true)} activeOpacity={0.75}>
                                     <Text style={s.retryText}>Tap to Retry</Text>
                                 </TouchableOpacity>
                             )}
 
                             {/* Total Collected Card */}
                             {!error && (
-                                <View style={s.totalCollectedCard}>
+                                <View style={[s.totalCollectedCard, { backgroundColor: isDark ? '#0F2E22' : '#E6F7ED', borderColor: isDark ? '#134E38' : '#BFEAD0' }]}>
                                     <View style={s.totalCollectedRow}>
-                                        <View style={s.totalCollectedIconBg}>
+                                        <View style={[s.totalCollectedIconBg, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]}>
                                             <Ionicons name="wallet-outline" size={22} color="#059669" />
                                         </View>
                                         <View style={s.totalCollectedTextContainer}>
@@ -425,7 +425,7 @@ export default function CollectedPaymentsScreen() {
                                             <Text style={s.totalCollectedValue}>₹{total.toLocaleString('en-IN')}</Text>
                                             <Text style={s.totalCollectedSub}>From {transactionsCount} payment{transactionsCount !== 1 ? 's' : ''}</Text>
                                         </View>
-                                        <TouchableOpacity onPress={() => load(1, true)} style={s.refreshBtn} activeOpacity={0.7}>
+                                        <TouchableOpacity onPress={() => load(1, true)} style={[s.refreshBtn, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]} activeOpacity={0.7}>
                                             <Ionicons name="refresh" size={18} color="#059669" />
                                         </TouchableOpacity>
                                     </View>
@@ -434,20 +434,21 @@ export default function CollectedPaymentsScreen() {
 
                             {/* Search Bar & Single Date Row */}
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: singleDateFilter ? 4 : 8 }}>
-                                <View style={[s.searchBarContainer, { flex: 1, marginBottom: 0 }]}>
+                                <View style={[s.searchBarContainer, { flex: 1, marginBottom: 0, backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]}>
                                     <Ionicons name="search" size={18} color="#94A3B8" />
                                     <TextInput
-                                        style={s.searchInput}
+                                        style={[s.searchInput, { color: isDark ? '#F8FAFC' : '#0F172A' }]}
                                         placeholder="Search by name, phone, or room..."
                                         value={searchQuery}
                                         onChangeText={setSearchQuery}
                                         placeholderTextColor="#94A3B8"
                                     />
                                 </View>
-                                
-                                <TouchableOpacity 
-                                    style={s.singleDateBtn} 
+
+                                <TouchableOpacity
+                                    style={[s.singleDateBtn, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]}
                                     onPress={() => setShowSingleDatePicker(true)}
+                                    activeOpacity={0.75}
                                 >
                                     <Ionicons name="calendar" size={18} color="#64748B" />
                                 </TouchableOpacity>
@@ -460,10 +461,11 @@ export default function CollectedPaymentsScreen() {
                                         <Text style={s.activeFilterChipText}>
                                             {singleDateFilter.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                                         </Text>
-                                        <TouchableOpacity 
+                                        <TouchableOpacity
                                             onPress={() => setSingleDateFilter(null)}
                                             style={s.activeFilterChipClose}
                                             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                            activeOpacity={0.7}
                                         >
                                             <X size={12} color="#059669" />
                                         </TouchableOpacity>
@@ -474,7 +476,7 @@ export default function CollectedPaymentsScreen() {
                             {/* Showing X out of Y text */}
                             {transactionsCount > 0 && !error && (
                                 <View style={{ paddingHorizontal: 4, paddingBottom: 4 }}>
-                                    <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '600' }}>
+                                    <Text style={{ fontSize: 12, color: theme.textSecondary, fontWeight: '600' }}>
                                         Showing {transactions.length} of {transactionsCount} payments
                                     </Text>
                                 </View>
@@ -482,9 +484,9 @@ export default function CollectedPaymentsScreen() {
                         </View>
                     }
                     ListEmptyComponent={
-                        <View style={s.emptyCard}>
+                        <View style={[s.emptyCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
                             <Text style={s.emptyIcon}>📭</Text>
-                            <Text style={s.emptyTitle}>No Transactions</Text>
+                            <Text style={[s.emptyTitle, { color: isDark ? '#F8FAFC' : '#1E293B' }]}>No Transactions</Text>
                             <Text style={s.emptyText}>No income matches your filter or search.</Text>
                         </View>
                     }
@@ -518,14 +520,14 @@ export default function CollectedPaymentsScreen() {
                     <Text style={[s.modalSubLabel, { color: '#94A3B8' }]}>All transactions in this range will be exported</Text>
 
                     <View style={s.dateInputs}>
-                        <TouchableOpacity style={[s.dateInput, { backgroundColor: theme.isDark ? '#334155' : '#F1F5F9', borderColor: theme.isDark ? '#475569' : '#E2E8F0' }]} onPress={() => setStartDatePickerVisible(true)}>
+                        <TouchableOpacity style={[s.dateInput, { backgroundColor: isDark ? '#334155' : '#F1F5F9', borderColor: isDark ? '#475569' : '#E2E8F0' }]} onPress={() => setStartDatePickerVisible(true)} activeOpacity={0.75}>
                             <Ionicons name="calendar-outline" size={18} color="#64748B" />
                             <Text style={[s.dateInputText, { color: theme.textPrimary }]}>
                                 {exportStart.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                             </Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity style={[s.dateInput, { backgroundColor: theme.isDark ? '#334155' : '#F1F5F9', borderColor: theme.isDark ? '#475569' : '#E2E8F0' }]} onPress={() => setEndDatePickerVisible(true)}>
+                        <TouchableOpacity style={[s.dateInput, { backgroundColor: isDark ? '#334155' : '#F1F5F9', borderColor: isDark ? '#475569' : '#E2E8F0' }]} onPress={() => setEndDatePickerVisible(true)} activeOpacity={0.75}>
                             <Ionicons name="calendar-outline" size={18} color="#64748B" />
                             <Text style={[s.dateInputText, { color: theme.textPrimary }]}>
                                 {exportEnd.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -544,6 +546,7 @@ export default function CollectedPaymentsScreen() {
                         ]}
                         onPress={handleExport}
                         disabled={isExporting || exportStart > exportEnd}
+                        activeOpacity={0.8}
                     >
                         {isExporting ? (
                             <ActivityIndicator color="#FFF" size="small" />
@@ -980,7 +983,7 @@ const s = StyleSheet.create({
         alignItems: 'flex-end',
     },
     cardAmtText: {
-        fontSize: 15,
+        fontSize: 19,
         fontWeight: '900',
     },
     cardStatusSub: {

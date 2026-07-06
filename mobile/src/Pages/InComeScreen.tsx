@@ -26,7 +26,7 @@ import { FullScreenLoader } from '../components/FullScreenLoader';
 
 export const IncomeScreen = ({ navigation }: any) => {
     const { user } = useAuth();
-    const { theme } = useTheme();
+    const { theme, isDark } = useTheme();
     const { showApiError, showError } = useToast();
     const [search, setSearch] = useState('');
     const [incomes, setIncomes] = useState<any[]>([]);
@@ -107,6 +107,7 @@ export const IncomeScreen = ({ navigation }: any) => {
                     key={tab}
                     style={[styles.tab, activeTab === tab && styles.activeTab]}
                     onPress={() => setActiveTab(tab)}
+                    activeOpacity={0.8}
                 >
                     <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>{tab}</Text>
                 </TouchableOpacity>
@@ -129,20 +130,20 @@ export const IncomeScreen = ({ navigation }: any) => {
         return (
             <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
                 {/* Today's Collection Card */}
-                <View style={styles.dailySplitCard}>
-                    <Text style={styles.splitTitle}>Today's Collection</Text>
-                    <Text style={styles.splitAmount}>₹{todayIncome.toLocaleString('en-IN')}</Text>
+                <View style={[styles.dailySplitCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
+                    <Text style={[styles.splitTitle, { color: theme.textSecondary }]}>Today's Collection</Text>
+                    <Text style={[styles.splitAmount, { color: theme.textPrimary }]}>₹{todayIncome.toLocaleString('en-IN')}</Text>
                     <View style={styles.splitGrid}>
                         {Object.entries(todaySplit).map(([mode, amt]: any) => (
-                            <View key={mode} style={styles.splitItem}>
-                                <Text style={styles.splitMode}>{mode}</Text>
-                                <Text style={styles.splitVal}>₹{amt.toLocaleString()}</Text>
+                            <View key={mode} style={[styles.splitItem, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                                <Text style={[styles.splitMode, { color: theme.textSecondary }]}>{mode}</Text>
+                                <Text style={[styles.splitVal, { color: theme.textPrimary }]}>₹{amt.toLocaleString()}</Text>
                             </View>
                         ))}
                     </View>
                 </View>
 
-                <Text style={styles.sectionHeader}>Recent Collections</Text>
+                <Text style={[styles.sectionHeader, { color: theme.textPrimary }]}>Recent Collections</Text>
                 {sortedDays.length === 0 && (
                     <EmptyState
                         icon="wallet-outline"
@@ -155,17 +156,18 @@ export const IncomeScreen = ({ navigation }: any) => {
                 {sortedDays.map((day: any) => (
                     <TouchableOpacity
                         key={day.date}
-                        style={styles.dayGroupCard}
+                        style={[styles.dayGroupCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}
                         onPress={() => navigation.navigate('IncomeDetails', { date: day.date, items: day.items })}
+                        activeOpacity={0.85}
                     >
                         <View style={styles.dayHeader}>
                             <View>
-                                <Text style={styles.dayText}>{new Date(day.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</Text>
-                                <Text style={styles.countText}>{day.count} Payments</Text>
+                                <Text style={[styles.dayText, { color: theme.textSecondary }]}>{new Date(day.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</Text>
+                                <Text style={[styles.countText, { color: theme.textSecondary }]}>{day.count} Payments</Text>
                             </View>
                             <Text style={styles.dayTotal}>₹{day.total.toLocaleString()}</Text>
                         </View>
-                        <View style={styles.progressBar}>
+                        <View style={[styles.progressBar, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
                             <View style={[styles.progressFill, { width: '100%', backgroundColor: theme.primary }]} />
                         </View>
                     </TouchableOpacity>
@@ -177,9 +179,10 @@ export const IncomeScreen = ({ navigation }: any) => {
     const renderGraphPlaceholder = (title: string) => (
         <View style={styles.graphPlaceholder}>
             <View style={styles.chartHeader}>
-                <Text style={styles.chartTitle}>{title} Performance</Text>
+                <Text style={[styles.chartTitle, { color: theme.textPrimary }]}>{title} Performance</Text>
+                <Text style={[styles.chartSubtitle, { color: theme.textSecondary }]}>Sample preview — detailed {title.toLowerCase()}ly charts coming soon</Text>
             </View>
-            <View style={styles.mockChart}>
+            <View style={[styles.mockChart, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
                 <LinearGradient colors={[theme.primary + '20', 'transparent']} style={styles.chartGradient}>
                     {/* Simulated Bars */}
                     <View style={styles.barsRow}>
@@ -196,23 +199,24 @@ export const IncomeScreen = ({ navigation }: any) => {
     );
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: theme.background }]}>
             <FullScreenLoader visible={isExporting} />
             <StatusBar barStyle="light-content" />
-            <AppHeader 
-                title="Financial Insights" 
+            <AppHeader
+                title="Income"
                 rightComponent={
                     <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-                        <TouchableOpacity 
-                            onPress={handleExport} 
-                            disabled={isExporting} 
-                            style={{ 
-                                width: 38, 
-                                height: 38, 
-                                borderRadius: 19, 
-                                backgroundColor: 'rgba(255,255,255,0.15)', 
-                                justifyContent: 'center', 
-                                alignItems: 'center' 
+                        <TouchableOpacity
+                            onPress={handleExport}
+                            disabled={isExporting}
+                            activeOpacity={0.75}
+                            style={{
+                                width: 38,
+                                height: 38,
+                                borderRadius: 19,
+                                backgroundColor: 'rgba(255,255,255,0.15)',
+                                justifyContent: 'center',
+                                alignItems: 'center'
                             }}
                         >
                             {isExporting ? (
@@ -232,9 +236,9 @@ export const IncomeScreen = ({ navigation }: any) => {
                 <SkeletonList count={5} />
             ) : error ? (
                 <View style={styles.errorContainer}>
-                    <Text style={styles.errorTitle}>Oops! Failed to load data</Text>
-                    <Text style={styles.errorSub}>Please check your connection and try again.</Text>
-                    <TouchableOpacity style={[styles.retryBtn, { backgroundColor: theme.primary }]} onPress={fetchIncomes}>
+                    <Text style={[styles.errorTitle, { color: theme.textPrimary }]}>Oops! Failed to load data</Text>
+                    <Text style={[styles.errorSub, { color: theme.textSecondary }]}>Please check your connection and try again.</Text>
+                    <TouchableOpacity style={[styles.retryBtn, { backgroundColor: theme.primary }]} onPress={fetchIncomes} activeOpacity={0.85}>
                         <Text style={styles.retryText}>Retry</Text>
                     </TouchableOpacity>
                 </View>
@@ -244,7 +248,7 @@ export const IncomeScreen = ({ navigation }: any) => {
                 </View>
             )}
 
-            <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('AddIncome')}>
+            <TouchableOpacity style={[styles.fab, { backgroundColor: theme.primary }]} onPress={() => navigation.navigate('AddIncome')} activeOpacity={0.85}>
                 <Plus color="#FFFFFF" size={28} />
             </TouchableOpacity>
         </View>
@@ -260,24 +264,25 @@ const styles = StyleSheet.create({
     activeTabText: { color: '#1E293B' },
     loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     content: { flex: 1, padding: 16 },
-    dailySplitCard: { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 20, marginBottom: 24, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8 },
-    splitTitle: { fontSize: 13, fontWeight: '800', color: '#94A3B8', letterSpacing: 1.2, textTransform: 'uppercase' },
-    splitAmount: { fontSize: 32, fontWeight: '900', color: '#1E293B', marginVertical: 8 },
-    splitGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 12 },
+    dailySplitCard: { backgroundColor: '#FFFFFF', borderRadius: 22, padding: 18, marginBottom: 16, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8 },
+    splitTitle: { fontSize: 12, fontWeight: '800', color: '#94A3B8', letterSpacing: 1.2, textTransform: 'uppercase' },
+    splitAmount: { fontSize: 32, fontWeight: '900', color: '#1E293B', marginVertical: 6 },
+    splitGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 10 },
     splitItem: { backgroundColor: '#F8FAFC', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', minWidth: '47%' },
     splitMode: { fontSize: 10, fontWeight: '700', color: '#64748B', textTransform: 'uppercase' },
     splitVal: { fontSize: 15, fontWeight: '800', color: '#1E293B', marginTop: 2 },
-    sectionHeader: { fontSize: 18, fontWeight: '800', color: '#1E293B', marginBottom: 16, marginTop: 10 },
-    dayGroupCard: { backgroundColor: '#FFFFFF', borderRadius: 18, padding: 16, marginBottom: 12, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4 },
-    dayHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-    dayText: { fontSize: 16, fontWeight: '800', color: '#1E293B' },
-    countText: { fontSize: 12, color: '#94A3B8', fontWeight: '600' },
-    dayTotal: { fontSize: 18, fontWeight: '900', color: '#10B981' },
+    sectionHeader: { fontSize: 17, fontWeight: '800', color: '#1E293B', marginBottom: 12, marginTop: 2 },
+    dayGroupCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 14, marginBottom: 10, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4 },
+    dayHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+    dayText: { fontSize: 13, fontWeight: '700', color: '#1E293B' },
+    countText: { fontSize: 11, color: '#94A3B8', fontWeight: '600', marginTop: 1 },
+    dayTotal: { fontSize: 20, fontWeight: '900', color: '#10B981' },
     progressBar: { height: 4, backgroundColor: '#F1F5F9', borderRadius: 2, overflow: 'hidden' },
     progressFill: { height: '100%', borderRadius: 2 },
     graphPlaceholder: { padding: 20, flex: 1 },
     chartHeader: { marginBottom: 20 },
     chartTitle: { fontSize: 20, fontWeight: '900', color: '#1E293B' },
+    chartSubtitle: { fontSize: 12, fontWeight: '600', marginTop: 4 },
     mockChart: { height: 200, backgroundColor: '#FFFFFF', borderRadius: 24, padding: 20, elevation: 3 },
     chartGradient: { flex: 1, justifyContent: 'flex-end' },
     barsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', height: '100%', paddingHorizontal: 10 },

@@ -18,14 +18,11 @@ CREATE TABLE IF NOT EXISTS room_amenities_master (
 
 -- Insert default room amenities
 INSERT INTO room_amenities_master (amenity_name, amenity_icon, description, display_order) VALUES
-('AC', 'snowflake', 'Air conditioning in room', 1),
+('Wifi', 'wifi', 'High-speed wireless internet connectivity', 1),
 ('Attached Bathroom', 'bath', 'Private bathroom attached to room', 2),
-('WiFi', 'wifi', 'High-speed wireless internet connectivity', 3),
-('Balcony', 'home', 'Private or shared balcony', 4),
-('Window', 'window', 'Window with natural light and ventilation', 5),
-('Cupboard', 'box', 'Storage cupboard or wardrobe', 6),
-('Study Table', 'table', 'Study desk and chair', 7),
-('Chair', 'chair', 'Comfortable chair for study', 8);
+('Chair', 'chair', 'Comfortable chair for study', 3),
+('Fridge', 'box', 'Refrigerator', 4),
+('Water', 'droplet', 'Water supply', 5);
 
 -- Add index for faster queries
 CREATE INDEX idx_room_amenities_active ON room_amenities_master(is_active);

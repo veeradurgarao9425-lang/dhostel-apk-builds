@@ -182,18 +182,16 @@ export default function NoticesManagementScreen({ navigation }: any) {
                 </LinearGradient>
             </TouchableOpacity>
 
-            {/* Create Notice Modal */}
-            <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={() => setModalVisible(false)}>
-                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
-                    <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-                        <View style={styles.modalHandle} />
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>New Notice</Text>
-                            <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeBtn}>
-                                <Ionicons name="close" size={20} color="#64748B" />
-                            </TouchableOpacity>
-                        </View>
-                        <Text style={styles.modalSubtitle}>This will be sent to all active tenants instantly.</Text>
+            {/* Create Notice Modal (Full Screen) */}
+            <Modal visible={modalVisible} animationType="slide" transparent={false} onRequestClose={() => setModalVisible(false)}>
+                <View style={styles.modalOverlay}>
+                    <AppHeader
+                        title="New Notice"
+                        subtitle="Send to all active tenants instantly"
+                        onBack={() => setModalVisible(false)}
+                    />
+                    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+                        <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
 
                         {/* Type selector */}
                         <Text style={styles.label}>Category</Text>
@@ -255,6 +253,7 @@ export default function NoticesManagementScreen({ navigation }: any) {
                         </TouchableOpacity>
                     </ScrollView>
                 </KeyboardAvoidingView>
+                </View>
             </Modal>
 
             <DangerModal
@@ -291,13 +290,8 @@ const styles = StyleSheet.create({
     fab: { position: 'absolute', bottom: 100, right: 20, borderRadius: 28, elevation: 8, shadowColor: '#7C3AED', shadowOpacity: 0.4, shadowRadius: 12 },
     fabGrad: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
 
-    modalOverlay: { flex: 1, backgroundColor: 'transparent', justifyContent: 'flex-end' },
-    modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, paddingBottom: 40, maxHeight: '90%' },
-    modalHandle: { width: 36, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
-    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-    modalTitle: { fontSize: 22, fontWeight: '800', color: '#1E293B' },
-    modalSubtitle: { fontSize: 13, color: '#64748B', fontWeight: '500', marginBottom: 20 },
-    closeBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' },
+    modalOverlay: { flex: 1, backgroundColor: '#F8FAFC' },
+    modalContent: { flex: 1, padding: 24 },
     label: { fontSize: 13, fontWeight: '700', color: '#334155', marginBottom: 8, marginTop: 16 },
     typeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     typeChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0' },

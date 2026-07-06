@@ -591,7 +591,7 @@ const PremiumSubscriptionScreen = ({ navigation }: any) => {
 const s = StyleSheet.create({
     root:       { flex: 1 },
     hero:       { paddingHorizontal: 20, paddingBottom: 36, alignItems: 'center' },
-    backBtn:    { position: 'absolute', left: 16, width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
+    backBtn:    { position: 'absolute', left: 16, width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center' },
     crownWrap:  { marginTop: 16, marginBottom: 10, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.55, shadowRadius: 16, elevation: 10 },
     crownCircle:{ width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center' },
     heroTitle:  { fontSize: 26, fontWeight: '800', color: '#FFF', letterSpacing: 0.4, marginBottom: 8 },

@@ -614,13 +614,6 @@ export default function PendingPaymentsScreen() {
                     </View>
                 }
             />
-            {/* ── Page Title ───────────────────────────────────────────── */}
-            <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 }}>
-                <Text style={{ fontSize: 18, fontWeight: '700', color: isDark ? '#F8FAFC' : '#1F2937', textAlign: 'left' }}>
-                    Pending Dues
-                </Text>
-            </View>
-
             {/* ── Fixed Summary Cards ──────────────────────────────────── */}
             <View style={s.summaryRow}>
                 {/* Card 1: Outstanding Dues */}
@@ -703,7 +696,7 @@ export default function PendingPaymentsScreen() {
 
             {/* ── Active Filters Chips ── */}
             {(activeFilters.status !== 'All' || activeFilters.datePreset !== 'All Time' || activeFilters.room !== 'All') && (
-                <View style={{ paddingHorizontal: 16, paddingBottom: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                <View style={{ paddingHorizontal: 16, paddingBottom: 8, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                     {activeFilters.status !== 'All' && (
                         <View style={[s.filterChip, { backgroundColor: isDark ? theme.primary + '30' : theme.primary + '15' }]}>
                             <Text style={[s.filterChipText, { color: theme.primary }]}>{activeFilters.status}</Text>
@@ -722,7 +715,7 @@ export default function PendingPaymentsScreen() {
                 </View>
             )}
             {/* ── Tabs ─────────────────────────────────────── */}
-            <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 10, gap: 8 }}>
+            <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 8, gap: 8 }}>
                 {(['Overdue', 'Next 7 Days', 'All Dues'] as const).map(tab => {
                     const isActive = activeTab === tab;
                     const tabColors: Record<string, string> = {
@@ -731,19 +724,19 @@ export default function PendingPaymentsScreen() {
                         'All Dues': theme.primary,
                     };
                     const color = tabColors[tab];
-                    const counts: Record<string, number> = { 
-                        'Overdue': tabCounts.overdue, 
-                        'Next 7 Days': tabCounts.next_7_days, 
-                        'All Dues': tabCounts.all 
+                    const counts: Record<string, number> = {
+                        'Overdue': tabCounts.overdue,
+                        'Next 7 Days': tabCounts.next_7_days,
+                        'All Dues': tabCounts.all
                     };
                     return (
                         <TouchableOpacity
                             key={tab}
                             style={{
                                 flex: 1,
-                                paddingVertical: 8,
+                                paddingVertical: 6,
                                 paddingHorizontal: 4,
-                                borderRadius: 20,
+                                borderRadius: 18,
                                 backgroundColor: isActive ? color : (isDark ? '#1E293B' : '#F1F5F9'),
                                 borderWidth: 1.5,
                                 borderColor: isActive ? color : (isDark ? '#334155' : '#E2E8F0'),
@@ -779,7 +772,7 @@ export default function PendingPaymentsScreen() {
                 })}
             </View>
             {/* ── Count row ─────────────────────────────────────────── */}
-            <View style={{ paddingHorizontal: 16, paddingBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View style={{ paddingHorizontal: 16, paddingBottom: 6, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Text style={{ fontSize: 13, color: isDark ? '#94A3B8' : '#64748B', fontWeight: '600' }}>
                     Showing {filteredTenants.length} student{filteredTenants.length !== 1 ? 's' : ''}
                 </Text>
@@ -1048,33 +1041,33 @@ const s = StyleSheet.create({
     summaryRow: {
         flexDirection: 'row',
         paddingHorizontal: 16,
-        paddingTop: 12,
-        paddingBottom: 8,
-        gap: 12,
+        paddingTop: 10,
+        paddingBottom: 6,
+        gap: 10,
     },
     summaryCard: {
         flex: 1,
-        borderRadius: 18,
-        padding: 12,
+        borderRadius: 16,
+        padding: 10,
         position: 'relative',
         overflow: 'hidden',
-        elevation: 4,
+        elevation: 3,
         shadowColor: '#000',
-        shadowOpacity: 0.06,
-        shadowRadius: 24,
-        shadowOffset: { width: 0, height: 8 },
-        minHeight: 85,
+        shadowOpacity: 0.05,
+        shadowRadius: 16,
+        shadowOffset: { width: 0, height: 6 },
+        minHeight: 68,
     },
     summaryCardTop: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 8,
+        marginBottom: 4,
     },
     summaryIconWrap: {
-        width: 32,
-        height: 32,
-        borderRadius: 10,
+        width: 26,
+        height: 26,
+        borderRadius: 8,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -1087,17 +1080,17 @@ const s = StyleSheet.create({
         justifyContent: 'center',
     },
     summaryLabel: {
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: '700',
-        marginBottom: 2,
+        marginBottom: 1,
     },
     summaryAmount: {
-        fontSize: 20,
+        fontSize: 17,
         fontWeight: '900',
-        marginBottom: 2,
+        marginBottom: 1,
     },
     summaryFooter: {
-        fontSize: 11,
+        fontSize: 10,
         fontWeight: '700',
         zIndex: 2,
     },
@@ -1108,31 +1101,31 @@ const s = StyleSheet.create({
         alignItems: 'center',
         gap: 8,
         paddingHorizontal: 16,
-        marginBottom: 10,
+        marginBottom: 8,
     },
     searchBox: {
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderRadius: 16,
+        paddingHorizontal: 14,
+        paddingVertical: 9,
+        borderRadius: 14,
         borderWidth: 1,
         borderColor: '#ECECEC',
-        elevation: 2,
+        elevation: 1,
         shadowColor: '#000',
-        shadowOpacity: 0.04,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.03,
+        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 2 },
         backgroundColor: '#FFF',
     },
     searchInput: {
         flex: 1,
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: '500',
         padding: 0,
-        height: 20,
+        height: 18,
     },
     filterChip: {
         paddingHorizontal: 12,
@@ -1147,13 +1140,13 @@ const s = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderRadius: 16,
-        elevation: 2,
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 4 },
+        paddingHorizontal: 14,
+        paddingVertical: 9,
+        borderRadius: 14,
+        elevation: 1,
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 2 },
     },
     filterTxt: { fontSize: 13, fontWeight: '700', color: '#FFFFFF' },
 

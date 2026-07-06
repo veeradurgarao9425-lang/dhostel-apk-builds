@@ -8,12 +8,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import api from '../services/api';
 import { AppHeader } from '../components/AppHeader';
+import { SkeletonList } from '../components/ui/SkeletonCard';
 
 export default function AllTransactionsScreen() {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
-    const { theme } = useTheme();
-    const isDark = theme.isDark;
+    const { theme, isDark } = useTheme();
 
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
@@ -157,7 +157,7 @@ export default function AllTransactionsScreen() {
     const categories: Array<'All' | 'Rent' | 'Admission' | 'Guest' | 'Other'> = ['All', 'Rent', 'Admission', 'Guest', 'Other'];
 
     return (
-        <View style={[styles.container, { backgroundColor: theme.isDark ? '#0F172A' : '#F8FAFC' }]}>
+        <View style={[styles.container, { backgroundColor: theme.background }]}>
             <StatusBar barStyle="light-content" />
             <AppHeader title="Transaction History" />
 
@@ -173,7 +173,7 @@ export default function AllTransactionsScreen() {
                         style={[styles.searchInput, { color: theme.textPrimary }]}
                     />
                     {searchQuery.length > 0 && (
-                        <TouchableOpacity onPress={() => setSearchQuery('')}>
+                        <TouchableOpacity onPress={() => setSearchQuery('')} activeOpacity={0.7}>
                             <Ionicons name="close-circle" size={18} color={theme.textSecondary} />
                         </TouchableOpacity>
                     )}
@@ -195,6 +195,7 @@ export default function AllTransactionsScreen() {
                                     active ? { backgroundColor: theme.primary } : { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }
                                 ]}
                                 onPress={() => setSelectedCategory(item)}
+                                activeOpacity={0.75}
                             >
                                 <Text style={[
                                     styles.categoryChipText,
@@ -210,9 +211,7 @@ export default function AllTransactionsScreen() {
 
             {/* TRANSACTION LIST */}
             {loading && transactions.length === 0 ? (
-                <View style={styles.center}>
-                    <ActivityIndicator size="large" color={theme.primary} />
-                </View>
+                <SkeletonList count={6} />
             ) : filteredTransactions.length > 0 ? (
                 <FlatList
                     data={filteredTransactions.slice(0, visibleCount)}
@@ -239,8 +238,13 @@ export default function AllTransactionsScreen() {
                 />
             ) : (
                 <View style={styles.center}>
-                    <Ionicons name="receipt-outline" size={48} color={theme.textSecondary} />
-                    <Text style={{ marginTop: 12, color: theme.textSecondary, fontWeight: '600', fontSize: 15 }}>No transactions found</Text>
+                    <View style={[styles.emptyIconWrap, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
+                        <Ionicons name="receipt-outline" size={40} color={theme.textSecondary} />
+                    </View>
+                    <Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>No transactions found</Text>
+                    <Text style={[styles.emptySub, { color: theme.textSecondary }]}>
+                        {searchQuery || selectedCategory !== 'All' ? 'Try adjusting your search or filter' : 'Transactions will appear here once recorded'}
+                    </Text>
                 </View>
             )}
         </View>
@@ -295,6 +299,16 @@ const styles = StyleSheet.create({
     txTitleText: { fontSize: 14, fontWeight: '800' },
     txSubText: { fontSize: 11, marginTop: 4, fontWeight: '600' },
     txRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    txAmountText: { fontSize: 15, fontWeight: '900' },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 }
+    txAmountText: { fontSize: 18, fontWeight: '900' },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
+    emptyIconWrap: {
+        width: 84,
+        height: 84,
+        borderRadius: 42,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 16,
+    },
+    emptyTitle: { fontSize: 16, fontWeight: '800', marginBottom: 4 },
+    emptySub: { fontSize: 13, fontWeight: '500', textAlign: 'center' },
 });

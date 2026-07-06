@@ -105,6 +105,7 @@ const ReportCard = ({ report, onDownload, onView, exporting, isDark }: any) => {
                             onPress={onDownload}
                             disabled={!!exporting}
                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            activeOpacity={0.6}
                         >
                             {exporting === report.id
                                 ? <ActivityIndicator size="small" color={report.iconColor} />
@@ -351,9 +352,9 @@ export default function ReportsScreen() {
 
                             <View style={R.secRow}>
                                 <Text style={[R.secTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>All Reports</Text>
-                                <View style={R.liveBadge}>
-                                    <View style={R.liveDot} />
-                                    <Text style={R.liveTxt}>Loading...</Text>
+                                <View style={[R.liveBadge, { backgroundColor: isDark ? 'rgba(100,116,139,0.2)' : '#F1F5F9' }]}>
+                                    <View style={[R.liveDot, { backgroundColor: isDark ? '#94A3B8' : '#94A3B8' }]} />
+                                    <Text style={[R.liveTxt, { color: isDark ? '#94A3B8' : '#64748B' }]}>Loading...</Text>
                                 </View>
                             </View>
                             <View style={R.reportListContainer}>
@@ -365,7 +366,7 @@ export default function ReportsScreen() {
                             <View style={[R.topCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#F1F5F9', borderWidth: 1, overflow: 'hidden' }]}>
                                 <CardWave color={netProfit >= 0 ? '#10B981' : '#EF4444'} />
                                 <View style={R.topCardLeft}>
-                                    <Text style={R.topCardLabel}>Net Profit</Text>
+                                    <Text style={[R.topCardLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>Net Profit</Text>
                                     <Text style={[R.topCardVal, { color: isDark ? '#F1F5F9' : '#0F172A', fontSize: 34 }]} numberOfLines={1} adjustsFontSizeToFit>
                                         {netProfit < 0 ? '-' : ''}{'\u20b9'}{fmt(Math.abs(netProfit))}
                                     </Text>
@@ -378,9 +379,9 @@ export default function ReportsScreen() {
                                 </View>
                                 <View style={R.divider} />
                                 <View style={R.topCardRight}>
-                                    <Text style={R.topCardLabel}>Collection Rate</Text>
+                                    <Text style={[R.topCardLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>Collection Rate</Text>
                                     <ProgressCircle value={collectionRate} size={70} strokeWidth={6} color="#4F46E5" isDark={isDark} />
-                                    <Text style={R.subLabel}>of total collection</Text>
+                                    <Text style={[R.subLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>of total collection</Text>
                                 </View>
                             </View>
 
@@ -403,7 +404,7 @@ export default function ReportsScreen() {
                                         </View>
                                         <Text style={[R.gridLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>{m.label}</Text>
                                         <Text style={[R.gridVal, { color: isDark ? '#F8FAFC' : '#0F172A' }]}>{m.val}</Text>
-                                        <Text style={R.gridSub}>{m.sub}</Text>
+                                        <Text style={[R.gridSub, { color: isDark ? '#64748B' : '#94A3B8' }]}>{m.sub}</Text>
                                     </TouchableOpacity>
                                 ))}
                             </View>
@@ -417,7 +418,7 @@ export default function ReportsScreen() {
                             {/* All Reports */}
                             <View style={R.secRow}>
                                 <Text style={[R.secTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>All Reports</Text>
-                                <View style={R.liveBadge}>
+                                <View style={[R.liveBadge, { backgroundColor: isDark ? 'rgba(22,163,74,0.18)' : '#DCFCE7' }]}>
                                     <View style={R.liveDot} />
                                     <Text style={R.liveTxt}>Live data</Text>
                                 </View>
@@ -439,20 +440,20 @@ export default function ReportsScreen() {
                 <TouchableOpacity style={R.modalOverlay} activeOpacity={1} onPress={() => setFilterSelectModal(false)}>
                     <View style={[R.dropdownMenu, { backgroundColor: theme.cardBg }]}>
                         <TouchableOpacity style={[R.filterOpt, { borderBottomColor: isDark ? '#334155' : '#E2E8F0', borderBottomWidth: 1 }]}
-                            onPress={() => { setFilterSelectModal(false); setShowMonthPicker(true); }}>
+                            onPress={() => { setFilterSelectModal(false); setShowMonthPicker(true); }} activeOpacity={0.7}>
                             <Ionicons name="calendar-outline" size={18} color={theme.primary} />
                             <View style={{ flex: 1, marginLeft: 10 }}>
                                 <Text style={[R.fTitle, { color: theme.textPrimary }]}>Specific Month</Text>
-                                <Text style={R.fSub}>E.g., June 2026</Text>
+                                <Text style={[R.fSub, { color: theme.textSecondary }]}>E.g., June 2026</Text>
                             </View>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={R.filterOpt}
-                            onPress={() => { setFilterSelectModal(false); setShowCustomPicker(true); }}>
+                            onPress={() => { setFilterSelectModal(false); setShowCustomPicker(true); }} activeOpacity={0.7}>
                             <Ionicons name="calendar-number-outline" size={18} color={theme.primary} />
                             <View style={{ flex: 1, marginLeft: 10 }}>
                                 <Text style={[R.fTitle, { color: theme.textPrimary }]}>Custom Date Range</Text>
-                                <Text style={R.fSub}>E.g., 12 Jun - 18 Jun</Text>
+                                <Text style={[R.fSub, { color: theme.textSecondary }]}>E.g., 12 Jun - 18 Jun</Text>
                             </View>
                         </TouchableOpacity>
                     </View>
@@ -465,20 +466,20 @@ export default function ReportsScreen() {
                     <View style={[R.dlModalBox, { backgroundColor: theme.cardBg }]}>
                         <Text style={{ fontSize: 16, fontWeight: '800', marginBottom: 20, color: theme.textPrimary, textAlign: 'center' }}>Download Full Report</Text>
                         <TouchableOpacity style={[R.filterOpt, { borderBottomColor: isDark ? '#334155' : '#E2E8F0', borderBottomWidth: 1 }]}
-                            onPress={() => { setDownloadSelectModal(false); handleDownloadExcel('full_excel'); }}>
+                            onPress={() => { setDownloadSelectModal(false); handleDownloadExcel('full_excel'); }} activeOpacity={0.7}>
                             <Ionicons name="cloud-download-outline" size={18} color={theme.primary} />
                             <View style={{ flex: 1, marginLeft: 10 }}>
                                 <Text style={[R.fTitle, { color: theme.textPrimary }]}>Current Filtered Data</Text>
-                                <Text style={R.fSub}>{periodLabel}</Text>
+                                <Text style={[R.fSub, { color: theme.textSecondary }]}>{periodLabel}</Text>
                             </View>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={R.filterOpt}
-                            onPress={() => { setDownloadSelectModal(false); setShowExcelPicker(true); }}>
+                            onPress={() => { setDownloadSelectModal(false); setShowExcelPicker(true); }} activeOpacity={0.7}>
                             <Ionicons name="calendar-number-outline" size={18} color={theme.primary} />
                             <View style={{ flex: 1, marginLeft: 10 }}>
                                 <Text style={[R.fTitle, { color: theme.textPrimary }]}>Custom Date Range</Text>
-                                <Text style={R.fSub}>Select any date range</Text>
+                                <Text style={[R.fSub, { color: theme.textSecondary }]}>Select any date range</Text>
                             </View>
                         </TouchableOpacity>
                     </View>

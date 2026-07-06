@@ -739,14 +739,11 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
 
 // ── Default fallback amenities (only used if API returns empty) ──────────────
 const DEFAULT_AMENITIES = [
-    { amenity_name: 'AC' },
+    { amenity_name: 'Wifi' },
     { amenity_name: 'Attached Bathroom' },
-    { amenity_name: 'WiFi' },
-    { amenity_name: 'Balcony' },
-    { amenity_name: 'Window' },
-    { amenity_name: 'Cupboard' },
-    { amenity_name: 'Study Table' },
     { amenity_name: 'Chair' },
+    { amenity_name: 'Fridge' },
+    { amenity_name: 'Water' },
 ];
 
 const styles = StyleSheet.create({

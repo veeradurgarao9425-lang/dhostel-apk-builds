@@ -138,6 +138,14 @@ export default function RoomsScreen({ navigation, route }: any) {
         }
     }, [route.params]);
 
+    // Jump straight to a floor when navigated here from the room setup wizard
+    useEffect(() => {
+        if (route.params?.floorFilter !== undefined) {
+            setSelectedFloor(`Floor ${route.params.floorFilter}`);
+            navigation.setParams({ floorFilter: undefined });
+        }
+    }, [route.params]);
+
     // ── Grouping logic ────────────────────────────────────────────────────────
     const getGroupedData = () => {
         const filtered = rooms.filter(room => {
@@ -339,6 +347,25 @@ export default function RoomsScreen({ navigation, route }: any) {
 
             </AppHeader>
 
+            <View style={styles.quickActionsRow}>
+                <TouchableOpacity
+                    style={[styles.quickActionBtn, { backgroundColor: COLORS.primary }]}
+                    onPress={() => navigation.navigate('AddRoom')}
+                    activeOpacity={0.85}
+                >
+                    <Plus color="#FFF" size={18} strokeWidth={3} />
+                    <Text style={styles.quickActionBtnTextPrimary}>{t('rooms.addRoom')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.quickActionBtn, styles.quickActionBtnOutline, { borderColor: COLORS.primary, backgroundColor: theme.cardBg }]}
+                    onPress={() => navigation.navigate('BulkRoomSetup')}
+                    activeOpacity={0.85}
+                >
+                    <Layers color={COLORS.primary} size={18} />
+                    <Text style={[styles.quickActionBtnTextOutline, { color: COLORS.primary }]}>Bulk Setup</Text>
+                </TouchableOpacity>
+            </View>
+
             {!loading && uniqueFloors.length > 1 && (
                 <View style={[styles.floorFilterContainer, { backgroundColor: isDark ? theme.background : '#F8FAFC', borderBottomColor: isDark ? '#334155' : '#E2E8F0' }]}>
                     <ScrollView
@@ -420,21 +447,6 @@ export default function RoomsScreen({ navigation, route }: any) {
                     )}
                 />
             )}
-
-            <TouchableOpacity
-                style={[styles.bulkFab, { backgroundColor: theme.cardBg, borderColor: COLORS.primary }]}
-                onPress={() => navigation.navigate('BulkRoomSetup')}
-                activeOpacity={0.85}
-            >
-                <Layers color={COLORS.primary} size={20} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-                style={[styles.fab, { backgroundColor: COLORS.primary }]}
-                onPress={() => navigation.navigate('AddRoom')}
-            >
-                <Plus color="#FFF" size={22} strokeWidth={3.5} />
-            </TouchableOpacity>
         </View>
     );
 }
@@ -568,34 +580,39 @@ const styles = StyleSheet.create({
         fontSize: 9.5,
         fontWeight: '800',
     },
-    bulkFab: {
-        position: 'absolute',
-        bottom: 107,
-        right: 24,
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        borderWidth: 1.5,
-        justifyContent: 'center',
-        alignItems: 'center',
-        elevation: 4,
-        shadowColor: '#000',
-        shadowOpacity: 0.15,
-        shadowRadius: 4,
+    quickActionsRow: {
+        flexDirection: 'row',
+        gap: 10,
+        paddingHorizontal: 16,
+        paddingTop: 12,
+        paddingBottom: 4,
     },
-    fab: {
-        position: 'absolute',
-        bottom: 45,
-        right: 24,
-        width: 50,
-        height: 50,
-        borderRadius: 25,
-        justifyContent: 'center',
+    quickActionBtn: {
+        flex: 1,
+        flexDirection: 'row',
         alignItems: 'center',
-        elevation: 5,
+        justifyContent: 'center',
+        gap: 6,
+        height: 44,
+        borderRadius: 14,
+        elevation: 2,
         shadowColor: '#000',
-        shadowOpacity: 0.2,
+        shadowOpacity: 0.1,
         shadowRadius: 4,
         shadowOffset: { width: 0, height: 2 },
+    },
+    quickActionBtnOutline: {
+        borderWidth: 1.5,
+        elevation: 0,
+        shadowOpacity: 0,
+    },
+    quickActionBtnTextPrimary: {
+        color: '#FFF',
+        fontSize: 13.5,
+        fontWeight: '700',
+    },
+    quickActionBtnTextOutline: {
+        fontSize: 13.5,
+        fontWeight: '700',
     },
 });

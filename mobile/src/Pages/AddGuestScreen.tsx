@@ -26,6 +26,7 @@ export default function AddGuestScreen({ navigation }: any) {
         phone: '',
         check_in_date: todayStr(),
         days: '1',
+        per_day_amount: '',
         amount_paid: '',
         room_number: '',
         purpose: '',
@@ -55,7 +56,20 @@ export default function AddGuestScreen({ navigation }: any) {
     }, [isKeyboardVisible]);
 
     const up = (k: string, v: string) => {
-        setForm(p => ({ ...p, [k]: v }));
+        setForm(p => {
+            const next = { ...p, [k]: v };
+            // Auto-calculate amount_paid
+            if (k === 'days' || k === 'per_day_amount') {
+                const d = parseInt(next.days) || 0;
+                const pda = parseFloat(next.per_day_amount) || 0;
+                if (d > 0 && pda > 0) {
+                    next.amount_paid = (d * pda).toString();
+                } else if (k === 'per_day_amount' && !v) {
+                    next.amount_paid = '';
+                }
+            }
+            return next;
+        });
         if (errors[k]) setErrors(prev => { const e = { ...prev }; delete e[k]; return e; });
     };
 
@@ -120,6 +134,7 @@ export default function AddGuestScreen({ navigation }: any) {
             phone: '',
             check_in_date: todayStr(),
             days: '1',
+            per_day_amount: '',
             amount_paid: '',
             room_number: '',
             purpose: '',
@@ -184,15 +199,23 @@ export default function AddGuestScreen({ navigation }: any) {
                             onChangeText={(t) => up('days', t.replace(/[^0-9]/g, ''))}
                         />
                         <InputField
-                            label="Amount Paid (₹)"
-                            placeholder="e.g. 500"
+                            label="Per Day (₹)"
+                            placeholder="e.g. 250"
                             keyboardType="numeric"
-                            value={form.amount_paid}
-                            error={errors.amount_paid}
+                            value={form.per_day_amount}
                             containerStyle={{ flex: 1, marginLeft: 8 }}
-                            onChangeText={(t) => up('amount_paid', t.replace(/[^0-9.]/g, ''))}
+                            onChangeText={(t) => up('per_day_amount', t.replace(/[^0-9.]/g, ''))}
                         />
                     </View>
+                    <InputField
+                        label="Total Amount (₹)"
+                        placeholder="e.g. 500"
+                        keyboardType="numeric"
+                        value={form.amount_paid}
+                        error={errors.amount_paid}
+                        editable={false} // Calculated automatically, but keeping format
+                        onChangeText={(t) => up('amount_paid', t.replace(/[^0-9.]/g, ''))}
+                    />
 
                     <InputField
                         label="Room Number"

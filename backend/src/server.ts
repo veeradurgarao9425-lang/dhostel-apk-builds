@@ -3,6 +3,8 @@ import { createServer } from 'http';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
+import multer from 'multer';
+import path from 'path';
 import { setupSocket } from './socket/index.js';
 import authRoutes from './routes/auth.routes.js';
 import db from './config/database.js';
@@ -114,6 +116,21 @@ app.use('/api/splits', splitsRoutes);
 app.use('/api/mess', messSkipRoutes);
 app.use('/api/ratings', ratingRoutes);
 
+// Multer storage for the public QR signup Aadhaar photos
+const qrSignupUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, 'uploads/'),
+    filename: (req, file, cb) => cb(null, `qr-signup-${file.fieldname}-${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`),
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype.startsWith('image/')) {
+      return cb(new Error('Only image files are allowed for Aadhaar photos'));
+    }
+    cb(null, true);
+  },
+});
+
 // Public QR tenant signup (no auth) — supports optional roomId & bedId pre-fill
 app.get('/api/public/qr-signup', async (req, res) => {
   const hostelId = req.query.hostelId as string;
@@ -165,6 +182,12 @@ app.get('/api/public/qr-signup', async (req, res) => {
         .note { font-size:12px;color:#9ca3af;margin-top:14px;text-align:center; }
         .success { background:#ecfdf5;color:#065f46;padding:14px;border-radius:10px;margin-bottom:14px;font-weight:600; }
         .error   { background:#fef2f2;color:#7f1d1d;padding:14px;border-radius:10px;margin-bottom:14px; }
+        .field input.invalid, .field select.invalid { border-color:#dc2626; }
+        .err-msg { display:block; color:#dc2626; font-size:12px; margin-top:4px; min-height:14px; }
+        .file-field input[type="file"] { position:absolute; width:1px; height:1px; opacity:0; overflow:hidden; }
+        .file-btn { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:14px; border:1.5px dashed #c4b5fd; border-radius:10px; background:#faf5ff; color:#7c3aed; font-size:13px; font-weight:600; cursor:pointer; text-align:center; }
+        .file-btn.has-file { border-style:solid; border-color:#7C3AED; background:#f5f3ff; }
+        .btn[disabled] { opacity:.6; cursor:not-allowed; }
       </style>
     </head>
     <body>
@@ -175,47 +198,185 @@ app.get('/api/public/qr-signup', async (req, res) => {
 
         ${roomBanner}
 
-        <form method="POST" action="${formAction}">
+        <form id="signupForm" method="POST" action="${formAction}" enctype="multipart/form-data" novalidate>
           <div class="section">Personal Details</div>
           <div class="row">
-            <div class="field"><label>First Name *</label><input name="first_name" required placeholder="e.g. Ravi" /></div>
-            <div class="field"><label>Last Name</label><input name="last_name" placeholder="e.g. Kumar" /></div>
+            <div class="field">
+              <label>First Name *</label>
+              <input name="first_name" id="first_name" required placeholder="e.g. Ravi" />
+              <span class="err-msg" id="err-first_name"></span>
+            </div>
+            <div class="field">
+              <label>Last Name</label>
+              <input name="last_name" id="last_name" placeholder="e.g. Kumar" />
+              <span class="err-msg" id="err-last_name"></span>
+            </div>
           </div>
           <div class="row">
-            <div class="field"><label>Phone *</label><input name="phone" pattern="\\d{10}" required placeholder="10-digit mobile" /></div>
-            <div class="field"><label>Email</label><input name="email" type="email" placeholder="your@email.com" /></div>
+            <div class="field">
+              <label>Phone *</label>
+              <input name="phone" id="phone" inputmode="numeric" maxlength="10" required placeholder="10-digit mobile" />
+              <span class="err-msg" id="err-phone"></span>
+            </div>
+            <div class="field">
+              <label>Email</label>
+              <input name="email" id="email" type="email" placeholder="your@email.com" />
+              <span class="err-msg" id="err-email"></span>
+            </div>
           </div>
           <div class="row">
-            <div class="field"><label>Date of Birth</label><input name="date_of_birth" type="date" /></div>
+            <div class="field">
+              <label>Date of Birth</label>
+              <input name="date_of_birth" id="date_of_birth" type="date" />
+              <span class="err-msg" id="err-date_of_birth"></span>
+            </div>
             <div class="field">
               <label>Gender</label>
-              <select name="gender">
+              <select name="gender" id="gender">
                 <option value="">Select...</option>
                 <option value="Male">Male</option>
                 <option value="Female">Female</option>
                 <option value="Other">Other</option>
               </select>
+              <span class="err-msg" id="err-gender"></span>
             </div>
           </div>
-          <div class="field"><label>Permanent Address</label><input name="permanent_address" placeholder="Your home address" /></div>
+          <div class="field">
+            <label>Permanent Address *</label>
+            <input name="permanent_address" id="permanent_address" required placeholder="Your home address" />
+            <span class="err-msg" id="err-permanent_address"></span>
+          </div>
 
           <div class="section">Guardian (Optional)</div>
           <div class="row">
-            <div class="field"><label>Guardian Name</label><input name="guardian_name" placeholder="Parent/Guardian name" /></div>
-            <div class="field"><label>Guardian Phone</label><input name="guardian_phone" pattern="\\d{10}" placeholder="10-digit number" /></div>
+            <div class="field">
+              <label>Guardian Name</label>
+              <input name="guardian_name" id="guardian_name" placeholder="Parent/Guardian name" />
+              <span class="err-msg" id="err-guardian_name"></span>
+            </div>
+            <div class="field">
+              <label>Guardian Phone</label>
+              <input name="guardian_phone" id="guardian_phone" inputmode="numeric" maxlength="10" placeholder="10-digit number" />
+              <span class="err-msg" id="err-guardian_phone"></span>
+            </div>
           </div>
 
-          <button class="btn" type="submit">✓ Submit Registration</button>
+          <div class="section">Identity Verification (Aadhaar)</div>
+          <div class="field">
+            <label>Aadhaar Number *</label>
+            <input name="id_proof_number" id="id_proof_number" inputmode="numeric" maxlength="12" required placeholder="12-digit Aadhaar number" />
+            <span class="err-msg" id="err-id_proof_number"></span>
+          </div>
+          <div class="row">
+            <div class="field file-field">
+              <label>Aadhaar Front Photo *</label>
+              <label class="file-btn" id="btn-aadhaar_front" for="aadhaar_front"><span id="label-aadhaar_front">📷 Upload front photo</span></label>
+              <input type="file" name="aadhaar_front" id="aadhaar_front" accept="image/*" capture="environment" required />
+              <span class="err-msg" id="err-aadhaar_front"></span>
+            </div>
+            <div class="field file-field">
+              <label>Aadhaar Back Photo *</label>
+              <label class="file-btn" id="btn-aadhaar_back" for="aadhaar_back"><span id="label-aadhaar_back">📷 Upload back photo</span></label>
+              <input type="file" name="aadhaar_back" id="aadhaar_back" accept="image/*" capture="environment" required />
+              <span class="err-msg" id="err-aadhaar_back"></span>
+            </div>
+          </div>
+
+          <button class="btn" id="submitBtn" type="submit">✓ Submit Registration</button>
           <p class="note">Your details are safe. Once the owner approves, you will be activated in the system.</p>
         </form>
       </div>
+      <script>
+        (function () {
+          var form = document.getElementById('signupForm');
+          var submitBtn = document.getElementById('submitBtn');
+
+          function showError(name, msg) {
+            var el = document.getElementById('err-' + name);
+            var input = document.getElementById(name);
+            if (el) el.textContent = msg || '';
+            if (input) input.classList.toggle('invalid', !!msg);
+          }
+
+          function isValidEmail(v) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+          }
+
+          function validate() {
+            var ok = true;
+
+            if (!form.first_name.value.trim()) { showError('first_name', 'First name is required'); ok = false; }
+            else { showError('first_name', ''); }
+
+            var phone = form.phone.value.trim();
+            if (!/^\d{10}$/.test(phone)) { showError('phone', 'Enter a valid 10-digit mobile number'); ok = false; }
+            else { showError('phone', ''); }
+
+            var email = form.email.value.trim();
+            if (email && !isValidEmail(email)) { showError('email', 'Enter a valid email address'); ok = false; }
+            else { showError('email', ''); }
+
+            var dob = form.date_of_birth.value;
+            if (dob && new Date(dob).getTime() > Date.now()) { showError('date_of_birth', 'Date of birth cannot be in the future'); ok = false; }
+            else { showError('date_of_birth', ''); }
+
+            if (!form.permanent_address.value.trim()) { showError('permanent_address', 'Permanent address is required'); ok = false; }
+            else { showError('permanent_address', ''); }
+
+            var gphone = form.guardian_phone.value.trim();
+            if (gphone && !/^\d{10}$/.test(gphone)) { showError('guardian_phone', 'Enter a valid 10-digit number'); ok = false; }
+            else { showError('guardian_phone', ''); }
+
+            var aadhaar = form.id_proof_number.value.trim();
+            if (!/^\d{12}$/.test(aadhaar)) { showError('id_proof_number', 'Aadhaar number must be exactly 12 digits'); ok = false; }
+            else { showError('id_proof_number', ''); }
+
+            if (!form.aadhaar_front.files || form.aadhaar_front.files.length === 0) { showError('aadhaar_front', 'Please upload the front photo of your Aadhaar card'); ok = false; }
+            else { showError('aadhaar_front', ''); }
+
+            if (!form.aadhaar_back.files || form.aadhaar_back.files.length === 0) { showError('aadhaar_back', 'Please upload the back photo of your Aadhaar card'); ok = false; }
+            else { showError('aadhaar_back', ''); }
+
+            return ok;
+          }
+
+          ['aadhaar_front', 'aadhaar_back'].forEach(function (name) {
+            var input = document.getElementById(name);
+            var btn = document.getElementById('btn-' + name);
+            var label = document.getElementById('label-' + name);
+            input.addEventListener('change', function () {
+              var hasFile = input.files && input.files.length > 0;
+              btn.classList.toggle('has-file', hasFile);
+              label.textContent = hasFile ? ('✓ ' + input.files[0].name) : ('📷 Upload ' + (name === 'aadhaar_front' ? 'front' : 'back') + ' photo');
+              showError(name, '');
+            });
+          });
+
+          form.addEventListener('submit', function (e) {
+            if (!validate()) {
+              e.preventDefault();
+              var firstInvalid = form.querySelector('.invalid, .file-btn + .err-msg:not(:empty)');
+              if (firstInvalid) firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              return;
+            }
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting...';
+          });
+        })();
+      </script>
     </body>
     </html>
   `;
   res.status(200).send(html);
 });
 
-app.post('/api/public/qr-signup', async (req, res) => {
+const qrSignupErrorPage = (message: string) =>
+  `<div style="background:#fef2f2;color:#7f1d1d;padding:14px;border-radius:10px;font-family:sans-serif;">⚠️ ${message}</div>`;
+
+app.post('/api/public/qr-signup', qrSignupUpload.fields([
+  { name: 'aadhaar_front', maxCount: 1 },
+  { name: 'aadhaar_back', maxCount: 1 },
+]), async (req, res) => {
   try {
     const hostelId = req.query.hostelId as string;
     const roomId   = req.query.roomId   as string | undefined;
@@ -228,20 +389,42 @@ app.post('/api/public/qr-signup', async (req, res) => {
     const {
       first_name, last_name, phone, email,
       date_of_birth, gender, permanent_address,
-      guardian_name, guardian_phone
+      guardian_name, guardian_phone, id_proof_number,
     } = req.body || {};
 
-    if (!first_name || !phone) {
-      return res.status(400).send('<div style="background:#fef2f2;color:#7f1d1d;padding:14px;border-radius:10px;font-family:sans-serif;">⚠️ First Name and Phone are required</div>');
+    const files = req.files as { [field: string]: Express.Multer.File[] } | undefined;
+    const aadhaarFrontFile = files?.aadhaar_front?.[0];
+    const aadhaarBackFile  = files?.aadhaar_back?.[0];
+
+    if (!first_name || !String(first_name).trim()) {
+      return res.status(400).send(qrSignupErrorPage('First Name is required'));
+    }
+    if (!phone || !/^\d{10}$/.test(String(phone).trim())) {
+      return res.status(400).send(qrSignupErrorPage('A valid 10-digit Phone number is required'));
+    }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim())) {
+      return res.status(400).send(qrSignupErrorPage('Enter a valid email address'));
+    }
+    if (guardian_phone && !/^\d{10}$/.test(String(guardian_phone).trim())) {
+      return res.status(400).send(qrSignupErrorPage('Guardian Phone must be a valid 10-digit number'));
+    }
+    if (!permanent_address || !String(permanent_address).trim()) {
+      return res.status(400).send(qrSignupErrorPage('Permanent Address is required'));
+    }
+    if (!id_proof_number || !/^\d{12}$/.test(String(id_proof_number).trim())) {
+      return res.status(400).send(qrSignupErrorPage('Aadhaar Number must be exactly 12 digits'));
+    }
+    if (!aadhaarFrontFile || !aadhaarBackFile) {
+      return res.status(400).send(qrSignupErrorPage('Both Aadhaar front and back photos are required'));
     }
 
     const numHostelId = parseInt(hostelId, 10);
     if (isNaN(numHostelId)) {
-      return res.status(400).send('<div style="background:#fef2f2;color:#7f1d1d;padding:14px;border-radius:10px;font-family:sans-serif;">⚠️ Invalid hostel link</div>');
+      return res.status(400).send(qrSignupErrorPage('Invalid hostel link'));
     }
     const hostelExists = await db('hostel_master').where('hostel_id', numHostelId).first();
     if (!hostelExists) {
-      return res.status(404).send('<div style="background:#fef2f2;color:#7f1d1d;padding:14px;border-radius:10px;font-family:sans-serif;">⚠️ This hostel link is no longer valid</div>');
+      return res.status(404).send(qrSignupErrorPage('This hostel link is no longer valid'));
     }
 
     const now = new Date();
@@ -263,7 +446,11 @@ app.post('/api/public/qr-signup', async (req, res) => {
       room_id:          roomId ? parseInt(roomId, 10) : null,
       floor_number:     null,
       monthly_rent:     null,
-      id_proof_status:  0,
+      id_proof_type:      'Aadhaar',
+      id_proof_number:    id_proof_number.trim(),
+      id_proof_front_url: `/uploads/${aadhaarFrontFile.filename}`,
+      id_proof_back_url:  `/uploads/${aadhaarBackFile.filename}`,
+      id_proof_status:  1, // Submitted — owner still verifies before activation
     };
 
     const [newStudentId] = await db('students').insert(insertData);
@@ -296,6 +483,13 @@ app.post('/api/public/qr-signup', async (req, res) => {
     console.error('QR signup error:', e);
     res.status(500).send('<div style="font-family:sans-serif;padding:20px;color:#7f1d1d;">Internal Server Error. Please try again.</div>');
   }
+});
+
+// Aadhaar upload errors (oversized/invalid file) surface as HTML, not JSON, on this public form route
+app.use('/api/public/qr-signup', (err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (!err) return next();
+  const message = err.code === 'LIMIT_FILE_SIZE' ? 'Each Aadhaar photo must be under 5MB' : (err.message || 'Upload failed. Please try again.');
+  res.status(400).send(qrSignupErrorPage(message));
 });
 
 // Health check

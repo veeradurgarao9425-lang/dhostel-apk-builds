@@ -94,14 +94,14 @@ const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 const fmtFull = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
-const Skeleton = ({ style }: { style?: any }) => (
-    <View style={[{ backgroundColor: '#E9D5FF', borderRadius: 12, opacity: 0.5 }, style]} />
+const Skeleton = ({ style, isDark }: { style?: any; isDark?: boolean }) => (
+    <View style={[{ backgroundColor: isDark ? '#334155' : '#E9D5FF', borderRadius: 12, opacity: 0.5 }, style]} />
 );
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function OverviewScreen() {
     const navigation = useNavigation<any>();
-    const { theme } = useTheme();
+    const { theme, isDark } = useTheme();
     const { t } = useTranslation();
     const { refreshCounter } = useRefresh();
     const [data, setData] = useState<any>(null);
@@ -172,7 +172,7 @@ export default function OverviewScreen() {
     // ── Loading ──
     if (loading && !data) {
         return (
-            <View style={s.root}>
+            <View style={[s.root, { backgroundColor: theme.background }]}>
                 <StatusBar barStyle="light-content" />
                 <AppHeader
                     title={t('overview.title')}
@@ -185,12 +185,12 @@ export default function OverviewScreen() {
                     }
                 />
                 <View style={{ padding: 16, gap: 14 }}>
-                    <Skeleton style={{ height: 120, borderRadius: 24 }} />
+                    <Skeleton style={{ height: 120, borderRadius: 24 }} isDark={isDark} />
                     <View style={{ flexDirection: 'row', gap: 12 }}>
-                        <Skeleton style={{ flex: 1, height: 110, borderRadius: 20 }} />
-                        <Skeleton style={{ flex: 1, height: 110, borderRadius: 20 }} />
+                        <Skeleton style={{ flex: 1, height: 110, borderRadius: 20 }} isDark={isDark} />
+                        <Skeleton style={{ flex: 1, height: 110, borderRadius: 20 }} isDark={isDark} />
                     </View>
-                    <Skeleton style={{ height: 220, borderRadius: 24 }} />
+                    <Skeleton style={{ height: 220, borderRadius: 24 }} isDark={isDark} />
                 </View>
             </View>
         );
@@ -206,12 +206,15 @@ export default function OverviewScreen() {
         ? `${statsMonth.getFullYear()}-${String(statsMonth.getMonth() + 1).padStart(2, '0')}`
         : null;
 
-    const periodLabel = filterMode === 'month' 
+    const periodLabel = filterMode === 'month'
         ? statsMonth.toLocaleString('default', { month: 'short', year: 'numeric' })
         : `${customStart.getDate()} ${customStart.toLocaleString('default', { month: 'short' })} - ${customEnd.getDate()} ${customEnd.toLocaleString('default', { month: 'short' })}`;
 
+    // Shared dark-mode override for generic `s.card` surfaces
+    const darkCard = isDark ? { backgroundColor: '#1E293B', borderColor: '#334155' } : null;
+
     return (
-        <View style={s.root}>
+        <View style={[s.root, { backgroundColor: theme.background }]}>
             <StatusBar barStyle="light-content" />
 
             {/* ── Header ── */}
@@ -278,15 +281,17 @@ export default function OverviewScreen() {
 
                     {/* ── Net Profit/Loss Hero Card ── */}
                     <LinearGradient
-                        colors={isProfit ? ['#E6F9F3', '#D1FAE5'] : ['#FFEBEE', '#FEE2E2']}
-                        style={[s.heroCard, { borderColor: isProfit ? '#A7F3D0' : '#FECACA' }]}
+                        colors={isProfit
+                            ? (isDark ? ['#0F3D2E', '#0C4A3A'] : ['#E6F9F3', '#D1FAE5'])
+                            : (isDark ? ['#4A1515', '#5C1A1A'] : ['#FFEBEE', '#FEE2E2'])}
+                        style={[s.heroCard, { borderColor: isProfit ? (isDark ? '#0F5C46' : '#A7F3D0') : (isDark ? '#7F2D2D' : '#FECACA') }]}
                     >
                         <View style={s.heroContentRow}>
                             <View style={s.heroTextWrap}>
-                                <Text style={[s.heroLabel, { color: isProfit ? '#047857' : '#B91C1C' }]}>{isProfit ? t('overview.netProfit') : t('overview.netLoss')}</Text>
-                                <Text style={[s.heroValue, { color: isProfit ? '#065F46' : '#991B1B' }]}>{fmtFull(Math.abs(cm.netProfit || 0))}</Text>
+                                <Text style={[s.heroLabel, { color: isProfit ? (isDark ? '#6EE7B7' : '#047857') : (isDark ? '#FCA5A5' : '#B91C1C') }]}>{isProfit ? t('overview.netProfit') : t('overview.netLoss')}</Text>
+                                <Text style={[s.heroValue, { color: isProfit ? (isDark ? '#A7F3D0' : '#065F46') : (isDark ? '#FECACA' : '#991B1B') }]}>{fmtFull(Math.abs(cm.netProfit || 0))}</Text>
                             </View>
-                            <View style={[s.heroIconCircle, { shadowColor: isProfit ? '#059669' : '#DC2626' }]}>
+                            <View style={[s.heroIconCircle, { backgroundColor: isDark ? 'rgba(255,255,255,0.12)' : '#FFFFFF', shadowColor: isProfit ? '#059669' : '#DC2626' }]}>
                                 <Ionicons
                                     name={isProfit ? 'trending-up' : 'trending-down'}
                                     size={28}
@@ -295,8 +300,8 @@ export default function OverviewScreen() {
                             </View>
                         </View>
                         {cm.profitMargin !== 0 && (
-                            <View style={[s.marginBadge, { backgroundColor: isProfit ? 'rgba(4, 120, 87, 0.1)' : 'rgba(185, 28, 28, 0.1)' }]}>
-                                <Text style={[s.marginBadgeText, { color: isProfit ? '#047857' : '#B91C1C' }]}>{t('overview.margin')}: {cm.profitMargin}%</Text>
+                            <View style={[s.marginBadge, { backgroundColor: isProfit ? 'rgba(4, 120, 87, 0.16)' : 'rgba(185, 28, 28, 0.16)' }]}>
+                                <Text style={[s.marginBadgeText, { color: isProfit ? (isDark ? '#6EE7B7' : '#047857') : (isDark ? '#FCA5A5' : '#B91C1C') }]}>{t('overview.margin')}: {cm.profitMargin}%</Text>
                             </View>
                         )}
                     </LinearGradient>
@@ -304,32 +309,40 @@ export default function OverviewScreen() {
                     {/* ── Income vs Expenses Row ── */}
                     <View style={s.summaryRow}>
                         {/* Income Card */}
-                        <TouchableOpacity style={[s.summaryCard, s.incomeCard]} onPress={() => navigation.navigate('IncomeDetails')} activeOpacity={0.8}>
-                            <View style={[s.summaryIconBox, { backgroundColor: '#D1FAE5' }]}>
+                        <TouchableOpacity
+                            style={[s.summaryCard, s.incomeCard, isDark && { backgroundColor: 'rgba(16,185,129,0.1)', borderColor: '#0F5C46' }]}
+                            onPress={() => navigation.navigate('IncomeDetails')}
+                            activeOpacity={0.8}
+                        >
+                            <View style={[s.summaryIconBox, { backgroundColor: isDark ? 'rgba(16,185,129,0.2)' : '#D1FAE5' }]}>
                                 <Ionicons name="arrow-up-circle" size={16} color="#10B981" />
                             </View>
-                            <Text style={s.summaryLabel}>{t('overview.income')}</Text>
-                            <Text style={[s.summaryValue, { color: '#065F46' }]}>{fmt(cm.totalIncome || 0)}</Text>
+                            <Text style={[s.summaryLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>{t('overview.income')}</Text>
+                            <Text style={[s.summaryValue, { color: isDark ? '#6EE7B7' : '#065F46' }]}>{fmt(cm.totalIncome || 0)}</Text>
                             <View style={s.summaryDetail}>
-                                <Text style={s.summaryDetailText}>{t('overview.fees')}: {fmt(cm.feeCollection || 0)}</Text>
+                                <Text style={[s.summaryDetailText, { color: isDark ? '#94A3B8' : '#64748B' }]}>{t('overview.fees')}: {fmt(cm.feeCollection || 0)}</Text>
                                 {Number(cm.admissionFeeCollection || 0) > 0 && (
-                                    <Text style={s.summaryDetailText}>Admission: {fmt(cm.admissionFeeCollection)}</Text>
+                                    <Text style={[s.summaryDetailText, { color: isDark ? '#94A3B8' : '#64748B' }]}>Admission: {fmt(cm.admissionFeeCollection)}</Text>
                                 )}
                                 {(cm.otherIncome || 0) > 0 && (
-                                    <Text style={s.summaryDetailText}>{t('overview.other')}: {fmt(Math.max(0, Number(cm.otherIncome) - Number(cm.guestIncome || 0)))}</Text>
+                                    <Text style={[s.summaryDetailText, { color: isDark ? '#94A3B8' : '#64748B' }]}>{t('overview.other')}: {fmt(Math.max(0, Number(cm.otherIncome) - Number(cm.guestIncome || 0)))}</Text>
                                 )}
                             </View>
                         </TouchableOpacity>
 
                         {/* Expenses Card */}
-                        <TouchableOpacity style={[s.summaryCard, s.expenseCard]} onPress={() => navigation.navigate('Expenses')} activeOpacity={0.8}>
-                            <View style={[s.summaryIconBox, { backgroundColor: '#FEE2E2' }]}>
+                        <TouchableOpacity
+                            style={[s.summaryCard, s.expenseCard, isDark && { backgroundColor: 'rgba(239,68,68,0.1)', borderColor: '#7F2D2D' }]}
+                            onPress={() => navigation.navigate('Expenses')}
+                            activeOpacity={0.8}
+                        >
+                            <View style={[s.summaryIconBox, { backgroundColor: isDark ? 'rgba(239,68,68,0.2)' : '#FEE2E2' }]}>
                                 <Ionicons name="arrow-down-circle" size={16} color="#EF4444" />
                             </View>
-                            <Text style={s.summaryLabel}>{t('overview.expenses')}</Text>
-                            <Text style={[s.summaryValue, { color: '#991B1B' }]}>{fmt(cm.totalExpenses || 0)}</Text>
+                            <Text style={[s.summaryLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>{t('overview.expenses')}</Text>
+                            <Text style={[s.summaryValue, { color: isDark ? '#FCA5A5' : '#991B1B' }]}>{fmt(cm.totalExpenses || 0)}</Text>
                             <View style={s.summaryDetail}>
-                                <Text style={s.summaryDetailText}>
+                                <Text style={[s.summaryDetailText, { color: isDark ? '#94A3B8' : '#64748B' }]}>
                                     {(cm.expenseBreakdown || []).length} {t('overview.categories')}
                                 </Text>
                             </View>
@@ -338,35 +351,35 @@ export default function OverviewScreen() {
 
                     {/* ── Rent Collection Status ── */}
                     {(cm.rentDue || 0) > 0 && (
-                        <View style={s.card}>
+                        <View style={[s.card, darkCard]}>
                             <View style={s.cardHeader}>
                                 <View style={s.cardHeaderLeft}>
                                     <Ionicons name="wallet-outline" size={18} color="#7C3AED" />
-                                    <Text style={s.cardTitle}>{t('overview.rentCollection')}</Text>
+                                    <Text style={[s.cardTitle, { color: isDark ? '#F1F5F9' : '#1E293B' }]}>{t('overview.rentCollection')}</Text>
                                 </View>
                             </View>
                             <View style={s.rentRow}>
-                                <View style={[s.rentItem, { backgroundColor: '#EFF6FF' }]}>
-                                    <Text style={[s.rentItemLabel, { color: '#3B82F6' }]}>{t('overview.due')}</Text>
-                                    <Text style={[s.rentItemVal, { color: '#2563EB' }]}>{fmt(cm.rentDue)}</Text>
+                                <View style={[s.rentItem, { backgroundColor: isDark ? 'rgba(59,130,246,0.15)' : '#EFF6FF' }]}>
+                                    <Text style={[s.rentItemLabel, { color: isDark ? '#60A5FA' : '#3B82F6' }]}>{t('overview.due')}</Text>
+                                    <Text style={[s.rentItemVal, { color: isDark ? '#93C5FD' : '#2563EB' }]}>{fmt(cm.rentDue)}</Text>
                                 </View>
-                                <View style={[s.rentItem, { backgroundColor: '#F0FDF4' }]}>
-                                    <Text style={[s.rentItemLabel, { color: '#16A34A' }]}>{t('overview.collected')}</Text>
-                                    <Text style={[s.rentItemVal, { color: '#16A34A' }]}>{fmt(cm.rentCollected)}</Text>
+                                <View style={[s.rentItem, { backgroundColor: isDark ? 'rgba(16,185,129,0.15)' : '#F0FDF4' }]}>
+                                    <Text style={[s.rentItemLabel, { color: isDark ? '#34D399' : '#16A34A' }]}>{t('overview.collected')}</Text>
+                                    <Text style={[s.rentItemVal, { color: isDark ? '#6EE7B7' : '#16A34A' }]}>{fmt(cm.rentCollected)}</Text>
                                 </View>
-                                <View style={[s.rentItem, { backgroundColor: '#FFFBEB' }]}>
-                                    <Text style={[s.rentItemLabel, { color: '#D97706' }]}>{t('overview.pending')}</Text>
-                                    <Text style={[s.rentItemVal, { color: '#D97706' }]}>{fmt(cm.rentPending)}</Text>
+                                <View style={[s.rentItem, { backgroundColor: isDark ? 'rgba(217,119,6,0.15)' : '#FFFBEB' }]}>
+                                    <Text style={[s.rentItemLabel, { color: isDark ? '#FBBF24' : '#D97706' }]}>{t('overview.pending')}</Text>
+                                    <Text style={[s.rentItemVal, { color: isDark ? '#FCD34D' : '#D97706' }]}>{fmt(cm.rentPending)}</Text>
                                 </View>
                             </View>
                             {/* Progress */}
                             <View style={s.progressWrap}>
-                                <View style={s.progressBg}>
+                                <View style={[s.progressBg, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
                                     <View style={[s.progressFill, {
                                         width: `${cm.rentDue > 0 ? Math.min(100, (cm.rentCollected / cm.rentDue) * 100) : 0}%`,
                                     }]} />
                                 </View>
-                                <Text style={s.progressText}>
+                                <Text style={[s.progressText, { color: isDark ? '#94A3B8' : '#64748B' }]}>
                                     {cm.rentDue > 0 ? Math.round((cm.rentCollected / cm.rentDue) * 100) : 0}% {t('overview.collectedPercentage')}
                                 </Text>
                             </View>
@@ -387,18 +400,18 @@ export default function OverviewScreen() {
                         ].filter(item => item.amount > 0).sort((a, b) => b.amount - a.amount);
 
                         return (
-                            <View style={s.card}>
+                            <View style={[s.card, darkCard]}>
                                 <View style={s.cardHeader}>
                                     <View style={s.cardHeaderLeft}>
                                         <Ionicons name="trending-up-outline" size={18} color="#10B981" />
-                                        <Text style={s.cardTitle}>Income Breakdown</Text>
+                                        <Text style={[s.cardTitle, { color: isDark ? '#F1F5F9' : '#1E293B' }]}>Income Breakdown</Text>
                                     </View>
                                     <Text style={[s.cardMeta, { color: '#10B981' }]}>{fmtFull(cm.totalIncome || 0)}</Text>
                                 </View>
 
                                 {incomeItems.length === 0 ? (
                                     <View style={s.emptyBlock}>
-                                        <Ionicons name="receipt-outline" size={36} color="#CBD5E1" />
+                                        <Ionicons name="receipt-outline" size={36} color={isDark ? '#475569' : '#CBD5E1'} />
                                         <Text style={s.emptyText}>No income collected this month</Text>
                                     </View>
                                 ) : (
@@ -407,13 +420,13 @@ export default function OverviewScreen() {
                                             <View key={i}>
                                                 <View style={s.catRow}>
                                                     <View style={s.catLeft}>
-                                                        <View style={[s.catIconBox, { backgroundColor: item.lightColor }]}>
+                                                        <View style={[s.catIconBox, { backgroundColor: isDark ? item.color + '30' : item.lightColor }]}>
                                                             <Ionicons name={item.icon as any} size={15} color={item.color} />
                                                         </View>
-                                                        <Text style={s.catName}>{item.name}</Text>
+                                                        <Text style={[s.catName, { color: isDark ? '#E2E8F0' : '#334155' }]}>{item.name}</Text>
                                                     </View>
                                                     <View style={s.catRight}>
-                                                        <Text style={s.catAmount}>{fmtFull(item.amount)}</Text>
+                                                        <Text style={[s.catAmount, { color: isDark ? '#F8FAFC' : '#1E293B' }]}>{fmtFull(item.amount)}</Text>
                                                     </View>
                                                 </View>
                                             </View>
@@ -425,18 +438,18 @@ export default function OverviewScreen() {
                     })()}
 
                     {/* ── Expense Breakdown ── */}
-                    <View style={s.card}>
+                    <View style={[s.card, darkCard]}>
                         <View style={s.cardHeader}>
                             <View style={s.cardHeaderLeft}>
                                 <Ionicons name="pie-chart-outline" size={18} color="#7C3AED" />
-                                <Text style={s.cardTitle}>{t('overview.expenseBreakdown')}</Text>
+                                <Text style={[s.cardTitle, { color: isDark ? '#F1F5F9' : '#1E293B' }]}>{t('overview.expenseBreakdown')}</Text>
                             </View>
                             <Text style={s.cardMeta}>{fmtFull(cm.totalExpenses || 0)}</Text>
                         </View>
 
                         {(cm.expenseBreakdown || []).length === 0 ? (
                             <View style={s.emptyBlock}>
-                                <Ionicons name="receipt-outline" size={36} color="#CBD5E1" />
+                                <Ionicons name="receipt-outline" size={36} color={isDark ? '#475569' : '#CBD5E1'} />
                                 <Text style={s.emptyText}>{t('overview.noExpenses')}</Text>
                             </View>
                         ) : (
@@ -449,13 +462,13 @@ export default function OverviewScreen() {
                                         <View key={cat.category_id || i}>
                                             <View style={s.catRow}>
                                                 <View style={s.catLeft}>
-                                                    <View style={[s.catIconBox, { backgroundColor: lightColor }]}>
+                                                    <View style={[s.catIconBox, { backgroundColor: isDark ? color + '30' : lightColor }]}>
                                                         <Ionicons name={iconName as any} size={15} color={color} />
                                                     </View>
-                                                    <Text style={s.catName}>{cat.category_name}</Text>
+                                                    <Text style={[s.catName, { color: isDark ? '#E2E8F0' : '#334155' }]}>{cat.category_name}</Text>
                                                 </View>
                                                 <View style={s.catRight}>
-                                                    <Text style={s.catAmount}>{fmtFull(cat.amount)}</Text>
+                                                    <Text style={[s.catAmount, { color: isDark ? '#F8FAFC' : '#1E293B' }]}>{fmtFull(cat.amount)}</Text>
                                                 </View>
                                             </View>
                                         </View>
@@ -471,34 +484,34 @@ export default function OverviewScreen() {
                         if (!adm || adm.totalStudents === 0) return null;
                         const paidPct = adm.totalStudents > 0 ? Math.round((adm.paidStudents / adm.totalStudents) * 100) : 0;
                         return (
-                            <View style={[s.card, { paddingVertical: 12 }]}>
+                            <View style={[s.card, { paddingVertical: 12 }, darkCard]}>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                        <View style={{ width: 30, height: 30, borderRadius: 10, backgroundColor: '#FEF3C7', alignItems: 'center', justifyContent: 'center' }}>
+                                        <View style={{ width: 30, height: 30, borderRadius: 10, backgroundColor: isDark ? 'rgba(217,119,6,0.18)' : '#FEF3C7', alignItems: 'center', justifyContent: 'center' }}>
                                             <Ionicons name="key-outline" size={15} color="#D97706" />
                                         </View>
                                         <View>
-                                            <Text style={{ fontSize: 12, fontWeight: '700', color: '#1E293B' }}>Admission Fees</Text>
-                                            <Text style={{ fontSize: 10, color: '#64748B', marginTop: 1 }}>
+                                            <Text style={{ fontSize: 12, fontWeight: '700', color: isDark ? '#F1F5F9' : '#1E293B' }}>Admission Fees</Text>
+                                            <Text style={{ fontSize: 10, color: isDark ? '#94A3B8' : '#64748B', marginTop: 1 }}>
                                                 {adm.paidStudents}/{adm.totalStudents} students paid · {adm.pendingStudents} pending
                                             </Text>
                                         </View>
                                     </View>
                                     <View style={{ alignItems: 'flex-end' }}>
-                                        <Text style={{ fontSize: 13, fontWeight: '800', color: '#D97706' }}>
+                                        <Text style={{ fontSize: 13, fontWeight: '800', color: isDark ? '#FBBF24' : '#D97706' }}>
                                             ₹{adm.totalPaidAmount.toLocaleString('en-IN')}
                                         </Text>
-                                        <Text style={{ fontSize: 9, color: '#94A3B8', marginTop: 1 }}>
+                                        <Text style={{ fontSize: 9, color: isDark ? '#64748B' : '#94A3B8', marginTop: 1 }}>
                                             of ₹{adm.totalExpectedAmount.toLocaleString('en-IN')} expected
                                         </Text>
                                     </View>
                                 </View>
                                 {adm.totalExpectedAmount > 0 && (
                                     <View style={{ marginTop: 10 }}>
-                                        <View style={{ height: 5, backgroundColor: '#FEF3C7', borderRadius: 3, overflow: 'hidden' }}>
+                                        <View style={{ height: 5, backgroundColor: isDark ? 'rgba(217,119,6,0.18)' : '#FEF3C7', borderRadius: 3, overflow: 'hidden' }}>
                                             <View style={{ height: '100%', width: `${paidPct}%`, backgroundColor: '#D97706', borderRadius: 3 }} />
                                         </View>
-                                        <Text style={{ fontSize: 9, color: '#94A3B8', marginTop: 4 }}>{paidPct}% collected</Text>
+                                        <Text style={{ fontSize: 9, color: isDark ? '#64748B' : '#94A3B8', marginTop: 4 }}>{paidPct}% collected</Text>
                                     </View>
                                 )}
                             </View>
@@ -506,11 +519,11 @@ export default function OverviewScreen() {
                     })()}
 
                     {/* ── 12-Month Trend ── */}
-                    <View style={s.card}>
+                    <View style={[s.card, darkCard]}>
                         <View style={s.cardHeader}>
                             <View style={s.cardHeaderLeft}>
                                 <Ionicons name="bar-chart-outline" size={18} color="#7C3AED" />
-                                <Text style={s.cardTitle}>{t('overview.trendTitle')}</Text>
+                                <Text style={[s.cardTitle, { color: isDark ? '#F1F5F9' : '#1E293B' }]}>{t('overview.trendTitle')}</Text>
                             </View>
                         </View>
 
@@ -518,11 +531,11 @@ export default function OverviewScreen() {
                         <View style={s.legendRow}>
                             <View style={s.legendItem}>
                                 <View style={[s.legendDot, { backgroundColor: '#10B981' }]} />
-                                <Text style={s.legendText}>{t('overview.legendIncome')}</Text>
+                                <Text style={[s.legendText, { color: isDark ? '#94A3B8' : '#64748B' }]}>{t('overview.legendIncome')}</Text>
                             </View>
                             <View style={s.legendItem}>
                                 <View style={[s.legendDot, { backgroundColor: '#EF4444' }]} />
-                                <Text style={s.legendText}>{t('overview.legendExpenses')}</Text>
+                                <Text style={[s.legendText, { color: isDark ? '#94A3B8' : '#64748B' }]}>{t('overview.legendExpenses')}</Text>
                             </View>
                         </View>
 
@@ -534,7 +547,7 @@ export default function OverviewScreen() {
                                     const expH = Math.max(3, (tVal.expenses / trendMax) * 90);
                                     const isCurrent = tVal.month === currentMonthStr;
                                     return (
-                                        <View key={tVal.month} style={[s.chartCol, isCurrent && s.chartColCurrent]}>
+                                        <View key={tVal.month} style={[s.chartCol, isCurrent && { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
                                             {/* Values on top */}
                                             {tVal.income > 0 && (
                                                 <Text style={[s.chartTopVal, isCurrent && { color: '#10B981', fontWeight: 'bold' }]}>
@@ -544,11 +557,11 @@ export default function OverviewScreen() {
                                             <View style={s.chartBars}>
                                                 <View style={[s.chartBar, {
                                                     height: incH,
-                                                    backgroundColor: isCurrent ? '#10B981' : '#A7F3D0',
+                                                    backgroundColor: isCurrent ? '#10B981' : (isDark ? 'rgba(16,185,129,0.35)' : '#A7F3D0'),
                                                 }]} />
                                                 <View style={[s.chartBar, {
                                                     height: expH,
-                                                    backgroundColor: isCurrent ? '#EF4444' : '#FECACA',
+                                                    backgroundColor: isCurrent ? '#EF4444' : (isDark ? 'rgba(239,68,68,0.35)' : '#FECACA'),
                                                 }]} />
                                             </View>
                                             <Text style={[s.chartMonth, isCurrent && {
@@ -563,23 +576,23 @@ export default function OverviewScreen() {
                         </ScrollView>
 
                         {/* Averages */}
-                        <View style={s.avgRow}>
+                        <View style={[s.avgRow, { borderTopColor: isDark ? '#334155' : '#F1F5F9' }]}>
                             <View style={s.avgItem}>
-                                <Text style={s.avgLabel}>{t('overview.avgIncome')}</Text>
+                                <Text style={[s.avgLabel, { color: isDark ? '#94A3B8' : undefined }]}>{t('overview.avgIncome')}</Text>
                                 <Text style={[s.avgValue, { color: '#10B981' }]}>
                                     {fmt(trend.reduce((sum: number, tVal: any) => sum + tVal.income, 0) / Math.max(trend.filter((tVal: any) => tVal.income > 0).length, 1))}
                                 </Text>
                             </View>
-                            <View style={s.avgDivider} />
+                            <View style={[s.avgDivider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
                             <View style={s.avgItem}>
-                                <Text style={s.avgLabel}>{t('overview.avgExpenses')}</Text>
+                                <Text style={[s.avgLabel, { color: isDark ? '#94A3B8' : undefined }]}>{t('overview.avgExpenses')}</Text>
                                 <Text style={[s.avgValue, { color: '#EF4444' }]}>
                                     {fmt(trend.reduce((sum: number, tVal: any) => sum + tVal.expenses, 0) / Math.max(trend.filter((tVal: any) => tVal.expenses > 0).length, 1))}
                                 </Text>
                             </View>
-                            <View style={s.avgDivider} />
+                            <View style={[s.avgDivider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
                             <View style={s.avgItem}>
-                                <Text style={s.avgLabel}>{t('overview.avgProfit')}</Text>
+                                <Text style={[s.avgLabel, { color: isDark ? '#94A3B8' : undefined }]}>{t('overview.avgProfit')}</Text>
                                 <Text style={[s.avgValue, { color: '#3B82F6' }]}>
                                     {fmt(trend.reduce((sum: number, tVal: any) => sum + tVal.profit, 0) / Math.max(trend.filter((tVal: any) => tVal.income > 0 || tVal.expenses > 0).length, 1))}
                                 </Text>
@@ -594,17 +607,17 @@ export default function OverviewScreen() {
 
             {/* Translucent loading overlay */}
             {loading && data && (
-                <View style={s.loadingOverlay}>
+                <View style={[s.loadingOverlay, { backgroundColor: isDark ? 'rgba(15,23,42,0.8)' : 'rgba(255,255,255,0.75)' }]}>
                     <ActivityIndicator size="large" color="#7C3AED" />
-                    <Text style={s.loadingText}>{t('overview.fetchingOverview')}</Text>
+                    <Text style={[s.loadingText, { color: isDark ? '#C4B5FD' : '#7C3AED' }]}>{t('overview.fetchingOverview')}</Text>
                 </View>
             )}
 
             <Modal visible={filterSelectModal} transparent animationType="fade" onRequestClose={() => setFilterSelectModal(false)}>
                 <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.15)', justifyContent: 'flex-start', alignItems: 'flex-end', paddingTop: 90, paddingRight: 16 }} activeOpacity={1} onPress={() => setFilterSelectModal(false)}>
                     <View style={{ backgroundColor: theme.cardBg, position: 'absolute', top: 90, right: 16, borderRadius: 16, padding: 8, width: 220, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 }}>
-                        <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 6, borderBottomColor: theme.cardBorder, borderBottomWidth: 1 }}
-                            onPress={() => { setFilterSelectModal(false); setShowMonthPicker(true); }}>
+                        <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 6, borderBottomColor: isDark ? '#334155' : '#F1F5F9', borderBottomWidth: 1 }}
+                            onPress={() => { setFilterSelectModal(false); setShowMonthPicker(true); }} activeOpacity={0.7}>
                             <Ionicons name="calendar-outline" size={18} color={theme.primary} />
                             <View style={{ flex: 1, marginLeft: 10 }}>
                                 <Text style={{ fontSize: 13, fontWeight: '700', color: theme.textPrimary }}>Specific Month</Text>
@@ -614,7 +627,7 @@ export default function OverviewScreen() {
                         </TouchableOpacity>
 
                         <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 6 }}
-                            onPress={() => { setFilterSelectModal(false); setShowCustomPicker(true); }}>
+                            onPress={() => { setFilterSelectModal(false); setShowCustomPicker(true); }} activeOpacity={0.7}>
                             <Ionicons name="options-outline" size={18} color={theme.primary} />
                             <View style={{ flex: 1, marginLeft: 10 }}>
                                 <Text style={{ fontSize: 13, fontWeight: '700', color: theme.textPrimary }}>Custom Range</Text>

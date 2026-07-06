@@ -201,22 +201,28 @@ export const ExpenseScreen = ({ navigation }: any) => {
             {/* Expense Stats */}
             <View style={styles.statsRow}>
                 <View style={[
-                    styles.statCard, 
-                    { 
-                        backgroundColor: isDark ? '#1e1b4b' : '#EEF2FF', 
-                        borderColor: isDark ? '#312E81' : '#E0E7FF' 
+                    styles.statCard,
+                    {
+                        backgroundColor: isDark ? '#1e1b4b' : '#EEF2FF',
+                        borderColor: isDark ? '#312E81' : '#E0E7FF'
                     }
                 ]}>
+                    <View style={[styles.statIconWrap, { backgroundColor: isDark ? '#312E81' : '#E0E7FF' }]}>
+                        <Ionicons name="wallet-outline" size={15} color={isDark ? '#C7D2FE' : '#4F46E5'} />
+                    </View>
                     <Text style={[styles.statLabel, { color: isDark ? '#C7D2FE' : '#4F46E5' }]}>Total Expenses</Text>
                     <Text style={[styles.statValue, { color: isDark ? '#E0E7FF' : '#312E81' }]}>₹{totalExpenses.toLocaleString('en-IN')}</Text>
                 </View>
                 <View style={[
-                    styles.statCard, 
-                    { 
-                        backgroundColor: isDark ? '#2D1919' : '#FFF1F1', 
-                        borderColor: isDark ? '#7F1D1D' : '#FEE2E2' 
+                    styles.statCard,
+                    {
+                        backgroundColor: isDark ? '#2D1919' : '#FFF1F1',
+                        borderColor: isDark ? '#7F1D1D' : '#FEE2E2'
                     }
                 ]}>
+                    <View style={[styles.statIconWrap, { backgroundColor: isDark ? '#7F1D1D' : '#FEE2E2' }]}>
+                        <Ionicons name="calendar-outline" size={15} color={isDark ? '#FCA5A5' : '#EF4444'} />
+                    </View>
                     <Text style={[styles.statLabel, { color: isDark ? '#FCA5A5' : '#EF4444' }]}>
                         {currentDate ? getMonthLabel() : 'This Month'}
                     </Text>
@@ -236,7 +242,7 @@ export const ExpenseScreen = ({ navigation }: any) => {
                         onChangeText={setSearch}
                     />
                     {search.length > 0 && (
-                        <TouchableOpacity onPress={() => setSearch('')}>
+                        <TouchableOpacity onPress={() => setSearch('')} activeOpacity={0.7} style={{ padding: 4 }}>
                             <X color={isDark ? '#94A3B8' : "#999999"} size={16} />
                         </TouchableOpacity>
                     )}
@@ -246,6 +252,7 @@ export const ExpenseScreen = ({ navigation }: any) => {
                     <TouchableOpacity
                         style={[styles.monthPicker, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
                         onPress={() => setDatePickerVisibility(true)}
+                        activeOpacity={0.75}
                     >
                         <Calendar color={isDark ? '#94A3B8' : "#666666"} size={18} />
                         <Text style={[styles.monthText, { color: theme.textSecondary }]}>{getMonthLabel()}</Text>
@@ -255,6 +262,7 @@ export const ExpenseScreen = ({ navigation }: any) => {
                         <TouchableOpacity
                             style={[styles.clearMonthButton, { backgroundColor: isDark ? '#3F2222' : '#FFF1F1', borderColor: isDark ? '#7F1D1D' : '#FEE2E2' }]}
                             onPress={() => setCurrentDate(null)}
+                            activeOpacity={0.75}
                         >
                             <X color="#FF6B6B" size={16} />
                         </TouchableOpacity>
@@ -331,6 +339,8 @@ export const ExpenseScreen = ({ navigation }: any) => {
                                                 <TouchableOpacity
                                                     style={[styles.actionBtn, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
                                                     onPress={() => navigation.navigate('AddExpense', { expense })}
+                                                    activeOpacity={0.7}
+                                                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                                                 >
                                                     <Edit3 size={12} color="#3B82F6" />
                                                     <Text style={styles.actionBtnTextBlue}>Edit</Text>
@@ -338,6 +348,8 @@ export const ExpenseScreen = ({ navigation }: any) => {
                                                 <TouchableOpacity
                                                     style={[styles.actionBtn, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
                                                     onPress={() => handleDelete(expense)}
+                                                    activeOpacity={0.7}
+                                                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                                                 >
                                                     <Trash2 size={12} color="#EF4444" />
                                                     <Text style={styles.actionBtnTextRed}>Delete</Text>
@@ -448,18 +460,26 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         gap: 12,
         paddingHorizontal: 16,
-        paddingTop: 16,
+        paddingTop: 14,
     },
     statCard: {
         flex: 1,
         borderRadius: 14,
-        padding: 14,
+        padding: 12,
         borderWidth: 1,
         elevation: 1,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.02,
         shadowRadius: 3,
+    },
+    statIconWrap: {
+        width: 26,
+        height: 26,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 6,
     },
     statLabel: {
         fontSize: 11,
@@ -469,14 +489,14 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     statValue: {
-        fontSize: 18,
-        fontWeight: '800',
+        fontSize: 19,
+        fontWeight: '900',
     },
     searchSection: {
         flexDirection: 'row',
         paddingHorizontal: 16,
-        paddingTop: 20,
-        paddingBottom: 16,
+        paddingTop: 14,
+        paddingBottom: 12,
         gap: 10,
     },
     searchBar: {
@@ -563,8 +583,8 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     cardNameText: {
-        fontSize: 14,
-        fontWeight: '800',
+        fontSize: 13,
+        fontWeight: '700',
     },
     roomBadge: {
         paddingHorizontal: 8,
@@ -579,7 +599,7 @@ const styles = StyleSheet.create({
         alignItems: 'flex-end',
     },
     cardAmtText: {
-        fontSize: 15,
+        fontSize: 17,
         fontWeight: '900',
     },
     cardStatusSub: {
