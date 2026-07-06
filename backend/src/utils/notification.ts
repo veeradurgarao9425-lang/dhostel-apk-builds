@@ -192,7 +192,7 @@ export const sendNotificationToAllHostelStudents = async (
 ): Promise<void> => {
   try {
     const students = await db('students')
-      .where({ hostel_id: hostelId, is_active: 1 })
+      .where({ hostel_id: hostelId, status: 1 })
       .select('student_id');
 
     if (!students || students.length === 0) return;

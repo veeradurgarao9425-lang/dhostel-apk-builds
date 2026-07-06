@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.js';
 import db from '../config/database.js';
 import { sendEmail } from '../utils/email.js';
+import { sendNotificationToHostelOwner } from '../utils/notification.js';
 
 export const submitRating = async (req: AuthRequest, res: Response) => {
   try {
@@ -45,6 +46,16 @@ export const submitRating = async (req: AuthRequest, res: Response) => {
     const studentName = student ? `${student.first_name} ${student.last_name || ''}`.trim() : 'A tenant';
     const hostelName = hostel?.hostel_name || 'Your Hostel';
     const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+
+    // In-app/push notification to owner
+    sendNotificationToHostelOwner(
+      hostel_id,
+      'General',
+      'New Review',
+      `${studentName} left a ${rating}/5 review${comment ? `: "${comment}"` : '.'}`,
+      'Medium',
+      { rating_id }
+    ).catch(err => console.error('Failed to notify owner of new rating:', err));
 
     // Email to owner
     if (owner?.email) {

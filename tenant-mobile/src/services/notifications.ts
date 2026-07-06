@@ -9,7 +9,7 @@
  * date triggers use { type: DATE, date }.
  */
 import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
+import { Platform, DeviceEventEmitter } from 'react-native';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import api from './api';
@@ -156,4 +156,26 @@ export async function registerPushTokenAsync(): Promise<void> {
   } catch (error) {
     console.error('Error in registerPushTokenAsync:', error);
   }
+}
+
+/**
+ * Wires up live push-notification handling: refreshes in-app state when a push
+ * arrives in the foreground, and navigates to the Notifications screen on tap.
+ * Call once from the navigator root; returns a cleanup function.
+ */
+export function setupNotificationListeners(navigationRef: { isReady: () => boolean; navigate: (...args: any[]) => void }) {
+  const receivedSubscription = Notifications.addNotificationReceivedListener(() => {
+    DeviceEventEmitter.emit('REFRESH_NOTIFICATIONS');
+  });
+
+  const responseSubscription = Notifications.addNotificationResponseReceivedListener(() => {
+    if (navigationRef.isReady()) {
+      navigationRef.navigate('Notifications');
+    }
+  });
+
+  return () => {
+    receivedSubscription.remove();
+    responseSubscription.remove();
+  };
 }

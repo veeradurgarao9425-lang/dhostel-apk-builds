@@ -58,7 +58,7 @@ const AMENITY_ICONS: Record<string, any> = {
 };
 const getAmenityIcon = (name: string) => AMENITY_ICONS[name] || Star;
 
-const extractCapacity = (name: string): string => {
+export const extractCapacity = (name: string): string => {
     const clean = name.toLowerCase();
     const match = clean.match(/(\d+)/);
     if (match) return match[1];

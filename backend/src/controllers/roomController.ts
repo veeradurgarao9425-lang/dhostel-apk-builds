@@ -30,6 +30,64 @@ const getCapacityFromRoomTypeName = (roomTypeName: string, description: string |
   return 0;
 };
 
+// Shared helper: resolve which hostel_id a create/update should target based on the caller's role
+const resolveHostelId = (
+  user: AuthRequest['user'],
+  hostel_id?: number
+): { hostelId: number } | { status: number; error: string } => {
+  if (user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) {
+    if (!user.hostel_id) {
+      return { status: 403, error: 'Your account is not linked to any hostel. Please contact administrator.' };
+    }
+    return { hostelId: user.hostel_id };
+  } else if (user?.role_id === 1) {
+    if (!hostel_id) {
+      return { status: 400, error: 'Admin must specify hostel_id' };
+    }
+    return { hostelId: hostel_id };
+  }
+  return { status: 403, error: 'Unauthorized to create rooms' };
+};
+
+// Shared helper: validate a floor number against the hostel's total_floors
+const validateFloorNumber = async (
+  hostelId: number,
+  floorNumber: any
+): Promise<{ status: number; error: string } | null> => {
+  if (floorNumber === undefined || floorNumber === null) return null;
+  const hostel = await db('hostel_master').where('hostel_id', hostelId).first();
+  const maxFloors = hostel?.total_floors || 1;
+  const parsedFloor = parseInt(floorNumber, 10);
+
+  if (!isNaN(parsedFloor) && parsedFloor > maxFloors) {
+    return {
+      status: 400,
+      error: `You added ${maxFloors} floors during PG creation. You need to go and update the PG form to add rooms on floor ${parsedFloor}.`
+    };
+  }
+  return null;
+};
+
+// Shared helper: validate required room fields + capacity for a single room payload
+const validateRoomFields = (fields: {
+  room_number?: any;
+  room_type_id?: any;
+  rent_per_bed?: any;
+  capacity?: any;
+}): { status: number; error: string } | null => {
+  const { room_number, room_type_id, rent_per_bed, capacity } = fields;
+  if (!room_number || !room_type_id || !rent_per_bed) {
+    return { status: 400, error: 'Required fields: room_number, room_type_id, rent_per_bed' };
+  }
+  // If capacity is explicitly provided it must be a positive number (avoids 0-bed rooms
+  // that can never be allocated).
+  if (capacity !== undefined && capacity !== null && capacity !== '' &&
+      (isNaN(parseInt(capacity)) || parseInt(capacity) < 1)) {
+    return { status: 400, error: 'Room capacity must be at least 1.' };
+  }
+  return null;
+};
+
 // Get all rooms for a hostel (Owner can only see their own hostel rooms)
 export const getRooms = async (req: AuthRequest, res: Response) => {
   try {
@@ -248,63 +306,22 @@ export const createRoom = async (req: AuthRequest, res: Response) => {
     } = req.body;
 
     // Determine the hostel_id to use
-    let finalHostelId: number;
-
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
-      // Owner can only create rooms in their own hostel
-      if (!user.hostel_id) {
-        return res.status(403).json({
-          success: false,
-          error: 'Your account is not linked to any hostel. Please contact administrator.'
-        });
-      }
-      finalHostelId = user.hostel_id;
-    } else if (user?.role_id === 1) {
-      // Admin can specify hostel_id
-      if (!hostel_id) {
-        return res.status(400).json({
-          success: false,
-          error: 'Admin must specify hostel_id'
-        });
-      }
-      finalHostelId = hostel_id;
-    } else {
-      return res.status(403).json({
-        success: false,
-        error: 'Unauthorized to create rooms'
-      });
+    const hostelResult = resolveHostelId(user, hostel_id);
+    if ('error' in hostelResult) {
+      return res.status(hostelResult.status).json({ success: false, error: hostelResult.error });
     }
+    const finalHostelId = hostelResult.hostelId;
 
-    // Validate required fields
-    if (!room_number || !room_type_id || !rent_per_bed) {
-      return res.status(400).json({
-        success: false,
-        error: 'Required fields: room_number, room_type_id, rent_per_bed'
-      });
-    }
-
-    // If capacity is explicitly provided it must be a positive number (avoids 0-bed rooms
-    // that can never be allocated).
-    if (capacity !== undefined && capacity !== null && capacity !== '' &&
-        (isNaN(parseInt(capacity)) || parseInt(capacity) < 1)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Room capacity must be at least 1.'
-      });
+    // Validate required fields + capacity
+    const fieldError = validateRoomFields({ room_number, room_type_id, rent_per_bed, capacity });
+    if (fieldError) {
+      return res.status(fieldError.status).json({ success: false, error: fieldError.error });
     }
 
     // Validate floor number against hostel's total floors
-    if (floor_number !== undefined && floor_number !== null) {
-      const hostel = await db('hostel_master').where('hostel_id', finalHostelId).first();
-      const maxFloors = hostel?.total_floors || 1;
-      const parsedFloor = parseInt(floor_number, 10);
-      
-      if (!isNaN(parsedFloor) && parsedFloor > maxFloors) {
-        return res.status(400).json({
-          success: false,
-          error: `You added ${maxFloors} floors during PG creation. You need to go and update the PG form to add rooms on floor ${parsedFloor}.`
-        });
-      }
+    const floorError = await validateFloorNumber(finalHostelId, floor_number);
+    if (floorError) {
+      return res.status(floorError.status).json({ success: false, error: floorError.error });
     }
 
     // Check for duplicate room number in same hostel
@@ -402,17 +419,9 @@ export const updateRoom = async (req: AuthRequest, res: Response) => {
     }
 
     // Validate floor number against hostel's total floors
-    if (floor_number !== undefined && floor_number !== null) {
-      const hostel = await db('hostel_master').where('hostel_id', room.hostel_id).first();
-      const maxFloors = hostel?.total_floors || 1;
-      const parsedFloor = parseInt(floor_number, 10);
-      
-      if (!isNaN(parsedFloor) && parsedFloor > maxFloors) {
-        return res.status(400).json({
-          success: false,
-          error: `You added ${maxFloors} floors during PG creation. You need to go and update the PG form to add rooms on floor ${parsedFloor}.`
-        });
-      }
+    const floorError = await validateFloorNumber(room.hostel_id, floor_number);
+    if (floorError) {
+      return res.status(floorError.status).json({ success: false, error: floorError.error });
     }
 
     const updateData: any = {
@@ -508,6 +517,110 @@ export const deleteRoom = async (req: AuthRequest, res: Response) => {
     res.status(500).json({
       success: false,
       error: 'Failed to delete room'
+    });
+  }
+};
+
+// Bulk-create rooms for one floor in a single transaction (used by the "Floor Template" setup flow)
+export const bulkCreateRooms = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user;
+    const { hostel_id, floor_number, rooms } = req.body;
+
+    const hostelResult = resolveHostelId(user, hostel_id);
+    if ('error' in hostelResult) {
+      return res.status(hostelResult.status).json({ success: false, error: hostelResult.error });
+    }
+    const finalHostelId = hostelResult.hostelId;
+
+    if (!Array.isArray(rooms) || rooms.length === 0) {
+      return res.status(400).json({ success: false, error: 'rooms must be a non-empty array' });
+    }
+
+    const floorError = await validateFloorNumber(finalHostelId, floor_number);
+    if (floorError) {
+      return res.status(floorError.status).json({ success: false, error: floorError.error });
+    }
+
+    // Validate every row's required fields/capacity before touching the DB
+    const rowErrors: { index: number; error: string }[] = [];
+    rooms.forEach((room: any, index: number) => {
+      const err = validateRoomFields(room);
+      if (err) rowErrors.push({ index, error: err.error });
+    });
+    if (rowErrors.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Some rooms are invalid',
+        details: rowErrors
+      });
+    }
+
+    // Duplicate check: within this batch, and against rooms already saved for this hostel
+    const incomingNumbers = rooms.map((r: any) => String(r.room_number));
+    const seen = new Set<string>();
+    const intraBatchDuplicates = new Set<string>();
+    incomingNumbers.forEach((n: string) => {
+      if (seen.has(n)) intraBatchDuplicates.add(n);
+      seen.add(n);
+    });
+    if (intraBatchDuplicates.size > 0) {
+      return res.status(409).json({
+        success: false,
+        error: 'Duplicate room numbers in this batch',
+        details: Array.from(intraBatchDuplicates)
+      });
+    }
+
+    const existingRooms = await db('rooms')
+      .where({ hostel_id: finalHostelId })
+      .whereIn('room_number', incomingNumbers)
+      .select('room_number');
+    if (existingRooms.length > 0) {
+      return res.status(409).json({
+        success: false,
+        error: 'Some room numbers already exist in this hostel',
+        details: existingRooms.map(r => r.room_number)
+      });
+    }
+
+    const insertRows = rooms.map((room: any) => ({
+      hostel_id: finalHostelId,
+      room_number: room.room_number,
+      room_type_id: room.room_type_id,
+      floor_number,
+      capacity: (room.capacity !== undefined && room.capacity !== null && !isNaN(parseInt(room.capacity)))
+        ? parseInt(room.capacity) : 4,
+      occupied_beds: 0,
+      rent_per_bed: room.rent_per_bed,
+      amenities: room.amenities ? JSON.stringify(room.amenities) : null,
+      is_available: 1,
+      created_at: new Date()
+    }));
+
+    await db.transaction(async trx => {
+      await trx('rooms').insert(insertRows);
+    });
+
+    res.status(201).json({
+      success: true,
+      message: `${insertRows.length} rooms created successfully`,
+      data: { count: insertRows.length }
+    });
+
+    sendNotificationToHostelOwner(
+      finalHostelId,
+      'System Alert',
+      'Rooms Created',
+      `${insertRows.length} rooms created on Floor ${floor_number}.`,
+      'Low',
+      { count: insertRows.length }
+    ).catch(err => console.error('Failed to send bulk room creation notification:', err));
+  } catch (error: any) {
+    console.error('Bulk create rooms error:', error);
+    res.status(500).json({
+      success: false,
+      error: error?.sqlMessage || error?.message || 'Failed to create rooms'
     });
   }
 };

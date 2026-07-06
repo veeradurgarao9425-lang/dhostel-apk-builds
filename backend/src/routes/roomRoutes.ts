@@ -6,7 +6,8 @@ import {
   createRoom,
   updateRoom,
   deleteRoom,
-  getRoomTypes
+  getRoomTypes,
+  bulkCreateRooms
 } from '../controllers/roomController.js';
 
 const router = express.Router();
@@ -19,6 +20,7 @@ router.get('/', getRooms);
 router.get('/types', getRoomTypes);
 router.get('/:roomId', getRoomById);
 router.post('/', createRoom);
+router.post('/bulk', bulkCreateRooms);
 router.put('/:roomId', updateRoom);
 router.delete('/:roomId', deleteRoom);
 

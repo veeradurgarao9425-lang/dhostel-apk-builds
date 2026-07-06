@@ -14,7 +14,7 @@ import {
     Dimensions,
     ScrollView,
 } from 'react-native';
-import { Plus, Search, X } from 'lucide-react-native';
+import { Plus, Search, X, Layers } from 'lucide-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../services/api';
@@ -422,6 +422,14 @@ export default function RoomsScreen({ navigation, route }: any) {
             )}
 
             <TouchableOpacity
+                style={[styles.bulkFab, { backgroundColor: theme.cardBg, borderColor: COLORS.primary }]}
+                onPress={() => navigation.navigate('BulkRoomSetup')}
+                activeOpacity={0.85}
+            >
+                <Layers color={COLORS.primary} size={20} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
                 style={[styles.fab, { backgroundColor: COLORS.primary }]}
                 onPress={() => navigation.navigate('AddRoom')}
             >
@@ -559,6 +567,21 @@ const styles = StyleSheet.create({
     capacityText: {
         fontSize: 9.5,
         fontWeight: '800',
+    },
+    bulkFab: {
+        position: 'absolute',
+        bottom: 107,
+        right: 24,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        borderWidth: 1.5,
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
     },
     fab: {
         position: 'absolute',

@@ -18,6 +18,7 @@ import { toLocalDateStr } from '../utils/dateUtils';
 import { useRefresh } from '../../contexts/RefreshContext';
 import { useTranslation } from 'react-i18next';
 import { TenantAppCard } from '../components/TenantAppCard';
+import { ModalSheet } from '../components/FormComponents';
 
 // ─── Initial state ────────────────────────────────────────────────────────────
 const INITIAL_STATE = {
@@ -32,9 +33,8 @@ const INITIAL_STATE = {
     availableBeds: 0,
     todayAmount: 0,
     activeTenants: 0,
+    totalStudentsCount: 0,
     leftTenants: 0,
-    unpaidStudents: [] as any[],
-    upcomingDues: [] as any[],
     totalRooms: 0,
     availableRooms: 0,
     occupancyRate: 0,
@@ -44,7 +44,6 @@ const INITIAL_STATE = {
     monthlyExpenses: 0,
     staffCount: 0,
     latestNotice: null as any,
-    revenueTrend: [] as any[],
     upcomingVacates: [] as any[],
     unallocatedCount: 0,
     qrRegisterCount: 0,
@@ -53,6 +52,7 @@ const INITIAL_STATE = {
         totalExpected: 0,
         collected: 0,
         pending: 0,
+        overdueAmount: 0,
         overdueCount: 0,
         dueTodayCount: 0,
         dueThisWeekCount: 0,
@@ -99,33 +99,6 @@ const Skeleton = ({ style }: { style?: any }) => (
     <View style={[{ backgroundColor: '#E9D5FF', borderRadius: 8, opacity: 0.5 }, style]} />
 );
 
-// ─── Simple bar chart using plain Views ───────────────────────────────────────
-const RevenueBar = ({ amount, maxAmount, month, isCurrent }: any) => {
-    const barH = Math.max(6, Math.round((amount / Math.max(maxAmount, 1)) * 72));
-    return (
-        <View style={bc.column}>
-            <Text style={[bc.topLabel, isCurrent && { color: '#EA580C' }]}>
-                {amount > 0 ? (amount >= 1000 ? `₹${(amount / 1000).toFixed(0)}k` : `₹${amount}`) : ''}
-            </Text>
-            <View style={bc.barWrap}>
-                <View
-                    style={[
-                        bc.bar,
-                        {
-                            height: barH,
-                            backgroundColor: isCurrent ? '#EA580C' : '#FFEDD5',
-                            borderRadius: isCurrent ? 6 : 4,
-                        },
-                    ]}
-                />
-            </View>
-            <Text style={[bc.month, isCurrent && { color: '#EA580C', fontWeight: '800' }]}>
-                {month}
-            </Text>
-        </View>
-    );
-};
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function HomeScreen() {
     const navigation = useNavigation<any>();
@@ -137,6 +110,7 @@ export default function HomeScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [hasError, setHasError] = useState(false);
     const [backgroundLoading, setBackgroundLoading] = useState(false);
+    const [showCollectionSheet, setShowCollectionSheet] = useState(false);
     const isFirstLoadRef = React.useRef(true);
 
     const pulseValue = useRef(new Animated.Value(1)).current;
@@ -195,65 +169,6 @@ export default function HomeScreen() {
             const total = d2.totalBeds || 0;
             const monthlyOverview = overviewRes.data?.success ? overviewRes.data.data : null;
             const currentMonthRevenue = Number(monthlyOverview?.currentMonth?.totalIncome ?? monthCollected ?? 0);
-
-            // Build top 5 defaulters list and upcoming dues
-            let topDefaulters: any[] = [];
-            let upcomingDuesList: any[] = [];
-            if (summaryRes.data.success && summaryRes.data.data?.fees) {
-                const fees: any[] = summaryRes.data.data.fees;
-                const now = new Date();
-                now.setHours(0, 0, 0, 0);
-
-                // Group by student ID to prevent duplicates
-                const studentMap = new Map();
-
-                fees
-                    .filter(f =>
-                        (f.balance || 0) > 0 &&
-                        !['paid', 'fully paid'].includes((f.fee_status || '').toLowerCase()),
-                    )
-                    .forEach(f => {
-                        const due = f.due_date ? new Date(f.due_date) : new Date();
-                        due.setHours(0, 0, 0, 0);
-                        const diffDays = Math.floor((now.getTime() - due.getTime()) / 86400000);
-
-                        const id = f.student_id;
-                        if (!studentMap.has(id)) {
-                            studentMap.set(id, {
-                                id: id,
-                                name: `${f.first_name || ''} ${f.last_name || ''}`.trim(),
-                                amount: 0,
-                                phone: f.phone,
-                                isOverdue: false,
-                                daysLate: 0,
-                                daysLeft: 9999, // default large number
-                            });
-                        }
-
-                        const s = studentMap.get(id);
-                        s.amount += parseFloat(f.balance || 0);
-
-                        if (diffDays > 0) {
-                            s.isOverdue = true;
-                            if (diffDays > s.daysLate) s.daysLate = diffDays;
-                        } else {
-                            const left = Math.abs(diffDays);
-                            if (left < s.daysLeft) s.daysLeft = left;
-                        }
-                    });
-
-                const mappedFees = Array.from(studentMap.values());
-
-                topDefaulters = mappedFees
-                    .filter(f => f.isOverdue)
-                    .sort((a, b) => b.daysLate - a.daysLate || b.amount - a.amount)
-                    .slice(0, 5);
-
-                upcomingDuesList = mappedFees
-                    .filter(f => !f.isOverdue && f.daysLeft <= 3 && f.daysLeft >= 0)
-                    .sort((a, b) => a.daysLeft - b.daysLeft)
-                    .slice(0, 5);
-            }
 
             // Build collection stats picture
             const collectionStats = {
@@ -324,6 +239,7 @@ export default function HomeScreen() {
             const activeStudents = studentsRes.data?.success ? (studentsRes.data.data || []) : [];
             const unallocatedCount = activeStudents.filter((s: any) => s.status === 1 && !s.room_id).length;
             const qrRegisterCount = activeStudents.filter((s: any) => s.status === 3).length;
+            const totalStudentsCount = activeStudents.filter((s: any) => s.status === 1).length;
             const allComplaints = complaintsRes.data?.success ? (complaintsRes.data.complaints || []) : [];
             const openComplaintsCount = allComplaints.filter((c: any) => c.status === 'Open' || c.status === 'In Progress').length;
 
@@ -339,9 +255,8 @@ export default function HomeScreen() {
                 availableBeds: total - occupied,
                 todayAmount: d2.todayRent || 0,
                 activeTenants: occupied,
+                totalStudentsCount,
                 leftTenants: d2.leftTenants || d2.vacatedStudents || 0,
-                unpaidStudents: topDefaulters,
-                upcomingDues: upcomingDuesList,
                 totalRooms: d2.totalRooms || 0,
                 availableRooms: d2.availableRooms || 0,
                 occupancyRate: d2.occupancyRate || 0,
@@ -351,7 +266,6 @@ export default function HomeScreen() {
                 monthlyExpenses: d2.monthlyExpenses || 0,
                 staffCount: d2.staffCount || 0,
                 latestNotice: activeNotice,
-                revenueTrend: overviewRes.data?.success && overviewRes.data.data?.trend ? overviewRes.data.data.trend : [],
                 upcomingVacates,
                 unallocatedCount,
                 qrRegisterCount,
@@ -382,30 +296,6 @@ export default function HomeScreen() {
     const handleQuickAction = (a: typeof QUICK_ACTIONS[0]) => {
         navigation.navigate(a.route);
     };
-
-    // ── Revenue chart data (real trend data from backend) ──
-    const currentMonthIdx = new Date().getMonth(); // 0-based
-    const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const hasRealTrend = data.revenueTrend && data.revenueTrend.length > 0;
-    // Only ever show REAL data. When the backend has no trend yet, plot real
-    // zeros for past months and the actual current-month figure — never invent
-    // numbers for a business owner to act on.
-    const revenueData = hasRealTrend
-        ? data.revenueTrend.slice(-6).map((t: any) => ({
-            month: t.monthLabel,
-            amount: t.income || 0,
-            isCurrent: t.month === `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`,
-        }))
-        : Array.from({ length: 6 }, (_, i) => {
-            const mIdx = (currentMonthIdx - 5 + i + 12) % 12;
-            const isCurrent = i === 5;
-            return {
-                month: MONTH_NAMES[mIdx],
-                amount: isCurrent ? data.monthAmount : 0,
-                isCurrent,
-            };
-        });
-    const maxRevenue = Math.max(...revenueData.map(r => r.amount), 1);
 
     // ─── Format currency compactly ───────────────────────────────────────────
     const fmt = (n: number) => {
@@ -643,70 +533,7 @@ export default function HomeScreen() {
 
 
 
-                    {/* ─────────────────── TOP METRICS ROW ─────────────────── */}
-                    <View style={s.topMetricsRow}>
-                        {/* Card 1: Today's Collection */}
-                        <TouchableOpacity
-                            style={[s.topMetricCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
-                            onPress={() => navigation.navigate('IncomeDetails', { period: 'day' })}
-                            activeOpacity={0.8}
-                        >
-                            <View style={[s.topMetricIconCircle, { backgroundColor: '#E8F5E9' }]}>
-                                <Text style={{ color: '#2E7D32', fontSize: 14, fontWeight: '800' }}>₹</Text>
-                            </View>
-                            <Text style={[s.topMetricLabel, { color: theme.textSecondary }]} numberOfLines={1}>{t('dashboard.today')}</Text>
-                            <Text style={[s.topMetricValue, { color: '#2E7D32' }]} numberOfLines={1}>{fmt(data.todayAmount)}</Text>
-                        </TouchableOpacity>
-
-                        {/* Card 2: Pending Dues */}
-                        <TouchableOpacity
-                            style={[s.topMetricCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
-                            onPress={() => navigation.navigate('PendingTab')}
-                            activeOpacity={0.8}
-                        >
-                            <View style={[s.topMetricIconCircle, { backgroundColor: '#FFE0B2' }]}>
-                                <Ionicons name="wallet-outline" size={15} color="#E65100" />
-                            </View>
-                            <Text style={[s.topMetricLabel, { color: theme.textSecondary }]} numberOfLines={1}>{t('dashboard.pending')}</Text>
-                            <Text style={[s.topMetricValue, { color: '#E65100' }]} numberOfLines={1}>{fmt(data.totalDuesAmount)}</Text>
-                        </TouchableOpacity>
-
-                        {/* Card 3: This Month Collection */}
-                        <TouchableOpacity
-                            style={[s.topMetricCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
-                            onPress={() => navigation.navigate('IncomeDetails', { period: 'month' })}
-                            activeOpacity={0.8}
-                        >
-                            <View style={[s.topMetricIconCircle, { backgroundColor: '#E3F2FD' }]}>
-                                <Ionicons name="bar-chart-outline" size={15} color="#1565C0" />
-                            </View>
-                            <Text style={[s.topMetricLabel, { color: theme.textSecondary }]} numberOfLines={1}>{t('dashboard.month')}</Text>
-                            <Text style={[s.topMetricValue, { color: '#1565C0' }]} numberOfLines={1}>{fmt(data.monthAmount)}</Text>
-                        </TouchableOpacity>
-
-                        {/* Card 4: New Admissions */}
-                        <TouchableOpacity
-                            style={[s.topMetricCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
-                            onPress={() => {
-                                const today = new Date();
-                                const lastWeek = new Date();
-                                lastWeek.setDate(today.getDate() - 7);
-                                navigation.navigate('Students', {
-                                    startDate: toLocalDateStr(lastWeek),
-                                    endDate: toLocalDateStr(today)
-                                });
-                            }}
-                            activeOpacity={0.8}
-                        >
-                            <View style={[s.topMetricIconCircle, { backgroundColor: '#F3E5F5' }]}>
-                                <Ionicons name="person-add-outline" size={15} color="#4A148C" />
-                            </View>
-                            <Text style={[s.topMetricLabel, { color: theme.textSecondary }]} numberOfLines={1}>{t('dashboard.new')}</Text>
-                            <Text style={[s.topMetricValue, { color: '#4A148C' }]} numberOfLines={1}>{(data as any).newAdmissionsCount ?? 0}</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    {/* ─────────────────── BEDS OVERVIEW ─────────────────── */}
+                    {/* ─────────────────── OVERVIEW ─────────────────── */}
                     {data.totalBeds === 0 ? (
                         <TouchableOpacity
                             style={[
@@ -751,105 +578,39 @@ export default function HomeScreen() {
                         </TouchableOpacity>
                     ) : (
                         <View style={[s.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                            <View style={[s.cardHeader, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
-                                <TouchableOpacity
-                                    style={s.cardHeaderLeft}
-                                    activeOpacity={0.7}
-                                    onPress={() => navigation.navigate('Rooms', { filter: 'All' })}
-                                >
-                                    <Ionicons name="apps" size={15} color={theme.primary} />
-                                    <Text style={[s.cardTitle, { fontSize: fontSize - 1, color: theme.textPrimary }]}>{t('dashboard.bedsOccupancyOverview')}</Text>
-                                    <Ionicons name="chevron-forward" size={12} color={theme.textSecondary} style={{ marginLeft: 2 }} />
+                            <View style={s.overviewRow}>
+                                <TouchableOpacity style={s.overviewItem} activeOpacity={0.7} onPress={() => navigation.navigate('Students')}>
+                                    <Text style={[s.overviewValue, { color: '#7C3AED', fontSize: fontSize + 5 }]} numberOfLines={1}>{data.totalStudentsCount}</Text>
+                                    <Text style={[s.overviewLabel, { color: theme.textSecondary, fontSize: Math.max(9, fontSize - 4) }]} numberOfLines={1}>{t('dashboard.tenants')}</Text>
                                 </TouchableOpacity>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                    <Text style={[s.cardMeta, { fontSize: Math.max(9, fontSize - 4), color: theme.textSecondary, fontWeight: '700' }]}>
-                                        {t('dashboard.roomsCount')}: {data.totalRooms} ({data.availableRooms} {t('dashboard.avail')})
+                                <View style={[s.overviewDivider, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]} />
+                                <TouchableOpacity style={s.overviewItem} activeOpacity={0.7} onPress={() => navigation.navigate('Rooms', { filter: 'All' })}>
+                                    <Text style={[s.overviewValue, { color: '#0284C7', fontSize: fontSize + 5 }]} numberOfLines={1}>{data.occupiedBeds}/{data.totalBeds}</Text>
+                                    <Text style={[s.overviewLabel, { color: theme.textSecondary, fontSize: Math.max(9, fontSize - 4) }]} numberOfLines={1}>{t('dashboard.bedsOccupied')}</Text>
+                                </TouchableOpacity>
+                                <View style={[s.overviewDivider, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]} />
+                                <TouchableOpacity style={s.overviewItem} activeOpacity={0.7} onPress={() => setShowCollectionSheet(true)}>
+                                    <Text style={[s.overviewValue, { color: '#10B981', fontSize: fontSize + 5 }]} numberOfLines={1}>{fmt(data.collectionStats.collected)}</Text>
+                                    <Text style={[s.overviewLabel, { color: theme.textSecondary, fontSize: Math.max(9, fontSize - 4) }]} numberOfLines={1}>
+                                        {data.collectionStats.monthName || t('dashboard.month')} Collection
                                     </Text>
-                                    <Animated.View style={{ transform: [{ scale: pulseValue }] }}>
-                                        <TouchableOpacity
-                                            onPress={() => navigation.navigate('AddRoom')}
-                                            style={{
-                                                width: 22,
-                                                height: 22,
-                                                borderRadius: 11,
-                                                backgroundColor: theme.primary,
-                                                justifyContent: 'center',
-                                                alignItems: 'center',
-                                                shadowColor: theme.primary,
-                                                shadowOffset: { width: 0, height: 2 },
-                                                shadowOpacity: 0.2,
-                                                shadowRadius: 3,
-                                                elevation: 2,
-                                            }}
-                                            activeOpacity={0.7}
-                                        >
-                                            <Ionicons name="add" size={14} color="#FFF" style={{ fontWeight: '900' }} />
-                                        </TouchableOpacity>
-                                    </Animated.View>
-                                </View>
+                                </TouchableOpacity>
                             </View>
 
-                            {/* Progress Bar Visual */}
-                            <View style={s.bedProgressContainer}>
+                            <TouchableOpacity activeOpacity={0.7} onPress={() => setShowCollectionSheet(true)} style={s.overviewProgressWrap}>
                                 <View style={[s.progressBarBackground, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                                    <View style={[s.progressBarFill, { width: `${data.occupancyRate}%`, backgroundColor: '#7C3AED' }]} />
+                                    <View style={[s.progressBarFill, {
+                                        width: `${data.collectionStats.totalExpected > 0 ? Math.min(100, Math.round((data.collectionStats.collected / data.collectionStats.totalExpected) * 100)) : 0}%`,
+                                        backgroundColor: '#10B981'
+                                    }]} />
                                 </View>
                                 <View style={s.progressTextRow}>
-                                    <Text style={[s.progressTextLabel, { fontSize: Math.max(9, fontSize - 4), color: theme.textSecondary }]}>
-                                        {data.occupiedBeds} / {data.totalBeds} {t('dashboard.bedsOccupied')}
+                                    <Text style={[s.progressTextLabel, { fontSize: Math.max(9, fontSize - 4), color: theme.textSecondary }]} numberOfLines={1}>
+                                        {t('dashboard.pending')}: {fmt(data.collectionStats.pending)}
                                     </Text>
-                                    <Text style={[s.progressTextVal, { fontSize: fontSize - 3, color: '#7C3AED', fontWeight: '800' }]}>
-                                        {data.occupancyRate}%
-                                    </Text>
+                                    <Ionicons name="chevron-forward" size={14} color={theme.textSecondary} />
                                 </View>
-                            </View>
-
-                            <View style={s.bedsRowNew}>
-                                {/* Available */}
-                                <TouchableOpacity
-                                    style={[s.bedCardNew, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#E8F5E9' }]}
-                                    activeOpacity={0.7}
-                                    onPress={() => navigation.navigate('Rooms', { filter: 'Vacant' })}
-                                >
-                                    <View style={[s.bedIconNew, { backgroundColor: '#E8F5E9' }]}>
-                                        <Ionicons name="checkmark-circle-sharp" size={20} color="#2E7D32" />
-                                    </View>
-                                    <View>
-                                        <Text style={[s.bedNumNew, { fontSize: fontSize - 2, color: isDark ? theme.textPrimary : '#2E7D32' }]}>{data.availableBeds}</Text>
-                                        <Text style={[s.bedLblNew, { fontSize: Math.max(9, fontSize - 5), color: theme.textSecondary }]}>{t('dashboard.available')}</Text>
-                                    </View>
-                                </TouchableOpacity>
-
-                                {/* Occupied */}
-                                <TouchableOpacity
-                                    style={[s.bedCardNew, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#FFEBEE' }]}
-                                    activeOpacity={0.7}
-                                    onPress={() => navigation.navigate('Rooms', { filter: 'Full' })}
-                                >
-                                    <View style={[s.bedIconNew, { backgroundColor: '#FFEBEE' }]}>
-                                        <Ionicons name="people-sharp" size={20} color="#C62828" />
-                                    </View>
-                                    <View>
-                                        <Text style={[s.bedNumNew, { fontSize: fontSize - 2, color: isDark ? theme.textPrimary : '#C62828' }]}>{data.occupiedBeds}</Text>
-                                        <Text style={[s.bedLblNew, { fontSize: Math.max(9, fontSize - 5), color: theme.textSecondary }]}>{t('dashboard.occupied')}</Text>
-                                    </View>
-                                </TouchableOpacity>
-
-                                {/* Notices board */}
-                                <TouchableOpacity
-                                    style={[s.bedCardNew, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#FFF3E0' }]}
-                                    activeOpacity={0.7}
-                                    onPress={() => navigation.navigate('Notices')}
-                                >
-                                    <View style={[s.bedIconNew, { backgroundColor: '#FFF3E0' }]}>
-                                        <Ionicons name="megaphone-sharp" size={20} color="#EF6C00" />
-                                    </View>
-                                    <View>
-                                        <Text style={[s.bedNumNew, { fontSize: fontSize - 2, color: isDark ? theme.textPrimary : '#EF6C00' }]}>{data.noticesCount}</Text>
-                                        <Text style={[s.bedLblNew, { fontSize: Math.max(9, fontSize - 5), color: theme.textSecondary }]}>{t('dashboard.notices')}</Text>
-                                    </View>
-                                </TouchableOpacity>
-                            </View>
+                            </TouchableOpacity>
                         </View>
                     )}
 
@@ -954,56 +715,6 @@ export default function HomeScreen() {
                         </View>
                     </View>
 
-                    {/* ─────────────────── TOP DEFAULTERS (OVERDUE) ─────────────────── */}
-                    {data.unpaidStudents && data.unpaidStudents.length > 0 && (
-                        <View style={s.sectionBlock}>
-                            <Text style={[s.sectionTitle, { fontSize: fontSize, color: '#DC2626', textTransform: 'uppercase' }]}>
-                                ⚠️ Top 5 Overdue Students
-                            </Text>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 4 }}>
-                                {data.unpaidStudents.map((item, idx) => (
-                                    <TouchableOpacity
-                                        key={idx}
-                                        style={[s.card, { backgroundColor: isDark ? '#3B1A1A' : '#FEF2F2', borderColor: '#FCA5A5', borderWidth: 1, padding: 12, borderRadius: 12, width: 150 }]}
-                                        onPress={() => navigation.navigate('StudentDetails', { studentId: item.id })}
-                                    >
-                                        <Text style={{ fontWeight: '700', fontSize: 14, color: isDark ? '#FECACA' : '#991B1B' }} numberOfLines={1}>{item.name}</Text>
-                                        <Text style={{ fontSize: 16, fontWeight: '800', color: '#DC2626', marginTop: 4 }}>₹{item.amount}</Text>
-                                        <Text style={{ fontSize: 11, color: '#DC2626', marginTop: 4 }}>
-                                            {item.isOverdue ? `${item.daysLate}d Overdue` : 'Pending'}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </ScrollView>
-                        </View>
-                    )}
-
-                    {/* ─────────────────── NEXT 3 DAYS DUES ─────────────────── */}
-                    {data.upcomingDues && data.upcomingDues.length > 0 && (
-                        <View style={s.sectionBlock}>
-                            <Text style={[s.sectionTitle, { fontSize: fontSize, color: '#D97706', textTransform: 'uppercase' }]}>
-                                🕒 Dues in Next 3 Days
-                            </Text>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 4 }}>
-                                {data.upcomingDues.map((item, idx) => (
-                                    <TouchableOpacity
-                                        key={idx}
-                                        style={[s.card, { backgroundColor: isDark ? '#2D1A0E' : '#FFF7ED', borderColor: '#FCD34D', borderWidth: 1, padding: 12, borderRadius: 12, width: 150 }]}
-                                        onPress={() => navigation.navigate('StudentDetails', { studentId: item.id })}
-                                    >
-                                        <Text style={{ fontWeight: '700', fontSize: 14, color: isDark ? '#FEF3C7' : '#92400E' }} numberOfLines={1}>{item.name}</Text>
-                                        <Text style={{ fontSize: 16, fontWeight: '800', color: '#D97706', marginTop: 4 }}>₹{item.amount}</Text>
-                                        <Text style={{ fontSize: 11, color: '#D97706', marginTop: 4 }}>
-                                            {item.daysLeft === 0 ? 'Due Today' : `Due in ${item.daysLeft}d`}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </ScrollView>
-                        </View>
-                    )}
-
-
-
                     {/* ─────────────────── UPCOMING CHECKOUT SCHEDULES ─────────────────── */}
                     {data.upcomingVacates && data.upcomingVacates.length > 0 ? (
                         <View style={[s.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
@@ -1050,80 +761,82 @@ export default function HomeScreen() {
                     {/* ─────────────────── TENANT APP PROMO ─────────────────── */}
                     <TenantAppCard theme={theme} isDark={isDark} hostelCode={data.hostelCode} />
 
-                    {/* ─────────────────── COLLECTION PICTURE ─────────────────── */}
-                    <View style={{ marginBottom: 40 }}>
-                        <Text style={[s.sectionTitle, { color: theme.textPrimary, marginBottom: 16 }]}>
-                            {data.collectionStats.monthName} Collection Status
-                        </Text>
-                        <View style={[s.card, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0', padding: 12, marginBottom: 24 }]}>
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 10 }}>
-                                <View>
-                                    <Text style={{ color: theme.textPrimary, fontSize: 13, fontWeight: '700', marginBottom: 6 }}>
-                                        Target: ₹{data.collectionStats.totalExpected.toLocaleString('en-IN')}
-                                        <Text style={{ color: theme.textSecondary, fontSize: 11, fontWeight: '500' }}>  ({data.collectionStats.tenantsCount} tenants)</Text>
-                                    </Text>
-                                    <Text style={{ color: '#10B981', fontSize: 11, fontWeight: '700', marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0.5 }}>Collected</Text>
-                                    <Text style={{ color: '#10B981', fontSize: 24, fontWeight: '800' }}>₹{data.collectionStats.collected.toLocaleString('en-IN')}</Text>
-                                </View>
-                                <View style={{ alignItems: 'flex-end' }}>
-                                    <Text style={{ color: '#EF4444', fontSize: 11, fontWeight: '700', marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0.5 }}>Pending</Text>
-                                    <Text style={{ color: '#EF4444', fontSize: 18, fontWeight: '800' }}>₹{data.collectionStats.pending.toLocaleString('en-IN')}</Text>
-                                </View>
-                            </View>
+                </View>
+            </ScrollView>
 
-                            <View style={{ height: 6, backgroundColor: isDark ? '#334155' : '#E2E8F0', borderRadius: 3, marginBottom: 12, overflow: 'hidden' }}>
-                                <View style={{ height: '100%', backgroundColor: '#10B981', width: `${data.collectionStats.totalExpected > 0 ? Math.round((data.collectionStats.collected / data.collectionStats.totalExpected) * 100) : 0}%`, borderRadius: 3 }} />
-                            </View>
-
-                            <View style={{ flexDirection: 'column' }}>
-                                <View style={{ flexDirection: 'row', marginBottom: 8 }}>
-                                    <View style={{ flex: 1, marginRight: 8, backgroundColor: '#FEF2F2', padding: 10, borderRadius: 8, borderLeftWidth: 3, borderLeftColor: '#EF4444', justifyContent: 'center' }}>
-                                        <Text style={{ color: '#EF4444', fontSize: 11, fontWeight: '600', marginBottom: 2 }}>Overdue</Text>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                                            <Text style={{ color: '#991B1B', fontSize: 14, fontWeight: '800' }}>{data.collectionStats.overdueCount}</Text>
-                                            <Text style={{ color: '#991B1B', fontSize: 10, fontWeight: '700' }}>₹{(data.collectionStats.overdueAmount || 0).toLocaleString('en-IN')}</Text>
-                                        </View>
-                                    </View>
-                                    <View style={{ flex: 1, backgroundColor: '#FFFBEB', padding: 10, borderRadius: 8, borderLeftWidth: 3, borderLeftColor: '#F59E0B', justifyContent: 'center' }}>
-                                        <Text style={{ color: '#F59E0B', fontSize: 11, fontWeight: '600', marginBottom: 2 }}>Due Today</Text>
-                                        <Text style={{ color: '#B45309', fontSize: 14, fontWeight: '800' }}>{data.collectionStats.dueTodayCount}</Text>
-                                    </View>
-                                </View>
-
-                                <View style={{ flexDirection: 'row' }}>
-                                    <View style={{ flex: 1, marginRight: 8, backgroundColor: isDark ? '#0F172A' : '#F1F5F9', padding: 10, borderRadius: 8, borderLeftWidth: 3, borderLeftColor: '#64748B', justifyContent: 'center' }}>
-                                        <Text style={{ color: isDark ? '#94A3B8' : '#475569', fontSize: 11, fontWeight: '600', marginBottom: 2 }}>Due This Wk</Text>
-                                        <Text style={{ color: isDark ? '#E2E8F0' : '#1E293B', fontSize: 14, fontWeight: '800' }}>{data.collectionStats.dueThisWeekCount}</Text>
-                                    </View>
-                                    <View style={{ flex: 1, backgroundColor: '#ECFDF5', padding: 10, borderRadius: 8, borderLeftWidth: 3, borderLeftColor: '#10B981', justifyContent: 'center' }}>
-                                        <Text style={{ color: '#10B981', fontSize: 11, fontWeight: '600', marginBottom: 2 }}>Paid</Text>
-                                        <Text style={{ color: '#065F46', fontSize: 14, fontWeight: '800' }}>{data.collectionStats.paidCount}</Text>
-                                    </View>
-                                </View>
-                            </View>
+            {/* ─────────────────── COLLECTION DETAILS SHEET ─────────────────── */}
+            <ModalSheet visible={showCollectionSheet} onClose={() => setShowCollectionSheet(false)} maxHeight="80%">
+                <View style={s.sheetHeaderRow}>
+                    <Text style={[s.sheetTitleText, { color: theme.textPrimary }]}>
+                        {data.collectionStats.monthName} Collection Status
+                    </Text>
+                    <TouchableOpacity onPress={() => setShowCollectionSheet(false)}>
+                        <Text style={{ color: theme.primary, fontSize: 15, fontWeight: '700' }}>Close</Text>
+                    </TouchableOpacity>
+                </View>
+                <View style={{ paddingHorizontal: 20, paddingBottom: 30 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 10 }}>
+                        <View>
+                            <Text style={{ color: theme.textPrimary, fontSize: 13, fontWeight: '700', marginBottom: 6 }}>
+                                Target: ₹{data.collectionStats.totalExpected.toLocaleString('en-IN')}
+                                <Text style={{ color: theme.textSecondary, fontSize: 11, fontWeight: '500' }}>  ({data.collectionStats.tenantsCount} tenants)</Text>
+                            </Text>
+                            <Text style={{ color: '#10B981', fontSize: 11, fontWeight: '700', marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0.5 }}>Collected</Text>
+                            <Text style={{ color: '#10B981', fontSize: 24, fontWeight: '800' }}>₹{data.collectionStats.collected.toLocaleString('en-IN')}</Text>
+                        </View>
+                        <View style={{ alignItems: 'flex-end' }}>
+                            <Text style={{ color: '#EF4444', fontSize: 11, fontWeight: '700', marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0.5 }}>Pending</Text>
+                            <Text style={{ color: '#EF4444', fontSize: 18, fontWeight: '800' }}>₹{data.collectionStats.pending.toLocaleString('en-IN')}</Text>
                         </View>
                     </View>
 
+                    <View style={{ height: 6, backgroundColor: isDark ? '#334155' : '#E2E8F0', borderRadius: 3, marginBottom: 16, overflow: 'hidden' }}>
+                        <View style={{ height: '100%', backgroundColor: '#10B981', width: `${data.collectionStats.totalExpected > 0 ? Math.round((data.collectionStats.collected / data.collectionStats.totalExpected) * 100) : 0}%`, borderRadius: 3 }} />
+                    </View>
+
+                    <View style={{ flexDirection: 'column' }}>
+                        <View style={{ flexDirection: 'row', marginBottom: 8, gap: 8 }}>
+                            <TouchableOpacity
+                                style={{ flex: 1, backgroundColor: '#FEF2F2', padding: 10, borderRadius: 8, borderLeftWidth: 3, borderLeftColor: '#EF4444', justifyContent: 'center' }}
+                                activeOpacity={0.7}
+                                onPress={() => { setShowCollectionSheet(false); navigation.navigate('PendingTab'); }}
+                            >
+                                <Text style={{ color: '#EF4444', fontSize: 11, fontWeight: '600', marginBottom: 2 }}>Overdue</Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <Text style={{ color: '#991B1B', fontSize: 14, fontWeight: '800' }}>{data.collectionStats.overdueCount}</Text>
+                                    <Text style={{ color: '#991B1B', fontSize: 10, fontWeight: '700' }}>₹{(data.collectionStats.overdueAmount || 0).toLocaleString('en-IN')}</Text>
+                                </View>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={{ flex: 1, backgroundColor: '#FFFBEB', padding: 10, borderRadius: 8, borderLeftWidth: 3, borderLeftColor: '#F59E0B', justifyContent: 'center' }}
+                                activeOpacity={0.7}
+                                onPress={() => { setShowCollectionSheet(false); navigation.navigate('PendingTab', { tab: 'Next 7 Days' }); }}
+                            >
+                                <Text style={{ color: '#F59E0B', fontSize: 11, fontWeight: '600', marginBottom: 2 }}>Due Today</Text>
+                                <Text style={{ color: '#B45309', fontSize: 14, fontWeight: '800' }}>{data.collectionStats.dueTodayCount}</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                            <TouchableOpacity
+                                style={{ flex: 1, backgroundColor: isDark ? '#0F172A' : '#F1F5F9', padding: 10, borderRadius: 8, borderLeftWidth: 3, borderLeftColor: '#64748B', justifyContent: 'center' }}
+                                activeOpacity={0.7}
+                                onPress={() => { setShowCollectionSheet(false); navigation.navigate('PendingTab', { tab: 'Next 7 Days' }); }}
+                            >
+                                <Text style={{ color: isDark ? '#94A3B8' : '#475569', fontSize: 11, fontWeight: '600', marginBottom: 2 }}>Due This Wk</Text>
+                                <Text style={{ color: isDark ? '#E2E8F0' : '#1E293B', fontSize: 14, fontWeight: '800' }}>{data.collectionStats.dueThisWeekCount}</Text>
+                            </TouchableOpacity>
+                            <View style={{ flex: 1, backgroundColor: '#ECFDF5', padding: 10, borderRadius: 8, borderLeftWidth: 3, borderLeftColor: '#10B981', justifyContent: 'center' }}>
+                                <Text style={{ color: '#10B981', fontSize: 11, fontWeight: '600', marginBottom: 2 }}>Paid</Text>
+                                <Text style={{ color: '#065F46', fontSize: 14, fontWeight: '800' }}>{data.collectionStats.paidCount}</Text>
+                            </View>
+                        </View>
+                    </View>
                 </View>
-            </ScrollView>
+            </ModalSheet>
         </View>
     );
 }
-
-// ─── Bar chart styles ─────────────────────────────────────────────────────────
-const bc = StyleSheet.create({
-    column: { flex: 1, alignItems: 'center' },
-    topLabel: { fontSize: 8, color: '#7C3AED', fontWeight: '700', marginBottom: 3, height: 12 },
-    barWrap: {
-        height: 80,
-        justifyContent: 'flex-end',
-        alignItems: 'center',
-        width: '100%',
-        paddingHorizontal: 3,
-    },
-    bar: { width: '80%', borderTopLeftRadius: 4, borderTopRightRadius: 4 },
-    month: { fontSize: 10, color: '#94A3B8', fontWeight: '600', marginTop: 5 },
-});
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
@@ -1235,10 +948,31 @@ const s = StyleSheet.create({
     cardTitle: { fontSize: 16, fontWeight: '800', color: '#1E293B' },
     cardMeta: { fontSize: 13, color: '#94A3B8', fontWeight: '600' },
 
-    // ── Beds Overview ────────────────────────────────────────────────────────
-    bedProgressContainer: {
-        marginBottom: 10,
-        paddingHorizontal: 4,
+    // ── Overview card ────────────────────────────────────────────────────────
+    overviewRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 14,
+    },
+    overviewItem: {
+        flex: 1,
+        alignItems: 'center',
+    },
+    overviewDivider: {
+        width: 1,
+        alignSelf: 'stretch',
+        marginHorizontal: 4,
+    },
+    overviewValue: {
+        fontWeight: '800',
+        marginBottom: 2,
+    },
+    overviewLabel: {
+        fontWeight: '600',
+        textAlign: 'center',
+    },
+    overviewProgressWrap: {
+        paddingHorizontal: 2,
     },
     progressBarBackground: {
         height: 6,
@@ -1262,45 +996,21 @@ const s = StyleSheet.create({
         color: '#64748B',
         fontWeight: '600',
     },
-    progressTextVal: {
-        fontSize: 12,
-        color: '#7C3AED',
-        fontWeight: '800',
-    },
-    bedsRowNew: {
+
+    // ── Collection details sheet ─────────────────────────────────────────────
+    sheetHeaderRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        gap: 8,
+        paddingHorizontal: 20,
+        paddingBottom: 16,
+        marginBottom: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F1F5F9',
     },
-    bedCardNew: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 10,
-        paddingHorizontal: 8,
-        borderRadius: 12,
-        borderWidth: 1.5,
-        backgroundColor: '#FFF',
-        gap: 6,
-    },
-    bedIconNew: {
-        width: 38,
-        height: 38,
-        borderRadius: 8,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    bedNumNew: {
-        fontSize: 16,
+    sheetTitleText: {
+        fontSize: 18,
         fontWeight: '800',
-        lineHeight: 19,
-    },
-    bedLblNew: {
-        fontSize: 11,
-        color: '#64748B',
-        fontWeight: '600',
-        marginTop: 1,
     },
 
     // ── Quick Management ─────────────────────────────────────────────────────
@@ -1350,11 +1060,6 @@ const s = StyleSheet.create({
     },
     seeAll: { fontSize: 12, fontWeight: '700', color: '#7C3AED' },
 
-    statsGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 12,
-    },
     statCard: {
         flex: 1,
         borderRadius: 12,
@@ -1472,53 +1177,6 @@ const s = StyleSheet.create({
         marginTop: 2,
     },
 
-    topMetricsGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'space-between',
-        gap: 10,
-        marginBottom: 8,
-    },
-    topMetricsRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        gap: 6,
-        marginBottom: 4,
-    },
-    topMetricCard: {
-        flex: 1,
-        borderRadius: 12,
-        paddingVertical: 8,
-        paddingHorizontal: 6,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
-    },
-    topMetricIconCircle: {
-        width: 30,
-        height: 30,
-        borderRadius: 15,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 2,
-    },
-    topMetricLabel: {
-        fontSize: 11,
-        fontWeight: '600',
-        textAlign: 'center',
-        marginBottom: 1,
-    },
-    topMetricValue: {
-        fontSize: 13,
-        fontWeight: '800',
-        textAlign: 'center',
-        marginBottom: 0,
-    },
     topMetricSubRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1541,11 +1199,6 @@ const s = StyleSheet.create({
         fontWeight: '600',
         color: '#94A3B8',
         textAlign: 'center',
-    },
-    horizontalScrollContainer: {
-        gap: 12,
-        paddingHorizontal: 4,
-        paddingVertical: 4,
     },
     statisticsRow: {
         flexDirection: 'row',

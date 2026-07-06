@@ -9,6 +9,7 @@ import { useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { navigationRef } from './navigationRef';
 import { colors } from '../theme';
+import { setupNotificationListeners } from '../services/notifications';
 
 // Auth / onboarding
 import { HostelKeyScreen } from '../Pages/HostelKeyScreen';
@@ -96,6 +97,12 @@ export default function AppNavigator() {
       SplashScreen.hideAsync().catch(() => {});
     }
   }, [loading]);
+
+  useEffect(() => {
+    if (!user) return;
+    const cleanup = setupNotificationListeners(navigationRef);
+    return cleanup;
+  }, [user]);
 
   if (loading) {
     return null;

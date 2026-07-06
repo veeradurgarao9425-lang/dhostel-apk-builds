@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
+import { sendNotificationToStudent } from '../utils/notification.js';
 
 // Get all fee payments
 export const getFeePayments = async (req: AuthRequest, res: Response) => {
@@ -554,6 +555,17 @@ export const verifyPaymentProof = async (req: AuthRequest, res: Response) => {
     }
 
     res.status(200).json({ success: true, message: `Payment proof ${status}` });
+
+    sendNotificationToStudent(
+      payment.student_id,
+      'Payment Proof',
+      status === 'Verified' ? 'Payment Verified' : 'Payment Rejected',
+      status === 'Verified'
+        ? `Your payment of ₹${payment.amount} has been verified.`
+        : `Your payment proof of ₹${payment.amount} was rejected. Please check and resubmit.`,
+      'Medium',
+      { payment_id: paymentId }
+    ).catch(err => console.error('Failed to notify tenant of payment verification:', err));
   } catch (error: any) {
     console.error('Verify payment proof error:', error);
     res.status(500).json({ success: false, message: 'Internal Server Error' });

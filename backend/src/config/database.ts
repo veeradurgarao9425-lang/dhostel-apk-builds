@@ -570,6 +570,24 @@ async function patchDatabaseSchema() {
       console.error('[schema-patch] Error checking/creating user_push_tokens table:', e.message);
     }
 
+    // 13.5 Ensure user_push_tokens supports tenant (student_id) tokens, not just owner/staff (user_id)
+    try {
+      if (tableNamesLower.includes('user_push_tokens')) {
+        const [columns] = await db.raw("SHOW COLUMNS FROM user_push_tokens");
+        const columnNames = (columns as any[]).map(col => col.Field.toLowerCase());
+
+        if (!columnNames.includes('student_id')) {
+          console.log('[schema-patch] adding student_id to user_push_tokens...');
+          await db.raw("ALTER TABLE user_push_tokens ADD COLUMN student_id INT NULL");
+          await db.raw("ALTER TABLE user_push_tokens ADD FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE");
+        }
+        console.log('[schema-patch] Relaxing user_push_tokens.user_id to nullable...');
+        await db.raw("ALTER TABLE user_push_tokens MODIFY COLUMN user_id INT NULL");
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error updating user_push_tokens for tenant tokens:', e.message);
+    }
+
     // 14. Ensure notifications table has hostel_id and priority columns
     try {
       if (tableNamesLower.includes('notifications')) {

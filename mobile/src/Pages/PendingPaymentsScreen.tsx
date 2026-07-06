@@ -5,7 +5,7 @@ import {
     RefreshControl, ActivityIndicator, Alert, TextInput,
     Dimensions,
 } from 'react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
@@ -322,6 +322,7 @@ const WaveDecoration = ({ color }: { color: string }) => (
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function PendingPaymentsScreen() {
     const navigation = useNavigation<any>();
+    const route = useRoute<any>();
     const { theme, fontSize, isDark } = useTheme();
     const { t } = useTranslation();
     const { showSuccess, showError, showApiError } = useToast();
@@ -353,7 +354,10 @@ export default function PendingPaymentsScreen() {
     const [partialPaid, setPartialPaid] = useState(0);
     const [totalDefaulters, setTotalDefaulters] = useState(0);
 
-    const [activeTab, setActiveTab] = useState<'Overdue' | 'Next 7 Days' | 'All Dues'>('Overdue');
+    const initialTab = (['Overdue', 'Next 7 Days', 'All Dues'] as const).includes(route.params?.tab)
+        ? route.params.tab
+        : 'Overdue';
+    const [activeTab, setActiveTab] = useState<'Overdue' | 'Next 7 Days' | 'All Dues'>(initialTab);
     const [tabCounts, setTabCounts] = useState({ overdue: 0, next_7_days: 0, all: 0 });
 
     // Collect Drawer

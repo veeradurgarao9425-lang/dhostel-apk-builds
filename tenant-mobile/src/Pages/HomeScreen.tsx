@@ -11,6 +11,7 @@ import {
   Dimensions,
   LayoutAnimation,
   Animated,
+  DeviceEventEmitter,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
@@ -80,6 +81,7 @@ export default function HomeScreen({ navigation }: any) {
   const [totalRentAmount, setTotalRentAmount] = useState<number>(0);
   const [budget, setBudget] = useState(0);
   const [spent, setSpent] = useState(0);
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const progressAnim = useRef(new Animated.Value(0)).current;
 
   // Animate the budget bar when spent/budget values update
@@ -149,8 +151,26 @@ export default function HomeScreen({ navigation }: any) {
     }
   }, []);
 
+  const fetchUnreadNotifCount = useCallback(async () => {
+    try {
+      const res = await api.get('/notifications');
+      if (res.data?.success) {
+        setUnreadNotifCount(res.data.data.filter((n: any) => !n.is_read).length);
+      }
+    } catch {
+      // non-critical: badge just won't update this cycle
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUnreadNotifCount();
+    const sub = DeviceEventEmitter.addListener('REFRESH_NOTIFICATIONS', fetchUnreadNotifCount);
+    return () => sub.remove();
+  }, [fetchUnreadNotifCount]);
+
   const fetchData = async () => {
     try {
+      fetchUnreadNotifCount();
       const [noticesRes, feesRes] = await Promise.allSettled([
         api.get("/notices").catch(() => ({ data: { success: false } })),
         api.get("/fees/my-fees").catch(() => ({ data: { success: false } })),
@@ -370,7 +390,7 @@ export default function HomeScreen({ navigation }: any) {
                 onPress={() => navigation.navigate("Notifications")}
               >
                 <Bell size={24} color={WHITE} strokeWidth={1.5} />
-                <View style={styles.notificationDot} />
+                {unreadNotifCount > 0 && <View style={styles.notificationDot} />}
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.hAvatar}

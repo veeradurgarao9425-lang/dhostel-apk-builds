@@ -22,6 +22,7 @@ import StudentDetailsScreen  from '../Pages/StudentDetailsScreen';
 import AddStudentScreen      from '../Pages/AddStudentScreen';
 import RoomDetailsScreen     from '../Pages/RoomDetailsScreen';
 import AddRoomScreen         from '../Pages/AddRoomScreen';
+import BulkRoomSetupScreen   from '../Pages/BulkRoomSetupScreen';
 import PaymentDetailsScreen  from '../Pages/PaymentDetailsScreen';
 import ProfileScreen         from '../Pages/ProfileScreen';
 import ExpenseScreen         from '../Pages/ExpenseScreen';
@@ -161,6 +162,11 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen
                         name="AddRoom"
                         component={AddRoomScreen}
+                        options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+                    />
+                    <Stack.Screen
+                        name="BulkRoomSetup"
+                        component={BulkRoomSetupScreen}
                         options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
                     />
                     <Stack.Screen name="BulkDelete"     component={BulkDeleteScreen}    />

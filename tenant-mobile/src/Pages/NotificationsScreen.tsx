@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
+import React, { useState, useCallback, useEffect } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View, ScrollView, ActivityIndicator, RefreshControl, DeviceEventEmitter } from 'react-native';
 import { ArrowLeft, Wallet, Megaphone, Wrench, BellRing, Filter } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -61,6 +61,12 @@ export default function NotificationsScreen({ navigation }: any) {
   useFocusEffect(useCallback(() => {
     fetchNotifications();
   }, [fetchNotifications]));
+
+  // Refresh live when a push notification arrives while this screen is mounted
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('REFRESH_NOTIFICATIONS', fetchNotifications);
+    return () => sub.remove();
+  }, [fetchNotifications]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
