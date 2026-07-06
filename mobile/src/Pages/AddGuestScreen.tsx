@@ -219,7 +219,7 @@ export default function AddGuestScreen({ navigation }: any) {
 
                     <InputField
                         label="Room Number"
-                        placeholder="e.g. 204 (optional)"
+                        placeholder="e.g. 204"
                         value={form.room_number}
                         onChangeText={(t) => up('room_number', t)}
                         onFocus={() => {

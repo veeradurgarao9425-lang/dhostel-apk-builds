@@ -1,96 +1,88 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity,
-    TextInput, KeyboardAvoidingView, Platform, Modal, RefreshControl
+    TextInput, RefreshControl, Image, StatusBar
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Plus, Search, Tag, X, Edit3, Trash2, Calendar, Megaphone } from 'lucide-react-native';
 import { AppHeader } from '../components/AppHeader';
 import { EmptyState } from '../components/ui/EmptyState';
-import { SkeletonList, SkeletonCardList } from '../components/ui/SkeletonCard';
+import { SkeletonList } from '../components/ui/SkeletonCard';
 import { DangerModal } from '../components/ui/DangerModal';
 import { useToast } from '../context/ToastContext';
-import api from '../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
+import { useRefresh } from '../../contexts/RefreshContext';
+import api from '../services/api';
+import { HeaderNotification } from '../components/HeaderNotification';
+import { ProfileMenu } from '../components/ProfileMenu';
+import DateTimePickerModal from "react-native-modal-datetime-picker";
 
-const NOTICE_TYPES = ['General', 'Important', 'Maintenance', 'Food'] as const;
-type NoticeType = typeof NOTICE_TYPES[number];
-
-const TYPE_CONFIG: Record<NoticeType, { emoji: string; color: string; bg: string }> = {
-    General:     { emoji: '📢', color: '#6366F1', bg: '#EEF2FF' },
-    Important:   { emoji: '🚨', color: '#DC2626', bg: '#FEE2E2' },
-    Maintenance: { emoji: '🔧', color: '#D97706', bg: '#FEF3C7' },
-    Food:        { emoji: '🍽️', color: '#16A34A', bg: '#DCFCE7' },
-};
+const DEFAULT_CATEGORIES = [
+    { category_name: 'General', emoji: '📢', color: '#6366F1' },
+    { category_name: 'Important', emoji: '🚨', color: '#DC2626' },
+    { category_name: 'Maintenance', emoji: '🔧', color: '#D97706' },
+    { category_name: 'Food', emoji: '🍽️', color: '#16A34A' },
+];
 
 export default function NoticesManagementScreen({ navigation }: any) {
     const { user } = useAuth();
-    const { showSuccess, showApiError, showError } = useToast();
+    const { theme, isDark } = useTheme();
+    const { refreshKey } = useRefresh();
+    const { showSuccess, showApiError } = useToast();
+    
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [notices, setNotices] = useState<any[]>([]);
-    const [modalVisible, setModalVisible] = useState(false);
-    const [saving, setSaving] = useState(false);
-    const [title, setTitle] = useState('');
-    const [content, setContent] = useState('');
-    const [noticeType, setNoticeType] = useState<NoticeType>('General');
+    const [categories, setCategories] = useState<any[]>(DEFAULT_CATEGORIES);
+    const [search, setSearch] = useState('');
+    const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+    const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
     const [dangerModal, setDangerModal] = useState<{ visible: boolean; notice: any | null }>({
         visible: false, notice: null,
     });
 
-    const fetchNotices = useCallback(async (isRefresh = false) => {
+    const fetchData = useCallback(async (isRefresh = false) => {
         if (!isRefresh) setLoading(true);
         try {
-            const res = await api.get('/notices');
-            if (res.data.success) {
-                setNotices(res.data.data || []);
+            const [catRes, notRes] = await Promise.all([
+                api.get('/notices/categories').catch(() => ({ data: { data: [] } })),
+                api.get('/notices')
+            ]);
+            
+            if (catRes.data?.data?.length > 0) {
+                const custom = catRes.data.data;
+                const merged = [...DEFAULT_CATEGORIES];
+                custom.forEach((c: any) => {
+                    if (!merged.find(m => m.category_name.toLowerCase() === c.category_name.toLowerCase())) {
+                        merged.push({
+                            category_name: c.category_name,
+                            emoji: c.emoji || '📌',
+                            color: c.color || '#8B5CF6'
+                        });
+                    }
+                });
+                setCategories(merged);
+            }
+            
+            if (notRes.data.success) {
+                setNotices(notRes.data.data || []);
             }
         } catch (e) {
-            console.error('Failed to fetch notices:', e);
-            showError('Failed to load notices.');
+            console.error('Failed to fetch data:', e);
+            showApiError(e, 'Failed to load notices.');
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
     }, []);
 
-    useEffect(() => {
-        fetchNotices();
-    }, [fetchNotices]);
-
-    const handleCreate = async () => {
-        if (!title.trim() || !content.trim()) {
-            showError('Title and content are required.');
-            return;
-        }
-        setSaving(true);
-        try {
-            const res = await api.post('/notices', {
-                title: title.trim(),
-                content: content.trim(),
-                notice_type: noticeType,
-            });
-            if (res.data.success) {
-                showSuccess('Notice sent to all tenants!');
-                setModalVisible(false);
-                setTitle('');
-                setContent('');
-                setNoticeType('General');
-                fetchNotices(true);
-            } else {
-                showError(res.data.error || 'Failed to post notice.');
-            }
-        } catch (e: any) {
-            console.error('Failed to create notice:', e);
-            showApiError(e, 'Network error.');
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    const handleDelete = (notice: any) => {
-        setDangerModal({ visible: true, notice });
-    };
+    useFocusEffect(
+        useCallback(() => {
+            fetchData(true);
+        }, [fetchData, refreshKey])
+    );
 
     const handleDeleteConfirm = async () => {
         const { notice } = dangerModal;
@@ -100,7 +92,7 @@ export default function NoticesManagementScreen({ navigation }: any) {
             const res = await api.delete(`/notices/${notice.notice_id}`);
             if (res.data.success) {
                 showSuccess('Notice removed.');
-                fetchNotices(true);
+                fetchData(true);
             }
         } catch (e: any) {
             showApiError(e, 'Failed to delete notice.');
@@ -108,153 +100,187 @@ export default function NoticesManagementScreen({ navigation }: any) {
     };
 
     const timeAgo = (dateStr: string) => {
-        const diff = Date.now() - new Date(dateStr).getTime();
+        if (!dateStr) return 'Just now';
+        const safeDateStr = dateStr.endsWith('Z') ? dateStr : dateStr.replace(' ', 'T') + 'Z';
+        const date = new Date(safeDateStr);
+        let diff = Date.now() - date.getTime();
+        
+        if (isNaN(diff) || diff < 0) diff = 0;
+
+        const mins = Math.floor(diff / 60000);
         const hrs = Math.floor(diff / 3600000);
         const days = Math.floor(diff / 86400000);
-        if (hrs < 1) return 'Just now';
+        
+        if (mins < 1) return 'Just now';
+        if (mins < 60) return `${mins}m ago`;
         if (hrs < 24) return `${hrs}h ago`;
         return `${days}d ago`;
     };
 
+    const getCatConfig = (type: string) => {
+        return categories.find(c => c.category_name === type) || { category_name: type, emoji: '📌', color: '#64748B' };
+    };
+
+    const filteredNotices = notices.filter(n => {
+        const matchesSearch = n.title.toLowerCase().includes(search.toLowerCase()) || 
+                              n.content.toLowerCase().includes(search.toLowerCase()) ||
+                              n.notice_type?.toLowerCase().includes(search.toLowerCase());
+        
+        let matchesDate = true;
+        if (selectedDate) {
+            const nDate = new Date(n.created_at);
+            matchesDate = nDate.getFullYear() === selectedDate.getFullYear() &&
+                          nDate.getMonth() === selectedDate.getMonth() &&
+                          nDate.getDate() === selectedDate.getDate();
+        }
+        return matchesSearch && matchesDate;
+    });
+
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: theme.background }]}>
+            <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
             <AppHeader
                 title="Notices"
-                subtitle="Post announcements to all tenants"
-                onBack={() => navigation.goBack()}
-                rightAction={
-                    <TouchableOpacity style={styles.addBtn} onPress={() => setModalVisible(true)}>
-                        <Ionicons name="add" size={22} color="#FFF" />
-                    </TouchableOpacity>
+                rightComponent={
+                    <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                        <HeaderNotification navigation={navigation} />
+                        <ProfileMenu />
+                    </View>
                 }
             />
 
+            {/* Search Bar */}
+            <View style={styles.searchSection}>
+                <View style={[styles.searchBar, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                    <Search color={isDark ? '#94A3B8' : "#999999"} size={20} />
+                    <TextInput
+                        style={[styles.searchInput, { color: theme.textPrimary }]}
+                        placeholder="Search notices or categories..."
+                        placeholderTextColor={isDark ? '#64748B' : "#999999"}
+                        value={search}
+                        onChangeText={setSearch}
+                    />
+                    {search.length > 0 && (
+                        <TouchableOpacity onPress={() => setSearch('')} activeOpacity={0.7} style={{ padding: 4 }}>
+                            <X color={isDark ? '#94A3B8' : "#999999"} size={16} />
+                        </TouchableOpacity>
+                    )}
+                </View>
+                <TouchableOpacity 
+                    style={[styles.filterBtn, { backgroundColor: selectedDate ? theme.primary : (isDark ? '#1E293B' : '#FFFFFF'), borderColor: isDark ? '#334155' : '#E2E8F0' }]}
+                    onPress={() => setDatePickerVisibility(true)}
+                    activeOpacity={0.7}
+                >
+                    <Calendar color={selectedDate ? '#FFFFFF' : (isDark ? '#94A3B8' : '#64748B')} size={20} />
+                </TouchableOpacity>
+                {selectedDate && (
+                    <TouchableOpacity 
+                        style={styles.clearDateBtn}
+                        onPress={() => setSelectedDate(null)}
+                        activeOpacity={0.7}
+                    >
+                        <X color="#EF4444" size={14} />
+                    </TouchableOpacity>
+                )}
+            </View>
+
             {loading ? (
-                <SkeletonCardList count={4} />
+                <View style={{ paddingHorizontal: 16 }}><SkeletonList count={4} /></View>
             ) : (
                 <ScrollView
-                    contentContainerStyle={styles.scrollContent}
+                    contentContainerStyle={styles.listContentContainer}
                     showsVerticalScrollIndicator={false}
-                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchNotices(true); }} tintColor="#7C3AED" />}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(true); }} tintColor={theme.primary} />}
                 >
-                    {notices.length === 0 ? (
+                    {filteredNotices.length === 0 ? (
                         <EmptyState
-                            icon="megaphone-outline"
-                            title="No Notices Yet"
-                            subtitle="Post your first announcement — tenants will see it instantly in their app."
-                            actionLabel="Post Notice"
-                            onAction={() => setModalVisible(true)}
+                            illustration="megaphone"
+                            title={search ? 'No Results' : 'No Notices Yet'}
+                            subtitle={search ? 'Try adjusting your search filters.' : 'Post your first announcement — tenants will see it instantly in their app.'}
+                            actionLabel={search ? undefined : 'Post Notice'}
+                            onAction={search ? undefined : () => navigation.navigate('AddNotice')}
                         />
                     ) : (
-                        notices.map((n) => {
-                            const cfg = TYPE_CONFIG[n.notice_type as NoticeType] || TYPE_CONFIG.General;
+                        filteredNotices.map((n) => {
+                            const cfg = getCatConfig(n.notice_type);
                             return (
-                                <View key={n.notice_id} style={styles.card}>
-                                    <View style={styles.cardTop}>
-                                        <View style={[styles.typePill, { backgroundColor: cfg.bg }]}>
-                                            <Text style={styles.typeEmoji}>{cfg.emoji}</Text>
-                                            <Text style={[styles.typeLabel, { color: cfg.color }]}>{n.notice_type || 'General'}</Text>
+                                <TouchableOpacity 
+                                    key={n.notice_id} 
+                                    activeOpacity={0.9}
+                                    onPress={() => navigation.navigate('NoticeDetails', { notice: n, categoryConfig: cfg, isAdmin: true })}
+                                    style={[styles.premiumCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}
+                                >
+                                    <View style={[styles.cardAccentLine, { backgroundColor: cfg.color }]} />
+                                    <View style={styles.cardInner}>
+                                        <View style={styles.cardHeaderRow}>
+                                            <View style={[styles.cardAvatarBg, { backgroundColor: isDark ? cfg.color + '25' : cfg.color + '15' }]}>
+                                                <Text style={{ fontSize: 16 }}>{cfg.emoji}</Text>
+                                            </View>
+                                            <View style={styles.cardNameBlock}>
+                                                <Text style={[styles.cardNameText, { color: theme.textPrimary }]} numberOfLines={1}>{cfg.category_name}</Text>
+                                                <Text style={styles.cardStatusSub}>{timeAgo(n.created_at)}</Text>
+                                            </View>
+                                            <View style={styles.cardRightBlock}>
+                                                <View style={styles.sentBadge}>
+                                                    <Ionicons name="checkmark-done" size={14} color="#16A34A" />
+                                                    <Text style={styles.sentText}>Sent</Text>
+                                                </View>
+                                            </View>
                                         </View>
-                                        <Text style={styles.timeText}>{timeAgo(n.created_at)}</Text>
-                                    </View>
-                                    <Text style={styles.noticeTitle}>{n.title}</Text>
-                                    <Text style={styles.noticeContent} numberOfLines={3}>{n.content}</Text>
-                                    <View style={styles.cardFooter}>
-                                        <View style={styles.sentBadge}>
-                                            <Ionicons name="checkmark-circle" size={13} color="#16A34A" />
-                                            <Text style={styles.sentText}>Sent to all tenants</Text>
+
+                                        <Text style={[styles.noticeTitle, { color: theme.textPrimary }]}>{n.title}</Text>
+                                        <Text style={[styles.noticeContent, { color: theme.textSecondary }]} numberOfLines={4}>{n.content}</Text>
+                                        
+                                        {n.image_url && (
+                                            <Image 
+                                                source={{ uri: `https://dhostel-backend.onrender.com${n.image_url}` }} 
+                                                style={styles.noticeImage} 
+                                            />
+                                        )}
+
+                                        <View style={[styles.cardFooterRow, { borderTopColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                            <View style={styles.footerLeftGroup}>
+                                                <View style={styles.footerMetaItem}>
+                                                    <Megaphone size={13} color="#94A3B8" />
+                                                    <Text style={styles.footerMetaText}>Sent to all active tenants</Text>
+                                                </View>
+                                            </View>
+                                            <View style={styles.cardActions}>
+                                                <TouchableOpacity
+                                                    style={[styles.actionBtn, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
+                                                    onPress={() => navigation.navigate('AddNotice', { isEdit: true, notice: n })}
+                                                    activeOpacity={0.7}
+                                                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                                                >
+                                                    <Edit3 size={12} color="#3B82F6" />
+                                                    <Text style={styles.actionBtnTextBlue}>Edit</Text>
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    style={[styles.actionBtn, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
+                                                    onPress={() => setDangerModal({ visible: true, notice: n })}
+                                                    activeOpacity={0.7}
+                                                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                                                >
+                                                    <Trash2 size={12} color="#EF4444" />
+                                                    <Text style={styles.actionBtnTextRed}>Delete</Text>
+                                                </TouchableOpacity>
+                                            </View>
                                         </View>
-                                        <TouchableOpacity onPress={() => handleDelete(n)} style={styles.deleteBtn}>
-                                            <Ionicons name="trash-outline" size={16} color="#EF4444" />
-                                        </TouchableOpacity>
                                     </View>
-                                </View>
+                                </TouchableOpacity>
                             );
                         })
                     )}
                 </ScrollView>
             )}
 
-            {/* FAB */}
-            <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)} activeOpacity={0.85}>
-                <LinearGradient colors={['#7C3AED', '#9333EA']} style={styles.fabGrad}>
-                    <Ionicons name="add" size={26} color="#FFF" />
-                </LinearGradient>
+            <TouchableOpacity
+                style={[styles.fab, { backgroundColor: theme.primary }]}
+                onPress={() => navigation.navigate('AddNotice')}
+                activeOpacity={0.9}
+            >
+                <Plus color="#FFFFFF" size={22} strokeWidth={3.2} />
             </TouchableOpacity>
-
-            {/* Create Notice Modal (Full Screen) */}
-            <Modal visible={modalVisible} animationType="slide" transparent={false} onRequestClose={() => setModalVisible(false)}>
-                <View style={styles.modalOverlay}>
-                    <AppHeader
-                        title="New Notice"
-                        subtitle="Send to all active tenants instantly"
-                        onBack={() => setModalVisible(false)}
-                    />
-                    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-                        <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-
-                        {/* Type selector */}
-                        <Text style={styles.label}>Category</Text>
-                        <View style={styles.typeRow}>
-                            {NOTICE_TYPES.map(type => {
-                                const cfg = TYPE_CONFIG[type];
-                                const active = noticeType === type;
-                                return (
-                                    <TouchableOpacity
-                                        key={type}
-                                        style={[styles.typeChip, active && { backgroundColor: cfg.bg, borderColor: cfg.color }]}
-                                        onPress={() => setNoticeType(type)}
-                                    >
-                                        <Text style={styles.typeChipEmoji}>{cfg.emoji}</Text>
-                                        <Text style={[styles.typeChipText, active && { color: cfg.color }]}>{type}</Text>
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </View>
-
-                        <Text style={styles.label}>Title</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="e.g. Water Supply Interruption Tomorrow"
-                            value={title}
-                            onChangeText={setTitle}
-                            maxLength={120}
-                        />
-
-                        <Text style={styles.label}>Message</Text>
-                        <TextInput
-                            style={[styles.input, styles.inputMultiline]}
-                            placeholder="Write the full notice here..."
-                            value={content}
-                            onChangeText={setContent}
-                            multiline
-                        />
-
-                        <Text style={styles.label}>Attachment (Optional)</Text>
-                        <TouchableOpacity style={styles.imageUploadBtn}>
-                            <Ionicons name="image-outline" size={20} color="#7C3AED" />
-                            <Text style={styles.imageUploadText}>Upload Image</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={[styles.saveBtn, (saving || !title.trim() || !content.trim()) && { opacity: 0.6 }]}
-                            onPress={handleCreate}
-                            disabled={saving || !title.trim() || !content.trim()}
-                        >
-                            <LinearGradient colors={['#7C3AED', '#9333EA']} style={styles.saveBtnGrad}>
-                                {saving
-                                    ? <ActivityIndicator color="#FFF" />
-                                    : <>
-                                        <Ionicons name="megaphone-outline" size={18} color="#FFF" style={{ marginRight: 6 }} />
-                                        <Text style={styles.saveBtnText}>Post Notice</Text>
-                                    </>
-                                }
-                            </LinearGradient>
-                        </TouchableOpacity>
-                    </ScrollView>
-                </KeyboardAvoidingView>
-                </View>
-            </Modal>
 
             <DangerModal
                 visible={dangerModal.visible}
@@ -264,44 +290,190 @@ export default function NoticesManagementScreen({ navigation }: any) {
                 onCancel={() => setDangerModal(p => ({ ...p, visible: false }))}
                 onConfirm={handleDeleteConfirm}
             />
+
+            <DateTimePickerModal
+                isVisible={isDatePickerVisible}
+                mode="date"
+                onConfirm={(date) => {
+                    setSelectedDate(date);
+                    setDatePickerVisibility(false);
+                }}
+                onCancel={() => setDatePickerVisibility(false)}
+            />
         </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8FAFC' },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    scrollContent: { padding: 16, paddingBottom: 100 },
-    addBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center' },
-
-    card: { backgroundColor: '#FFF', borderRadius: 16, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: '#F1F5F9', elevation: 2, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8 },
-    cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-    typePill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
-    typeEmoji: { fontSize: 12 },
-    typeLabel: { fontSize: 12, fontWeight: '700' },
-    timeText: { fontSize: 12, color: '#94A3B8', fontWeight: '500' },
-    noticeTitle: { fontSize: 16, fontWeight: '800', color: '#1E293B', marginBottom: 6 },
-    noticeContent: { fontSize: 14, color: '#475569', lineHeight: 20, marginBottom: 12 },
-    cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#F8FAFC', paddingTop: 10 },
-    sentBadge: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-    sentText: { fontSize: 12, color: '#16A34A', fontWeight: '600' },
-    deleteBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#FEF2F2', alignItems: 'center', justifyContent: 'center' },
-
-    fab: { position: 'absolute', bottom: 100, right: 20, borderRadius: 28, elevation: 8, shadowColor: '#7C3AED', shadowOpacity: 0.4, shadowRadius: 12 },
-    fabGrad: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
-
-    modalOverlay: { flex: 1, backgroundColor: '#F8FAFC' },
-    modalContent: { flex: 1, padding: 24 },
-    label: { fontSize: 13, fontWeight: '700', color: '#334155', marginBottom: 8, marginTop: 16 },
-    typeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    typeChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0' },
-    typeChipEmoji: { fontSize: 14 },
-    typeChipText: { fontSize: 13, fontWeight: '600', color: '#64748B' },
-    input: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 14, fontSize: 15, color: '#1E293B', fontWeight: '500' },
-    inputMultiline: { minHeight: 110, textAlignVertical: 'top' },
-    saveBtn: { marginTop: 24, borderRadius: 16, overflow: 'hidden', elevation: 4, shadowColor: '#7C3AED', shadowOpacity: 0.3, shadowRadius: 8 },
-    saveBtnGrad: { paddingVertical: 14, borderRadius: 14, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' },
-    saveBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700', letterSpacing: 0.3 },
-    imageUploadBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F3E8FF', borderWidth: 1, borderColor: '#D8B4FE', borderStyle: 'dashed', borderRadius: 12, paddingVertical: 12, marginBottom: 20 },
-    imageUploadText: { color: '#7C3AED', fontSize: 14, fontWeight: '600', marginLeft: 8 },
+    searchSection: {
+        flexDirection: 'row',
+        paddingHorizontal: 16,
+        paddingTop: 14,
+        paddingBottom: 12,
+        gap: 10,
+    },
+    searchBar: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        paddingHorizontal: 14,
+        height: 44,
+        gap: 10,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    searchInput: {
+        flex: 1,
+        fontSize: 14,
+        color: '#1E293B',
+        fontWeight: '500',
+    },
+    filterBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        borderWidth: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    clearDateBtn: {
+        position: 'absolute',
+        right: 8,
+        top: 6,
+        backgroundColor: '#FEE2E2',
+        borderRadius: 10,
+        padding: 2,
+    },
+    listContentContainer: {
+        padding: 16,
+        paddingBottom: 180,
+    },
+    premiumCard: {
+        borderRadius: 20,
+        marginBottom: 12,
+        flexDirection: 'row',
+        overflow: 'hidden',
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 2 },
+    },
+    cardAccentLine: {
+        width: 5,
+    },
+    cardInner: {
+        flex: 1,
+        padding: 14,
+        gap: 10,
+    },
+    cardHeaderRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    cardAvatarBg: {
+        width: 38, height: 38,
+        borderRadius: 19,
+        alignItems: 'center', justifyContent: 'center',
+        marginRight: 10,
+    },
+    cardNameBlock: {
+        flex: 1,
+        justifyContent: 'center',
+    },
+    cardNameText: {
+        fontSize: 12,
+        fontWeight: '700',
+    },
+    cardStatusSub: {
+        fontSize: 10,
+        color: '#94A3B8',
+        fontWeight: '600',
+        marginTop: 2,
+    },
+    cardRightBlock: {
+        alignItems: 'flex-end',
+    },
+    sentBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#DCFCE7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+    sentText: { fontSize: 10, color: '#16A34A', fontWeight: '700' },
+    noticeTitle: {
+        fontSize: 15,
+        fontWeight: '800',
+        marginTop: 2,
+    },
+    noticeContent: {
+        fontSize: 13,
+        lineHeight: 18,
+    },
+    noticeImage: {
+        width: '100%',
+        height: 140,
+        borderRadius: 10,
+        marginTop: 4,
+        resizeMode: 'cover',
+    },
+    cardFooterRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        borderTopWidth: 1,
+        paddingTop: 10,
+        marginTop: 2,
+    },
+    footerLeftGroup: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    footerMetaItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    footerMetaText: {
+        fontSize: 10,
+        color: '#94A3B8',
+        fontWeight: '700',
+    },
+    cardActions: {
+        flexDirection: 'row',
+        gap: 10,
+    },
+    actionBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingVertical: 4,
+        paddingHorizontal: 8,
+        borderRadius: 6,
+        borderWidth: 1,
+    },
+    actionBtnTextBlue: {
+        fontSize: 10,
+        color: '#3B82F6',
+        fontWeight: '700',
+    },
+    actionBtnTextRed: {
+        fontSize: 10,
+        color: '#EF4444',
+        fontWeight: '700',
+    },
+    fab: {
+        position: 'absolute',
+        bottom: 45,
+        right: 24,
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        alignItems: 'center',
+        justifyContent: 'center',
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+        zIndex: 2000,
+    },
 });

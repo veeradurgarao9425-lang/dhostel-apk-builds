@@ -489,7 +489,7 @@ export default function BulkDeleteScreen() {
                     }
                     ListEmptyComponent={
                         <EmptyState
-                            icon={activeTab === 'rooms' ? 'bed-outline' : 'cash-outline'}
+                            illustration="clipboard"
                             title={`No ${activeTab} found`}
                             subtitle={search ? 'Try adjusting your search filters.' : `There are no ${activeTab} available in your database.`}
                         />

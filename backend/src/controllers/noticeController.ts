@@ -8,35 +8,21 @@ export const getNotices = async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user;
 
-    // Allow role_id 1 (admin), 2 (owner), 3 (tenant)
     if (!user || (user.role_id !== 1 && user.role_id !== 2 && user.role_id !== 3)) {
-      return res.status(403).json({
-        success: false,
-        error: 'Unauthorized access.'
-      });
+      return res.status(403).json({ success: false, error: 'Unauthorized access.' });
     }
-
     if (!user.hostel_id) {
-      return res.status(403).json({
-        success: false,
-        error: 'Your account is not linked to any hostel.'
-      });
+      return res.status(403).json({ success: false, error: 'Your account is not linked to any hostel.' });
     }
 
     const notices = await db('notices')
       .where('hostel_id', user.hostel_id)
       .orderBy('created_at', 'desc');
 
-    res.json({
-      success: true,
-      data: notices
-    });
+    res.json({ success: true, data: notices });
   } catch (error: any) {
     console.error('Get notices error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch notices'
-    });
+    res.status(500).json({ success: false, error: 'Failed to fetch notices' });
   }
 };
 
@@ -45,33 +31,21 @@ export const createNotice = async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user;
     const { title, content, notice_type } = req.body;
+    const file = req.file;
 
     if (!user || (user.role_id !== 1 && user.role_id !== 2)) {
-      return res.status(403).json({
-        success: false,
-        error: 'Unauthorized access.'
-      });
+      return res.status(403).json({ success: false, error: 'Unauthorized access.' });
     }
-
     if (!user.hostel_id) {
-      return res.status(403).json({
-        success: false,
-        error: 'Your account is not linked to any hostel.'
-      });
+      return res.status(403).json({ success: false, error: 'Your account is not linked to any hostel.' });
     }
-
     if (!title || !content) {
-      return res.status(400).json({
-        success: false,
-        error: 'Title and Content are required fields'
-      });
+      return res.status(400).json({ success: false, error: 'Title and Content are required fields' });
     }
 
-    // Validate notice_type if provided
-    const validTypes = ['General', 'Important', 'Maintenance', 'Food'];
-    const resolvedType = validTypes.includes(notice_type) ? notice_type : 'General';
+    const resolvedType = notice_type || 'General';
+    const imageUrl = file ? `/uploads/${file.filename}` : null;
 
-    // Insert notice — try with notice_type column, fall back gracefully if it doesn't exist
     let notice_id: number;
     try {
       [notice_id] = await db('notices').insert({
@@ -79,15 +53,11 @@ export const createNotice = async (req: AuthRequest, res: Response) => {
         title,
         content,
         notice_type: resolvedType,
+        image_url: imageUrl,
       });
     } catch (colErr: any) {
-      // If notice_type column doesn't exist, insert without it
       if (colErr?.code === 'ER_BAD_FIELD_ERROR') {
-        [notice_id] = await db('notices').insert({
-          hostel_id: user.hostel_id,
-          title,
-          content,
-        });
+        [notice_id] = await db('notices').insert({ hostel_id: user.hostel_id, title, content });
       } else {
         throw colErr;
       }
@@ -96,10 +66,9 @@ export const createNotice = async (req: AuthRequest, res: Response) => {
     res.status(201).json({
       success: true,
       message: 'Notice created successfully',
-      data: { notice_id }
+      data: { notice_id, image_url: imageUrl }
     });
 
-    // Notify all students in the hostel
     sendNotificationToAllHostelStudents(
       user.hostel_id,
       resolvedType,
@@ -110,10 +79,46 @@ export const createNotice = async (req: AuthRequest, res: Response) => {
     ).catch(err => console.error('Failed to send notice to students:', err));
   } catch (error: any) {
     console.error('Create notice error:', error);
-    res.status(500).json({
-      success: false,
-      error: error?.message || 'Failed to create notice'
+    res.status(500).json({ success: false, error: error?.message || 'Failed to create notice' });
+  }
+};
+
+// Update an existing notice (owner only)
+export const updateNotice = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user;
+    const { noticeId } = req.params;
+    const { title, content, notice_type } = req.body;
+    const file = req.file;
+
+    if (!user || (user.role_id !== 1 && user.role_id !== 2)) {
+      return res.status(403).json({ success: false, error: 'Unauthorized access.' });
+    }
+
+    const existingNotice = await db('notices')
+      .where({ notice_id: noticeId, hostel_id: user.hostel_id })
+      .first();
+
+    if (!existingNotice) {
+      return res.status(404).json({ success: false, error: 'Notice not found or unauthorized' });
+    }
+
+    const updateData: any = {};
+    if (title) updateData.title = title;
+    if (content) updateData.content = content;
+    if (notice_type) updateData.notice_type = notice_type;
+    if (file) updateData.image_url = `/uploads/${file.filename}`;
+
+    await db('notices').where({ notice_id: noticeId }).update(updateData);
+
+    res.json({
+      success: true,
+      message: 'Notice updated successfully',
+      data: { ...existingNotice, ...updateData }
     });
+  } catch (error: any) {
+    console.error('Update notice error:', error);
+    res.status(500).json({ success: false, error: 'Failed to update notice' });
   }
 };
 
@@ -124,17 +129,7 @@ export const deleteNotice = async (req: AuthRequest, res: Response) => {
     const { noticeId } = req.params;
 
     if (!user || (user.role_id !== 1 && user.role_id !== 2)) {
-      return res.status(403).json({
-        success: false,
-        error: 'Unauthorized access.'
-      });
-    }
-
-    if (!user.hostel_id) {
-      return res.status(403).json({
-        success: false,
-        error: 'Your account is not linked to any hostel.'
-      });
+      return res.status(403).json({ success: false, error: 'Unauthorized access.' });
     }
 
     const notice = await db('notices')
@@ -142,23 +137,89 @@ export const deleteNotice = async (req: AuthRequest, res: Response) => {
       .first();
 
     if (!notice) {
-      return res.status(404).json({
-        success: false,
-        error: 'Notice not found or unauthorized'
-      });
+      return res.status(404).json({ success: false, error: 'Notice not found' });
     }
 
     await db('notices').where({ notice_id: noticeId }).del();
+    res.json({ success: true, message: 'Notice deleted successfully' });
+  } catch (error: any) {
+    console.error('Delete notice error:', error);
+    res.status(500).json({ success: false, error: 'Failed to delete notice' });
+  }
+};
+
+// Get Notice Categories for a hostel
+export const getNoticeCategories = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user || !user.hostel_id) {
+      return res.status(403).json({ success: false, error: 'Unauthorized' });
+    }
+
+    let customCategories = [];
+    try {
+      customCategories = await db('notice_categories').where('hostel_id', user.hostel_id);
+    } catch (e) {
+      // table might not exist yet
+    }
 
     res.json({
       success: true,
-      message: 'Notice deleted successfully'
+      data: customCategories
     });
   } catch (error: any) {
-    console.error('Delete notice error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to delete notice'
+    console.error('Get notice categories error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch categories' });
+  }
+};
+
+// Create custom Notice Category
+export const createNoticeCategory = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user;
+    const { category_name, color, emoji } = req.body;
+
+    if (!user || (user.role_id !== 1 && user.role_id !== 2)) {
+      return res.status(403).json({ success: false, error: 'Unauthorized' });
+    }
+    if (!category_name) {
+      return res.status(400).json({ success: false, error: 'Category name required' });
+    }
+
+    await db('notice_categories').insert({
+      hostel_id: user.hostel_id,
+      category_name,
+      color: color || '#6366F1',
+      emoji: emoji || '📢'
     });
+
+    res.status(201).json({ success: true, message: 'Category added successfully' });
+  } catch (error: any) {
+    console.error('Create category error:', error);
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({ success: false, error: 'Category already exists' });
+    }
+    res.status(500).json({ success: false, error: 'Failed to add category' });
+  }
+};
+
+// Delete custom Notice Category
+export const deleteNoticeCategory = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user;
+    const { categoryName } = req.params;
+
+    if (!user || (user.role_id !== 1 && user.role_id !== 2)) {
+      return res.status(403).json({ success: false, error: 'Unauthorized' });
+    }
+
+    await db('notice_categories')
+      .where({ hostel_id: user.hostel_id, category_name: categoryName })
+      .del();
+
+    res.json({ success: true, message: 'Category deleted successfully' });
+  } catch (error: any) {
+    console.error('Delete category error:', error);
+    res.status(500).json({ success: false, error: 'Failed to delete category' });
   }
 };

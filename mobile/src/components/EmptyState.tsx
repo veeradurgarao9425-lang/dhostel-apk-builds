@@ -6,21 +6,35 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Image } from 'react-native';
 
 interface EmptyStateProps {
     /** Emoji or text icon shown large at the top */
     icon?: string;
+    /** Image source name for illustration */
+    illustration?: 'megaphone' | 'pinboard' | 'bell' | 'mailbox' | 'clipboard';
     title: string;
     subtitle?: string;
     /** Extra content to render below subtitle (e.g. a retry button) */
     children?: React.ReactNode;
 }
 
-export function EmptyState({ icon = '📭', title, subtitle, children }: EmptyStateProps) {
+const illustrations = {
+    megaphone: require('../../assets/images/empty_megaphone.png'),
+    pinboard: require('../../assets/images/empty_pinboard.png'),
+    bell: require('../../assets/images/empty_bell.png'),
+    mailbox: require('../../assets/images/empty_mailbox.png'),
+    clipboard: require('../../assets/images/empty_clipboard.png'),
+};
+
+export function EmptyState({ icon = '📭', illustration, title, subtitle, children }: EmptyStateProps) {
     return (
         <View style={styles.container}>
-            <Text style={styles.icon}>{icon}</Text>
+            {illustration ? (
+                <Image source={illustrations[illustration]} style={styles.illustration} resizeMode="contain" />
+            ) : (
+                <Text style={styles.icon}>{icon}</Text>
+            )}
             <Text style={styles.title}>{title}</Text>
             {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
             {children}
@@ -41,6 +55,11 @@ const styles = StyleSheet.create({
     icon: {
         fontSize: 48,
         marginBottom: 12,
+    },
+    illustration: {
+        width: 140,
+        height: 140,
+        marginBottom: 16,
     },
     title: {
         fontSize: 16,

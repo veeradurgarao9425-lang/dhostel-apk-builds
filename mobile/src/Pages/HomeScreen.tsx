@@ -625,21 +625,21 @@ export default function HomeScreen() {
                             <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
                         </TouchableOpacity>
                     ) : (
-                        <View style={[s.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                        <View style={[s.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9', paddingHorizontal: 16, paddingVertical: 18 }]}>
                             <View style={s.overviewRow}>
-                                <TouchableOpacity style={s.overviewItem} activeOpacity={0.7} onPress={() => navigation.navigate('Students')}>
+                                <TouchableOpacity style={[s.overviewItem, { alignItems: 'flex-start' }]} activeOpacity={0.7} onPress={() => navigation.navigate('Students')}>
                                     <Text style={[s.overviewValue, { color: '#7C3AED', fontSize: fontSize + 5 }]} numberOfLines={1}>{data.totalStudentsCount}</Text>
-                                    <Text style={[s.overviewLabel, { color: theme.textSecondary, fontSize: Math.max(9, fontSize - 4) }]} numberOfLines={1}>{t('dashboard.tenants')}</Text>
+                                    <Text style={[s.overviewLabel, { color: theme.textSecondary, fontSize: Math.max(9, fontSize - 4), textAlign: 'left' }]} numberOfLines={1}>{t('dashboard.tenants')}</Text>
                                 </TouchableOpacity>
                                 <View style={[s.overviewDivider, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]} />
-                                <TouchableOpacity style={s.overviewItem} activeOpacity={0.7} onPress={() => navigation.navigate('Rooms', { filter: 'All' })}>
+                                <TouchableOpacity style={[s.overviewItem, { alignItems: 'center' }]} activeOpacity={0.7} onPress={() => navigation.navigate('Rooms', { filter: 'All' })}>
                                     <Text style={[s.overviewValue, { color: '#0284C7', fontSize: fontSize + 5 }]} numberOfLines={1}>{data.occupiedBeds}/{data.totalBeds}</Text>
-                                    <Text style={[s.overviewLabel, { color: theme.textSecondary, fontSize: Math.max(9, fontSize - 4) }]} numberOfLines={1}>{t('dashboard.bedsOccupied')}</Text>
+                                    <Text style={[s.overviewLabel, { color: theme.textSecondary, fontSize: Math.max(9, fontSize - 4), textAlign: 'center' }]} numberOfLines={1}>{t('dashboard.bedsOccupied')}</Text>
                                 </TouchableOpacity>
                                 <View style={[s.overviewDivider, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]} />
-                                <TouchableOpacity style={s.overviewItem} activeOpacity={0.7} onPress={() => setShowCollectionSheet(true)}>
+                                <TouchableOpacity style={[s.overviewItem, { alignItems: 'flex-end' }]} activeOpacity={0.7} onPress={() => setShowCollectionSheet(true)}>
                                     <Text style={[s.overviewValue, { color: '#10B981', fontSize: fontSize + 5 }]} numberOfLines={1}>{fmt(data.collectionStats.collected)}</Text>
-                                    <Text style={[s.overviewLabel, { color: theme.textSecondary, fontSize: Math.max(9, fontSize - 4) }]} numberOfLines={1}>
+                                    <Text style={[s.overviewLabel, { color: theme.textSecondary, fontSize: Math.max(9, fontSize - 4), textAlign: 'right' }]} numberOfLines={1}>
                                         {data.collectionStats.monthName || t('dashboard.month')} Collection
                                     </Text>
                                 </TouchableOpacity>
@@ -790,11 +790,11 @@ export default function HomeScreen() {
                                             <Text style={[s.dueChipAmount, { color: '#DC2626' }]}>₹{Number(item.amount).toLocaleString('en-IN')}</Text>
                                             {!!item.phone && (
                                                 <TouchableOpacity
-                                                    style={s.dueChipCallBtn}
+                                                    style={[s.dueChipCallBtn, { backgroundColor: isDark ? '#450a0a' : '#FEE2E2' }]}
                                                     onPress={(e) => { e.stopPropagation(); Linking.openURL(`tel:${item.phone}`); }}
                                                     activeOpacity={0.7}
                                                 >
-                                                    <Ionicons name="call" size={12} color="#16A34A" />
+                                                    <Ionicons name="call" size={12} color="#DC2626" />
                                                 </TouchableOpacity>
                                             )}
                                         </View>
@@ -831,11 +831,11 @@ export default function HomeScreen() {
                                             <Text style={[s.dueChipAmount, { color: '#D97706' }]}>₹{Number(item.amount).toLocaleString('en-IN')}</Text>
                                             {!!item.phone && (
                                                 <TouchableOpacity
-                                                    style={s.dueChipCallBtn}
+                                                    style={[s.dueChipCallBtn, { backgroundColor: isDark ? '#422006' : '#FEF3C7' }]}
                                                     onPress={(e) => { e.stopPropagation(); Linking.openURL(`tel:${item.phone}`); }}
                                                     activeOpacity={0.7}
                                                 >
-                                                    <Ionicons name="call" size={12} color="#16A34A" />
+                                                    <Ionicons name="call" size={12} color="#D97706" />
                                                 </TouchableOpacity>
                                             )}
                                         </View>
@@ -1661,7 +1661,6 @@ const s = StyleSheet.create({
         width: 24,
         height: 24,
         borderRadius: 12,
-        backgroundColor: '#DCFCE7',
         alignItems: 'center',
         justifyContent: 'center',
     },

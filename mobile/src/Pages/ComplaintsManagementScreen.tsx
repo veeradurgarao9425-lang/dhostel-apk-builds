@@ -5,10 +5,12 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { List, AlertCircle, Clock, CheckCircle2 } from 'lucide-react-native';
 import { CustomDatePicker } from '../components/ui/pickers/CustomDatePicker';
 import { AppHeader } from '../components/AppHeader';
 import { EmptyState } from '../components/ui/EmptyState';
 import { SkeletonCardList } from '../components/ui/SkeletonCard';
+import { StatCard } from '../components/ui/StatCard';
 import api from '../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { showErrorToast, showSuccessToast } from '../hooks/Toastconfig';
@@ -125,36 +127,39 @@ export default function ComplaintsManagementScreen({ navigation }: any) {
                 </View>
             )}
 
-            <View style={s.statsRowOutside}>
-                <View style={[s.statCardOutside, { backgroundColor: '#F3E8FF' }]}>
-                    <View style={[s.statIconCircle, { backgroundColor: 'rgba(124, 58, 237, 0.1)' }]}>
-                        <Ionicons name="documents" size={16} color="#7C3AED" />
-                    </View>
-                    <View style={s.statTextContainer}>
-                        <Text style={[s.statValOutside, { color: '#7C3AED' }]}>{stats.total}</Text>
-                        <Text style={[s.statLblOutside, { color: '#7C3AED' }]}>Total</Text>
-                    </View>
-                </View>
-
-                <View style={[s.statCardOutside, { backgroundColor: '#FEE2E2' }]}>
-                    <View style={[s.statIconCircle, { backgroundColor: 'rgba(220, 38, 38, 0.1)' }]}>
-                        <Ionicons name="alert-circle" size={16} color="#DC2626" />
-                    </View>
-                    <View style={s.statTextContainer}>
-                        <Text style={[s.statValOutside, { color: '#DC2626' }]}>{stats.pending}</Text>
-                        <Text style={[s.statLblOutside, { color: '#DC2626' }]}>Pending</Text>
-                    </View>
-                </View>
-
-                <View style={[s.statCardOutside, { backgroundColor: '#DCFCE7' }]}>
-                    <View style={[s.statIconCircle, { backgroundColor: 'rgba(22, 163, 74, 0.1)' }]}>
-                        <Ionicons name="checkmark-done-circle" size={16} color="#16A34A" />
-                    </View>
-                    <View style={s.statTextContainer}>
-                        <Text style={[s.statValOutside, { color: '#16A34A' }]}>{stats.resolved}</Text>
-                        <Text style={[s.statLblOutside, { color: '#16A34A' }]}>Resolved</Text>
-                    </View>
-                </View>
+            <View style={s.summaryContainer}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.summaryScroll}>
+                    <StatCard 
+                        title="Total Complaints" 
+                        value={stats.total} 
+                        icon="document-text-outline" 
+                        colorTheme="purple" 
+                        pillText="All time" 
+                    />
+                    <StatCard 
+                        title="Pending Complaints" 
+                        value={stats.pending} 
+                        icon="alert-circle-outline" 
+                        colorTheme="red" 
+                        pillText="Need Attention" 
+                    />
+                    <StatCard 
+                        title="Resolved Complaints" 
+                        value={stats.resolved} 
+                        icon="checkmark-circle-outline" 
+                        colorTheme="green" 
+                        pillText="Completed" 
+                    />
+                    {stats.inProgress > 0 && (
+                        <StatCard 
+                            title="In Progress" 
+                            value={stats.inProgress} 
+                            icon="time-outline" 
+                            colorTheme="orange" 
+                            pillText="Working on it" 
+                        />
+                    )}
+                </ScrollView>
             </View>
 
             <View style={s.tabWrapper}>
@@ -167,6 +172,15 @@ export default function ComplaintsManagementScreen({ navigation }: any) {
                                 style={[s.tabButton, active && s.activeTabButton]}
                                 onPress={() => { setActiveTab(tab); LayoutAnimation.easeInEaseOut(); }}
                             >
+                                {(() => {
+                                    switch (tab) {
+                                        case 'All': return <List size={14} color={active ? '#FFF' : '#7C3AED'} style={{ marginRight: 6 }} />;
+                                        case 'Pending': return <AlertCircle size={14} color={active ? '#FFF' : '#EF4444'} style={{ marginRight: 6 }} />;
+                                        case 'In Progress': return <Clock size={14} color={active ? '#FFF' : '#F59E0B'} style={{ marginRight: 6 }} />;
+                                        case 'Resolved': return <CheckCircle2 size={14} color={active ? '#FFF' : '#10B981'} style={{ marginRight: 6 }} />;
+                                        default: return null;
+                                    }
+                                })()}
                                 <Text style={[s.tabText, active && s.activeTabText]}>{tab}</Text>
                             </TouchableOpacity>
                         );
@@ -185,7 +199,7 @@ export default function ComplaintsManagementScreen({ navigation }: any) {
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchComplaints(true)} tintColor="#7C3AED" />}
                 >
                     {filteredComplaints.length === 0 ? (
-                        <EmptyState icon="construct-outline" title="No Complaints Found" subtitle="Try changing the filter or date." />
+                        <EmptyState illustration="clipboard" title="No Complaints Found" subtitle="Try changing the filter or date." />
                     ) : (
                         filteredComplaints.map((c) => {
                             const isResolved = c.status === 'Resolved';
@@ -289,52 +303,23 @@ const s = StyleSheet.create({
         marginBottom: 8,
     },
     dateFilterText: { color: '#DC2626', fontWeight: '600', fontSize: 13 },
-    statsRowOutside: {
-        flexDirection: 'row',
-        paddingHorizontal: 16,
-        gap: 12,
+    summaryContainer: {
+        marginTop: 12,
         marginBottom: 16,
-        marginTop: 8
     },
-    statCardOutside: {
-        flex: 1,
-        borderRadius: 14,
-        paddingVertical: 10,
-        paddingHorizontal: 6,
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    statIconCircle: {
-        width: 30,
-        height: 30,
-        borderRadius: 15,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 6,
-    },
-    statTextContainer: {
-        width: '100%',
-        alignItems: 'center',
-    },
-    statValOutside: {
-        fontSize: 18,
-        fontWeight: '800',
-        marginBottom: 2,
-        textAlign: 'center',
-    },
-    statLblOutside: {
-        fontSize: 11,
-        fontWeight: '600',
-        textAlign: 'center',
+    summaryScroll: {
+        paddingHorizontal: 16,
+        paddingBottom: 8,
     },
 
     tabWrapper: { marginBottom: 12 },
     tabScrollContainer: { paddingHorizontal: 16, gap: 10 },
     tabButton: {
-        paddingVertical: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 10,
         paddingHorizontal: 16,
-        borderRadius: 20,
+        borderRadius: 24,
         backgroundColor: '#FFF',
         borderWidth: 1,
         borderColor: '#E2E8F0',

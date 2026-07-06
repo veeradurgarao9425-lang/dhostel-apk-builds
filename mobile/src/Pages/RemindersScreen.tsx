@@ -342,7 +342,7 @@ export default function RemindersScreen() {
                     }
                     ListEmptyComponent={
                         <EmptyState
-                            icon="alarm-outline"
+                            illustration="bell"
                             title="No Reminders Set"
                             subtitle="Add reminders to track rent, bills, or tasks."
                             actionLabel="Add Reminder"

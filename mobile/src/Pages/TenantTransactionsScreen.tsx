@@ -156,7 +156,7 @@ export default function TenantTransactionsScreen() {
                         showsVerticalScrollIndicator={false}
                         ListEmptyComponent={
                             <EmptyState
-                                icon="card-outline"
+                                illustration="clipboard"
                                 title="No Payments Yet"
                                 subtitle="No payment transactions recorded for this tenant."
                             />

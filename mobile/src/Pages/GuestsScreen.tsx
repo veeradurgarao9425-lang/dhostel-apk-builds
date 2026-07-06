@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity,
-    StatusBar, RefreshControl,
+    StatusBar, RefreshControl, ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Plus } from 'lucide-react-native';
@@ -14,6 +14,7 @@ import { useToast } from '../context/ToastContext';
 import { AppHeader } from '../components/AppHeader';
 import { EmptyState } from '../components/ui/EmptyState';
 import { SkeletonList } from '../components/ui/SkeletonCard';
+import { StatCard } from '../components/ui/StatCard';
 import { DangerModal } from '../components/ui/DangerModal';
 
 const fmtDate = (d?: string) => {
@@ -210,15 +211,34 @@ export default function GuestsScreen() {
             </AppHeader>
 
             {/* Summary strip */}
-            <View style={[s.summaryStrip, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                <View style={s.summaryItem}>
-                    <Text style={[s.summaryVal, { color: theme.textPrimary }]}>{summary.count}</Text>
-                    <Text style={[s.summaryLbl, { color: theme.textSecondary }]}>Guests</Text>
-                </View>
-                <View style={[s.summaryDivider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
-                <View style={s.summaryItem}>
-                    <Text style={[s.summaryVal, { color: '#16A34A' }]}>₹{summary.totalCollected.toLocaleString('en-IN')}</Text>
-                    <Text style={[s.summaryLbl, { color: theme.textSecondary }]}>Collected</Text>
+            <View style={s.summaryContainer}>
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                    <StatCard 
+                        title="Total Guests" 
+                        value={summary.count} 
+                        icon="people-outline" 
+                        colorTheme="purple" 
+                        pillText="All time" 
+                        fullWidth
+                    />
+                    <StatCard 
+                        title="Collected Fees" 
+                        value={`₹${summary.totalCollected.toLocaleString('en-IN')}`} 
+                        icon="cash-outline" 
+                        colorTheme="green" 
+                        pillText="Revenue" 
+                        fullWidth
+                    />
+                    {filtered.filter(g => g.status === 'staying').length > 0 && (
+                        <StatCard 
+                            title="Active Guests" 
+                            value={filtered.filter(g => g.status === 'staying').length} 
+                            icon="log-in-outline" 
+                            colorTheme="orange" 
+                            pillText="Staying" 
+                            fullWidth
+                        />
+                    )}
                 </View>
             </View>
 
@@ -239,7 +259,7 @@ export default function GuestsScreen() {
                     }
                     ListEmptyComponent={
                         <EmptyState
-                            variant={search.trim() ? 'noResults' : 'noData'}
+                            illustration="mailbox"
                             title={search.trim() ? 'No Results' : 'No Guests Yet'}
                             subtitle={
                                 search.trim()
@@ -292,14 +312,11 @@ const s = StyleSheet.create({
         borderRadius: 12, paddingHorizontal: 12, height: 44, gap: 8, marginBottom: 4,
     },
     searchInput: { flex: 1, color: '#1E293B', fontWeight: '600' },
-    summaryStrip: {
-        flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: 14,
-        borderRadius: 16, borderWidth: 1, paddingVertical: 14,
+    summaryContainer: {
+        marginTop: 12,
+        marginBottom: 16,
+        paddingHorizontal: 16,
     },
-    summaryItem: { flex: 1, alignItems: 'center' },
-    summaryDivider: { width: 1, height: 28 },
-    summaryVal: { fontSize: 18, fontWeight: '900' },
-    summaryLbl: { fontSize: 11, fontWeight: '600', marginTop: 2 },
     card: { borderRadius: 20, padding: 16, marginBottom: 12, borderWidth: 1 },
     cardTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     avatar: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },

@@ -433,6 +433,8 @@ async function patchDatabaseSchema() {
             hostel_id INT NOT NULL,
             title VARCHAR(255) NOT NULL,
             content TEXT NOT NULL,
+            notice_type VARCHAR(100) DEFAULT 'General',
+            image_url TEXT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             FOREIGN KEY (hostel_id) REFERENCES hostel_master(hostel_id) ON DELETE CASCADE
@@ -440,9 +442,38 @@ async function patchDatabaseSchema() {
         `);
         console.log('[schema-patch] creating indexes for notices table...');
         await db.raw("CREATE INDEX idx_notices_hostel ON notices(hostel_id)");
+      } else {
+        // Ensure image_url column exists
+        const [columns] = await db.raw("SHOW COLUMNS FROM notices");
+        const columnNames = (columns as any[]).map(col => col.Field.toLowerCase());
+        if (!columnNames.includes('image_url')) {
+          console.log('[schema-patch] adding image_url to notices...');
+          await db.raw("ALTER TABLE notices ADD COLUMN image_url TEXT NULL");
+        }
       }
     } catch (e: any) {
       console.error('[schema-patch] Error checking/creating notices table:', e.message);
+    }
+
+    // 7.5 Ensure notice_categories table exists
+    try {
+      if (!tableNamesLower.includes('notice_categories')) {
+        console.log('[schema-patch] creating missing notice_categories table...');
+        await db.raw(`
+          CREATE TABLE notice_categories (
+            category_id INT AUTO_INCREMENT PRIMARY KEY,
+            hostel_id INT NOT NULL,
+            category_name VARCHAR(100) NOT NULL,
+            color VARCHAR(50) DEFAULT '#6366F1',
+            emoji VARCHAR(10) DEFAULT '📢',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (hostel_id) REFERENCES hostel_master(hostel_id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        await db.raw("CREATE UNIQUE INDEX idx_notice_cat_unique ON notice_categories(hostel_id, category_name)");
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error checking/creating notice_categories table:', e.message);
     }
 
     // 8. Ensure app_settings table exists

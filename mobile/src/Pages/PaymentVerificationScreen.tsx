@@ -68,7 +68,7 @@ export default function PaymentVerificationScreen({ navigation }: any) {
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchPayments(true)} tintColor="#7C3AED" />}
                 >
                     {payments.length === 0 ? (
-                        <EmptyState icon="shield-checkmark-outline" title="All Caught Up" message="There are no pending payment proofs to verify." />
+                        <EmptyState illustration="clipboard" title="All Caught Up" subtitle="There are no pending payment proofs to verify." />
                     ) : (
                         payments.map((p) => (
                             <View key={p.payment_id} style={styles.card}>

@@ -403,7 +403,7 @@ export default function RoomsScreen({ navigation, route }: any) {
                 <SkeletonList count={6} />
             ) : showEmpty ? (
                 <EmptyState
-                    variant={search ? 'noResults' : 'noRooms'}
+                    illustration="pinboard"
                     title={search ? t('rooms.noResults') : t('rooms.noRooms')}
                     subtitle={
                         search

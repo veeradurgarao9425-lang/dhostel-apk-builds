@@ -66,6 +66,8 @@ import RequestsManagementScreen from '../Pages/RequestsManagementScreen';
 import MessMenuManagementScreen from '../Pages/MessMenuManagementScreen';
 import PaymentVerificationScreen from '../Pages/PaymentVerificationScreen';
 import NoticesManagementScreen from '../Pages/NoticesManagementScreen';
+import AddNoticeScreen from '../Pages/AddNoticeScreen';
+import NoticeDetailsScreen from '../Pages/NoticeDetailsScreen';
 import RatingsManagementScreen from '../Pages/RatingsManagementScreen';
 
 // ── Navigators ────────────────────────────────────────────────────────────────
@@ -245,6 +247,12 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen name="MessMenuManagement"   component={MessMenuManagementScreen} />
                     <Stack.Screen name="PaymentVerification"  component={PaymentVerificationScreen} />
                     <Stack.Screen name="NoticesManagement"    component={NoticesManagementScreen} />
+                    <Stack.Screen 
+                        name="AddNotice" 
+                        component={AddNoticeScreen} 
+                        options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+                    />
+                    <Stack.Screen name="NoticeDetails" component={NoticeDetailsScreen} />
                     <Stack.Screen name="RatingsManagement"    component={RatingsManagementScreen} />
 
                     {/* Reports */}

@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../contexts/ThemeContext';
 
 interface EmptyStateProps {
-    icon: keyof typeof Ionicons.glyphMap;
+    icon?: keyof typeof Ionicons.glyphMap;
+    illustration?: 'megaphone' | 'pinboard' | 'bell' | 'mailbox' | 'clipboard';
     title: string;
     subtitle: string;
     actionLabel?: string;
@@ -12,17 +13,27 @@ interface EmptyStateProps {
     iconColor?: string;
 }
 
-export const EmptyState = ({ icon, title, subtitle, actionLabel, onAction, iconColor }: EmptyStateProps) => {
+const illustrations = {
+    megaphone: require('../../../assets/images/empty_megaphone.png'),
+    pinboard: require('../../../assets/images/empty_pinboard.png'),
+    bell: require('../../../assets/images/empty_bell.png'),
+    mailbox: require('../../../assets/images/empty_mailbox.png'),
+    clipboard: require('../../../assets/images/empty_clipboard.png'),
+};
+
+export const EmptyState = ({ icon, illustration, title, subtitle, actionLabel, onAction, iconColor }: EmptyStateProps) => {
     const { theme, isDark } = useTheme();
     const primary = iconColor || theme?.primary || '#8B291A';
 
     return (
         <View style={S.container}>
-            {icon && (
+            {illustration ? (
+                <Image source={illustrations[illustration]} style={S.illustration} resizeMode="contain" />
+            ) : icon ? (
                 <View style={[S.iconWrap, { backgroundColor: primary + '15' }]}>
                     <Ionicons name={icon} size={42} color={primary} />
                 </View>
-            )}
+            ) : null}
 
             <Text style={[S.title, { color: isDark ? '#F8FAFC' : '#1E293B' }]}>{title}</Text>
             <Text style={[S.subtitle, { color: isDark ? '#94A3B8' : '#64748B' }]}>{subtitle}</Text>
@@ -46,6 +57,11 @@ const S = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         padding: 32,
+    },
+    illustration: {
+        width: 140,
+        height: 140,
+        marginBottom: 20,
     },
     iconWrap: {
         width: 80,

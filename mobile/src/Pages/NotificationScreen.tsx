@@ -227,7 +227,7 @@ export const NotificationScreen = () => {
                     <View style={{ height: 10 }} />
                     {filteredNotifications.length === 0 ? (
                         <EmptyState
-                            icon="notifications-off-outline"
+                            illustration="bell"
                             title="No Notifications Found"
                             subtitle={notifications.length === 0 ? "No new notifications. We'll let you know when important updates arrive." : "No notifications match the selected category or date filter."}
                         />

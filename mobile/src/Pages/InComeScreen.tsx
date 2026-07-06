@@ -146,7 +146,7 @@ export const IncomeScreen = ({ navigation }: any) => {
                 <Text style={[styles.sectionHeader, { color: theme.textPrimary }]}>Recent Collections</Text>
                 {sortedDays.length === 0 && (
                     <EmptyState
-                        icon="wallet-outline"
+                        illustration="mailbox"
                         title="No Collections Yet"
                         subtitle="Tap the + button to record your first income entry."
                         actionLabel="Add Income"

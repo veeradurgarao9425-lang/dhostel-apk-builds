@@ -247,27 +247,60 @@ export const ExpenseScreen = ({ navigation }: any) => {
                         </TouchableOpacity>
                     )}
                 </View>
-
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            </View>
+            
+            {/* Quick Filters */}
+            <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
                     <TouchableOpacity
-                        style={[styles.monthPicker, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
-                        onPress={() => setDatePickerVisibility(true)}
-                        activeOpacity={0.75}
+                        style={[
+                            styles.filterChip, 
+                            !currentDate ? { backgroundColor: theme.primary, borderColor: theme.primary } : { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0' }
+                        ]}
+                        onPress={() => setCurrentDate(null)}
                     >
-                        <Calendar color={isDark ? '#94A3B8' : "#666666"} size={18} />
-                        <Text style={[styles.monthText, { color: theme.textSecondary }]}>{getMonthLabel()}</Text>
-                        <ChevronDown color={isDark ? '#94A3B8' : "#666666"} size={16} />
+                        <Text style={[styles.filterChipText, !currentDate ? { color: '#FFFFFF' } : { color: theme.textSecondary }]}>All Time</Text>
                     </TouchableOpacity>
-                    {currentDate && (
-                        <TouchableOpacity
-                            style={[styles.clearMonthButton, { backgroundColor: isDark ? '#3F2222' : '#FFF1F1', borderColor: isDark ? '#7F1D1D' : '#FEE2E2' }]}
-                            onPress={() => setCurrentDate(null)}
-                            activeOpacity={0.75}
-                        >
-                            <X color="#FF6B6B" size={16} />
-                        </TouchableOpacity>
-                    )}
-                </View>
+                    
+                    <TouchableOpacity
+                        style={[
+                            styles.filterChip, 
+                            currentDate && currentDate.getMonth() === new Date().getMonth() && currentDate.getFullYear() === new Date().getFullYear() 
+                                ? { backgroundColor: theme.primary, borderColor: theme.primary } 
+                                : { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0' }
+                        ]}
+                        onPress={() => setCurrentDate(new Date())}
+                    >
+                        <Text style={[styles.filterChipText, currentDate && currentDate.getMonth() === new Date().getMonth() && currentDate.getFullYear() === new Date().getFullYear() ? { color: '#FFFFFF' } : { color: theme.textSecondary }]}>This Month</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity
+                        style={[
+                            styles.filterChip, 
+                            currentDate && currentDate.getMonth() === (new Date().getMonth() === 0 ? 11 : new Date().getMonth() - 1) && currentDate.getFullYear() === (new Date().getMonth() === 0 ? new Date().getFullYear() - 1 : new Date().getFullYear())
+                                ? { backgroundColor: theme.primary, borderColor: theme.primary } 
+                                : { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0' }
+                        ]}
+                        onPress={() => {
+                            const d = new Date();
+                            d.setMonth(d.getMonth() - 1);
+                            setCurrentDate(d);
+                        }}
+                    >
+                        <Text style={[styles.filterChipText, currentDate && currentDate.getMonth() === (new Date().getMonth() === 0 ? 11 : new Date().getMonth() - 1) && currentDate.getFullYear() === (new Date().getMonth() === 0 ? new Date().getFullYear() - 1 : new Date().getFullYear()) ? { color: '#FFFFFF' } : { color: theme.textSecondary }]}>Last Month</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[
+                            styles.filterChip,
+                            { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0', flexDirection: 'row', alignItems: 'center', gap: 4 }
+                        ]}
+                        onPress={() => setDatePickerVisibility(true)}
+                    >
+                        <Calendar size={14} color={theme.textSecondary} />
+                        <Text style={[styles.filterChipText, { color: theme.textSecondary }]}>Custom Month</Text>
+                    </TouchableOpacity>
+                </ScrollView>
             </View>
 
             {loading ? (
@@ -380,7 +413,7 @@ export const ExpenseScreen = ({ navigation }: any) => {
                     onEndReachedThreshold={0.4}
                     ListEmptyComponent={
                         <EmptyState
-                            variant={debouncedSearch ? 'noResults' : 'noData'}
+                            illustration="clipboard"
                             title={debouncedSearch ? 'No Results' : 'No Expenses Yet'}
                             subtitle={
                                 debouncedSearch
@@ -517,31 +550,15 @@ const styles = StyleSheet.create({
         color: '#1E293B',
         fontWeight: '500',
     },
-    monthPicker: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        paddingHorizontal: 12,
-        height: 44,
-        gap: 6,
+    filterChip: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
     },
-    monthText: {
+    filterChipText: {
         fontSize: 13,
-        color: '#475569',
         fontWeight: '600',
-    },
-    clearMonthButton: {
-        width: 32,
-        height: 44,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#FFF1F1',
-        borderRadius: 10,
-        borderWidth: 1,
-        borderColor: '#FEE2E2',
     },
     content: {
         flex: 1,

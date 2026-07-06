@@ -91,7 +91,7 @@ export default function RequestsManagementScreen({ navigation }: any) {
                 >
                     {activeTab === 'Leaves' ? (
                         leaves.length === 0 ? (
-                            <EmptyState icon="briefcase-outline" title="No Leave Requests" subtitle="No pending leave requests." />
+                            <EmptyState illustration="mailbox" title="No Leave Requests" subtitle="No pending leave requests." />
                         ) : (
                             leaves.map(req => (
                                 <View key={req.leave_id} style={styles.card}>
@@ -126,7 +126,7 @@ export default function RequestsManagementScreen({ navigation }: any) {
                         )
                     ) : (
                         visitors.length === 0 ? (
-                            <EmptyState icon="people-outline" title="No Visitor Requests" subtitle="No pending visitor passes." />
+                            <EmptyState illustration="mailbox" title="No Visitor Requests" subtitle="No pending visitor passes." />
                         ) : (
                             visitors.map(req => (
                                 <View key={req.visitor_id} style={styles.card}>

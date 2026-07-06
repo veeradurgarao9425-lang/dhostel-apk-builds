@@ -4,11 +4,13 @@ import { User, LogOut, Palette, ChevronRight, Check } from 'lucide-react-native'
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme, themes, ThemeId } from '../../contexts/ThemeContext';
+import { useToast } from '../context/ToastContext';
 
 export const ProfileMenu = () => {
     const navigation = useNavigation<any>();
     const { user, signOut, cycleHostels } = useAuth();
     const { theme, themeId, setThemeId } = useTheme();
+    const { showSuccess, showToast } = useToast();
     const [menuVisible, setMenuVisible] = useState(false);
     const [showThemes, setShowThemes] = useState(false);
     const [cycling, setCycling] = useState(false);
@@ -21,13 +23,10 @@ export const ProfileMenu = () => {
         try {
             const nextHostelName = await cycleHostels();
             if (nextHostelName) {
-                Alert.alert("Context Switched", `Switched active hostel to: ${nextHostelName}`);
-            } else {
-                Alert.alert("Context Switch", "Add another active hostel to cycle between them!");
+                showSuccess(`Switched to: ${nextHostelName}`);
             }
         } catch (e) {
             console.error("Context switch error:", e);
-            Alert.alert("Error", "Failed to switch active hostel.");
         } finally {
             setCycling(false);
         }
