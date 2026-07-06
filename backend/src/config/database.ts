@@ -881,7 +881,9 @@ async function patchDatabaseSchema() {
         await db.raw(`
           CREATE TABLE tenant_saving_goals (
             student_id INT PRIMARY KEY,
+            name VARCHAR(255) DEFAULT 'Savings Goal',
             amount DECIMAL(10, 2) NOT NULL DEFAULT 0,
+            saved_amount DECIMAL(10, 2) NOT NULL DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -889,6 +891,24 @@ async function patchDatabaseSchema() {
       }
     } catch (e: any) {
       console.error('[schema-patch] Error checking/creating tenant_saving_goals table:', e.message);
+    }
+
+    // 23b. Ensure name and saved_amount columns exist in tenant_saving_goals
+    try {
+      if (tableNamesLower.includes('tenant_saving_goals')) {
+        const columns = await db.raw("SHOW COLUMNS FROM tenant_saving_goals");
+        const columnNames = columns[0].map((c: any) => c.Field.toLowerCase());
+        if (!columnNames.includes('name')) {
+          console.log('[schema-patch] Adding name column to tenant_saving_goals...');
+          await db.raw("ALTER TABLE tenant_saving_goals ADD COLUMN name VARCHAR(255) DEFAULT 'Savings Goal'");
+        }
+        if (!columnNames.includes('saved_amount')) {
+          console.log('[schema-patch] Adding saved_amount column to tenant_saving_goals...');
+          await db.raw("ALTER TABLE tenant_saving_goals ADD COLUMN saved_amount DECIMAL(10, 2) NOT NULL DEFAULT 0");
+        }
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error checking/adding columns to tenant_saving_goals:', e.message);
     }
 
     // 24. Ensure image_urls column exists in complaints

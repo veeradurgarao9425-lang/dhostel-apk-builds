@@ -680,23 +680,31 @@ export default function ExpensesScreen({ navigation }: any) {
   const [budget, setBudget] = useState(0);
   const [showBudget, setShowBudget] = useState(false);
 
-  // Load budget from AsyncStorage on mount
+  // Load budget and goal on mount
   useEffect(() => {
-    const loadBudget = async () => {
+    const loadData = async () => {
       try {
-        const res = await api.get('/tenant-expenses/budget');
-        if (res.data?.success) {
-          const amt = Number(res.data.data.amount);
+        const [budgetRes, goalRes] = await Promise.all([
+          api.get('/tenant-expenses/budget'),
+          api.get('/tenant-expenses/goal').catch(() => ({ data: { success: false } }))
+        ]);
+        if (budgetRes.data?.success) {
+          const amt = Number(budgetRes.data.data.amount);
           setBudget(amt);
           if (amt === 0) {
             setShowBudget(true);
           }
         }
+        if (goalRes.data?.success) {
+          setGoalName(goalRes.data.data.name || 'Set Goal');
+          setGoalTarget(Number(goalRes.data.data.amount || 0));
+          setGoalSaved(Number(goalRes.data.data.saved_amount || 0));
+        }
       } catch (e) {
-        console.error('Failed to load budget', e);
+        console.error('Failed to load budget/goal', e);
       }
     };
-    loadBudget();
+    loadData();
   }, []);
   const [showGoal, setShowGoal] = useState(false);
   const [showSettle, setShowSettle] = useState(false);
@@ -808,11 +816,27 @@ export default function ExpensesScreen({ navigation }: any) {
           console.error('Failed to save budget', e);
         }
       }} onClose={() => setShowBudget(false)} />
-      <SetGoalModal visible={showGoal} currentName={goalName} currentTarget={goalTarget} onSave={(name, target) => { setGoalName(name); setGoalTarget(target); setShowGoal(false); }} onClose={() => setShowGoal(false)} />
-      <AddSavingsModal visible={showAddSavings} currentSaved={goalSaved} onSave={(val) => {
+      <SetGoalModal visible={showGoal} currentName={goalName} currentTarget={goalTarget} onSave={async (name, target) => { 
+        setGoalName(name); 
+        setGoalTarget(target); 
+        setShowGoal(false); 
+        try {
+          await api.post('/tenant-expenses/goal', { name, amount: target });
+        } catch (e) {
+          console.error('Failed to save goal', e);
+        }
+      }} onClose={() => setShowGoal(false)} />
+      
+      <AddSavingsModal visible={showAddSavings} currentSaved={goalSaved} onSave={async (val) => {
         const newSaved = goalSaved + val;
         setGoalSaved(newSaved);
         setShowAddSavings(false);
+        try {
+          await api.post('/tenant-expenses/goal', { amount: goalTarget, name: goalName, saved_amount: newSaved });
+        } catch (e) {
+          console.error('Failed to update saved amount', e);
+        }
+
         if (goalTarget > 0 && newSaved >= goalTarget) {
           const achieved = { id: Date.now(), name: goalName, amt: goalTarget, date: new Date().toLocaleString('en-US', { month: 'short', year: 'numeric' }) };
           setCompletedGoals(prev => [achieved, ...prev]);
@@ -820,6 +844,10 @@ export default function ExpensesScreen({ navigation }: any) {
           setGoalTarget(0);
           setGoalSaved(0);
           showSuccess('Goal achieved! 🎉 You saved ₹' + goalTarget.toLocaleString('en-IN'));
+          
+          try {
+            await api.post('/tenant-expenses/goal', { amount: 0, name: 'Set Goal', saved_amount: 0 });
+          } catch(e) {}
         }
       }} onClose={() => setShowAddSavings(false)} />
       <ConfirmationDialog

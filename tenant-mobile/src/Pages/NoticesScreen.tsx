@@ -11,6 +11,7 @@ import api from '../services/api';
 import { mockNotices } from '../data/dummyData';
 import { AppHeader, EmptyState, SkeletonNotificationRow } from '../components/ui';
 import { CustomMonthYearPicker } from '../components/pickers/CustomMonthYearPicker';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const BLUE      = '#2245D4';
 const BLUE_SOFT = '#EEF3FF';
@@ -25,10 +26,10 @@ type FilterTab = 'All' | 'Important' | 'Maintenance' | 'Food' | 'General';
 const FILTER_TABS: FilterTab[] = ['All', 'Important', 'Maintenance', 'Food', 'General'];
 
 const categoryMeta: Record<string, { icon: any; iconColor: string; iconBg: string }> = {
-  Important:   { icon: AlertCircle,     iconColor: '#E53935', iconBg: '#FDEAEA' },
-  Maintenance: { icon: Wrench,          iconColor: '#FB8C00', iconBg: '#FFF3E0' },
-  General:     { icon: Bell,            iconColor: BLUE,      iconBg: BLUE_SOFT },
-  Food:        { icon: UtensilsCrossed, iconColor: '#43A047', iconBg: '#EAF5EA' },
+  Important:   { icon: AlertCircle,     iconColor: '#DC2626', iconBg: '#FEE2E2' },
+  Maintenance: { icon: Wrench,          iconColor: '#EA580C', iconBg: '#FFEDD5' },
+  General:     { icon: Bell,            iconColor: '#2952F3', iconBg: '#EEF2FF' },
+  Food:        { icon: UtensilsCrossed, iconColor: '#16A34A', iconBg: '#DCFCE7' },
 };
 
 export default function NoticesScreen({ navigation }: any) {
@@ -175,16 +176,23 @@ export default function NoticesScreen({ navigation }: any) {
               const meta = categoryMeta[notice.category] || categoryMeta.General;
               const Icon = meta.icon;
               return (
-                <TouchableOpacity style={styles.noticeCard} activeOpacity={0.7}>
-                  <View style={[styles.noticeIconWrap, { backgroundColor: meta.iconBg }]}>
-                    <Icon size={18} color={meta.iconColor} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.noticeTitle} numberOfLines={1}>{notice.title}</Text>
-                    <Text style={styles.noticeBody} numberOfLines={2}>{notice.body}</Text>
-                    <Text style={styles.noticeDate}>{notice.date}</Text>
-                  </View>
-                  <ChevronRight size={18} color="#CBD5E0" />
+                <TouchableOpacity activeOpacity={0.85} style={{ marginBottom: 16, marginHorizontal: 20 }}>
+                  <LinearGradient
+                    colors={['#FFFFFF', '#F8FAFC']}
+                    style={{ borderRadius: 24, padding: 16, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#F1F5F9', shadowColor: meta.iconColor, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 16, elevation: 5 }}
+                  >
+                    <View style={{ backgroundColor: meta.iconBg, width: 52, height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
+                      <Icon size={24} color={meta.iconColor} strokeWidth={2.5} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 16, fontWeight: '800', color: '#0F172A', marginBottom: 4 }} numberOfLines={1}>{notice.title}</Text>
+                      <Text style={{ fontSize: 13, color: '#64748B', lineHeight: 18 }} numberOfLines={2}>{notice.body}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10 }}>
+                        <Calendar size={12} color="#94A3B8" />
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#94A3B8', marginLeft: 4 }}>{notice.date}</Text>
+                      </View>
+                    </View>
+                  </LinearGradient>
                 </TouchableOpacity>
               );
             }}

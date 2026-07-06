@@ -68,12 +68,12 @@ export const getSavingGoal = async (req: AuthRequest, res: Response) => {
     
     // Default fallback if not found
     if (!goal) {
-      goal = { student_id: user.user_id, amount: 0 };
+      goal = { student_id: user.user_id, name: 'Savings Goal', amount: 0, saved_amount: 0 };
     }
 
     return res.json({ success: true, data: goal });
   } catch (error: any) {
-    if (error?.code === 'ER_NO_SUCH_TABLE') return res.json({ success: true, data: { amount: 0 } });
+    if (error?.code === 'ER_NO_SUCH_TABLE') return res.json({ success: true, data: { name: 'Savings Goal', amount: 0, saved_amount: 0 } });
     console.error('Error fetching saving goal:', error);
     return res.status(500).json({ success: false, error: 'Failed to fetch saving goal.' });
   }
@@ -86,7 +86,7 @@ export const updateSavingGoal = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ success: false, error: 'Unauthorized.' });
     }
 
-    const { amount } = req.body;
+    const { amount, name, saved_amount } = req.body;
     if (amount === undefined || amount === null) {
       return res.status(400).json({ success: false, error: 'Amount is required' });
     }
@@ -96,11 +96,18 @@ export const updateSavingGoal = async (req: AuthRequest, res: Response) => {
     if (existing) {
       await db('tenant_saving_goals')
         .where('student_id', user.user_id)
-        .update({ amount: parseFloat(amount), updated_at: new Date() });
+        .update({ 
+          amount: parseFloat(amount), 
+          name: name || existing.name, 
+          saved_amount: saved_amount !== undefined ? parseFloat(saved_amount) : existing.saved_amount,
+          updated_at: new Date() 
+        });
     } else {
       await db('tenant_saving_goals').insert({
         student_id: user.user_id,
+        name: name || 'Savings Goal',
         amount: parseFloat(amount),
+        saved_amount: saved_amount !== undefined ? parseFloat(saved_amount) : 0,
         created_at: new Date(),
         updated_at: new Date()
       });

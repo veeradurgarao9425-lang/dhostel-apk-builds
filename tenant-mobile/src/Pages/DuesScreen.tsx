@@ -104,9 +104,9 @@ function getModeStyle(mode?: string) {
 
 // ── Payment tips shown at bottom of "This Month" ─────────────────────
 const PAYMENT_TIPS = [
-  { Icon: Calendar, title: 'Avoid Late Fees', text: 'Pay before the due date to avoid late fees.', bg: '#F5F7FF', iconBg: '#E0E7FF', iconColor: '#4338CA', textColor: '#1E3A8A', descColor: '#475569' },
-  { Icon: Receipt,  title: 'Keep Records', text: 'Always save your transactions.', bg: '#F0FDF4', iconBg: '#DCFCE7', iconColor: '#15803D', textColor: '#14532D', descColor: '#475569' },
-  { Icon: ShieldCheck, title: 'Instant Confirm', text: 'Use UPI or net banking for instant confirmation.', bg: '#FFFBEB', iconBg: '#FEF3C7', iconColor: '#D97706', textColor: '#92400E', descColor: '#475569' },
+  { Icon: Calendar, title: 'Avoid Late Fees', text: 'Pay before the due date to avoid late fees.', bg: '#F8FAFC', iconBg: '#EEF2FF', iconColor: '#2952F3', textColor: '#0F172A', descColor: '#64748B' },
+  { Icon: Receipt,  title: 'Keep Records', text: 'Always save your transactions.', bg: '#F8FAFC', iconBg: '#EEF2FF', iconColor: '#2952F3', textColor: '#0F172A', descColor: '#64748B' },
+  { Icon: ShieldCheck, title: 'Instant Confirm', text: 'Use UPI or net banking for instant confirmation.', bg: '#F8FAFC', iconBg: '#EEF2FF', iconColor: '#2952F3', textColor: '#0F172A', descColor: '#64748B' },
 ];
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -204,22 +204,37 @@ export default function DuesScreen({ route, navigation }: any) {
 
   // ── Hero Card ────────────────────────────────────────────────────────────
   const renderHeroSection = () => {
-    if (feeRecords.length === 0) return null;
+    if (feeRecords.length === 0) {
+      return (
+        <LinearGradient
+          colors={['#FFFFFF', '#F8FAFC']}
+          style={{ borderRadius: 24, marginHorizontal: 20, marginTop: 16, marginBottom: 4, padding: 24, borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#2952F3', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.1, shadowRadius: 16, elevation: 4, flexDirection: 'row', alignItems: 'center' }}
+        >
+          <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center' }}>
+            <ShieldCheck size={28} color="#2952F3" strokeWidth={2.5} />
+          </View>
+          <View style={{ flex: 1, marginLeft: 16 }}>
+            <Text style={{ fontSize: 20, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5, marginBottom: 4 }}>No Dues Yet</Text>
+            <Text style={{ fontSize: 13, color: '#64748B', fontWeight: '600' }}>Your rent and fees will appear here.</Text>
+          </View>
+        </LinearGradient>
+      );
+    }
 
     if (allPaid) {
       return (
-        <View style={styles.heroClear}>
-          <View style={styles.heroClearIconBadge}>
-            <Check size={22} color="#FFFFFF" strokeWidth={3} />
+        <LinearGradient
+          colors={['#F0FDF4', '#DCFCE7']}
+          style={{ borderRadius: 24, marginHorizontal: 20, marginTop: 16, marginBottom: 4, padding: 24, borderWidth: 1, borderColor: '#BBF7D0', shadowColor: '#16A34A', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.1, shadowRadius: 16, elevation: 4, flexDirection: 'row', alignItems: 'center' }}
+        >
+          <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#BBF7D0', alignItems: 'center', justifyContent: 'center' }}>
+            <Check size={28} color="#15803D" strokeWidth={3} />
           </View>
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={styles.heroClearTitle}>All Dues Cleared!</Text>
-            <Text style={styles.heroClearSub}>{"You're up to date for this month."}</Text>
+          <View style={{ flex: 1, marginLeft: 16 }}>
+            <Text style={{ fontSize: 20, fontWeight: '800', color: '#14532D', letterSpacing: -0.5, marginBottom: 4 }}>All Dues Cleared! 🎉</Text>
+            <Text style={{ fontSize: 13, color: '#166534', fontWeight: '600' }}>You're completely up to date.</Text>
           </View>
-          <View style={styles.paidPill}>
-            <Text style={styles.paidPillText}>Paid</Text>
-          </View>
-        </View>
+        </LinearGradient>
       );
     }
 
@@ -315,13 +330,18 @@ export default function DuesScreen({ route, navigation }: any) {
         }
       />
 
+      {/* ── Hero (outside scroll) ── */}
+      {loading ? (
+        <View style={{ height: 160, backgroundColor: '#F1F5F9', borderRadius: 20, marginHorizontal: 20, marginTop: 16, marginBottom: 4, opacity: 0.6 }} />
+      ) : (!error && isAllocated && renderHeroSection())}
+
       {/* ── Tab Toggle Outside Header ── */}
       {loading ? (
-        <View style={[styles.tabContainer, { backgroundColor: 'transparent' }]}>
+        <View style={[styles.tabContainer, { backgroundColor: 'transparent', marginTop: 16 }]}>
           <View style={{ height: 46, backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 14, marginHorizontal: 20 }} />
         </View>
       ) : (
-        <View style={[styles.tabContainer, { backgroundColor: 'transparent' }]}>
+        <View style={[styles.tabContainer, { backgroundColor: 'transparent', marginTop: 16 }]}>
           <View style={[styles.tabRow, { backgroundColor: 'rgba(0,0,0,0.05)' }]}>
             {(['This Month', 'Payment History'] as TabKey[]).map((tab) => (
               <TouchableOpacity
@@ -339,11 +359,6 @@ export default function DuesScreen({ route, navigation }: any) {
           </View>
         </View>
       )}
-
-      {/* ── Hero (outside scroll) ── */}
-      {loading ? (
-        <View style={{ height: 160, backgroundColor: '#F1F5F9', borderRadius: 20, marginHorizontal: 20, marginTop: 16, marginBottom: 4, opacity: 0.6 }} />
-      ) : (!error && isAllocated && renderHeroSection())}
 
 
       {/* ── Content ── */}
@@ -379,44 +394,16 @@ export default function DuesScreen({ route, navigation }: any) {
           // ══════════════════════════════════════════════════════════════════
           <View style={{ paddingBottom: 24 }}>
 
-            {/* Paid banner (only when this month is fully paid) */}
-            {thisMonthFee && thisMonthFee.balance <= 0 && thisMonthFee.paid_amount > 0 && (
-              <>
-                <Text style={styles.groupLabel}>This Month's Payment</Text>
-                <View style={styles.listCard}>
-                  <View style={[styles.listRow, { borderBottomWidth: 0 }]}>
-                    <View style={[styles.listIconWrap, { backgroundColor: colors.successSoft }]}>
-                      <CheckCircle2 size={16} color={colors.success} strokeWidth={1.5} />
-                    </View>
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text style={styles.listTitle} numberOfLines={1}>Rent Paid — {formatMonth(thisMonthFee.fee_month)}</Text>
-                      <Text style={styles.listSub} numberOfLines={1}>
-                        {thisMonthFee.payments && thisMonthFee.payments[0]
-                          ? `Paid on ${formatDateStr(thisMonthFee.payments[0].payment_date)}`
-                          : 'Paid successfully'}
-                      </Text>
-                    </View>
-                    <View style={{ alignItems: 'flex-end', flexShrink: 0 }}>
-                      <Text style={[styles.listAmount, { color: colors.success }]}>
-                        {formatCurrency(thisMonthFee.paid_amount || thisMonthFee.total_due)}
-                      </Text>
-                      <View style={styles.paidPill}><Text style={styles.paidPillText}>Paid</Text></View>
-                    </View>
-                  </View>
-                </View>
-              </>
-            )}
-
-            {/* Pending dues list — NO "Pay Now" here (hero card has it for single due) */}
-            {pendingFees.length > 0 ? (
+            {/* Pending dues list — Shown only if multiple pending dues exist (otherwise Hero covers it) */}
+            {pendingFees.length > 1 ? (
               <>
                 <Text style={styles.groupLabel}>Pending Dues</Text>
                 <View style={styles.listCard}>
                   {pendingFees.map((fee, i) => {
                     const cfg = statusConfig[fee.fee_status] || statusConfig['Pending'];
                     const isCurrentMonthFee = fee.fee_month === currentMonthStr;
-                    // Show Pay Now only when there are MULTIPLE pending (split mode — hero doesn't cover each item)
-                    const showItemPayBtn = !singlePendingMode;
+                    // Show Pay Now for all items in split mode
+                    const showItemPayBtn = true;
                     return (
                       <View
                         key={fee.fee_id}
@@ -468,19 +455,19 @@ export default function DuesScreen({ route, navigation }: any) {
               </View>
             ) : null}
 
-            {/* Recently paid (preview, max 3) */}
+            {/* Recently paid (preview, max 5) */}
             {paidFees.length > 0 && (
               <>
                 <Text style={styles.groupLabel}>Recently Paid</Text>
                 <View style={styles.listCard}>
-                  {paidFees.slice(0, 3).map((fee, i) => (
+                  {paidFees.slice(0, 5).map((fee, i) => (
                     <TouchableOpacity
                       key={fee.fee_id}
                       activeOpacity={0.7}
                       onPress={() => navigation.navigate('PaymentReceipt', { fee, isPaid: true })}
                       style={[
                         styles.listRow,
-                        i < Math.min(paidFees.length, 3) - 1 && styles.listRowDivider,
+                        i < Math.min(paidFees.length, 5) - 1 && styles.listRowDivider,
                         { alignItems: 'flex-start' },
                       ]}
                     >
@@ -709,8 +696,8 @@ const styles = StyleSheet.create({
   heroSingleTop:    { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 },
   heroSingleLabel:  { fontSize: 13, fontWeight: '600', color: TEXT_MID, marginBottom: 3 },
   heroSingleDate:   { fontSize: 11, color: TEXT_MID },
-  heroSingleAmount: { fontSize: 36, fontWeight: '900', color: colors.danger, letterSpacing: -1, marginBottom: 4 },
-  heroSinglePartial:{ fontSize: 12, color: colors.success, fontWeight: '600', marginBottom: 12 },
+  heroSingleAmount: { fontSize: 36, fontWeight: '900', color: '#0F172A', letterSpacing: -1, marginBottom: 4 },
+  heroSinglePartial:{ fontSize: 12, color: '#2952F3', fontWeight: '600', marginBottom: 12 },
   heroIconBadge:    { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
 
   heroClear: {
