@@ -430,11 +430,11 @@ app.get('/api/public/qr-signup', async (req, res) => {
             else { showError('first_name', ''); }
 
             const phone = form.phone.value.trim();
-            if (!/^\d{10}$/.test(phone)) { showError('phone', 'Enter a valid 10-digit mobile number'); ok = false; }
+            if (!/^\\d{10}$/.test(phone)) { showError('phone', 'Enter a valid 10-digit mobile number'); ok = false; }
             else { showError('phone', ''); }
 
             const email = form.email.value.trim();
-            if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showError('email', 'Enter a valid email address'); ok = false; }
+            if (email && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) { showError('email', 'Enter a valid email address'); ok = false; }
             else { showError('email', ''); }
 
             if (!form.permanent_address.value.trim()) { showError('permanent_address', 'Permanent address is required'); ok = false; }
@@ -443,7 +443,7 @@ app.get('/api/public/qr-signup', async (req, res) => {
           
           if (step === 2) {
             const gphone = form.guardian_phone.value.trim();
-            if (gphone && !/^\d{10}$/.test(gphone)) { showError('guardian_phone', 'Enter a valid 10-digit number'); ok = false; }
+            if (gphone && !/^\\d{10}$/.test(gphone)) { showError('guardian_phone', 'Enter a valid 10-digit number'); ok = false; }
             else { showError('guardian_phone', ''); }
           }
 
@@ -492,7 +492,7 @@ app.get('/api/public/qr-signup', async (req, res) => {
           const form = e.target;
           
           const aadhaar = form.id_proof_number.value.trim();
-          if (!/^\d{12}$/.test(aadhaar)) { showError('id_proof_number', 'Aadhaar must be exactly 12 digits'); ok = false; }
+          if (!/^\\d{12}$/.test(aadhaar)) { showError('id_proof_number', 'Aadhaar must be exactly 12 digits'); ok = false; }
           else { showError('id_proof_number', ''); }
 
           if (!ok) {
