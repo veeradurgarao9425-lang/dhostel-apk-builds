@@ -160,9 +160,21 @@ const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect, isDar
 }) => {
     const palette = avatarPalette(item.name);
     const accentColor = item.isOverdue ? '#DC2626' : '#D97706';
-    const tagLabel = item.isOverdue
-        ? `${item.daysOverdue}d overdue`
-        : `Due ${item.dueDate}`;
+    let tagLabel = '';
+    if (item.isOverdue) {
+        tagLabel = `${item.daysOverdue}d overdue`;
+    } else {
+        const dueObj = new Date(item.rawDueDate);
+        dueObj.setHours(0,0,0,0);
+        const now = new Date();
+        now.setHours(0,0,0,0);
+        const diffDays = Math.floor((dueObj.getTime() - now.getTime()) / 86400000);
+        
+        if (diffDays === 0) tagLabel = 'Due Today';
+        else if (diffDays === 1) tagLabel = 'Due Tomorrow';
+        else if (diffDays > 1) tagLabel = `Due in ${diffDays} days`;
+        else tagLabel = `Due ${item.dueDate}`;
+    }
 
     const isDarkBg = isDark ? '#1E293B' : '#FFF';
 
@@ -769,7 +781,9 @@ export default function PendingPaymentsScreen() {
                                     minWidth: 20,
                                     alignItems: 'center',
                                 }}>
-                                    <Text style={{ color: isActive ? '#FFF' : color, fontSize: 10, fontWeight: '800' }}>{counts[tab]}</Text>
+                                    <Text style={{ color: isActive ? '#FFF' : color, fontSize: 10, fontWeight: '800' }}>
+                                        {counts[tab]} {counts[tab] === 1 ? 'student' : 'students'}
+                                    </Text>
                                 </View>
                             )}
                         </TouchableOpacity>
