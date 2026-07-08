@@ -131,7 +131,7 @@ const qrSignupUpload = multer({
   },
 });
 
-// Public QR tenant signup (no auth) — redirect to React frontend
+// Public QR tenant signup — serves self-contained HTML (works on any device/IP)
 app.get('/api/public/qr-signup', (req, res) => {
   const hostelId = req.query.hostelId as string;
   const roomId   = req.query.roomId   as string | undefined;
@@ -142,15 +142,254 @@ app.get('/api/public/qr-signup', (req, res) => {
     return res.status(400).send('<h2 style="font-family:sans-serif;color:#7f1d1d;">Missing hostelId</h2>');
   }
 
-  // Build query string for React page
-  let qs = `hostelId=${encodeURIComponent(hostelId)}`;
-  if (roomId)  qs += `&roomId=${encodeURIComponent(roomId)}`;
-  if (bedId)   qs += `&bedId=${encodeURIComponent(bedId)}`;
-  if (bedName) qs += `&bedName=${encodeURIComponent(bedName)}`;
+  const roomBanner = roomId
+    ? `<div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:14px 16px;margin-bottom:18px;"><div style="font-size:11px;color:#166534;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">🏠 Pre-assigned Allocation</div><div style="font-size:14px;color:#15803d;font-weight:600;">Room: <strong style="color:#14532d;">${roomId}</strong>${bedName ? ` &nbsp;Bed: <strong style="color:#14532d;">${bedName}</strong>` : ''}</div></div>`
+    : '';
 
-  // Redirect to React frontend page
-  const frontendOrigin = process.env.FRONTEND_URL || 'http://localhost:5173';
-  return res.redirect(`${frontendOrigin}/register?${qs}`);
+  const postUrl = `/api/public/qr-signup?hostelId=${encodeURIComponent(hostelId)}${roomId ? `&roomId=${encodeURIComponent(roomId)}` : ''}${bedId ? `&bedId=${encodeURIComponent(bedId)}` : ''}${bedName ? `&bedName=${encodeURIComponent(bedName)}` : ''}`;
+
+  // NOTE: Inside this template literal, \\d renders as \d in the browser (digit regex class) - correct!
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=0"/>
+  <title>Tenant Registration</title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:linear-gradient(135deg,#F8FAFC 0%,#EEF2FF 100%);margin:0;min-height:100vh;padding:16px 12px 48px;}
+    .card{max-width:500px;margin:0 auto;background:#fff;border-radius:24px;padding:24px 20px;box-shadow:0 12px 40px rgba(0,0,0,0.08);position:relative;overflow:hidden;}
+    h1{margin:0 0 4px;color:#0F172A;font-size:21px;font-weight:800;text-align:center;}
+    .sub{color:#64748B;font-size:13px;margin-bottom:18px;text-align:center;}
+    .stepper{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;position:relative;padding:0 8px;}
+    .stepper::before{content:'';position:absolute;top:14px;left:28px;right:28px;height:3px;background:#E2E8F0;z-index:1;border-radius:3px;}
+    .sp{position:absolute;top:14px;left:28px;height:3px;background:#7C3AED;z-index:2;border-radius:3px;transition:width .3s ease;}
+    .stp{position:relative;z-index:3;display:flex;flex-direction:column;align-items:center;gap:5px;width:56px;}
+    .sc{width:30px;height:30px;border-radius:50%;background:#F1F5F9;border:2.5px solid #E2E8F0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#94A3B8;transition:all .3s;}
+    .stp.active .sc{background:#fff;border-color:#7C3AED;color:#7C3AED;box-shadow:0 0 0 4px rgba(124,58,237,.12);}
+    .stp.done .sc{background:#7C3AED;border-color:#7C3AED;color:#fff;}
+    .sl{font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.5px;transition:color .3s;text-align:center;}
+    .stp.active .sl{color:#7C3AED;}.stp.done .sl{color:#1e293b;}
+    .step{display:none;animation:si .25s ease;}.step.active{display:block;}
+    @keyframes si{from{opacity:0;transform:translateX(8px)}to{opacity:1;transform:none}}
+    .field{margin-bottom:13px;}
+    .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    lbl{display:block;font-size:11px;font-weight:700;color:#475569;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;}
+    .req{color:#EF4444;margin-left:2px;}
+    input,select,textarea{width:100%;padding:12px 13px;border:1.5px solid #E2E8F0;border-radius:10px;font-size:15px;color:#1E293B;outline:none;transition:all .18s;background:#F8FAFC;font-family:inherit;}
+    input:focus,select:focus,textarea:focus{border-color:#7C3AED;background:#fff;box-shadow:0 0 0 3px rgba(124,58,237,.1);}
+    .ef input,.ef select,.ef textarea{border-color:#EF4444;background:#FEF2F2;}
+    textarea{resize:vertical;min-height:76px;}
+    .em{display:block;color:#EF4444;font-size:11px;margin-top:3px;font-weight:600;min-height:14px;}
+    .btns{display:flex;gap:10px;margin-top:18px;}
+    .btn{flex:1;padding:14px;border-radius:12px;font-weight:700;font-size:14px;cursor:pointer;border:none;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;}
+    .bp{background:linear-gradient(135deg,#7C3AED,#5F2EEA);color:#fff;box-shadow:0 4px 14px rgba(124,58,237,.25);}
+    .bp:hover{opacity:.9;}.bp:active{transform:scale(.98);}
+    .bo{background:transparent;border:2px solid #E2E8F0;color:#475569;}
+    .bo:hover{background:#F8FAFC;border-color:#CBD5E1;}
+    .fw input[type=file]{position:absolute;width:1px;height:1px;opacity:0;}
+    .fb{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:15px;border:2px dashed #C4B5FD;border-radius:10px;background:#FAF5FF;color:#7C3AED;font-size:13px;font-weight:700;cursor:pointer;transition:all .18s;margin-bottom:9px;}
+    .fb.has{border-style:solid;border-color:#7C3AED;background:#F5F3FF;}
+    #toast{position:fixed;top:14px;left:50%;transform:translateX(-50%) translateY(-110px);background:#EF4444;color:#fff;padding:11px 20px;border-radius:26px;font-size:13px;font-weight:700;box-shadow:0 6px 20px rgba(239,68,68,.3);transition:transform .4s cubic-bezier(.34,1.56,.64,1);z-index:1000;white-space:nowrap;max-width:90%;text-align:center;}
+    #toast.show{transform:translateX(-50%) translateY(0);}
+    #ldr{position:absolute;inset:0;background:rgba(255,255,255,.92);z-index:99;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s;border-radius:24px;}
+    #ldr.show{opacity:1;pointer-events:all;}
+    .spin{width:40px;height:40px;border:4px solid #EDE9FE;border-top-color:#7C3AED;border-radius:50%;animation:sp .7s linear infinite;margin-bottom:12px;}
+    @keyframes sp{to{transform:rotate(360deg)}}
+    #ok{display:none;text-align:center;padding:40px 10px 20px;}
+    .ck{width:80px;height:80px;background:#10B981;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin:0 auto 22px;color:#fff;font-size:38px;box-shadow:0 10px 28px rgba(16,185,129,.35);animation:pop .55s cubic-bezier(.34,1.56,.64,1);}
+    @keyframes pop{0%{transform:scale(.4);opacity:0}70%{transform:scale(1.1)}to{transform:scale(1);opacity:1}}
+    #ok h2{color:#0F172A;font-size:22px;margin:0 0 10px;font-weight:800;}
+    #ok p{color:#64748B;font-size:14px;line-height:1.6;margin-bottom:24px;}
+    .logo{width:46px;height:46px;border-radius:13px;background:linear-gradient(135deg,#7C3AED,#5F2EEA);display:inline-flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 4px 14px rgba(124,58,237,.28);margin-bottom:10px;}
+  </style>
+</head>
+<body>
+  <div id="toast">⚠️ <span id="tm">Error</span></div>
+  <div class="card" id="mc">
+    <div id="ldr"><div class="spin"></div><div style="color:#5B21B6;font-weight:700;font-size:15px;">Submitting...</div></div>
+    <div id="fc">
+      <div style="text-align:center;margin-bottom:12px;"><div class="logo">🏠</div></div>
+      <h1>Tenant Registration</h1>
+      <p class="sub">Complete the steps below to request admission</p>
+      ${roomBanner}
+
+      <div class="stepper">
+        <div class="sp" id="prog" style="width:0%"></div>
+        <div class="stp active" id="n1"><div class="sc" id="c1">1</div><div class="sl">Personal</div></div>
+        <div class="stp" id="n2"><div class="sc" id="c2">2</div><div class="sl">Guardian</div></div>
+        <div class="stp" id="n3"><div class="sc" id="c3">3</div><div class="sl">Identity</div></div>
+      </div>
+
+      <form id="frm" novalidate>
+        <!-- STEP 1 -->
+        <div class="step active" id="p1">
+          <div class="row2">
+            <div class="field">
+              <lbl>First Name<span class="req">*</span></lbl>
+              <input id="first_name" name="first_name" placeholder="e.g. Ravi"/>
+              <span class="em" id="e1"></span>
+            </div>
+            <div class="field">
+              <lbl>Last Name</lbl>
+              <input id="last_name" name="last_name" placeholder="e.g. Kumar"/>
+            </div>
+          </div>
+          <div class="field">
+            <lbl>Phone<span class="req">*</span></lbl>
+            <input id="phone" name="phone" inputmode="numeric" maxlength="10" placeholder="10-digit mobile number"/>
+            <span class="em" id="e2"></span>
+          </div>
+          <div class="field">
+            <lbl>Email Address</lbl>
+            <input id="email" name="email" type="email" placeholder="your@email.com"/>
+            <span class="em" id="e3"></span>
+          </div>
+          <div class="row2">
+            <div class="field"><lbl>Date of Birth</lbl><input id="dob" name="date_of_birth" type="date"/></div>
+            <div class="field">
+              <lbl>Gender</lbl>
+              <select id="gender" name="gender"><option value="">Select...</option><option>Male</option><option>Female</option><option>Other</option></select>
+            </div>
+          </div>
+          <div class="field">
+            <lbl>Permanent Address<span class="req">*</span></lbl>
+            <textarea id="addr" name="permanent_address" placeholder="Full home address"></textarea>
+            <span class="em" id="e4"></span>
+          </div>
+          <div class="btns"><button type="button" class="btn bp" id="b1">Next: Guardian Details ›</button></div>
+        </div>
+
+        <!-- STEP 2 -->
+        <div class="step" id="p2">
+          <p style="font-size:13px;color:#64748B;margin:0 0 14px;line-height:1.5;">Guardian details are optional but recommended.</p>
+          <div class="field"><lbl>Guardian Name</lbl><input id="gname" name="guardian_name" placeholder="Parent / Guardian name"/></div>
+          <div class="field">
+            <lbl>Guardian Phone</lbl>
+            <input id="gphone" name="guardian_phone" inputmode="numeric" maxlength="10" placeholder="10-digit number"/>
+            <span class="em" id="e5"></span>
+          </div>
+          <div class="btns">
+            <button type="button" class="btn bo" id="bk2">‹ Back</button>
+            <button type="button" class="btn bp" id="b2">Next: Identity Docs ›</button>
+          </div>
+        </div>
+
+        <!-- STEP 3 -->
+        <div class="step" id="p3">
+          <div class="field">
+            <lbl>Aadhaar Number<span class="req">*</span></lbl>
+            <input id="aadhaar" name="id_proof_number" inputmode="numeric" maxlength="12" placeholder="12-digit Aadhaar number"/>
+            <span class="em" id="e6"></span>
+          </div>
+          <p style="font-size:12px;color:#64748B;margin:0 0 10px;">Upload clear Aadhaar photos (optional).</p>
+          <div class="fw"><label class="fb" id="ffb" for="af"><span id="ffl">📷 Upload Aadhaar Front</span></label><input type="file" id="af" name="aadhaar_front" accept="image/*"/></div>
+          <div class="fw"><label class="fb" id="bfb" for="ab"><span id="bfl">📷 Upload Aadhaar Back</span></label><input type="file" id="ab" name="aadhaar_back" accept="image/*"/></div>
+          <div class="btns">
+            <button type="button" class="btn bo" id="bk3">‹ Back</button>
+            <button type="submit" class="btn bp" id="sub">✓ Submit Application</button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <div id="ok">
+      <div class="ck">✓</div>
+      <h2>Application Sent! 🎉</h2>
+      <p>Your details have been submitted successfully. The owner will verify and activate your account in the app.</p>
+      <button class="btn bp" onclick="window.location.reload()">Submit Another</button>
+    </div>
+  </div>
+
+  <script>
+    var cur = 1;
+    function go(n) {
+      cur = n;
+      document.getElementById('prog').style.width = (n===1?0:n===2?50:100)+'%';
+      [1,2,3].forEach(function(i){
+        var nav=document.getElementById('n'+i), circ=document.getElementById('c'+i);
+        nav.className='stp'+(i===n?' active':i<n?' done':'');
+        circ.innerHTML = i<n ? '&#10003;' : i;
+      });
+      document.querySelectorAll('.step').forEach(function(el){el.classList.remove('active');});
+      document.getElementById('p'+n).classList.add('active');
+      try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){window.scrollTo(0,0);}
+    }
+    function setErr(el, inp, msg) {
+      var e=document.getElementById(el), i=document.getElementById(inp);
+      if(e) e.textContent=msg||'';
+      if(i){ msg ? i.parentElement.classList.add('ef') : i.parentElement.classList.remove('ef'); }
+    }
+    function toast(msg){
+      document.getElementById('tm').textContent=msg;
+      var t=document.getElementById('toast'); t.classList.add('show');
+      setTimeout(function(){t.classList.remove('show');},4000);
+    }
+    function val(id){ return (document.getElementById(id)||{}).value||''; }
+
+    // Digits only
+    ['phone','gphone','aadhaar'].forEach(function(id){
+      var el=document.getElementById(id);
+      if(el) el.addEventListener('input',function(){ this.value=this.value.replace(/[^0-9]/g,''); });
+    });
+
+    // Step 1 next
+    document.getElementById('b1').addEventListener('click',function(){
+      var ok=true;
+      if(!val('first_name').trim()){setErr('e1','first_name','First name is required');ok=false;}else{setErr('e1','first_name','');}
+      if(!/^[6-9]\d{9}$/.test(val('phone').trim())){setErr('e2','phone','Enter a valid 10-digit mobile number');ok=false;}else{setErr('e2','phone','');}
+      var em=val('email').trim();
+      if(em&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){setErr('e3','email','Enter a valid email');ok=false;}else{setErr('e3','email','');}
+      if(!val('addr').trim()){setErr('e4','addr','Permanent address is required');ok=false;}else{setErr('e4','addr','');}
+      if(!ok){toast('Please fix the errors to continue.');return;}
+      go(2);
+    });
+
+    // Step 2
+    document.getElementById('bk2').addEventListener('click',function(){go(1);});
+    document.getElementById('b2').addEventListener('click',function(){
+      var gp=val('gphone').trim();
+      if(gp&&!/^\d{10}$/.test(gp)){setErr('e5','gphone','Enter a valid 10-digit number');toast('Please fix the errors to continue.');return;}
+      setErr('e5','gphone',''); go(3);
+    });
+
+    // Step 3
+    document.getElementById('bk3').addEventListener('click',function(){go(2);});
+
+    // File inputs
+    [{inp:'af',fb:'ffb',lbl:'ffl',side:'Front'},{inp:'ab',fb:'bfb',lbl:'bfl',side:'Back'}].forEach(function(cfg){
+      document.getElementById(cfg.inp).addEventListener('change',function(){
+        var has=this.files&&this.files[0];
+        document.getElementById(cfg.fb).className='fb'+(has?' has':'');
+        document.getElementById(cfg.lbl).textContent=has?'✓ '+this.files[0].name:'📷 Upload Aadhaar '+cfg.side;
+      });
+    });
+
+    // Submit
+    document.getElementById('frm').addEventListener('submit',function(e){
+      e.preventDefault();
+      if(!/^\d{12}$/.test(val('aadhaar').trim())){setErr('e6','aadhaar','Aadhaar must be exactly 12 digits');toast('Please fix the errors to submit.');return;}
+      setErr('e6','aadhaar','');
+      var sub=document.getElementById('sub'); sub.disabled=true;
+      document.getElementById('ldr').classList.add('show');
+      fetch('${postUrl}',{method:'POST',body:new FormData(this),headers:{'Accept':'application/json'}})
+        .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
+        .then(function(res){
+          document.getElementById('ldr').classList.remove('show'); sub.disabled=false;
+          if(res.ok&&res.d.success){document.getElementById('fc').style.display='none';document.getElementById('ok').style.display='block';}
+          else{
+            toast(res.d.error||'Registration failed. Please try again.');
+            if((res.d.error||'').toLowerCase().indexOf('aadhaar')!==-1){setErr('e6','aadhaar',res.d.error);go(3);}
+          }
+        })
+        .catch(function(){document.getElementById('ldr').classList.remove('show');sub.disabled=false;toast('Network error. Check your connection.');});
+    });
+  </script>
+</body>
+</html>`;
+
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.status(200).send(html);
 });
 
 const qrSignupErrorPage = (message: string) =>
