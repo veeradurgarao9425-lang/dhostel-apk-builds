@@ -67,7 +67,9 @@ const getAllowedOrigins = (): string[] => {
 };
 
 // Middleware
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false,
+}));
 app.use(cors({
   origin: getAllowedOrigins(),
   credentials: true,
@@ -572,8 +574,6 @@ app.get('/api/public/qr-signup', async (req, res) => {
     </body>
     </html>
   `;
-  // Override helmet's strict CSP for this public page so our inline script can execute
-  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;");
   // Prevent browser caching
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
   res.setHeader('Pragma', 'no-cache');
