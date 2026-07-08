@@ -59,12 +59,12 @@ export const StatisticsGrid = ({ data, fmt }: StatisticsGridProps) => {
                     theme={theme}
                 />
                 <StatCard
-                    icon="calendar"
-                    iconColor="#F97316"
-                    iconBg="#FFF7ED"
-                    label="Pre-Books"
-                    value={data.prebookingsCount ?? 0}
-                    onPress={() => navigation.navigate('PreBooking')}
+                    icon="bar-chart"
+                    iconColor="#EA580C"
+                    iconBg="#FFEDD5"
+                    label="Reports"
+                    value="View"
+                    onPress={() => navigation.navigate('Reports')}
                     isDark={isDark}
                     theme={theme}
                 />

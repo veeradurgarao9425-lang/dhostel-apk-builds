@@ -90,7 +90,7 @@ export default function MoreScreen() {
         },
     ], [t]);
 
-    const menuGroups = useMemo<{ groupTitle: string; items: MenuItem[] }[]>(() => [
+    const menuGroups = useMemo(() => [
         {
             groupTitle: t('more.management'),
             items: [
@@ -261,6 +261,7 @@ export default function MoreScreen() {
                     iconColor: '#3B82F6',
                     iconBg: '#DBEAFE',
                     route: 'Settings',
+                },
             ],
         },
     ], [t, stats]);

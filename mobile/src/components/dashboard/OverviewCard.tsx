@@ -31,6 +31,10 @@ export const OverviewCard = ({ data, setShowCollectionSheet, pulseValue, fmt }: 
         ? Math.round((data.occupiedBeds / data.totalBeds) * 100)
         : 0;
 
+    const collectionPct = data.collectionStats.totalExpected > 0
+        ? Math.min(100, Math.round((data.collectionStats.collected / data.collectionStats.totalExpected) * 100))
+        : 0;
+
     if (data.totalBeds === 0) {
         return (
             <TouchableOpacity
@@ -60,171 +64,182 @@ export const OverviewCard = ({ data, setShowCollectionSheet, pulseValue, fmt }: 
     }
 
     return (
-        <View style={[s.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9', paddingHorizontal: 16, paddingVertical: 14 }]}>
-            <View style={s.overviewRow}>
+        <View style={[s.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
 
-                {/* ── Tenants ── */}
-                <TouchableOpacity style={[s.overviewItem, { alignItems: 'flex-start' }]} activeOpacity={0.7} onPress={() => navigation.navigate('Students')}>
-                    <View style={s.valueRow}>
-                        <View style={[s.iconPill, { backgroundColor: isDark ? '#2D1B69' : '#EDE9FE' }]}>
-                            <Ionicons name="people" size={13} color="#7C3AED" />
-                        </View>
-                        <Text style={[s.overviewValue, { color: '#7C3AED', fontSize: fontSize + 5 }]} numberOfLines={1}>
+            {/* ── Top row: Tenants + Beds ── */}
+            <View style={s.topRow}>
+                {/* Tenants */}
+                <TouchableOpacity
+                    style={[s.topCell, { borderRightWidth: 1, borderRightColor: isDark ? '#334155' : '#EEF2FF' }]}
+                    activeOpacity={0.7}
+                    onPress={() => navigation.navigate('Students')}
+                >
+                    <View style={[s.iconPill, { backgroundColor: isDark ? '#2D1B69' : '#EDE9FE' }]}>
+                        <Ionicons name="people" size={13} color="#7C3AED" />
+                    </View>
+                    <View>
+                        <Text style={[s.topValue, { color: '#7C3AED', fontSize: fontSize + 5 }]} numberOfLines={1}>
                             {data.totalStudentsCount}
                         </Text>
-                    </View>
-                    <Text style={[s.overviewLabel, { color: theme.textSecondary, fontSize: Math.max(9, fontSize - 4), textAlign: 'left' }]} numberOfLines={1}>
-                        {t('dashboard.tenants')}
-                    </Text>
-                </TouchableOpacity>
-
-                <View style={[s.overviewDivider, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]} />
-
-                {/* ── Beds ── */}
-                <TouchableOpacity style={[s.overviewItem, { alignItems: 'center' }]} activeOpacity={0.7} onPress={() => navigation.navigate('Rooms', { filter: 'All' })}>
-                    <View style={s.valueRow}>
-                        <View style={[s.iconPill, { backgroundColor: isDark ? '#0C2840' : '#E0F2FE' }]}>
-                            <Ionicons name="bed" size={13} color="#0284C7" />
-                        </View>
-                        <Text style={[s.overviewValue, { color: '#0284C7', fontSize: fontSize + 5 }]} numberOfLines={1}>
-                            {data.occupiedBeds}/{data.totalBeds}
+                        <Text style={[s.topLabel, { color: theme.textSecondary, fontSize: Math.max(9, fontSize - 4) }]} numberOfLines={1}>
+                            {t('dashboard.tenants')}
                         </Text>
                     </View>
-                    <Text style={[s.overviewLabel, { color: theme.textSecondary, fontSize: Math.max(9, fontSize - 4), textAlign: 'center' }]} numberOfLines={1}>
-                        {t('dashboard.bedsOccupied')}
-                    </Text>
-                    <View style={[s.subBadge, { backgroundColor: isDark ? '#0C2840' : '#E0F2FE' }]}>
-                        <Ionicons name="trending-up" size={9} color="#0284C7" />
-                        <Text style={[s.subBadgeText, { color: '#0284C7' }]}>{occupancyPct}% Occupied</Text>
-                    </View>
                 </TouchableOpacity>
 
-                <View style={[s.overviewDivider, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]} />
+                {/* Beds Occupied */}
+                <TouchableOpacity
+                    style={s.topCell}
+                    activeOpacity={0.7}
+                    onPress={() => navigation.navigate('Rooms', { filter: 'All' })}
+                >
+                    <View style={[s.iconPill, { backgroundColor: isDark ? '#0C2840' : '#E0F2FE' }]}>
+                        <Ionicons name="bed" size={13} color="#0284C7" />
+                    </View>
+                    <View>
+                        <Text style={[s.topValue, { color: '#0284C7', fontSize: fontSize + 5 }]} numberOfLines={1}>
+                            {data.occupiedBeds}/{data.totalBeds}
+                        </Text>
+                        <Text style={[s.topLabel, { color: theme.textSecondary, fontSize: Math.max(9, fontSize - 4) }]} numberOfLines={1}>
+                            {t('dashboard.bedsOccupied')}
+                        </Text>
+                    </View>
+                    <View style={[s.badge, { backgroundColor: isDark ? '#0C2840' : '#E0F2FE' }]}>
+                        <Ionicons name="trending-up" size={9} color="#0284C7" />
+                        <Text style={[s.badgeText, { color: '#0284C7' }]}>{occupancyPct}%</Text>
+                    </View>
+                </TouchableOpacity>
+            </View>
 
-                {/* ── Collection ── */}
-                <TouchableOpacity style={[s.overviewItem, { alignItems: 'flex-end' }]} activeOpacity={0.7} onPress={() => setShowCollectionSheet(true)}>
-                    <View style={s.valueRow}>
-                        <View style={[s.iconPill, { backgroundColor: isDark ? '#052E16' : '#D1FAE5' }]}>
-                            <Ionicons name="wallet" size={13} color="#10B981" />
-                        </View>
-                        <Text style={[s.overviewValue, { color: '#10B981', fontSize: fontSize + 5 }]} numberOfLines={1}>
+            {/* ── Divider ── */}
+            <View style={[s.hDivider, { backgroundColor: isDark ? '#1E293B' : '#EEF2FF' }]} />
+
+            {/* ── Bottom: Collection Card ── */}
+            <TouchableOpacity
+                style={s.collectionRow}
+                activeOpacity={0.8}
+                onPress={() => setShowCollectionSheet(true)}
+            >
+                {/* Left: label + collected amount */}
+                <View style={s.collectionLeft}>
+                    <View style={[s.iconPill, { backgroundColor: isDark ? '#052E16' : '#D1FAE5' }]}>
+                        <Ionicons name="wallet" size={13} color="#10B981" />
+                    </View>
+                    <View>
+                        <Text style={{ fontSize: 9, fontWeight: '700', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                            {data.collectionStats.monthName || t('dashboard.month')} Collection
+                        </Text>
+                        <Text style={{ fontSize: fontSize + 4, fontWeight: '800', color: '#10B981' }} numberOfLines={1}>
                             {fmt(data.collectionStats.collected)}
                         </Text>
                     </View>
-                    <Text style={[s.overviewLabel, { color: theme.textSecondary, fontSize: Math.max(9, fontSize - 4), textAlign: 'left' }]} numberOfLines={1}>
-                        {data.collectionStats.monthName || t('dashboard.month')} Collection
-                    </Text>
+                </View>
+
+                {/* Right: pending + progress + tap hint */}
+                <View style={s.collectionRight}>
                     {data.collectionStats.pending > 0 && (
-                        <View style={[s.subBadge, { backgroundColor: isDark ? '#1A0A0A' : '#FEF2F2' }]}>
+                        <View style={[s.badge, { backgroundColor: isDark ? '#1A0A0A' : '#FEF2F2', marginBottom: 4 }]}>
                             <Ionicons name="alert-circle" size={9} color="#EF4444" />
-                            <Text style={[s.subBadgeText, { color: '#EF4444' }]}>{fmt(data.collectionStats.pending)} due</Text>
+                            <Text style={[s.badgeText, { color: '#EF4444' }]}>{fmt(data.collectionStats.pending)} due</Text>
                         </View>
                     )}
-                    {/* Tap hint */}
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 4 }}>
-                        <Text style={{ fontSize: 9, color: theme.textSecondary, fontWeight: '600' }}>Details</Text>
-                        <Ionicons name="chevron-forward" size={9} color={theme.textSecondary} />
+                    {/* Progress bar */}
+                    <View style={{ width: 80 }}>
+                        <View style={[s.progressBg, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                            <View style={[s.progressFill, { width: `${collectionPct}%` }]} />
+                        </View>
+                        <Text style={{ fontSize: 8.5, color: theme.textSecondary, fontWeight: '600', marginTop: 2 }}>
+                            {collectionPct}% collected
+                        </Text>
                     </View>
-                </TouchableOpacity>
-
-            </View>
-
-            {/* Progress bar */}
-            <TouchableOpacity activeOpacity={0.7} onPress={() => setShowCollectionSheet(true)} style={s.overviewProgressWrap}>
-                <View style={[s.progressBarBackground, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                    <View style={[s.progressBarFill, {
-                        width: `${data.collectionStats.totalExpected > 0 ? Math.min(100, Math.round((data.collectionStats.collected / data.collectionStats.totalExpected) * 100)) : 0}%`,
-                        backgroundColor: '#10B981'
-                    }]} />
                 </View>
-                <View style={s.progressTextRow}>
-                    <Text style={[s.progressTextLabel, { fontSize: Math.max(9, fontSize - 4), color: theme.textSecondary }]} numberOfLines={1}>
-                        {t('dashboard.pending')}: {fmt(data.collectionStats.pending)}
-                    </Text>
-                    <Ionicons name="chevron-forward" size={14} color={theme.textSecondary} />
-                </View>
+
+                <Ionicons name="chevron-forward" size={14} color={theme.textSecondary} style={{ marginLeft: 6 }} />
             </TouchableOpacity>
+
         </View>
     );
 };
 
 const s = StyleSheet.create({
     card: {
-        borderRadius: 24,
+        borderRadius: 22,
         elevation: 3,
         shadowColor: '#7C3AED',
-        shadowOpacity: 0.08,
-        shadowRadius: 10,
+        shadowOpacity: 0.07,
+        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 4 },
         borderWidth: 1,
+        overflow: 'hidden',
     },
-    overviewRow: {
+    topRow: {
         flexDirection: 'row',
-        alignItems: 'flex-start',
-        marginBottom: 14,
     },
-    overviewItem: {
+    topCell: {
         flex: 1,
+        flexDirection: 'row',
         alignItems: 'center',
+        gap: 8,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
     },
     iconPill: {
-        width: 22,
-        height: 22,
-        borderRadius: 7,
+        width: 26,
+        height: 26,
+        borderRadius: 8,
         alignItems: 'center',
         justifyContent: 'center',
     },
-    valueRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 5,
-        marginBottom: 3,
-    },
-    overviewDivider: {
-        width: 1,
-        alignSelf: 'stretch',
-        marginHorizontal: 4,
-    },
-    overviewValue: {
+    topValue: {
         fontWeight: '800',
-        marginBottom: 2,
+        lineHeight: 22,
     },
-    overviewLabel: {
+    topLabel: {
         fontWeight: '600',
-        textAlign: 'center',
+        color: '#64748B',
     },
-    subBadge: {
+    badge: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 3,
-        paddingHorizontal: 7,
-        paddingVertical: 3,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
         borderRadius: 20,
-        marginTop: 5,
+        marginLeft: 'auto',
     },
-    subBadgeText: {
-        fontSize: 10,
+    badgeText: {
+        fontSize: 9,
         fontWeight: '700',
     },
-    overviewProgressWrap: {
-        paddingHorizontal: 2,
+    hDivider: {
+        height: 1,
+        marginHorizontal: 0,
     },
-    progressBarBackground: {
-        height: 6,
+    collectionRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        gap: 10,
+    },
+    collectionLeft: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    collectionRight: {
+        alignItems: 'flex-end',
+    },
+    progressBg: {
+        height: 5,
         borderRadius: 3,
         overflow: 'hidden',
-        marginBottom: 4,
+        width: 80,
     },
-    progressBarFill: {
+    progressFill: {
         height: '100%',
         borderRadius: 3,
-    },
-    progressTextRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    progressTextLabel: {
-        fontSize: 11,
-        fontWeight: '600',
+        backgroundColor: '#10B981',
     },
 });

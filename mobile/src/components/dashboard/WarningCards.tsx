@@ -56,7 +56,7 @@ export const WarningCards = ({ data }: WarningCardsProps) => {
     if (data.pendingAdmissionsCount > 0) {
         chips.push({
             count: data.pendingAdmissionsCount,
-            label: 'Fee Due',
+            label: 'Adm Due',
             icon: 'cash-outline',
             color: '#D97706',
             bg: isDark ? 'rgba(217,119,6,0.15)' : '#FFFBEB',

@@ -23,80 +23,150 @@ export const UpcomingDues = ({ data }: UpcomingDuesProps) => {
     return (
         <View style={s.sectionBlock}>
             <View style={s.sectionHeaderRow}>
-                <Text style={[s.sectionTitle, { fontSize: fontSize, color: theme.textPrimary }]}>🕒 Dues in Next 7 Days</Text>
+                <View style={s.sectionTitleRow}>
+                    <Ionicons name="time" size={13} color="#D97706" />
+                    <Text style={[s.sectionTitle, { fontSize: fontSize - 1, color: theme.textSecondary }]}>
+                        DUE IN 7 DAYS
+                    </Text>
+                </View>
                 <TouchableOpacity onPress={() => navigation.navigate('PendingTab', { tab: 'Next 7 Days' })} activeOpacity={0.7}>
                     <Text style={s.seeAll}>{t('dashboard.viewAll')}</Text>
                 </TouchableOpacity>
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 4 }}>
-                {data.upcomingDues.map((item, idx) => (
-                    <TouchableOpacity
-                        key={idx}
-                        style={[s.dueChip, { backgroundColor: isDark ? '#2D2410' : '#FFF7ED', borderColor: '#FCD34D' }]}
-                        activeOpacity={0.8}
-                        onPress={() => navigation.navigate('StudentDetails', { studentId: item.id })}
-                    >
-                        <View style={{ flex: 1, marginRight: 8 }}>
-                            <Text style={[s.dueChipName, { color: isDark ? '#FEF3C7' : '#92400E' }]} numberOfLines={1}>{item.name}</Text>
-                            <Text style={[s.dueChipMeta, { color: isDark ? '#FCD34D' : '#B45309' }]} numberOfLines={1}>
-                                {item.room_number ? `Room ${item.room_number} · ` : ''}{item.daysLeft === 0 ? 'Due today' : `Due in ${item.daysLeft}d`}
-                            </Text>
-                        </View>
-                        <View style={{ alignItems: 'flex-end', gap: 6 }}>
-                            <Text style={[s.dueChipAmount, { color: '#D97706' }]}>₹{Number(item.amount).toLocaleString('en-IN')}</Text>
-                            {!!item.phone && (
-                                <TouchableOpacity
-                                    style={[s.dueChipCallBtn, { backgroundColor: isDark ? '#422006' : '#FEF3C7' }]}
-                                    onPress={(e) => { e.stopPropagation(); Linking.openURL(`tel:${item.phone}`); }}
-                                    activeOpacity={0.7}
-                                >
-                                    <Ionicons name="call" size={12} color="#D97706" />
-                                </TouchableOpacity>
-                            )}
-                        </View>
-                    </TouchableOpacity>
-                ))}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 2 }}>
+                {data.upcomingDues.map((item, idx) => {
+                    const isToday = item.daysLeft === 0;
+                    const isTomorrow = item.daysLeft === 1;
+                    const isUrgent = item.daysLeft <= 2;
+                    const cardBg = isDark
+                        ? (isUrgent ? '#271800' : '#1A1400')
+                        : (isUrgent ? '#FEF3C7' : '#FFF7ED');
+                    const borderColor = isUrgent ? '#F59E0B' : '#FCD34D';
+                    const accentColor = isUrgent ? '#D97706' : '#B45309';
+                    const dueLabel = isToday ? 'Due Today!' : isTomorrow ? 'Tomorrow' : `${item.daysLeft}d left`;
+
+                    return (
+                        <TouchableOpacity
+                            key={idx}
+                            style={[s.card, { backgroundColor: cardBg, borderColor }]}
+                            activeOpacity={0.8}
+                            onPress={() => navigation.navigate('StudentDetails', { studentId: item.id })}
+                        >
+                            {/* Top: avatar + name */}
+                            <View style={s.cardTop}>
+                                <View style={[s.avatar, { backgroundColor: accentColor + '22' }]}>
+                                    <Text style={[s.avatarLetter, { color: accentColor }]}>
+                                        {(item.name || 'T')[0].toUpperCase()}
+                                    </Text>
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={[s.name, { color: isDark ? '#FEF3C7' : '#92400E' }]} numberOfLines={1}>{item.name}</Text>
+                                    <Text style={[s.meta, { color: isDark ? '#FCD34D' : '#B45309' }]} numberOfLines={1}>
+                                        {item.room_number ? `Room ${item.room_number}` : 'No Room'}
+                                    </Text>
+                                </View>
+                                {!!item.phone && (
+                                    <TouchableOpacity
+                                        style={[s.callBtn, { backgroundColor: isDark ? '#422006' : '#FEF3C7' }]}
+                                        onPress={(e) => { e.stopPropagation(); Linking.openURL(`tel:${item.phone}`); }}
+                                        activeOpacity={0.7}
+                                    >
+                                        <Ionicons name="call" size={12} color="#D97706" />
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+
+                            {/* Bottom: amount + due badge */}
+                            <View style={s.cardBottom}>
+                                <Text style={[s.amount, { color: accentColor }]}>
+                                    ₹{Number(item.amount).toLocaleString('en-IN')}
+                                </Text>
+                                <View style={[s.daysBadge, { backgroundColor: isUrgent ? '#F59E0B' : '#FCD34D' }]}>
+                                    <Text style={[s.daysBadgeText, { color: isUrgent ? '#FFF' : '#78350F' }]}>{dueLabel}</Text>
+                                </View>
+                            </View>
+                        </TouchableOpacity>
+                    );
+                })}
             </ScrollView>
         </View>
     );
 };
 
 const s = StyleSheet.create({
-    sectionBlock: { gap: 10 },
-    sectionTitle: { fontSize: 15, fontWeight: '800' },
+    sectionBlock: { gap: 8 },
     sectionHeaderRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+        paddingHorizontal: 2,
+    },
+    sectionTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+    },
+    sectionTitle: {
+        fontWeight: '700',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
     seeAll: { fontSize: 12, fontWeight: '700', color: '#7C3AED' },
-    dueChip: {
-        width: 190,
+    card: {
+        width: 165,
         borderRadius: 14,
         borderWidth: 1,
         padding: 12,
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        justifyContent: 'space-between',
+        gap: 10,
     },
-    dueChipName: {
+    cardTop: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    avatar: {
+        width: 32,
+        height: 32,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    avatarLetter: {
         fontSize: 13,
+        fontWeight: '800',
+    },
+    name: {
+        fontSize: 12,
         fontWeight: '700',
     },
-    dueChipMeta: {
-        fontSize: 10.5,
+    meta: {
+        fontSize: 10,
         fontWeight: '600',
-        marginTop: 3,
+        marginTop: 1,
     },
-    dueChipAmount: {
+    callBtn: {
+        width: 26,
+        height: 26,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    cardBottom: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    amount: {
         fontSize: 15,
         fontWeight: '800',
     },
-    dueChipCallBtn: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
+    daysBadge: {
+        paddingHorizontal: 7,
+        paddingVertical: 3,
+        borderRadius: 20,
+    },
+    daysBadgeText: {
+        fontSize: 9,
+        fontWeight: '800',
     },
 });
