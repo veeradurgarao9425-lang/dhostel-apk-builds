@@ -5,27 +5,26 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { useTranslation } from 'react-i18next';
 
+// Better icons chosen for clarity: what does the action DO, not what it navigates to
 const QUICK_ACTIONS = [
-    { label: 'Add Tenant', icon: 'person-add-outline', color: '#7C3AED', bg: '#EDE9FE', route: 'AddStudent' },
-    { label: 'Add Room', icon: 'business-outline', color: '#2563EB', bg: '#DBEAFE', route: 'AddRoom' },
-    { label: 'Pre-Book', icon: 'calendar-outline', color: '#F97316', bg: '#FFF7ED', route: 'PreBooking' },
-    { label: 'Collected Rent', icon: 'wallet-outline', color: '#0D9488', bg: '#CCFBF1', route: 'CollectedPayments' },
-    { label: 'Add Expense', icon: 'card-outline', color: '#D97706', bg: '#FEF3C7', route: 'AddExpense' },
-    { label: 'Complaints', icon: 'construct-outline', color: '#DC2626', bg: '#FEE2E2', route: 'ComplaintsManagement' },
-    { label: 'Bills', icon: 'document-text-outline', color: '#EA580C', bg: '#FFEDD5', route: 'BillReminders' },
-    { label: 'Staff', icon: 'people-outline', color: '#059669', bg: '#D1FAE5', route: 'AddStaff' },
+    { label: 'Add Tenant',     icon: 'person-add',          color: '#7C3AED', bg: '#EDE9FE', route: 'AddStudent' },
+    { label: 'Add Room',       icon: 'bed',                  color: '#2563EB', bg: '#DBEAFE', route: 'AddRoom' },
+    { label: 'Pre-Book',       icon: 'calendar',             color: '#F97316', bg: '#FFF7ED', route: 'PreBooking' },
+    { label: 'Collect Rent',   icon: 'cash',                 color: '#0D9488', bg: '#CCFBF1', route: 'CollectedPayments' },
+    { label: 'Add Expense',    icon: 'receipt',              color: '#D97706', bg: '#FEF3C7', route: 'AddExpense' },
+    { label: 'Complaints',     icon: 'chatbubble-ellipses',  color: '#DC2626', bg: '#FEE2E2', route: 'ComplaintsManagement' },
+    { label: 'Bill Reminders', icon: 'notifications',        color: '#EA580C', bg: '#FFEDD5', route: 'BillReminders' },
+    { label: 'Staff',          icon: 'people',               color: '#059669', bg: '#D1FAE5', route: 'AddStaff' },
 ];
 
 const getQuickActionLabelKey = (label: string) => {
     if (label === 'Add Tenant') return 'dashboard.addTenant';
     if (label === 'Add Room') return 'dashboard.addRoom';
     if (label === 'Pre-Book') return 'dashboard.preBook';
-    if (label === 'Add Receipt') return 'dashboard.addReceipt';
-    if (label === 'Collected Rent') return 'dashboard.collectedRent';
+    if (label === 'Collect Rent') return 'dashboard.collectedRent';
     if (label === 'Add Expense') return 'dashboard.addExpense';
-    if (label === 'Bills') return 'dashboard.bills';
+    if (label === 'Bill Reminders') return 'dashboard.bills';
     if (label === 'Staff') return 'dashboard.staff';
-    if (label === 'Reminders') return 'dashboard.reminders';
     return label;
 };
 
@@ -46,40 +45,38 @@ export const QuickActionsGrid = ({ data }: QuickActionsGridProps) => {
 
     return (
         <View style={s.sectionBlock}>
-            <Text style={[s.sectionTitle, { fontSize: fontSize, color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }]}>
-                {t('dashboard.quickActions')}
-            </Text>
-            <View style={[s.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9', borderRadius: 20, paddingVertical: 16, paddingHorizontal: 8 }]}>
+            <View style={s.sectionHeaderRow}>
+                <View style={s.sectionTitleRow}>
+                    <Ionicons name="flash" size={13} color="#7C3AED" />
+                    <Text style={[s.sectionTitle, { fontSize: fontSize - 1, color: theme.textSecondary }]}>
+                        {t('dashboard.quickActions')}
+                    </Text>
+                </View>
+            </View>
+            <View style={[s.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
                 <View style={s.quickRow}>
                     {QUICK_ACTIONS.map((a, i) => (
                         <TouchableOpacity
                             key={i}
                             style={s.quickItem}
-                            activeOpacity={0.75}
+                            activeOpacity={0.72}
                             onPress={() => handleQuickAction(a)}
                         >
                             <View style={s.quickIconWrap}>
-                                <View style={[s.iconCircle, { backgroundColor: isDark ? '#334155' : a.bg }]}>
-                                    {a.icon === 'rupee' ? (
-                                        <Text style={{ color: isDark ? theme.primary : a.color, fontSize: 18, fontWeight: '800' }}>₹</Text>
-                                    ) : (
-                                        <Ionicons name={a.icon as any} size={22} color={isDark ? theme.primary : a.color} />
-                                    )}
+                                <View style={[s.iconCircle, { backgroundColor: isDark ? '#1E293B' : a.bg }]}>
+                                    <Ionicons name={a.icon as any} size={20} color={isDark ? theme.primary : a.color} />
                                 </View>
                                 {a.route === 'PreBooking' && data.prebookingsCount > 0 && (
-                                    <View style={s.prebookBadge}>
-                                        <Text style={s.prebookBadgeText}>{data.prebookingsCount}</Text>
+                                    <View style={s.badge}>
+                                        <Text style={s.badgeText}>{data.prebookingsCount}</Text>
                                     </View>
                                 )}
                             </View>
                             <Text
-                                style={[
-                                    s.quickLabel,
-                                    { fontSize: Math.max(9, fontSize - 4), color: isDark ? theme.textSecondary : '#475569' }
-                                ]}
+                                style={[s.quickLabel, { fontSize: Math.max(9, fontSize - 4), color: isDark ? theme.textSecondary : '#475569' }]}
                                 numberOfLines={2}
                             >
-                                {t(getQuickActionLabelKey(a.label))}
+                                {t(getQuickActionLabelKey(a.label), a.label)}
                             </Text>
                         </TouchableOpacity>
                     ))}
@@ -90,15 +87,33 @@ export const QuickActionsGrid = ({ data }: QuickActionsGridProps) => {
 };
 
 const s = StyleSheet.create({
-    sectionBlock: { gap: 10 },
-    sectionTitle: { fontSize: 15, fontWeight: '800' },
+    sectionBlock: { gap: 8 },
+    sectionHeaderRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 2,
+    },
+    sectionTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+    },
+    sectionTitle: {
+        fontWeight: '700',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
     card: {
+        borderRadius: 20,
+        paddingVertical: 14,
+        paddingHorizontal: 8,
         borderWidth: 1,
-        elevation: 4,
+        elevation: 3,
         shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-        shadowOffset: { width: 0, height: 4 }
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 3 },
     },
     quickRow: {
         flexDirection: 'row',
@@ -106,16 +121,16 @@ const s = StyleSheet.create({
         justifyContent: 'space-between',
         paddingHorizontal: 2,
     },
-    quickItem: { width: '23%', alignItems: 'center', marginVertical: 4, paddingHorizontal: 1 },
-    quickIconWrap: { position: 'relative', marginBottom: 4 },
+    quickItem: { width: '23%', alignItems: 'center', marginVertical: 5, paddingHorizontal: 1 },
+    quickIconWrap: { position: 'relative', marginBottom: 5 },
     iconCircle: {
-        width: 44,
-        height: 44,
-        borderRadius: 12,
+        width: 46,
+        height: 46,
+        borderRadius: 14,
         alignItems: 'center',
         justifyContent: 'center',
     },
-    prebookBadge: {
+    badge: {
         position: 'absolute',
         top: -4,
         right: -4,
@@ -126,18 +141,18 @@ const s = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 4,
-        borderWidth: 1,
+        borderWidth: 1.5,
         borderColor: '#FFF',
     },
-    prebookBadgeText: {
+    badgeText: {
         color: '#FFF',
         fontSize: 9,
         fontWeight: '900',
     },
     quickLabel: {
         fontWeight: '600',
-        marginTop: 4,
+        marginTop: 3,
         textAlign: 'center',
-        lineHeight: 14,
+        lineHeight: 13,
     },
 });

@@ -111,7 +111,7 @@ export const OverviewCard = ({ data, setShowCollectionSheet, pulseValue, fmt }: 
                             {fmt(data.collectionStats.collected)}
                         </Text>
                     </View>
-                    <Text style={[s.overviewLabel, { color: theme.textSecondary, fontSize: Math.max(9, fontSize - 4), textAlign: 'right' }]} numberOfLines={1}>
+                    <Text style={[s.overviewLabel, { color: theme.textSecondary, fontSize: Math.max(9, fontSize - 4), textAlign: 'left' }]} numberOfLines={1}>
                         {data.collectionStats.monthName || t('dashboard.month')} Collection
                     </Text>
                     {data.collectionStats.pending > 0 && (
@@ -120,6 +120,11 @@ export const OverviewCard = ({ data, setShowCollectionSheet, pulseValue, fmt }: 
                             <Text style={[s.subBadgeText, { color: '#EF4444' }]}>{fmt(data.collectionStats.pending)} due</Text>
                         </View>
                     )}
+                    {/* Tap hint */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 4 }}>
+                        <Text style={{ fontSize: 9, color: theme.textSecondary, fontWeight: '600' }}>Details</Text>
+                        <Ionicons name="chevron-forward" size={9} color={theme.textSecondary} />
+                    </View>
                 </TouchableOpacity>
 
             </View>
