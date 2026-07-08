@@ -5,16 +5,25 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { useTranslation } from 'react-i18next';
 
-// Better icons chosen for clarity: what does the action DO, not what it navigates to
+// ── Unified color tokens per domain ─────────────────────────────────────────
+// Purple   #7C3AED  → Tenants / people
+// Sky      #0284C7  → Rooms / beds
+// Emerald  #10B981  → Money collected / positive financial
+// Rose     #E11D48  → Overdue / urgent
+// Amber    #D97706  → Upcoming dues / caution
+// Indigo   #4F46E5  → Reports / analytics
+// Teal     #0891B2  → Staff
+// Orange   #EA580C  → Expenses / bills
+
 const QUICK_ACTIONS = [
     { label: 'Add Tenant',     icon: 'person-add',          color: '#7C3AED', bg: '#EDE9FE', route: 'AddStudent' },
-    { label: 'Add Room',       icon: 'bed',                  color: '#2563EB', bg: '#DBEAFE', route: 'AddRoom' },
-    { label: 'Pre-Book',       icon: 'calendar',             color: '#F97316', bg: '#FFF7ED', route: 'PreBooking' },
-    { label: 'Collect Rent',   icon: 'cash',                 color: '#0D9488', bg: '#CCFBF1', route: 'CollectedPayments' },
-    { label: 'Add Expense',    icon: 'receipt',              color: '#D97706', bg: '#FEF3C7', route: 'AddExpense' },
-    { label: 'Complaints',     icon: 'chatbubble-ellipses',  color: '#DC2626', bg: '#FEE2E2', route: 'ComplaintsManagement' },
-    { label: 'Bill Reminders', icon: 'notifications',        color: '#EA580C', bg: '#FFEDD5', route: 'BillReminders' },
-    { label: 'Staff',          icon: 'people',               color: '#059669', bg: '#D1FAE5', route: 'AddStaff' },
+    { label: 'Add Room',       icon: 'bed',                  color: '#0284C7', bg: '#E0F2FE', route: 'AddRoom' },
+    { label: 'Pre-Book',       icon: 'calendar',             color: '#D97706', bg: '#FEF3C7', route: 'PreBooking' },
+    { label: 'Collect Rent',   icon: 'cash',                 color: '#10B981', bg: '#D1FAE5', route: 'CollectedPayments' },
+    { label: 'Add Expense',    icon: 'receipt',              color: '#EA580C', bg: '#FFEDD5', route: 'AddExpense' },
+    { label: 'Complaints',     icon: 'chatbubble-ellipses',  color: '#E11D48', bg: '#FFE4E6', route: 'ComplaintsManagement' },
+    { label: 'Bill Reminders', icon: 'notifications',        color: '#4F46E5', bg: '#EEF2FF', route: 'BillReminders' },
+    { label: 'Staff',          icon: 'people',               color: '#0891B2', bg: '#CFFAFE', route: 'AddStaff' },
 ];
 
 const getQuickActionLabelKey = (label: string) => {
@@ -29,19 +38,13 @@ const getQuickActionLabelKey = (label: string) => {
 };
 
 interface QuickActionsGridProps {
-    data: {
-        prebookingsCount: number;
-    };
+    data: { prebookingsCount: number; };
 }
 
 export const QuickActionsGrid = ({ data }: QuickActionsGridProps) => {
     const navigation = useNavigation<any>();
     const { theme, isDark, fontSize } = useTheme();
     const { t } = useTranslation();
-
-    const handleQuickAction = (a: typeof QUICK_ACTIONS[0]) => {
-        navigation.navigate(a.route);
-    };
 
     return (
         <View style={s.sectionBlock}>
@@ -60,11 +63,11 @@ export const QuickActionsGrid = ({ data }: QuickActionsGridProps) => {
                             key={i}
                             style={s.quickItem}
                             activeOpacity={0.72}
-                            onPress={() => handleQuickAction(a)}
+                            onPress={() => navigation.navigate(a.route)}
                         >
                             <View style={s.quickIconWrap}>
                                 <View style={[s.iconCircle, { backgroundColor: isDark ? '#1E293B' : a.bg }]}>
-                                    <Ionicons name={a.icon as any} size={20} color={isDark ? theme.primary : a.color} />
+                                    <Ionicons name={a.icon as any} size={20} color={isDark ? a.color : a.color} />
                                 </View>
                                 {a.route === 'PreBooking' && data.prebookingsCount > 0 && (
                                     <View style={s.badge}>
@@ -132,23 +135,17 @@ const s = StyleSheet.create({
     },
     badge: {
         position: 'absolute',
-        top: -4,
-        right: -4,
+        top: -4, right: -4,
         backgroundColor: '#EA580C',
         borderRadius: 8,
-        minWidth: 16,
-        height: 16,
+        minWidth: 16, height: 16,
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 4,
         borderWidth: 1.5,
         borderColor: '#FFF',
     },
-    badgeText: {
-        color: '#FFF',
-        fontSize: 9,
-        fontWeight: '900',
-    },
+    badgeText: { color: '#FFF', fontSize: 9, fontWeight: '900' },
     quickLabel: {
         fontWeight: '600',
         marginTop: 3,

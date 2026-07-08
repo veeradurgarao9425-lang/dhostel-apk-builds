@@ -26,11 +26,15 @@ const StatCard = ({
         onPress={onPress}
         activeOpacity={0.8}
     >
-        <View style={[s.statIconBox, { backgroundColor: isDark ? '#1E293B' : iconBg }]}>
-            <Ionicons name={icon} size={16} color={isDark ? theme.primary : iconColor} />
+        {/* Colored top strip */}
+        <View style={[s.stripTop, { backgroundColor: iconColor }]} />
+        <View style={s.statInner}>
+            <View style={[s.statIconBox, { backgroundColor: isDark ? '#1E293B' : iconBg }]}>
+                <Ionicons name={icon} size={16} color={iconColor} />
+            </View>
+            <Text style={[s.statNum, { color: isDark ? theme.textPrimary : iconColor }]} numberOfLines={1}>{value}</Text>
+            <Text style={[s.statLabel, { color: theme.textSecondary }]} numberOfLines={1}>{label}</Text>
         </View>
-        <Text style={[s.statNum, { color: isDark ? theme.textPrimary : iconColor }]} numberOfLines={1}>{value}</Text>
-        <Text style={[s.statLabel, { color: theme.textSecondary }]} numberOfLines={1}>{label}</Text>
     </TouchableOpacity>
 );
 
@@ -42,12 +46,13 @@ export const StatisticsGrid = ({ data, fmt }: StatisticsGridProps) => {
     return (
         <View style={s.sectionBlock}>
             <View style={s.sectionTitleRow}>
-                <Ionicons name="stats-chart" size={13} color="#7C3AED" />
+                <Ionicons name="stats-chart" size={13} color="#4F46E5" />
                 <Text style={[s.sectionTitle, { fontSize: fontSize - 1, color: theme.textSecondary }]}>
                     {t('dashboard.statistics')}
                 </Text>
             </View>
             <View style={s.statisticsRow}>
+                {/* Tenants → Purple */}
                 <StatCard
                     icon="people"
                     iconColor="#7C3AED"
@@ -58,30 +63,33 @@ export const StatisticsGrid = ({ data, fmt }: StatisticsGridProps) => {
                     isDark={isDark}
                     theme={theme}
                 />
+                {/* Reports → Indigo */}
                 <StatCard
                     icon="bar-chart"
-                    iconColor="#EA580C"
-                    iconBg="#FFEDD5"
+                    iconColor="#4F46E5"
+                    iconBg="#EEF2FF"
                     label="Reports"
                     value="View"
                     onPress={() => navigation.navigate('Reports')}
                     isDark={isDark}
                     theme={theme}
                 />
+                {/* Expenses → Orange */}
                 <StatCard
                     icon="receipt"
-                    iconColor="#0284C7"
-                    iconBg="#E0F2FE"
+                    iconColor="#EA580C"
+                    iconBg="#FFEDD5"
                     label={t('dashboard.expenses')}
                     value={fmt(data.monthlyExpenses || 0)}
                     onPress={() => navigation.navigate('Expenses')}
                     isDark={isDark}
                     theme={theme}
                 />
+                {/* Staff → Teal */}
                 <StatCard
                     icon="people-circle"
-                    iconColor="#16A34A"
-                    iconBg="#DCFCE7"
+                    iconColor="#0891B2"
+                    iconBg="#CFFAFE"
                     label={t('dashboard.staff')}
                     value={data.staffCount ?? 0}
                     onPress={() => navigation.navigate('Staff')}
@@ -109,21 +117,26 @@ const s = StyleSheet.create({
     statisticsRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'stretch',
         gap: 8,
     },
     statCard: {
         flex: 1,
         borderRadius: 14,
-        paddingVertical: 12,
-        paddingHorizontal: 6,
         borderWidth: 1,
         elevation: 2,
         shadowColor: '#000',
         shadowOpacity: 0.04,
         shadowRadius: 6,
+        overflow: 'hidden',
+    },
+    stripTop: {
+        height: 3,
+        width: '100%',
+    },
+    statInner: {
+        paddingVertical: 10,
+        paddingHorizontal: 6,
         alignItems: 'center',
-        justifyContent: 'center',
         gap: 3,
     },
     statIconBox: {

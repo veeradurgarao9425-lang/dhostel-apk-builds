@@ -34,9 +34,9 @@ export const WarningCards = ({ data }: WarningCardsProps) => {
             count: data.unallocatedCount,
             label: 'No Room',
             icon: 'bed-outline',
-            color: '#DC2626',
-            bg: isDark ? 'rgba(220,38,38,0.15)' : '#FEF2F2',
-            border: isDark ? 'rgba(220,38,38,0.35)' : '#FCA5A5',
+            color: '#E11D48',
+            bg: isDark ? 'rgba(225,29,72,0.15)' : '#FFF1F2',
+            border: isDark ? 'rgba(225,29,72,0.35)' : '#FECDD3',
             onPress: () => navigation.navigate('Students', { filterUnallocated: true }),
         });
     }
@@ -70,9 +70,9 @@ export const WarningCards = ({ data }: WarningCardsProps) => {
             count: data.openComplaintsCount,
             label: 'Complaints',
             icon: 'construct-outline',
-            color: '#7C3AED',
-            bg: isDark ? 'rgba(124,58,237,0.15)' : '#F5F3FF',
-            border: isDark ? 'rgba(124,58,237,0.35)' : '#DDD6FE',
+            color: '#4F46E5',
+            bg: isDark ? 'rgba(79,70,229,0.15)' : '#EEF2FF',
+            border: isDark ? 'rgba(79,70,229,0.35)' : '#C7D2FE',
             onPress: () => navigation.navigate('ComplaintsManagement'),
         });
     }
