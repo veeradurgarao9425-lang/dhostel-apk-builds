@@ -338,9 +338,9 @@ app.get('/api/public/qr-signup', (req, res) => {
     document.getElementById('b1').addEventListener('click',function(){
       var ok=true;
       if(!val('first_name').trim()){setErr('e1','first_name','First name is required');ok=false;}else{setErr('e1','first_name','');}
-      if(!/^[6-9]\d{9}$/.test(val('phone').trim())){setErr('e2','phone','Enter a valid 10-digit mobile number');ok=false;}else{setErr('e2','phone','');}
+      if(!/^[6-9]\\d{9}$/.test(val('phone').trim())){setErr('e2','phone','Enter a valid 10-digit mobile number');ok=false;}else{setErr('e2','phone','');}
       var em=val('email').trim();
-      if(em&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){setErr('e3','email','Enter a valid email');ok=false;}else{setErr('e3','email','');}
+      if(em&&!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(em)){setErr('e3','email','Enter a valid email');ok=false;}else{setErr('e3','email','');}
       if(!val('addr').trim()){setErr('e4','addr','Permanent address is required');ok=false;}else{setErr('e4','addr','');}
       if(!ok){toast('Please fix the errors to continue.');return;}
       go(2);
@@ -350,7 +350,7 @@ app.get('/api/public/qr-signup', (req, res) => {
     document.getElementById('bk2').addEventListener('click',function(){go(1);});
     document.getElementById('b2').addEventListener('click',function(){
       var gp=val('gphone').trim();
-      if(gp&&!/^\d{10}$/.test(gp)){setErr('e5','gphone','Enter a valid 10-digit number');toast('Please fix the errors to continue.');return;}
+      if(gp&&!/^\\d{10}$/.test(gp)){setErr('e5','gphone','Enter a valid 10-digit number');toast('Please fix the errors to continue.');return;}
       setErr('e5','gphone',''); go(3);
     });
 
@@ -369,7 +369,7 @@ app.get('/api/public/qr-signup', (req, res) => {
     // Submit
     document.getElementById('frm').addEventListener('submit',function(e){
       e.preventDefault();
-      if(!/^\d{12}$/.test(val('aadhaar').trim())){setErr('e6','aadhaar','Aadhaar must be exactly 12 digits');toast('Please fix the errors to submit.');return;}
+      if(!/^\\d{12}$/.test(val('aadhaar').trim())){setErr('e6','aadhaar','Aadhaar must be exactly 12 digits');toast('Please fix the errors to submit.');return;}
       setErr('e6','aadhaar','');
       var sub=document.getElementById('sub'); sub.disabled=true;
       document.getElementById('ldr').classList.add('show');
