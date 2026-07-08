@@ -1,0 +1,85 @@
+app.post('/api/public/qr-signup', qrSignupUpload.fields([
+  { name: 'aadhaar_front', maxCount: 1 },
+  { name: 'aadhaar_back', maxCount: 1 },
+]), async (req, res) => {
+  try {
+    const hostelId = req.query.hostelId as string;
+    const roomId   = req.query.roomId   as string | undefined;
+    const bedId    = req.query.bedId    as string | undefined;
+    const bedName  = req.query.bedName  as string | undefined;
+
+    if (!hostelId) {
+      return res.status(400).send('<div class="error">Missing hostelId</div>');
+    }
+    const {
+      first_name, last_name, phone, email,
+      date_of_birth, gender, permanent_address,
+      guardian_name, guardian_phone, id_proof_number,
+    } = req.body || {};
+
+    const files = req.files as { [field: string]: Express.Multer.File[] } | undefined;
+    const aadhaarFrontFile = files?.aadhaar_front?.[0];
+    const aadhaarBackFile  = files?.aadhaar_back?.[0];
+
+    if (!first_name || !String(first_name).trim()) {
+      return res.status(400).send(qrSignupErrorPage('First Name is required'));
+    }
+    if (!phone || !/^\d{10}$/.test(String(phone).trim())) {
+      return res.status(400).send(qrSignupErrorPage('A valid 10-digit Phone number is required'));
+    }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim())) {
+      return res.status(400).send(qrSignupErrorPage('Enter a valid email address'));
+    }
+    if (guardian_phone && !/^\d{10}$/.test(String(guardian_phone).trim())) {
+      return res.status(400).send(qrSignupErrorPage('Guardian Phone must be a valid 10-digit number'));
+    }
+    if (!permanent_address || !String(permanent_address).trim()) {
+      return res.status(400).send(qrSignupErrorPage('Permanent Address is required'));
+    }
+    if (!id_proof_number || !/^\d{12}$/.test(String(id_proof_number).trim())) {
+      return res.status(400).send(qrSignupErrorPage('Aadhaar Number must be exactly 12 digits'));
+    }
+    if (!aadhaarFrontFile || !aadhaarBackFile) {
+      return res.status(400).send(qrSignupErrorPage('Both Aadhaar front and back photos are required'));
+    }
+
+    const numHostelId = parseInt(hostelId, 10);
+    if (isNaN(numHostelId)) {
+      return res.status(400).send(qrSignupErrorPage('Invalid hostel link'));
+    }
+    const hostelExists = await db('hostel_master').where('hostel_id', numHostelId).first();
+    if (!hostelExists) {
+      return res.status(404).send(qrSignupErrorPage('This hostel link is no longer valid'));
+    }
+
+    const now = new Date();
+    const insertData: any = {
+      hostel_id:        parseInt(hostelId, 10),
+      first_name,
+      last_name:        last_name || null,
+      phone,
+      email:            email || null,
+      date_of_birth:    date_of_birth ? new Date(date_of_birth) : null,
+      gender:           gender || null,
+      permanent_address: permanent_address || null,
+      guardian_name:    guardian_name || null,
+      guardian_phone:   guardian_phone || null,
+      admission_date:   now,
+      admission_fee:    0,
+      admission_status: 0,
+      status:           3, // QR Signup — owner must activate
+      room_id:          roomId ? parseInt(roomId, 10) : null,
+      floor_number:     null,
+      monthly_rent:     null,
+      id_proof_type:      'Aadhaar',
+      id_proof_number:    id_proof_number.trim(),
+      id_proof_front_url: `/uploads/${aadhaarFrontFile.filename}`,
+      id_proof_back_url:  `/uploads/${aadhaarBackFile.filename}`,
+      id_proof_status:  1, // Submitted — owner still verifies before activation
+    };
+
+    const [newStudentId] = await db('students').insert(insertData);
+
+    // Notify the owner of the hostel
+    sendNotificationToHostelOwner(
+      numHostelId,

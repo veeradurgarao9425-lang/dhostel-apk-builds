@@ -511,37 +511,7 @@ export default function MoreScreen() {
                             </View>
                         </TouchableOpacity>
 
-                        {/* Hostel Connection Code Block - Show only for Owners (role_id !== 1) */}
-                        {user?.role_id !== 1 && authHostels.find((h: any) => h.hostel_id === user?.hostel_id)?.hostel_code && (
-                            <View style={[s.codeCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
-                                <View style={s.codeCardHeader}>
-                                    <Ionicons name="key" size={16} color={theme.primary} />
-                                    <Text style={[s.codeCardTitle, { color: theme.textPrimary }]}>Hostel Connection Code</Text>
-                                </View>
-                                <TouchableOpacity
-                                    style={[s.codeBox, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9' }]}
-                                    onPress={() => {
-                                        const hCode = authHostels.find((h: any) => h.hostel_id === user?.hostel_id)?.hostel_code;
-                                        if (hCode) handleCopyCode(hCode, 'card');
-                                    }}
-                                    activeOpacity={0.7}
-                                >
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                        <Text style={{ fontSize: 28, fontWeight: '800', letterSpacing: 4, color: copiedCardCode ? '#10B981' : theme.primary }}>
-                                            {authHostels.find((h: any) => h.hostel_id === user?.hostel_id)?.hostel_code}
-                                        </Text>
-                                        <Ionicons
-                                            name={copiedCardCode ? "checkmark-circle" : "copy-outline"}
-                                            size={20}
-                                            color={copiedCardCode ? '#10B981' : theme.primary}
-                                        />
-                                    </View>
-                                    <Text style={{ fontSize: 12, color: copiedCardCode ? '#10B981' : theme.textSecondary, marginTop: 6, textAlign: 'center', fontWeight: copiedCardCode ? '700' : '400' }}>
-                                        {copiedCardCode ? 'Code copied to clipboard!' : 'Tap code to copy and share with your tenants.'}
-                                    </Text>
-                                </TouchableOpacity>
-                            </View>
-                        )}
+
                     </View>
                 )}
 

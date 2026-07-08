@@ -1,0 +1,15 @@
+                                ))}
+                            </View>
+                        </View>
+                    ) : null}
+
+                    {/* ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ TENANT APP PROMO ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */}
+                    <TenantAppCard theme={theme} isDark={isDark} hostelCode={data.hostelCode} />
+
+                </View>
+            </ScrollView>
+
+            {/* ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ COLLECTION DETAILS SHEET ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */}
+            <ModalSheet visible={showCollectionSheet} onClose={() => setShowCollectionSheet(false)} maxHeight="88%">
+                {(() => {
+                    const pct = data.collectionStats.totalExpected > 0

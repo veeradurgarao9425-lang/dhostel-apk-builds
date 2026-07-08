@@ -1,161 +1,9 @@
-import express from 'express';
-import { createServer } from 'http';
-import cors from 'cors';
-import helmet from 'helmet';
-import dotenv from 'dotenv';
-import multer from 'multer';
-import path from 'path';
-import { setupSocket } from './socket/index.js';
-import authRoutes from './routes/auth.routes.js';
-import db from './config/database.js';
-import hostelRoutes from './routes/hostel.routes.js';
-import userRoutes from './routes/user.routes.js';
-import roomRoutes from './routes/roomRoutes.js';
-import studentRoutes from './routes/studentRoutes.js';
-import chatRoutes from './routes/chatRoutes.js';
-import feeRoutes from './routes/feeRoutes.js';
-import monthlyFeeRoutes from './routes/monthlyFeeRoutes.js';
-import incomeRoutes from './routes/incomeRoutes.js';
-import expenseRoutes from './routes/expenseRoutes.js';
-import reportRoutes from './routes/reportRoutes.js';
-import activityRoutes from './routes/activityRoutes.js';
-import amenitiesRoutes from './routes/amenities.routes.js';
-import relationsRoutes from './routes/relationsRoutes.js';
-import idProofTypesRoutes from './routes/idProofTypesRoutes.js';
-import staffRoutes from './routes/staffRoutes.js';
-import reminderRoutes from './routes/reminderRoutes.js';
-import noticeRoutes from './routes/noticeRoutes.js';
-import guestRoutes from './routes/guestRoutes.js';
-import notificationRoutes from './routes/notificationRoutes.js';
-import complaintRoutes from './routes/complaintRoutes.js';
-import leaveVisitorRoutes from './routes/leaveVisitorRoutes.js';
-import messMenuRoutes from './routes/messMenuRoutes.js';
-import tenantExpenseRoutes from './routes/tenantExpenseRoutes.js';
-import splitsRoutes from './routes/splitsRoutes.js';
-import messSkipRoutes from './routes/messSkipRoutes.js';
-import ratingRoutes from './routes/ratingRoutes.js';
-import { startMonthlyFeesGenerationJob } from './jobs/monthlyFeesGeneration.js';
-import { startGuestOverstayJob } from './jobs/guestOverstay.js';
-import { startChatResetJob } from './jobs/chatReset.js';
+import re
 
-import { sendNotificationToHostelOwner } from './utils/notification.js';
+with open(r'c:\dhostel-main\backend\src\server.ts', 'r', encoding='utf-8') as f:
+    content = f.read()
 
-// Load environment variables
-dotenv.config();
-
-const app = express();
-const httpServer = createServer(app);
-setupSocket(httpServer);
-
-const PORT = parseInt(process.env.PORT || '8081', 10);
-const HOST = process.env.HOST || '0.0.0.0';
-const NODE_ENV = process.env.NODE_ENV || 'development';
-
-// Get allowed origins from environment or use defaults
-const getAllowedOrigins = (): string[] => {
-  if (process.env.ALLOWED_ORIGINS) {
-    return process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim());
-  }
-  // Allow localhost for frontend development even in production, and any specific production domains
-  return [
-    'http://localhost:3000', 
-    'http://localhost:5173',
-    'http://localhost:5174',
-    'http://localhost:5175',
-    'https://dhostel-frontend.onrender.com' // Example production domain
-  ];
-};
-
-// Middleware
-app.use(helmet());
-app.use(cors({
-  origin: getAllowedOrigins(),
-  credentials: true,
-}));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Request Logger
-app.use((req, res, next) => {
-  console.log(`[REQ] ${req.method} ${req.url}`);
-  next();
-});
-
-// Serve uploaded files
-app.use('/uploads', express.static('uploads'));
-
-// API Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/reports', reportRoutes); // High-accuracy report/dashboard logic
-app.use('/api/analytics', reportRoutes); // Keep for mobile mapping
-app.use('/api/dashboard', reportRoutes); // Map dashboard to reports for owner-stats
-app.use('/api/hostels', hostelRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/rooms', roomRoutes);
-app.use('/api/students', studentRoutes);
-app.use('/api/chat', chatRoutes);
-app.use('/api/fees', feeRoutes);
-app.use('/api/monthly-fees', monthlyFeeRoutes);
-app.use('/api/month-fees', monthlyFeeRoutes); // Alias for common typo
-app.use('/api/income', incomeRoutes);
-app.use('/api/expenses', expenseRoutes);
-app.use('/api/activity', activityRoutes);
-app.use('/api/amenities', amenitiesRoutes);
-app.use('/api/relations', relationsRoutes);
-app.use('/api/id-proof-types', idProofTypesRoutes);
-app.use('/api/staff', staffRoutes);
-app.use('/api/reminders', reminderRoutes);
-app.use('/api/notices', noticeRoutes);
-app.use('/api/guests', guestRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/complaints', complaintRoutes);
-app.use('/api/requests', leaveVisitorRoutes);
-app.use('/api/mess-menu', messMenuRoutes);
-app.use('/api/tenant-expenses', tenantExpenseRoutes);
-app.use('/api/splits', splitsRoutes);
-app.use('/api/mess', messSkipRoutes);
-app.use('/api/ratings', ratingRoutes);
-
-// Multer storage for the public QR signup Aadhaar photos
-const qrSignupUpload = multer({
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => cb(null, 'uploads/'),
-    filename: (req, file, cb) => cb(null, `qr-signup-${file.fieldname}-${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`),
-  }),
-  limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    if (!file.mimetype.startsWith('image/')) {
-      return cb(new Error('Only image files are allowed for Aadhaar photos'));
-    }
-    cb(null, true);
-  },
-});
-
-// Public QR tenant signup (no auth) — supports optional roomId & bedId pre-fill
-app.get('/api/public/qr-signup', async (req, res) => {
-  const hostelId = req.query.hostelId as string;
-  const roomId   = req.query.roomId   as string | undefined;
-  const bedId    = req.query.bedId    as string | undefined;
-  const bedName  = req.query.bedName  as string | undefined;
-
-  if (!hostelId) {
-    return res.status(400).send('<h2>Missing hostelId</h2>');
-  }
-
-  // Build the room/bed info banner if pre-assigned
-  const roomBanner = roomId ? `
-    <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:16px;margin-bottom:20px;">
-      <div style="font-size:13px;color:#166534;font-weight:800;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px;">🏠 Pre-assigned Allocation</div>
-      <div style="font-size:15px;color:#15803d;font-weight:600;">
-        Room: <strong style="color:#14532d;">${roomId}</strong>${bedName ? `&nbsp;&nbsp;Bed: <strong style="color:#14532d;">${bedName}</strong>` : ''}
-      </div>
-      <div style="font-size:12px;color:#16a34a;margin-top:6px;font-weight:500;">This room/bed has been reserved for you by the owner.</div>
-    </div>
-  ` : '';
-
-  const formAction = `/api/public/qr-signup?hostelId=${encodeURIComponent(hostelId)}${roomId ? `&roomId=${encodeURIComponent(roomId)}` : ''}${bedId ? `&bedId=${encodeURIComponent(bedId)}` : ''}${bedName ? `&bedName=${encodeURIComponent(bedName)}` : ''}`;
-
-  const html = `
+get_html = r'''const html = `
     <!DOCTYPE html>
     <html lang="en">
     <head>
@@ -474,15 +322,36 @@ app.get('/api/public/qr-signup', async (req, res) => {
       </script>
     </body>
     </html>
-  `;
+  `;'''
+
+get_code = r'''app.get('/api/public/qr-signup', async (req, res) => {
+  const hostelId = req.query.hostelId as string;
+  const roomId   = req.query.roomId   as string | undefined;
+  const bedId    = req.query.bedId    as string | undefined;
+  const bedName  = req.query.bedName  as string | undefined;
+
+  if (!hostelId) {
+    return res.status(400).send('<h2>Missing hostelId</h2>');
+  }
+
+  // Build the room/bed info banner if pre-assigned
+  const roomBanner = roomId ? `
+    <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:16px;margin-bottom:20px;">
+      <div style="font-size:13px;color:#166534;font-weight:800;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px;">🏠 Pre-assigned Allocation</div>
+      <div style="font-size:15px;color:#15803d;font-weight:600;">
+        Room: <strong style="color:#14532d;">${roomId}</strong>${bedName ? `&nbsp;&nbsp;Bed: <strong style="color:#14532d;">${bedName}</strong>` : ''}
+      </div>
+      <div style="font-size:12px;color:#16a34a;margin-top:6px;font-weight:500;">This room/bed has been reserved for you by the owner.</div>
+    </div>
+  ` : '';
+
+  const formAction = `/api/public/qr-signup?hostelId=${encodeURIComponent(hostelId)}${roomId ? `&roomId=${encodeURIComponent(roomId)}` : ''}${bedId ? `&bedId=${encodeURIComponent(bedId)}` : ''}${bedName ? `&bedName=${encodeURIComponent(bedName)}` : ''}`;
+
+  ''' + get_html + r'''
   res.status(200).send(html);
-});
+});'''
 
-
-const qrSignupErrorPage = (message: string) =>
-  `<div style="background:#fef2f2;color:#7f1d1d;padding:14px;border-radius:10px;font-family:sans-serif;">⚠️ ${message}</div>`;
-
-app.post('/api/public/qr-signup', qrSignupUpload.fields([
+post_code = r'''app.post('/api/public/qr-signup', qrSignupUpload.fields([
   { name: 'aadhaar_front', maxCount: 1 },
   { name: 'aadhaar_back', maxCount: 1 },
 ]), async (req, res) => {
@@ -555,11 +424,10 @@ app.post('/api/public/qr-signup', qrSignupUpload.fields([
     // Notify the owner of the hostel
     sendNotificationToHostelOwner(
       numHostelId,
-      'New Admission',
       'New Registration Request',
       `${first_name} has submitted a registration request via QR. Review and assign a room.`,
-      'High',
-      { studentId: newStudentId }
+      'REGISTRATION',
+      newStudentId
     );
 
     if (wantsJson) {
@@ -580,91 +448,17 @@ app.post('/api/public/qr-signup', qrSignupUpload.fields([
       res.status(500).send(qrSignupErrorPage('Internal server error'));
     }
   }
-});
+});'''
 
-app.use('/api/public/qr-signup', (err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  if (!err) return next();
-  const message = err.code === 'LIMIT_FILE_SIZE' ? 'Each Aadhaar photo must be under 5MB' : (err.message || 'Upload failed. Please try again.');
-  res.status(400).send(qrSignupErrorPage(message));
-});
+# find the indices of app.get and app.use('/api/public/qr-signup')
+start_get = content.find("app.get('/api/public/qr-signup'")
+start_post = content.find("app.post('/api/public/qr-signup'")
+end_post = content.find("app.use('/api/public/qr-signup'", start_post)
 
-// Health check
-app.get('/health', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Server is running',
-    timestamp: new Date().toISOString(),
-  });
-});
-
-// Database health check (public for diagnostics)
-app.get('/api/health-db', async (req, res) => {
-  try {
-    const tables = await db.raw("SHOW TABLES");
-    let feePaymentsColumns = [];
-    try {
-      feePaymentsColumns = await db.raw("DESCRIBE fee_payments");
-    } catch (e: any) {
-      feePaymentsColumns = [{ error: e.message }];
-    }
-    res.json({
-      success: true,
-      tables: tables[0],
-      fee_payments: feePaymentsColumns[0]
-    });
-  } catch (err: any) {
-    res.status(500).json({
-      success: false,
-      error: err.message
-    });
-  }
-});
-
-
-// Root route
-app.get('/', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Hostix API',
-    version: '1.0.0',
-  });
-});
-
-// 404 handler
-app.use((req, res) => {
-  console.log(`[404] No route found for ${req.method} ${req.url}`);
-  res.status(404).json({
-    success: false,
-    error: `Route not found: ${req.method} ${req.originalUrl}`,
-  });
-});
-
-// Error handler
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Error:', err);
-  res.status(err.status || 500).json({
-    success: false,
-    error: err.message || 'Internal server error',
-  });
-});
-
-// Start server
-httpServer.listen(PORT, HOST, () => {
-  const serverAddress = NODE_ENV === 'production'
-    ? `Port ${PORT}`
-    : `http://localhost:${PORT}`;
-
-  console.log(`🚀 Server running on ${serverAddress}`);
-  console.log(`🔐 Environment: ${NODE_ENV}`);
-  console.log(`📍 Listening on ${HOST}:${PORT}`);
-
-  // Start Background Cron Jobs
-  startMonthlyFeesGenerationJob();
-  startGuestOverstayJob();
-  startChatResetJob();
-
-
-  console.log('⏰ Cron jobs initialized');
-});
-
-export default app;
+if start_get != -1 and start_post != -1 and end_post != -1:
+    new_content = content[:start_get] + get_code + "\n\n" + post_code + "\n\n" + content[end_post:]
+    with open(r'c:\dhostel-main\backend\src\server.ts', 'w', encoding='utf-8') as f:
+        f.write(new_content)
+    print("Successfully replaced server.ts content")
+else:
+    print("Could not find blocks to replace", start_get, start_post, end_post)

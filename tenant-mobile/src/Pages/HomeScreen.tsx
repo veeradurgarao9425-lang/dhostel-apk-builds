@@ -64,6 +64,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from "../services/api";
 
+import { BudgetOverview } from '../components/dashboard/BudgetOverview';
+
+import { MessMenuCard } from '../components/dashboard/MessMenuCard';
+import { QuickShortcuts } from '../components/dashboard/QuickShortcuts';
+import { RecentActivity } from '../components/dashboard/RecentActivity';
 const { width, height } = Dimensions.get("window");
 
 function FadeSlideIn({ children, delay = 0, style }: { children: React.ReactNode; delay?: number; style?: any }) {
@@ -400,20 +405,25 @@ export default function HomeScreen({ navigation }: any) {
               </Text>
               <Text style={[styles.headerSub, { color: 'rgba(255,255,255,0.8)' }]}>Welcome Back!</Text>
             </View>
-            <View style={styles.headerRight}>
-              <TouchableOpacity
-                style={[styles.hBtn, { backgroundColor: 'rgba(255,255,255,0.15)' }]}
-                onPress={() => navigation.navigate("Notifications")}
-              >
-                <Bell size={24} color={WHITE} strokeWidth={1.5} />
-                {unreadNotifCount > 0 && <View style={[styles.notificationDot, { backgroundColor: '#EF4444', borderColor: BLUE }]} />}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.hAvatar, { backgroundColor: 'rgba(255,255,255,0.2)' }]}
-                onPress={() => navigation.navigate("Profile")}
-              >
-                <Text style={[styles.hAvatarText, { color: WHITE }]}>{initials}</Text>
-              </TouchableOpacity>
+            <View style={{ alignItems: 'flex-end', gap: 4 }}>
+              <View style={styles.headerRight}>
+                <TouchableOpacity
+                  style={[styles.hBtn, { backgroundColor: 'rgba(255,255,255,0.15)' }]}
+                  onPress={() => navigation.navigate("Notifications")}
+                >
+                  <Bell size={24} color={WHITE} strokeWidth={1.5} />
+                  {unreadNotifCount > 0 && <View style={[styles.notificationDot, { backgroundColor: '#EF4444', borderColor: BLUE }]} />}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.hAvatar, { backgroundColor: 'rgba(255,255,255,0.2)' }]}
+                  onPress={() => navigation.navigate("Profile")}
+                >
+                  <Text style={[styles.hAvatarText, { color: WHITE }]}>{initials}</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={{ fontSize: 8.5, color: 'white', fontWeight: '800', letterSpacing: 0.5, marginTop: -2, opacity: 0.9 }}>
+                  {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()}
+              </Text>
             </View>
           </View>
         </SafeAreaView>
@@ -421,7 +431,7 @@ export default function HomeScreen({ navigation }: any) {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 160, paddingTop: 16 }}
+        contentContainerStyle={{ paddingBottom: 180, paddingTop: 16 }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -431,283 +441,26 @@ export default function HomeScreen({ navigation }: any) {
           />
         }
       >
-        {/* ── Budget Progress Bar ── */}
+
         <FadeSlideIn delay={40}>
-          <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate("Expenses")} style={styles.section}>
-            <View style={[styles.globalCard, { paddingVertical: 20, paddingHorizontal: 20 }]}>
-
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                  <View style={[styles.cardIconWrap, { backgroundColor: '#EEF2FF', width: 44, height: 44, borderRadius: 14 }]}>
-                    <Wallet size={20} color="#2952F3" />
-                  </View>
-                  <View>
-                    <Text style={{ fontSize: 16, fontWeight: '800', color: '#0F172A', marginBottom: 2 }}>Monthly Budget</Text>
-                    <Text style={{ fontSize: 13, fontWeight: '600', color: '#64748B' }}>
-                      {budget > 0 ? `₹${(budget - spent > 0 ? budget - spent : 0).toLocaleString('en-IN')} remaining` : 'No budget set'}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={{ fontSize: 18, fontWeight: '800', color: budget > 0 && spent > budget ? '#EF4444' : '#0F172A', letterSpacing: -0.5 }}>
-                    ₹{spent.toLocaleString('en-IN')}
-                  </Text>
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#94A3B8' }}>
-                    / ₹{budget > 0 ? budget.toLocaleString('en-IN') : '0'}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={{ height: 8, backgroundColor: '#F1F5F9', borderRadius: 4, overflow: 'hidden' }}>
-                <Animated.View style={{
-                  height: '100%',
-                  borderRadius: 4,
-                  backgroundColor: budget > 0 && spent > budget ? '#EF4444' : '#2952F3',
-                  width: progressAnim.interpolate({
-                    inputRange: [0, 100],
-                    outputRange: ['0%', '100%']
-                  })
-                }} />
-              </View>
-
-            </View>
-          </TouchableOpacity>
+            <BudgetOverview 
+                budget={budget} spent={spent} progressAnim={progressAnim}
+                dueAmount={dueAmount} totalRentAmount={totalRentAmount} rentDueDate={rentDueDate} formatDate={formatDate}
+            />
         </FadeSlideIn>
 
-        {/* ── Total Due Overview Card ── */}
-        <FadeSlideIn delay={80}>
-          <View style={styles.section}>
-            <View style={[styles.globalCard, {
-              paddingVertical: 16,
-              paddingHorizontal: 20,
-              flexDirection: "row",
-              alignItems: "center",
-              overflow: 'hidden',
-              backgroundColor: dueAmount === 0 ? '#F0FDF4' : (dueAmount < totalRentAmount ? '#FFF7ED' : '#FEF2F2'),
-              borderColor: dueAmount === 0 ? '#BBF7D0' : (dueAmount < totalRentAmount ? '#FED7AA' : '#FECACA'),
-              borderWidth: 1,
-            }]}>
-              <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                  <View style={[styles.cardIconWrap, {
-                    backgroundColor: dueAmount === 0 ? '#D1FAE5' : (dueAmount < totalRentAmount ? '#FFEDD5' : '#FEE2E2'),
-                    width: 32, height: 32, borderRadius: 10,
-                  }]}>
-                    {dueAmount === 0 ? <CheckCircle2 size={16} color="#10B981" /> : <AlertCircle size={16} color={dueAmount < totalRentAmount ? '#EA580C' : '#EF4444'} />}
-                  </View>
-                  <Text style={[styles.overviewLabel, { marginBottom: 0 }]}>
-                    {dueAmount > 0 ? "Total Due" : "Monthly Rent"}
-                  </Text>
-                </View>
-                <Text style={[styles.overviewAmount, dueAmount === 0 ? { color: "#16A34A" } : (dueAmount < totalRentAmount ? { color: "#EA580C" } : { color: "#E11D48" }), { fontSize: 28 }]}>
-                  ₹ {(dueAmount > 0 ? dueAmount : (totalRentAmount || 0)).toLocaleString("en-IN")}
-                </Text>
-                {dueAmount > 0 && (
-                  <Text style={[styles.overviewDate, { marginBottom: 12 }]}>
-                    📅 Due: {rentDueDate ? formatDate(rentDueDate) : "Not scheduled"}
-                  </Text>
-                )}
-                {dueAmount > 0 ? (
-                  <TouchableOpacity style={[styles.overviewBtn, { backgroundColor: '#0a0a0a', paddingVertical: 10, paddingHorizontal: 16, marginTop: 4 }]} onPress={() => navigation.navigate("Payments")}>
-                    <Text style={[styles.overviewBtnText, { fontSize: 13, color: '#f5f4f2' }]}>Pay Now</Text>
-                    <ArrowRight size={16} color="#f5f4f2" />
-                  </TouchableOpacity>
-                ) : (
-                  <View style={[styles.overviewBtn, { backgroundColor: "#D1FAE5", paddingVertical: 10, paddingHorizontal: 16, marginTop: 4 }]}>
-                    <Check size={16} color="#10B981" strokeWidth={3} />
-                    <Text style={[styles.overviewBtnText, { color: "#10B981", fontSize: 13 }]}>Paid</Text>
-                  </View>
-                )}
-              </View>
-              <View style={{ width: 110, height: 110, justifyContent: "center", alignItems: "center" }}>
-                <Image source={require("../../assets/wallet_3d.png")} style={{ width: 120, height: 120, position: "absolute", right: -16 }} resizeMode="contain" />
-              </View>
-            </View>
-          </View>
-        </FadeSlideIn>
-
-        {/* ── BENTO GRID ── */}
         <FadeSlideIn delay={160}>
-          <View style={styles.section}>
-
-            {/* 1. Today's Menu Stacked Cards */}
-            <View style={{ marginBottom: 20 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, paddingHorizontal: 4 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Text style={{ fontSize: 16, fontWeight: '800', color: '#0F172A' }}>Today's Menu</Text>
-                  <View style={{ backgroundColor: '#EEF2FF', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: BLUE }}>
-                      {new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
-                    </Text>
-                  </View>
-                </View>
-                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }} onPress={() => navigation.navigate("FullMenu")}>
-                  <Text style={{ fontSize: 13, color: BLUE, fontWeight: '700' }}>View All</Text>
-                  <ArrowRight size={14} color={BLUE} strokeWidth={2.5} />
-                </TouchableOpacity>
-              </View>
-
-              <View style={{ gap: 12 }}>
-                {meals.map((meal, idx) => {
-                  const MealIcon = meal.Icon;
-                  // Colors based on meal type for reference matching
-                  let bg = '#FFF7ED'; let iconWrapBg = '#FFEDD5'; let color = '#EA580C'; // Morning (Orange/Yellow)
-                  if (meal.key === 'lunch') { bg = '#FEF2F2'; iconWrapBg = '#FCE7E7'; color = '#EF4444'; } // Lunch (Red/Peach)
-                  if (meal.key === 'snacks') { bg = '#F5F3FF'; iconWrapBg = '#EDE9FE'; color = '#8B5CF6'; } // Snacks (Purple)
-                  if (meal.key === 'dinner') { bg = '#F0FDF4'; iconWrapBg = '#DCFCE7'; color = '#10B981'; } // Dinner (Green)
-
-                  const isPlaceholder = !meal.sub || meal.sub === 'Menu not updated';
-                  const displaySub = isPlaceholder ? 'Menu not updated' : meal.sub;
-
-                  return (
-                    <TouchableOpacity
-                      key={idx}
-                      activeOpacity={0.9}
-                      onPress={() => navigation.navigate("FullMenu")}
-                      style={{
-                        backgroundColor: bg,
-                        borderRadius: 20,
-                        padding: 16,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'space-between'
-                      }}
-                    >
-                      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 14 }}>
-                        <View style={{ backgroundColor: iconWrapBg, width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center' }}>
-                          <MealIcon size={24} color={color} />
-                        </View>
-                        <View style={{ flex: 1, paddingRight: 8 }}>
-                          <Text style={{ fontSize: 16, fontWeight: '800', color: '#0F172A', marginBottom: 2 }}>{meal.title}</Text>
-                          <Text style={{ fontSize: 13, color: '#64748B', fontWeight: '500' }} numberOfLines={1}>{displaySub}</Text>
-                        </View>
-                      </View>
-                      <View style={{ alignItems: 'flex-end', gap: 6 }}>
-                        <Text style={{ fontSize: 12, fontWeight: '700', color: color }}>{meal.time.split(' - ')[0]}</Text>
-                        <View style={{ backgroundColor: '#FFFFFF', width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center', shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 1 }}>
-                          <ArrowRight size={14} color={color} strokeWidth={2.5} />
-                        </View>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+            <View style={styles.section}>
+                <MessMenuCard meals={meals} recentNotices={recentNotices} BLUE={BLUE} />
             </View>
-
-            {/* 2. Notice Card */}
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={() => navigation.navigate("Notices")}
-              style={{
-                backgroundColor: '#ffffff',
-                borderRadius: 20,
-                padding: 16,
-                borderWidth: 1, borderColor: '#F1F5F9',
-                shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 2,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 16
-              }}
-            >
-              <View style={[styles.cardIconWrap, { backgroundColor: '#EEF2FF', width: 48, height: 48, borderRadius: 14 }]}>
-                <Megaphone size={24} color={BLUE} />
-              </View>
-              {recentNotices.length > 0 ? (
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    <Text style={{ color: '#0F172A', fontSize: 16, fontWeight: '800', flexShrink: 1 }} numberOfLines={1}>
-                      {recentNotices[0]?.title || "Welcome!"}
-                    </Text>
-                    <View style={{ backgroundColor: '#DBEAFE', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
-                      <Text style={{ color: BLUE, fontSize: 9, fontWeight: '800', textTransform: 'uppercase' }}>New</Text>
-                    </View>
-                  </View>
-                  <Text style={{ color: '#64748B', fontSize: 13, fontWeight: '500' }} numberOfLines={2}>
-                    {recentNotices[0]?.body || "Check here for daily updates."}
-                  </Text>
-                </View>
-              ) : (
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: '#0F172A', fontSize: 16, fontWeight: '800', marginBottom: 2 }}>Notices</Text>
-                  <Text style={{ color: '#64748B', fontSize: 13, fontWeight: '500' }}>No new notices at the moment</Text>
-                </View>
-              )}
-              <View style={{ backgroundColor: '#F8FAFC', width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' }}>
-                <ArrowRight size={16} color="#64748B" strokeWidth={2.5} />
-              </View>
-            </TouchableOpacity>
-          </View>
         </FadeSlideIn>
 
-        {/* ── Shortcuts ────────────────────────────────────────────────────── */}
         <FadeSlideIn delay={300}>
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Shortcuts</Text>
-            <View style={styles.shortcutGrid}>
-              {shortcuts.map((sc) => {
-                return (
-                  <TouchableOpacity key={sc.id} style={styles.shortcutItem} onPress={() => navigation.navigate(sc.nav)}>
-                    <IconGlowBadge
-                      Icon={sc.icon}
-                      gradient={sc.gradient}
-                      glowColor={sc.color}
-                      flatColor={sc.color}
-                      flatBg={sc.bg}
-                      size="md"
-                      entrance
-                      style={{ marginBottom: 8 }}
-                    />
-                    <Text style={styles.shortcutText}>{sc.name}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
+            <QuickShortcuts shortcuts={shortcuts} />
         </FadeSlideIn>
 
-        {/* ── Recent Activity ──────────────────────────────────────────────── */}
         <FadeSlideIn delay={360}>
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Recent Activity</Text>
-              <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} onPress={() => navigation.navigate("Expenses")}>
-                <Text style={styles.viewAllText}>View All</Text>
-              </TouchableOpacity>
-            </View>
-
-            {recentPayments.length > 0 ? (
-              <View style={{ gap: 12 }}>
-                {recentPayments.map((p) => (
-                  <View key={p.id} style={[styles.globalCard, { paddingVertical: 12, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 12, borderLeftWidth: 4, borderLeftColor: p.mode === 'Payment' ? '#10B981' : '#3B82F6', borderRadius: 14 }]}>
-                    {p.mode === 'Payment' ? (
-                      <View style={[styles.cardIconWrap, { width: 44, height: 44, borderRadius: 14, backgroundColor: '#D1FAE5' }]}>
-                        <Wallet size={20} color="#10B981" />
-                      </View>
-                    ) : (
-                      <CategoryGlowBadge category={p.cat} size="sm" />
-                    )}
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 14, fontWeight: '700', color: TEXT_DARK, marginBottom: 2 }}>{p.title}</Text>
-                      <Text style={{ fontSize: 11, color: TEXT_MID, fontWeight: '500' }}>{formatDate(p.date)} • {formatTime(p.date)}</Text>
-                    </View>
-                    <View style={{ alignItems: 'flex-end', gap: 2 }}>
-                      <Text style={{ fontSize: 15, fontWeight: '800', color: TEXT_DARK, letterSpacing: -0.3 }}>
-                        {p.mode === 'Payment' ? '+' : '-'}₹{p.amount.toLocaleString('en-IN')}
-                      </Text>
-                      <Text style={{ fontSize: 10, fontWeight: '700', color: p.mode === 'Payment' ? '#10B981' : '#EF4444' }}>
-                        {p.mode === 'Payment' ? 'Paid' : 'Expense'}
-                      </Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <View style={{ paddingTop: 10 }}>
-                <Phase3EmptyState variant="activity" />
-              </View>
-            )}
-          </View>
+            <RecentActivity recentPayments={recentPayments} formatDate={formatDate} formatTime={formatTime} />
         </FadeSlideIn>
       </ScrollView>
     </View>

@@ -1,0 +1,25 @@
+    if (h < 17) return 'dashboard.greetingAfternoon';
+    return 'dashboard.greetingEvening';
+};
+
+// ΓöÇΓöÇΓöÇ Quick Management Actions ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+const QUICK_ACTIONS = [
+    { label: 'Add Tenant', icon: 'person-add-outline', color: '#7C3AED', bg: '#EDE9FE', route: 'AddStudent' },
+    { label: 'Add Room', icon: 'business-outline', color: '#2563EB', bg: '#DBEAFE', route: 'AddRoom' },
+    { label: 'Pre-Book', icon: 'calendar-outline', color: '#F97316', bg: '#FFF7ED', route: 'PreBooking' },
+    { label: 'Collected Rent', icon: 'wallet-outline', color: '#0D9488', bg: '#CCFBF1', route: 'CollectedPayments' },
+    { label: 'Add Expense', icon: 'card-outline', color: '#D97706', bg: '#FEF3C7', route: 'AddExpense' },
+    { label: 'Complaints', icon: 'construct-outline', color: '#DC2626', bg: '#FEE2E2', route: 'ComplaintsManagement' },
+    { label: 'Bills', icon: 'document-text-outline', color: '#EA580C', bg: '#FFEDD5', route: 'BillReminders' },
+    { label: 'Staff', icon: 'people-outline', color: '#059669', bg: '#D1FAE5', route: 'AddStaff' },
+];
+
+const getQuickActionLabelKey = (label: string) => {
+    if (label === 'Add Tenant') return 'dashboard.addTenant';
+    if (label === 'Add Room') return 'dashboard.addRoom';
+    if (label === 'Pre-Book') return 'dashboard.preBook';
+    if (label === 'Add Receipt') return 'dashboard.addReceipt';
+    if (label === 'Collected Rent') return 'dashboard.collectedRent';
+    if (label === 'Add Expense') return 'dashboard.addExpense';
+    if (label === 'Bills') return 'dashboard.bills';
+    if (label === 'Staff') return 'dashboard.staff';

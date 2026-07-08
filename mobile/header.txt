@@ -1,0 +1,60 @@
+                    title={`${t(getGreetingKey())},`}
+                    subtitle={(user?.full_name || 'Owner').split(' ')[0]}
+                    showBack={navigation.canGoBack()}
+                    rightComponent={
+                        <HeaderNotification navigation={navigation} />
+                    }
+                />
+                <View style={s.errorCenter}>
+                    <Text style={{ fontSize: 48, marginBottom: 12 }}>≡ƒôí</Text>
+                    <Text style={[s.errorTitle, { color: theme.textPrimary }]}>{t('dashboard.serverWaking')}</Text>
+                    <Text style={[s.errorSub, { color: theme.textSecondary }]}>
+                        {t('dashboard.serverStarting')}
+                    </Text>
+                    <TouchableOpacity
+                        style={s.retryBtn}
+                        onPress={() => load()}
+                        activeOpacity={0.85}
+                    >
+                        <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={s.retryGrad}>
+                            <Text style={s.retryText}>Γå║  {t('dashboard.retry')}</Text>
+                        </LinearGradient>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        );
+    }
+
+    // ΓöÇΓöÇ Main Dashboard ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    return (
+        <View style={[s.root, { backgroundColor: theme.background }]}>
+            <StatusBar barStyle="light-content" />
+
+            {/* ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ FIXED HEADER ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ */}
+            <AppHeader
+                title={`${t(getGreetingKey())}`}
+                subtitle={user?.full_name || 'Admin'}
+                showBack={false}
+                alignLeft={true}
+                rightComponent={
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                        <HeaderNotification navigation={navigation} />
+                        <ProfileMenu />
+                    </View>
+                }
+            >
+                <View style={{ marginTop: -2 }}>
+                    <Text style={s.hostelSubText}>{data.hostelName}</Text>
+                </View>
+            </AppHeader>
+
+            <ScrollView
+                style={{ flex: 1 }}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 110 }}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={() => { setRefreshing(true); load(true); }}
+                        tintColor={theme.primary}
+                    />

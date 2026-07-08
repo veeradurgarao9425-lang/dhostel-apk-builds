@@ -314,18 +314,20 @@ const s = StyleSheet.create({
         gap: 6,
     },
     tabButtonActive: {
-        backgroundColor: '#FEF3C7',
-        borderColor: '#F59E0B',
+        backgroundColor: '#F3E8FF',
+        borderColor: '#9333EA',
     },
     tabText: { fontSize: 14, fontWeight: '700', color: '#64748B' },
-    tabTextActive: { color: '#D97706' },
+    tabTextActive: { color: '#9333EA' },
     tabBadge: {
         backgroundColor: '#F1F5F9',
         paddingHorizontal: 6,
         paddingVertical: 2,
-        borderRadius: 8,
+        borderRadius: 10,
     },
-    tabBadgeActive: { backgroundColor: '#F59E0B' },
+    tabBadgeActive: {
+        backgroundColor: '#9333EA',
+    },
     tabBadgeText: { fontSize: 11, fontWeight: '800', color: '#94A3B8' },
     tabBadgeTextActive: { color: '#FFFFFF' },
 
