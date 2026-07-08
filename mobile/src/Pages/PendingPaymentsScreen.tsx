@@ -781,9 +781,7 @@ export default function PendingPaymentsScreen() {
                                     minWidth: 20,
                                     alignItems: 'center',
                                 }}>
-                                    <Text style={{ color: isActive ? '#FFF' : color, fontSize: 10, fontWeight: '800' }}>
-                                        {counts[tab]} {counts[tab] === 1 ? 'student' : 'students'}
-                                    </Text>
+                                    <Text style={{ color: isActive ? '#FFF' : color, fontSize: 10, fontWeight: '800' }}>{counts[tab]}</Text>
                                 </View>
                             )}
                         </TouchableOpacity>
