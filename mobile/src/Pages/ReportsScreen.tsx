@@ -12,6 +12,7 @@ import * as Print from 'expo-print';
 import { downloadAndSaveFile } from '../utils/fileDownloader';
 import { toLocalDateStr } from '../utils/dateUtils';
 import { useToast } from '../context/ToastContext';
+import { ErrorState } from '../components/ui/ErrorState';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { CustomDateRangePicker } from '../components/ui/pickers/CustomDateRangePicker';
 import { CustomMonthYearPicker } from '../components/ui/pickers/CustomMonthYearPicker';
@@ -127,6 +128,7 @@ export default function ReportsScreen() {
     const { showError, showSuccess, showApiError } = useToast();
 
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [exporting, setExporting] = useState<string | null>(null);
     const [showExcelPicker, setShowExcelPicker] = useState(false);
@@ -172,6 +174,7 @@ export default function ReportsScreen() {
 
     const loadData = useCallback(async (silent = false) => {
         if (!silent) setLoading(true);
+        setError(false);
         try {
             const { startDate, endDate, monthStr } = getQueryDates();
 
@@ -205,6 +208,7 @@ export default function ReportsScreen() {
 
         } catch (e) {
             console.error('ReportsScreen:', e);
+            setError(true);
         } finally {
             setLoading(false); setRefreshing(false);
         }
@@ -361,6 +365,10 @@ export default function ReportsScreen() {
                                 {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} style={{ height: 72, borderRadius: 16, marginBottom: 12 }} isDark={isDark} />)}
                             </View>
                         </>
+                    ) : error ? (
+                        <View style={{ paddingTop: 40 }}>
+                            <ErrorState onRetry={() => loadData(false)} />
+                        </View>
                     ) : (
                         <>
                             <View style={[R.topCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#F1F5F9', borderWidth: 1, overflow: 'hidden' }]}>

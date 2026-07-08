@@ -235,13 +235,7 @@ export const IncomeScreen = ({ navigation }: any) => {
             {loading ? (
                 <SkeletonList count={5} />
             ) : error ? (
-                <View style={styles.errorContainer}>
-                    <Text style={[styles.errorTitle, { color: theme.textPrimary }]}>Oops! Failed to load data</Text>
-                    <Text style={[styles.errorSub, { color: theme.textSecondary }]}>Please check your connection and try again.</Text>
-                    <TouchableOpacity style={[styles.retryBtn, { backgroundColor: theme.primary }]} onPress={fetchIncomes} activeOpacity={0.85}>
-                        <Text style={styles.retryText}>Retry</Text>
-                    </TouchableOpacity>
-                </View>
+                <ErrorState onRetry={fetchIncomes} />
             ) : (
                 <View style={{ flex: 1 }}>
                     {activeTab === 'Day' ? renderDayContent() : renderGraphPlaceholder(activeTab)}

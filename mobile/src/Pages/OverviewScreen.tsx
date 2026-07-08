@@ -16,6 +16,7 @@ import { useRefresh } from '../../contexts/RefreshContext';
 import { CustomDateRangePicker } from '../components/ui/pickers/CustomDateRangePicker';
 import { CustomMonthYearPicker } from '../components/ui/pickers/CustomMonthYearPicker';
 import { toLocalDateStr } from '../utils/dateUtils';
+import { ErrorState } from '../components/ui/ErrorState';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -106,6 +107,7 @@ export default function OverviewScreen() {
     const { refreshCounter } = useRefresh();
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [backgroundLoading, setBackgroundLoading] = useState(false);
 
@@ -145,9 +147,13 @@ export default function OverviewScreen() {
             });
             if (res.data.success) {
                 setData(res.data.data);
+                setError(false);
+            } else {
+                setError(true);
             }
         } catch (e) {
             console.error('Overview fetch error:', e);
+            setError(true);
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -192,6 +198,25 @@ export default function OverviewScreen() {
                     </View>
                     <Skeleton style={{ height: 220, borderRadius: 24 }} isDark={isDark} />
                 </View>
+            </View>
+        );
+    }
+
+    if (error && !data) {
+        return (
+            <View style={[s.root, { backgroundColor: theme.background }]}>
+                <StatusBar barStyle="light-content" />
+                <AppHeader
+                    title={t('overview.title')}
+                    showBack={canGoBack}
+                    rightComponent={
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                            <HeaderNotification navigation={navigation} />
+                            <ProfileMenu />
+                        </View>
+                    }
+                />
+                <ErrorState onRetry={() => fetchData(false)} />
             </View>
         );
     }

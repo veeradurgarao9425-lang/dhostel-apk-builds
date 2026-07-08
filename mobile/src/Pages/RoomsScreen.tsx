@@ -24,6 +24,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useToast } from '../context/ToastContext';
 import { useTranslation } from 'react-i18next';
 import { EmptyState } from '../components/ui/EmptyState';
+import { ErrorState } from '../components/ui/ErrorState';
 import { SkeletonList } from '../components/ui/SkeletonCard';
 import { COLORS, FONT, RADIUS, SPACING, SHADOW } from '../theme/index';
 import { AppHeader } from '../components/AppHeader';
@@ -46,6 +47,7 @@ export default function RoomsScreen({ navigation, route }: any) {
 
     const [rooms, setRooms] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [backgroundLoading, setBackgroundLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('All');
@@ -103,6 +105,7 @@ export default function RoomsScreen({ navigation, route }: any) {
             } else if (!isRefresh) {
                 setBackgroundLoading(true);
             }
+            setError(false);
             const response = await api.get('/rooms?limit=200');
             if (isMountedRef.current && response.data.success) {
                 setRooms(response.data.data);
@@ -110,6 +113,7 @@ export default function RoomsScreen({ navigation, route }: any) {
         } catch (error) {
             if (isMountedRef.current) {
                 showApiError(error, 'Failed to load rooms');
+                if (rooms.length === 0 && !isRefresh) setError(true);
             }
         } finally {
             if (isMountedRef.current) {
@@ -401,6 +405,8 @@ export default function RoomsScreen({ navigation, route }: any) {
 
             {loading ? (
                 <SkeletonList count={6} />
+            ) : error && rooms.length === 0 ? (
+                <ErrorState onRetry={() => fetchRooms(false)} />
             ) : showEmpty ? (
                 <EmptyState
                     illustration="pinboard"

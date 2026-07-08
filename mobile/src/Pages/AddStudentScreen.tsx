@@ -285,8 +285,8 @@ const OptionsDrawer = ({ visible, title, data, selectedId, onSelect, onClose, ke
                         </TouchableOpacity>
                     );
                 }}
-                ListEmptyComponent={<View style={{ padding: 40, alignItems: 'center' }}><Text style={{ color: theme.textSecondary, fontSize: 14 }}>No options</Text></View>}
-                contentContainerStyle={{ paddingBottom: 40 }}
+                ListEmptyComponent={<View style={{ padding: 40, alignItems: 'center', minHeight: 200, justifyContent: 'center' }}><Text style={{ color: theme.textSecondary, fontSize: 14 }}>No options available / Loading...</Text></View>}
+                contentContainerStyle={{ paddingBottom: 40, minHeight: 250 }}
             />
         </ModalSheet>
     );
@@ -1566,7 +1566,9 @@ const BedPickerDrawer = ({ visible, room, beds, selectedBedId, onSelectBed, onCl
                 </View>
             )}
             {loading ? (
-                <ActivityIndicator color={theme.primary} size="large" style={{ marginVertical: 40 }} />
+                <View style={{ minHeight: 250, justifyContent: 'center', alignItems: 'center' }}>
+                    <ActivityIndicator color={theme.primary} size="large" />
+                </View>
             ) : (
                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 150, paddingTop: 14 }}>
                     {beds.length === 0 && <View style={{ padding: 40, alignItems: 'center' }}><Text style={{ color: theme.textSecondary }}>No beds in this room</Text></View>}

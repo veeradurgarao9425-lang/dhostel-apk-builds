@@ -10,6 +10,9 @@ import Toast from 'react-native-toast-message';
 import api from '../services/api';
 import { useTheme } from '../../contexts/ThemeContext';
 import { AppHeader } from '../components/AppHeader';
+import { EmptyState } from '../components/ui/EmptyState';
+import { ErrorState } from '../components/ui/ErrorState';
+import { SkeletonList } from '../components/ui/SkeletonCard';
 
 const sf = (v: any): number => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
 
@@ -19,13 +22,16 @@ export default function BillRemindersScreen() {
 
     const [tenants, setTenants] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [search, setSearch] = useState('');
+    const [activeTab, setActiveTab] = useState<'Due' | 'Overdue'>('Due');
 
     // ── Fetch outstanding bills ──────────────────────────────────────────────
     const fetchBills = async (isRefresh = false) => {
         try {
             if (!isRefresh) setLoading(true);
+            setError(false);
             const res = await api.get('/monthly-fees/summary');
             if (res.data.success) {
                 const fees: any[] = res.data.data?.fees || [];
@@ -71,6 +77,7 @@ export default function BillRemindersScreen() {
             }
         } catch (e) {
             console.error('Error fetching bill reminders:', e);
+            setError(true);
             Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to load outstanding bills' });
         } finally {
             setLoading(false);
@@ -84,14 +91,18 @@ export default function BillRemindersScreen() {
         }, [])
     );
 
-    // ── Search filtering ─────────────────────────────────────────────────────
+    // ── Search filtering & Tabs ─────────────────────────────────────────────────────
+    const dueCount = tenants.filter(t => !t.isOverdue).length;
+    const overdueCount = tenants.filter(t => t.isOverdue).length;
+
     const filteredTenants = useMemo(() => {
         const q = search.toLowerCase().trim();
-        return tenants.filter(t => 
-            t.name.toLowerCase().includes(q) || 
-            t.room.toLowerCase().includes(q)
-        );
-    }, [tenants, search]);
+        return tenants.filter(t => {
+            const matchesTab = activeTab === 'Overdue' ? t.isOverdue : !t.isOverdue;
+            const matchesSearch = t.name.toLowerCase().includes(q) || t.room.toLowerCase().includes(q);
+            return matchesTab && matchesSearch;
+        });
+    }, [tenants, search, activeTab]);
 
     // ── WhatsApp reminder trigger ────────────────────────────────────────────
     const sendWhatsAppReminder = (tenant: any) => {
@@ -191,42 +202,72 @@ export default function BillRemindersScreen() {
                 )}
             </View>
 
+            {/* Tabs */}
+            <View style={s.tabsContainer}>
+                <TouchableOpacity 
+                    style={[s.tabButton, activeTab === 'Due' && s.tabButtonActive]}
+                    onPress={() => setActiveTab('Due')}
+                    activeOpacity={0.8}
+                >
+                    <Text style={[s.tabText, activeTab === 'Due' && s.tabTextActive]}>Due</Text>
+                    <View style={[s.tabBadge, activeTab === 'Due' && s.tabBadgeActive]}>
+                        <Text style={[s.tabBadgeText, activeTab === 'Due' && s.tabBadgeTextActive]}>{dueCount}</Text>
+                    </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                    style={[s.tabButton, activeTab === 'Overdue' && s.tabButtonActive, activeTab === 'Overdue' && { backgroundColor: '#FEE2E2', borderColor: '#FEE2E2' }]}
+                    onPress={() => setActiveTab('Overdue')}
+                    activeOpacity={0.8}
+                >
+                    <Text style={[s.tabText, activeTab === 'Overdue' && { color: '#DC2626' }]}>Overdue</Text>
+                    <View style={[s.tabBadge, activeTab === 'Overdue' && { backgroundColor: '#DC2626' }]}>
+                        <Text style={[s.tabBadgeText, activeTab === 'Overdue' && { color: '#FFFFFF' }]}>{overdueCount}</Text>
+                    </View>
+                </TouchableOpacity>
+            </View>
+
             {/* Tip Banner */}
             <View style={s.tipBanner}>
                 <Ionicons name="information-circle-outline" size={16} color="#16A34A" />
                 <Text style={s.tipText}>Tap WhatsApp icon to send bill reminder instantly.</Text>
             </View>
 
-            {loading ? (
-                <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 40 }} />
-            ) : (
-                <FlatList
-                    data={filteredTenants}
-                    keyExtractor={(item) => `bill-${item.id}`}
-                    renderItem={renderCard}
-                    contentContainerStyle={s.listContent}
-                    showsVerticalScrollIndicator={false}
-                    refreshControl={
-                        <RefreshControl
-                            refreshing={refreshing}
-                            onRefresh={() => { setRefreshing(true); fetchBills(true); }}
-                            tintColor={theme.primary}
+            <FlatList
+                data={filteredTenants}
+                keyExtractor={(item) => `bill-${item.id}`}
+                renderItem={renderCard}
+                contentContainerStyle={s.listContent}
+                showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={() => { setRefreshing(true); fetchBills(true); }}
+                        tintColor={theme.primary}
+                    />
+                }
+                ListEmptyComponent={
+                    loading ? (
+                        <SkeletonList count={4} />
+                    ) : error ? (
+                        <ErrorState onRetry={() => fetchBills(true)} />
+                    ) : (
+                        <EmptyState
+                            illustration="clipboard"
+                            title={activeTab === 'Overdue' ? 'No Overdue Bills 🎉' : 'No Bills Due 🎉'}
+                            subtitle={activeTab === 'Overdue' ? 'Great! No one has overdue payments.' : 'All dues are cleared.'}
                         />
-                    }
-                    ListEmptyComponent={
-                        <View style={s.emptyWrap}>
-                            <Text style={{ fontSize: 50, marginBottom: 10 }}>🎉</Text>
-                            <Text style={s.emptyText}>All dues cleared!</Text>
-                        </View>
-                    }
-                    ListFooterComponent={
+                    )
+                }
+                ListFooterComponent={
+                    (!loading && !error && filteredTenants.length > 0) ? (
                         <View style={s.footer}>
                             <Text style={s.footerText}>Powered by Hostix • Durgarao</Text>
                             <Text style={s.footerTextCopy}>© 2026 All Rights Reserved.</Text>
                         </View>
-                    }
-                />
-            )}
+                    ) : null
+                }
+            />
         </View>
     );
 }
@@ -253,6 +294,42 @@ const s = StyleSheet.create({
         borderWidth: 1, borderColor: '#F1F5F9',
     },
     searchInput: { flex: 1, marginLeft: 8, fontSize: 13, color: '#1E293B', fontWeight: '600' },
+
+    tabsContainer: {
+        flexDirection: 'row',
+        paddingHorizontal: 16,
+        marginTop: 12,
+        gap: 8,
+    },
+    tabButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 10,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        borderWidth: 1.5,
+        borderColor: '#E2E8F0',
+        gap: 6,
+    },
+    tabButtonActive: {
+        backgroundColor: '#F3E8FF',
+        borderColor: '#9333EA',
+    },
+    tabText: { fontSize: 14, fontWeight: '700', color: '#64748B' },
+    tabTextActive: { color: '#9333EA' },
+    tabBadge: {
+        backgroundColor: '#F1F5F9',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 10,
+    },
+    tabBadgeActive: {
+        backgroundColor: '#9333EA',
+    },
+    tabBadgeText: { fontSize: 11, fontWeight: '800', color: '#94A3B8' },
+    tabBadgeTextActive: { color: '#FFFFFF' },
 
     tipBanner: {
         flexDirection: 'row', alignItems: 'center', gap: 6,

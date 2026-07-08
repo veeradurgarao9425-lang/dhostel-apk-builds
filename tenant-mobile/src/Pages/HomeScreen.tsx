@@ -35,11 +35,11 @@ import {
   Home as HomeIcon,
   Briefcase,
   Ticket,
-  Droplets, 
-  MapPin, 
-  Search, 
-  X, 
-  AlertTriangle, 
+  Droplets,
+  MapPin,
+  Search,
+  X,
+  AlertTriangle,
   Layers,
   FileText,
   QrCode,
@@ -212,7 +212,7 @@ export default function HomeScreen({ navigation }: any) {
         let firstDueDate: string | null = null;
         let latestRent = 0;
         const payments: any[] = [];
-        
+
         fees.forEach((f: any) => {
           if (latestRent === 0) latestRent = Number(f.total_amount || f.monthly_rent || 0);
           const bal = Number(f.total_due || f.total_amount || 0) - Number(f.paid_amount || 0);
@@ -229,7 +229,7 @@ export default function HomeScreen({ navigation }: any) {
             });
           }
         });
-        
+
         setDueAmount(sum > 0 ? sum : 0);
         setRentDueDate(firstDueDate);
         setTotalRentAmount(latestRent);
@@ -237,17 +237,17 @@ export default function HomeScreen({ navigation }: any) {
         try {
           const expRes = await api.get('/tenant-expenses');
           let combined = payments.map((p: any) => ({
-            id: 'pay_'+p.id,
+            id: 'pay_' + p.id,
             amount: p.amount,
             date: p.date,
             title: `Payment: ${p.mode}`,
             mode: 'Payment',
             cat: 'Payment',
           }));
-          
+
           if (expRes.data && expRes.data.success) {
             const expList = expRes.data.data.map((e: any) => ({
-              id: 'exp_'+e.expense_id,
+              id: 'exp_' + e.expense_id,
               amount: e.amount,
               date: e.date,
               title: e.title || e.category,
@@ -258,8 +258,8 @@ export default function HomeScreen({ navigation }: any) {
           }
           combined.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
           setRecentPayments(combined.slice(0, 4));
-        } catch { 
-           setRecentPayments(payments.slice(0, 4).map(p => ({...p, title: `Payment: ${p.mode}`, cat: 'Payment'})));
+        } catch {
+          setRecentPayments(payments.slice(0, 4).map(p => ({ ...p, title: `Payment: ${p.mode}`, cat: 'Payment' })));
         }
       }
     } catch {
@@ -326,8 +326,8 @@ export default function HomeScreen({ navigation }: any) {
   // ── Mess menu: fetch on every screen focus so owner changes appear immediately ──
   const [todaysMeals, setTodaysMeals] = useState<any>({
     breakfast: { items: 'Menu not updated' },
-    lunch:     { items: 'Menu not updated' },
-    dinner:    { items: 'Menu not updated' },
+    lunch: { items: 'Menu not updated' },
+    dinner: { items: 'Menu not updated' },
   });
 
   useFocusEffect(
@@ -353,8 +353,8 @@ export default function HomeScreen({ navigation }: any) {
 
           setTodaysMeals({
             breakfast: { items: find('breakfast') },
-            lunch:     { items: find('lunch') },
-            dinner:    { items: find('dinner') },
+            lunch: { items: find('lunch') },
+            dinner: { items: find('dinner') },
           });
         } catch (err) {
           console.error('Error fetching mess menu:', err);
@@ -435,7 +435,7 @@ export default function HomeScreen({ navigation }: any) {
         <FadeSlideIn delay={40}>
           <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate("Expenses")} style={styles.section}>
             <View style={[styles.globalCard, { paddingVertical: 20, paddingHorizontal: 20 }]}>
-              
+
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                   <View style={[styles.cardIconWrap, { backgroundColor: '#EEF2FF', width: 44, height: 44, borderRadius: 14 }]}>
@@ -448,7 +448,7 @@ export default function HomeScreen({ navigation }: any) {
                     </Text>
                   </View>
                 </View>
-                
+
                 <View style={{ alignItems: 'flex-end' }}>
                   <Text style={{ fontSize: 18, fontWeight: '800', color: budget > 0 && spent > budget ? '#EF4444' : '#0F172A', letterSpacing: -0.5 }}>
                     ₹{spent.toLocaleString('en-IN')}
@@ -470,7 +470,7 @@ export default function HomeScreen({ navigation }: any) {
                   })
                 }} />
               </View>
-              
+
             </View>
           </TouchableOpacity>
         </FadeSlideIn>
@@ -530,7 +530,7 @@ export default function HomeScreen({ navigation }: any) {
         {/* ── BENTO GRID ── */}
         <FadeSlideIn delay={160}>
           <View style={styles.section}>
-            
+
             {/* 1. Today's Menu Stacked Cards */}
             <View style={{ marginBottom: 20 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, paddingHorizontal: 4 }}>
@@ -556,12 +556,12 @@ export default function HomeScreen({ navigation }: any) {
                   if (meal.key === 'lunch') { bg = '#FEF2F2'; iconWrapBg = '#FCE7E7'; color = '#EF4444'; } // Lunch (Red/Peach)
                   if (meal.key === 'snacks') { bg = '#F5F3FF'; iconWrapBg = '#EDE9FE'; color = '#8B5CF6'; } // Snacks (Purple)
                   if (meal.key === 'dinner') { bg = '#F0FDF4'; iconWrapBg = '#DCFCE7'; color = '#10B981'; } // Dinner (Green)
-                  
+
                   const isPlaceholder = !meal.sub || meal.sub === 'Menu not updated';
                   const displaySub = isPlaceholder ? 'Menu not updated' : meal.sub;
 
                   return (
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       key={idx}
                       activeOpacity={0.9}
                       onPress={() => navigation.navigate("FullMenu")}
@@ -642,72 +642,72 @@ export default function HomeScreen({ navigation }: any) {
 
         {/* ── Shortcuts ────────────────────────────────────────────────────── */}
         <FadeSlideIn delay={300}>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Shortcuts</Text>
-          <View style={styles.shortcutGrid}>
-            {shortcuts.map((sc) => {
-              return (
-                <TouchableOpacity key={sc.id} style={styles.shortcutItem} onPress={() => navigation.navigate(sc.nav)}>
-                  <IconGlowBadge
-                    Icon={sc.icon}
-                    gradient={sc.gradient}
-                    glowColor={sc.color}
-                    flatColor={sc.color}
-                    flatBg={sc.bg}
-                    size="md"
-                    entrance
-                    style={{ marginBottom: 8 }}
-                  />
-                  <Text style={styles.shortcutText}>{sc.name}</Text>
-                </TouchableOpacity>
-              );
-            })}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Shortcuts</Text>
+            <View style={styles.shortcutGrid}>
+              {shortcuts.map((sc) => {
+                return (
+                  <TouchableOpacity key={sc.id} style={styles.shortcutItem} onPress={() => navigation.navigate(sc.nav)}>
+                    <IconGlowBadge
+                      Icon={sc.icon}
+                      gradient={sc.gradient}
+                      glowColor={sc.color}
+                      flatColor={sc.color}
+                      flatBg={sc.bg}
+                      size="md"
+                      entrance
+                      style={{ marginBottom: 8 }}
+                    />
+                    <Text style={styles.shortcutText}>{sc.name}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
-        </View>
         </FadeSlideIn>
 
         {/* ── Recent Activity ──────────────────────────────────────────────── */}
         <FadeSlideIn delay={360}>
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Activity</Text>
-            <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} onPress={() => navigation.navigate("Expenses")}>
-              <Text style={styles.viewAllText}>View All</Text>
-            </TouchableOpacity>
-          </View>
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Recent Activity</Text>
+              <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} onPress={() => navigation.navigate("Expenses")}>
+                <Text style={styles.viewAllText}>View All</Text>
+              </TouchableOpacity>
+            </View>
 
-          {recentPayments.length > 0 ? (
-            <View style={{ gap: 12 }}>
-              {recentPayments.map((p) => (
-                <View key={p.id} style={[styles.globalCard, { paddingVertical: 12, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 12, borderLeftWidth: 4, borderLeftColor: p.mode === 'Payment' ? '#10B981' : '#3B82F6', borderRadius: 14 }]}>
-                  {p.mode === 'Payment' ? (
-                     <View style={[styles.cardIconWrap, { width: 44, height: 44, borderRadius: 14, backgroundColor: '#D1FAE5' }]}>
+            {recentPayments.length > 0 ? (
+              <View style={{ gap: 12 }}>
+                {recentPayments.map((p) => (
+                  <View key={p.id} style={[styles.globalCard, { paddingVertical: 12, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 12, borderLeftWidth: 4, borderLeftColor: p.mode === 'Payment' ? '#10B981' : '#3B82F6', borderRadius: 14 }]}>
+                    {p.mode === 'Payment' ? (
+                      <View style={[styles.cardIconWrap, { width: 44, height: 44, borderRadius: 14, backgroundColor: '#D1FAE5' }]}>
                         <Wallet size={20} color="#10B981" />
-                     </View>
-                  ) : (
-                     <CategoryGlowBadge category={p.cat} size="sm" />
-                  )}
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 14, fontWeight: '700', color: TEXT_DARK, marginBottom: 2 }}>{p.title}</Text>
-                    <Text style={{ fontSize: 11, color: TEXT_MID, fontWeight: '500' }}>{formatDate(p.date)} • {formatTime(p.date)}</Text>
+                      </View>
+                    ) : (
+                      <CategoryGlowBadge category={p.cat} size="sm" />
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '700', color: TEXT_DARK, marginBottom: 2 }}>{p.title}</Text>
+                      <Text style={{ fontSize: 11, color: TEXT_MID, fontWeight: '500' }}>{formatDate(p.date)} • {formatTime(p.date)}</Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end', gap: 2 }}>
+                      <Text style={{ fontSize: 15, fontWeight: '800', color: TEXT_DARK, letterSpacing: -0.3 }}>
+                        {p.mode === 'Payment' ? '+' : '-'}₹{p.amount.toLocaleString('en-IN')}
+                      </Text>
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: p.mode === 'Payment' ? '#10B981' : '#EF4444' }}>
+                        {p.mode === 'Payment' ? 'Paid' : 'Expense'}
+                      </Text>
+                    </View>
                   </View>
-                  <View style={{ alignItems: 'flex-end', gap: 2 }}>
-                    <Text style={{ fontSize: 15, fontWeight: '800', color: TEXT_DARK, letterSpacing: -0.3 }}>
-                      {p.mode === 'Payment' ? '+' : '-'}₹{p.amount.toLocaleString('en-IN')}
-                    </Text>
-                    <Text style={{ fontSize: 10, fontWeight: '700', color: p.mode === 'Payment' ? '#10B981' : '#EF4444' }}>
-                      {p.mode === 'Payment' ? 'Paid' : 'Expense'}
-                    </Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          ) : (
-            <View style={{ paddingTop: 10 }}>
-              <Phase3EmptyState variant="activity" />
-            </View>
-          )}
-        </View>
+                ))}
+              </View>
+            ) : (
+              <View style={{ paddingTop: 10 }}>
+                <Phase3EmptyState variant="activity" />
+              </View>
+            )}
+          </View>
         </FadeSlideIn>
       </ScrollView>
     </View>
@@ -716,7 +716,7 @@ export default function HomeScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F8FAFC' },
-  
+
   // ── Global Standardized Card ──
   globalCard: {
     backgroundColor: '#FFFFFF',
@@ -737,8 +737,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  headerSection: { 
-    backgroundColor: BLUE, 
+  headerSection: {
+    backgroundColor: BLUE,
     paddingBottom: 20,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,

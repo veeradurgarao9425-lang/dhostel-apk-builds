@@ -13,6 +13,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useToast } from '../context/ToastContext';
 import { AppHeader } from '../components/AppHeader';
 import { EmptyState } from '../components/ui/EmptyState';
+import { ErrorState } from '../components/ui/ErrorState';
 import { SkeletonList } from '../components/ui/SkeletonCard';
 import { StatCard } from '../components/ui/StatCard';
 import { DangerModal } from '../components/ui/DangerModal';
@@ -33,6 +34,7 @@ export default function GuestsScreen() {
     const [guests, setGuests] = useState<any[]>([]);
     const [summary, setSummary] = useState<{ count: number; totalCollected: number }>({ count: 0, totalCollected: 0 });
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [search, setSearch] = useState('');
     const [dateFilter, setDateFilter] = useState<Date | null>(null);
@@ -49,6 +51,7 @@ export default function GuestsScreen() {
     const fetchGuests = useCallback(async (silent = false) => {
         try {
             if (!silent) setLoading(true);
+            setError(false);
             const params: Record<string, any> = {};
             if (dateFilter) {
                 params.date = toLocalDateStr(dateFilter);
@@ -59,6 +62,7 @@ export default function GuestsScreen() {
                 setSummary(res.data.summary || { count: 0, totalCollected: 0 });
             }
         } catch (e) {
+            setError(true);
             if (!silent) showApiError(e, 'Failed to load guests');
         } finally {
             setLoading(false);
@@ -244,6 +248,8 @@ export default function GuestsScreen() {
 
             {loading ? (
                 <SkeletonList count={5} />
+            ) : error ? (
+                <ErrorState onRetry={() => fetchGuests(false)} />
             ) : (
                 <FlatList
                     data={filtered}

@@ -39,6 +39,9 @@ import { ProfileMenu } from '../components/ProfileMenu';
 import { PaymentDrawer } from '../components/PaymentDrawer';
 import { useTheme } from '../../contexts/ThemeContext';
 import { fmtINR, getInitials, avatarColor } from '../utils/formatUtils';
+import { EmptyState } from '../components/ui/EmptyState';
+import { ErrorState } from '../components/ui/ErrorState';
+import { SkeletonList } from '../components/ui/SkeletonCard';
 
 const { width } = Dimensions.get('window');
 
@@ -545,6 +548,7 @@ export default function FeeCollectionScreen({ navigation, route }: any) {
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [activeTab, setActiveTab] = useState<TabType>('All');
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [summary, setSummary] = useState<any>(null);
     const [fees, setFees] = useState<any[]>([]);
@@ -583,6 +587,7 @@ export default function FeeCollectionScreen({ navigation, route }: any) {
         try {
             if (pageNum === 1) {
                 if (showLoader) setLoading(true);
+                setError(false);
             } else {
                 setLoadingMore(true);
             }
@@ -618,6 +623,7 @@ export default function FeeCollectionScreen({ navigation, route }: any) {
             }
         } catch (e) { 
             console.error(e); 
+            if (pageNum === 1) setError(true);
         } finally { 
             setLoading(false); 
             setLoadingMore(false);
@@ -846,27 +852,22 @@ export default function FeeCollectionScreen({ navigation, route }: any) {
                 )}
                 ListEmptyComponent={
                     loading ? (
-                        <View style={styles.centered}>
-                            <ActivityIndicator size="large" color={theme.primary} />
-                            <Text style={[styles.emptyTitle, { marginTop: 12, color: '#94A3B8' }]}>
-                                Loading fee records…
-                            </Text>
-                        </View>
+                        <SkeletonList count={4} />
+                    ) : error ? (
+                        <ErrorState onRetry={() => fetchSummary(1, false)} />
                     ) : (
-                        <View style={styles.centered}>
-                            <View style={styles.emptyCircle}>
-                                <CheckCircle color="#CBD5E1" size={28} />
-                            </View>
-                            <Text style={styles.emptyTitle}>
-                                {activeTab === 'Paid' ? 'No paid records' :
-                                 activeTab === 'Unpaid' ? 'No pending fees 🎉' :
-                                 activeTab === 'Partial' ? 'No partial payments' :
-                                 'No fee records found'}
-                            </Text>
-                            <Text style={{ fontSize: 12, color: '#CBD5E1', marginTop: 4 }}>
-                                {activeTab === 'Unpaid' ? 'Great job! Everyone has paid.' : 'Try a different tab, month or search.'}
-                            </Text>
-                        </View>
+                        <EmptyState
+                            illustration="clipboard"
+                            title={
+                                activeTab === 'Paid' ? 'No paid records' :
+                                activeTab === 'Unpaid' ? 'No pending fees 🎉' :
+                                activeTab === 'Partial' ? 'No partial payments' :
+                                'No fee records found'
+                            }
+                            subtitle={
+                                activeTab === 'Unpaid' ? 'Great job! Everyone has paid.' : 'Try a different tab, month or search.'
+                            }
+                        />
                     )
                 }
                 ListFooterComponent={

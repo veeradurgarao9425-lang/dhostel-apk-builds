@@ -728,7 +728,8 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
                                     </TouchableOpacity>
                                 );
                             }}
-                            contentContainerStyle={{ paddingBottom: 40 }}
+                            ListEmptyComponent={<View style={{ padding: 40, alignItems: 'center', minHeight: 200, justifyContent: 'center' }}><Text style={{ color: '#64748B', fontSize: 14 }}>No room types / Loading...</Text></View>}
+                            contentContainerStyle={{ paddingBottom: 40, minHeight: 250 }}
                         />
                     </TouchableOpacity>
                 </TouchableOpacity>

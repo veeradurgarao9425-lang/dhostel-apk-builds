@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Plus, Search, Calendar, ChevronDown, Tag, X, Edit3, Trash2 } from 'lucide-react-native';
 import { AppHeader } from '../components/AppHeader';
 import { EmptyState } from '../components/ui/EmptyState';
+import { ErrorState } from '../components/ui/ErrorState';
 import { SkeletonList } from '../components/ui/SkeletonCard';
 import { DangerModal } from '../components/ui/DangerModal';
 import { LoadMoreFooter } from '../components/ui/LoadMoreFooter';
@@ -57,6 +58,7 @@ export const ExpenseScreen = ({ navigation }: any) => {
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [expenses, setExpenses] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [currentDate, setCurrentDate] = useState<Date | null>(null);
     const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
@@ -84,6 +86,7 @@ export const ExpenseScreen = ({ navigation }: any) => {
                 } else if (expenses.length > 0) {
                     setBackgroundLoading(true);
                 }
+                setError(false);
             } else {
                 setLoadingMore(true);
             }
@@ -117,6 +120,7 @@ export const ExpenseScreen = ({ navigation }: any) => {
             }
         } catch (error) {
             showApiError(error, 'Failed to fetch expenses');
+            if (pageNum === 1) setError(true);
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -305,6 +309,8 @@ export const ExpenseScreen = ({ navigation }: any) => {
 
             {loading ? (
                 <SkeletonList count={5} />
+            ) : error && expenses.length === 0 ? (
+                <ErrorState onRetry={() => fetchExpenses(1, false)} />
             ) : (
                 <FlatList
                     data={expenses}

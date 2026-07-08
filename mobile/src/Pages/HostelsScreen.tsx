@@ -18,6 +18,8 @@ import { useTheme } from '../../contexts/ThemeContext';
 import api from '../services/api';
 import { AppHeader } from '../components/AppHeader';
 import { EmptyState } from '../components/ui/EmptyState';
+import { ErrorState } from '../components/ui/ErrorState';
+import { SkeletonList } from '../components/ui/SkeletonCard';
 import { useToast } from '../context/ToastContext';
 import * as Clipboard from 'expo-clipboard';
 
@@ -29,6 +31,7 @@ export const HostelsScreen = () => {
 
     const [hostels, setHostels] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [switchingId, setSwitchingId] = useState<number | null>(null);
     const [copiedHostelId, setCopiedHostelId] = useState<number | null>(null);
@@ -48,6 +51,7 @@ export const HostelsScreen = () => {
     const fetchHostels = async () => {
         try {
             setLoading(true);
+            setError(false);
             const res = await api.get('/hostels?my_hostels=true');
             if (res.data?.success) {
                 setHostels(res.data.data || []);
@@ -55,6 +59,7 @@ export const HostelsScreen = () => {
         } catch (e: any) {
             console.error('Failed to fetch hostels:', e);
             showApiError(e, 'Failed to load hostels list.');
+            setError(true);
         } finally {
             setLoading(false);
         }
@@ -170,9 +175,9 @@ export const HostelsScreen = () => {
                 }
             >
                 {loading && !refreshing ? (
-                    <View style={styles.center}>
-                        <ActivityIndicator size="large" color={theme.primary} />
-                    </View>
+                    <SkeletonList count={3} />
+                ) : error && hostels.length === 0 ? (
+                    <ErrorState onRetry={fetchHostels} />
                 ) : hostels.length === 0 ? (
                     <EmptyState
                         variant="noData"

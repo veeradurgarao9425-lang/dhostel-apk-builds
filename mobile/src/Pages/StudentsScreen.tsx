@@ -29,6 +29,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useToast } from '../context/ToastContext';
 import { useTranslation } from 'react-i18next';
 import { EmptyState } from '../components/ui/EmptyState';
+import { ErrorState } from '../components/ui/ErrorState';
 import { AppHeader } from '../components/AppHeader';
 import { LoadMoreFooter } from '../components/ui/LoadMoreFooter';
 import { SkeletonList } from '../components/ui/SkeletonCard';
@@ -267,6 +268,7 @@ export default function StudentsScreen({ navigation, route }: any) {
     const [search, setSearch] = useState('');
     const [activeTab, setActiveTab] = useState<TabType>('Active');
     const [initialLoading, setInitialLoading] = useState(true);
+    const [error, setError] = useState(false);
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [counts, setCounts] = useState({ active: 0, inactive: 0, prebooked: 0, qrRegister: 0, total: 0, unallocated: 0 });
     const [totalMatching, setTotalMatching] = useState(0);
@@ -329,6 +331,7 @@ export default function StudentsScreen({ navigation, route }: any) {
                 } else if (allStudents.length > 0) {
                     setBackgroundLoading(true);
                 }
+                setError(false);
             } else {
                 setLoadingMore(true);
             }
@@ -370,6 +373,7 @@ export default function StudentsScreen({ navigation, route }: any) {
         } catch (error: any) {
             if (error?.name === 'AbortError' || error?.code === 'ERR_CANCELED') return;
             showApiError(error, 'Failed to fetch students');
+            if (pageNum === 1) setError(true);
         } finally {
             if (!controller.signal.aborted) {
                 setInitialLoading(false);
@@ -675,6 +679,8 @@ export default function StudentsScreen({ navigation, route }: any) {
             <View style={styles.body}>
                 {initialLoading ? (
                     <SkeletonList count={6} />
+                ) : error && allStudents.length === 0 ? (
+                    <ErrorState onRetry={() => fetchPage(1, false)} />
                 ) : (
                     <FlatList
                         data={allStudents}

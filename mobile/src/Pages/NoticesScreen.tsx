@@ -19,6 +19,7 @@ import {
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { AppHeader } from '../components/AppHeader';
 import { EmptyState } from '../components/ui/EmptyState';
+import { ErrorState } from '../components/ui/ErrorState';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { useConfirmation } from '../../contexts/ConfirmationContext';
@@ -31,6 +32,7 @@ export default function NoticesScreen({ navigation }: any) {
     const { theme, isDark } = useTheme();
 
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [notices, setNotices] = useState<any[]>([]);
     const [allStudents, setAllStudents] = useState<any[]>([]);
@@ -53,6 +55,7 @@ export default function NoticesScreen({ navigation }: any) {
 
     const fetchNotices = useCallback(async (isRefresh = false) => {
         if (!isRefresh) setLoading(true);
+        setError(false);
         try {
             // Fetch students list (since notices are stored directly on student records)
             const res = await api.get('/students?limit=250');
@@ -71,6 +74,7 @@ export default function NoticesScreen({ navigation }: any) {
             }
         } catch (e: any) {
             console.error('Failed to fetch vacate notices:', e);
+            setError(true);
             showApiError(e, 'Failed to load vacancy notices.');
         } finally {
             setLoading(false);
@@ -241,6 +245,10 @@ export default function NoticesScreen({ navigation }: any) {
             {loading ? (
                 <View style={{ padding: 16 }}>
                     <SkeletonCardList count={4} />
+                </View>
+            ) : error ? (
+                <View style={{ flex: 1, justifyContent: 'center' }}>
+                    <ErrorState onRetry={() => fetchNotices(false)} />
                 </View>
             ) : (
                 <ScrollView

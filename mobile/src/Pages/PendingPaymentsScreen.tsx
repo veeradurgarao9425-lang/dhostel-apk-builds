@@ -22,7 +22,9 @@ import { toLocalDateStr } from '../utils/dateUtils';
 import { AppHeader } from '../components/AppHeader';
 import { useTranslation } from 'react-i18next';
 import { FilterDuesModal } from '../components/FilterDuesModal';
-import { FullScreenLoader } from '../components/FullScreenLoader';
+import { EmptyState } from '../components/ui/EmptyState';
+import { ErrorState } from '../components/ui/ErrorState';
+import { LoadMoreFooter } from '../components/ui/LoadMoreFooter';
 
 const { width } = Dimensions.get('window');
 
@@ -268,6 +270,7 @@ export default function PendingPaymentsScreen() {
 
     const [tenants, setTenants] = useState<DueTenant[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [remindTarget, setRemindTarget] = useState<DueTenant | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -320,6 +323,7 @@ export default function PendingPaymentsScreen() {
         try {
             if (pageNum === 1) {
                 if (!isSilent && isFirstLoadRef.current) setLoading(true);
+                setError(false);
             } else {
                 setLoadingMore(true);
             }
@@ -434,6 +438,7 @@ export default function PendingPaymentsScreen() {
             }
         } catch (e: any) {
             showApiError(e, t('pendingDues.failedLoadDues'));
+            if (pageNum === 1) setError(true);
         } finally {
             isFirstLoadRef.current = false;
             setLoading(false);
@@ -803,26 +808,18 @@ export default function PendingPaymentsScreen() {
                 }}
                 onEndReachedThreshold={0.4}
                 ListEmptyComponent={
-                    <View style={s.emptyWrap}>
-                        <Text style={{ fontSize: 52, marginBottom: 12 }}>🎉</Text>
-                        <Text style={[s.emptyTitle, { color: isDark ? '#F8FAFC' : '#1E293B' }]}>
-                            {t('pendingDues.allClear')}
-                        </Text>
-                        <Text style={[s.emptySub, { color: isDark ? '#94A3B8' : '#64748B' }]}>
-                            {t('pendingDues.noPendingPayments')}
-                        </Text>
-                    </View>
+                    error ? (
+                        <ErrorState onRetry={() => load(1, false)} />
+                    ) : (
+                        <EmptyState
+                            illustration="clipboard"
+                            title={t('pendingDues.allClear', 'All Clear!')}
+                            subtitle={t('pendingDues.noPendingPayments', 'No pending payments found.')}
+                        />
+                    )
                 }
                 ListFooterComponent={
-                    loadingMore ? (
-                        <ActivityIndicator size="small" color={theme.primary} style={{ marginVertical: 20 }} />
-                    ) : !hasMore && filteredTenants.length > 0 ? (
-                        <View style={{ alignItems: 'center', marginVertical: 20 }}>
-                            <Text style={{ color: '#94A3B8', fontSize: 12, fontWeight: '600' }}>
-                                {t('pendingDues.allDuesLoaded')}
-                            </Text>
-                        </View>
-                    ) : null
+                    <LoadMoreFooter loading={loadingMore} hasMore={hasMore} total={filteredTenants.length} noun="dues" />
                 }
             />
 
