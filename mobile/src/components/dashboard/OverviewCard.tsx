@@ -35,33 +35,7 @@ export const OverviewCard = ({ data, setShowCollectionSheet, pulseValue, fmt }: 
         ? Math.min(100, Math.round((data.collectionStats.collected / data.collectionStats.totalExpected) * 100))
         : 0;
 
-    if (data.totalBeds === 0) {
-        return (
-            <TouchableOpacity
-                style={[s.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9', flexDirection: 'row', alignItems: 'center', padding: 16, gap: 14 }]}
-                onPress={() => navigation.navigate('AddRoom')}
-                activeOpacity={0.8}
-            >
-                <Animated.View style={{
-                    transform: [{ scale: pulseValue }],
-                    width: 44, height: 44, borderRadius: 22,
-                    backgroundColor: theme.primary,
-                    justifyContent: 'center', alignItems: 'center',
-                }}>
-                    <Ionicons name="add" size={26} color="#FFF" />
-                </Animated.View>
-                <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 14, fontWeight: '800', color: theme.textPrimary, marginBottom: 2 }}>
-                        {t('dashboard.registerRooms')}
-                    </Text>
-                    <Text style={{ fontSize: 11.5, color: theme.textSecondary, fontWeight: '600', lineHeight: 15 }}>
-                        {t('dashboard.addFirstRoom')}
-                    </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
-            </TouchableOpacity>
-        );
-    }
+
 
     return (
         <View style={[s.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
