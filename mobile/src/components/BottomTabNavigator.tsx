@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, TouchableOpacity, Text, StyleSheet, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, FONT, SHADOW } from '../theme/index';
 import { useTranslation } from 'react-i18next';
+import api from '../services/api';
 
 // ─── Tab Config ───────────────────────────────────────────────────────────────
 const TABS = [
@@ -39,6 +40,17 @@ const TAB_BAR_HEIGHT = 60;
 const BottomTabNavigator = ({ state, descriptors, navigation }: any) => {
     const insets = useSafeAreaInsets();
     const { t } = useTranslation();
+    const [duesBadge, setDuesBadge] = useState(0);
+
+    useEffect(() => {
+        // Fetch pending dues count for the Dues tab badge
+        api.get('/monthly-fees/summary', { params: { onlyPending: 'true', page: 1, limit: 1 } })
+            .then(res => {
+                const counts = res.data?.data?.tab_counts;
+                if (counts) setDuesBadge(counts.overdue || 0);
+            })
+            .catch(() => {});
+    }, []);
 
     return (
         <View style={[
@@ -77,16 +89,21 @@ const BottomTabNavigator = ({ state, descriptors, navigation }: any) => {
                             <View style={styles.topPill} />
                         )}
 
-                        {/* Icon with subtle highlight background when active */}
-                        <View style={[
-                            styles.iconWrap,
-                            isActive && styles.iconWrapActive,
-                        ]}>
+                        {/* Icon with badge */}
+                        <View style={[styles.iconWrap, isActive && styles.iconWrapActive]}>
                             <Ionicons
                                 name={iconName}
                                 size={22}
                                 color={isActive ? COLORS.primary : COLORS.textSecondary}
                             />
+                            {/* Badge for Dues tab */}
+                            {tabConfig.route === 'PendingDuesTab' && duesBadge > 0 && (
+                                <View style={styles.badge}>
+                                    <Text style={styles.badgeText}>
+                                        {duesBadge > 99 ? '99+' : duesBadge}
+                                    </Text>
+                                </View>
+                            )}
                         </View>
 
                         <Text style={[
@@ -158,6 +175,25 @@ const styles = StyleSheet.create({
     },
     labelActive: {
         fontWeight: FONT.semiBold,
+    },
+    badge: {
+        position: 'absolute',
+        top: -4,
+        right: -8,
+        backgroundColor: COLORS.error || '#E11D48',
+        borderRadius: 10,
+        minWidth: 18,
+        height: 18,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 4,
+        borderWidth: 1.5,
+        borderColor: COLORS.surface,
+    },
+    badgeText: {
+        color: '#FFF',
+        fontSize: 9,
+        fontWeight: 'bold',
     },
 });
 

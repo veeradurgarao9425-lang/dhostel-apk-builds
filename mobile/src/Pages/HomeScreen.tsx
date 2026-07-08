@@ -27,6 +27,7 @@ import { TopOverdueStudents } from '../components/dashboard/TopOverdueStudents';
 import { UpcomingDues } from '../components/dashboard/UpcomingDues';
 import { UpcomingCheckoutSchedules } from '../components/dashboard/UpcomingCheckoutSchedules';
 import { CollectionDetailsSheet } from '../components/dashboard/CollectionDetailsSheet';
+import { SetupGuideCard } from '../components/dashboard/SetupGuideCard';
 
 // ─── Initial state ────────────────────────────────────────────────────────────
 const INITIAL_STATE = {
@@ -450,6 +451,18 @@ export default function HomeScreen() {
                 rightComponent={
                     <View style={{ alignItems: 'flex-end', gap: 4 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                            {/* Quick tenant search */}
+                            <TouchableOpacity
+                                onPress={() => navigation.navigate('Students')}
+                                style={{
+                                    width: 36, height: 36, borderRadius: 18,
+                                    backgroundColor: 'rgba(255,255,255,0.18)',
+                                    alignItems: 'center', justifyContent: 'center',
+                                }}
+                                activeOpacity={0.7}
+                            >
+                                <Ionicons name="search" size={18} color="#FFF" />
+                            </TouchableOpacity>
                             <HeaderNotification navigation={navigation} />
                             <ProfileMenu />
                         </View>
@@ -477,6 +490,14 @@ export default function HomeScreen() {
                 }
             >
 <View style={s.body}>
+    {/* Setup guide for first-time owners */}
+    {data.totalBeds === 0 || data.totalStudentsCount === 0 ? (
+        <SetupGuideCard
+            hasHostel={true}
+            hasRooms={data.totalBeds > 0}
+            hasTenants={data.totalStudentsCount > 0}
+        />
+    ) : null}
     {(data.unallocatedCount > 0 || data.qrRegisterCount > 0 || data.openComplaintsCount > 0 || data.pendingAdmissionsCount > 0) && (
         <WarningCards data={data} />
     )}

@@ -29,21 +29,9 @@ export const OfflineFallback = ({ children }: { children: React.ReactNode }) => 
         };
     }, []);
 
+    // Bypass full-screen blocker: we now use the top OfflineBanner instead
     if (isConnected === false) {
-        return (
-            <View style={styles.container}>
-                <Image source={fallbackImage} style={styles.fallbackImage} resizeMode="contain" />
-                <Text style={styles.title}>No Internet Connection</Text>
-                <Text style={styles.subtitle}>Please check your network settings and try again.</Text>
-                <TouchableOpacity 
-                    style={[styles.retryBtn, { backgroundColor: COLORS.primary || '#7C3AED' }]} 
-                    onPress={checkConnection}
-                    activeOpacity={0.8}
-                >
-                    <Text style={styles.retryBtnText}>Retry Connection</Text>
-                </TouchableOpacity>
-            </View>
-        );
+        return <>{children}</>;
     }
 
     return <>{children}</>;

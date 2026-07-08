@@ -10,6 +10,12 @@ import { NetworkManager } from './src/components/ui/NetworkManager';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { queryClient } from './src/lib/queryClient';
 import { CustomToast, ToastVariant } from './src/components/ui/CustomToast';
+import { OfflineBanner } from './src/components/OfflineBanner';
+import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, Inter_800ExtraBold, Inter_900Black } from '@expo-google-fonts/inter';
+import * as SplashScreen from 'expo-splash-screen';
+import { Text, TextInput } from 'react-native';
+
+SplashScreen.preventAutoHideAsync();
 
 import './src/i18n';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
@@ -52,6 +58,30 @@ const ThemedToast = () => {
 export default function App() {
   const [currentRoute, setCurrentRoute] = useState<string | undefined>(undefined);
 
+  const [fontsLoaded] = useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+    Inter_800ExtraBold,
+    Inter_900Black,
+  });
+
+  React.useEffect(() => {
+    if (fontsLoaded) {
+      SplashScreen.hideAsync();
+      
+      // Global font override
+      const TextAny = Text as any;
+      if (!TextAny.defaultProps) TextAny.defaultProps = {};
+      TextAny.defaultProps.style = [{ fontFamily: 'Inter_500Medium' }, TextAny.defaultProps.style];
+
+      const TextInputAny = TextInput as any;
+      if (!TextInputAny.defaultProps) TextInputAny.defaultProps = {};
+      TextInputAny.defaultProps.style = [{ fontFamily: 'Inter_500Medium' }, TextInputAny.defaultProps.style];
+    }
+  }, [fontsLoaded]);
+
   // Show chatbot on all authenticated screens; hide on Splash, Login, Register, QRSignup and any Add form screens
   const showChatbot = !!currentRoute && 
     currentRoute !== 'Splash' && 
@@ -59,6 +89,10 @@ export default function App() {
     currentRoute !== 'Register' &&
     currentRoute !== 'QRSignup' &&
     !currentRoute.startsWith('Add');
+
+  if (!fontsLoaded) {
+    return null;
+  }
 
   return (
     <SafeAreaProvider style={styles.container}>
@@ -69,6 +103,7 @@ export default function App() {
             <ThemeProvider>
               <ConfirmationProvider>
               <ToastProvider>
+                <OfflineBanner />
                 <NetworkManager>
                   <AppNavigator
                     onRouteChange={(routeName: string) => setCurrentRoute(routeName)}
