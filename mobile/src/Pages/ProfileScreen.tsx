@@ -460,7 +460,6 @@ const ProfileScreen = ({ navigation }: any) => {
                         <Text style={styles.logoutTitle}>{t('more.logOut', 'Log Out')}</Text>
                         <Text style={styles.logoutSub}>{t('profile.signOutDesc', 'Sign out from your account')}</Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={16} color="#EF4444" />
                 </TouchableOpacity>
 
                 {/* Footer text */}
