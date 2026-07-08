@@ -573,7 +573,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
     const { user } = useAuth();
     const { theme, isDark, fontSize } = useTheme();
     const { triggerRefresh, refreshCounter, refreshPayload } = useRefresh();
-    const { student, isEdit, roomId: paramsRoomId, bedId } = route.params || {};
+    const { student, isEdit, roomId: paramsRoomId, bedId, quickAllocate } = route.params || {};
     const { showSuccess, showError, showApiError } = useToast();
     const insets = useSafeAreaInsets();
     const [loading, setLoading] = useState(false);
@@ -589,7 +589,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
         date_of_birth: '', id_proof_number: '', id_proof_type_id: '',
         guardian_name: '', guardian_phone: '', guardian_relation_id: '',
         admission_date: new Date().toISOString().split('T')[0],
-        admission_fee: '0', admission_status: 'Paid', permanent_address: '',
+        admission_fee: '', admission_status: 'Paid', permanent_address: '',
         room_id: '', bed_id: '', floor_number: '', monthly_rent: '',
     });
 
@@ -733,7 +733,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 guardian_phone: student.guardian_phone && student.guardian_phone !== '0000000000' ? student.guardian_phone.replace(/\D/g, '').slice(0, 10) : '',
                 guardian_relation_id: student.guardian_relation ? student.guardian_relation.toString() : '',
                 admission_date: student.admission_date ? new Date(student.admission_date).toISOString().split('T')[0] : '',
-                admission_fee: student.admission_fee ? student.admission_fee.toString() : '0',
+                admission_fee: (student.admission_fee > 0 || student.admission_status === 1) ? student.admission_fee.toString() : '',
                 admission_status: student.admission_status === 1 ? 'Paid' : 'Unpaid',
                 permanent_address: student.permanent_address || '',
                 room_id: student.room_id ? student.room_id.toString() : '',
@@ -777,7 +777,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
             }
             if (hostelRes && hostelRes.data?.success) {
                 const hostelData = hostelRes.data.data;
-                const defaultFee = hostelData?.admission_fee ? hostelData.admission_fee.toString() : '0';
+                const defaultFee = hostelData?.admission_fee ? hostelData.admission_fee.toString() : '';
                 if (!isEdit) {
                     setFormData(p => ({
                         ...p,
@@ -913,7 +913,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 guardian_name: formData.guardian_name || null,
                 admission_fee: parseFloat(formData.admission_fee || '0'),
                 admission_status: formData.admission_status === 'Paid' ? 1 : 0,
-                status: isEdit ? student.status : 1,
+                status: (isEdit && !quickAllocate) ? student.status : 1,
                 room_id: formData.room_id ? parseInt(formData.room_id) : null,
                 bed_id: formData.bed_id || null,
                 bed_number: formData.bed_id || null,
@@ -997,7 +997,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
         >
             <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-            <AppHeader title={isEdit ? 'Edit Tenant' : 'Add Tenant'} />
+            <AppHeader title={quickAllocate ? 'Approve Tenant' : (isEdit ? 'Edit Tenant' : 'Add Tenant')} />
             <FullScreenLoader visible={loading} />
 
             <ScrollView
@@ -1280,7 +1280,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                     >
                         {loading
                             ? <ActivityIndicator color="#FFF" size="small" />
-                            : <Text style={styles.submitText}>{isEdit ? 'Update Tenant' : 'Add Tenant'}</Text>
+                            : <Text style={styles.submitText}>{quickAllocate ? 'Approve & Allocate Room' : (isEdit ? 'Update Tenant' : 'Add Tenant')}</Text>
                         }
                     </LinearGradient>
                 </TouchableOpacity>

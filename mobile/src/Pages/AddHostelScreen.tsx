@@ -533,7 +533,6 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
                         </View>
                         <FlatList
                             data={[
-                                ...(stateSearch && !Object.keys(STATES_CITIES).some(s => s.toLowerCase() === stateSearch.toLowerCase()) ? [stateSearch] : []),
                                 ...Object.keys(STATES_CITIES).filter(s => s.toLowerCase().includes(stateSearch.toLowerCase()))
                             ]}
                             keyExtractor={(item, index) => index.toString()}
@@ -560,7 +559,7 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
                                             { color: theme.textPrimary },
                                             isSelected && styles.optionTextSelected
                                         ]}>
-                                            {isCustom ? `Use "${item}"` : item}
+                                            {item}
                                         </Text>
                                     </TouchableOpacity>
                                 );
@@ -613,7 +612,6 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
                         </View>
                         <FlatList
                             data={[
-                                ...(citySearch && !(STATES_CITIES[formData.state] || []).some(c => c.toLowerCase() === citySearch.toLowerCase()) ? [citySearch] : []),
                                 ...(STATES_CITIES[formData.state] || []).filter(c => c.toLowerCase().includes(citySearch.toLowerCase()))
                             ]}
                             keyExtractor={(item, index) => index.toString()}
@@ -640,7 +638,7 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
                                             { color: theme.textPrimary },
                                             isSelected && styles.optionTextSelected
                                         ]}>
-                                            {isCustom ? `Use "${item}"` : item}
+                                            {item}
                                         </Text>
                                     </TouchableOpacity>
                                 );
@@ -802,6 +800,7 @@ const styles = StyleSheet.create({
         borderTopRightRadius: 24,
         paddingTop: 12,
         maxHeight: '70%',
+        minHeight: '60%',
     },
     modalHandle: {
         width: 40,

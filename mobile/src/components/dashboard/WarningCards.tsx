@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../../contexts/ThemeContext';
@@ -9,140 +9,157 @@ interface WarningCardsProps {
         unallocatedCount: number;
         qrRegisterCount: number;
         openComplaintsCount: number;
+        pendingAdmissionsCount: number;
     };
+}
+
+interface ChipItem {
+    count: number;
+    label: string;
+    icon: any;
+    color: string;
+    bg: string;
+    border: string;
+    onPress: () => void;
 }
 
 export const WarningCards = ({ data }: WarningCardsProps) => {
     const navigation = useNavigation<any>();
     const { isDark } = useTheme();
 
+    const chips: ChipItem[] = [];
+
+    if (data.unallocatedCount > 0) {
+        chips.push({
+            count: data.unallocatedCount,
+            label: 'No Room',
+            icon: 'bed-outline',
+            color: '#DC2626',
+            bg: isDark ? 'rgba(220,38,38,0.15)' : '#FEF2F2',
+            border: isDark ? 'rgba(220,38,38,0.35)' : '#FCA5A5',
+            onPress: () => navigation.navigate('Students', { filterUnallocated: true }),
+        });
+    }
+
+    if (data.qrRegisterCount > 0) {
+        chips.push({
+            count: data.qrRegisterCount,
+            label: 'QR Pending',
+            icon: 'person-add-outline',
+            color: '#0284C7',
+            bg: isDark ? 'rgba(2,132,199,0.15)' : '#F0F9FF',
+            border: isDark ? 'rgba(2,132,199,0.35)' : '#BAE6FD',
+            onPress: () => navigation.navigate('Students', { filter: 'QRRegister' }),
+        });
+    }
+
+    if (data.pendingAdmissionsCount > 0) {
+        chips.push({
+            count: data.pendingAdmissionsCount,
+            label: 'Fee Due',
+            icon: 'cash-outline',
+            color: '#D97706',
+            bg: isDark ? 'rgba(217,119,6,0.15)' : '#FFFBEB',
+            border: isDark ? 'rgba(217,119,6,0.35)' : '#FDE68A',
+            onPress: () => navigation.navigate('Students', { filterAdmissionPending: true }),
+        });
+    }
+
+    if (data.openComplaintsCount > 0) {
+        chips.push({
+            count: data.openComplaintsCount,
+            label: 'Complaints',
+            icon: 'construct-outline',
+            color: '#7C3AED',
+            bg: isDark ? 'rgba(124,58,237,0.15)' : '#F5F3FF',
+            border: isDark ? 'rgba(124,58,237,0.35)' : '#DDD6FE',
+            onPress: () => navigation.navigate('ComplaintsManagement'),
+        });
+    }
+
+    if (chips.length === 0) return null;
+
     return (
-        <>
-            {/* Unallocated Tenants warning card */}
-            {data.unallocatedCount > 0 && (
-                <TouchableOpacity
-                    style={[
-                        s.card,
-                        {
-                            backgroundColor: isDark ? '#3B1A1A' : '#FEF2F2',
-                            borderColor: '#FCA5A5',
-                        }
-                    ]}
-                    onPress={() => navigation.navigate('Students', { filterUnallocated: true })}
-                    activeOpacity={0.8}
-                >
-                    <View style={s.cardBody}>
-                        <View style={[s.iconBox, { backgroundColor: '#FEE2E2' }]}>
-                            <Ionicons name="alert-circle" size={20} color="#DC2626" />
+        <View style={s.wrapper}>
+            <View style={s.headerRow}>
+                <View style={[s.dot, { backgroundColor: '#EF4444' }]} />
+                <Text style={[s.headerLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+                    Action Required
+                </Text>
+            </View>
+            <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={s.scrollContent}
+            >
+                {chips.map((chip, i) => (
+                    <TouchableOpacity
+                        key={i}
+                        style={[s.chip, { backgroundColor: chip.bg, borderColor: chip.border }]}
+                        onPress={chip.onPress}
+                        activeOpacity={0.75}
+                    >
+                        <View style={[s.chipIcon, { backgroundColor: chip.color + '22' }]}>
+                            <Ionicons name={chip.icon} size={13} color={chip.color} />
                         </View>
-                        <View style={s.textWrap}>
-                            <Text style={[s.title, { color: isDark ? '#FECACA' : '#991B1B' }]}>
-                                {data.unallocatedCount} {data.unallocatedCount === 1 ? 'Tenant needs room allocation' : 'Tenants need room allocation'}
-                            </Text>
-                            <Text style={[s.subText, { color: isDark ? '#FCA5A5' : '#EF4444' }]}>
-                                Tap to allocate rooms
-                            </Text>
-                        </View>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color="#DC2626" />
-                </TouchableOpacity>
-            )}
-
-            {/* QR Signups warning card */}
-            {data.qrRegisterCount > 0 && (
-                <TouchableOpacity
-                    style={[
-                        s.card,
-                        {
-                            backgroundColor: isDark ? '#1A3038' : '#F0F9FF',
-                            borderColor: '#BAE6FD',
-                        }
-                    ]}
-                    onPress={() => navigation.navigate('Students', { filter: 'QRRegister' })}
-                    activeOpacity={0.8}
-                >
-                    <View style={s.cardBody}>
-                        <View style={[s.iconBox, { backgroundColor: '#E0F2FE' }]}>
-                            <Ionicons name="person-add" size={20} color="#0284C7" />
-                        </View>
-                        <View style={s.textWrap}>
-                            <Text style={[s.title, { color: isDark ? '#E0F2FE' : '#0369A1' }]}>
-                                {data.qrRegisterCount} {data.qrRegisterCount === 1 ? 'New Registration Awaiting Approval' : 'New Registrations Awaiting Approval'}
-                            </Text>
-                            <Text style={[s.subText, { color: isDark ? '#BAE6FD' : '#0284C7' }]}>
-                                Tap to review and approve signups
-                            </Text>
-                        </View>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color="#0284C7" />
-                </TouchableOpacity>
-            )}
-
-            {/* Open Complaints warning card */}
-            {data.openComplaintsCount > 0 && (
-                <TouchableOpacity
-                    style={[
-                        s.card,
-                        {
-                            backgroundColor: isDark ? '#2D1A0E' : '#FFF7ED',
-                            borderColor: '#FED7AA',
-                        }
-                    ]}
-                    onPress={() => navigation.navigate('ComplaintsManagement')}
-                    activeOpacity={0.8}
-                >
-                    <View style={s.cardBody}>
-                        <View style={[s.iconBox, { backgroundColor: '#FEF3C7' }]}>
-                            <Ionicons name="construct" size={20} color="#D97706" />
-                        </View>
-                        <View style={s.textWrap}>
-                            <Text style={[s.title, { color: isDark ? '#FEF3C7' : '#92400E' }]}>
-                                {data.openComplaintsCount} {data.openComplaintsCount === 1 ? 'Open Complaint' : 'Open Complaints'} from Tenants
-                            </Text>
-                            <Text style={[s.subText, { color: isDark ? '#FCD34D' : '#D97706' }]}>
-                                Tap to view and resolve
-                            </Text>
-                        </View>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color="#D97706" />
-                </TouchableOpacity>
-            )}
-        </>
+                        <Text style={[s.chipCount, { color: chip.color }]}>{chip.count}</Text>
+                        <Text style={[s.chipLabel, { color: chip.color }]}>{chip.label}</Text>
+                        <Ionicons name="chevron-forward" size={11} color={chip.color} style={{ opacity: 0.7 }} />
+                    </TouchableOpacity>
+                ))}
+            </ScrollView>
+        </View>
     );
 };
 
 const s = StyleSheet.create({
-    card: {
+    wrapper: {
+        marginBottom: 4,
+    },
+    headerRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        marginBottom: 8,
+        paddingHorizontal: 2,
+    },
+    dot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+    },
+    headerLabel: {
+        fontSize: 11,
+        fontWeight: '700',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    scrollContent: {
+        gap: 8,
+        paddingRight: 4,
+    },
+    chip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        paddingVertical: 7,
+        paddingHorizontal: 11,
+        borderRadius: 20,
         borderWidth: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: 14,
-        marginBottom: 16,
-        borderRadius: 16,
     },
-    cardBody: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-        flex: 1,
-    },
-    iconBox: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
+    chipIcon: {
+        width: 20,
+        height: 20,
+        borderRadius: 10,
         alignItems: 'center',
         justifyContent: 'center',
     },
-    textWrap: {
-        flex: 1,
-    },
-    title: {
+    chipCount: {
+        fontSize: 13,
         fontWeight: '800',
-        fontSize: 14,
     },
-    subText: {
-        fontSize: 11,
-        marginTop: 2,
+    chipLabel: {
+        fontSize: 12,
+        fontWeight: '600',
     },
 });

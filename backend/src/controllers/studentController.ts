@@ -51,6 +51,11 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
       query = query.whereNull('s.room_id');
     }
 
+    // Filter by admission pending (unpaid admission fee)
+    if (req.query.admissionPending === 'true') {
+      query = query.where('s.admission_status', 0).whereIn('s.status', [1, 2]);
+    }
+
     // Filter by status if provided
     if (status !== undefined) {
       query = query.where('s.status', status);
@@ -145,7 +150,8 @@ export const getStudentStats = async (req: AuthRequest, res: Response) => {
         db.raw('sum(case when status = 0 then 1 else 0 end) as inactive'),
         db.raw('sum(case when status = 2 then 1 else 0 end) as prebooked'),
         db.raw('sum(case when status = 3 then 1 else 0 end) as qr_register'),
-        db.raw('sum(case when status = 1 and room_id is null then 1 else 0 end) as unallocated')
+        db.raw('sum(case when status = 1 and room_id is null then 1 else 0 end) as unallocated'),
+        db.raw('sum(case when admission_status = 0 and status in (1, 2) then 1 else 0 end) as pendingAdmissions')
       )
       .first() as any;
 
@@ -157,7 +163,8 @@ export const getStudentStats = async (req: AuthRequest, res: Response) => {
         inactive: parseInt(stats?.inactive || 0),
         prebooked: parseInt(stats?.prebooked || 0),
         qrRegister: parseInt(stats?.qr_register || 0),
-        unallocated: parseInt(stats?.unallocated || 0)
+        unallocated: parseInt(stats?.unallocated || 0),
+        pendingAdmissions: parseInt(stats?.pendingAdmissions || 0)
       }
     });
   } catch (error: any) {

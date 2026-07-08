@@ -34,11 +34,11 @@ const steps = [
 ];
 
 const StepIndicator: React.FC<{ current: number }> = ({ current }) => (
-  <div className="flex items-center justify-between mb-8 relative px-2">
+  <div className="flex items-center justify-between mb-10 relative px-4">
     {/* Progress line */}
-    <div className="absolute top-4 left-8 right-8 h-0.5 bg-slate-200 z-0" />
+    <div className="absolute top-5 left-10 right-10 h-1.5 bg-slate-100 z-0 rounded-full" />
     <div
-      className="absolute top-4 left-8 h-0.5 bg-violet-600 z-0 transition-all duration-500"
+      className="absolute top-5 left-10 h-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 z-0 transition-all duration-700 ease-in-out rounded-full shadow-[0_0_12px_rgba(124,58,237,0.4)]"
       style={{ width: current === 1 ? '0%' : current === 2 ? '50%' : '100%' }}
     />
 
@@ -47,19 +47,19 @@ const StepIndicator: React.FC<{ current: number }> = ({ current }) => (
       const isCompleted = current > step.id;
       const isActive = current === step.id;
       return (
-        <div key={step.id} className="relative z-10 flex flex-col items-center gap-1.5">
+        <div key={step.id} className="relative z-10 flex flex-col items-center gap-3">
           <div
-            className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-all duration-300 font-bold text-sm
-              ${isCompleted ? 'bg-violet-600 border-violet-600 text-white shadow-lg shadow-violet-200' : ''}
-              ${isActive ? 'bg-white border-violet-600 text-violet-600 shadow-lg shadow-violet-100 ring-4 ring-violet-50' : ''}
-              ${!isCompleted && !isActive ? 'bg-slate-100 border-slate-200 text-slate-400' : ''}
+            className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 font-bold text-sm
+              ${isCompleted ? 'bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-200 rotate-0' : ''}
+              ${isActive ? 'bg-white text-violet-600 shadow-xl shadow-violet-100 ring-[5px] ring-violet-50 scale-110' : ''}
+              ${!isCompleted && !isActive ? 'bg-slate-50 text-slate-400 border-2 border-slate-100' : ''}
             `}
           >
-            {isCompleted ? <CheckCircle className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
+            {isCompleted ? <CheckCircle className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
           </div>
           <span
-            className={`text-[10px] font-bold uppercase tracking-wider transition-colors
-              ${isActive ? 'text-violet-600' : isCompleted ? 'text-slate-700' : 'text-slate-400'}
+            className={`text-[11px] font-black uppercase tracking-widest transition-colors duration-300
+              ${isActive ? 'text-violet-700' : isCompleted ? 'text-slate-700' : 'text-slate-400'}
             `}
           >
             {step.label}
@@ -95,11 +95,11 @@ const Input: React.FC<React.InputHTMLAttributes<HTMLInputElement> & { hasError?:
 }) => (
   <input
     {...props}
-    className={`w-full px-4 py-3 rounded-xl border text-sm font-medium outline-none transition-all duration-200
-      bg-slate-50 text-slate-800 placeholder-slate-400
+    className={`w-full px-4 py-3.5 rounded-2xl border-2 text-sm font-semibold outline-none transition-all duration-300
+      bg-slate-50/50 text-slate-800 placeholder-slate-400
       ${hasError
-        ? 'border-red-400 bg-red-50 focus:border-red-500 focus:ring-3 focus:ring-red-100'
-        : 'border-slate-200 focus:border-violet-500 focus:bg-white focus:ring-3 focus:ring-violet-100'
+        ? 'border-red-300 bg-red-50/50 focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-500/10'
+        : 'border-slate-100 focus:border-violet-500 focus:bg-white focus:ring-4 focus:ring-violet-500/10 hover:border-slate-200 hover:bg-slate-50'
       } ${className}`}
   />
 );
@@ -109,11 +109,11 @@ const Select: React.FC<React.SelectHTMLAttributes<HTMLSelectElement> & { hasErro
 }) => (
   <select
     {...props}
-    className={`w-full px-4 py-3 rounded-xl border text-sm font-medium outline-none transition-all duration-200
-      bg-slate-50 text-slate-800 appearance-none
+    className={`w-full px-4 py-3.5 rounded-2xl border-2 text-sm font-semibold outline-none transition-all duration-300
+      bg-slate-50/50 text-slate-800 appearance-none
       ${hasError
-        ? 'border-red-400 bg-red-50 focus:border-red-500 focus:ring-3 focus:ring-red-100'
-        : 'border-slate-200 focus:border-violet-500 focus:bg-white focus:ring-3 focus:ring-violet-100'
+        ? 'border-red-300 bg-red-50/50 focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-500/10'
+        : 'border-slate-100 focus:border-violet-500 focus:bg-white focus:ring-4 focus:ring-violet-500/10 hover:border-slate-200 hover:bg-slate-50'
       } ${className}`}
   >
     {children}
@@ -125,11 +125,11 @@ const Textarea: React.FC<React.TextareaHTMLAttributes<HTMLTextAreaElement> & { h
 }) => (
   <textarea
     {...props}
-    className={`w-full px-4 py-3 rounded-xl border text-sm font-medium outline-none transition-all duration-200
-      bg-slate-50 text-slate-800 placeholder-slate-400 resize-y min-h-[88px]
+    className={`w-full px-4 py-3.5 rounded-2xl border-2 text-sm font-semibold outline-none transition-all duration-300
+      bg-slate-50/50 text-slate-800 placeholder-slate-400 resize-y min-h-[100px]
       ${hasError
-        ? 'border-red-400 bg-red-50 focus:border-red-500 focus:ring-3 focus:ring-red-100'
-        : 'border-slate-200 focus:border-violet-500 focus:bg-white focus:ring-3 focus:ring-violet-100'
+        ? 'border-red-300 bg-red-50/50 focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-500/10'
+        : 'border-slate-100 focus:border-violet-500 focus:bg-white focus:ring-4 focus:ring-violet-500/10 hover:border-slate-200 hover:bg-slate-50'
       } ${className}`}
   />
 );
@@ -207,14 +207,30 @@ export const QRSignupPage: React.FC = () => {
 
   const update = (field: keyof FormData, value: string | File | null) => {
     setForm((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: '' }));
+    
+    // Real-time phone validation
+    if (field === 'phone' && typeof value === 'string') {
+        if (value.length === 10 && !/^[6-9]\d{9}$/.test(value)) {
+            setErrors(prev => ({ ...prev, phone: 'Must be a valid Indian mobile number' }));
+        } else {
+            if (errors.phone) setErrors(prev => ({ ...prev, phone: '' }));
+        }
+    } else if (field === 'guardian_phone' && typeof value === 'string') {
+        if (value.length === 10 && !/^[6-9]\d{9}$/.test(value)) {
+            setErrors(prev => ({ ...prev, guardian_phone: 'Must be a valid Indian mobile number' }));
+        } else {
+            if (errors.guardian_phone) setErrors(prev => ({ ...prev, guardian_phone: '' }));
+        }
+    } else {
+        if (errors[field]) setErrors((prev) => ({ ...prev, [field]: '' }));
+    }
   };
 
   // ── Validation ─────────────────────────────────────────────────────────────
   const validateStep1 = (): boolean => {
     const e: Errors = {};
     if (!form.first_name.trim()) e.first_name = 'First name is required';
-    if (!/^\d{10}$/.test(form.phone)) e.phone = 'Enter a valid 10-digit mobile number';
+    if (!/^[6-9]\d{9}$/.test(form.phone)) e.phone = 'Enter a valid 10-digit mobile number';
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
       e.email = 'Enter a valid email address';
     if (!form.permanent_address.trim()) e.permanent_address = 'Permanent address is required';
@@ -224,7 +240,7 @@ export const QRSignupPage: React.FC = () => {
 
   const validateStep2 = (): boolean => {
     const e: Errors = {};
-    if (form.guardian_phone && !/^\d{10}$/.test(form.guardian_phone))
+    if (form.guardian_phone && !/^[6-9]\d{9}$/.test(form.guardian_phone))
       e.guardian_phone = 'Enter a valid 10-digit number';
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -353,15 +369,17 @@ export const QRSignupPage: React.FC = () => {
 
   // ─── Main Form ──────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50 flex items-start justify-center p-4 pt-8 pb-16">
-      <div className="w-full max-w-lg">
-        {/* Header */}
-        <div className="text-center mb-6">
-          <div className="w-14 h-14 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-violet-200 text-2xl">
-            🏠
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-100 via-white to-violet-50 flex items-start justify-center p-4 pt-8 pb-16">
+      <div className="w-full max-w-xl">
+        {/* Header - Premium Layout */}
+        <div className="flex items-center gap-5 mb-8 bg-white/70 backdrop-blur-xl p-5 rounded-3xl shadow-sm border border-white">
+          <div className="w-16 h-16 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-xl shadow-violet-200/50 flex-shrink-0 transform transition-transform hover:scale-105">
+            <Home className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Tenant Registration</h1>
-          <p className="text-slate-500 text-sm mt-1">Complete the steps below to request admission</p>
+          <div className="text-left flex-1">
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mb-1">Tenant Registration</h1>
+            <p className="text-slate-500 text-sm font-medium leading-relaxed">Complete the steps below to request admission</p>
+          </div>
         </div>
 
         {/* Room pre-assignment banner */}
@@ -380,7 +398,7 @@ export const QRSignupPage: React.FC = () => {
         )}
 
         {/* Card */}
-        <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-6">
+        <div className="bg-white/80 backdrop-blur-md rounded-[2rem] shadow-2xl shadow-slate-200/50 border border-white p-6 sm:p-8">
           <StepIndicator current={step} />
 
           <form onSubmit={handleSubmit} noValidate>

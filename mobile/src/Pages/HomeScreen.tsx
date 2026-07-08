@@ -56,6 +56,7 @@ const INITIAL_STATE = {
     unallocatedCount: 0,
     qrRegisterCount: 0,
     openComplaintsCount: 0,
+    pendingAdmissionsCount: 0,
     unpaidStudents: [] as any[],
     upcomingDues: [] as any[],
     collectionStats: {
@@ -293,6 +294,7 @@ export default function HomeScreen() {
             const activeStudents = studentsRes.data?.success ? (studentsRes.data.data || []) : [];
             const unallocatedCount = activeStudents.filter((s: any) => s.status === 1 && !s.room_id).length;
             const qrRegisterCount = activeStudents.filter((s: any) => s.status === 3).length;
+            const pendingAdmissionsCount = activeStudents.filter((s: any) => s.admission_status === 0 && (s.status === 1 || s.status === 2)).length;
             const totalStudentsCount = activeStudents.filter((s: any) => s.status === 1).length;
             const allComplaints = complaintsRes.data?.success ? (complaintsRes.data.complaints || []) : [];
             const openComplaintsCount = allComplaints.filter((c: any) => c.status === 'Open' || c.status === 'In Progress').length;
@@ -324,6 +326,7 @@ export default function HomeScreen() {
                 unallocatedCount,
                 qrRegisterCount,
                 openComplaintsCount,
+                pendingAdmissionsCount,
                 unpaidStudents: topDefaulters,
                 upcomingDues: upcomingDuesList,
                 collectionStats,
@@ -474,7 +477,7 @@ export default function HomeScreen() {
                 }
             >
 <View style={s.body}>
-    {(data.unallocatedCount > 0 || data.qrRegisterCount > 0 || data.openComplaintsCount > 0) && (
+    {(data.unallocatedCount > 0 || data.qrRegisterCount > 0 || data.openComplaintsCount > 0 || data.pendingAdmissionsCount > 0) && (
         <WarningCards data={data} />
     )}
     <OverviewCard data={data} setShowCollectionSheet={setShowCollectionSheet} pulseValue={pulseValue} fmt={fmt} />

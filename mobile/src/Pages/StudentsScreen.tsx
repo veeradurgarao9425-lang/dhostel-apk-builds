@@ -132,15 +132,22 @@ const StudentCard = React.memo(({ student, onPress, onWhatsApp, onCall, onToggle
                         {t('students.room')} {student.room_number || 'N/A'} • {student.phone || t('students.noPhone')}
                     </Text>
 
-                    {isActive && !student.room_id && (
-                        <TouchableOpacity
-                            style={styles.allocateChip}
-                            onPress={() => onAllocateRoom(student)}
-                            activeOpacity={0.8}
-                        >
-                            <Text style={styles.allocateChipText}>⚠ {t('students.allocateRoom', 'Allocate Room')}</Text>
-                        </TouchableOpacity>
-                    )}
+                    <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+                        {isActive && !student.room_id && (
+                            <TouchableOpacity
+                                style={[styles.allocateChip, { marginTop: 0 }]}
+                                onPress={() => onAllocateRoom(student)}
+                                activeOpacity={0.8}
+                            >
+                                <Text style={styles.allocateChipText}>⚠ {t('students.allocateRoom', 'Allocate Room')}</Text>
+                            </TouchableOpacity>
+                        )}
+                        {(isActive || isQRSignup || isPreBooked) && student.admission_status === 0 && (
+                            <View style={[styles.allocateChip, { marginTop: 0, backgroundColor: '#FFFBEB', borderColor: '#FEF3C7' }]}>
+                                <Text style={[styles.allocateChipText, { color: '#D97706' }]}>⚠ Admission Pending</Text>
+                            </View>
+                        )}
+                    </View>
                 </View>
                 <View style={[styles.statusBadge, { backgroundColor: badgeBg }]}>
                     <Text style={[styles.statusBadgeText, { color: badgeText }]}>

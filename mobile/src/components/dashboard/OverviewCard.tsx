@@ -27,36 +27,22 @@ export const OverviewCard = ({ data, setShowCollectionSheet, pulseValue, fmt }: 
     const { theme, isDark, fontSize } = useTheme();
     const { t } = useTranslation();
 
+    const occupancyPct = data.totalBeds > 0
+        ? Math.round((data.occupiedBeds / data.totalBeds) * 100)
+        : 0;
+
     if (data.totalBeds === 0) {
         return (
             <TouchableOpacity
-                style={[
-                    s.card,
-                    {
-                        backgroundColor: theme.cardBg,
-                        borderColor: isDark ? '#334155' : '#F1F5F9',
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        padding: 16,
-                        gap: 14
-                    }
-                ]}
+                style={[s.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9', flexDirection: 'row', alignItems: 'center', padding: 16, gap: 14 }]}
                 onPress={() => navigation.navigate('AddRoom')}
                 activeOpacity={0.8}
             >
                 <Animated.View style={{
                     transform: [{ scale: pulseValue }],
-                    width: 44,
-                    height: 44,
-                    borderRadius: 22,
+                    width: 44, height: 44, borderRadius: 22,
                     backgroundColor: theme.primary,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    shadowColor: theme.primary,
-                    shadowOffset: { width: 0, height: 3 },
-                    shadowOpacity: 0.2,
-                    shadowRadius: 4,
-                    elevation: 3,
+                    justifyContent: 'center', alignItems: 'center',
                 }}>
                     <Ionicons name="add" size={26} color="#FFF" />
                 </Animated.View>
@@ -74,26 +60,71 @@ export const OverviewCard = ({ data, setShowCollectionSheet, pulseValue, fmt }: 
     }
 
     return (
-        <View style={[s.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9', paddingHorizontal: 16, paddingVertical: 12 }]}>
+        <View style={[s.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9', paddingHorizontal: 16, paddingVertical: 14 }]}>
             <View style={s.overviewRow}>
+
+                {/* ── Tenants ── */}
                 <TouchableOpacity style={[s.overviewItem, { alignItems: 'flex-start' }]} activeOpacity={0.7} onPress={() => navigation.navigate('Students')}>
-                    <Text style={[s.overviewValue, { color: '#7C3AED', fontSize: fontSize + 5 }]} numberOfLines={1}>{data.totalStudentsCount}</Text>
-                    <Text style={[s.overviewLabel, { color: theme.textSecondary, fontSize: Math.max(9, fontSize - 4), textAlign: 'left' }]} numberOfLines={1}>{t('dashboard.tenants')}</Text>
+                    <View style={s.valueRow}>
+                        <View style={[s.iconPill, { backgroundColor: isDark ? '#2D1B69' : '#EDE9FE' }]}>
+                            <Ionicons name="people" size={13} color="#7C3AED" />
+                        </View>
+                        <Text style={[s.overviewValue, { color: '#7C3AED', fontSize: fontSize + 5 }]} numberOfLines={1}>
+                            {data.totalStudentsCount}
+                        </Text>
+                    </View>
+                    <Text style={[s.overviewLabel, { color: theme.textSecondary, fontSize: Math.max(9, fontSize - 4), textAlign: 'left' }]} numberOfLines={1}>
+                        {t('dashboard.tenants')}
+                    </Text>
                 </TouchableOpacity>
+
                 <View style={[s.overviewDivider, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]} />
+
+                {/* ── Beds ── */}
                 <TouchableOpacity style={[s.overviewItem, { alignItems: 'center' }]} activeOpacity={0.7} onPress={() => navigation.navigate('Rooms', { filter: 'All' })}>
-                    <Text style={[s.overviewValue, { color: '#0284C7', fontSize: fontSize + 5 }]} numberOfLines={1}>{data.occupiedBeds}/{data.totalBeds}</Text>
-                    <Text style={[s.overviewLabel, { color: theme.textSecondary, fontSize: Math.max(9, fontSize - 4), textAlign: 'center' }]} numberOfLines={1}>{t('dashboard.bedsOccupied')}</Text>
+                    <View style={s.valueRow}>
+                        <View style={[s.iconPill, { backgroundColor: isDark ? '#0C2840' : '#E0F2FE' }]}>
+                            <Ionicons name="bed" size={13} color="#0284C7" />
+                        </View>
+                        <Text style={[s.overviewValue, { color: '#0284C7', fontSize: fontSize + 5 }]} numberOfLines={1}>
+                            {data.occupiedBeds}/{data.totalBeds}
+                        </Text>
+                    </View>
+                    <Text style={[s.overviewLabel, { color: theme.textSecondary, fontSize: Math.max(9, fontSize - 4), textAlign: 'center' }]} numberOfLines={1}>
+                        {t('dashboard.bedsOccupied')}
+                    </Text>
+                    <View style={[s.subBadge, { backgroundColor: isDark ? '#0C2840' : '#E0F2FE' }]}>
+                        <Ionicons name="trending-up" size={9} color="#0284C7" />
+                        <Text style={[s.subBadgeText, { color: '#0284C7' }]}>{occupancyPct}% Occupied</Text>
+                    </View>
                 </TouchableOpacity>
+
                 <View style={[s.overviewDivider, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]} />
+
+                {/* ── Collection ── */}
                 <TouchableOpacity style={[s.overviewItem, { alignItems: 'flex-end' }]} activeOpacity={0.7} onPress={() => setShowCollectionSheet(true)}>
-                    <Text style={[s.overviewValue, { color: '#10B981', fontSize: fontSize + 5 }]} numberOfLines={1}>{fmt(data.collectionStats.collected)}</Text>
+                    <View style={s.valueRow}>
+                        <View style={[s.iconPill, { backgroundColor: isDark ? '#052E16' : '#D1FAE5' }]}>
+                            <Ionicons name="wallet" size={13} color="#10B981" />
+                        </View>
+                        <Text style={[s.overviewValue, { color: '#10B981', fontSize: fontSize + 5 }]} numberOfLines={1}>
+                            {fmt(data.collectionStats.collected)}
+                        </Text>
+                    </View>
                     <Text style={[s.overviewLabel, { color: theme.textSecondary, fontSize: Math.max(9, fontSize - 4), textAlign: 'right' }]} numberOfLines={1}>
                         {data.collectionStats.monthName || t('dashboard.month')} Collection
                     </Text>
+                    {data.collectionStats.pending > 0 && (
+                        <View style={[s.subBadge, { backgroundColor: isDark ? '#1A0A0A' : '#FEF2F2' }]}>
+                            <Ionicons name="alert-circle" size={9} color="#EF4444" />
+                            <Text style={[s.subBadgeText, { color: '#EF4444' }]}>{fmt(data.collectionStats.pending)} due</Text>
+                        </View>
+                    )}
                 </TouchableOpacity>
+
             </View>
 
+            {/* Progress bar */}
             <TouchableOpacity activeOpacity={0.7} onPress={() => setShowCollectionSheet(true)} style={s.overviewProgressWrap}>
                 <View style={[s.progressBarBackground, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
                     <View style={[s.progressBarFill, {
@@ -123,12 +154,25 @@ const s = StyleSheet.create({
     },
     overviewRow: {
         flexDirection: 'row',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         marginBottom: 14,
     },
     overviewItem: {
         flex: 1,
         alignItems: 'center',
+    },
+    iconPill: {
+        width: 22,
+        height: 22,
+        borderRadius: 7,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    valueRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        marginBottom: 3,
     },
     overviewDivider: {
         width: 1,
@@ -142,6 +186,19 @@ const s = StyleSheet.create({
     overviewLabel: {
         fontWeight: '600',
         textAlign: 'center',
+    },
+    subBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 3,
+        paddingHorizontal: 7,
+        paddingVertical: 3,
+        borderRadius: 20,
+        marginTop: 5,
+    },
+    subBadgeText: {
+        fontSize: 10,
+        fontWeight: '700',
     },
     overviewProgressWrap: {
         paddingHorizontal: 2,

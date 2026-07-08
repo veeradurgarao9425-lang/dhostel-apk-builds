@@ -261,15 +261,6 @@ export default function MoreScreen() {
                     iconColor: '#3B82F6',
                     iconBg: '#DBEAFE',
                     route: 'Settings',
-                },
-                {
-                    label: 'Test UI Components',
-                    subtitle: 'Preview all UI elements',
-                    icon: 'color-palette',
-                    iconColor: '#EC4899',
-                    iconBg: '#FCE7F3',
-                    route: 'TestUI',
-                }
             ],
         },
     ], [t, stats]);

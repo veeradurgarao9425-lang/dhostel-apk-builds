@@ -1,4 +1,4 @@
-﻿// QR Signup form: v2 â€” fixed regex, toast CSS, no-redirect HTML serving
+// QR Signup form: v2 â€” fixed regex, toast CSS, no-redirect HTML serving
 import express from 'express';
 import { createServer } from 'http';
 import cors from 'cors';
@@ -161,16 +161,16 @@ app.get('/api/public/qr-signup', (req, res) => {
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
     *,*::before,*::after{box-sizing:border-box;}
-    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:linear-gradient(135deg,#F8FAFC 0%,#EEF2FF 100%);margin:0;min-height:100vh;padding:16px 12px 48px;}
-    .card{max-width:500px;margin:0 auto;background:#fff;border-radius:24px;padding:24px 20px;box-shadow:0 12px 40px rgba(0,0,0,0.08);position:relative;overflow:hidden;}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#ffffff;margin:0;min-height:100vh;padding:16px 12px 48px;}
+    .card{max-width:500px;margin:0 auto;padding:32px 24px;position:relative;}
     h1{margin:0 0 4px;color:#0F172A;font-size:21px;font-weight:800;text-align:center;}
     .sub{color:#64748B;font-size:13px;margin-bottom:18px;text-align:center;}
     .stepper{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;position:relative;padding:0 8px;}
     .stepper::before{content:'';position:absolute;top:14px;left:28px;right:28px;height:3px;background:#E2E8F0;z-index:1;border-radius:3px;}
-    .sp{position:absolute;top:14px;left:28px;height:3px;background:#7C3AED;z-index:2;border-radius:3px;transition:width .3s ease;}
+    .sp{position:absolute;top:14px;left:28px;height:3px;background:#7C3AED;z-index:2;border-radius:3px;transition:width .3s ease;max-width:calc(100% - 56px);}
     .stp{position:relative;z-index:3;display:flex;flex-direction:column;align-items:center;gap:5px;width:56px;}
-    .sc{width:30px;height:30px;border-radius:50%;background:#F1F5F9;border:2.5px solid #E2E8F0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#94A3B8;transition:all .3s;}
-    .stp.active .sc{background:#fff;border-color:#7C3AED;color:#7C3AED;box-shadow:0 0 0 4px rgba(124,58,237,.12);}
+    .sc{width:30px;height:30px;border-radius:50%;background:#F1F5F9;border:2.5px solid #E2E8F0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#94A3B8;transition:all .4s cubic-bezier(.4,0,.2,1);}
+    .stp.active .sc{background:#fff;border-color:#7C3AED;color:#7C3AED;box-shadow:0 0 0 4px rgba(124,58,237,.15);transform:scale(1.1);}
     .stp.done .sc{background:#7C3AED;border-color:#7C3AED;color:#fff;}
     .sl{font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.5px;transition:color .3s;text-align:center;}
     .stp.active .sl{color:#7C3AED;}.stp.done .sl{color:#1e293b;}
@@ -181,26 +181,23 @@ app.get('/api/public/qr-signup', (req, res) => {
     .req{color:#EF4444;margin-left:2px;}
     .ig{position:relative;display:flex;align-items:center;}
     .ig i{position:absolute;left:12px;color:#94A3B8;width:20px;height:20px;pointer-events:none;transition:color .2s;}
-    input,select,textarea{width:100%;padding:12px 13px 12px 42px;border:1.5px solid #E2E8F0;border-radius:12px;font-size:15px;color:#1E293B;outline:none;transition:all .18s;background:#F8FAFC;font-family:inherit;}
-    select {appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:36px;}
+    input,select,textarea{width:100%;padding:12px;border:1px solid #CBD5E1;border-radius:6px;font-size:15px;color:#1E293B;outline:none;transition:border-color .2s;background:#fff;font-family:inherit;}
     textarea{padding:12px;resize:vertical;min-height:80px;}
-    .ig textarea{padding-left:42px;padding-top:14px;}
-    .ig .lucide-map-pin{top:14px;}
-    input:focus,select:focus,textarea:focus{border-color:#7C3AED;background:#fff;box-shadow:0 0 0 3px rgba(124,58,237,.1);}
-    input:focus + i, select:focus + i, textarea:focus + i{color:#7C3AED;}
-    .ig:has(input:focus) i, .ig:has(select:focus) i, .ig:has(textarea:focus) i {color:#7C3AED;}
+    input:focus,select:focus,textarea:focus{border-color:#7C3AED;box-shadow:0 0 0 2px rgba(124,58,237,.15);}
     .ef input,.ef select,.ef textarea{border-color:#EF4444;background:#FEF2F2;}
     .em{display:block;color:#EF4444;font-size:11.5px;margin-top:4px;font-weight:600;min-height:14px;}
     .btns{display:flex;gap:10px;margin-top:20px;}
-    .btn{flex:1;padding:14px;border-radius:14px;font-weight:700;font-size:15px;cursor:pointer;border:none;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;}
-    .bp{background:linear-gradient(135deg,#7C3AED,#5F2EEA);color:#fff;box-shadow:0 4px 14px rgba(124,58,237,.25);}
-    .bp:hover{opacity:.9;}.bp:active{transform:scale(.98);}
+    .btn{flex:1;padding:12px;border-radius:14px;font-weight:700;font-size:15px;cursor:pointer;border:none;transition:all .2s cubic-bezier(.4,0,.2,1);display:flex;align-items:center;justify-content:center;gap:6px;}
+    .bp{background:linear-gradient(135deg,#7C3AED,#5F2EEA);color:#fff;box-shadow:0 8px 20px -6px rgba(124,58,237,.4);}
+    .bp:hover{transform:translateY(-2px);box-shadow:0 12px 24px -8px rgba(124,58,237,.5);}.bp:active{transform:translateY(0);}
     .bo{background:transparent;border:2px solid #E2E8F0;color:#475569;}
     .bo:hover{background:#F8FAFC;border-color:#CBD5E1;}
     .fw input[type=file]{position:absolute;width:1px;height:1px;opacity:0;}
-    .fb{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:15px;border:2px dashed #C4B5FD;border-radius:12px;background:#FAF5FF;color:#7C3AED;font-size:14px;font-weight:700;cursor:pointer;transition:all .18s;margin-bottom:12px;}
+    .fb{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;width:100%;padding:20px 10px;border:2px dashed #C4B5FD;border-radius:16px;background:#FAF5FF;color:#7C3AED;font-size:13px;font-weight:700;cursor:pointer;transition:all .3s cubic-bezier(.4,0,.2,1);text-align:center;}
+    .fb:hover{background:#F3E8FF;border-color:#A78BFA;transform:translateY(-2px);box-shadow:0 8px 16px -4px rgba(124,58,237,.15);}
     .fb.has{border-style:solid;border-color:#7C3AED;background:#F5F3FF;}
-    .fb i{width:20px;height:20px;}
+    .fb i{width:24px;height:24px;}
+    .fb span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;display:block;}
     #toast{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-120px);background:#EF4444;color:#fff;padding:12px 24px;border-radius:100px;font-size:14px;font-weight:700;box-shadow:0 8px 24px rgba(239,68,68,.3);transition:transform .4s cubic-bezier(.34,1.56,.64,1);z-index:1000;display:flex;align-items:center;gap:8px;white-space:nowrap;max-width:90%;text-align:center;}
     #toast.show{transform:translateX(-50%) translateY(0);}
     #ldr{position:absolute;inset:0;background:rgba(255,255,255,.94);z-index:99;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s;border-radius:24px;backdrop-filter:blur(4px);}
@@ -213,7 +210,7 @@ app.get('/api/public/qr-signup', (req, res) => {
     @keyframes pop{0%{transform:scale(.4);opacity:0}70%{transform:scale(1.1)}to{transform:scale(1);opacity:1}}
     #ok h2{color:#0F172A;font-size:24px;margin:0 0 12px;font-weight:800;}
     #ok p{color:#64748B;font-size:15px;line-height:1.6;margin-bottom:32px;}
-    .logo{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#7C3AED,#5F2EEA);display:inline-flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(124,58,237,.3);margin-bottom:16px;}
+    .logo{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#7C3AED,#5F2EEA);display:inline-flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(124,58,237,.3);margin-bottom:16px;}
     .logo i{width:32px;height:32px;color:#fff;}
   </style>
 </head>
@@ -222,9 +219,13 @@ app.get('/api/public/qr-signup', (req, res) => {
   <div class="card" id="mc">
     <div id="ldr"><div class="spin"></div><div style="color:#5B21B6;font-weight:700;font-size:16px;">Submitting...</div></div>
     <div id="fc">
-      <div style="text-align:center;margin-bottom:16px;"><div class="logo"><i data-lucide="user-plus"></i></div></div>
-      <h1>Tenant Registration</h1>
-      <p class="sub">Complete the steps below to request admission</p>
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:24px;">
+        <div class="logo" style="font-size:24px;margin-bottom:0;">🏠</div>
+        <div style="text-align:left;">
+          <h1 style="text-align:left;margin-bottom:4px;">Tenant Registration</h1>
+          <p class="sub" style="text-align:left;margin-bottom:0;">Complete the steps below to request admission</p>
+        </div>
+      </div>
       ${roomBanner}
 
       <div class="stepper">
@@ -239,42 +240,39 @@ app.get('/api/public/qr-signup', (req, res) => {
         <div class="step active" id="p1">
           <div class="field">
             <lbl>First Name<span class="req">*</span></lbl>
-            <div class="ig"><i data-lucide="user"></i><input id="first_name" name="first_name" placeholder="e.g. Ravi"/></div>
+            <input id="first_name" name="first_name" placeholder="e.g. Ravi"/>
             <span class="em" id="e1"></span>
           </div>
           <div class="field">
             <lbl>Last Name</lbl>
-            <div class="ig"><i data-lucide="user"></i><input id="last_name" name="last_name" placeholder="e.g. Kumar"/></div>
+            <input id="last_name" name="last_name" placeholder="e.g. Kumar"/>
           </div>
           <div class="field">
             <lbl>Phone Number<span class="req">*</span></lbl>
-            <div class="ig"><i data-lucide="phone"></i><input id="phone" name="phone" inputmode="numeric" maxlength="10" placeholder="10-digit mobile number"/></div>
+            <input id="phone" name="phone" inputmode="numeric" maxlength="10" placeholder="10-digit mobile number"/>
             <span class="em" id="e2"></span>
           </div>
           <div class="field">
             <lbl>Email Address</lbl>
-            <div class="ig"><i data-lucide="mail"></i><input id="email" name="email" type="email" placeholder="your@email.com"/></div>
+            <input id="email" name="email" type="email" placeholder="your@email.com"/>
             <span class="em" id="e3"></span>
           </div>
           <div class="field">
             <lbl>Date of Birth<span class="req">*</span></lbl>
-            <div class="ig"><i data-lucide="calendar"></i><input id="dob" name="date_of_birth" type="date"/></div>
+            <input id="dob" name="date_of_birth" type="date"/>
             <span class="em" id="e_dob"></span>
           </div>
           <div class="field">
             <lbl>Gender<span class="req">*</span></lbl>
-            <div class="ig">
-              <i data-lucide="users"></i>
-              <select id="gender" name="gender"><option value="">Select Gender...</option><option value="Male">Male</option><option value="Female">Female</option><option value="Other">Other</option></select>
-            </div>
+            <select id="gender" name="gender"><option value="">Select Gender...</option><option value="Male">Male</option><option value="Female">Female</option><option value="Other">Other</option></select>
             <span class="em" id="e_gender"></span>
           </div>
           <div class="field">
             <lbl>Permanent Address<span class="req">*</span></lbl>
-            <div class="ig"><i data-lucide="map-pin"></i><textarea id="addr" name="permanent_address" placeholder="Full home address"></textarea></div>
+            <textarea id="addr" name="permanent_address" placeholder="Full home address"></textarea>
             <span class="em" id="e4"></span>
           </div>
-          <div class="btns"><button type="button" class="btn bp" id="b1">Next: Guardian Details <i data-lucide="arrow-right" style="width:18px;height:18px;"></i></button></div>
+          <div class="btns"><button type="button" class="btn bp" id="b1">Next</button></div>
         </div>
 
         <!-- STEP 2 -->
@@ -282,42 +280,56 @@ app.get('/api/public/qr-signup', (req, res) => {
           <p style="font-size:14px;color:#64748B;margin:0 0 16px;line-height:1.5;">Guardian details are optional but recommended.</p>
           <div class="field">
             <lbl>Guardian Name</lbl>
-            <div class="ig"><i data-lucide="user"></i><input id="gname" name="guardian_name" placeholder="Parent / Guardian name"/></div>
+            <input id="gname" name="guardian_name" placeholder="Parent / Guardian name"/>
           </div>
           <div class="field">
             <lbl>Guardian Phone</lbl>
-            <div class="ig"><i data-lucide="phone"></i><input id="gphone" name="guardian_phone" inputmode="numeric" maxlength="10" placeholder="10-digit number"/></div>
+            <input id="gphone" name="guardian_phone" inputmode="numeric" maxlength="10" placeholder="10-digit number"/>
             <span class="em" id="e5"></span>
           </div>
           <div class="btns">
-            <button type="button" class="btn bo" id="bk2"><i data-lucide="arrow-left" style="width:18px;height:18px;"></i> Back</button>
-            <button type="button" class="btn bp" id="b2">Next: Identity Docs <i data-lucide="arrow-right" style="width:18px;height:18px;"></i></button>
+            <button type="button" class="btn bo" id="bk2">Back</button>
+            <button type="button" class="btn bp" id="b2">Next</button>
           </div>
         </div>
 
         <!-- STEP 3 -->
         <div class="step" id="p3">
           <div class="field">
-            <lbl>Aadhaar Number<span class="req">*</span></lbl>
-            <div class="ig"><i data-lucide="credit-card"></i><input id="aadhaar" name="id_proof_number" inputmode="numeric" maxlength="12" placeholder="12-digit Aadhaar number"/></div>
+            <lbl>ID Proof Type<span class="req">*</span></lbl>
+            <select id="id_type" name="id_proof_type">
+              <option value="1">Aadhaar Card</option>
+              <option value="2">PAN Card</option>
+              <option value="3">Voter ID</option>
+              <option value="4">Driving License</option>
+              <option value="5">Passport</option>
+            </select>
+          </div>
+          <div class="field">
+            <lbl>ID Document Number<span class="req">*</span></lbl>
+            <input id="aadhaar" name="id_proof_number" inputmode="numeric" maxlength="12" placeholder="e.g. 123456789012"/>
             <span class="em" id="e6"></span>
           </div>
-          <p style="font-size:13px;color:#64748B;margin:0 0 14px;">Upload clear Aadhaar photos (optional).</p>
-          <div class="fw"><label class="fb" id="ffb" for="af"><i data-lucide="camera" id="fi"></i> <span id="ffl">Upload Aadhaar Front</span></label><input type="file" id="af" name="aadhaar_front" accept="image/*"/></div>
-          <div class="fw"><label class="fb" id="bfb" for="ab"><i data-lucide="camera" id="bi"></i> <span id="bfl">Upload Aadhaar Back</span></label><input type="file" id="ab" name="aadhaar_back" accept="image/*"/></div>
-          <div class="btns">
-            <button type="button" class="btn bo" id="bk3"><i data-lucide="arrow-left" style="width:18px;height:18px;"></i> Back</button>
-            <button type="submit" class="btn bp" id="sub"><i data-lucide="check" style="width:18px;height:18px;"></i> Submit Application</button>
+          <p style="font-size:13px;color:#64748B;margin:0 0 14px;">Upload clear ID photos (optional).</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+            <div class="fw"><label class="fb" id="ffb" for="af"><i data-lucide="camera" id="fi"></i> <span id="ffl">Front</span></label><input type="file" id="af" name="aadhaar_front" accept="image/*"/></div>
+            <div class="fw"><label class="fb" id="bfb" for="ab"><i data-lucide="camera" id="bi"></i> <span id="bfl">Back</span></label><input type="file" id="ab" name="aadhaar_back" accept="image/*"/></div>
+          </div>
+          <div style="display: flex; justify-content: space-between; gap: 15px; margin-top: 25px;">
+            <button type="button" class="btn bo" id="bk3" style="flex: 1;">Back</button>
+            <button type="submit" class="btn bp" id="sub" style="flex: 1;">Submit</button>
           </div>
         </div>
       </form>
     </div>
 
-    <div id="ok">
+    <div id="ok" style="text-align: center; padding: 50px 10px 30px; display: none;">
       <div class="ck"><i data-lucide="check-circle-2" style="width:46px;height:46px;stroke-width:2.5;"></i></div>
       <h2>Application Sent!</h2>
       <p>Your details have been submitted successfully. The owner will verify and activate your account in the app.</p>
-      <button class="btn bp" onclick="window.location.reload()"><i data-lucide="refresh-cw" style="width:18px;height:18px;"></i> Submit Another</button>
+      <div style="display: flex; justify-content: center; width: 100%; margin-top: 20px;">
+        <button class="btn bp" onclick="window.location.reload()" style="max-width: 250px;"><i data-lucide="refresh-cw" style="width:18px;height:18px;"></i> Submit Another</button>
+      </div>
     </div>
   </div>
 
@@ -348,17 +360,50 @@ app.get('/api/public/qr-signup', (req, res) => {
     function setErr(id,inp,m){
       var el=document.getElementById(id), i=document.getElementById(inp);
       el.textContent=m;
-      if(i) i.parentElement.parentElement.className='field'+(m?' ef':'');
+      if(i) i.parentElement.className='field'+(m?' ef':'');
     }
     function val(id){ return (document.getElementById(id)||{}).value||''; }
 
     // Digits only
-    var ids = ['phone','gphone','aadhaar'];
+    var ids = ['phone','gphone'];
     for(var k=0; k<ids.length; k++){
       (function(id){
         var el=document.getElementById(id);
         if(el) el.addEventListener('input',function(e){ e.target.value=e.target.value.replace(/\\D/g,''); });
       })(ids[k]);
+    }
+
+    // Dynamic ID field handling
+    var idt = document.getElementById('id_type');
+    var ida = document.getElementById('aadhaar');
+    if(idt && ida) {
+      idt.addEventListener('change', function(e) {
+        var v = e.target.value;
+        if(v == '1') {
+          ida.setAttribute('maxlength', '12');
+          ida.placeholder = 'e.g. 123456789012';
+        } else if(v == '2') {
+          ida.setAttribute('maxlength', '10');
+          ida.placeholder = 'e.g. ABCDE1234F';
+        } else if(v == '3') {
+          ida.setAttribute('maxlength', '10');
+          ida.placeholder = 'e.g. ABC1234567';
+        } else if(v == '4') {
+          ida.setAttribute('maxlength', '15');
+          ida.placeholder = 'e.g. MH1420110062821';
+        } else if(v == '5') {
+          ida.setAttribute('maxlength', '8');
+          ida.placeholder = 'e.g. A1234567';
+        }
+        ida.value = '';
+      });
+      ida.addEventListener('input', function(e) {
+        if(idt.value == '1') {
+          e.target.value = e.target.value.replace(/\\D/g,'');
+        } else {
+          e.target.value = e.target.value.replace(/[^A-Za-z0-9]/g,'').toUpperCase();
+        }
+      });
     }
 
     // Step 1 next
@@ -411,13 +456,23 @@ app.get('/api/public/qr-signup', (req, res) => {
     // Submit
     document.getElementById('frm').addEventListener('submit',function(e){
       e.preventDefault();
-      var aadhaar=val('aadhaar').trim();
-      if(!/^\\d{12}$/.test(aadhaar)){setErr('e6','aadhaar','Aadhaar must be exactly 12 digits');toast('Please fix the errors to submit.');return;}
+      var idnum=val('aadhaar').trim();
+      var idtype=val('id_type');
+      if(!idnum){setErr('e6','aadhaar','ID Number is required');toast('Please fix the errors to submit.');return;}
+      if(idtype == '1' && !/^\\d{12}$/.test(idnum)){setErr('e6','aadhaar','Aadhaar must be exactly 12 digits');toast('Please fix the errors to submit.');return;}
+      if(idtype == '2' && !/^[A-Z0-9]{10}$/.test(idnum)){setErr('e6','aadhaar','PAN must be exactly 10 characters');toast('Please fix the errors to submit.');return;}
+      if(idtype == '3' && !/^[A-Z0-9]{10}$/.test(idnum)){setErr('e6','aadhaar','Voter ID must be exactly 10 characters');toast('Please fix the errors to submit.');return;}
+      if(idtype == '4' && !/^[A-Z0-9]{15}$/.test(idnum)){setErr('e6','aadhaar','Driving License must be exactly 15 characters');toast('Please fix the errors to submit.');return;}
+      if(idtype == '5' && !/^[A-Z0-9]{8}$/.test(idnum)){setErr('e6','aadhaar','Passport must be exactly 8 characters');toast('Please fix the errors to submit.');return;}
       setErr('e6','aadhaar','');
       
       document.getElementById('ldr').className='show';
       var d=new FormData(this);
-      fetch('${postUrl}',{method:'POST',body:d})
+      fetch('${postUrl}',{
+        method:'POST',
+        headers: { 'Accept': 'application/json' },
+        body:d
+      })
         .then(function(r){return r.json();})
         .then(function(res){
           document.getElementById('ldr').className='';
@@ -469,7 +524,7 @@ app.post('/api/public/qr-signup', qrSignupUpload.fields([
     const {
       first_name, last_name, phone, email,
       date_of_birth, gender, permanent_address,
-      guardian_name, guardian_phone, id_proof_number,
+      guardian_name, guardian_phone, id_proof_number, id_proof_type
     } = req.body || {};
 
     const files = req.files as { [field: string]: Express.Multer.File[] } | undefined;
@@ -481,7 +536,15 @@ app.post('/api/public/qr-signup', qrSignupUpload.fields([
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim())) return sendError('Enter a valid email address');
     if (guardian_phone && !/^\d{10}$/.test(String(guardian_phone).trim())) return sendError('Guardian Phone must be a valid 10-digit number');
     if (!permanent_address || !String(permanent_address).trim()) return sendError('Permanent Address is required');
-    if (!id_proof_number || !/^\d{12}$/.test(String(id_proof_number).trim())) return sendError('Aadhaar Number must be exactly 12 digits');
+    if (!id_proof_number || !String(id_proof_number).trim()) return sendError('ID Number is required');
+    
+    const typeId = parseInt(id_proof_type, 10) || 1;
+    const cleanId = String(id_proof_number).trim().toUpperCase();
+    if (typeId === 1 && !/^\d{12}$/.test(cleanId)) return sendError('Aadhaar Number must be exactly 12 digits');
+    if (typeId === 2 && !/^[A-Z0-9]{10}$/.test(cleanId)) return sendError('PAN must be exactly 10 characters');
+    if (typeId === 3 && !/^[A-Z0-9]{10}$/.test(cleanId)) return sendError('Voter ID must be exactly 10 characters');
+    if (typeId === 4 && !/^[A-Z0-9]{15}$/.test(cleanId)) return sendError('Driving License must be exactly 15 characters');
+    if (typeId === 5 && !/^[A-Z0-9]{8}$/.test(cleanId)) return sendError('Passport must be exactly 8 characters');
 
     const numHostelId = parseInt(hostelId, 10);
     if (isNaN(numHostelId)) return sendError('Invalid hostel link');
@@ -511,8 +574,8 @@ app.post('/api/public/qr-signup', qrSignupUpload.fields([
       room_id:          roomId ? parseInt(roomId, 10) : null,
       floor_number:     null,
       monthly_rent:     null,
-      id_proof_type:      1, // 1 = Aadhaar in id_proof_types table
-      id_proof_number:    String(id_proof_number).trim(),
+      id_proof_type:    typeId,
+      id_proof_number:  String(id_proof_number).trim(),
       id_proof_status:  1, // Submitted
     };
 
