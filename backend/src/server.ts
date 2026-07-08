@@ -1,3 +1,4 @@
+// QR Signup form: v2 — fixed regex, toast CSS, no-redirect HTML serving
 import express from 'express';
 import { createServer } from 'http';
 import cors from 'cors';
@@ -133,447 +134,275 @@ const qrSignupUpload = multer({
   },
 });
 
-// Public QR tenant signup (no auth) — supports optional roomId & bedId pre-fill
-app.get('/api/public/qr-signup', async (req, res) => {
+// Public QR tenant signup — serves self-contained HTML (works on any device/IP)
+app.get('/api/public/qr-signup', (req, res) => {
   const hostelId = req.query.hostelId as string;
   const roomId   = req.query.roomId   as string | undefined;
   const bedId    = req.query.bedId    as string | undefined;
   const bedName  = req.query.bedName  as string | undefined;
 
   if (!hostelId) {
-    return res.status(400).send('<h2>Missing hostelId</h2>');
+    return res.status(400).send('<h2 style="font-family:sans-serif;color:#7f1d1d;">Missing hostelId</h2>');
   }
 
-  // Build the room/bed info banner if pre-assigned
-  const roomBanner = roomId ? `
-    <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:16px;margin-bottom:20px;">
-      <div style="font-size:13px;color:#166534;font-weight:800;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px;">🏠 Pre-assigned Allocation</div>
-      <div style="font-size:15px;color:#15803d;font-weight:600;">
-        Room: <strong style="color:#14532d;">${roomId}</strong>${bedName ? `&nbsp;&nbsp;Bed: <strong style="color:#14532d;">${bedName}</strong>` : ''}
+  const roomBanner = roomId
+    ? `<div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:14px 16px;margin-bottom:18px;"><div style="font-size:11px;color:#166534;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">🏠 Pre-assigned Allocation</div><div style="font-size:14px;color:#15803d;font-weight:600;">Room: <strong style="color:#14532d;">${roomId}</strong>${bedName ? ` &nbsp;Bed: <strong style="color:#14532d;">${bedName}</strong>` : ''}</div></div>`
+    : '';
+
+  const postUrl = `/api/public/qr-signup?hostelId=${encodeURIComponent(hostelId)}${roomId ? `&roomId=${encodeURIComponent(roomId)}` : ''}${bedId ? `&bedId=${encodeURIComponent(bedId)}` : ''}${bedName ? `&bedName=${encodeURIComponent(bedName)}` : ''}`;
+
+  // NOTE: Inside this template literal, \\d renders as \d in the browser (digit regex class) - correct!
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=0"/>
+  <title>Tenant Registration</title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:linear-gradient(135deg,#F8FAFC 0%,#EEF2FF 100%);margin:0;min-height:100vh;padding:16px 12px 48px;}
+    .card{max-width:500px;margin:0 auto;background:#fff;border-radius:24px;padding:24px 20px;box-shadow:0 12px 40px rgba(0,0,0,0.08);position:relative;overflow:hidden;}
+    h1{margin:0 0 4px;color:#0F172A;font-size:21px;font-weight:800;text-align:center;}
+    .sub{color:#64748B;font-size:13px;margin-bottom:18px;text-align:center;}
+    .stepper{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;position:relative;padding:0 8px;}
+    .stepper::before{content:'';position:absolute;top:14px;left:28px;right:28px;height:3px;background:#E2E8F0;z-index:1;border-radius:3px;}
+    .sp{position:absolute;top:14px;left:28px;height:3px;background:#7C3AED;z-index:2;border-radius:3px;transition:width .3s ease;}
+    .stp{position:relative;z-index:3;display:flex;flex-direction:column;align-items:center;gap:5px;width:56px;}
+    .sc{width:30px;height:30px;border-radius:50%;background:#F1F5F9;border:2.5px solid #E2E8F0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#94A3B8;transition:all .3s;}
+    .stp.active .sc{background:#fff;border-color:#7C3AED;color:#7C3AED;box-shadow:0 0 0 4px rgba(124,58,237,.12);}
+    .stp.done .sc{background:#7C3AED;border-color:#7C3AED;color:#fff;}
+    .sl{font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.5px;transition:color .3s;text-align:center;}
+    .stp.active .sl{color:#7C3AED;}.stp.done .sl{color:#1e293b;}
+    .step{display:none;animation:si .25s ease;}.step.active{display:block;}
+    @keyframes si{from{opacity:0;transform:translateX(8px)}to{opacity:1;transform:none}}
+    .field{margin-bottom:13px;}
+    .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    lbl{display:block;font-size:11px;font-weight:700;color:#475569;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;}
+    .req{color:#EF4444;margin-left:2px;}
+    input,select,textarea{width:100%;padding:12px 13px;border:1.5px solid #E2E8F0;border-radius:10px;font-size:15px;color:#1E293B;outline:none;transition:all .18s;background:#F8FAFC;font-family:inherit;}
+    input:focus,select:focus,textarea:focus{border-color:#7C3AED;background:#fff;box-shadow:0 0 0 3px rgba(124,58,237,.1);}
+    .ef input,.ef select,.ef textarea{border-color:#EF4444;background:#FEF2F2;}
+    textarea{resize:vertical;min-height:76px;}
+    .em{display:block;color:#EF4444;font-size:11px;margin-top:3px;font-weight:600;min-height:14px;}
+    .btns{display:flex;gap:10px;margin-top:18px;}
+    .btn{flex:1;padding:14px;border-radius:12px;font-weight:700;font-size:14px;cursor:pointer;border:none;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;}
+    .bp{background:linear-gradient(135deg,#7C3AED,#5F2EEA);color:#fff;box-shadow:0 4px 14px rgba(124,58,237,.25);}
+    .bp:hover{opacity:.9;}.bp:active{transform:scale(.98);}
+    .bo{background:transparent;border:2px solid #E2E8F0;color:#475569;}
+    .bo:hover{background:#F8FAFC;border-color:#CBD5E1;}
+    .fw input[type=file]{position:absolute;width:1px;height:1px;opacity:0;}
+    .fb{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:15px;border:2px dashed #C4B5FD;border-radius:10px;background:#FAF5FF;color:#7C3AED;font-size:13px;font-weight:700;cursor:pointer;transition:all .18s;margin-bottom:9px;}
+    .fb.has{border-style:solid;border-color:#7C3AED;background:#F5F3FF;}
+    #toast{position:fixed;top:14px;left:50%;transform:translateX(-50%) translateY(-110px);background:#EF4444;color:#fff;padding:11px 20px;border-radius:26px;font-size:13px;font-weight:700;box-shadow:0 6px 20px rgba(239,68,68,.3);transition:transform .4s cubic-bezier(.34,1.56,.64,1);z-index:1000;white-space:nowrap;max-width:90%;text-align:center;}
+    #toast.show{transform:translateX(-50%) translateY(0);}
+    #ldr{position:absolute;inset:0;background:rgba(255,255,255,.92);z-index:99;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s;border-radius:24px;}
+    #ldr.show{opacity:1;pointer-events:all;}
+    .spin{width:40px;height:40px;border:4px solid #EDE9FE;border-top-color:#7C3AED;border-radius:50%;animation:sp .7s linear infinite;margin-bottom:12px;}
+    @keyframes sp{to{transform:rotate(360deg)}}
+    #ok{display:none;text-align:center;padding:40px 10px 20px;}
+    .ck{width:80px;height:80px;background:#10B981;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin:0 auto 22px;color:#fff;font-size:38px;box-shadow:0 10px 28px rgba(16,185,129,.35);animation:pop .55s cubic-bezier(.34,1.56,.64,1);}
+    @keyframes pop{0%{transform:scale(.4);opacity:0}70%{transform:scale(1.1)}to{transform:scale(1);opacity:1}}
+    #ok h2{color:#0F172A;font-size:22px;margin:0 0 10px;font-weight:800;}
+    #ok p{color:#64748B;font-size:14px;line-height:1.6;margin-bottom:24px;}
+    .logo{width:46px;height:46px;border-radius:13px;background:linear-gradient(135deg,#7C3AED,#5F2EEA);display:inline-flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 4px 14px rgba(124,58,237,.28);margin-bottom:10px;}
+  </style>
+</head>
+<body>
+  <div id="toast">⚠️ <span id="tm">Error</span></div>
+  <div class="card" id="mc">
+    <div id="ldr"><div class="spin"></div><div style="color:#5B21B6;font-weight:700;font-size:15px;">Submitting...</div></div>
+    <div id="fc">
+      <div style="text-align:center;margin-bottom:12px;"><div class="logo">🏠</div></div>
+      <h1>Tenant Registration</h1>
+      <p class="sub">Complete the steps below to request admission</p>
+      ${roomBanner}
+
+      <div class="stepper">
+        <div class="sp" id="prog" style="width:0%"></div>
+        <div class="stp active" id="n1"><div class="sc" id="c1">1</div><div class="sl">Personal</div></div>
+        <div class="stp" id="n2"><div class="sc" id="c2">2</div><div class="sl">Guardian</div></div>
+        <div class="stp" id="n3"><div class="sc" id="c3">3</div><div class="sl">Identity</div></div>
       </div>
-      <div style="font-size:12px;color:#16a34a;margin-top:6px;font-weight:500;">This room/bed has been reserved for you by the owner.</div>
-    </div>
-  ` : '';
 
-  const formAction = `/api/public/qr-signup?hostelId=${encodeURIComponent(hostelId)}${roomId ? `&roomId=${encodeURIComponent(roomId)}` : ''}${bedId ? `&bedId=${encodeURIComponent(bedId)}` : ''}${bedName ? `&bedName=${encodeURIComponent(bedName)}` : ''}`;
-
-  const html = `
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
-      <title>Tenant Registration — Hostel</title>
-      <style>
-        *, *::before, *::after { box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; background: linear-gradient(135deg,#F8FAFC 0%,#F1F5F9 100%); margin:0; min-height:100vh; padding:16px 12px 40px; }
-        .card { max-width:520px; margin:0 auto; background:#fff; border-radius:24px; padding:24px 20px; box-shadow:0 12px 40px rgba(0,0,0,0.06); position: relative; overflow: hidden; }
-        .logo { text-align:center; margin-bottom:16px; }
-        .logo-icon { width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,#7C3AED,#5F2EEA);display:inline-flex;align-items:center;justify-content:center;font-size:26px; box-shadow:0 4px 12px rgba(124,58,237,0.3); }
-        h2 { margin:0 0 6px;color:#0F172A;font-size:22px;font-weight:800; text-align: center; letter-spacing: -0.5px; }
-        .subtitle { color:#64748B;font-size:13px;margin-bottom:24px; text-align: center; }
-        
-        /* Stepper UI */
-        .stepper { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; position: relative; padding: 0 10px; }
-        .stepper::before { content: ''; position: absolute; top: 14px; left: 30px; right: 30px; height: 3px; background: #E2E8F0; z-index: 1; border-radius: 3px; }
-        .step-progress { position: absolute; top: 14px; left: 30px; height: 3px; background: #7C3AED; z-index: 2; border-radius: 3px; transition: width 0.3s ease; }
-        
-        .step { position: relative; z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 6px; width: 60px; }
-        .step-circle { width: 32px; height: 32px; border-radius: 50%; background: #F1F5F9; border: 3px solid #F1F5F9; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #94A3B8; transition: all 0.3s ease; }
-        .step.active .step-circle { background: #fff; border-color: #7C3AED; color: #7C3AED; box-shadow: 0 0 0 4px rgba(124,58,237,0.1); }
-        .step.completed .step-circle { background: #7C3AED; border-color: #7C3AED; color: #fff; }
-        .step-label { font-size: 11px; font-weight: 700; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.5px; transition: color 0.3s ease; text-align: center; }
-        .step.active .step-label { color: #7C3AED; }
-        .step.completed .step-label { color: #0F172A; }
-        
-        /* Step Content */
-        .step-content { display: none; animation: slideIn 0.3s ease; }
-        .step-content.active { display: block; }
-        @keyframes slideIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
-
-        .field { margin-bottom:16px; width: 100%; }
-        label { display:flex; align-items:center; font-size:13px; color:#334155; margin-bottom:6px; font-weight:700; }
-        .required { color: #EF4444; margin-left: 4px; font-size: 14px; }
-        
-        input, select, textarea { width:100%;padding:14px 16px;border:1.5px solid #E2E8F0;border-radius:12px;font-size:15px;color:#1E293B;outline:none;transition:all .2s; background: #F8FAFC; font-family: inherit; }
-        input:focus, select:focus, textarea:focus { border-color:#7C3AED; background: #fff; box-shadow: 0 0 0 3px rgba(124,58,237,0.1); }
-        .field input.invalid, .field select.invalid, .field textarea.invalid { border-color:#EF4444; background: #FEF2F2; box-shadow: 0 0 0 3px rgba(239,68,68,0.1); }
-        textarea { resize: vertical; min-height: 80px; }
-        
-        .err-msg { display:block; color:#EF4444; font-size:12px; margin-top:4px; min-height:16px; font-weight: 600; }
-        
-        .btn-group { display: flex; gap: 12px; margin-top: 24px; }
-        .btn { flex: 1; background:linear-gradient(135deg,#7C3AED,#5F2EEA);color:#fff;border:none;padding:16px;border-radius:14px;font-weight:700;font-size:16px;cursor:pointer;transition: transform 0.1s, opacity 0.2s; display: flex; justify-content: center; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(124,58,237,0.25); }
-        .btn:active { transform: scale(0.98); }
-        .btn:hover { opacity:.92; }
-        .btn.outline { background: transparent; border: 2px solid #E2E8F0; color: #475569; box-shadow: none; }
-        .btn.outline:hover { border-color: #CBD5E1; background: #F8FAFC; }
-        
-        .file-field input[type="file"] { position:absolute; width:1px; height:1px; opacity:0; overflow:hidden; }
-        .file-btn { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:18px; border:2px dashed #C4B5FD; border-radius:12px; background:#FAF5FF; color:#7C3AED; font-size:14px; font-weight:700; cursor:pointer; text-align:center; transition: all 0.2s; }
-        .file-btn.has-file { border-style:solid; border-color:#7C3AED; background:#F5F3FF; color: #5B21B6; }
-        
-        /* Toast */
-        #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background: #EF4444; color: #fff; padding: 14px 24px; border-radius: 30px; font-size: 14px; font-weight: 700; box-shadow: 0 8px 16px rgba(239, 68, 68, 0.25); transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); z-index: 1000; display: flex; align-items: center; gap: 8px; white-space: nowrap; max-width: 90%; }
-        #toast.show { transform: translateX(-50%) translateY(0); }
-        
-        /* Loader Overlay */
-        #loader { position: absolute; inset: 0; background: rgba(255,255,255,0.9); z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; border-radius: 24px; }
-        #loader.show { opacity: 1; pointer-events: all; }
-        .spinner { width: 44px; height: 44px; border: 4px solid #EDE9FE; border-top-color: #7C3AED; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 20px; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        
-        /* Success Screen */
-        #success-screen { display: none; text-align: center; padding: 40px 0 20px; animation: fadeIn 0.5s ease; }
-        .check-circle { width: 88px; height: 88px; background: #10B981; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin: 0 auto 28px; color: #fff; font-size: 44px; box-shadow: 0 12px 32px rgba(16, 185, 129, 0.35); animation: popIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
-        @keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 70% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
-        #success-screen h3 { color: #0F172A; font-size: 26px; margin: 0 0 12px; font-weight: 800; }
-        #success-screen p { color: #64748B; font-size: 15px; line-height: 1.6; margin-bottom: 36px; padding: 0 10px; }
-      </style>
-    </head>
-    <body>
-      <div id="toast">⚠️ <span id="toast-msg">Error</span></div>
-      
-      <div class="card" id="main-card">
-        <div id="loader">
-          <div class="spinner"></div>
-          <div style="color: #5B21B6; font-weight: 700; font-size: 16px;">Submitting Application...</div>
-        </div>
-
-        <div id="form-container">
-          <div class="logo"><div class="logo-icon">🏠</div></div>
-          <h2>Tenant Registration</h2>
-          <p class="subtitle">Complete the steps below to request admission</p>
-
-          ${roomBanner}
-
-          <!-- Stepper Navigation -->
-          <div class="stepper">
-            <div class="step-progress" id="step-progress" style="width: 0%;"></div>
-            
-            <div class="step active" id="step-nav-1">
-              <div class="step-circle" id="step-circle-1">1</div>
-              <div class="step-label">Personal</div>
+      <form id="frm" novalidate>
+        <!-- STEP 1 -->
+        <div class="step active" id="p1">
+          <div class="row2">
+            <div class="field">
+              <lbl>First Name<span class="req">*</span></lbl>
+              <input id="first_name" name="first_name" placeholder="e.g. Ravi"/>
+              <span class="em" id="e1"></span>
             </div>
-            <div class="step" id="step-nav-2">
-              <div class="step-circle" id="step-circle-2">2</div>
-              <div class="step-label">Guardian</div>
-            </div>
-            <div class="step" id="step-nav-3">
-              <div class="step-circle" id="step-circle-3">3</div>
-              <div class="step-label">Identity</div>
+            <div class="field">
+              <lbl>Last Name</lbl>
+              <input id="last_name" name="last_name" placeholder="e.g. Kumar"/>
             </div>
           </div>
-
-          <form id="signupForm" novalidate>
-            
-            <!-- STEP 1: Personal Details -->
-            <div class="step-content active" id="step-1">
-              <div class="field">
-                <label>First Name <span class="required">*</span></label>
-                <input name="first_name" id="first_name" required placeholder="e.g. Ravi" />
-                <span class="err-msg" id="err-first_name"></span>
-              </div>
-              
-              <div class="field">
-                <label>Last Name</label>
-                <input name="last_name" id="last_name" placeholder="e.g. Kumar" />
-                <span class="err-msg" id="err-last_name"></span>
-              </div>
-              
-              <div class="field">
-                <label>Phone <span class="required">*</span></label>
-                <input name="phone" id="phone" inputmode="numeric" maxlength="10" required placeholder="10-digit mobile number" />
-                <span class="err-msg" id="err-phone"></span>
-              </div>
-              
-              <div class="field">
-                <label>Email Address</label>
-                <input name="email" id="email" type="email" placeholder="your@email.com" />
-                <span class="err-msg" id="err-email"></span>
-              </div>
-              
-              <div class="field">
-                <label>Date of Birth</label>
-                <input name="date_of_birth" id="date_of_birth" type="date" />
-                <span class="err-msg" id="err-date_of_birth"></span>
-              </div>
-              
-              <div class="field">
-                <label>Gender</label>
-                <select name="gender" id="gender">
-                  <option value="">Select...</option>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
-                </select>
-                <span class="err-msg" id="err-gender"></span>
-              </div>
-              
-              <div class="field">
-                <label>Permanent Address <span class="required">*</span></label>
-                <textarea name="permanent_address" id="permanent_address" required placeholder="Full home address"></textarea>
-                <span class="err-msg" id="err-permanent_address"></span>
-              </div>
-              
-              <div class="btn-group">
-                <button type="button" class="btn" onclick="nextStep(1)">Next: Guardian Details →</button>
-              </div>
+          <div class="field">
+            <lbl>Phone<span class="req">*</span></lbl>
+            <input id="phone" name="phone" inputmode="numeric" maxlength="10" placeholder="10-digit mobile number"/>
+            <span class="em" id="e2"></span>
+          </div>
+          <div class="field">
+            <lbl>Email Address</lbl>
+            <input id="email" name="email" type="email" placeholder="your@email.com"/>
+            <span class="em" id="e3"></span>
+          </div>
+          <div class="row2">
+            <div class="field"><lbl>Date of Birth</lbl><input id="dob" name="date_of_birth" type="date"/></div>
+            <div class="field">
+              <lbl>Gender</lbl>
+              <select id="gender" name="gender"><option value="">Select...</option><option>Male</option><option>Female</option><option>Other</option></select>
             </div>
-
-            <!-- STEP 2: Guardian Details -->
-            <div class="step-content" id="step-2">
-              <div style="margin-bottom: 20px;">
-                <p style="font-size: 13px; color: #64748B; line-height: 1.5; margin-bottom: 12px;">Providing guardian details is optional but recommended.</p>
-              </div>
-              
-              <div class="field">
-                <label>Guardian Name</label>
-                <input name="guardian_name" id="guardian_name" placeholder="Parent/Guardian name" />
-                <span class="err-msg" id="err-guardian_name"></span>
-              </div>
-              
-              <div class="field">
-                <label>Guardian Phone</label>
-                <input name="guardian_phone" id="guardian_phone" inputmode="numeric" maxlength="10" placeholder="10-digit number" />
-                <span class="err-msg" id="err-guardian_phone"></span>
-              </div>
-              
-              <div class="btn-group">
-                <button type="button" class="btn outline" onclick="prevStep(2)">← Back</button>
-                <button type="button" class="btn" onclick="nextStep(2)">Next: Identity Docs →</button>
-              </div>
-            </div>
-
-            <!-- STEP 3: Documents -->
-            <div class="step-content" id="step-3">
-              <div class="field">
-                <label>Aadhaar Number <span class="required">*</span></label>
-                <input name="id_proof_number" id="id_proof_number" inputmode="numeric" maxlength="12" required placeholder="12-digit Aadhaar number" />
-                <span class="err-msg" id="err-id_proof_number"></span>
-              </div>
-              
-              <div style="margin-bottom: 20px;">
-                <p style="font-size: 13px; color: #64748B; line-height: 1.5; margin-bottom: 16px;">Upload clear photos of your Aadhaar card. You can choose from your gallery or take a new photo.</p>
-                <div class="field file-field">
-                  <label class="file-btn" id="btn-aadhaar_front" for="aadhaar_front">
-                    <span id="label-aadhaar_front">📷 Tap to Upload Front</span>
-                  </label>
-                  <input type="file" name="aadhaar_front" id="aadhaar_front" accept="image/*" />
-                </div>
-                
-                <div class="field file-field">
-                  <label class="file-btn" id="btn-aadhaar_back" for="aadhaar_back">
-                    <span id="label-aadhaar_back">📷 Tap to Upload Back</span>
-                  </label>
-                  <input type="file" name="aadhaar_back" id="aadhaar_back" accept="image/*" />
-                </div>
-              </div>
-              
-              <div class="btn-group">
-                <button type="button" class="btn outline" onclick="prevStep(3)">← Back</button>
-                <button type="submit" class="btn" id="submitBtn">✓ Submit Application</button>
-              </div>
-            </div>
-          </form>
+          </div>
+          <div class="field">
+            <lbl>Permanent Address<span class="req">*</span></lbl>
+            <textarea id="addr" name="permanent_address" placeholder="Full home address"></textarea>
+            <span class="em" id="e4"></span>
+          </div>
+          <div class="btns"><button type="button" class="btn bp" id="b1">Next: Guardian Details ›</button></div>
         </div>
-        
-        <!-- Success Screen -->
-        <div id="success-screen">
-          <div class="check-circle">✓</div>
-          <h3>Application Sent!</h3>
-          <p>Your details have been successfully submitted. You will be activated in the app once the owner verifies your request.</p>
-          <button class="btn" style="margin-top: 10px;" onclick="window.location.reload()">Submit Another Form</button>
+
+        <!-- STEP 2 -->
+        <div class="step" id="p2">
+          <p style="font-size:13px;color:#64748B;margin:0 0 14px;line-height:1.5;">Guardian details are optional but recommended.</p>
+          <div class="field"><lbl>Guardian Name</lbl><input id="gname" name="guardian_name" placeholder="Parent / Guardian name"/></div>
+          <div class="field">
+            <lbl>Guardian Phone</lbl>
+            <input id="gphone" name="guardian_phone" inputmode="numeric" maxlength="10" placeholder="10-digit number"/>
+            <span class="em" id="e5"></span>
+          </div>
+          <div class="btns">
+            <button type="button" class="btn bo" id="bk2">‹ Back</button>
+            <button type="button" class="btn bp" id="b2">Next: Identity Docs ›</button>
+          </div>
         </div>
-      </div>
 
-      <script>
-        var currentStep = 1;
+        <!-- STEP 3 -->
+        <div class="step" id="p3">
+          <div class="field">
+            <lbl>Aadhaar Number<span class="req">*</span></lbl>
+            <input id="aadhaar" name="id_proof_number" inputmode="numeric" maxlength="12" placeholder="12-digit Aadhaar number"/>
+            <span class="em" id="e6"></span>
+          </div>
+          <p style="font-size:12px;color:#64748B;margin:0 0 10px;">Upload clear Aadhaar photos (optional).</p>
+          <div class="fw"><label class="fb" id="ffb" for="af"><span id="ffl">📷 Upload Aadhaar Front</span></label><input type="file" id="af" name="aadhaar_front" accept="image/*"/></div>
+          <div class="fw"><label class="fb" id="bfb" for="ab"><span id="bfl">📷 Upload Aadhaar Back</span></label><input type="file" id="ab" name="aadhaar_back" accept="image/*"/></div>
+          <div class="btns">
+            <button type="button" class="btn bo" id="bk3">‹ Back</button>
+            <button type="submit" class="btn bp" id="sub">✓ Submit Application</button>
+          </div>
+        </div>
+      </form>
+    </div>
 
-        function updateStepperUI(step) {
-          var progress = step === 1 ? 0 : step === 2 ? 50 : 100;
-          document.getElementById('step-progress').style.width = progress + '%';
-          
-          for (var i = 1; i <= 3; i++) {
-            var nav = document.getElementById('step-nav-' + i);
-            var circle = document.getElementById('step-circle-' + i);
-            
-            nav.classList.remove('active');
-            nav.classList.remove('completed');
-            if (i === step) {
-              nav.classList.add('active');
-              circle.innerHTML = i;
-            } else if (i < step) {
-              nav.classList.add('completed');
-              circle.innerHTML = '✓';
-            } else {
-              circle.innerHTML = i;
-            }
+    <div id="ok">
+      <div class="ck">✓</div>
+      <h2>Application Sent! 🎉</h2>
+      <p>Your details have been submitted successfully. The owner will verify and activate your account in the app.</p>
+      <button class="btn bp" onclick="window.location.reload()">Submit Another</button>
+    </div>
+  </div>
+
+  <script>
+    var cur = 1;
+    function go(n) {
+      cur = n;
+      document.getElementById('prog').style.width = (n===1?0:n===2?50:100)+'%';
+      for (var i = 1; i <= 3; i++) {
+        var nav=document.getElementById('n'+i), circ=document.getElementById('c'+i);
+        nav.className='stp'+(i===n?' active':i<n?' done':'');
+        circ.innerHTML = i<n ? '&#10003;' : i;
+      }
+      var steps = document.querySelectorAll('.step');
+      for (var j = 0; j < steps.length; j++) {
+        steps[j].classList.remove('active');
+      }
+      document.getElementById('p'+n).classList.add('active');
+      try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){window.scrollTo(0,0);}
+    }
+    function setErr(el, inp, msg) {
+      var e=document.getElementById(el), i=document.getElementById(inp);
+      if(e) e.textContent=msg||'';
+      if(i){ msg ? i.parentElement.classList.add('ef') : i.parentElement.classList.remove('ef'); }
+    }
+    function toast(msg){
+      document.getElementById('tm').textContent=msg;
+      var t=document.getElementById('toast'); t.classList.add('show');
+      setTimeout(function(){t.classList.remove('show');},4000);
+    }
+    function val(id){ return (document.getElementById(id)||{}).value||''; }
+
+    // Digits only
+    var ids = ['phone','gphone','aadhaar'];
+    for(var k=0; k<ids.length; k++){
+      (function(id){
+        var el=document.getElementById(id);
+        if(el) el.addEventListener('input',function(e){ e.target.value=e.target.value.replace(/\D/g,''); });
+      })(ids[k]);
+    }
+
+    // Step 1 next
+    document.getElementById('b1').addEventListener('click',function(){
+      var ok=true;
+      if(!val('first_name').trim()){setErr('e1','first_name','First name is required');ok=false;}else{setErr('e1','first_name','');}
+      var p = val('phone').trim();
+      if(!/^[6-9]\d{9}$/.test(p)){setErr('e2','phone','Enter a valid 10-digit mobile number');ok=false;}else{setErr('e2','phone','');}
+      var em = val('email').trim();
+      if(em&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){setErr('e3','email','Enter a valid email');ok=false;}else{setErr('e3','email','');}
+      if(!val('addr').trim()){setErr('e4','addr','Permanent address is required');ok=false;}else{setErr('e4','addr','');}
+      if(!ok){toast('Please fix the errors to continue.');return;}
+      go(2);
+    });
+
+    // Step 2
+    document.getElementById('bk2').addEventListener('click',function(){go(1);});
+    document.getElementById('b2').addEventListener('click',function(){
+      var gp=val('gphone').trim();
+      if(gp&&!/^\d{10}$/.test(gp)){setErr('e5','gphone','Enter a valid 10-digit number');toast('Please fix the errors to continue.');return;}
+      setErr('e5','gphone',''); go(3);
+    });
+
+    // Step 3
+    document.getElementById('bk3').addEventListener('click',function(){go(2);});
+
+    // File inputs
+    var cfgs = [{inp:'af',fb:'ffb',lbl:'ffl',side:'Front'},{inp:'ab',fb:'bfb',lbl:'bfl',side:'Back'}];
+    for(var m=0; m<cfgs.length; m++){
+      (function(cfg){
+        var f=document.getElementById(cfg.inp),b=document.getElementById(cfg.fb),l=document.getElementById(cfg.lbl);
+        if(f)f.addEventListener('change',function(){
+          var has=f.files&&f.files.length;
+          b.className='fb'+(has?' has':'');
+          l.textContent=has?'✓ '+f.files[0].name:'📷 Upload Aadhaar '+cfg.side;
+        });
+      })(cfgs[m]);
+    }
+
+    // Submit
+    document.getElementById('frm').addEventListener('submit',function(e){
+      e.preventDefault();
+      if(!/^\\d{12}$/.test(val('aadhaar').trim())){setErr('e6','aadhaar','Aadhaar must be exactly 12 digits');toast('Please fix the errors to submit.');return;}
+      setErr('e6','aadhaar','');
+      var sub=document.getElementById('sub'); sub.disabled=true;
+      document.getElementById('ldr').classList.add('show');
+      fetch('${postUrl}',{method:'POST',body:new FormData(this),headers:{'Accept':'application/json'}})
+        .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
+        .then(function(res){
+          document.getElementById('ldr').classList.remove('show'); sub.disabled=false;
+          if(res.ok&&res.d.success){document.getElementById('fc').style.display='none';document.getElementById('ok').style.display='block';}
+          else{
+            toast(res.d.error||'Registration failed. Please try again.');
+            if((res.d.error||'').toLowerCase().indexOf('aadhaar')!==-1){setErr('e6','aadhaar',res.d.error);go(3);}
           }
-          
-          var contents = document.querySelectorAll('.step-content');
-          for (var j = 0; j < contents.length; j++) {
-            contents[j].classList.remove('active');
-          }
-          document.getElementById('step-' + step).classList.add('active');
-          if (window.scrollTo) {
-            try {
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            } catch (e) {
-              window.scrollTo(0, 0);
-            }
-          }
-        }
+        })
+        .catch(function(){document.getElementById('ldr').classList.remove('show');sub.disabled=false;toast('Network error. Check your connection.');});
+    });
+  </script>
+</body>
+</html>`;
 
-        function prevStep(step) {
-          currentStep = step - 1;
-          updateStepperUI(currentStep);
-        }
-
-        function nextStep(step) {
-          var ok = true;
-          var form = document.getElementById('signupForm');
-          
-          if (step === 1) {
-            if (!form.first_name.value.trim()) { showError('first_name', 'First name is required'); ok = false; }
-            else { showError('first_name', ''); }
-
-            var phone = form.phone.value.trim();
-            if (!/^\\d{10}$/.test(phone)) { showError('phone', 'Enter a valid 10-digit mobile number'); ok = false; }
-            else { showError('phone', ''); }
-
-            var email = form.email.value.trim();
-            if (email && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) { showError('email', 'Enter a valid email address'); ok = false; }
-            else { showError('email', ''); }
-
-            if (!form.permanent_address.value.trim()) { showError('permanent_address', 'Permanent address is required'); ok = false; }
-            else { showError('permanent_address', ''); }
-          }
-          
-          if (step === 2) {
-            var gphone = form.guardian_phone.value.trim();
-            if (gphone && !/^\\d{10}$/.test(gphone)) { showError('guardian_phone', 'Enter a valid 10-digit number'); ok = false; }
-            else { showError('guardian_phone', ''); }
-          }
-
-          if (!ok) {
-            showToast('Please fix the errors above.');
-            var firstInvalid = form.querySelector('.invalid');
-            if (firstInvalid && firstInvalid.scrollIntoView) {
-              try { firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
-              catch(e) { firstInvalid.scrollIntoView(); }
-            }
-            return;
-          }
-          
-          currentStep = step + 1;
-          updateStepperUI(currentStep);
-        }
-
-        function showToast(msg) {
-          var t = document.getElementById('toast');
-          document.getElementById('toast-msg').textContent = msg;
-          t.classList.add('show');
-          setTimeout(function() { t.classList.remove('show'); }, 4000);
-        }
-
-        function showError(name, msg) {
-          var el = document.getElementById('err-' + name);
-          var input = document.getElementById(name);
-          if (el) el.textContent = msg || '';
-          if (input) {
-            if (msg) input.classList.add('invalid');
-            else input.classList.remove('invalid');
-          }
-        }
-
-        var fileFields = ['aadhaar_front', 'aadhaar_back'];
-        for (var k = 0; k < fileFields.length; k++) {
-          (function(name) {
-            var input = document.getElementById(name);
-            var btn = document.getElementById('btn-' + name);
-            var label = document.getElementById('label-' + name);
-            if (input) {
-              input.addEventListener('change', function () {
-                var hasFile = input.files && input.files.length > 0;
-                if (hasFile) {
-                  btn.classList.add('has-file');
-                  label.textContent = '✓ ' + input.files[0].name;
-                } else {
-                  btn.classList.remove('has-file');
-                  label.textContent = '📷 Tap to Upload ' + (name === 'aadhaar_front' ? 'Front' : 'Back');
-                }
-              });
-            }
-          })(fileFields[k]);
-        }
-
-        var signupForm = document.getElementById('signupForm');
-        if (signupForm) {
-          signupForm.addEventListener('submit', function (e) {
-            e.preventDefault();
-            
-            var ok = true;
-            var form = e.target;
-            
-            var aadhaar = form.id_proof_number.value.trim();
-            if (!/^\\d{12}$/.test(aadhaar)) { showError('id_proof_number', 'Aadhaar must be exactly 12 digits'); ok = false; }
-            else { showError('id_proof_number', ''); }
-
-            if (!ok) {
-              showToast('Please fix the errors in Identity tab.');
-              return;
-            }
-
-            var submitBtn = document.getElementById('submitBtn');
-            submitBtn.disabled = true;
-            
-            var formData = new FormData(form);
-            var actionUrl = "${formAction}";
-            
-            document.getElementById('loader').classList.add('show');
-
-            fetch(actionUrl, {
-              method: 'POST',
-              body: formData,
-              headers: {
-                'Accept': 'application/json'
-              }
-            })
-            .then(function(response) {
-              return response.json().then(function(data) {
-                return { response: response, data: data };
-              });
-            })
-            .then(function(result) {
-              var response = result.response;
-              var data = result.data;
-              document.getElementById('loader').classList.remove('show');
-              submitBtn.disabled = false;
-
-              if (response.ok && data.success) {
-                document.getElementById('form-container').style.display = 'none';
-                document.getElementById('success-screen').style.display = 'block';
-              } else {
-                showToast(data.error || 'Registration failed. Please try again.');
-                if (data.error && data.error.toLowerCase().indexOf('aadhaar') !== -1) {
-                  showError('id_proof_number', data.error);
-                  currentStep = 3;
-                  updateStepperUI(3);
-                }
-              }
-            })
-            .catch(function(err) {
-              document.getElementById('loader').classList.remove('show');
-              submitBtn.disabled = false;
-              showToast('Network error. Please check your connection.');
-            });
-          });
-        }
-      </script>
-    </body>
-    </html>
-  `;
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
   // Prevent browser caching
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
   res.setHeader('Pragma', 'no-cache');
@@ -581,7 +410,6 @@ app.get('/api/public/qr-signup', async (req, res) => {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.status(200).send(html);
 });
-
 
 const qrSignupErrorPage = (message: string) =>
   `<div style="background:#fef2f2;color:#7f1d1d;padding:14px;border-radius:10px;font-family:sans-serif;">⚠️ ${message}</div>`;
@@ -636,7 +464,7 @@ app.post('/api/public/qr-signup', qrSignupUpload.fields([
       phone,
       email:            email || null,
       date_of_birth:    date_of_birth ? new Date(date_of_birth) : null,
-      gender:           gender || null,
+      gender:           gender || 'Other',
       permanent_address: permanent_address || null,
       guardian_name:    guardian_name || null,
       guardian_phone:   guardian_phone || null,
@@ -647,10 +475,8 @@ app.post('/api/public/qr-signup', qrSignupUpload.fields([
       room_id:          roomId ? parseInt(roomId, 10) : null,
       floor_number:     null,
       monthly_rent:     null,
-      id_proof_type:      'Aadhaar',
+      id_proof_type:      1, // 1 = Aadhaar in id_proof_types table
       id_proof_number:    String(id_proof_number).trim(),
-      id_proof_front_url: aadhaarFrontFile ? `/uploads/${aadhaarFrontFile.filename}` : null,
-      id_proof_back_url:  aadhaarBackFile ? `/uploads/${aadhaarBackFile.filename}` : null,
       id_proof_status:  1, // Submitted
     };
 
