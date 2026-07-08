@@ -312,7 +312,8 @@ app.get('/api/public/qr-signup', (req, res) => {
         nav.className='stp'+(i===n?' active':i<n?' done':'');
         circ.innerHTML = i<n ? '&#10003;' : i;
       });
-      document.querySelectorAll('.step').forEach(function(el){el.classList.remove('active');});
+      var els=document.querySelectorAll('.step');
+      for(var j=0; j<els.length; j++) els[j].classList.remove('active');
       document.getElementById('p'+n).classList.add('active');
       try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){window.scrollTo(0,0);}
     }
@@ -389,6 +390,9 @@ app.get('/api/public/qr-signup', (req, res) => {
 </body>
 </html>`;
 
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.status(200).send(html);
 });
