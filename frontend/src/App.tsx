@@ -26,6 +26,7 @@ import { SettingsPage } from './pages/SettingsPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { ActivityLogsPage } from './pages/ActivityLogsPage';
+import { QRSignupPage } from './pages/QRSignupPage';
 
 // Create Query Client
 const queryClient = new QueryClient({
@@ -74,6 +75,7 @@ function App() {
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/owner/login" element={<OwnerLogin />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/register" element={<QRSignupPage />} />
 
           {/* Admin Dashboard Route */}
           <Route
