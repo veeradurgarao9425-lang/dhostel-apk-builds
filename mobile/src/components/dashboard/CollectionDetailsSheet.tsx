@@ -38,309 +38,406 @@ export const CollectionDetailsSheet = ({ data, showCollectionSheet, setShowColle
         ? Math.round((data.collectionStats.collected / data.collectionStats.totalExpected) * 100)
         : 0;
 
+    const close = () => setShowCollectionSheet(false);
+
     return (
-        <ModalSheet visible={showCollectionSheet} onClose={() => setShowCollectionSheet(false)} maxHeight="88%">
-            <View style={s.sheetHeaderRow}>
+        <ModalSheet visible={showCollectionSheet} onClose={close} maxHeight="88%">
+
+            {/* ── Fixed Header ── */}
+            <View style={[s.header, { borderBottomColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Ionicons name="cash-outline" size={18} color={theme.primary} />
-                    <Text style={[s.sheetTitleText, { color: theme.textPrimary }]}>
-                        {data.collectionStats.monthName} Collection Status
-                    </Text>
+                    <View style={[s.headerIconWrap, { backgroundColor: '#10B98115' }]}>
+                        <Ionicons name="wallet" size={16} color="#10B981" />
+                    </View>
+                    <View>
+                        <Text style={[s.headerTitle, { color: theme.textPrimary }]}>
+                            {data.collectionStats.monthName} Collection
+                        </Text>
+                        <Text style={[s.headerSub, { color: theme.textSecondary }]}>
+                            {data.collectionStats.tenantsCount} tenants · {pct}% collected
+                        </Text>
+                    </View>
                 </View>
-                <TouchableOpacity onPress={() => setShowCollectionSheet(false)} style={s.sheetCloseBtn}>
-                    <Ionicons name="close" size={18} color={theme.textSecondary} />
+                <TouchableOpacity onPress={close} style={[s.closeBtn, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
+                    <Ionicons name="close" size={16} color={theme.textSecondary} />
                 </TouchableOpacity>
             </View>
-            <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 30 }} showsVerticalScrollIndicator={false}>
 
-                {/* ── Hero: percentage + collected/pending ── */}
-                <View style={[s.sheetHero, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }]}>
-                    <View style={s.sheetHeroCircle}>
-                        <Text style={{ fontSize: 20, fontWeight: '900', color: theme.primary }}>{pct}%</Text>
-                        <Text style={{ fontSize: 9, fontWeight: '600', color: theme.textSecondary }}>collected</Text>
+            {/* ── Scrollable Content ── */}
+            <ScrollView
+                contentContainerStyle={s.scrollContent}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+            >
+
+                {/* Hero: Collected / Pending / Target */}
+                <View style={[s.hero, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }]}>
+                    {/* Big percentage circle */}
+                    <View style={[s.heroPctCircle, { borderColor: '#10B981' }]}>
+                        <Text style={[s.heroPct, { color: '#10B981' }]}>{pct}%</Text>
+                        <Text style={[s.heroPctLabel, { color: theme.textSecondary }]}>done</Text>
                     </View>
-                    <View style={{ flex: 1, gap: 8 }}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                            <Text style={{ color: '#10B981', fontSize: 11, fontWeight: '700' }}>COLLECTED</Text>
-                            <Text style={{ color: '#10B981', fontSize: 15, fontWeight: '800' }}>₹{data.collectionStats.collected.toLocaleString('en-IN')}</Text>
-                        </View>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                            <Text style={{ color: '#EF4444', fontSize: 11, fontWeight: '700' }}>PENDING</Text>
-                            <Text style={{ color: '#EF4444', fontSize: 15, fontWeight: '800' }}>₹{data.collectionStats.pending.toLocaleString('en-IN')}</Text>
-                        </View>
-                        <View style={[s.sheetHeroDivider, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]} />
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                            <Text style={{ color: theme.textSecondary, fontSize: 11, fontWeight: '700' }}>TARGET · {data.collectionStats.tenantsCount} TENANTS</Text>
-                            <Text style={{ color: theme.textPrimary, fontSize: 13, fontWeight: '800' }}>₹{data.collectionStats.totalExpected.toLocaleString('en-IN')}</Text>
-                        </View>
-                    </View>
-                </View>
 
-                <View style={[s.progressBarBackground, { height: 8, backgroundColor: isDark ? '#334155' : '#E2E8F0', marginTop: 14, marginBottom: 16 }]}>
-                    <View style={[s.progressBarFill, { width: `${pct}%`, backgroundColor: '#10B981' }]} />
-                </View>
-
-                {/* ── Breakdown grid ── */}
-                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
-                    <TouchableOpacity
-                        style={s.sheetTile}
-                        activeOpacity={0.7}
-                        onPress={() => { setShowCollectionSheet(false); navigation.navigate('PendingTab'); }}
-                    >
-                        <Ionicons name="alert-circle" size={16} color="#EF4444" />
-                        <Text style={s.sheetTileLabel}>Overdue</Text>
-                        <Text style={[s.sheetTileValue, { color: '#991B1B' }]}>{data.collectionStats.overdueCount}</Text>
-                        <Text style={s.sheetTileSub}>₹{(data.collectionStats.overdueAmount || 0).toLocaleString('en-IN')}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[s.sheetTile, { backgroundColor: '#FFFBEB', borderLeftColor: '#F59E0B' }]}
-                        activeOpacity={0.7}
-                        onPress={() => { setShowCollectionSheet(false); navigation.navigate('PendingTab', { tab: 'Next 7 Days' }); }}
-                    >
-                        <Ionicons name="time" size={16} color="#F59E0B" />
-                        <Text style={[s.sheetTileLabel, { color: '#B45309' }]}>Due Today</Text>
-                        <Text style={[s.sheetTileValue, { color: '#B45309' }]}>{data.collectionStats.dueTodayCount}</Text>
-                    </TouchableOpacity>
-                </View>
-                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 18 }}>
-                    <TouchableOpacity
-                        style={[s.sheetTile, { backgroundColor: isDark ? '#0F172A' : '#F1F5F9', borderLeftColor: '#64748B' }]}
-                        activeOpacity={0.7}
-                        onPress={() => { setShowCollectionSheet(false); navigation.navigate('PendingTab', { tab: 'Next 7 Days' }); }}
-                    >
-                        <Ionicons name="calendar" size={16} color={isDark ? '#94A3B8' : '#475569'} />
-                        <Text style={[s.sheetTileLabel, { color: isDark ? '#94A3B8' : '#475569' }]}>Due This Wk</Text>
-                        <Text style={[s.sheetTileValue, { color: isDark ? '#E2E8F0' : '#1E293B' }]}>{data.collectionStats.dueThisWeekCount}</Text>
-                    </TouchableOpacity>
-                    <View style={[s.sheetTile, { backgroundColor: '#ECFDF5', borderLeftColor: '#10B981' }]}>
-                        <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                        <Text style={[s.sheetTileLabel, { color: '#065F46' }]}>Paid</Text>
-                        <Text style={[s.sheetTileValue, { color: '#065F46' }]}>{data.collectionStats.paidCount}</Text>
+                    {/* Right side stats */}
+                    <View style={{ flex: 1, gap: 6 }}>
+                        <View style={s.heroRow}>
+                            <View style={s.heroDot} />
+                            <Text style={[s.heroRowLabel, { color: theme.textSecondary }]}>Collected</Text>
+                            <Text style={[s.heroRowValue, { color: '#10B981' }]}>
+                                ₹{data.collectionStats.collected.toLocaleString('en-IN')}
+                            </Text>
+                        </View>
+                        <View style={[s.heroDivider, { backgroundColor: isDark ? '#1E293B' : '#E2E8F0' }]} />
+                        <View style={s.heroRow}>
+                            <View style={[s.heroDot, { backgroundColor: '#E11D48' }]} />
+                            <Text style={[s.heroRowLabel, { color: theme.textSecondary }]}>Pending</Text>
+                            <Text style={[s.heroRowValue, { color: '#E11D48' }]}>
+                                ₹{data.collectionStats.pending.toLocaleString('en-IN')}
+                            </Text>
+                        </View>
+                        <View style={[s.heroDivider, { backgroundColor: isDark ? '#1E293B' : '#E2E8F0' }]} />
+                        <View style={s.heroRow}>
+                            <View style={[s.heroDot, { backgroundColor: theme.textSecondary }]} />
+                            <Text style={[s.heroRowLabel, { color: theme.textSecondary }]}>Target</Text>
+                            <Text style={[s.heroRowValue, { color: theme.textPrimary }]}>
+                                ₹{data.collectionStats.totalExpected.toLocaleString('en-IN')}
+                            </Text>
+                        </View>
                     </View>
                 </View>
 
-                {/* ── Preview: top overdue tenants ── */}
+                {/* Progress bar */}
+                <View style={[s.progressBg, { backgroundColor: isDark ? '#1E293B' : '#E2E8F0' }]}>
+                    <View style={[s.progressFill, { width: `${pct}%` }]} />
+                </View>
+
+                {/* ── Stat tiles: 4 in a row ── */}
+                <View style={s.tilesRow}>
+                    <TouchableOpacity
+                        style={[s.tile, { backgroundColor: isDark ? '#2A0A0A' : '#FFF1F2', borderTopColor: '#E11D48' }]}
+                        activeOpacity={0.75}
+                        onPress={() => { close(); navigation.navigate('PendingTab'); }}
+                    >
+                        <Ionicons name="warning" size={15} color="#E11D48" />
+                        <Text style={[s.tileValue, { color: '#E11D48' }]}>{data.collectionStats.overdueCount}</Text>
+                        <Text style={[s.tileLabel, { color: theme.textSecondary }]}>Overdue</Text>
+                        {(data.collectionStats.overdueAmount || 0) > 0 && (
+                            <Text style={s.tileSub}>₹{(data.collectionStats.overdueAmount || 0).toLocaleString('en-IN')}</Text>
+                        )}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[s.tile, { backgroundColor: isDark ? '#1A1000' : '#FFFBEB', borderTopColor: '#D97706' }]}
+                        activeOpacity={0.75}
+                        onPress={() => { close(); navigation.navigate('PendingTab', { tab: 'Next 7 Days' }); }}
+                    >
+                        <Ionicons name="time" size={15} color="#D97706" />
+                        <Text style={[s.tileValue, { color: '#D97706' }]}>{data.collectionStats.dueTodayCount}</Text>
+                        <Text style={[s.tileLabel, { color: theme.textSecondary }]}>Due Today</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[s.tile, { backgroundColor: isDark ? '#0A0A1A' : '#EEF2FF', borderTopColor: '#4F46E5' }]}
+                        activeOpacity={0.75}
+                        onPress={() => { close(); navigation.navigate('PendingTab', { tab: 'Next 7 Days' }); }}
+                    >
+                        <Ionicons name="calendar" size={15} color="#4F46E5" />
+                        <Text style={[s.tileValue, { color: '#4F46E5' }]}>{data.collectionStats.dueThisWeekCount}</Text>
+                        <Text style={[s.tileLabel, { color: theme.textSecondary }]}>This Week</Text>
+                    </TouchableOpacity>
+
+                    <View style={[s.tile, { backgroundColor: isDark ? '#0A1F14' : '#ECFDF5', borderTopColor: '#10B981' }]}>
+                        <Ionicons name="checkmark-circle" size={15} color="#10B981" />
+                        <Text style={[s.tileValue, { color: '#10B981' }]}>{data.collectionStats.paidCount}</Text>
+                        <Text style={[s.tileLabel, { color: theme.textSecondary }]}>Paid</Text>
+                    </View>
+                </View>
+
+                {/* ── Overdue tenants preview ── */}
                 {data.unpaidStudents && data.unpaidStudents.length > 0 && (
-                    <View style={{ marginBottom: 14 }}>
-                        <View style={s.sheetSectionHeaderRow}>
-                            <Text style={[s.sheetSectionLabel, { color: theme.textPrimary, marginBottom: 0 }]}>Overdue Tenants</Text>
-                            <TouchableOpacity onPress={() => { setShowCollectionSheet(false); navigation.navigate('PendingTab'); }}>
+                    <View style={s.listSection}>
+                        <View style={s.listSectionHeader}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                                <Ionicons name="warning" size={12} color="#E11D48" />
+                                <Text style={[s.listSectionTitle, { color: theme.textPrimary }]}>Overdue Tenants</Text>
+                            </View>
+                            <TouchableOpacity onPress={() => { close(); navigation.navigate('PendingTab'); }}>
                                 <Text style={s.seeAll}>{t('dashboard.viewAll')}</Text>
                             </TouchableOpacity>
                         </View>
-                        {data.unpaidStudents.slice(0, 3).map((item, idx) => (
-                            <View key={idx} style={[s.sheetRow, { borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                                <TouchableOpacity
-                                    style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 8 }}
-                                    activeOpacity={0.7}
-                                    onPress={() => { setShowCollectionSheet(false); navigation.navigate('StudentDetails', { studentId: item.id }); }}
-                                >
-                                    <View style={[s.sheetRowAvatar, { backgroundColor: '#FEE2E2' }]}>
-                                        <Text style={{ color: '#DC2626', fontSize: 11, fontWeight: '800' }}>{avatarLetter(item.name)}</Text>
-                                    </View>
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={{ color: theme.textPrimary, fontSize: 12.5, fontWeight: '700' }} numberOfLines={1}>{item.name}</Text>
-                                        <Text style={{ color: theme.textSecondary, fontSize: 10, fontWeight: '600' }} numberOfLines={1}>
-                                            {item.room_number ? `Room ${item.room_number} · ` : ''}{item.daysLate}d late
-                                        </Text>
-                                    </View>
-                                    <Text style={{ color: '#DC2626', fontSize: 13, fontWeight: '800' }}>₹{Number(item.amount).toLocaleString('en-IN')}</Text>
-                                </TouchableOpacity>
-                                {!!item.phone && (
-                                    <TouchableOpacity style={s.rowCallBtn} activeOpacity={0.7} onPress={() => Linking.openURL(`tel:${item.phone}`)}>
-                                        <Ionicons name="call" size={14} color="#16A34A" />
+                        <View style={[s.listCard, { backgroundColor: isDark ? '#0F172A' : '#FFF', borderColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
+                            {data.unpaidStudents.slice(0, 3).map((item, idx) => (
+                                <View key={idx} style={[s.listRow, { borderBottomColor: isDark ? '#1E293B' : '#F8FAFC' }, idx === 2 && { borderBottomWidth: 0 }]}>
+                                    <TouchableOpacity
+                                        style={s.listRowLeft}
+                                        activeOpacity={0.7}
+                                        onPress={() => { close(); navigation.navigate('StudentDetails', { studentId: item.id }); }}
+                                    >
+                                        <View style={s.avatarRed}>
+                                            <Text style={s.avatarRedText}>{avatarLetter(item.name)}</Text>
+                                        </View>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={[s.listRowName, { color: theme.textPrimary }]} numberOfLines={1}>{item.name}</Text>
+                                            <Text style={[s.listRowMeta, { color: theme.textSecondary }]} numberOfLines={1}>
+                                                {item.room_number ? `Room ${item.room_number} · ` : ''}{item.daysLate}d late
+                                            </Text>
+                                        </View>
+                                        <Text style={s.listRowAmount}>₹{Number(item.amount).toLocaleString('en-IN')}</Text>
                                     </TouchableOpacity>
-                                )}
-                            </View>
-                        ))}
+                                    {!!item.phone && (
+                                        <TouchableOpacity style={s.callBtn} onPress={() => Linking.openURL(`tel:${item.phone}`)}>
+                                            <Ionicons name="call" size={13} color="#10B981" />
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+                            ))}
+                        </View>
                     </View>
                 )}
 
-                {/* ── Preview: dues in next 3 days ── */}
+                {/* ── Upcoming dues preview ── */}
                 {data.upcomingDues && data.upcomingDues.length > 0 && (
-                    <View style={{ marginBottom: 8 }}>
-                        <View style={s.sheetSectionHeaderRow}>
-                            <Text style={[s.sheetSectionLabel, { color: theme.textPrimary, marginBottom: 0 }]}>Dues in Next 7 Days</Text>
-                            <TouchableOpacity onPress={() => { setShowCollectionSheet(false); navigation.navigate('PendingTab', { tab: 'Next 7 Days' }); }}>
+                    <View style={s.listSection}>
+                        <View style={s.listSectionHeader}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                                <Ionicons name="time" size={12} color="#D97706" />
+                                <Text style={[s.listSectionTitle, { color: theme.textPrimary }]}>Due in 7 Days</Text>
+                            </View>
+                            <TouchableOpacity onPress={() => { close(); navigation.navigate('PendingTab', { tab: 'Next 7 Days' }); }}>
                                 <Text style={s.seeAll}>{t('dashboard.viewAll')}</Text>
                             </TouchableOpacity>
                         </View>
-                        {data.upcomingDues.slice(0, 3).map((item, idx) => (
-                            <View key={idx} style={[s.sheetRow, { borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                                <TouchableOpacity
-                                    style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 8 }}
-                                    activeOpacity={0.7}
-                                    onPress={() => { setShowCollectionSheet(false); navigation.navigate('StudentDetails', { studentId: item.id }); }}
-                                >
-                                    <View style={[s.sheetRowAvatar, { backgroundColor: '#FEF3C7' }]}>
-                                        <Text style={{ color: '#D97706', fontSize: 11, fontWeight: '800' }}>{avatarLetter(item.name)}</Text>
-                                    </View>
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={{ color: theme.textPrimary, fontSize: 12.5, fontWeight: '700' }} numberOfLines={1}>{item.name}</Text>
-                                        <Text style={{ color: theme.textSecondary, fontSize: 10, fontWeight: '600' }} numberOfLines={1}>
-                                            {item.room_number ? `Room ${item.room_number} · ` : ''}{item.daysLeft === 0 ? 'Due today' : `Due in ${item.daysLeft}d`}
-                                        </Text>
-                                    </View>
-                                    <Text style={{ color: '#D97706', fontSize: 13, fontWeight: '800' }}>₹{Number(item.amount).toLocaleString('en-IN')}</Text>
-                                </TouchableOpacity>
-                                {!!item.phone && (
-                                    <TouchableOpacity style={s.rowCallBtn} activeOpacity={0.7} onPress={() => Linking.openURL(`tel:${item.phone}`)}>
-                                        <Ionicons name="call" size={14} color="#16A34A" />
+                        <View style={[s.listCard, { backgroundColor: isDark ? '#0F172A' : '#FFF', borderColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
+                            {data.upcomingDues.slice(0, 3).map((item, idx) => (
+                                <View key={idx} style={[s.listRow, { borderBottomColor: isDark ? '#1E293B' : '#F8FAFC' }, idx === 2 && { borderBottomWidth: 0 }]}>
+                                    <TouchableOpacity
+                                        style={s.listRowLeft}
+                                        activeOpacity={0.7}
+                                        onPress={() => { close(); navigation.navigate('StudentDetails', { studentId: item.id }); }}
+                                    >
+                                        <View style={s.avatarAmber}>
+                                            <Text style={s.avatarAmberText}>{avatarLetter(item.name)}</Text>
+                                        </View>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={[s.listRowName, { color: theme.textPrimary }]} numberOfLines={1}>{item.name}</Text>
+                                            <Text style={[s.listRowMeta, { color: theme.textSecondary }]} numberOfLines={1}>
+                                                {item.room_number ? `Room ${item.room_number} · ` : ''}{item.daysLeft === 0 ? 'Due today' : `Due in ${item.daysLeft}d`}
+                                            </Text>
+                                        </View>
+                                        <Text style={s.listRowAmountAmber}>₹{Number(item.amount).toLocaleString('en-IN')}</Text>
                                     </TouchableOpacity>
-                                )}
-                            </View>
-                        ))}
+                                    {!!item.phone && (
+                                        <TouchableOpacity style={s.callBtn} onPress={() => Linking.openURL(`tel:${item.phone}`)}>
+                                            <Ionicons name="call" size={13} color="#10B981" />
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+                            ))}
+                        </View>
                     </View>
                 )}
 
-                {/* ── Actions ── */}
-                <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
-                    <TouchableOpacity
-                        style={[s.sheetActionBtn, { backgroundColor: theme.primary }]}
-                        activeOpacity={0.85}
-                        onPress={() => { setShowCollectionSheet(false); navigation.navigate('PendingTab'); }}
-                    >
-                        <Ionicons name="list" size={15} color="#FFF" />
-                        <Text style={s.sheetActionBtnText}>View All Pending</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[s.sheetActionBtn, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}
-                        activeOpacity={0.85}
-                        onPress={() => { setShowCollectionSheet(false); navigation.navigate('BillReminders'); }}
-                    >
-                        <Ionicons name="notifications" size={15} color={theme.primary} />
-                        <Text style={[s.sheetActionBtnText, { color: theme.primary }]}>Send Reminders</Text>
-                    </TouchableOpacity>
-                </View>
+                <View style={{ height: 8 }} />
             </ScrollView>
+
+            {/* ── Fixed Footer: Two action buttons always visible ── */}
+            <View style={[s.footer, { borderTopColor: isDark ? '#1E293B' : '#F1F5F9', backgroundColor: isDark ? '#0F172A' : '#FFF' }]}>
+                <TouchableOpacity
+                    style={[s.footerBtnSecondary, { borderColor: '#10B981', backgroundColor: isDark ? '#10B98115' : '#ECFDF5' }]}
+                    activeOpacity={0.85}
+                    onPress={() => { close(); navigation.navigate('BillReminders'); }}
+                >
+                    <Ionicons name="notifications" size={15} color="#10B981" />
+                    <Text style={[s.footerBtnTextSecondary, { color: '#10B981' }]}>Send Reminders</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={[s.footerBtnPrimary, { backgroundColor: theme.primary }]}
+                    activeOpacity={0.85}
+                    onPress={() => { close(); navigation.navigate('PendingTab'); }}
+                >
+                    <Ionicons name="list" size={15} color="#FFF" />
+                    <Text style={s.footerBtnTextPrimary}>View All Dues</Text>
+                </TouchableOpacity>
+            </View>
+
         </ModalSheet>
     );
 };
 
 const s = StyleSheet.create({
-    sheetHeaderRow: {
+    // ── Header ──────────────────────────────────────────────────────────────
+    header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 20,
-        paddingBottom: 16,
-        marginBottom: 12,
+        paddingBottom: 14,
+        marginBottom: 2,
         borderBottomWidth: 1,
-        borderBottomColor: '#F1F5F9',
     },
-    sheetTitleText: {
-        fontSize: 18,
-        fontWeight: '800',
+    headerIconWrap: {
+        width: 34, height: 34, borderRadius: 10,
+        alignItems: 'center', justifyContent: 'center',
     },
-    sheetCloseBtn: {
-        width: 30,
-        height: 30,
-        borderRadius: 15,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'rgba(148,163,184,0.15)',
+    headerTitle: { fontSize: 16, fontWeight: '800' },
+    headerSub: { fontSize: 11, fontWeight: '600', marginTop: 1 },
+    closeBtn: {
+        width: 30, height: 30, borderRadius: 15,
+        alignItems: 'center', justifyContent: 'center',
     },
-    sheetHero: {
+
+    // ── Scroll ───────────────────────────────────────────────────────────────
+    scrollContent: {
+        paddingHorizontal: 16,
+        paddingTop: 14,
+        paddingBottom: 8,
+    },
+
+    // ── Hero ─────────────────────────────────────────────────────────────────
+    hero: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 14,
         borderRadius: 16,
         padding: 14,
+        marginBottom: 10,
     },
-    sheetHeroCircle: {
-        width: 66,
-        height: 66,
-        borderRadius: 33,
+    heroPctCircle: {
+        width: 62, height: 62, borderRadius: 31,
+        alignItems: 'center', justifyContent: 'center',
+        borderWidth: 2.5,
+    },
+    heroPct: { fontSize: 18, fontWeight: '900' },
+    heroPctLabel: { fontSize: 9, fontWeight: '600', marginTop: 1 },
+    heroRow: {
+        flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'rgba(124,58,237,0.1)',
+        gap: 7,
     },
-    sheetHeroDivider: {
-        height: 1,
-        marginVertical: 2,
+    heroDot: {
+        width: 7, height: 7, borderRadius: 4,
+        backgroundColor: '#10B981',
     },
-    sheetTile: {
+    heroRowLabel: { fontSize: 11, fontWeight: '600', flex: 1 },
+    heroRowValue: { fontSize: 13, fontWeight: '800' },
+    heroDivider: { height: 1, marginVertical: 1 },
+
+    // ── Progress ─────────────────────────────────────────────────────────────
+    progressBg: {
+        height: 7, borderRadius: 4,
+        overflow: 'hidden',
+        marginBottom: 16,
+    },
+    progressFill: {
+        height: '100%', borderRadius: 4,
+        backgroundColor: '#10B981',
+    },
+
+    // ── 4 tiles ──────────────────────────────────────────────────────────────
+    tilesRow: {
+        flexDirection: 'row',
+        gap: 8,
+        marginBottom: 18,
+    },
+    tile: {
         flex: 1,
-        backgroundColor: '#FEF2F2',
+        borderRadius: 12,
         padding: 10,
-        borderRadius: 10,
-        borderLeftWidth: 3,
-        borderLeftColor: '#EF4444',
-        gap: 2,
+        alignItems: 'center',
+        gap: 3,
+        borderTopWidth: 2.5,
     },
-    sheetTileLabel: {
-        fontSize: 11,
-        fontWeight: '700',
-        color: '#EF4444',
+    tileValue: {
+        fontSize: 16, fontWeight: '800',
     },
-    sheetTileValue: {
-        fontSize: 15,
-        fontWeight: '800',
+    tileLabel: {
+        fontSize: 9.5, fontWeight: '600', textAlign: 'center',
     },
-    sheetTileSub: {
-        fontSize: 10,
-        fontWeight: '700',
-        color: '#991B1B',
+    tileSub: {
+        fontSize: 9, fontWeight: '700', color: '#E11D48', textAlign: 'center',
     },
-    sheetSectionLabel: {
-        fontSize: 12,
-        fontWeight: '800',
-        textTransform: 'uppercase',
-        letterSpacing: 0.4,
-        marginBottom: 8,
-    },
-    sheetSectionHeaderRow: {
+
+    // ── List section ─────────────────────────────────────────────────────────
+    listSection: { marginBottom: 14 },
+    listSectionHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 6,
+        marginBottom: 8,
     },
-    sheetRow: {
+    listSectionTitle: {
+        fontSize: 12, fontWeight: '800',
+        textTransform: 'uppercase', letterSpacing: 0.3,
+    },
+    seeAll: { fontSize: 12, fontWeight: '700', color: '#7C3AED' },
+    listCard: {
+        borderRadius: 14, borderWidth: 1, overflow: 'hidden',
+    },
+    listRow: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingVertical: 10,
-        paddingHorizontal: 4,
+        paddingHorizontal: 12,
         borderBottomWidth: 1,
     },
-    sheetRowAvatar: {
-        width: 28,
-        height: 28,
-        borderRadius: 14,
-        alignItems: 'center',
-        justifyContent: 'center',
+    listRowLeft: {
+        flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10,
     },
-    sheetActionBtn: {
+    avatarRed: {
+        width: 30, height: 30, borderRadius: 9,
+        backgroundColor: '#FFE4E6',
+        alignItems: 'center', justifyContent: 'center',
+    },
+    avatarRedText: { fontSize: 12, fontWeight: '800', color: '#E11D48' },
+    avatarAmber: {
+        width: 30, height: 30, borderRadius: 9,
+        backgroundColor: '#FEF3C7',
+        alignItems: 'center', justifyContent: 'center',
+    },
+    avatarAmberText: { fontSize: 12, fontWeight: '800', color: '#D97706' },
+    listRowName: { fontSize: 12.5, fontWeight: '700' },
+    listRowMeta: { fontSize: 10, fontWeight: '600', marginTop: 1 },
+    listRowAmount: { fontSize: 13, fontWeight: '800', color: '#E11D48' },
+    listRowAmountAmber: { fontSize: 13, fontWeight: '800', color: '#D97706' },
+    callBtn: {
+        width: 30, height: 30, borderRadius: 10,
+        backgroundColor: '#DCFCE7',
+        alignItems: 'center', justifyContent: 'center',
+        marginLeft: 8,
+    },
+
+    // ── Footer (fixed at bottom) ─────────────────────────────────────────────
+    footer: {
+        flexDirection: 'row',
+        gap: 10,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderTopWidth: 1,
+    },
+    footerBtnSecondary: {
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 6,
-        paddingVertical: 12,
+        paddingVertical: 13,
         borderRadius: 12,
+        borderWidth: 1.5,
     },
-    sheetActionBtnText: {
-        color: '#FFF',
-        fontSize: 12.5,
-        fontWeight: '800',
+    footerBtnTextSecondary: {
+        fontSize: 13, fontWeight: '800',
     },
-    seeAll: { fontSize: 12, fontWeight: '700', color: '#7C3AED' },
-    progressBarBackground: {
-        height: 6,
-        borderRadius: 3,
-        overflow: 'hidden',
-        marginBottom: 4,
-    },
-    progressBarFill: {
-        height: '100%',
-        borderRadius: 3,
-    },
-    rowCallBtn: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: '#DCFCE7',
+    footerBtnPrimary: {
+        flex: 1,
+        flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        marginLeft: 8,
+        gap: 6,
+        paddingVertical: 13,
+        borderRadius: 12,
+    },
+    footerBtnTextPrimary: {
+        color: '#FFF', fontSize: 13, fontWeight: '800',
     },
 });
