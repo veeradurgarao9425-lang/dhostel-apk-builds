@@ -28,6 +28,13 @@
     },
     "plugins": [
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/HostixNew.jpeg",
+          "color": "#2952F3"
+        }
+      ],
+      [
         "expo-media-library",
         {
           "photosPermission": "Allow Hostix to save receipts to your device.",
