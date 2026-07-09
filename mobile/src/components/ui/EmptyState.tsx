@@ -14,11 +14,11 @@ interface EmptyStateProps {
 }
 
 const illustrations = {
-    megaphone: require('../../../assets/images/empty_megaphone.png'),
-    pinboard: require('../../../assets/images/empty_pinboard.png'),
-    bell: require('../../../assets/images/empty_bell.png'),
-    mailbox: require('../../../assets/images/empty_mailbox.png'),
-    clipboard: require('../../../assets/images/empty_clipboard.png'),
+    megaphone: require('../../../assets/images/empty_megaphone.jpg'),
+    pinboard: require('../../../assets/images/empty_pinboard.jpg'),
+    bell: require('../../../assets/images/empty_bell.jpg'),
+    mailbox: require('../../../assets/images/empty_mailbox.jpg'),
+    clipboard: require('../../../assets/images/empty_clipboard.jpg'),
 };
 
 export const EmptyState = ({ icon, illustration, title, subtitle, actionLabel, onAction, iconColor }: EmptyStateProps) => {

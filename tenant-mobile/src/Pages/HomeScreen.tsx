@@ -87,6 +87,7 @@ const BG = "#F8FAFC";
 
 export default function HomeScreen({ navigation }: any) {
   const { user, refreshUser } = useAuth();
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [recentNotices, setRecentNotices] = useState<any[]>([]);
   const [recentPayments, setRecentPayments] = useState<any[]>([]);
@@ -269,6 +270,8 @@ export default function HomeScreen({ navigation }: any) {
       }
     } catch {
       // non-critical: dashboard still renders from cached user data
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -391,12 +394,44 @@ export default function HomeScreen({ navigation }: any) {
     { id: 'visitor', name: 'Visitor Pass', icon: UserPlus, nav: 'VisitorPass', bg: '#FEF3C7', color: '#D97706', gradient: ['#F59E0B', '#FCD34D'] },
   ];
 
+  const SkeletonBlock = ({ style }: { style: any }) => (
+    <View style={[{ backgroundColor: '#E2E8F0', borderRadius: 8, opacity: 0.6 }, style]} />
+  );
+
+  if (loading) {
+    return (
+      <View style={[styles.root, { backgroundColor: BG }]}>
+        <StatusBar barStyle="light-content" backgroundColor={BLUE} />
+        <LinearGradient colors={[BLUE, BLUE_DARK]} style={[styles.headerSection, { borderBottomLeftRadius: 24, borderBottomRightRadius: 24 }]}>
+          <SafeAreaView edges={["top"]} style={{ backgroundColor: "transparent" }}>
+            <View style={styles.header}>
+              <View style={{ flex: 1 }}>
+                <SkeletonBlock style={{ width: 120, height: 28, marginBottom: 8, backgroundColor: 'rgba(255,255,255,0.3)' }} />
+                <SkeletonBlock style={{ width: 100, height: 16, backgroundColor: 'rgba(255,255,255,0.2)' }} />
+              </View>
+              <SkeletonBlock style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.3)' }} />
+            </View>
+          </SafeAreaView>
+        </LinearGradient>
+        <View style={{ padding: 20, gap: 24 }}>
+          <SkeletonBlock style={{ height: 140, borderRadius: 24 }} />
+          <SkeletonBlock style={{ height: 120, borderRadius: 24 }} />
+          <View style={{ flexDirection: 'row', gap: 12, flexWrap: 'wrap' }}>
+            <SkeletonBlock style={{ width: '30%', height: 80, borderRadius: 16 }} />
+            <SkeletonBlock style={{ width: '30%', height: 80, borderRadius: 16 }} />
+            <SkeletonBlock style={{ width: '30%', height: 80, borderRadius: 16 }} />
+          </View>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor={BLUE} />
 
       {/* ── PREMIUM APP HEADER ── */}
-      <View style={[styles.headerSection, { backgroundColor: BLUE, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 }]}>
+      <LinearGradient colors={[BLUE, BLUE_DARK]} style={[styles.headerSection, { borderBottomLeftRadius: 24, borderBottomRightRadius: 24 }]}>
         <SafeAreaView edges={["top"]} style={{ backgroundColor: "transparent" }}>
           <View style={styles.header}>
             <View style={{ flex: 1, marginRight: 12 }}>
@@ -427,7 +462,7 @@ export default function HomeScreen({ navigation }: any) {
             </View>
           </View>
         </SafeAreaView>
-      </View>
+      </LinearGradient>
 
       <ScrollView
         showsVerticalScrollIndicator={false}

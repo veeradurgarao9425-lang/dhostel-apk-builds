@@ -58,18 +58,20 @@ const styles = StyleSheet.create({
     shortcutGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        justifyContent: 'space-between',
+        justifyContent: 'flex-start',
         gap: 12,
+        paddingHorizontal: 4,
     },
     shortcutItem: {
         width: '30%',
         alignItems: 'center',
-        marginBottom: 8,
+        marginBottom: 16,
     },
     shortcutText: {
         fontSize: 12,
         fontWeight: '700',
-        color: '#475569',
+        color: '#334155',
         textAlign: 'center',
+        letterSpacing: -0.2,
     },
 });

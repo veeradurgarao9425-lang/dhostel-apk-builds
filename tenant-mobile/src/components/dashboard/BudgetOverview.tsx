@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Animated, Image, StyleSheet } from 'react-native';
 import { Wallet, CheckCircle2, AlertCircle, ArrowRight, Check } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface BudgetOverviewProps {
     budget: number;
@@ -17,6 +18,20 @@ export const BudgetOverview = ({
     budget, spent, progressAnim, dueAmount, totalRentAmount, rentDueDate, formatDate
 }: BudgetOverviewProps) => {
     const navigation = useNavigation<any>();
+    const pulseValue = useRef(new Animated.Value(1)).current;
+
+    useEffect(() => {
+        if (dueAmount > 0) {
+            Animated.loop(
+                Animated.sequence([
+                    Animated.timing(pulseValue, { toValue: 1.02, duration: 800, useNativeDriver: true }),
+                    Animated.timing(pulseValue, { toValue: 1, duration: 800, useNativeDriver: true }),
+                ])
+            ).start();
+        } else {
+            pulseValue.setValue(1);
+        }
+    }, [dueAmount]);
 
     return (
         <>
@@ -64,17 +79,20 @@ export const BudgetOverview = ({
 
             {/* ── Total Due Overview Card ── */}
             <View style={{ marginBottom: 24 }}>
-                <View style={[styles.globalCard, {
-                    paddingVertical: 16,
-                    paddingHorizontal: 20,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    overflow: 'hidden',
-                    backgroundColor: dueAmount === 0 ? '#F0FDF4' : (dueAmount < totalRentAmount ? '#FFF7ED' : '#FEF2F2'),
-                    borderColor: dueAmount === 0 ? '#BBF7D0' : (dueAmount < totalRentAmount ? '#FED7AA' : '#FECACA'),
-                    borderWidth: 1,
-                }]}>
-                    <View style={{ flex: 1 }}>
+                <Animated.View style={{ transform: [{ scale: pulseValue }] }}>
+                    <LinearGradient
+                        colors={dueAmount === 0 ? ['#F0FDF4', '#DCFCE7'] : (dueAmount < totalRentAmount ? ['#FFF7ED', '#FFEDD5'] : ['#FEF2F2', '#FEE2E2'])}
+                        style={[styles.globalCard, {
+                            paddingVertical: 16,
+                            paddingHorizontal: 20,
+                            flexDirection: "row",
+                            alignItems: "center",
+                            overflow: 'hidden',
+                            borderColor: dueAmount === 0 ? '#BBF7D0' : (dueAmount < totalRentAmount ? '#FED7AA' : '#FECACA'),
+                            borderWidth: 1,
+                        }]}
+                    >
+                        <View style={{ flex: 1 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                             <View style={[styles.cardIconWrap, {
                                 backgroundColor: dueAmount === 0 ? '#D1FAE5' : (dueAmount < totalRentAmount ? '#FFEDD5' : '#FEE2E2'),
@@ -109,7 +127,8 @@ export const BudgetOverview = ({
                     <View style={{ width: 110, height: 110, justifyContent: "center", alignItems: "center" }}>
                         <Image source={require("../../../assets/wallet_3d.png")} style={{ width: 120, height: 120, position: "absolute", right: -16 }} resizeMode="contain" />
                     </View>
-                </View>
+                    </LinearGradient>
+                </Animated.View>
             </View>
         </>
     );

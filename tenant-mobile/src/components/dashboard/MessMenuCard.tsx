@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Megaphone, ArrowRight } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 
@@ -42,9 +43,9 @@ export const MessMenuCard = ({ meals, recentNotices, BLUE }: MessMenuCardProps) 
                 <View style={{ gap: 12 }}>
                     {meals.map((meal, idx) => {
                         const MealIcon = meal.Icon;
-                        let bg = '#FFF7ED'; let iconWrapBg = '#FFEDD5'; let color = '#EA580C'; // Morning
-                        if (meal.key === 'lunch') { bg = '#FEF2F2'; iconWrapBg = '#FCE7E7'; color = '#EF4444'; }
-                        if (meal.key === 'dinner') { bg = '#F0FDF4'; iconWrapBg = '#DCFCE7'; color = '#10B981'; }
+                        let colors = ['#FFF7ED', '#FFEDD5']; let iconWrapBg = 'rgba(234, 88, 12, 0.12)'; let color = '#EA580C'; // Morning
+                        if (meal.key === 'lunch') { colors = ['#FEF2F2', '#FEE2E2']; iconWrapBg = 'rgba(239, 68, 68, 0.12)'; color = '#EF4444'; }
+                        if (meal.key === 'dinner') { colors = ['#F0FDF4', '#DCFCE7']; iconWrapBg = 'rgba(16, 185, 129, 0.12)'; color = '#10B981'; }
 
                         const isPlaceholder = !meal.sub || meal.sub === 'Menu not updated';
                         const displaySub = isPlaceholder ? 'Menu not updated' : meal.sub;
@@ -54,15 +55,22 @@ export const MessMenuCard = ({ meals, recentNotices, BLUE }: MessMenuCardProps) 
                                 key={idx}
                                 activeOpacity={0.9}
                                 onPress={() => navigation.navigate("FullMenu")}
-                                style={{
-                                    backgroundColor: bg,
-                                    borderRadius: 20,
-                                    padding: 16,
-                                    flexDirection: 'row',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between'
-                                }}
                             >
+                                <LinearGradient
+                                    colors={colors}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 1 }}
+                                    style={{
+                                        borderRadius: 20,
+                                        padding: 16,
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        borderWidth: 1,
+                                        borderColor: 'rgba(255,255,255,0.6)',
+                                        shadowColor: color, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 2,
+                                    }}
+                                >
                                 <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 14 }}>
                                     <View style={{ backgroundColor: iconWrapBg, width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center' }}>
                                         <MealIcon size={24} color={color} />
@@ -78,6 +86,7 @@ export const MessMenuCard = ({ meals, recentNotices, BLUE }: MessMenuCardProps) 
                                         <ArrowRight size={14} color={color} strokeWidth={2.5} />
                                     </View>
                                 </View>
+                                </LinearGradient>
                             </TouchableOpacity>
                         );
                     })}
