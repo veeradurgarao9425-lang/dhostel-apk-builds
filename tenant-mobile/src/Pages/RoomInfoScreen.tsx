@@ -2,7 +2,9 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, ScrollView, StatusBar, TextInput, Dimensions, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { ChevronLeft, FileText, CheckCircle2, Wrench, Clock, Plus, Trash2, Home as HomeIcon, AlertCircle, Building2, UserCircle2, Phone, Mail, FileCheck } from 'lucide-react-native';
+import { ChevronLeft, FileText, CheckCircle2, Wrench, Clock, Plus, Trash2, Home as HomeIcon, AlertCircle, Building2, UserCircle2, Phone, Mail, FileCheck, Wallet } from 'lucide-react-native';
+
+import { theme } from '../theme';
 
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
@@ -236,32 +238,56 @@ export default function RoomInfoScreen({ route, navigation }: any) {
               <EmptyState icon={FileCheck} title="No Payment History" message="Your rent payment records will appear here." />
             ) : (
               fees.map((fee, idx) => {
-                const isPaid = (fee.fee_status || '').toLowerCase() === 'paid';
-                const isOverdue = (fee.fee_status || '').toLowerCase() === 'overdue';
+                const status = (fee.fee_status || '').toLowerCase();
+                const isPaid = status === 'paid' || status === 'fully paid';
+                const isOverdue = status === 'overdue';
+                
+                let accentColor = theme.colors.warning;
+                let accentSoft = theme.colors.warningSoft;
+                if (isPaid) {
+                    accentColor = theme.colors.success;
+                    accentSoft = theme.colors.successSoft;
+                } else if (isOverdue) {
+                    accentColor = theme.colors.danger;
+                    accentSoft = theme.colors.dangerSoft;
+                }
+
+                const displayAmount = !isPaid && fee.balance !== undefined && fee.balance > 0 
+                  ? fee.balance 
+                  : (fee.total_amount || fee.monthly_rent || 0);
+
+                const dateStr = fee.due_date || fee.created_at || new Date().toISOString();
+                const d = new Date(dateStr);
+                const dateFmt = isNaN(d.getTime()) ? dateStr : `${d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} • ${d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
+
                 return (
-                  <View key={fee.fee_id ?? idx} style={styles.historyCard}>
-                    <View style={styles.historyTop}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <View style={[styles.statusDot, isPaid ? { backgroundColor: '#10B981' } : isOverdue ? { backgroundColor: '#EF4444' } : { backgroundColor: '#F59E0B' }]} />
-                        <Text style={styles.historyMonth}>{formatFeeMonth(fee.fee_month)}</Text>
-                      </View>
-                      <View style={[styles.statusBadge, isPaid ? { backgroundColor: '#D1FAE5' } : isOverdue ? { backgroundColor: '#FEE2E2' } : { backgroundColor: '#FEF3C7' }]}>
-                        <Text style={[styles.statusBadgeTxt, isPaid ? { color: '#059669' } : isOverdue ? { color: '#DC2626' } : { color: '#D97706' }]}>
-                          {fee.fee_status ?? 'Pending'}
+                  <TouchableOpacity
+                    key={fee.fee_id ?? idx}
+                    activeOpacity={0.7}
+                    onPress={() => navigation.navigate('PaymentReceipt', { fee, isPaid })}
+                    style={[
+                      styles.historyCard,
+                      { paddingVertical: 12, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 12, borderLeftWidth: 4, borderLeftColor: accentColor, borderRadius: 14 }
+                    ]}
+                  >
+                    <View style={[{ width: 44, height: 44, borderRadius: 14, backgroundColor: accentSoft, justifyContent: 'center', alignItems: 'center' }]}>
+                        <Wallet size={20} color={accentColor} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: theme.colors.text, marginBottom: 2 }}>{formatFeeMonth(fee.fee_month)}</Text>
+                        <Text style={{ fontSize: 11, color: theme.colors.textMuted, fontWeight: '500' }}>
+                          {isPaid && fee.payments && fee.payments[0] ? 'Paid on ' : 'Due '}{dateFmt}
                         </Text>
-                      </View>
                     </View>
-                    <View style={styles.historyBottom}>
-                      <View>
-                        <Text style={styles.historyLbl}>Due Date</Text>
-                        <Text style={styles.historyVal}>{formatDueDate(fee.due_date)}</Text>
-                      </View>
-                      <View style={{ alignItems: 'flex-end' }}>
-                        <Text style={styles.historyLbl}>Amount</Text>
-                        <Text style={styles.historyAmt}>₹{fee.total_amount || fee.monthly_rent ? fee.total_amount || fee.monthly_rent : '—'}</Text>
-                      </View>
+                    <View style={{ alignItems: 'flex-end', gap: 2 }}>
+                        <Text style={{ fontSize: 15, fontWeight: '800', color: theme.colors.text, letterSpacing: -0.3 }}>
+                            -₹{displayAmount.toLocaleString('en-IN')}
+                        </Text>
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: accentColor }}>
+                            {fee.fee_status ?? 'Pending'}
+                        </Text>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 );
               })
             )}

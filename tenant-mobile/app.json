@@ -11,7 +11,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#6D4AFF",
         "foregroundImage": "./assets/HostixNew.jpeg",
         "backgroundImage": "./assets/HostixNew.jpeg",
         "monochromeImage": "./assets/HostixNew.jpeg"
@@ -24,14 +24,14 @@
     "splash": {
       "image": "./assets/HostixNew.jpeg",
       "resizeMode": "contain",
-      "backgroundColor": "#2245D4"
+      "backgroundColor": "#6D4AFF"
     },
     "plugins": [
       [
         "expo-notifications",
         {
           "icon": "./assets/HostixNew.jpeg",
-          "color": "#2952F3"
+          "color": "#6D4AFF"
         }
       ],
       [

@@ -9,7 +9,7 @@ import { useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { navigationRef } from './navigationRef';
 import { colors } from '../theme';
-import { setupNotificationListeners } from '../services/notifications';
+import { setupNotificationListeners, registerPushTokenAsync } from '../services/notifications';
 
 // Auth / onboarding
 import { HostelKeyScreen } from '../Pages/HostelKeyScreen';
@@ -100,6 +100,7 @@ export default function AppNavigator() {
 
   useEffect(() => {
     if (!user) return;
+    registerPushTokenAsync();
     const cleanup = setupNotificationListeners(navigationRef);
     return cleanup;
   }, [user]);

@@ -1,8 +1,9 @@
 import React, { useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Animated, Image, StyleSheet } from 'react-native';
-import { Wallet, CheckCircle2, AlertCircle, ArrowRight, Check } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, Animated, StyleSheet } from 'react-native';
+import { Wallet, CheckCircle2, AlertCircle, ChevronRight } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
+
+import { theme } from '../../theme';
 
 interface BudgetOverviewProps {
     budget: number;
@@ -18,139 +19,191 @@ export const BudgetOverview = ({
     budget, spent, progressAnim, dueAmount, totalRentAmount, rentDueDate, formatDate
 }: BudgetOverviewProps) => {
     const navigation = useNavigation<any>();
-    const pulseValue = useRef(new Animated.Value(1)).current;
 
-    useEffect(() => {
-        if (dueAmount > 0) {
-            Animated.loop(
-                Animated.sequence([
-                    Animated.timing(pulseValue, { toValue: 1.02, duration: 800, useNativeDriver: true }),
-                    Animated.timing(pulseValue, { toValue: 1, duration: 800, useNativeDriver: true }),
-                ])
-            ).start();
-        } else {
-            pulseValue.setValue(1);
-        }
-    }, [dueAmount]);
+    const overBudget = budget > 0 && spent > budget;
 
     return (
-        <>
-            {/* ── Budget Progress Bar ── */}
-            <View style={{ marginBottom: 16 }}>
-                <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate("Expenses")}>
-                    <View style={[styles.globalCard, { paddingVertical: 20, paddingHorizontal: 20 }]}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                                <View style={[styles.cardIconWrap, { backgroundColor: '#EEF2FF', width: 44, height: 44, borderRadius: 14 }]}>
-                                    <Wallet size={20} color="#2952F3" />
+        <View style={styles.container}>
+            {/* ── MAIN FOCUS: RENT DUE ── */}
+            <TouchableOpacity 
+                activeOpacity={dueAmount > 0 ? 0.8 : 1}
+                onPress={() => dueAmount > 0 ? navigation.navigate('Payments') : undefined}
+                style={[styles.dueCard, { borderColor: dueAmount > 0 ? theme.colors.dangerSoft : theme.colors.successSoft }]}
+            >
+                <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 16, gap: 14 }}>
+                    <View style={[styles.iconWrap, { backgroundColor: dueAmount > 0 ? theme.colors.dangerSoft : theme.colors.successSoft }]}>
+                        {dueAmount > 0
+                            ? <AlertCircle size={24} color={theme.colors.danger} strokeWidth={2.5} />
+                            : <CheckCircle2 size={24} color={theme.colors.successDark} strokeWidth={2.5} />
+                        }
+                    </View>
+                    
+                    <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                            <Text style={styles.dueTitleText}>
+                                {dueAmount > 0 ? 'Rent Due' : 'Rent Cleared'}
+                            </Text>
+                            {dueAmount > 0 && rentDueDate && (
+                                <View style={styles.dueBadge}>
+                                    <Text style={styles.dueBadgeText}>Due {formatDate(rentDueDate)}</Text>
                                 </View>
-                                <View>
-                                    <Text style={{ fontSize: 16, fontWeight: '800', color: '#0F172A', marginBottom: 2 }}>Monthly Budget</Text>
-                                    <Text style={{ fontSize: 13, fontWeight: '600', color: '#64748B' }}>
-                                        {budget > 0 ? `₹${(budget - spent > 0 ? budget - spent : 0).toLocaleString('en-IN')} remaining` : 'No budget set'}
-                                    </Text>
-                                </View>
-                            </View>
+                            )}
+                        </View>
+                        <Text style={[styles.dueAmountText, { color: dueAmount > 0 ? theme.colors.danger : theme.colors.successDark }]}>
+                            ₹{(dueAmount > 0 ? dueAmount : (totalRentAmount || 0)).toLocaleString('en-IN')}
+                        </Text>
+                    </View>
 
-                            <View style={{ alignItems: 'flex-end' }}>
-                                <Text style={{ fontSize: 18, fontWeight: '800', color: budget > 0 && spent > budget ? '#EF4444' : '#0F172A', letterSpacing: -0.5 }}>
+                    {dueAmount > 0 ? (
+                        <View style={[styles.payBtnSolid, { backgroundColor: theme.colors.danger }]}>
+                            <Text style={styles.payBtnSolidText}>Pay Now</Text>
+                        </View>
+                    ) : (
+                        <View style={[styles.dueBadge, { backgroundColor: theme.colors.successSoft }]}>
+                            <Text style={[styles.dueBadgeText, { color: theme.colors.successDark }]}>All Paid</Text>
+                        </View>
+                    )}
+                </View>
+            </TouchableOpacity>
+
+            {/* ── SMALL BUDGET ROW ── */}
+            <TouchableOpacity activeOpacity={0.8} onPress={() => navigation.navigate('Expenses')} style={styles.smallBudgetRow}>
+                <View style={{ width: '100%' }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <View style={styles.smallBudgetLeft}>
+                            <Wallet size={16} color={theme.colors.primary} strokeWidth={2} />
+                            <Text style={styles.smallBudgetLabel}>Monthly Budget</Text>
+                        </View>
+                        <View style={styles.smallBudgetRight}>
+                            <Text style={styles.smallBudgetAmount}>
+                                <Text style={[styles.smallBudgetSpent, overBudget && { color: theme.colors.danger }]}>
                                     ₹{spent.toLocaleString('en-IN')}
                                 </Text>
-                                <Text style={{ fontSize: 12, fontWeight: '600', color: '#94A3B8' }}>
-                                    / ₹{budget > 0 ? budget.toLocaleString('en-IN') : '0'}
-                                </Text>
-                            </View>
-                        </View>
-
-                        <View style={{ height: 8, backgroundColor: '#F1F5F9', borderRadius: 4, overflow: 'hidden' }}>
-                            <Animated.View style={{
-                                height: '100%',
-                                borderRadius: 4,
-                                backgroundColor: budget > 0 && spent > budget ? '#EF4444' : '#2952F3',
-                                width: progressAnim.interpolate({
-                                    inputRange: [0, 100],
-                                    outputRange: ['0%', '100%']
-                                })
-                            }} />
-                        </View>
-                    </View>
-                </TouchableOpacity>
-            </View>
-
-            {/* ── Total Due Overview Card ── */}
-            <View style={{ marginBottom: 24 }}>
-                <Animated.View style={{ transform: [{ scale: pulseValue }] }}>
-                    <LinearGradient
-                        colors={dueAmount === 0 ? ['#F0FDF4', '#DCFCE7'] : (dueAmount < totalRentAmount ? ['#FFF7ED', '#FFEDD5'] : ['#FEF2F2', '#FEE2E2'])}
-                        style={[styles.globalCard, {
-                            paddingVertical: 16,
-                            paddingHorizontal: 20,
-                            flexDirection: "row",
-                            alignItems: "center",
-                            overflow: 'hidden',
-                            borderColor: dueAmount === 0 ? '#BBF7D0' : (dueAmount < totalRentAmount ? '#FED7AA' : '#FECACA'),
-                            borderWidth: 1,
-                        }]}
-                    >
-                        <View style={{ flex: 1 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                            <View style={[styles.cardIconWrap, {
-                                backgroundColor: dueAmount === 0 ? '#D1FAE5' : (dueAmount < totalRentAmount ? '#FFEDD5' : '#FEE2E2'),
-                                width: 32, height: 32, borderRadius: 10,
-                            }]}>
-                                {dueAmount === 0 ? <CheckCircle2 size={16} color="#10B981" /> : <AlertCircle size={16} color={dueAmount < totalRentAmount ? '#EA580C' : '#EF4444'} />}
-                            </View>
-                            <Text style={{ fontSize: 14, fontWeight: "600", color: "#64748B", marginBottom: 0 }}>
-                                {dueAmount > 0 ? "Total Due" : "Monthly Rent"}
+                                <Text style={styles.smallBudgetLimit}> / ₹{budget > 0 ? budget.toLocaleString('en-IN') : '0'}</Text>
                             </Text>
+                            <ChevronRight size={16} color={theme.colors.textMuted} strokeWidth={2.5} style={{ marginLeft: 6 }} />
                         </View>
-                        <Text style={[{ fontWeight: "800", marginBottom: 2, fontSize: 28 }, dueAmount === 0 ? { color: "#16A34A" } : (dueAmount < totalRentAmount ? { color: "#EA580C" } : { color: "#E11D48" })]}>
-                            ₹ {(dueAmount > 0 ? dueAmount : (totalRentAmount || 0)).toLocaleString("en-IN")}
-                        </Text>
-                        {dueAmount > 0 && (
-                            <Text style={{ fontSize: 12, fontWeight: "600", color: "#64748B", marginBottom: 12 }}>
-                                📅 Due: {rentDueDate ? formatDate(rentDueDate) : "Not scheduled"}
-                            </Text>
-                        )}
-                        {dueAmount > 0 ? (
-                            <TouchableOpacity style={{ backgroundColor: '#0a0a0a', paddingVertical: 10, paddingHorizontal: 16, marginTop: 4, borderRadius: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, alignSelf: "flex-start" }} onPress={() => navigation.navigate("Payments")}>
-                                <Text style={{ fontSize: 13, color: '#f5f4f2', fontWeight: "700" }}>Pay Now</Text>
-                                <ArrowRight size={16} color="#f5f4f2" />
-                            </TouchableOpacity>
-                        ) : (
-                            <View style={{ backgroundColor: "#D1FAE5", paddingVertical: 10, paddingHorizontal: 16, marginTop: 4, borderRadius: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, alignSelf: "flex-start" }}>
-                                <Check size={16} color="#10B981" strokeWidth={3} />
-                                <Text style={{ color: "#10B981", fontSize: 13, fontWeight: "700" }}>Paid</Text>
-                            </View>
-                        )}
                     </View>
-                    <View style={{ width: 110, height: 110, justifyContent: "center", alignItems: "center" }}>
-                        <Image source={require("../../../assets/wallet_3d.png")} style={{ width: 120, height: 120, position: "absolute", right: -16 }} resizeMode="contain" />
+                    <View style={{ height: 6, backgroundColor: 'rgba(109, 74, 255, 0.15)', borderRadius: 3, overflow: 'hidden' }}>
+                        <Animated.View style={{ height: '100%', width: progressAnim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }), backgroundColor: theme.colors.success, borderRadius: 3 }} />
                     </View>
-                    </LinearGradient>
-                </Animated.View>
-            </View>
-        </>
+                </View>
+            </TouchableOpacity>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
-    globalCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 24,
-        padding: 20,
-        borderWidth: 0,
-        shadowColor: "#1F2937",
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.04,
-        shadowRadius: 16,
-        elevation: 3,
+    container: {
+        marginHorizontal: 16,
+        marginBottom: 16,
+        gap: 16,
     },
-    cardIconWrap: {
-        width: 44,
-        height: 44,
-        borderRadius: 12,
+    // SHARED STYLES
+    iconWrap: {
+        width: 48,
+        height: 48,
+        borderRadius: 14,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+
+    // DUE CARD
+    dueCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.08,
+        shadowRadius: 16,
+        elevation: 4,
+        borderWidth: 1,
+        borderColor: theme.colors.borderSoft,
+    },
+    dueContent: {
+        padding: 20,
+    },
+    dueHeaderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    dueHeaderLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    dueTitleText: {
+        fontSize: 16,
+        fontWeight: '800',
+        color: theme.colors.text,
+    },
+    dueBadge: {
+        backgroundColor: theme.colors.dangerSoft,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 8,
+    },
+    dueBadgeText: {
+        fontSize: 11,
+        fontWeight: '800',
+        color: theme.colors.danger,
+    },
+    dueAmountText: {
+        fontSize: 24,
+        fontWeight: '900',
+        letterSpacing: -0.5,
+    },
+    payBtnSolid: {
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 12,
+    },
+    payBtnSolidText: {
+        color: '#FFFFFF',
+        fontSize: 13,
+        fontWeight: '800',
+    },
+
+    // SMALL BUDGET ROW
+    smallBudgetRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        backgroundColor: theme.colors.primarySoft,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(109, 74, 255, 0.1)',
+    },
+    smallBudgetLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    smallBudgetLabel: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: theme.colors.primaryDark,
+    },
+    smallBudgetRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    smallBudgetAmount: {
+        flexDirection: 'row',
+        alignItems: 'baseline',
+    },
+    smallBudgetSpent: {
+        fontSize: 14,
+        fontWeight: '800',
+        color: theme.colors.primaryDark,
+    },
+    smallBudgetLimit: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: theme.colors.primary,
     },
 });

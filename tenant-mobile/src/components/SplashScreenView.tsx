@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
@@ -6,9 +6,7 @@ import {
   StyleSheet,
   Text,
   View,
-  ActivityIndicator,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 
 const { width, height } = Dimensions.get('window');
 
@@ -18,85 +16,31 @@ interface Props {
 
 export default function SplashScreenView({ isReady }: Props) {
   const opacity = useRef(new Animated.Value(1)).current;
-  const scale = useRef(new Animated.Value(0.7)).current;
-  const logoOpacity = useRef(new Animated.Value(0)).current;
-  const glowAnim = useRef(new Animated.Value(0)).current;
-
-  // Entrance animations
-  useEffect(() => {
-    Animated.parallel([
-      Animated.spring(scale, {
-        toValue: 1,
-        friction: 6,
-        tension: 40,
-        useNativeDriver: true,
-      }),
-      Animated.timing(logoOpacity, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    // Subtle pulsating glow
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(glowAnim, {
-          toValue: 1,
-          duration: 1500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(glowAnim, {
-          toValue: 0,
-          duration: 1500,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-  }, []);
+  const scale = useRef(new Animated.Value(1)).current;
+  const logoOpacity = useRef(new Animated.Value(1)).current;
+  const [unmounted, setUnmounted] = useState(false);
 
   // Exit animation
   useEffect(() => {
     if (isReady) {
       Animated.timing(opacity, {
         toValue: 0,
-        duration: 500,
-        delay: 200,
+        duration: 400,
         useNativeDriver: true,
-      }).start();
+      }).start(() => {
+        setUnmounted(true);
+      });
     }
   }, [isReady]);
 
-  const glowStyle = {
-    opacity: glowAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: [0.3, 0.7],
-    }),
-    transform: [
-      {
-        scale: glowAnim.interpolate({
-          inputRange: [0, 1],
-          outputRange: [1, 1.2],
-        }),
-      },
-    ],
-  };
+  if (unmounted) return null;
 
   return (
     <Animated.View style={[styles.container, { opacity }]} pointerEvents="none">
-      <LinearGradient
-        colors={['#2952F3', '#1E3A8A']}
-        locations={[0, 1]}
-        style={StyleSheet.absoluteFillObject}
-      />
-      
-      {/* Decorative blurred circles in the background */}
-      <View style={[styles.blob, styles.blob1]} />
-      <View style={[styles.blob, styles.blob2]} />
+      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#6D4AFF' }]} />
 
       <Animated.View style={[styles.content, { transform: [{ scale }], opacity: logoOpacity }]}>
         <View style={styles.logoContainer}>
-          <Animated.View style={[styles.glowRing, glowStyle]} />
           <View style={styles.logoInnerWrap}>
             <Image
               source={require('../../assets/icon.png')}
@@ -111,32 +55,60 @@ export default function SplashScreenView({ isReady }: Props) {
       </Animated.View>
 
       <Animated.View style={[styles.loaderWrap, { opacity: logoOpacity }]}>
-        <ActivityIndicator size="large" color="#FFFFFF" />
+        <DotsLoader />
         <Text style={styles.loaderText}>Loading your space…</Text>
       </Animated.View>
     </Animated.View>
   );
 }
 
-function LoopingBar() {
-  const anim = useRef(new Animated.Value(0)).current;
+function DotsLoader() {
+  const dot1 = useRef(new Animated.Value(0)).current;
+  const dot2 = useRef(new Animated.Value(0)).current;
+  const dot3 = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(anim, { toValue: 1, duration: 1200, useNativeDriver: false }),
-        Animated.timing(anim, { toValue: 0, duration: 0, useNativeDriver: false }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
+    const animateDot = (anim: Animated.Value, delay: number) => {
+      return Animated.sequence([
+        Animated.delay(delay),
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(anim, {
+              toValue: 1,
+              duration: 400,
+              useNativeDriver: true,
+            }),
+            Animated.timing(anim, {
+              toValue: 0,
+              duration: 400,
+              useNativeDriver: true,
+            }),
+            Animated.delay(400)
+          ])
+        )
+      ]);
+    };
+
+    Animated.parallel([
+      animateDot(dot1, 0),
+      animateDot(dot2, 200),
+      animateDot(dot3, 400)
+    ]).start();
   }, []);
 
-  const widthPct = anim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
-  const translateX = anim.interpolate({ inputRange: [0, 1], outputRange: [-100, width * 0.6] });
+  const getStyle = (anim: Animated.Value) => ({
+    opacity: anim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }),
+    transform: [{
+      translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [0, -4] })
+    }]
+  });
 
   return (
-    <Animated.View style={[styles.loaderBar, { width: '40%', transform: [{ translateX }] }]} />
+    <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+      <Animated.View style={[{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#FFFFFF' }, getStyle(dot1)]} />
+      <Animated.View style={[{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#FFFFFF' }, getStyle(dot2)]} />
+      <Animated.View style={[{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#FFFFFF' }, getStyle(dot3)]} />
+    </View>
   );
 }
 

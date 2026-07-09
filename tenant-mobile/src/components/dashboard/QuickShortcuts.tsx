@@ -1,7 +1,9 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import IconGlowBadge from '../../components/ui/IconGlowBadge';
+import { Zap } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { theme } from '../../theme';
 
 interface QuickShortcutsProps {
     shortcuts: {
@@ -20,22 +22,23 @@ export const QuickShortcuts = ({ shortcuts }: QuickShortcutsProps) => {
 
     return (
         <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Shortcuts</Text>
-            <View style={styles.shortcutGrid}>
+            <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>QUICK ACTIONS</Text>
+            </View>
+
+            <View style={styles.shortcutRow}>
                 {shortcuts.map((sc) => {
                     return (
-                        <TouchableOpacity key={sc.id} style={styles.shortcutItem} onPress={() => navigation.navigate(sc.nav)}>
-                            <IconGlowBadge
-                                Icon={sc.icon}
-                                gradient={sc.gradient}
-                                glowColor={sc.color}
-                                flatColor={sc.color}
-                                flatBg={sc.bg}
-                                size="md"
-                                entrance
-                                style={{ marginBottom: 8 }}
-                            />
-                            <Text style={styles.shortcutText}>{sc.name}</Text>
+                        <TouchableOpacity
+                            key={sc.id}
+                            style={styles.shortcutItem}
+                            onPress={() => navigation.navigate(sc.nav)}
+                            activeOpacity={0.7}
+                        >
+                            <View style={[styles.iconWrap, { backgroundColor: sc.bg }]}>
+                                <sc.icon size={24} color={sc.color} strokeWidth={2.5} />
+                            </View>
+                            <Text style={styles.shortcutText} numberOfLines={1}>{sc.name}</Text>
                         </TouchableOpacity>
                     );
                 })}
@@ -46,31 +49,41 @@ export const QuickShortcuts = ({ shortcuts }: QuickShortcutsProps) => {
 
 const styles = StyleSheet.create({
     section: {
-        marginBottom: 28,
-        paddingHorizontal: 20,
+        marginBottom: 16,
+        paddingHorizontal: 16,
+    },
+    sectionHeader: {
+        marginBottom: 16,
+        paddingHorizontal: 4,
     },
     sectionTitle: {
-        fontSize: 18,
+        fontSize: 13,
         fontWeight: '800',
-        color: '#0F172A',
-        marginBottom: 16,
+        color: theme.colors.textMuted,
+        letterSpacing: 1.2,
     },
-    shortcutGrid: {
+    shortcutRow: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         justifyContent: 'flex-start',
-        gap: 12,
-        paddingHorizontal: 4,
     },
     shortcutItem: {
-        width: '30%',
         alignItems: 'center',
+        width: '25%', // Exactly 4 items per row
         marginBottom: 16,
     },
+    iconWrap: {
+        width: 58,
+        height: 58,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 10,
+    },
     shortcutText: {
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: '700',
-        color: '#334155',
+        color: theme.colors.text,
         textAlign: 'center',
         letterSpacing: -0.2,
     },

@@ -69,6 +69,8 @@ import { BudgetOverview } from '../components/dashboard/BudgetOverview';
 import { MessMenuCard } from '../components/dashboard/MessMenuCard';
 import { QuickShortcuts } from '../components/dashboard/QuickShortcuts';
 import { RecentActivity } from '../components/dashboard/RecentActivity';
+import { theme } from '../theme';
+
 const { width, height } = Dimensions.get("window");
 
 function FadeSlideIn({ children, delay = 0, style }: { children: React.ReactNode; delay?: number; style?: any }) {
@@ -76,13 +78,13 @@ function FadeSlideIn({ children, delay = 0, style }: { children: React.ReactNode
 }
 
 // ── Ocean Blue Palette ────────────────────────────────────────────────────────
-const BLUE = "#2952F3";
-const BLUE_DARK = "#1E3A8A";
-const BLUE_SOFT = "#EEF2FF";
+const BLUE = theme.colors.primary;
+const BLUE_DARK = theme.colors.primaryDark;
+const BLUE_SOFT = theme.colors.primarySoft;
 const WHITE = "#FFFFFF";
-const TEXT_DARK = "#1F2937";
-const TEXT_MID = "#6B7280";
-const BORDER = "#F1F5F9";
+const TEXT_DARK = "#0F172A";
+const TEXT_MID = "#64748B";
+const BORDER = "#E2E8F0";
 const BG = "#F8FAFC";
 
 export default function HomeScreen({ navigation }: any) {
@@ -226,12 +228,15 @@ export default function HomeScreen({ navigation }: any) {
             sum += bal;
             if (!firstDueDate) firstDueDate = f.due_date || null;
           }
-          if (f.payment_id && f.payment_amount) {
-            payments.push({
-              id: String(f.payment_id),
-              amount: f.payment_amount,
-              date: f.payment_date,
-              mode: f.payment_mode_name || 'Online'
+          if (f.payments && Array.isArray(f.payments)) {
+            f.payments.forEach((p: any) => {
+              payments.push({
+                id: String(p.payment_id),
+                amount: p.amount,
+                date: p.payment_date,
+                mode: p.payment_mode || 'Online',
+                status: p.verification_status
+              });
             });
           }
         });
@@ -382,16 +387,16 @@ export default function HomeScreen({ navigation }: any) {
     { key: "dinner", title: "Dinner", sub: todayMenu.dinner.items, time: "8:00 PM - 11:00 PM", Icon: ConciergeBell, iconColor: "#7C3AED", iconBg: "#EDE9FE" },
   ];
 
-  const shortcuts: { id: string; name: string; icon: any; nav: string; bg: string; color: string; gradient: [string, string] }[] = [
-    { id: 'mess', name: 'Mess', icon: Utensils, nav: 'FullMenu', bg: '#DCFCE7', color: '#22C55E', gradient: ['#16A34A', '#4ADE80'] },
-    { id: 'rent', name: 'Pay Rent', icon: Wallet, nav: 'Dues', bg: '#FFEDD5', color: '#F97316', gradient: ['#EA580C', '#FB923C'] },
-    { id: 'complaints', name: 'Complaints', icon: AlertCircle, nav: 'Complaints', bg: '#FEE2E2', color: '#EF4444', gradient: ['#DC2626', '#F87171'] },
-    { id: 'documents', name: 'Documents', icon: FileSignature, nav: 'Documents', bg: '#F3E8FF', color: '#9333EA', gradient: ['#7E22CE', '#C084FC'] },
-    { id: 'notes', name: 'Notes', icon: FileText, nav: 'Notes', bg: '#FEF3C7', color: '#D97706', gradient: ['#B45309', '#FBBF24'] },
-    { id: 'room', name: 'Room Info', icon: BedDouble, nav: 'RoomInfo', bg: '#E0E7FF', color: '#4F46E5', gradient: ['#4338CA', '#818CF8'] },
-    { id: 'gatepass', name: 'Gate Pass', icon: QrCode, nav: 'GatePass', bg: '#E0F2FE', color: '#0EA5E9', gradient: ['#0284C7', '#38BDF8'] },
-    { id: 'splits', name: 'Splits', icon: Briefcase, nav: 'Splits', bg: '#FFE4E6', color: '#E11D48', gradient: ['#BE123C', '#FB7185'] },
-    { id: 'visitor', name: 'Visitor Pass', icon: UserPlus, nav: 'VisitorPass', bg: '#FEF3C7', color: '#D97706', gradient: ['#F59E0B', '#FCD34D'] },
+  const shortcuts: { id: string; name: string; icon: any; nav: string; bg: string; color: string }[] = [
+    { id: 'rent', name: 'Pay Rent', icon: Wallet, nav: 'Dues', bg: '#DCFCE7', color: '#16A34A' }, // Finance (Green)
+    { id: 'mess', name: 'Mess', icon: Utensils, nav: 'FullMenu', bg: '#F3E8FF', color: '#9333EA' }, // Support (Purple)
+    { id: 'complaints', name: 'Complaints', icon: AlertCircle, nav: 'Complaints', bg: '#F3E8FF', color: '#9333EA' }, // Support (Purple)
+    { id: 'splits', name: 'Splits', icon: Briefcase, nav: 'Splits', bg: '#DCFCE7', color: '#16A34A' }, // Finance (Green)
+    { id: 'visitor', name: 'Visitor Pass', icon: UserPlus, nav: 'VisitorPass', bg: '#E0F2FE', color: '#0EA5E9' }, // Access (Blue)
+    { id: 'gatepass', name: 'Gate Pass', icon: QrCode, nav: 'GatePass', bg: '#E0F2FE', color: '#0EA5E9' }, // Access (Blue)
+    { id: 'documents', name: 'Documents', icon: FileSignature, nav: 'Documents', bg: '#F3E8FF', color: '#9333EA' }, // Support (Purple)
+    { id: 'notes', name: 'Notes', icon: FileText, nav: 'Notes', bg: '#F3E8FF', color: '#9333EA' }, // Support (Purple)
+    { id: 'room', name: 'Room Info', icon: BedDouble, nav: 'RoomInfo', bg: '#E0F2FE', color: '#0EA5E9' }, // Access (Blue)
   ];
 
   const SkeletonBlock = ({ style }: { style: any }) => (
@@ -413,7 +418,7 @@ export default function HomeScreen({ navigation }: any) {
             </View>
           </SafeAreaView>
         </LinearGradient>
-        <View style={{ padding: 20, gap: 24 }}>
+        <View style={{ paddingHorizontal: 16, paddingTop: 16, gap: 24 }}>
           <SkeletonBlock style={{ height: 140, borderRadius: 24 }} />
           <SkeletonBlock style={{ height: 120, borderRadius: 24 }} />
           <View style={{ flexDirection: 'row', gap: 12, flexWrap: 'wrap' }}>
@@ -438,16 +443,22 @@ export default function HomeScreen({ navigation }: any) {
               <Text style={[styles.headerGreeting, { color: WHITE }]}>
                 Hi, {firstName} <Text style={{ fontSize: 18 }}>👋</Text>
               </Text>
-              <Text style={[styles.headerSub, { color: 'rgba(255,255,255,0.8)' }]}>Welcome Back!</Text>
+              <Text style={[styles.headerSub, { color: 'rgba(255,255,255,0.75)' }]}>
+                {user?.hostel_name ? user.hostel_name : 'Welcome Back!'}
+              </Text>
             </View>
-            <View style={{ alignItems: 'flex-end', gap: 4 }}>
+            <View style={{ alignItems: 'flex-end', gap: 6 }}>
               <View style={styles.headerRight}>
                 <TouchableOpacity
                   style={[styles.hBtn, { backgroundColor: 'rgba(255,255,255,0.15)' }]}
                   onPress={() => navigation.navigate("Notifications")}
                 >
-                  <Bell size={24} color={WHITE} strokeWidth={1.5} />
-                  {unreadNotifCount > 0 && <View style={[styles.notificationDot, { backgroundColor: '#EF4444', borderColor: BLUE }]} />}
+                  <Bell size={22} color={WHITE} strokeWidth={1.5} />
+                  {unreadNotifCount > 0 && (
+                    <View style={styles.notifPill}>
+                      <Text style={styles.notifPillText}>{unreadNotifCount > 9 ? '9+' : unreadNotifCount}</Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.hAvatar, { backgroundColor: 'rgba(255,255,255,0.2)' }]}
@@ -456,8 +467,8 @@ export default function HomeScreen({ navigation }: any) {
                   <Text style={[styles.hAvatarText, { color: WHITE }]}>{initials}</Text>
                 </TouchableOpacity>
               </View>
-              <Text style={{ fontSize: 8.5, color: 'white', fontWeight: '800', letterSpacing: 0.5, marginTop: -2, opacity: 0.9 }}>
-                  {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()}
+              <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.75)', fontWeight: '700', letterSpacing: 0.5 }}>
+                {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()}
               </Text>
             </View>
           </View>
@@ -466,7 +477,7 @@ export default function HomeScreen({ navigation }: any) {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 180, paddingTop: 16 }}
+        contentContainerStyle={{ paddingBottom: 120, paddingTop: 16 }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -503,15 +514,15 @@ export default function HomeScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F8FAFC' },
+  root: { flex: 1, backgroundColor: theme.colors.bg },
 
   // ── Global Standardized Card ──
   globalCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 20,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius['3xl'],
+    padding: theme.spacing.xl,
     borderWidth: 0,
-    shadowColor: "#1F2937",
+    shadowColor: theme.colors.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.04,
     shadowRadius: 16,
@@ -520,7 +531,7 @@ const styles = StyleSheet.create({
   cardIconWrap: {
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: theme.radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -533,7 +544,7 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: "row", alignItems: "center",
-    paddingHorizontal: 20, paddingTop: 12,
+    paddingHorizontal: 16, paddingTop: 12,
   },
   hAvatar: {
     width: 44, height: 44, borderRadius: 22,
@@ -549,13 +560,32 @@ const styles = StyleSheet.create({
   headerGreeting: { fontSize: 24, fontWeight: "800", color: WHITE, letterSpacing: -0.5 },
   headerSub: { fontSize: 14, color: BLUE_SOFT, marginTop: 4, fontWeight: "500" },
   headerRight: { flexDirection: "row", alignItems: "center", gap: 12 },
+  notifPill: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#EF4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: WHITE,
+  },
+  notifPillText: {
+    color: WHITE,
+    fontSize: 9,
+    fontWeight: '800',
+  },
   notificationDot: {
     position: "absolute", top: 4, right: 4,
     width: 10, height: 10, borderRadius: 5,
     backgroundColor: "#EF4444",
     borderWidth: 2, borderColor: WHITE,
   },
-  section: { paddingHorizontal: 20, marginBottom: 24 },
+  section: { paddingHorizontal: 16, marginBottom: 16 },
   sectionHeader: {
     flexDirection: "row", justifyContent: "space-between",
     alignItems: "center", marginBottom: 12,
@@ -565,7 +595,7 @@ const styles = StyleSheet.create({
 
   // Overview card
   overviewCard: {
-    backgroundColor: WHITE, borderRadius: 20, paddingVertical: 12, paddingHorizontal: 20,
+    backgroundColor: WHITE, borderRadius: 20, paddingVertical: 12, paddingHorizontal: 16,
     flexDirection: "row", alignItems: "center",
     shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05, shadowRadius: 10, elevation: 2,

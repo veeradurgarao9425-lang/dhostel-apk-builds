@@ -14,22 +14,27 @@ import {
   Camera, Upload, Check, ChevronDown, Shield, Calendar,
   CreditCard, MapPin,
 } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import api from '../services/api';
+import { colors } from '../theme';
 
 const { width } = Dimensions.get('window');
 
 // ─── Brand Colors ─────────────────────────────────────────────────────────────
-const BLUE       = '#2245D4';
-const BLUE_LIGHT = '#3b5ee6';
-const BLUE_SOFT  = '#EEF3FF';
-const WHITE      = '#FFFFFF';
-const TEXT_DARK  = '#0D1B3E';
-const TEXT_MID   = '#4A5568';
-const TEXT_HINT  = '#A0AEC0';
-const BORDER     = '#E2E8F0';
-const BG         = '#F8FAFC';
-const DANGER     = '#EF4444';
-const GREEN      = '#10B981';
+const PURPLE      = colors.primary;       // #6D4AFF
+const PURPLE_DARK = colors.primaryDark;   // #5B39E0
+const PURPLE_SOFT = colors.primarySoft;   // #F4F1FF
+const BLUE        = PURPLE;               // alias for backward compat
+const BLUE_LIGHT  = '#8B6BFF';
+const BLUE_SOFT   = PURPLE_SOFT;
+const WHITE       = '#FFFFFF';
+const TEXT_DARK   = '#0D1B3E';
+const TEXT_MID    = '#4A5568';
+const TEXT_HINT   = '#A0AEC0';
+const BORDER      = '#E2E8F0';
+const BG          = '#F8FAFC';
+const DANGER      = '#EF4444';
+const GREEN       = '#10B981';
 
 const STEPS = [
   { label: 'Basic Info' },
@@ -41,25 +46,36 @@ const STEPS = [
 const Stepper = ({ step }: { step: number }) => (
   <View style={st.stepperRow}>
     {STEPS.map((s, i) => {
-      const num   = i + 1;
-      const done  = num < step;
+      const num    = i + 1;
+      const done   = num < step;
       const active = num === step;
       return (
         <React.Fragment key={num}>
           <View style={st.stepItem}>
             <View style={[
               st.stepCircle,
-              done   && { backgroundColor: BLUE, borderColor: BLUE },
-              active && { backgroundColor: BLUE, borderColor: BLUE },
+              done   && { borderColor: PURPLE },
+              active && { borderColor: PURPLE },
             ]}>
-              {done
-                ? <Check size={13} color={WHITE} strokeWidth={3} />
-                : <Text style={[st.stepNum, (done || active) && { color: WHITE }]}>{num}</Text>}
+              {(done || active) ? (
+                <LinearGradient
+                  colors={[PURPLE, PURPLE_DARK]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={st.stepCircleGrad}
+                >
+                  {done
+                    ? <Check size={15} color={WHITE} strokeWidth={3} />
+                    : <Text style={[st.stepNum, { color: WHITE }]}>{num}</Text>}
+                </LinearGradient>
+              ) : (
+                <Text style={st.stepNum}>{num}</Text>
+              )}
             </View>
-            <Text style={[st.stepLabel, active && { color: BLUE, fontWeight: '700' }]}>{s.label}</Text>
+            <Text style={[st.stepLabel, active && { color: PURPLE, fontWeight: '700' }]}>{s.label}</Text>
           </View>
           {i < STEPS.length - 1 && (
-            <View style={[st.stepLine, done && { backgroundColor: BLUE }]} />
+            <View style={[st.stepLine, done && { backgroundColor: PURPLE }]} />
           )}
         </React.Fragment>
       );
@@ -720,24 +736,38 @@ export default function RegistrationScreen({ route, navigation }: any) {
                   disabled={loading}
                   activeOpacity={0.85}
                 >
-                  {loading
-                    ? <ActivityIndicator color={WHITE} />
-                    : (
-                      <View style={st.btnRow}>
-                        <Text style={st.primaryBtnText}>Create Account</Text>
-                        <ArrowRight size={20} color={WHITE} />
-                      </View>
-                    )
-                  }
+                  <LinearGradient
+                    colors={[PURPLE, PURPLE_DARK]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={st.primaryBtnGrad}
+                  >
+                    {loading
+                      ? <ActivityIndicator color={WHITE} />
+                      : (
+                        <View style={st.btnRow}>
+                          <Text style={st.primaryBtnText}>Create Account</Text>
+                          <ArrowRight size={20} color={WHITE} />
+                        </View>
+                      )
+                    }
+                  </LinearGradient>
                 </TouchableOpacity>
               </View>
             ) : (
               <View style={{ width: '100%' }}>
                 <TouchableOpacity style={st.primaryBtn} onPress={handleNext} activeOpacity={0.85}>
-                  <View style={st.btnRow}>
-                    <Text style={st.primaryBtnText}>Continue</Text>
-                    <ArrowRight size={18} color={WHITE} />
-                  </View>
+                  <LinearGradient
+                    colors={[PURPLE, PURPLE_DARK]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={st.primaryBtnGrad}
+                  >
+                    <View style={st.btnRow}>
+                      <Text style={st.primaryBtnText}>Continue</Text>
+                      <ArrowRight size={18} color={WHITE} />
+                    </View>
+                  </LinearGradient>
                 </TouchableOpacity>
               </View>
             )}
@@ -797,14 +827,19 @@ const st = StyleSheet.create({
   },
   stepItem: { alignItems: 'center', gap: 4, minWidth: 72 },
   stepCircle: {
-    width: 34, height: 34, borderRadius: 17,
+    width: 40, height: 40, borderRadius: 20,
     backgroundColor: WHITE,
     borderWidth: 2, borderColor: BORDER,
     alignItems: 'center', justifyContent: 'center',
+    overflow: 'hidden',
   },
-  stepNum: { fontSize: 13, fontWeight: '700', color: TEXT_MID },
+  stepCircleGrad: {
+    width: '100%', height: '100%',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  stepNum: { fontSize: 14, fontWeight: '700', color: TEXT_MID },
   stepLabel: { fontSize: 11, fontWeight: '500', color: TEXT_MID, textAlign: 'center' },
-  stepLine: { flex: 1, height: 2, backgroundColor: BORDER, marginBottom: 14 },
+  stepLine: { flex: 1, height: 3, backgroundColor: BORDER, marginBottom: 18 },
 
   // Scroll
   scrollContent: { padding: 16 },
@@ -857,11 +892,11 @@ const st = StyleSheet.create({
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1.2,
+    borderWidth: 1.5,
     borderColor: BORDER,
-    borderRadius: 10,
+    borderRadius: 12,
     paddingHorizontal: 14,
-    height: 52,
+    height: 54,
     backgroundColor: WHITE,
     gap: 10,
   },
@@ -924,10 +959,14 @@ const st = StyleSheet.create({
   },
   navRow: { flexDirection: 'row', gap: 12 },
   primaryBtn: {
-    backgroundColor: BLUE, borderRadius: 12,
-    height: 52, width: '100%', alignItems: 'center', justifyContent: 'center',
-    shadowColor: BLUE, shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
+    borderRadius: 14,
+    height: 54, width: '100%', alignItems: 'center', justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  primaryBtnGrad: {
+    width: '100%', height: '100%',
+    alignItems: 'center', justifyContent: 'center',
+    borderRadius: 14,
   },
   primaryBtnText: { color: WHITE, fontSize: 16, fontWeight: '700' },
   btnRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },

@@ -23,9 +23,9 @@ import { formatCurrency } from '../utils/format';
 import api from '../services/api';
 import AppHeader from '../components/ui/AppHeader';
 
-const BLUE      = '#2245D4';
-const BLUE_DARK = '#1E3A8A';
-const BLUE_SOFT = '#EEF2FF';
+const BLUE      = colors.primary;       // #6D4AFF — brand purple
+const BLUE_DARK = colors.primaryDark;   // #5B39E0
+const BLUE_SOFT = colors.primarySoft;   // #F4F1FF
 const WHITE     = '#FFFFFF';
 const TEXT_DARK = '#1A1A1A';
 const TEXT_MID  = '#666666';
@@ -225,10 +225,10 @@ export default function DuesScreen({ route, navigation }: any) {
       return (
         <LinearGradient
           colors={['#F0FDF4', '#DCFCE7']}
-          style={{ borderRadius: 24, marginHorizontal: 20, marginTop: 16, marginBottom: 4, padding: 24, borderWidth: 1, borderColor: '#BBF7D0', shadowColor: '#16A34A', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.1, shadowRadius: 16, elevation: 4, flexDirection: 'row', alignItems: 'center' }}
+          style={{ borderRadius: 24, marginHorizontal: 20, marginTop: 16, marginBottom: 4, padding: 24, borderWidth: 1, borderColor: '#BBF7D0', shadowColor: '#16A34A', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.12, shadowRadius: 16, elevation: 4, flexDirection: 'row', alignItems: 'center' }}
         >
-          <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#BBF7D0', alignItems: 'center', justifyContent: 'center' }}>
-            <Check size={28} color="#15803D" strokeWidth={3} />
+          <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: '#BBF7D0', alignItems: 'center', justifyContent: 'center' }}>
+            <Check size={30} color="#15803D" strokeWidth={3} />
           </View>
           <View style={{ flex: 1, marginLeft: 16 }}>
             <Text style={{ fontSize: 20, fontWeight: '800', color: '#14532D', letterSpacing: -0.5, marginBottom: 4 }}>All Dues Cleared! 🎉</Text>
@@ -250,24 +250,32 @@ export default function DuesScreen({ route, navigation }: any) {
                 {isCurrentMonth ? "This Month's Due" : `Due \u2014 ${formatMonth(fee.fee_month)}`}
               </Text>
               {fee.due_date ? (
-                <Text style={styles.heroSingleDate}>Due by {formatDateStr(fee.due_date)}</Text>
+                <Text style={styles.heroSingleDate}>📅 Due by {formatDateStr(fee.due_date)}</Text>
               ) : null}
             </View>
             <View style={[styles.statusPill, { backgroundColor: cfg.bg }]}>
               <Text style={[styles.statusPillText, { color: cfg.color }]}>{cfg.label}</Text>
             </View>
           </View>
-          <Text style={styles.heroSingleAmount}>{formatCurrency(fee.balance > 0 ? fee.balance : fee.total_due)}</Text>
-          {fee.paid_amount > 0 && (
-            <Text style={styles.heroSinglePartial}>
-              {formatCurrency(fee.paid_amount)} already paid
-            </Text>
-          )}
-          <TouchableOpacity style={styles.heroPayBtn} onPress={() => navigation.navigate('Payments')} activeOpacity={0.85}>
-            <CreditCard size={16} color={WHITE} strokeWidth={2} />
-            <Text style={styles.heroPayBtnText}>Pay Now</Text>
-            <ArrowRight size={15} color={WHITE} strokeWidth={2.5} />
-          </TouchableOpacity>
+          
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+            <View>
+              <Text style={styles.heroSingleAmount}>{formatCurrency(fee.balance > 0 ? fee.balance : fee.total_due)}</Text>
+              {fee.paid_amount > 0 && (
+                <Text style={styles.heroSinglePartial}>
+                  {formatCurrency(fee.paid_amount)} already paid
+                </Text>
+              )}
+            </View>
+            
+            <TouchableOpacity 
+              style={{ backgroundColor: colors.danger, paddingHorizontal: 18, paddingVertical: 10, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 6 }} 
+              onPress={() => navigation.navigate('Payments')} 
+              activeOpacity={0.85}
+            >
+              <Text style={{ color: WHITE, fontWeight: '800', fontSize: 13 }}>Pay Now</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       );
     }
@@ -449,25 +457,25 @@ export default function DuesScreen({ route, navigation }: any) {
                   })}
                 </View>
               </>
-            ) : (!thisMonthFee || thisMonthFee.balance > 0) ? (
+            ) : (!thisMonthFee || thisMonthFee.balance <= 0) ? (
               <View style={{ marginTop: 20, marginBottom: 20, paddingHorizontal: 20 }}>
                 <Phase3EmptyState variant="dues" onAction={() => setActiveTab('Payment History')} />
               </View>
             ) : null}
 
             {/* Recently paid (preview, max 5) */}
-            {paidFees.length > 0 && (
+            {allPayments.length > 0 && (
               <>
                 <Text style={styles.groupLabel}>Recently Paid</Text>
                 <View style={styles.listCard}>
-                  {paidFees.slice(0, 5).map((fee, i) => (
+                  {allPayments.slice(0, 5).map((p: any, i: number) => (
                     <TouchableOpacity
-                      key={fee.fee_id}
+                      key={p.payment_id}
                       activeOpacity={0.7}
-                      onPress={() => navigation.navigate('PaymentReceipt', { fee, isPaid: true })}
+                      onPress={() => navigation.navigate('PaymentReceipt', { fee: { ...p, payments: [p] }, isPaid: true })}
                       style={[
                         styles.listRow,
-                        i < Math.min(paidFees.length, 5) - 1 && styles.listRowDivider,
+                        i < Math.min(allPayments.length, 5) - 1 && styles.listRowDivider,
                         { alignItems: 'flex-start' },
                       ]}
                     >
@@ -475,16 +483,14 @@ export default function DuesScreen({ route, navigation }: any) {
                         <CheckCircle2 size={16} color={colors.success} strokeWidth={1.5} />
                       </View>
                       <View style={{ flex: 1, minWidth: 0, paddingRight: 8 }}>
-                        <Text style={styles.listTitle}>{formatMonth(fee.fee_month)}</Text>
-                        {fee.payments[0] && (
-                          <Text style={styles.listSub}>
-                            {'Paid on ' + formatDateStr(fee.payments[0].payment_date)}
-                            {fee.payments[0].payment_mode ? ` · ${fee.payments[0].payment_mode}` : ''}
-                          </Text>
-                        )}
+                        <Text style={styles.listTitle}>{formatMonth(p.fee_month)}</Text>
+                        <Text style={styles.listSub}>
+                          {'Paid on ' + formatDateStr(p.payment_date)}
+                          {p.payment_mode ? ` · ${p.payment_mode}` : ''}
+                        </Text>
                       </View>
                       <View style={{ alignItems: 'flex-end', flexShrink: 0 }}>
-                        <Text style={[styles.listAmount, { color: colors.success }]}>{formatCurrency(fee.paid_amount)}</Text>
+                        <Text style={[styles.listAmount, { color: colors.success }]}>{formatCurrency(p.amount)}</Text>
                         <View style={styles.paidPill}><Text style={styles.paidPillText}>Paid</Text></View>
                       </View>
                     </TouchableOpacity>
@@ -573,74 +579,59 @@ export default function DuesScreen({ route, navigation }: any) {
             </View>
 
             {/* GPay-style transaction list */}
-            {filteredHistory.length > 0 ? (
+            {filteredPayments.length > 0 ? (
               <View style={styles.txContainer}>
-                {filteredHistory.map((fee) => {
-                  const cfg = statusConfig[fee.fee_status] || statusConfig['Pending'];
-                  const isPaid = fee.fee_status === 'Fully Paid';
-                  const awaitingVerification = fee.payments[0]?.verification_status === 'Pending';
-                  const modeS = getModeStyle(fee.payments[0]?.payment_mode);
+                {filteredPayments.map((p) => {
+                  const cfg = statusConfig[p.verification_status || 'Verified'] || statusConfig['Pending'];
+                  const isPaid = true;
+                  const awaitingVerification = p.verification_status === 'Pending';
+                  const modeS = getModeStyle(p.payment_mode);
 
                   return (
                     <TouchableOpacity 
-                      key={fee.fee_id} 
+                      key={p.payment_id} 
                       style={styles.txCard}
                       activeOpacity={0.7}
-                      onPress={() => navigation.navigate('PaymentReceipt', { fee, isPaid })}
+                      onPress={() => navigation.navigate('PaymentReceipt', { fee: { ...p, payments: [p] }, isPaid: true })}
                     >
                       {/* Left icon circle */}
-                      <View style={[styles.txIconCircle, { backgroundColor: isPaid ? colors.successSoft : cfg.bg }]}>
-                        {isPaid
-                          ? <ArrowDownLeft size={20} color={colors.success} strokeWidth={2} />
-                          : <ArrowUpRight size={20} color={cfg.color} strokeWidth={2} />
-                        }
+                      <View style={[styles.txIconCircle, { backgroundColor: awaitingVerification ? cfg.bg : colors.successSoft }]}>
+                        <ArrowDownLeft size={20} color={awaitingVerification ? cfg.color : colors.success} strokeWidth={2} />
                       </View>
 
                       {/* Center: details */}
                       <View style={{ flex: 1, minWidth: 0, paddingHorizontal: 12 }}>
                         <Text style={styles.txTitle} numberOfLines={1}>
-                          {isPaid ? 'Rent Paid' : 'Rent Due'} — {formatMonth(fee.fee_month)}
+                          Rent Paid — {formatMonth(p.fee_month)}
                         </Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 }}>
-                          {isPaid && fee.payments[0]?.payment_mode ? (
+                          {p.payment_mode ? (
                             <View style={[styles.modeBadge, { backgroundColor: modeS.bg }]}>
                               <Text style={[styles.modeBadgeText, { color: modeS.color }]}>{modeS.label}</Text>
                             </View>
                           ) : null}
                           <Text style={styles.txDate}>
-                            {isPaid && fee.payments[0]
-                              ? formatShortDate(fee.payments[0].payment_date)
-                              : fee.due_date ? `Due ${formatShortDate(fee.due_date)}` : cfg.label}
+                            {formatShortDate(p.payment_date)}
                           </Text>
                         </View>
                         {awaitingVerification && (
                           <Text style={styles.txVerify}>⏳ Awaiting verification</Text>
                         )}
-                        {fee.payments[0]?.transaction_id ? (
+                        {p.transaction_id ? (
                           <Text style={styles.txId} numberOfLines={1}>
-                            {'Txn: ' + fee.payments[0].transaction_id}
+                            {'Txn: ' + p.transaction_id}
                           </Text>
                         ) : null}
                       </View>
 
                       {/* Right: amount + status */}
                       <View style={{ alignItems: 'flex-end', flexShrink: 0 }}>
-                        <Text style={[styles.txAmount, { color: isPaid ? colors.success : cfg.color }]}>
-                          {formatCurrency(isPaid ? fee.paid_amount : fee.balance > 0 ? fee.balance : fee.total_due)}
+                        <Text style={[styles.txAmount, { color: awaitingVerification ? cfg.color : colors.success }]}>
+                          {formatCurrency(p.amount)}
                         </Text>
-                        {!isPaid ? (
-                          <TouchableOpacity
-                            style={styles.payNowBtn}
-                            onPress={() => navigation.navigate('Payments')}
-                            activeOpacity={0.85}
-                          >
-                            <Text style={styles.payNowBtnText}>Pay Now</Text>
-                          </TouchableOpacity>
-                        ) : (
-                          <View style={styles.paidPill}>
-                            <Text style={styles.paidPillText}>Paid</Text>
-                          </View>
-                        )}
+                        <View style={styles.paidPill}>
+                          <Text style={styles.paidPillText}>Paid</Text>
+                        </View>
                       </View>
                     </TouchableOpacity>
                   );
@@ -677,7 +668,7 @@ const styles = StyleSheet.create({
   hBtn:           { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', position: 'relative' },
   notificationDot: { position: 'absolute', top: 8, right: 10, width: 8, height: 8, borderRadius: 4, backgroundColor: '#EF4444', borderWidth: 1.5, borderColor: BLUE },
 
-  // ── Hero: single merged card ──────────────────────────────────────────────
+  // ── Hero: single merged card ────────────────────────────────────────────────────────
   heroSingle: {
     backgroundColor: WHITE,
     borderRadius: 20,
@@ -686,19 +677,22 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     padding: 20,
     borderWidth: 1,
-    borderColor: BORDER,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.07,
+    borderColor: colors.dangerBorder,
+    shadowColor: colors.danger,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
     shadowRadius: 16,
-    elevation: 4,
+    elevation: 5,
+    overflow: 'hidden',
   },
   heroSingleTop:    { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 },
   heroSingleLabel:  { fontSize: 13, fontWeight: '600', color: TEXT_MID, marginBottom: 3 },
   heroSingleDate:   { fontSize: 11, color: TEXT_MID },
-  heroSingleAmount: { fontSize: 36, fontWeight: '900', color: '#0F172A', letterSpacing: -1, marginBottom: 4 },
-  heroSinglePartial:{ fontSize: 12, color: '#2952F3', fontWeight: '600', marginBottom: 12 },
+  heroSingleAmount: { fontSize: 36, fontWeight: '900', color: colors.danger, letterSpacing: -1, marginBottom: 4 },
+  heroSinglePartial:{ fontSize: 12, color: colors.primary, fontWeight: '600', marginBottom: 12 },
   heroIconBadge:    { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  heroPayBtn:       { borderRadius: 14, overflow: 'hidden', marginTop: 16 },
+  heroPayBtnText:   { color: WHITE, fontWeight: '700', fontSize: 14 },
 
   heroClear: {
     backgroundColor: '#F0FDF4',

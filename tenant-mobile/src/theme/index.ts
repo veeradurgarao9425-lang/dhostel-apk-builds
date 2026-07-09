@@ -10,17 +10,17 @@ import { Platform, TextStyle, ViewStyle } from 'react-native';
 
 // ── Color Palette ─────────────────────────────────────────────────────────────
 export const colors = {
-  // Brand — Ocean Blue
-  primary:      '#2245D4',   // Deep blue — buttons, FAB, active states
-  primaryDark:  '#1E3A8A',   // Gradient start / pressed state
-  primaryLight: '#3B82F6',   // Gradient end / lighter variant
-  primarySoft:  '#EEF2FF',   // Tinted surface — icon bg, chips (inactive)
-  primaryBorder:'#BFDBFE',   // Soft blue border
+  // Brand — Brand Purple
+  primary:      '#6D4AFF',   // Brand purple — buttons, FAB, active states
+  primaryDark:  '#5B39E0',   // Gradient start / pressed state
+  primaryLight: '#8B6BFF',   // Gradient end / lighter variant
+  primarySoft:  '#F4F1FF',   // Tinted surface — icon bg, chips (inactive)
+  primaryBorder:'#E2D9FF',   // Soft purple border
   accent:       '#F97316',   // Secondary accent (Orange for contrast)
 
   // Gradient — used on headers and primary buttons
-  gradientStart: '#2952F3',
-  gradientEnd:   '#2952F3',
+  gradientStart: '#6D4AFF',
+  gradientEnd:   '#5B39E0',
 
   // Surfaces
   bg:              '#FAFAFC',   // App background — near-white
@@ -98,7 +98,7 @@ export const font = {
 export const shadow = {
   card: Platform.select<ViewStyle>({
     ios: {
-      shadowColor: '#2245D4',
+      shadowColor: '#6D4AFF',
       shadowOpacity: 0.06,
       shadowRadius: 12,
       shadowOffset: { width: 0, height: 2 },

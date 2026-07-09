@@ -1,12 +1,10 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Wallet } from 'lucide-react-native';
+import { Wallet, Clock } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
-import CategoryGlowBadge from '../../components/ui/CategoryGlowBadge';
 import { Phase3EmptyState } from '../../components/UIComponents';
-
-const TEXT_DARK = "#1F2937";
-const TEXT_MID = "#6B7280";
+import { theme } from '../../theme';
+import { getCategoryTheme } from '../../constants/categoryTheme';
 
 interface RecentActivityProps {
     recentPayments: any[];
@@ -21,36 +19,58 @@ export const RecentActivity = ({ recentPayments, formatDate, formatTime }: Recen
         <View style={styles.section}>
             <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Recent Activity</Text>
-                <TouchableOpacity hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} onPress={() => navigation.navigate("Expenses")}>
+                <TouchableOpacity
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    onPress={() => navigation.navigate('Expenses')}
+                    style={styles.viewAllBtn}
+                >
                     <Text style={styles.viewAllText}>View All</Text>
                 </TouchableOpacity>
             </View>
 
             {recentPayments.length > 0 ? (
-                <View style={{ gap: 12 }}>
-                    {recentPayments.map((p) => (
-                        <View key={p.id} style={[styles.globalCard, { paddingVertical: 12, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 12, borderLeftWidth: 4, borderLeftColor: p.mode === 'Payment' ? '#10B981' : '#3B82F6', borderRadius: 14 }]}>
-                            {p.mode === 'Payment' ? (
-                                <View style={[styles.cardIconWrap, { width: 44, height: 44, borderRadius: 14, backgroundColor: '#D1FAE5' }]}>
-                                    <Wallet size={20} color="#10B981" />
+                <View style={{ gap: 10 }}>
+                    {recentPayments.map((p) => {
+                        const isPayment = p.mode === 'Payment';
+                        const accentColor = isPayment ? theme.colors.success : theme.colors.danger;
+                        const accentSoft = isPayment ? theme.colors.successSoft : theme.colors.dangerSoft;
+
+                        let IconComponent = Wallet;
+                        if (!isPayment) {
+                            const catTheme = getCategoryTheme(p.cat);
+                            IconComponent = catTheme.Icon;
+                        }
+
+                        return (
+                            <View key={p.id} style={styles.activityCard}>
+                                {/* Icon */}
+                                <View style={[styles.iconCircle, { backgroundColor: accentSoft }]}>
+                                    <IconComponent size={22} color={accentColor} strokeWidth={2} />
                                 </View>
-                            ) : (
-                                <CategoryGlowBadge category={p.cat} size="sm" />
-                            )}
-                            <View style={{ flex: 1 }}>
-                                <Text style={{ fontSize: 14, fontWeight: '700', color: TEXT_DARK, marginBottom: 2 }}>{p.title}</Text>
-                                <Text style={{ fontSize: 11, color: TEXT_MID, fontWeight: '500' }}>{formatDate(p.date)} • {formatTime(p.date)}</Text>
+
+                                {/* Info */}
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.actTitle} numberOfLines={1}>{p.title}</Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                                        <Clock size={10} color={theme.colors.textSubtle} />
+                                        <Text style={styles.actDate}>{formatDate(p.date)} · {formatTime(p.date)}</Text>
+                                    </View>
+                                </View>
+
+                                {/* Amount + badge */}
+                                <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                                    <Text style={[styles.actAmount, { color: accentColor }]}>
+                                        {isPayment ? '+' : '-'}₹{Number(p.amount).toLocaleString('en-IN')}
+                                    </Text>
+                                    <View style={[styles.typeBadge, { backgroundColor: accentSoft }]}>
+                                        <Text style={[styles.typeBadgeText, { color: accentColor }]}>
+                                            {isPayment ? 'Paid' : 'Expense'}
+                                        </Text>
+                                    </View>
+                                </View>
                             </View>
-                            <View style={{ alignItems: 'flex-end', gap: 2 }}>
-                                <Text style={{ fontSize: 15, fontWeight: '800', color: TEXT_DARK, letterSpacing: -0.3 }}>
-                                    {p.mode === 'Payment' ? '+' : '-'}₹{p.amount.toLocaleString('en-IN')}
-                                </Text>
-                                <Text style={{ fontSize: 10, fontWeight: '700', color: p.mode === 'Payment' ? '#10B981' : '#EF4444' }}>
-                                    {p.mode === 'Payment' ? 'Paid' : 'Expense'}
-                                </Text>
-                            </View>
-                        </View>
-                    ))}
+                        );
+                    })}
                 </View>
             ) : (
                 <View style={{ paddingTop: 10 }}>
@@ -63,41 +83,77 @@ export const RecentActivity = ({ recentPayments, formatDate, formatTime }: Recen
 
 const styles = StyleSheet.create({
     section: {
-        marginBottom: 28,
-        paddingHorizontal: 20,
+        marginBottom: 16,
+        paddingHorizontal: 16,
     },
     sectionHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 16,
+        marginBottom: 14,
     },
     sectionTitle: {
         fontSize: 18,
         fontWeight: '800',
-        color: '#0F172A',
+        color: theme.colors.text,
+    },
+    viewAllBtn: {
+        backgroundColor: theme.colors.primarySoft,
+        paddingHorizontal: 12,
+        paddingVertical: 5,
+        borderRadius: 20,
     },
     viewAllText: {
-        fontSize: 13,
+        fontSize: 12,
         fontWeight: '700',
-        color: '#2952F3',
+        color: theme.colors.primary,
     },
-    globalCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 24,
-        padding: 20,
-        borderWidth: 0,
-        shadowColor: "#1F2937",
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.04,
-        shadowRadius: 16,
-        elevation: 3,
+    activityCard: {
+        backgroundColor: theme.colors.surface,
+        borderRadius: 16,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 14,
+        borderWidth: 1,
+        borderColor: theme.colors.borderSoft,
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 12,
+        elevation: 2,
     },
-    cardIconWrap: {
-        width: 44,
-        height: 44,
+    iconCircle: {
+        width: 48,
+        height: 48,
         borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    actTitle: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: theme.colors.text,
+        marginBottom: 2,
+    },
+    actDate: {
+        fontSize: 11,
+        color: theme.colors.textSubtle,
+        fontWeight: '500',
+    },
+    actAmount: {
+        fontSize: 17,
+        fontWeight: '800',
+        letterSpacing: -0.3,
+    },
+    typeBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 8,
+    },
+    typeBadgeText: {
+        fontSize: 10,
+        fontWeight: '700',
     },
 });
