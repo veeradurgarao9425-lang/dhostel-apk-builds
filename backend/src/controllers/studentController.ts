@@ -317,15 +317,15 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // Check if phone already exists in THIS hostel (status = 1 means Active)
+    // Check if phone already exists globally (students.phone has a UNIQUE constraint)
     const existingStudent = await db('students')
-      .where({ phone, status: 1, hostel_id })
+      .where({ phone })
       .first();
 
     if (existingStudent) {
       return res.status(409).json({
         success: false,
-        error: 'Student with this phone number already exists in this hostel'
+        error: 'A student with this phone number is already registered.'
       });
     }
     // If room allocation is provided, check room availability
@@ -479,6 +479,14 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
     });
   } catch (error: any) {
     console.error('Create student error:', error);
+    
+    if (error?.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({
+        success: false,
+        error: 'This phone number or email is already registered.'
+      });
+    }
+    
     res.status(500).json({
       success: false,
       error: error?.message || 'Failed to register student'
