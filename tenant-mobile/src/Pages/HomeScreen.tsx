@@ -384,7 +384,7 @@ export default function HomeScreen({ navigation }: any) {
 
   const shortcuts: { id: string; name: string; icon: any; nav: string; bg: string; color: string; gradient: [string, string] }[] = [
     { id: 'mess', name: 'Mess', icon: Utensils, nav: 'FullMenu', bg: '#DCFCE7', color: '#22C55E', gradient: ['#16A34A', '#4ADE80'] },
-    { id: 'rent', name: 'Pay Rent', icon: Wallet, nav: 'Payments', bg: '#FFEDD5', color: '#F97316', gradient: ['#EA580C', '#FB923C'] },
+    { id: 'rent', name: 'Pay Rent', icon: Wallet, nav: 'Dues', bg: '#FFEDD5', color: '#F97316', gradient: ['#EA580C', '#FB923C'] },
     { id: 'complaints', name: 'Complaints', icon: AlertCircle, nav: 'Complaints', bg: '#FEE2E2', color: '#EF4444', gradient: ['#DC2626', '#F87171'] },
     { id: 'documents', name: 'Documents', icon: FileSignature, nav: 'Documents', bg: '#F3E8FF', color: '#9333EA', gradient: ['#7E22CE', '#C084FC'] },
     { id: 'notes', name: 'Notes', icon: FileText, nav: 'Notes', bg: '#FEF3C7', color: '#D97706', gradient: ['#B45309', '#FBBF24'] },

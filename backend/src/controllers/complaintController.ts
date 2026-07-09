@@ -43,6 +43,7 @@ export const createComplaint = async (req: AuthRequest, res: Response) => {
         io.to(`hostel_${hostel_id}`).emit('new_complaint', {
           complaint_id, title, category, studentName, bedInfo, created_at: new Date()
         });
+        io.to(`hostel_${hostel_id}`).emit('REFRESH_NOTIFICATIONS');
       }
       await sendNotificationToHostelOwner(
         hostel_id,
@@ -137,6 +138,7 @@ export const updateComplaintStatus = async (req: AuthRequest, res: Response) => 
         io.to(`tenant_${complaint.student_id}`).emit('complaint_updated', {
           complaint_id: complaint.complaint_id, status
         });
+        io.to(`tenant_${complaint.student_id}`).emit('REFRESH_NOTIFICATIONS');
       }
       await sendNotificationToStudent(
         complaint.student_id,
