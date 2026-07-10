@@ -5,7 +5,7 @@ import { generateToken } from '../utils/jwt.js';
 import { AuthRequest } from '../middleware/auth.js';
 import jwt from 'jsonwebtoken';
 import { sendPasswordResetEmail, sendOtpEmail, sendEmail } from '../utils/email.js';
-import { sendNotificationToHostelOwner } from '../utils/notification.js';
+import { sendNotificationToHostelOwner, sendNotificationToStudent } from '../utils/notification.js';
 import crypto from 'crypto';
 
 export const authController = {
@@ -1049,6 +1049,18 @@ export const authController = {
         hostel_id: tenant.hostel_id,
       });
 
+      // In-app only (no push) — just gives the notification list a "you logged in" entry.
+      db('notifications').insert({
+        student_id: tenant.student_id,
+        hostel_id: tenant.hostel_id,
+        notification_type: 'General',
+        title: 'Welcome Back!',
+        message: `Hi ${tenant.first_name}, you've logged in successfully.`,
+        priority: 'Low',
+        is_read: 0,
+        created_at: new Date()
+      }).catch((err: any) => console.error('Failed to save login notification:', err));
+
       return res.json({
         success: true,
         data: {
@@ -1143,6 +1155,15 @@ export const authController = {
         'Medium',
         { id: student_id }
       ).catch(err => console.error('Failed to send tenant registration notification:', err));
+
+      sendNotificationToStudent(
+        student_id,
+        'General',
+        'Registration Submitted',
+        'Your registration is pending owner approval. We will notify you as soon as a room is allocated.',
+        'Medium',
+        { id: student_id }
+      ).catch(err => console.error('Failed to send registration-pending notification to tenant:', err));
 
       // Issue JWT token immediately so they can log in
       const { generateToken } = await import('../utils/jwt.js');

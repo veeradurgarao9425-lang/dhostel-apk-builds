@@ -160,7 +160,7 @@ function AnimatedChip({ amount, selected, onPress }: { amount: string; selected:
 
 export default function AddExpenseScreen({ navigation, route }: any) {
   const defaultCategory = route?.params?.defaultCategory || 'Food';
-  const { showError } = useToast();
+  const { showError, showWarning } = useToast();
   const [amount, setAmount]               = useState('');
   const [category, setCategory]           = useState(defaultCategory);
   const [note, setNote]                   = useState('');
@@ -213,12 +213,38 @@ export default function AddExpenseScreen({ navigation, route }: any) {
         payment_mode: payMethod,
       });
       setShowSuccess(true);
+      checkBudgetThreshold().catch(() => {});
     } catch (err: any) {
       console.error('Failed to save expense:', err);
       const errMsg = err?.response?.data?.error || err.message || 'Please try again.';
       showError(`Failed to save expense: ${errMsg}`);
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Purely private/tenant-side — no owner/hostel involvement. Warns when this
+  // month's spend crosses 80%/100% of the tenant's own budget.
+  const checkBudgetThreshold = async () => {
+    const savedBudget = await AsyncStorage.getItem('tenant_budget');
+    const budget = Number(savedBudget || 0);
+    if (!budget) return;
+
+    const res = await api.get('/tenant-expenses');
+    const expenses: any[] = res.data?.data || [];
+    const now = new Date();
+    const monthTotal = expenses
+      .filter(e => {
+        const d = new Date(e.date);
+        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+      })
+      .reduce((sum, e) => sum + Number(e.amount || 0), 0);
+
+    const pct = Math.round((monthTotal / budget) * 100);
+    if (pct >= 100) {
+      showWarning(`You've exceeded this month's ₹${budget} budget (₹${monthTotal} spent).`, 'Budget Exceeded');
+    } else if (pct >= 80) {
+      showWarning(`You've used ${pct}% of this month's ₹${budget} budget.`, 'Budget Alert');
     }
   };
 

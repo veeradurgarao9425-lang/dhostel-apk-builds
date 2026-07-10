@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import api from '../services/api';
 import { syncDueReminders, registerPushTokenAsync } from '../services/notifications';
+import { useToast } from './ToastContext';
 
 type TenantUser = {
   id: string | number;
@@ -73,6 +74,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [connectedHostel, setConnectedHostel] = useState<ConnectedHostel | null>(null);
   const [loading, setLoading] = useState(true);
   const [logoutLoading, setLogoutLoading] = useState(false);
+  const { showSuccess, showToast } = useToast();
 
   useEffect(() => {
     const loadUser = async () => {
@@ -211,7 +213,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         // Register push notification token (fire-and-forget)
         registerPushTokenAsync().catch(() => {});
-        
+
+        showSuccess(`Welcome back, ${userData.name?.split(' ')[0] || 'there'}!`);
+
         return { error: null, user: userData };
       }
       return { error: body?.error || body?.message || 'Verification failed' };
@@ -228,6 +232,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(null);
       // We don't remove connected_hostel here so tenant doesn't have to re-enter it next time!
       await AsyncStorage.multiRemove(['token', 'user']);
+      showToast({ type: 'info', message: 'You have been logged out. See you soon!' });
     } catch (e) {
       console.error('Error signing out', e);
     } finally {

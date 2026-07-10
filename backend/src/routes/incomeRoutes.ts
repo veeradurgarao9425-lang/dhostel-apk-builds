@@ -8,7 +8,8 @@ import {
   deleteIncome,
   getIncomeSummary,
   getIncomeAnalytics,
-  getIncomeExport
+  getIncomeExport,
+  emailIncomeExport
 } from '../controllers/incomeController.js';
 
 const router = express.Router();
@@ -20,6 +21,7 @@ router.get('/export', queryTokenMiddleware, getIncomeExport);
 router.use(authMiddleware, requireActiveSubscription);
 
 // Income routes
+router.post('/email-export', emailIncomeExport);
 router.get('/', getAllIncome);
 router.post('/', createIncome);
 router.put('/:incomeId', updateIncome);

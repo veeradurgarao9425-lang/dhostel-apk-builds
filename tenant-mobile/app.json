@@ -2,6 +2,7 @@
   "expo": {
     "name": "tenant-mobile",
     "slug": "tenant-mobile",
+    "scheme": "hostixtenant",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/HostixNew.jpeg",
@@ -10,6 +11,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.durgarao2.hostixtenant",
       "adaptiveIcon": {
         "backgroundColor": "#6D4AFF",
         "foregroundImage": "./assets/HostixNew.jpeg",
@@ -42,6 +44,7 @@
           "isAccessMediaLocationEnabled": false
         }
       ]
-    ]
+    ],
+    "owner": "durgarao2"
   }
 }

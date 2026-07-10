@@ -263,8 +263,7 @@ export default function NoticesScreen({ navigation }: any) {
                     }
                 >
                     {filteredNotices.length === 0 ? (
-                        <EmptyState
-                            illustration="megaphone"
+                        <EmptyState illustration="vacant"
                             title="No Vacate Dates Found"
                             subtitle={notices.length === 0 ? "You can schedule checkout notices directly by tapping the plus button." : "No scheduled vacate notice matches your selected filters."}
                         />

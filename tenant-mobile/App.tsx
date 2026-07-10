@@ -5,6 +5,7 @@ import Toast from 'react-native-toast-message';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { ToastProvider } from './src/context/ToastContext';
 import { NetworkProvider } from './src/context/NetworkContext';
+import { NotificationSocketProvider } from './src/context/NotificationSocketContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { CustomToast, ToastVariant } from './src/components/ui/CustomToast';
 import SplashScreenView from './src/components/SplashScreenView';
@@ -68,10 +69,12 @@ export default function App() {
     <ToastProvider>
       <NetworkProvider>
         <AuthProvider>
-          <SafeAreaProvider style={styles.container}>
-            <InnerApp />
-            <ThemedToast />
-          </SafeAreaProvider>
+          <NotificationSocketProvider>
+            <SafeAreaProvider style={styles.container}>
+              <InnerApp />
+              <ThemedToast />
+            </SafeAreaProvider>
+          </NotificationSocketProvider>
         </AuthProvider>
       </NetworkProvider>
     </ToastProvider>

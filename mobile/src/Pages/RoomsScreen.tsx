@@ -408,8 +408,7 @@ export default function RoomsScreen({ navigation, route }: any) {
             ) : error && rooms.length === 0 ? (
                 <ErrorState onRetry={() => fetchRooms(false)} />
             ) : showEmpty ? (
-                <EmptyState
-                    illustration="pinboard"
+                <EmptyState illustration="room"
                     title={search ? t('rooms.noResults') : t('rooms.noRooms')}
                     subtitle={
                         search

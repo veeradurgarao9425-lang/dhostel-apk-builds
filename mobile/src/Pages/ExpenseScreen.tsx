@@ -418,8 +418,7 @@ export const ExpenseScreen = ({ navigation }: any) => {
                     }}
                     onEndReachedThreshold={0.4}
                     ListEmptyComponent={
-                        <EmptyState
-                            illustration="clipboard"
+                        <EmptyState illustration="expense"
                             title={debouncedSearch ? 'No Results' : 'No Expenses Yet'}
                             subtitle={
                                 debouncedSearch

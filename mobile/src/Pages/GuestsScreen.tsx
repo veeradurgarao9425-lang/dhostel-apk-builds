@@ -264,8 +264,7 @@ export default function GuestsScreen() {
                         <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchGuests(true); }} tintColor={theme.primary} />
                     }
                     ListEmptyComponent={
-                        <EmptyState
-                            illustration="mailbox"
+                        <EmptyState illustration="guest"
                             title={search.trim() ? 'No Results' : 'No Guests Yet'}
                             subtitle={
                                 search.trim()

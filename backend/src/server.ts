@@ -41,6 +41,8 @@ import { startChatResetJob } from './jobs/chatReset.js';
 import { startSubscriptionCheckJob } from './jobs/subscriptionCheck.js';
 import { startWeeklyReportsJob } from './jobs/weeklyReports.js';
 import { startMonthlyReportsJob } from './jobs/monthlyReports.js';
+import { startFeeRemindersJob } from './jobs/feeReminders.js';
+import { startOwnerDailyAlertsJob } from './jobs/ownerDailyAlerts.js';
 
 import { sendNotificationToHostelOwner } from './utils/notification.js';
 
@@ -54,6 +56,8 @@ startChatResetJob();
 startSubscriptionCheckJob();
 startWeeklyReportsJob();
 startMonthlyReportsJob();
+startFeeRemindersJob();
+startOwnerDailyAlertsJob();
 
 
 const app = express();
@@ -700,13 +704,10 @@ httpServer.listen(PORT, HOST, () => {
   console.log(`ðŸ” Environment: ${NODE_ENV}`);
   console.log(`ðŸ“ Listening on ${HOST}:${PORT}`);
 
-  // Start Background Cron Jobs
-  startMonthlyFeesGenerationJob();
-  startGuestOverstayJob();
-  startChatResetJob();
+  // Cron jobs are started once, at module load (see top of file) — not here.
 
 
-  console.log('â° Cron jobs initialized');
+  console.log('â° Cron jobs initialized (registered once at module load)');
 });
 
 export default app;

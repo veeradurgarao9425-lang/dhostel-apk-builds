@@ -22,6 +22,7 @@ import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { RefreshProvider } from './contexts/RefreshContext';
 import { ConfirmationProvider } from './contexts/ConfirmationContext';
+import { SocketProvider } from './src/context/SocketContext';
 
 const ThemedToast = () => {
   const { theme, isDark } = useTheme();
@@ -99,6 +100,7 @@ export default function App() {
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
+            <SocketProvider>
             <RefreshProvider>
             <ThemeProvider>
               <ConfirmationProvider>
@@ -115,6 +117,7 @@ export default function App() {
               </ConfirmationProvider>
             </ThemeProvider>
             </RefreshProvider>
+            </SocketProvider>
           </AuthProvider>
         </QueryClientProvider>
       </ErrorBoundary>

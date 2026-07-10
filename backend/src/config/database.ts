@@ -925,6 +925,52 @@ async function patchDatabaseSchema() {
       console.error('[schema-patch] Error checking/adding image_urls column to complaints:', e.message);
     }
 
+    // 25. Ensure due/overdue reminder tracking columns exist on monthly_fees
+    try {
+      if (tableNamesLower.includes('monthly_fees')) {
+        const columns = await db.raw("SHOW COLUMNS FROM monthly_fees");
+        const columnNames = columns[0].map((c: any) => c.Field.toLowerCase());
+        if (!columnNames.includes('due_reminder_sent_date')) {
+          console.log('[schema-patch] Adding due_reminder_sent_date column to monthly_fees...');
+          await db.raw("ALTER TABLE monthly_fees ADD COLUMN due_reminder_sent_date DATE NULL");
+        }
+        if (!columnNames.includes('overdue_reminder_sent_date')) {
+          console.log('[schema-patch] Adding overdue_reminder_sent_date column to monthly_fees...');
+          await db.raw("ALTER TABLE monthly_fees ADD COLUMN overdue_reminder_sent_date DATE NULL");
+        }
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error checking/adding reminder columns to monthly_fees:', e.message);
+    }
+
+    // 26. Ensure vacate_reminder_sent column exists on students
+    try {
+      if (tableNamesLower.includes('students')) {
+        const columns = await db.raw("SHOW COLUMNS FROM students");
+        const columnNames = columns[0].map((c: any) => c.Field.toLowerCase());
+        if (!columnNames.includes('vacate_reminder_sent')) {
+          console.log('[schema-patch] Adding vacate_reminder_sent column to students...');
+          await db.raw("ALTER TABLE students ADD COLUMN vacate_reminder_sent TINYINT DEFAULT 0");
+        }
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error checking/adding vacate_reminder_sent column to students:', e.message);
+    }
+
+    // 27. Ensure notified column exists on reminders
+    try {
+      if (tableNamesLower.includes('reminders')) {
+        const columns = await db.raw("SHOW COLUMNS FROM reminders");
+        const columnNames = columns[0].map((c: any) => c.Field.toLowerCase());
+        if (!columnNames.includes('notified')) {
+          console.log('[schema-patch] Adding notified column to reminders...');
+          await db.raw("ALTER TABLE reminders ADD COLUMN notified TINYINT DEFAULT 0");
+        }
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error checking/adding notified column to reminders:', e.message);
+    }
+
     console.log('[schema-patch] Schema check and patch complete.');
   } catch (err: any) {
     console.error('[schema-patch] Critical error during schema patching:', err.message);

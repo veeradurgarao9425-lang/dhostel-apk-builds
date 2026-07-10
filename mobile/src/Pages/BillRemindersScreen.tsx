@@ -13,6 +13,7 @@ import { AppHeader } from '../components/AppHeader';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState } from '../components/ui/ErrorState';
 import { SkeletonList } from '../components/ui/SkeletonCard';
+import { CustomMonthYearPicker } from '../components/ui/pickers/CustomMonthYearPicker';
 
 const sf = (v: any): number => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
 
@@ -26,6 +27,8 @@ export default function BillRemindersScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [search, setSearch] = useState('');
     const [activeTab, setActiveTab] = useState<'Due' | 'Overdue'>('Due');
+    const [filterDate, setFilterDate] = useState<Date | null>(null);
+    const [showMonthPicker, setShowMonthPicker] = useState(false);
 
     // ── Fetch outstanding bills ──────────────────────────────────────────────
     const fetchBills = async (isRefresh = false) => {
@@ -70,6 +73,7 @@ export default function BillRemindersScreen() {
                             dueDate: formattedDueDate,
                             isOverdue,
                             feeMonth: f.fee_month || f.month || '',
+                            dueObj: dueDateObj,
                         };
                     });
 
@@ -92,17 +96,19 @@ export default function BillRemindersScreen() {
     );
 
     // ── Search filtering & Tabs ─────────────────────────────────────────────────────
-    const dueCount = tenants.filter(t => !t.isOverdue).length;
-    const overdueCount = tenants.filter(t => t.isOverdue).length;
+    const filteredBase = filterDate ? tenants.filter(t => t.dueObj.getMonth() === filterDate.getMonth() && t.dueObj.getFullYear() === filterDate.getFullYear()) : tenants;
+    const dueCount = filteredBase.filter(t => !t.isOverdue).length;
+    const overdueCount = filteredBase.filter(t => t.isOverdue).length;
 
     const filteredTenants = useMemo(() => {
         const q = search.toLowerCase().trim();
         return tenants.filter(t => {
             const matchesTab = activeTab === 'Overdue' ? t.isOverdue : !t.isOverdue;
             const matchesSearch = t.name.toLowerCase().includes(q) || t.room.toLowerCase().includes(q);
-            return matchesTab && matchesSearch;
+            const matchesDate = filterDate ? (t.dueObj.getMonth() === filterDate.getMonth() && t.dueObj.getFullYear() === filterDate.getFullYear()) : true;
+            return matchesTab && matchesSearch && matchesDate;
         });
-    }, [tenants, search, activeTab]);
+    }, [tenants, search, activeTab, filterDate]);
 
     // ── WhatsApp reminder trigger ────────────────────────────────────────────
     const sendWhatsAppReminder = (tenant: any) => {
@@ -183,6 +189,32 @@ export default function BillRemindersScreen() {
             <AppHeader
                 title="Bill Reminders"
                 subtitle={`${filteredTenants.length} total tenant${filteredTenants.length !== 1 ? 's' : ''}`}
+                alignLeft={true}
+                rightComponent={
+                    <TouchableOpacity onPress={() => setShowMonthPicker(true)} style={{ padding: 8, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 8 }}>
+                        <Ionicons name="filter" size={20} color="#FFF" />
+                    </TouchableOpacity>
+                }
+            />
+            {filterDate && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', marginHorizontal: 20, marginTop: 16, padding: 10, borderRadius: 8, justifyContent: 'space-between' }}>
+                    <Text style={{ color: '#475569', fontWeight: '600' }}>
+                        Showing: {filterDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                    </Text>
+                    <TouchableOpacity onPress={() => setFilterDate(null)}>
+                        <Ionicons name="close-circle" size={20} color="#94A3B8" />
+                    </TouchableOpacity>
+                </View>
+            )}
+            
+            <CustomMonthYearPicker
+                visible={showMonthPicker}
+                onClose={() => setShowMonthPicker(false)}
+                onSelect={(date) => {
+                    setFilterDate(date);
+                    setShowMonthPicker(false);
+                }}
+                initialDate={filterDate || new Date()}
             />
 
             {/* Search inputs */}
@@ -252,8 +284,7 @@ export default function BillRemindersScreen() {
                     ) : error ? (
                         <ErrorState onRetry={() => fetchBills(true)} />
                     ) : (
-                        <EmptyState
-                            illustration="clipboard"
+                        <EmptyState illustration="reminders"
                             title={activeTab === 'Overdue' ? 'No Overdue Bills 🎉' : 'No Bills Due 🎉'}
                             subtitle={activeTab === 'Overdue' ? 'Great! No one has overdue payments.' : 'All dues are cleared.'}
                         />

@@ -433,8 +433,7 @@ export default function FeeManagementScreen() {
                     showsVerticalScrollIndicator={false}
                     refreshControl={<RefreshControl refreshing={loading} onRefresh={() => fetchData(true)} tintColor={theme.primary} />}
                     ListEmptyComponent={
-                        <EmptyState
-                            illustration="clipboard"
+                        <EmptyState illustration="pending"
                             title={search ? 'No Results' : 'No Records Found'}
                             subtitle={search ? `No fees match "${search}"` : 'Fee records for this filter will appear here.'}
                         />

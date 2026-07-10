@@ -9,6 +9,7 @@ import {
   updateStudent,
   deleteStudent,
   allocateRoom,
+  rejectRegistration,
   getPendingRegistrations,
   submitVacateNotice,
 } from '../controllers/studentController.js';
@@ -30,5 +31,6 @@ router.post('/', createStudent);
 router.put('/:studentId', updateStudent);
 router.delete('/:studentId', deleteStudent);
 router.post('/:studentId/allocate-room', allocateRoom);
+router.post('/:studentId/reject-registration', rejectRegistration);
 
 export default router;

@@ -2,6 +2,7 @@ import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
 import ExcelJS from 'exceljs';
+import { sendEmail } from '../utils/email.js';
 
 // Get all income records
 export const getAllIncome = async (req: AuthRequest, res: Response) => {
@@ -849,5 +850,202 @@ export const getIncomeExport = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('getIncomeExport Error:', error);
     res.status(500).json({ success: false, error: 'Failed to export data' });
+  }
+};
+
+// Export income records to Excel and send via email
+export const emailIncomeExport = async (req: AuthRequest, res: Response) => {
+  try {
+    const { month } = req.body;
+    const user = req.user;
+    const hostelId = user?.hostel_id;
+    
+    if (!month) {
+        return res.status(400).json({ success: false, error: 'Month is required (YYYY-MM)' });
+    }
+    
+    const owner = await db('users').where({ user_id: user?.user_id }).first();
+    if (!owner || !owner.email) {
+        return res.status(400).json({ success: false, error: 'User email not found' });
+    }
+
+    const startDate = `${month}-01`;
+    const endDate = `${month}-31`;
+
+    // 1. Fetch Income records
+    let incomeQuery = db('income as i')
+      .leftJoin('payment_modes as pm', 'i.payment_mode_id', 'pm.payment_mode_id')
+      .select('i.*', 'pm.payment_mode_name as payment_mode');
+
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && hostelId) {
+      incomeQuery = incomeQuery.where('i.hostel_id', hostelId);
+    }
+    incomeQuery = incomeQuery.whereBetween('i.income_date', [startDate, endDate]);
+
+    // 2. Fetch Fee Payment records
+    let feeQuery = db('fee_payments as fp')
+      .leftJoin('students as s', 'fp.student_id', 's.student_id')
+      .leftJoin('payment_modes as pm', 'fp.payment_mode_id', 'pm.payment_mode_id')
+      .select('fp.*', 's.first_name', 's.last_name', 'pm.payment_mode_name as payment_mode');
+
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && hostelId) {
+      feeQuery = feeQuery.where('fp.hostel_id', hostelId);
+    }
+    feeQuery = feeQuery.whereBetween('fp.payment_date', [startDate, endDate]);
+
+    const [incomes, feePayments, expenses] = await Promise.all([
+      incomeQuery,
+      feeQuery,
+      db('expenses as e')
+        .leftJoin('expense_categories as ec', 'e.category_id', 'ec.category_id')
+        .select('e.*', 'ec.category_name')
+        .where(function () {
+          if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && hostelId) this.where('e.hostel_id', hostelId);
+          this.whereBetween('e.expense_date', [startDate, endDate]);
+        })
+    ]);
+
+    // Fetch Guest Payments
+    let guestQuery = db('guests as g').where('g.amount_paid', '>', 0);
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && hostelId) {
+      guestQuery = guestQuery.where('g.hostel_id', hostelId);
+    }
+    guestQuery = guestQuery.whereBetween('g.check_in_date', [startDate, endDate]);
+    
+    let guests: any[] = [];
+    try { guests = await guestQuery.select('g.*'); } catch (e) { guests = []; }
+
+    // Fetch Admission Payments
+    let admissionQuery = db('students as s')
+      .where('s.admission_fee', '>', 0)
+      .where(function() {
+        this.where('s.admission_status', 1).orWhere('s.admission_status', 'Paid');
+      });
+
+    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && hostelId) {
+      admissionQuery = admissionQuery.where('s.hostel_id', hostelId);
+    }
+    admissionQuery = admissionQuery.whereBetween('s.admission_date', [startDate, endDate]);
+
+    let admissions: any[] = [];
+    try { admissions = await admissionQuery.select('s.*'); } catch (e) { admissions = []; }
+
+    // Create workbook
+    const workbook = new ExcelJS.Workbook();
+
+    // --- SHEET 0: SUMMARY ---
+    const summarySheet = workbook.addWorksheet('Summary');
+    summarySheet.columns = [{ width: 25 }, { width: 15 }];
+    summarySheet.getCell('A1').value = `Income Report (${month})`;
+    summarySheet.getCell('A1').font = { size: 14, bold: true };
+    summarySheet.mergeCells('A1:B1');
+    
+    let totalOther = 0; incomes.forEach(i => totalOther += parseFloat(i.amount || 0));
+    let totalRent = 0; feePayments.forEach(f => totalRent += parseFloat(f.amount || 0));
+    let totalGuest = 0; guests.forEach(g => totalGuest += parseFloat(g.amount_paid || 0));
+    let totalAdmissions = 0; admissions.forEach(a => totalAdmissions += parseFloat(a.admission_fee || 0));
+    const grandTotal = totalOther + totalRent + totalGuest + totalAdmissions;
+
+    summarySheet.addRow(['Category', 'Total Amount']).font = { bold: true };
+    summarySheet.addRow(['Rent/Fee Payments', totalRent]);
+    summarySheet.addRow(['Other Incomes', totalOther]);
+    summarySheet.addRow(['Guest Payments', totalGuest]);
+    summarySheet.addRow(['Admissions', totalAdmissions]);
+    summarySheet.addRow([]);
+    summarySheet.addRow(['Grand Total', grandTotal]).font = { bold: true };
+
+    // --- SHEET 1: INCOME ---
+    const worksheet = workbook.addWorksheet('Income');
+    worksheet.columns = [
+      { header: 'Date', key: 'date', width: 15 },
+      { header: 'Source/Student', key: 'title', width: 25 },
+      { header: 'Type', key: 'type', width: 12 },
+      { header: 'Amount', key: 'amount', width: 12 },
+      { header: 'Payment Mode', key: 'mode', width: 15 },
+      { header: 'Details', key: 'details', width: 30 }
+    ];
+
+    incomes.forEach(inc => {
+      worksheet.addRow({
+        date: inc.income_date, title: inc.source || 'Other Income', amount: parseFloat(inc.amount),
+        type: 'Other', mode: inc.payment_mode || 'Cash', details: inc.description || '-'
+      });
+    });
+
+    feePayments.forEach(fp => {
+      worksheet.addRow({
+        date: fp.payment_date, title: `${fp.first_name || 'Student'} ${fp.last_name || ''}`,
+        amount: parseFloat(fp.amount), type: 'Rent', mode: fp.payment_mode || 'Cash', details: 'Rent Payment'
+      });
+    });
+
+    guests.forEach(g => {
+      worksheet.addRow({
+        date: g.check_in_date, title: g.full_name || 'Guest', amount: parseFloat(g.amount_paid),
+        type: 'Guest', mode: 'Cash', details: g.purpose || 'Guest Stay'
+      });
+    });
+
+    admissions.forEach(a => {
+      worksheet.addRow({
+        date: a.admission_date, title: `${a.first_name || 'Student'} ${a.last_name || ''}`.trim(),
+        amount: parseFloat(a.admission_fee), type: 'Admission', mode: 'Cash', details: 'Admission Fee'
+      });
+    });
+    worksheet.getRow(1).font = { bold: true };
+
+    // --- SHEET 2: EXPENSES ---
+    const expSheet = workbook.addWorksheet('Expenses');
+    expSheet.columns = [
+      { header: 'Date', key: 'date', width: 15 },
+      { header: 'Title', key: 'title', width: 25 },
+      { header: 'Category', key: 'category', width: 15 },
+      { header: 'Amount', key: 'amount', width: 12 },
+      { header: 'Description', key: 'details', width: 30 }
+    ];
+    expenses.forEach(exp => {
+      expSheet.addRow({
+        date: exp.expense_date, title: exp.title, category: exp.category_name,
+        amount: parseFloat(exp.amount), details: exp.description || '-'
+      });
+    });
+    expSheet.getRow(1).font = { bold: true };
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    
+    await sendEmail({
+      to: owner.email,
+      subject: `Monthly Income & Expense Report - ${month}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f9fafb; padding: 20px;">
+          <div style="background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+            <h2 style="color: #1f2937; margin-bottom: 20px;">Your Monthly Report is Ready</h2>
+            <p style="color: #4b5563; line-height: 1.6;">Hello,</p>
+            <p style="color: #4b5563; line-height: 1.6;">
+              Please find attached your comprehensive Income and Expense report for <strong>${month}</strong>.
+            </p>
+            <p style="color: #4b5563; line-height: 1.6;">
+              This report includes:
+              <ul style="color: #4b5563;">
+              </ul>
+            </p>
+            <p style="color: #9ca3af; font-size: 13px; margin-top: 30px;">
+              Generated by Hostix System.
+            </p>
+          </div>
+        </div>
+      `,
+      attachments: [{
+        filename: `Income_Report_${month}.xlsx`,
+        content: buffer as unknown as Buffer
+      }],
+      emailType: 'Report',
+      hostelId: hostelId
+    });
+
+    res.status(200).json({ success: true, message: 'Email sent successfully' });
+  } catch (error) {
+    console.error('emailIncomeExport Error:', error);
+    res.status(500).json({ success: false, error: 'Failed to email report' });
   }
 };

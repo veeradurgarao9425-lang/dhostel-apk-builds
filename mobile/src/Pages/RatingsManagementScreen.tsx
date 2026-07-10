@@ -372,7 +372,7 @@ export default function RatingsManagementScreen({ navigation }: any) {
                 )}
 
                 {displayed.length === 0 ? (
-                    <EmptyState illustration="megaphone" title="No Reviews Yet" subtitle="Tenant reviews will appear here once submitted." />
+                    <EmptyState illustration="reviews" title="No Reviews Yet" subtitle="Tenant reviews will appear here once submitted." />
                 ) : (
                     displayed.map((r: any, i: number) => {
                         const name = [r.first_name, r.last_name].filter(Boolean).join(' ') || 'Anonymous';

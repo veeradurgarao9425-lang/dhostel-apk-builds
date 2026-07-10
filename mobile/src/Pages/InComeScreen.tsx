@@ -10,7 +10,7 @@ import {
     ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Plus, Search, Calendar, ChevronDown, Download } from 'lucide-react-native';
+import { Plus, Search, Calendar, ChevronDown, Download, Mail } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { downloadAndSaveFile } from '../utils/fileDownloader';
 import { useAuth } from '../../contexts/AuthContext';
@@ -23,16 +23,36 @@ import { AppHeader } from '../components/AppHeader';
 import { EmptyState } from '../components/ui/EmptyState';
 import { SkeletonList } from '../components/ui/SkeletonCard';
 import { FullScreenLoader } from '../components/FullScreenLoader';
+import { Modal } from 'react-native';
 
 export const IncomeScreen = ({ navigation }: any) => {
     const { user } = useAuth();
     const { theme, isDark } = useTheme();
-    const { showApiError, showError } = useToast();
+    const { showApiError, showError, showSuccess } = useToast();
     const [search, setSearch] = useState('');
     const [incomes, setIncomes] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'Day' | 'Week' | 'Month'>('Day');
     const [isExporting, setIsExporting] = useState(false);
+    const [showEmailModal, setShowEmailModal] = useState(false);
+    const [emailMonth, setEmailMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
+    const [isSendingEmail, setIsSendingEmail] = useState(false);
+
+    const handleEmailReport = async () => {
+        setIsSendingEmail(true);
+        try {
+            const response = await api.post('/income/email-export', { month: emailMonth });
+            if (response.data.success) {
+                showSuccess('Report sent to your email successfully!');
+                setShowEmailModal(false);
+            }
+        } catch (error: any) {
+            console.error(error);
+            showApiError(error, 'Failed to send email report');
+        } finally {
+            setIsSendingEmail(false);
+        }
+    };
 
     const handleExport = async () => {
         setIsExporting(true);
@@ -145,8 +165,7 @@ export const IncomeScreen = ({ navigation }: any) => {
 
                 <Text style={[styles.sectionHeader, { color: theme.textPrimary }]}>Recent Collections</Text>
                 {sortedDays.length === 0 && (
-                    <EmptyState
-                        illustration="mailbox"
+                    <EmptyState illustration="income"
                         title="No Collections Yet"
                         subtitle="Tap the + button to record your first income entry."
                         actionLabel="Add Income"
@@ -207,6 +226,20 @@ export const IncomeScreen = ({ navigation }: any) => {
                 rightComponent={
                     <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
                         <TouchableOpacity
+                            onPress={() => setShowEmailModal(true)}
+                            activeOpacity={0.75}
+                            style={{
+                                width: 38,
+                                height: 38,
+                                borderRadius: 19,
+                                backgroundColor: 'rgba(255,255,255,0.15)',
+                                justifyContent: 'center',
+                                alignItems: 'center'
+                            }}
+                        >
+                            <Mail color="#FFF" size={18} />
+                        </TouchableOpacity>
+                        <TouchableOpacity
                             onPress={handleExport}
                             disabled={isExporting}
                             activeOpacity={0.75}
@@ -235,7 +268,12 @@ export const IncomeScreen = ({ navigation }: any) => {
             {loading ? (
                 <SkeletonList count={5} />
             ) : error ? (
-                <ErrorState onRetry={fetchIncomes} />
+                <EmptyState illustration="income" 
+                    title="Failed to Load" 
+                    subtitle="Something went wrong while fetching data." 
+                    actionLabel="Retry" 
+                    onAction={fetchIncomes} 
+                />
             ) : (
                 <View style={{ flex: 1 }}>
                     {activeTab === 'Day' ? renderDayContent() : renderGraphPlaceholder(activeTab)}
@@ -245,6 +283,41 @@ export const IncomeScreen = ({ navigation }: any) => {
             <TouchableOpacity style={[styles.fab, { backgroundColor: theme.primary }]} onPress={() => navigation.navigate('AddIncome')} activeOpacity={0.85}>
                 <Plus color="#FFFFFF" size={28} />
             </TouchableOpacity>
+
+            <Modal visible={showEmailModal} animationType="slide" transparent={true}>
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.modalContent, { backgroundColor: theme.cardBg }]}>
+                        <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>Email Monthly Report</Text>
+                        <Text style={[styles.modalSubtitle, { color: theme.textSecondary }]}>Enter the month for the report (YYYY-MM)</Text>
+                        
+                        <TextInput
+                            style={[styles.input, { color: theme.textPrimary, borderColor: isDark ? '#334155' : '#E2E8F0', backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }]}
+                            value={emailMonth}
+                            onChangeText={setEmailMonth}
+                            placeholder="YYYY-MM"
+                            placeholderTextColor={theme.textSecondary}
+                            maxLength={7}
+                        />
+
+                        <View style={styles.modalActions}>
+                            <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowEmailModal(false)}>
+                                <Text style={styles.cancelBtnText}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                                style={[styles.sendBtn, { backgroundColor: theme.primary }]} 
+                                onPress={handleEmailReport}
+                                disabled={isSendingEmail}
+                            >
+                                {isSendingEmail ? (
+                                    <ActivityIndicator size="small" color="#FFF" />
+                                ) : (
+                                    <Text style={styles.sendBtnText}>Send to Email</Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 };
@@ -289,6 +362,16 @@ const styles = StyleSheet.create({
     errorSub: { fontSize: 14, color: '#64748B', textAlign: 'center', marginBottom: 24 },
     retryBtn: { paddingHorizontal: 32, paddingVertical: 14, borderRadius: 14, elevation: 4 },
     retryText: { fontSize: 16, fontWeight: '800', color: '#FFFFFF' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+    modalContent: { width: '85%', padding: 24, borderRadius: 24, elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12 },
+    modalTitle: { fontSize: 20, fontWeight: '800', marginBottom: 8, textAlign: 'center' },
+    modalSubtitle: { fontSize: 13, marginBottom: 20, textAlign: 'center' },
+    input: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, fontSize: 16, fontWeight: '600', marginBottom: 24, textAlign: 'center' },
+    modalActions: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
+    cancelBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: '#E2E8F0', alignItems: 'center' },
+    cancelBtnText: { color: '#475569', fontSize: 15, fontWeight: '700' },
+    sendBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+    sendBtnText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
 });
 
 export default IncomeScreen;

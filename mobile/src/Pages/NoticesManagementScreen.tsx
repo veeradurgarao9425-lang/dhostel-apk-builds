@@ -193,8 +193,7 @@ export default function NoticesManagementScreen({ navigation }: any) {
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(true); }} tintColor={theme.primary} />}
                 >
                     {filteredNotices.length === 0 ? (
-                        <EmptyState
-                            illustration="megaphone"
+                        <EmptyState illustration="notice"
                             title={search ? 'No Results' : 'No Notices Yet'}
                             subtitle={search ? 'Try adjusting your search filters.' : 'Post your first announcement — tenants will see it instantly in their app.'}
                             actionLabel={search ? undefined : 'Post Notice'}

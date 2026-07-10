@@ -270,7 +270,7 @@ export default function StaffScreen() {
                     ]}
                     showsVerticalScrollIndicator={false}
                     ListEmptyComponent={
-                        <EmptyState
+                        <EmptyState illustration="staff"
                             variant={search.trim() ? 'noResults' : 'noData'}
                             title={search.trim() ? 'No Results' : 'No Staff Yet'}
                             subtitle={

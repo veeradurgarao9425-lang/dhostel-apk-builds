@@ -823,8 +823,7 @@ export default function PendingPaymentsScreen() {
                     error ? (
                         <ErrorState onRetry={() => load(1, false)} />
                     ) : (
-                        <EmptyState
-                            illustration="clipboard"
+                        <EmptyState illustration="pending"
                             title={t('pendingDues.allClear', 'All Clear!')}
                             subtitle={t('pendingDues.noPendingPayments', 'No pending payments found.')}
                         />

@@ -199,7 +199,7 @@ export default function ComplaintsManagementScreen({ navigation }: any) {
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchComplaints(true)} tintColor="#7C3AED" />}
                 >
                     {filteredComplaints.length === 0 ? (
-                        <EmptyState illustration="clipboard" title="No Complaints Found" subtitle="Try changing the filter or date." />
+                        <EmptyState illustration="complaints" title="No Complaints Found" subtitle="Try changing the filter or date." />
                     ) : (
                         filteredComplaints.map((c) => {
                             const isResolved = c.status === 'Resolved';

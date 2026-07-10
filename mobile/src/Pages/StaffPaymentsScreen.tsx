@@ -157,8 +157,7 @@ export default function StaffPaymentsScreen({ navigation, route }: any) {
                     showsVerticalScrollIndicator={false}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchPayments(true); }} tintColor={theme.primary} />}
                     ListEmptyComponent={
-                        <EmptyState
-                            illustration="clipboard"
+                        <EmptyState illustration="pending"
                             title="No Payments Yet"
                             subtitle={`Record wage payments made to ${staffName}.`}
                             actionLabel="Record Payment"

@@ -62,9 +62,10 @@ interface StudentCardProps {
     onCall: (phone: string) => void;
     onToggle: (student: any) => void;
     onAllocateRoom: (student: any) => void;
+    onReject: (student: any) => void;
 }
 
-const StudentCard = React.memo(({ student, onPress, onWhatsApp, onCall, onToggle, onAllocateRoom }: StudentCardProps) => {
+const StudentCard = React.memo(({ student, onPress, onWhatsApp, onCall, onToggle, onAllocateRoom, onReject }: StudentCardProps) => {
     const { theme, isDark } = useTheme();
     const { t } = useTranslation();
     const isActive = student.status === 1;
@@ -146,6 +147,15 @@ const StudentCard = React.memo(({ student, onPress, onWhatsApp, onCall, onToggle
                             <View style={[styles.allocateChip, { marginTop: 0, backgroundColor: '#FFFBEB', borderColor: '#FEF3C7' }]}>
                                 <Text style={[styles.allocateChipText, { color: '#D97706' }]}>⚠ Admission Pending</Text>
                             </View>
+                        )}
+                        {isQRSignup && (
+                            <TouchableOpacity
+                                style={[styles.allocateChip, { marginTop: 0, backgroundColor: '#FEF2F2', borderColor: '#FECACA' }]}
+                                onPress={() => onReject(student)}
+                                activeOpacity={0.8}
+                            >
+                                <Text style={[styles.allocateChipText, { color: '#DC2626' }]}>✕ {t('students.reject', 'Reject')}</Text>
+                            </TouchableOpacity>
                         )}
                     </View>
                 </View>
@@ -292,7 +302,8 @@ export default function StudentsScreen({ navigation, route }: any) {
         targetStatus: number;
         title: string;
         message: string;
-    }>({ visible: false, student: null, targetStatus: 1, title: '', message: '' });
+        action?: 'status' | 'reject';
+    }>({ visible: false, student: null, targetStatus: 1, title: '', message: '', action: 'status' });
     const [statusLoading, setStatusLoading] = useState(false);
 
     // Update activeTab if passed via params
@@ -503,6 +514,17 @@ export default function StudentsScreen({ navigation, route }: any) {
         navigation.navigate('AddStudent', { student, isEdit: true });
     }, [navigation]);
 
+    const handleRejectRegistration = useCallback((student: any) => {
+        setConfirmDialog({
+            visible: true,
+            student,
+            targetStatus: 4,
+            action: 'reject',
+            title: t('students.confirmReject', 'Reject Registration'),
+            message: t('students.confirmRejectMsg', `Reject ${student.first_name}'s registration request? They will be notified.`, { name: student.first_name }),
+        });
+    }, [t]);
+
     const renderItem = useCallback(({ item }: { item: any }) => (
         <StudentCard
             student={item}
@@ -511,8 +533,9 @@ export default function StudentsScreen({ navigation, route }: any) {
             onCall={handleCall}
             onToggle={handleToggleStatus}
             onAllocateRoom={handleAllocateRoom}
+            onReject={handleRejectRegistration}
         />
-    ), [handleNavigate, handleWhatsApp, handleCall, handleToggleStatus, handleAllocateRoom]);
+    ), [handleNavigate, handleWhatsApp, handleCall, handleToggleStatus, handleAllocateRoom, handleRejectRegistration]);
 
     const keyExtractor = useCallback((item: any) => item.student_id.toString(), []);
 
@@ -710,8 +733,7 @@ export default function StudentsScreen({ navigation, route }: any) {
                             />
                         }
                         ListEmptyComponent={
-                            <EmptyState
-                                illustration="clipboard"
+                            <EmptyState illustration="student"
                                 title={debouncedSearch ? t('students.noResults') : t('students.noStudents')}
                                 subtitle={
                                     debouncedSearch
@@ -758,11 +780,13 @@ export default function StudentsScreen({ navigation, route }: any) {
                 confirmLabel={t('students.yesProceed')}
                 loading={statusLoading}
                 onConfirm={async () => {
-                    const { student, targetStatus } = confirmDialog;
+                    const { student, targetStatus, action } = confirmDialog;
                     if (!student) return;
                     setStatusLoading(true);
                     try {
-                        const res = await api.put(`/students/${student.student_id}`, { status: targetStatus });
+                        const res = action === 'reject'
+                            ? await api.post(`/students/${student.student_id}/reject-registration`, {})
+                            : await api.put(`/students/${student.student_id}`, { status: targetStatus });
                         if (res.data.success) {
                             setAllStudents(prev => {
                                 if (activeTab === 'All') {
@@ -771,17 +795,17 @@ export default function StudentsScreen({ navigation, route }: any) {
                                 return prev.filter(s => s.student_id !== student.student_id);
                             });
                             fetchCounts();
-                            showSuccess('Student status updated.');
+                            showSuccess(action === 'reject' ? 'Registration rejected.' : 'Student status updated.');
                         }
                     } catch (e) {
-                        showApiError(e, 'Failed to update status');
+                        showApiError(e, action === 'reject' ? 'Failed to reject registration' : 'Failed to update status');
                     } finally {
                         setStatusLoading(false);
                         setConfirmDialog(p => ({ ...p, visible: false }));
                     }
                 }}
                 onCancel={() => setConfirmDialog(p => ({ ...p, visible: false }))}
-                destructive={confirmDialog.targetStatus === 0}
+                destructive={confirmDialog.targetStatus === 0 || confirmDialog.action === 'reject'}
             />
         </View>
     );

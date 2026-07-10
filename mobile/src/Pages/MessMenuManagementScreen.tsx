@@ -361,21 +361,29 @@ export default function MessMenuManagementScreen({ navigation }: any) {
                             <View style={styles.addInputRow}>
                                 <TextInput
                                     style={[styles.addInput, { backgroundColor: isDark ? '#1E293B' : '#FFF', borderColor: isDark ? '#334155' : '#E2E8F0', color: theme.textPrimary }]}
-                                    placeholder="Search dishes or type custom..."
+                                    placeholder="Search predefined dishes..."
                                     placeholderTextColor={theme.textSecondary}
                                     value={newItemText}
                                     onChangeText={setNewItemText}
-                                    onSubmitEditing={() => addFoodItem(newItemText)}
                                 />
-                                {newItemText.trim().length > 0 && (
-                                    <>
-                                        <View style={{ width: 10 }} />
-                                        <TouchableOpacity style={[styles.addItemBtn, { backgroundColor: theme.primary }]} onPress={() => addFoodItem(newItemText)}>
-                                            <Text style={styles.addItemText}>Add</Text>
-                                        </TouchableOpacity>
-                                    </>
-                                )}
                             </View>
+
+                            {newItemText.trim().length > 0 && (
+                                <View style={{ marginTop: 12, marginBottom: 16 }}>
+                                    <TouchableOpacity 
+                                        style={[styles.createCustomBtn, { backgroundColor: theme.primary + '15', borderColor: theme.primary }]} 
+                                        onPress={() => addFoodItem(newItemText)}
+                                    >
+                                        <Plus color={theme.primary} size={20} />
+                                        <Text style={[styles.createCustomBtnText, { color: theme.primary }]}>
+                                            Create new dish: "{newItemText.trim()}"
+                                        </Text>
+                                    </TouchableOpacity>
+                                    <Text style={[styles.customNote, { color: theme.textSecondary }]}>
+                                        * Custom dishes are securely stored and only visible to your hostel.
+                                    </Text>
+                                </View>
+                            )}
 
                             {filteredSuggestions.length > 0 && (
                                 <View style={styles.suggestionsContainer}>
@@ -543,6 +551,9 @@ const styles = StyleSheet.create({
     addInput: { flex: 1, borderWidth: 1, borderRadius: 14, paddingHorizontal: 16, fontSize: 15, paddingVertical: 14 },
     addItemBtn: { justifyContent: 'center', paddingHorizontal: 24, borderRadius: 14 },
     addItemText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
+    createCustomBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderRadius: 14, borderWidth: 1, marginBottom: 8 },
+    createCustomBtnText: { fontSize: 16, fontWeight: '700', marginLeft: 8 },
+    customNote: { fontSize: 12, textAlign: 'center', fontStyle: 'italic', opacity: 0.8 },
     
     suggestionsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 16 },
     suggestionPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },

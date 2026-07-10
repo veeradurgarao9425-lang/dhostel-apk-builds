@@ -856,8 +856,7 @@ export default function FeeCollectionScreen({ navigation, route }: any) {
                     ) : error ? (
                         <ErrorState onRetry={() => fetchSummary(1, false)} />
                     ) : (
-                        <EmptyState
-                            illustration="clipboard"
+                        <EmptyState illustration="rent"
                             title={
                                 activeTab === 'Paid' ? 'No paid records' :
                                 activeTab === 'Unpaid' ? 'No pending fees 🎉' :

@@ -1,11 +1,18 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../contexts/ThemeContext';
+import { 
+    BedDouble, Users, TrendingDown, PiggyBank, Clock, 
+    UserPlus, AlertTriangle, Megaphone, Receipt, 
+    Briefcase, DoorOpen, Star, Building, Trash2, BellRing 
+} from 'lucide-react-native';
+
+const { height } = Dimensions.get('window');
 
 interface EmptyStateProps {
     icon?: keyof typeof Ionicons.glyphMap;
-    illustration?: 'megaphone' | 'pinboard' | 'bell' | 'mailbox' | 'clipboard';
+    illustration?: 'room' | 'student' | 'expense' | 'income' | 'pending' | 'guest' | 'complaints' | 'notice' | 'rent' | 'staff' | 'vacant' | 'reviews' | 'pg' | 'delete' | 'reminders';
     title: string;
     subtitle: string;
     actionLabel?: string;
@@ -13,12 +20,25 @@ interface EmptyStateProps {
     iconColor?: string;
 }
 
-const illustrations = {
-    megaphone: require('../../../assets/images/empty_megaphone.jpg'),
-    pinboard: require('../../../assets/images/empty_pinboard.jpg'),
-    bell: require('../../../assets/images/empty_bell.jpg'),
-    mailbox: require('../../../assets/images/empty_mailbox.jpg'),
-    clipboard: require('../../../assets/images/empty_clipboard.jpg'),
+const getLucideIcon = (illustration: string, color: string, size: number) => {
+    switch (illustration) {
+        case 'room': return <BedDouble color={color} size={size} />;
+        case 'student': return <Users color={color} size={size} />;
+        case 'expense': return <TrendingDown color={color} size={size} />;
+        case 'income': return <PiggyBank color={color} size={size} />;
+        case 'pending': return <Clock color={color} size={size} />;
+        case 'guest': return <UserPlus color={color} size={size} />;
+        case 'complaints': return <AlertTriangle color={color} size={size} />;
+        case 'notice': return <Megaphone color={color} size={size} />;
+        case 'rent': return <Receipt color={color} size={size} />;
+        case 'staff': return <Briefcase color={color} size={size} />;
+        case 'vacant': return <DoorOpen color={color} size={size} />;
+        case 'reviews': return <Star color={color} size={size} />;
+        case 'pg': return <Building color={color} size={size} />;
+        case 'delete': return <Trash2 color={color} size={size} />;
+        case 'reminders': return <BellRing color={color} size={size} />;
+        default: return <Megaphone color={color} size={size} />;
+    }
 };
 
 export const EmptyState = ({ icon, illustration, title, subtitle, actionLabel, onAction, iconColor }: EmptyStateProps) => {
@@ -28,7 +48,9 @@ export const EmptyState = ({ icon, illustration, title, subtitle, actionLabel, o
     return (
         <View style={S.container}>
             {illustration ? (
-                <Image source={illustrations[illustration]} style={S.illustration} resizeMode="contain" />
+                <View style={[S.iconWrap, { backgroundColor: primary + '15', width: 100, height: 100, borderRadius: 50, marginBottom: 24 }]}>
+                    {getLucideIcon(illustration, primary, 48)}
+                </View>
             ) : icon ? (
                 <View style={[S.iconWrap, { backgroundColor: primary + '15' }]}>
                     <Ionicons name={icon} size={42} color={primary} />
@@ -57,11 +79,13 @@ const S = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         padding: 32,
+        marginTop: 80,
+        marginBottom: 80,
     },
     illustration: {
-        width: 140,
-        height: 140,
-        marginBottom: 20,
+        width: 180,
+        height: 180,
+        marginBottom: 24,
     },
     iconWrap: {
         width: 80,

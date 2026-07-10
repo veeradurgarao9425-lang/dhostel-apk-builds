@@ -962,6 +962,56 @@ export const allocateRoom = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// ─── Reject a pending mobile self-registration (status=3, never allocated a room) ─
+export const rejectRegistration = async (req: AuthRequest, res: Response) => {
+  try {
+    const { studentId } = req.params;
+    const { reason } = req.body;
+
+    const student = await db('students').where({ student_id: studentId }).first();
+
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        error: 'Student not found'
+      });
+    }
+
+    if (student.status !== 3) {
+      return res.status(400).json({
+        success: false,
+        error: 'Only pending registrations can be rejected'
+      });
+    }
+
+    await db('students')
+      .where({ student_id: studentId })
+      .update({
+        status: 4, // Rejected
+        updated_at: new Date()
+      });
+
+    sendNotificationToStudent(
+      parseInt(studentId),
+      'General',
+      'Registration Not Approved',
+      reason || 'Your registration request was not approved by the hostel owner.',
+      'High'
+    ).catch(err => console.error('Failed to send registration-rejected notification:', err));
+
+    res.json({
+      success: true,
+      message: 'Registration rejected'
+    });
+  } catch (error) {
+    console.error('Reject registration error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to reject registration'
+    });
+  }
+};
+
 // ─── Get tenants who self-registered via mobile (status=3) — for owner dashboard ─
 export const getPendingRegistrations = async (req: AuthRequest, res: Response) => {
   try {
@@ -1013,17 +1063,34 @@ export const submitVacateNotice = async (req: AuthRequest, res: Response) => {
     // If date is null, it means cancelling the vacate notice
     const formattedDate = date ? (typeof date === 'string' ? date.split('T')[0] : date) : null;
 
+    const student = await db('students').where('student_id', user.user_id).first();
+
     await db('students')
       .where('student_id', user.user_id)
       .update({
         vacate_notice_date: formattedDate,
         vacate_notice_reason: reason || null,
+        vacate_reminder_sent: 0, // re-arm the upcoming-vacancy forecast for the new/cleared date
         updated_at: new Date()
       });
 
-    return res.json({ 
-      success: true, 
-      message: formattedDate ? 'Vacate notice submitted successfully.' : 'Vacate notice cancelled.' 
+    if (student?.hostel_id) {
+      const name = `${student.first_name}${student.last_name ? ' ' + student.last_name : ''}`;
+      sendNotificationToHostelOwner(
+        student.hostel_id,
+        'General',
+        formattedDate ? 'Vacate Notice Received' : 'Vacate Notice Cancelled',
+        formattedDate
+          ? `${name} has given notice to vacate on ${formattedDate}.${reason ? ` Reason: ${reason}` : ''}`
+          : `${name} has cancelled their vacate notice.`,
+        'Medium',
+        { student_id: user.user_id }
+      ).catch(err => console.error('Failed to send vacate-notice owner notification:', err));
+    }
+
+    return res.json({
+      success: true,
+      message: formattedDate ? 'Vacate notice submitted successfully.' : 'Vacate notice cancelled.'
     });
   } catch (error: any) {
     console.error('Error submitting vacate notice:', error);

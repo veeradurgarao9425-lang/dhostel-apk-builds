@@ -88,7 +88,7 @@ export const setupSocket = (httpServer: HttpServer) => {
       socket.join(`hostel_${user.hostel_id}`);
     } else if (user.role_id === 2) {
       // Owner might have multiple hostels, let's join all hostels they own
-      db('hostels').where('owner_id', user.user_id).select('hostel_id')
+      db('hostel_master').where('owner_id', user.user_id).select('hostel_id')
         .then(hostels => {
           hostels.forEach(h => socket.join(`hostel_${h.hostel_id}`));
         })

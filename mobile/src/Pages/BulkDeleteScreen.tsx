@@ -488,8 +488,7 @@ export default function BulkDeleteScreen() {
                         <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={theme.primary} />
                     }
                     ListEmptyComponent={
-                        <EmptyState
-                            illustration="clipboard"
+                        <EmptyState illustration="delete"
                             title={`No ${activeTab} found`}
                             subtitle={search ? 'Try adjusting your search filters.' : `There are no ${activeTab} available in your database.`}
                         />
