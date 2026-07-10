@@ -1,5 +1,6 @@
 import express from 'express';
 import { authMiddleware } from '../middleware/auth.js';
+import { requireActiveSubscription } from '../middleware/subscriptionAuth.js';
 import {
   getStaff,
   getStaffById,
@@ -14,7 +15,7 @@ import {
 const router = express.Router();
 
 // All routes require authentication
-router.use(authMiddleware);
+router.use(authMiddleware, requireActiveSubscription);
 
 // Staff wage payments (declare specific routes before '/:staffId')
 router.get('/:staffId/payments', getStaffPayments);

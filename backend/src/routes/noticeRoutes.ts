@@ -2,6 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 import { authMiddleware } from '../middleware/auth.js';
+import { requireActiveSubscription } from '../middleware/subscriptionAuth.js';
 import {
   getNotices,
   createNotice,
@@ -23,7 +24,7 @@ const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
 const router = express.Router();
 
-router.use(authMiddleware);
+router.use(authMiddleware, requireActiveSubscription);
 
 // Notice Categories
 router.get('/categories', getNoticeCategories);

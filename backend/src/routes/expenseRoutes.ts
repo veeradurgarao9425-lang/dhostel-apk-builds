@@ -1,5 +1,6 @@
 import express from 'express';
 import { authMiddleware } from '../middleware/auth.js';
+import { requireActiveSubscription } from '../middleware/subscriptionAuth.js';
 import {
   getExpenses,
   getExpenseById,
@@ -13,7 +14,7 @@ import {
 const router = express.Router();
 
 // All routes require authentication
-router.use(authMiddleware);
+router.use(authMiddleware, requireActiveSubscription);
 
 // Expense routes
 router.get('/', getExpenses);

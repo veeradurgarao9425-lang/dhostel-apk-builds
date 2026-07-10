@@ -1,5 +1,6 @@
 import express from 'express';
 import { authMiddleware } from '../middleware/auth.js';
+import { requireActiveSubscription } from '../middleware/subscriptionAuth.js';
 import {
   getReminders,
   createReminder,
@@ -10,7 +11,7 @@ import {
 const router = express.Router();
 
 // Require authentication for all reminder endpoints
-router.use(authMiddleware);
+router.use(authMiddleware, requireActiveSubscription);
 
 router.get('/', getReminders);
 router.post('/', createReminder);

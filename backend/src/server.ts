@@ -38,11 +38,19 @@ import ratingRoutes from './routes/ratingRoutes.js';
 import { startMonthlyFeesGenerationJob } from './jobs/monthlyFeesGeneration.js';
 import { startGuestOverstayJob } from './jobs/guestOverstay.js';
 import { startChatResetJob } from './jobs/chatReset.js';
+import { startSubscriptionCheckJob } from './jobs/subscriptionCheck.js';
 
 import { sendNotificationToHostelOwner } from './utils/notification.js';
 
 // Load environment variables
 dotenv.config();
+
+// Start Background Jobs
+startMonthlyFeesGenerationJob();
+startGuestOverstayJob();
+startChatResetJob();
+startSubscriptionCheckJob();
+
 
 const app = express();
 const httpServer = createServer(app);
@@ -118,7 +126,8 @@ app.use('/api/tenant-expenses', tenantExpenseRoutes);
 app.use('/api/splits', splitsRoutes);
 app.use('/api/mess', messSkipRoutes);
 app.use('/api/ratings', ratingRoutes);
-
+import subscriptionRoutes from './routes/subscriptionRoutes.js';
+app.use('/api/subscriptions', subscriptionRoutes);
 // Multer storage for the public QR signup Aadhaar photos
 const qrSignupUpload = multer({
   storage: multer.diskStorage({

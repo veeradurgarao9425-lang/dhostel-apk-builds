@@ -2,6 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 import { authMiddleware } from '../middleware/auth.js';
+import { requireActiveSubscription } from '../middleware/subscriptionAuth.js';
 import {
   getFeePayments,
   getStudentPaymentHistory,
@@ -27,7 +28,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // All routes require authentication
-router.use(authMiddleware);
+router.use(authMiddleware, requireActiveSubscription);
 
 // Tenant self-service routes (accessible by role_id=3)
 router.get('/my-fees', getTenantFeeHistory);

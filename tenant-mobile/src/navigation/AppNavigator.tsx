@@ -52,6 +52,7 @@ import NotesScreen from '../Pages/NotesScreen';
 import PendingApprovalScreen from '../Pages/PendingApprovalScreen';
 import PrivacyPolicyScreen from '../Pages/PrivacyPolicyScreen';
 import HowItWorksScreen from '../Pages/HowItWorksScreen';
+import { SubscriptionExpiredScreen } from '../Pages/SubscriptionExpiredScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -158,6 +159,7 @@ export default function AppNavigator() {
             <Stack.Screen name="VisitorPass" component={VisitorPassScreen} />
             <Stack.Screen name="Rating" component={RatingScreen} />
             <Stack.Screen name="Notes" component={NotesScreen} />
+            <Stack.Screen name="SubscriptionExpired" component={SubscriptionExpiredScreen} options={{ headerShown: false, gestureEnabled: false }} />
           </>
         ) : connectedHostel ? (
           <Stack.Screen name="Auth" component={AuthStack} />

@@ -16,7 +16,7 @@ const router = express.Router();
 router.get('/export', queryTokenMiddleware, getIncomeExport);
 
 // All other routes require authentication header
-router.use(authMiddleware);
+router.use(authMiddleware, requireActiveSubscription);
 
 // Income routes
 router.get('/', getAllIncome);

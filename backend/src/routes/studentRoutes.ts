@@ -1,5 +1,6 @@
 import express from 'express';
 import { authMiddleware } from '../middleware/auth.js';
+import { requireActiveSubscription } from '../middleware/subscriptionAuth.js';
 import {
   getStudents,
   getStudentStats,
@@ -15,7 +16,7 @@ import {
 const router = express.Router();
 
 // All routes require authentication
-router.use(authMiddleware);
+router.use(authMiddleware, requireActiveSubscription);
 
 // Owner: get tenants awaiting activation (status=3 / mobile self-register)
 router.get('/pending-registrations', getPendingRegistrations);

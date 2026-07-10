@@ -1,5 +1,6 @@
 import express from 'express';
 import { authMiddleware } from '../middleware/auth.js';
+import { requireActiveSubscription } from '../middleware/subscriptionAuth.js';
 import {
   getMonthlyFees,
   getMonthlyFeesSummary,
@@ -26,7 +27,7 @@ const router = express.Router();
 router.get('/debug-db', debugDatabase);
 
 // All routes require authentication
-router.use(authMiddleware);
+router.use(authMiddleware, requireActiveSubscription);
 
 // Get all monthly fees for a specific student
 router.get('/student/:studentId', getMonthlyFees);

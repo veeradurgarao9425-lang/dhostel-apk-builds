@@ -59,7 +59,7 @@ import OverviewScreen        from '../Pages/OverviewScreen';
 import PendingPaymentsScreen from '../Pages/PendingPaymentsScreen';
 import DownloadReceiptsScreen from '../Pages/DownloadReceiptsScreen';
 import PremiumSubscriptionScreen from '../Pages/PremiumSubscriptionScreen';
-
+import { SubscriptionExpiredScreen } from '../Pages/SubscriptionExpiredScreen';
 // ── Ecosystem screens ────────────────────────────────────────────────────────
 import ComplaintsManagementScreen from '../Pages/ComplaintsManagementScreen';
 import RequestsManagementScreen from '../Pages/RequestsManagementScreen';
@@ -227,6 +227,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     {/* Account & Settings */}
                     <Stack.Screen name="Profile"  component={ProfileScreen}  />
                     <Stack.Screen name="Settings" component={SettingsScreen} />
+                    <Stack.Screen name="SubscriptionExpired" component={SubscriptionExpiredScreen} options={{ headerShown: false, gestureEnabled: false }} />
                     <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
                     <Stack.Screen
                         name="AddHostel"

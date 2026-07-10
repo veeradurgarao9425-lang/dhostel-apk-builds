@@ -3,9 +3,10 @@ import multer from 'multer';
 import path from 'path';
 import { createComplaint, getTenantComplaints, getHostelComplaints, updateComplaintStatus } from '../controllers/complaintController.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { requireActiveSubscription } from '../middleware/subscriptionAuth.js';
 
 const router = Router();
-router.use(authMiddleware);
+router.use(authMiddleware, requireActiveSubscription);
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => { cb(null, 'uploads/'); },

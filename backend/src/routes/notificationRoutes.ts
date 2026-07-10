@@ -1,5 +1,6 @@
 import express from 'express';
 import { authMiddleware } from '../middleware/auth.js';
+import { requireActiveSubscription } from '../middleware/subscriptionAuth.js';
 import {
   registerToken,
   deregisterToken,
@@ -10,7 +11,7 @@ import {
 
 const router = express.Router();
 
-router.use(authMiddleware);
+router.use(authMiddleware, requireActiveSubscription);
 
 // Push token registration
 router.post('/register-token', registerToken);

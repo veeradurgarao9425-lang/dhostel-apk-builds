@@ -1,5 +1,6 @@
 import express from 'express';
 import { authMiddleware } from '../middleware/auth.js';
+import { requireActiveSubscription } from '../middleware/subscriptionAuth.js';
 import { getRoomChatDetails, getMessages, uploadMedia } from '../controllers/chatController.js';
 import multer from 'multer';
 import path from 'path';
@@ -28,7 +29,7 @@ const upload = multer({
   limits: { fileSize: 20 * 1024 * 1024 }, // 20 MB limit for images/audio
 });
 
-router.use(authMiddleware);
+router.use(authMiddleware, requireActiveSubscription);
 
 router.get('/room/:roomId', getRoomChatDetails);
 router.get('/messages/:roomId', getMessages);

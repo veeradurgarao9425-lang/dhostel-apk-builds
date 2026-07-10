@@ -8,21 +8,22 @@ import {
   deleteAmenity
 } from '../controllers/amenitiesController.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { requireActiveSubscription } from '../middleware/subscriptionAuth.js';
 
 const router = Router();
 
 // Get all active amenities (accessible by both admin and owners)
-router.get('/', authMiddleware, getAmenities);
+router.get('/', authMiddleware, requireActiveSubscription, getAmenities);
 
 // Get all active room amenities (accessible by both admin and owners)
-router.get('/rooms', authMiddleware, getRoomAmenities);
+router.get('/rooms', authMiddleware, requireActiveSubscription, getRoomAmenities);
 
 // Create a new room amenity (accessible by owners when adding custom amenities)
-router.post('/rooms', authMiddleware, createRoomAmenity);
+router.post('/rooms', authMiddleware, requireActiveSubscription, createRoomAmenity);
 
 // Admin-only routes for managing amenities
-router.post('/', authMiddleware, createAmenity);
-router.put('/:amenityId', authMiddleware, updateAmenity);
-router.delete('/:amenityId', authMiddleware, deleteAmenity);
+router.post('/', authMiddleware, requireActiveSubscription, createAmenity);
+router.put('/:amenityId', authMiddleware, requireActiveSubscription, updateAmenity);
+router.delete('/:amenityId', authMiddleware, requireActiveSubscription, deleteAmenity);
 
 export default router;

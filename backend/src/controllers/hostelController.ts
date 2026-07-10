@@ -87,6 +87,9 @@ export const createHostel = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    const now = new Date();
+    const trialEndDate = new Date(now.getTime() + 40 * 24 * 60 * 60 * 1000);
+
     // Prepare hostel data
     const hostelData: any = {
       hostel_name,
@@ -99,7 +102,10 @@ export const createHostel = async (req: AuthRequest, res: Response) => {
       owner_id: finalOwnerId,
       admission_fee: admission_fee || 0,
       is_active: 1,
-      created_at: new Date()
+      trial_start_date: now,
+      trial_end_date: trialEndDate,
+      subscription_status: 'Trial',
+      created_at: now
     };
 
     // Add amenities if provided (store as JSON string)

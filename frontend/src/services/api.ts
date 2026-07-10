@@ -44,6 +44,10 @@ api.interceptors.response.use(
         window.location.href = '/';
       }
     }
+
+    if (error.response?.status === 403 && error.response?.data?.message === "Your subscription has expired. Please renew to continue.") {
+      window.dispatchEvent(new CustomEvent('subscriptionExpired'));
+    }
     return Promise.reject(error);
   }
 );

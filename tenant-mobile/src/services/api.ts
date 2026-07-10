@@ -54,6 +54,11 @@ api.interceptors.response.use(
       }
     }
 
+    if (status === 403 && error.response?.data?.message === "Your subscription has expired. Please renew to continue.") {
+      navigate('SubscriptionExpired');
+    }
+
+
     const config = error.config as any;
     if (
       !error.response &&

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, Outlet, useLocation } from 'react-router-dom';
 import {
   Users,
@@ -19,7 +19,8 @@ import {
   UserCheck,
   History,
   FileSpreadsheet,
-  User
+  User,
+  AlertTriangle
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -32,6 +33,7 @@ export const MainLayout: React.FC = () => {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isSubscriptionExpired, setIsSubscriptionExpired] = useState(false);
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
@@ -41,6 +43,12 @@ export const MainLayout: React.FC = () => {
   const handleLogoutClick = () => {
     setShowLogoutConfirm(true);
   };
+
+  useEffect(() => {
+    const handleSubscriptionExpired = () => setIsSubscriptionExpired(true);
+    window.addEventListener('subscriptionExpired', handleSubscriptionExpired);
+    return () => window.removeEventListener('subscriptionExpired', handleSubscriptionExpired);
+  }, []);
 
   const handleLogoutConfirm = async () => {
     try {
@@ -379,7 +387,23 @@ export const MainLayout: React.FC = () => {
           <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-transparent dark:from-cyan-500/5 dark:via-transparent dark:to-transparent pointer-events-none" />
           
           <div className="p-4 sm:p-6 lg:p-8 pt-2.5 sm:pt-3.5 lg:pt-4.5 w-full relative z-10 animate-fade-in">
-            <Outlet />
+            {isSubscriptionExpired ? (
+              <div className="bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 text-rose-800 dark:text-rose-200 p-8 rounded-2xl flex flex-col items-center justify-center text-center mt-10 max-w-2xl mx-auto shadow-sm">
+                <AlertTriangle className="h-16 w-16 text-rose-500 mb-5" />
+                <h2 className="text-2xl font-bold mb-3 text-rose-700 dark:text-rose-400">Subscription Expired</h2>
+                <p className="mb-8 max-w-md text-rose-600 dark:text-rose-300">
+                  Your free trial or subscription plan for this hostel has ended. You can still view your data, but all management features are temporarily locked. Please renew your plan to continue managing this hostel.
+                </p>
+                <button 
+                  onClick={() => alert("Renewal functionality coming soon")} 
+                  className="bg-rose-600 text-white px-8 py-3 rounded-xl font-bold uppercase tracking-wider text-sm hover:bg-rose-700 shadow-lg shadow-rose-500/30 transition-all duration-200 hover:-translate-y-0.5"
+                >
+                  Renew Subscription
+                </button>
+              </div>
+            ) : (
+              <Outlet />
+            )}
           </div>
         </main>
       </div>

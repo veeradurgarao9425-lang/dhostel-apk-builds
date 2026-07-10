@@ -22,7 +22,7 @@ const router = express.Router();
 router.get('/download/excel', queryTokenMiddleware, downloadExcelReport);
 
 // All other routes require authentication header
-router.use(authMiddleware);
+router.use(authMiddleware, requireActiveSubscription);
 
 // Report routes
 router.get('/dashboard-stats', getDashboardStats);

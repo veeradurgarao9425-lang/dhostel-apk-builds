@@ -10,10 +10,11 @@ import {
   updateVisitorStatus
 } from '../controllers/leaveVisitorController.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { requireActiveSubscription } from '../middleware/subscriptionAuth.js';
 
 const router = Router();
 
-router.use(authMiddleware);
+router.use(authMiddleware, requireActiveSubscription);
 
 // Tenant Leave Routes
 router.post('/leave/tenant', createLeaveRequest);

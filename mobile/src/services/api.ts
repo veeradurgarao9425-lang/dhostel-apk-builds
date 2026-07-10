@@ -56,6 +56,11 @@ api.interceptors.response.use(
       }
     }
 
+    if (status === 403 && error.response?.data?.message === "Your subscription has expired. Please renew to continue.") {
+      navigate('SubscriptionExpired');
+    }
+
+
     // Auto-retry once on network failure (not on 4xx/5xx)
     const config = error.config as any;
     if (
