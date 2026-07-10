@@ -39,6 +39,8 @@ import { startMonthlyFeesGenerationJob } from './jobs/monthlyFeesGeneration.js';
 import { startGuestOverstayJob } from './jobs/guestOverstay.js';
 import { startChatResetJob } from './jobs/chatReset.js';
 import { startSubscriptionCheckJob } from './jobs/subscriptionCheck.js';
+import { startWeeklyReportsJob } from './jobs/weeklyReports.js';
+import { startMonthlyReportsJob } from './jobs/monthlyReports.js';
 
 import { sendNotificationToHostelOwner } from './utils/notification.js';
 
@@ -50,6 +52,8 @@ startMonthlyFeesGenerationJob();
 startGuestOverstayJob();
 startChatResetJob();
 startSubscriptionCheckJob();
+startWeeklyReportsJob();
+startMonthlyReportsJob();
 
 
 const app = express();

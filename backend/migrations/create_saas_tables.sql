@@ -21,6 +21,6 @@ CREATE TABLE IF NOT EXISTS email_logs (
     FOREIGN KEY (hostel_id) REFERENCES hostel_master(hostel_id) ON DELETE SET NULL
 );
 
--- Alter notifications to add Subscription Alert and Report
+-- Alter notifications to change ENUM to VARCHAR to avoid truncation issues
 ALTER TABLE notifications 
-MODIFY COLUMN notification_type ENUM('Payment Due', 'New Admission', 'Expense Alert', 'System Alert', 'General', 'Subscription Alert', 'Report') NOT NULL;
+MODIFY COLUMN notification_type VARCHAR(50) NOT NULL;

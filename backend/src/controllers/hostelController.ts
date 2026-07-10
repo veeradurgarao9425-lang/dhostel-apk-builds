@@ -147,37 +147,68 @@ export const createHostel = async (req: AuthRequest, res: Response) => {
       hostel_id,
     });
 
-    // Send notification to hostixhelp@gmail.com
+    const { getWelcomeEmailTemplate, getSuperAdminNewRegistrationTemplate } = await import('../utils/emailTemplates.js');
+
     try {
-      let ownerInfo = '';
-      if (req.user?.role_id === 2 && req.user?.email) {
-        ownerInfo = req.user.email;
-      } else {
-        const ownerRec = await db('users').where({ user_id: finalOwnerId }).first();
-        if (ownerRec && ownerRec.email) {
-          ownerInfo = ownerRec.email;
-        } else {
-          ownerInfo = 'Email Not Found';
-        }
+      // 1. Log Subscription History
+      await db('subscription_history').insert({
+        hostel_id,
+        event_type: 'Trial Started',
+        remarks: '40-day free trial assigned upon registration'
+      });
+
+      let ownerEmail = '';
+      let ownerName = 'Hostel Owner';
+
+      const ownerRec = await db('users').where({ user_id: finalOwnerId }).first();
+      if (ownerRec && ownerRec.email) {
+        ownerEmail = ownerRec.email;
+        ownerName = ownerRec.full_name;
       }
 
+      const formattedEndDate = trialEndDate.toLocaleDateString();
+
+      // 2. Send Welcome Email to Owner
+      if (ownerEmail) {
+        await sendEmail({
+          to: ownerEmail,
+          subject: 'Welcome to Hostix - Trial Started!',
+          html: getWelcomeEmailTemplate(ownerName, hostel_name, formattedEndDate),
+          emailType: 'Welcome',
+          hostelId: hostel_id
+        });
+      }
+
+      // 3. Send Alert to Super Admin
+      const superAdminInfo = {
+        hostel_name,
+        full_name: ownerName,
+        email: ownerEmail,
+        phone: ownerRec?.phone || 'N/A',
+        trial_start_date: now.toLocaleDateString(),
+        trial_end_date: formattedEndDate
+      };
+
       await sendEmail({
-        to: 'hostixhelp@gmail.com',
-        subject: 'New Hostel Created - Hostix',
-        html: `
-          <div style="font-family: Arial, sans-serif; padding: 20px;">
-            <h2 style="color: #333;">New Hostel Created</h2>
-            <p>A new hostel has just been created on the Hostix platform.</p>
-            <ul>
-              <li><strong>Hostel Name:</strong> ${hostel_name}</li>
-              <li><strong>Address:</strong> ${address || 'N/A'}, ${city || 'N/A'}</li>
-              <li><strong>Owner Email/ID:</strong> ${ownerInfo} (ID: ${finalOwnerId})</li>
-            </ul>
-          </div>
-        `
+        to: 'hostixhelp@gmail.com', // Replace with actual Super Admin email if dynamic
+        subject: 'New Hostel Registration Alert - Hostix',
+        html: getSuperAdminNewRegistrationTemplate(superAdminInfo),
+        emailType: 'Super Admin Alert',
+        hostelId: hostel_id
       });
+
+      // 4. Create in-app admin notification
+      await db('notifications').insert({
+        user_id: 1, // assuming user_id 1 is Super Admin
+        hostel_id: hostel_id,
+        notification_type: 'System Alert',
+        title: 'New Hostel Registered',
+        message: `${hostel_name} has just registered by ${ownerName}.`,
+        priority: 'High'
+      });
+
     } catch (err) {
-      console.error('Failed to send admin notification email:', err);
+      console.error('Failed to log history or send registration emails:', err);
     }
 
     res.status(201).json({

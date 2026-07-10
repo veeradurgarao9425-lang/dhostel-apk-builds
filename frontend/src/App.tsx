@@ -27,6 +27,7 @@ import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { ActivityLogsPage } from './pages/ActivityLogsPage';
 import { QRSignupPage } from './pages/QRSignupPage';
+import { SystemLogsPage } from './pages/SystemLogsPage';
 
 // Create Query Client
 const queryClient = new QueryClient({
@@ -121,6 +122,17 @@ function App() {
             }
           >
             <Route index element={<ActivityLogsPage />} />
+          </Route>
+
+          <Route
+            path="/system-logs"
+            element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<SystemLogsPage />} />
           </Route>
 
           <Route

@@ -28,6 +28,9 @@ interface Hostel {
   email?: string;
   amenities?: string[];
   created_at?: string;
+  subscription_status?: string;
+  trial_end_date?: string;
+  subscription_end_date?: string;
 }
 
 interface Room {
@@ -61,8 +64,10 @@ export const HostelDetailsPage: React.FC = () => {
   const [hostel, setHostel] = useState<Hostel | null>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
+  const [subscriptionHistory, setSubscriptionHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'rooms' | 'students' | 'finances'>('rooms');
+  const [activeTab, setActiveTab] = useState<'rooms' | 'students' | 'finances' | 'subscription'>('rooms');
+  const [isRenewing, setIsRenewing] = useState(false);
 
   useEffect(() => {
     fetchHostelData();
@@ -72,10 +77,11 @@ export const HostelDetailsPage: React.FC = () => {
     try {
       setLoading(true);
       const id = parseInt(hostelId || '0');
-      const [hostelsRes, roomsRes, studentsRes] = await Promise.all([
+      const [hostelsRes, roomsRes, studentsRes, historyRes] = await Promise.all([
         api.get('/hostels'),
         api.get('/rooms', { params: { hostelId: id } }),
-        api.get('/students', { params: { hostelId: id } })
+        api.get('/students', { params: { hostelId: id } }),
+        api.get('/subscriptions/history', { params: { hostel_id: id } }).catch(() => ({ data: { data: [] } }))
       ]);
 
       const foundHostel = (hostelsRes.data.data || []).find((h: Hostel) => h.hostel_id === id);
@@ -89,11 +95,25 @@ export const HostelDetailsPage: React.FC = () => {
       setHostel(foundHostel);
       setRooms((roomsRes.data.data || []).filter((r: Room) => Number(r.hostel_id) === id));
       setStudents((studentsRes.data.data || []).filter((s: Student) => Number(s.hostel_id) === id));
+      setSubscriptionHistory(historyRes.data.data || []);
     } catch (error) {
       console.error('Failed to fetch hostel details:', error);
       toast.error('Failed to load hostel details');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRenewSubscription = async (plan_name: string = '1_year') => {
+    try {
+      setIsRenewing(true);
+      await api.post('/subscriptions/renew', { hostel_id: hostel?.hostel_id, plan_name });
+      toast.success('Subscription activated/renewed successfully');
+      fetchHostelData();
+    } catch (error) {
+      toast.error('Failed to renew subscription');
+    } finally {
+      setIsRenewing(false);
     }
   };
 
@@ -209,10 +229,10 @@ export const HostelDetailsPage: React.FC = () => {
       </div>
 
       {/* Tabs bar */}
-      <div className="flex border-b border-slate-200 dark:border-slate-800">
+      <div className="flex border-b border-slate-200 dark:border-slate-800 overflow-x-auto">
         <button
           onClick={() => setActiveTab('rooms')}
-          className={`px-6 py-3 text-sm font-semibold border-b-2 transition-all ${
+          className={`px-6 py-3 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
             activeTab === 'rooms'
               ? 'border-cyan-500 text-cyan-600 dark:text-cyan-400 font-bold'
               : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-350'
@@ -222,23 +242,33 @@ export const HostelDetailsPage: React.FC = () => {
         </button>
         <button
           onClick={() => setActiveTab('students')}
-          className={`px-6 py-3 text-sm font-semibold border-b-2 transition-all ${
+          className={`px-6 py-3 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
             activeTab === 'students'
               ? 'border-cyan-500 text-cyan-600 dark:text-cyan-400 font-bold'
               : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-350'
           }`}
         >
-          Residents ({students.length})
+          Students ({students.length})
         </button>
         <button
           onClick={() => setActiveTab('finances')}
-          className={`px-6 py-3 text-sm font-semibold border-b-2 transition-all ${
+          className={`px-6 py-3 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
             activeTab === 'finances'
               ? 'border-cyan-500 text-cyan-600 dark:text-cyan-400 font-bold'
               : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-350'
           }`}
         >
-          Financial Summary
+          Financials
+        </button>
+        <button
+          onClick={() => setActiveTab('subscription')}
+          className={`px-6 py-3 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
+            activeTab === 'subscription'
+              ? 'border-purple-500 text-purple-600 dark:text-purple-400 font-bold'
+              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-350'
+          }`}
+        >
+          Subscription
         </button>
       </div>
 
@@ -399,6 +429,94 @@ export const HostelDetailsPage: React.FC = () => {
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                   Aggregate billing details, including collections and pending rent invoices. The platform updates financial projections automatically based on occupant check-in logs.
                 </p>
+              </Card.Body>
+            </Card>
+          </div>
+        )}
+        {activeTab === 'subscription' && (
+          <div className="space-y-6">
+            <Card>
+              <Card.Header>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">Subscription Management</h3>
+                    <p className="text-sm text-slate-500">Manage and renew access for this hostel.</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <select
+                      id="renewalDuration"
+                      className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-purple-500 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
+                    >
+                      <option value="1_week">1 Week</option>
+                      <option value="1_month">1 Month</option>
+                      <option value="6_months">6 Months</option>
+                      <option value="1_year" selected>1 Year</option>
+                    </select>
+                    <button
+                      onClick={() => {
+                        const selectElement = document.getElementById('renewalDuration') as HTMLSelectElement;
+                        handleRenewSubscription(selectElement?.value || '1_year');
+                      }}
+                      disabled={isRenewing}
+                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium shadow-sm transition-colors disabled:opacity-50"
+                    >
+                      {isRenewing ? 'Processing...' : 'Activate / Renew Access'}
+                    </button>
+                  </div>
+                </div>
+              </Card.Header>
+              <Card.Body>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
+                    <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Current Status</p>
+                    <p className={`text-lg font-bold ${
+                      hostel.subscription_status === 'Active' ? 'text-green-600 dark:text-green-400' :
+                      hostel.subscription_status === 'Trial' ? 'text-yellow-600 dark:text-yellow-400' :
+                      'text-red-600 dark:text-red-400'
+                    }`}>
+                      {hostel.subscription_status || 'Unknown'}
+                    </p>
+                  </div>
+                  <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
+                    <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Trial End Date</p>
+                    <p className="text-lg font-bold text-slate-900 dark:text-white">
+                      {hostel.trial_end_date ? new Date(hostel.trial_end_date).toLocaleDateString() : 'N/A'}
+                    </p>
+                  </div>
+                  <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
+                    <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Subscription End Date</p>
+                    <p className="text-lg font-bold text-slate-900 dark:text-white">
+                      {hostel.subscription_end_date ? new Date(hostel.subscription_end_date).toLocaleDateString() : 'N/A'}
+                    </p>
+                  </div>
+                </div>
+              </Card.Body>
+            </Card>
+
+            <Card>
+              <Card.Header>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Subscription History</h3>
+              </Card.Header>
+              <Card.Body>
+                {subscriptionHistory.length === 0 ? (
+                  <p className="text-sm text-slate-500 py-4 text-center">No history records found.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {subscriptionHistory.map((entry, idx) => (
+                      <div key={idx} className="flex gap-4 p-4 rounded-xl border border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+                        <div className="flex-1">
+                          <p className="font-bold text-slate-900 dark:text-white">{entry.event_type}</p>
+                          <p className="text-sm text-slate-500">{entry.remarks}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-slate-400 font-medium">
+                            {new Date(entry.created_at).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </Card.Body>
             </Card>
           </div>

@@ -20,7 +20,8 @@ import {
   History,
   FileSpreadsheet,
   User,
-  AlertTriangle
+  AlertTriangle,
+  Mail
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -76,6 +77,7 @@ export const MainLayout: React.FC = () => {
         { name: 'Hostels', href: '/hostels', icon: Building, badge: { text: '3', type: 'count' } },
         { name: 'Owners', href: '/owners', icon: UserCheck, badge: { text: 'New', type: 'info' } },
         { name: 'Activity Logs', href: '/activity-logs', icon: History, badge: { text: 'Sync', type: 'pulse-blue' } },
+        { name: 'System Logs', href: '/system-logs', icon: Mail },
         { name: 'Reports', href: '/reports', icon: FileSpreadsheet, badge: { text: 'Excel', type: 'excel' } },
       ]
     : [

@@ -1,5 +1,6 @@
 import express from 'express';
 import { authMiddleware, queryTokenMiddleware } from '../middleware/auth.js';
+import { requireActiveSubscription } from '../middleware/subscriptionAuth.js';
 import {
   getAllIncome,
   createIncome,

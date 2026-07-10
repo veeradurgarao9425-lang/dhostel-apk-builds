@@ -99,6 +99,12 @@ export const NotificationScreen = () => {
             navigation.navigate('PaymentVerification');
         } else if (title.includes('notice') || title.includes('publish')) {
             navigation.navigate('Notices');
+        } else if (title.includes('subscription') || title.includes('trial')) {
+            navigation.navigate('SubscriptionExpired');
+        } else if (title.includes('report')) {
+            navigation.navigate('Reports');
+        } else if (data?.student_id) {
+            navigation.navigate('Notices');
         } else if (title.includes('maintenance') || title.includes('complaint')) {
             navigation.navigate('ComplaintsManagement');
         } else if (title.includes('room') || title.includes('assign')) {

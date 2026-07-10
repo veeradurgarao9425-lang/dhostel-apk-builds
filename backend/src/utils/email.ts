@@ -14,6 +14,8 @@ export interface EmailOptions {
   subject: string;
   html: string;
   attachments?: EmailAttachment[];
+  emailType?: string;
+  hostelId?: number | null;
 }
 
 // ─── Create transporter lazily (reads env vars at call-time, not module-load) ──
@@ -106,10 +108,15 @@ const sendViaSmtp = async (options: EmailOptions): Promise<void> => {
   console.log(`✅ Email sent successfully: ${info.messageId}`);
 };
 
+import db from '../config/database.js';
+
 // ─── Core send function ────────────────────────────────────────────────────────
 // Prefers the Brevo HTTP API (works on hosts like Render that block SMTP ports).
 // Falls back to SMTP when BREVO_API_KEY is not configured (e.g. local dev).
 export const sendEmail = async (options: EmailOptions): Promise<void> => {
+  let deliveryStatus = 'Sent';
+  let errorMessage = null;
+
   try {
     if (process.env.BREVO_API_KEY) {
       await sendViaBrevo(options);
@@ -117,8 +124,29 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
       await sendViaSmtp(options);
     }
   } catch (error: any) {
+    deliveryStatus = 'Failed';
+    errorMessage = error.message;
     console.error('❌ Send email FAILED:', error.message);
-    throw new Error(`Failed to send email: ${error.message}`);
+  } finally {
+    // Attempt to log the email
+    try {
+      if (options.emailType) {
+        await db('email_logs').insert({
+          hostel_id: options.hostelId || null,
+          recipient_email: options.to,
+          email_type: options.emailType,
+          subject: options.subject,
+          delivery_status: deliveryStatus,
+          error_message: errorMessage
+        });
+      }
+    } catch (dbError) {
+      console.error('❌ Failed to log email to database:', dbError);
+    }
+  }
+
+  if (deliveryStatus === 'Failed') {
+    throw new Error(`Failed to send email: ${errorMessage}`);
   }
 };
 

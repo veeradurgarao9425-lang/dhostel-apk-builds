@@ -21,6 +21,9 @@ interface Hostel {
   email?: string;
   amenities?: string[];
   created_at?: string;
+  subscription_status?: string;
+  trial_end_date?: string;
+  subscription_end_date?: string;
 }
 
 export const HostelsPage: React.FC = () => {
@@ -234,11 +237,21 @@ export const HostelsPage: React.FC = () => {
                   </span>
                 </div>
 
-                {/* Sub-badge: Hostel Type Pill */}
-                <div className="mb-4">
+                {/* Sub-badge: Hostel Type Pill & Subscription */}
+                <div className="mb-4 flex flex-wrap gap-2">
                   <span className="inline-flex px-2 py-0.5 rounded bg-cyan-50 dark:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400 border border-cyan-100/10 text-[10px] font-bold uppercase tracking-wider">
                     {hostel.hostel_type} Hostel
                   </span>
+                  {hostel.subscription_status && (
+                    <span className={clsx(
+                      "inline-flex px-2 py-0.5 rounded border text-[10px] font-bold uppercase tracking-wider",
+                      hostel.subscription_status === 'Active' ? 'bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400 border-green-100/20' :
+                      hostel.subscription_status === 'Trial' ? 'bg-yellow-50 dark:bg-yellow-950/40 text-yellow-600 dark:text-yellow-400 border-yellow-100/20' :
+                      'bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border-red-100/20'
+                    )}>
+                      {hostel.subscription_status}
+                    </span>
+                  )}
                 </div>
 
                 {/* Metadata List with small icons */}

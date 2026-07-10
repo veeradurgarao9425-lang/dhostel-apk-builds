@@ -1,6 +1,11 @@
 import cron from 'node-cron';
 import db from '../config/database.js';
-import { sendEmail } from '../utils/email.js'; // Assuming this exists or similar
+import { sendEmail } from '../utils/email.js';
+import { 
+  getTrialReminderTemplate, 
+  getSubscriptionExpiredTemplate, 
+  getSuperAdminExpiryTemplate 
+} from '../utils/emailTemplates.js';
 
 export const startSubscriptionCheckJob = () => {
   // Run daily at midnight
@@ -13,6 +18,8 @@ export const startSubscriptionCheckJob = () => {
 
       // 1. Process expirations
       const expiredHostels = await db('hostel_master')
+        .join('users', 'hostel_master.owner_id', '=', 'users.user_id')
+        .select('hostel_master.*', 'users.email', 'users.full_name')
         .where(function() {
           this.where('subscription_status', 'Trial')
               .andWhere('trial_end_date', '<', now)
@@ -23,52 +30,109 @@ export const startSubscriptionCheckJob = () => {
         });
 
       if (expiredHostels.length > 0) {
-        const expiredIds = expiredHostels.map(h => h.hostel_id);
-        
-        await db('hostel_master')
-          .whereIn('hostel_id', expiredIds)
-          .update({
-            subscription_status: 'Expired',
-            is_active: 0
+        for (const hostel of expiredHostels) {
+          // Update DB Status
+          await db('hostel_master')
+            .where({ hostel_id: hostel.hostel_id })
+            .update({
+              subscription_status: 'Expired',
+              is_active: 0
+            });
+
+          // Log History
+          await db('subscription_history').insert({
+              hostel_id: hostel.hostel_id,
+              event_type: hostel.subscription_status === 'Trial' ? 'Trial Expired' : 'Subscription Expired',
+              remarks: `Expired on ${todayDate}`
           });
 
-        console.log(`[Cron] Expired ${expiredIds.length} hostels.`);
-      }
+          // Email Owner
+          if (hostel.email) {
+            await sendEmail({
+              to: hostel.email,
+              subject: 'Subscription Expired - Hostix',
+              html: getSubscriptionExpiredTemplate(hostel.full_name, hostel.hostel_name),
+              emailType: 'Expiry Alert',
+              hostelId: hostel.hostel_id
+            });
 
-      // 2. 15-day warning notification
-      const futureDate = new Date();
-      futureDate.setDate(futureDate.getDate() + 15);
-      const warningDateStr = futureDate.toISOString().split('T')[0];
+            // Owner in-app notification
+            await db('notifications').insert({
+                user_id: hostel.owner_id,
+                hostel_id: hostel.hostel_id,
+                notification_type: 'Subscription Alert',
+                title: 'Subscription Expired',
+                message: `Your subscription for ${hostel.hostel_name} has expired. Access is restricted.`,
+                priority: 'High'
+            });
+          }
 
-      // Query hostels expiring exactly in 15 days
-      const warningHostels = await db('hostel_master')
-        .join('users', 'hostel_master.owner_id', '=', 'users.user_id')
-        .select('hostel_master.hostel_name', 'hostel_master.trial_end_date', 'hostel_master.subscription_end_date', 'hostel_master.subscription_status', 'users.email', 'users.full_name')
-        .whereRaw('DATE(trial_end_date) = ? AND subscription_status = "Trial"', [warningDateStr])
-        .orWhereRaw('DATE(subscription_end_date) = ? AND subscription_status = "Active"', [warningDateStr]);
+          // Email Super Admin
+          await sendEmail({
+            to: 'hostixhelp@gmail.com',
+            subject: 'Hostel Subscription Expired Alert - Hostix',
+            html: getSuperAdminExpiryTemplate({ hostel_name: hostel.hostel_name, email: hostel.email }),
+            emailType: 'Super Admin Alert',
+            hostelId: hostel.hostel_id
+          });
 
-      for (const hostel of warningHostels) {
-        try {
-           const expiryDate = hostel.subscription_status === 'Trial' ? hostel.trial_end_date : hostel.subscription_end_date;
-           
-           // If there is an email utility
-           if (hostel.email) {
-             const subject = `Notice: Your ${hostel.subscription_status} plan for ${hostel.hostel_name} expires in 15 days`;
-             const message = `
-               <p>Dear ${hostel.full_name},</p>
-               <p>Your ${hostel.subscription_status} plan for your hostel <strong>${hostel.hostel_name}</strong> will expire in exactly 15 days on ${new Date(expiryDate).toLocaleDateString()}.</p>
-               <p>To avoid any interruption in service, please login and renew your subscription.</p>
-               <p>Thank you.</p>
-             `;
-             await sendEmail(hostel.email, subject, message);
-           }
-        } catch (e) {
-          console.error(`[Cron] Failed to send 15-day warning to ${hostel.email}`, e);
+          // Super Admin in-app notification
+          await db('notifications').insert({
+              user_id: 1, // Super Admin
+              hostel_id: hostel.hostel_id,
+              notification_type: 'System Alert',
+              title: 'Hostel Expired',
+              message: `${hostel.hostel_name} subscription has expired.`,
+              priority: 'High'
+          });
         }
+        console.log(`[Cron] Expired ${expiredHostels.length} hostels.`);
       }
 
-      if (warningHostels.length > 0) {
-        console.log(`[Cron] Sent 15-day warning to ${warningHostels.length} owners.`);
+      // 2. Reminder Notifications (7, 3, 1 days)
+      const daysToRemind = [7, 3, 1];
+      
+      for (const days of daysToRemind) {
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + days);
+        const warningDateStr = futureDate.toISOString().split('T')[0];
+
+        const warningHostels = await db('hostel_master')
+          .join('users', 'hostel_master.owner_id', '=', 'users.user_id')
+          .select('hostel_master.hostel_id', 'hostel_master.hostel_name', 'hostel_master.trial_end_date', 'hostel_master.subscription_end_date', 'hostel_master.subscription_status', 'users.email', 'users.full_name', 'users.user_id')
+          .whereRaw('DATE(trial_end_date) = ? AND subscription_status = "Trial"', [warningDateStr])
+          .orWhereRaw('DATE(subscription_end_date) = ? AND subscription_status = "Active"', [warningDateStr]);
+
+        for (const hostel of warningHostels) {
+          try {
+             const expiryDate = hostel.subscription_status === 'Trial' ? hostel.trial_end_date : hostel.subscription_end_date;
+             
+             if (hostel.email) {
+               await sendEmail({
+                 to: hostel.email,
+                 subject: `Trial Expiry Reminder - ${days} Days Left`,
+                 html: getTrialReminderTemplate(hostel.full_name, hostel.hostel_name, days, new Date(expiryDate).toLocaleDateString()),
+                 emailType: 'Trial Reminder',
+                 hostelId: hostel.hostel_id
+               });
+
+               await db('notifications').insert({
+                 user_id: hostel.user_id,
+                 hostel_id: hostel.hostel_id,
+                 notification_type: 'Subscription Alert',
+                 title: 'Subscription Expiring Soon',
+                 message: `Your subscription for ${hostel.hostel_name} expires in ${days} day(s).`,
+                 priority: 'Medium'
+               });
+             }
+          } catch (e) {
+            console.error(`[Cron] Failed to send ${days}-day warning to ${hostel.email}`, e);
+          }
+        }
+
+        if (warningHostels.length > 0) {
+          console.log(`[Cron] Sent ${days}-day warning to ${warningHostels.length} owners.`);
+        }
       }
 
     } catch (error) {
