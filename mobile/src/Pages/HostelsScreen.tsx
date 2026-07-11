@@ -8,7 +8,8 @@ import {
     ActivityIndicator,
     RefreshControl,
     Modal,
-    TouchableWithoutFeedback
+    TouchableWithoutFeedback,
+    Image
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,7 +28,7 @@ export const HostelsScreen = () => {
     const navigation = useNavigation<any>();
     const { user, updateTokenAndUser } = useAuth();
     const { theme, isDark, fontSize } = useTheme();
-    const { showError, showApiError } = useToast();
+    const { showError, showApiError, showSuccess } = useToast();
 
     const [hostels, setHostels] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -91,6 +92,7 @@ export const HostelsScreen = () => {
             if (res.data?.success) {
                 const { token, hostel_name } = res.data.data;
                 await updateTokenAndUser(token, { hostel_id: hostelId, hostel_name });
+                showSuccess(`Switched active hostel to ${hostel_name}`);
             } else {
                 showError(res.data?.error || 'Failed to switch active hostel');
             }
@@ -151,12 +153,15 @@ export const HostelsScreen = () => {
     };
 
     const getInitials = (name: string) => {
-        if (!name) return 'H';
-        const parts = name.split(' ');
+        if (!name || typeof name !== 'string') return 'H';
+        const cleanName = name.trim().replace(/\s+/g, ' ');
+        const parts = cleanName.split(' ');
         if (parts.length > 1) {
-            return (parts[0][0] + parts[1][0]).toUpperCase();
+            const first = parts[0]?.[0] || '';
+            const second = parts[1]?.[0] || '';
+            return (first + second).toUpperCase();
         }
-        return name.slice(0, 2).toUpperCase();
+        return cleanName.slice(0, 2).toUpperCase();
     };
 
     const handleViewDetails = (hostel: any) => {
@@ -217,16 +222,20 @@ export const HostelsScreen = () => {
                                         shadowOffset: { width: 0, height: 4 },
                                     }
                                 ]}
-                                onPress={() => handleViewDetails(h)}
+                                onPress={() => isActive ? handleViewDetails(h) : handleSwitchHostel(h.hostel_id)}
                                 activeOpacity={0.9}
                                 disabled={isSwitching}
                             >
                                 <View style={styles.cardInner}>
                                     <View style={styles.cardHeader}>
                                         <View style={[styles.avatarBox, { backgroundColor: avatarBg }]}>
-                                            <Text style={[styles.avatarTextInitials, { color: avatarTextColor }]}>
-                                                {getInitials(h.hostel_name)}
-                                            </Text>
+                                             {h.photo && typeof h.photo === 'string' && h.photo.trim() !== '' && h.photo.trim() !== 'null' && h.photo.startsWith('http') ? (
+                                                 <Image source={{ uri: h.photo }} style={styles.avatarImg} />
+                                             ) : (
+                                                 <Text style={[styles.avatarTextInitials, { color: avatarTextColor }]}>
+                                                     {getInitials(h.hostel_name)}
+                                                 </Text>
+                                             )}
                                         </View>
                                         <View style={styles.infoContainer}>
                                             <Text style={[styles.nameText, { color: theme.textPrimary }]} numberOfLines={1}>
@@ -242,12 +251,24 @@ export const HostelsScreen = () => {
                                                 </Text>
                                             </View>
                                         </View>
-                                        <View style={[styles.statusBadge, { backgroundColor: isActive ? theme.success + '15' : 'rgba(148, 163, 184, 0.15)' }]}>
-                                            <View style={[styles.statusDot, { backgroundColor: isActive ? theme.success : theme.textSecondary }]} />
+                                        <TouchableOpacity
+                                            onPress={(e) => {
+                                                e.stopPropagation();
+                                                if (!isActive) handleSwitchHostel(h.hostel_id);
+                                            }}
+                                            style={[styles.statusBadge, { backgroundColor: isActive ? theme.success + '15' : 'rgba(148, 163, 184, 0.15)' }]}
+                                            activeOpacity={isActive ? 1.0 : 0.7}
+                                            disabled={isSwitching}
+                                        >
+                                            {isSwitching ? (
+                                                <ActivityIndicator size="small" color={theme.primary} style={{ marginRight: 4, transform: [{ scale: 0.7 }] }} />
+                                            ) : (
+                                                <View style={[styles.statusDot, { backgroundColor: isActive ? theme.success : theme.textSecondary }]} />
+                                            )}
                                             <Text style={[styles.statusBadgeText, { color: isActive ? theme.success : theme.textSecondary }]}>
-                                                {isActive ? 'Active' : 'Inactive'}
+                                                {isActive ? 'Active' : 'Switch Active'}
                                             </Text>
-                                        </View>
+                                        </TouchableOpacity>
                                     </View>
 
                                     {/* Hostel quick specs row */}
@@ -302,8 +323,7 @@ export const HostelsScreen = () => {
                                                 <Text style={[styles.actionBtnIconText, { color: theme.textSecondary }]}>Reports</Text>
                                             </TouchableOpacity>
                                         </View>
-
-                                        {isSwitching ? (
+                {isSwitching ? (
                                             <ActivityIndicator size="small" color={theme.primary} style={{ marginRight: 10 }} />
                                         ) : (
                                             <TouchableOpacity
@@ -311,13 +331,13 @@ export const HostelsScreen = () => {
                                                 style={[
                                                     styles.statusToggleBtnNew,
                                                     {
-                                                        backgroundColor: isActive ? theme.success + '15' : theme.primary + '15',
-                                                        borderColor: isActive ? theme.success + '30' : theme.primary + '30',
+                                                        backgroundColor: theme.primary + '15',
+                                                        borderColor: theme.primary + '30',
                                                         borderWidth: 1
                                                     }
                                                 ]}
                                             >
-                                                <Text style={[styles.statusToggleTextNew, { color: isActive ? theme.success : theme.primary }]}>
+                                                <Text style={[styles.statusToggleTextNew, { color: theme.primary }]}>
                                                     View Details
                                                 </Text>
                                             </TouchableOpacity>
@@ -380,6 +400,11 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         overflow: 'hidden',
+    },
+    avatarImg: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
     },
     avatarTextInitials: {
         fontSize: 13,

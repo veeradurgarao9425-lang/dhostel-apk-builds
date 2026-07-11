@@ -2,7 +2,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
     ScrollView, StatusBar, RefreshControl, Animated,
-    ActivityIndicator, Linking,
+    ActivityIndicator, Linking, Image,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -497,9 +497,13 @@ export default function HomeScreen() {
                             activeOpacity={0.8}
                         >
                             <View style={s.avatarCircle}>
-                                <Text style={s.avatarLetter}>
-                                    {avatarLetter(user?.full_name || 'O')}
-                                </Text>
+                                {user?.photo && typeof user.photo === 'string' && user.photo.trim() !== '' && user.photo.trim() !== 'null' && user.photo.startsWith('http') ? (
+                                    <Image source={{ uri: user.photo }} style={s.avatarImage} />
+                                ) : (
+                                    <Text style={s.avatarLetter}>
+                                        {avatarLetter(user?.full_name || 'O')}
+                                    </Text>
+                                )}
                             </View>
                         </TouchableOpacity>
 
@@ -617,12 +621,15 @@ export default function HomeScreen() {
 
                         // Extract initials
                         const getInitials = (name: string) => {
-                            if (!name) return 'H';
-                            const parts = name.split(' ');
+                            if (!name || typeof name !== 'string') return 'H';
+                            const cleanName = name.trim().replace(/\s+/g, ' ');
+                            const parts = cleanName.split(' ');
                             if (parts.length > 1) {
-                                return (parts[0][0] + parts[1][0]).toUpperCase();
+                                const first = parts[0]?.[0] || '';
+                                const second = parts[1]?.[0] || '';
+                                return (first + second).toUpperCase();
                             }
-                            return name.slice(0, 2).toUpperCase();
+                            return cleanName.slice(0, 2).toUpperCase();
                         };
 
                         return (
@@ -642,10 +649,14 @@ export default function HomeScreen() {
                             >
                                 <View style={s.hostelSelectInner}>
                                     {/* Left initials badge */}
-                                    <View style={[s.hostelSelectAvatar, { backgroundColor: avatarBg }]}>
-                                        <Text style={[s.hostelSelectAvatarText, { color: statusColor }]}>
-                                            {getInitials(h.hostel_name)}
-                                        </Text>
+                                    <View style={[s.hostelSelectAvatar, { backgroundColor: avatarBg, overflow: 'hidden' }]}>
+                                        {h.photo && typeof h.photo === 'string' && h.photo.trim() !== '' && h.photo.trim() !== 'null' && h.photo.startsWith('http') ? (
+                                            <Image source={{ uri: h.photo }} style={s.avatarImage} />
+                                        ) : (
+                                            <Text style={[s.hostelSelectAvatarText, { color: statusColor }]}>
+                                                {getInitials(h.hostel_name)}
+                                            </Text>
+                                        )}
                                     </View>
 
                                     {/* Middle info */}
@@ -709,7 +720,7 @@ export default function HomeScreen() {
                         activeOpacity={0.75}
                     >
                         <View style={[s.selectorActionIcon, { backgroundColor: '#DBEAFE' }]}>
-                            <Ionicons name="settings-outline" size={16} color="#2563EB" />
+                            <Ionicons name="list-outline" size={16} color="#2563EB" />
                         </View>
                         <Text style={[s.selectorActionText, { color: theme.textPrimary }]}>Manage All Hostels</Text>
                         <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} style={{ marginLeft: 'auto' }} />
@@ -1507,5 +1518,10 @@ const s = StyleSheet.create({
     selectorActionText: {
         fontSize: 13,
         fontWeight: '700',
+    },
+    avatarImage: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
     },
 });

@@ -6,7 +6,8 @@ import {
     ScrollView,
     TouchableOpacity,
     ActivityIndicator,
-    StatusBar
+    StatusBar,
+    Image
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -41,12 +42,15 @@ export const HostelDetailsScreen = () => {
     };
 
     const getInitials = (name: string) => {
-        if (!name) return 'H';
-        const parts = name.split(' ');
+        if (!name || typeof name !== 'string') return 'H';
+        const cleanName = name.trim().replace(/\s+/g, ' ');
+        const parts = cleanName.split(' ');
         if (parts.length > 1) {
-            return (parts[0][0] + parts[1][0]).toUpperCase();
+            const first = parts[0]?.[0] || '';
+            const second = parts[1]?.[0] || '';
+            return (first + second).toUpperCase();
         }
-        return name.slice(0, 2).toUpperCase();
+        return cleanName.slice(0, 2).toUpperCase();
     };
 
     const handleSwitchHostel = async (hostelId: number) => {
@@ -133,16 +137,20 @@ useEffect(() => {
             >
                 {/* Header Summary block */}
                 <View style={styles.summaryBlock}>
-                    <View style={[styles.avatarBoxLarge, { backgroundColor: isGirls ? '#FCE7F3' : '#DBEAFE' }]}>
-                        <Text style={[styles.avatarTextInitialsLarge, { color: isGirls ? '#DB2777' : '#2563EB' }]}>
-                            {getInitials(selectedHostelDetails.hostel_name)}
-                        </Text>
+                    <View style={[styles.avatarBoxLarge, { backgroundColor: isGirls ? '#FCE7F3' : '#DBEAFE', overflow: 'hidden' }]}>
+                        {selectedHostelDetails.photo && typeof selectedHostelDetails.photo === 'string' && selectedHostelDetails.photo.trim() !== '' && selectedHostelDetails.photo.trim() !== 'null' && selectedHostelDetails.photo.startsWith('http') ? (
+                            <Image source={{ uri: selectedHostelDetails.photo }} style={styles.avatarImgLarge} />
+                        ) : (
+                            <Text style={[styles.avatarTextInitialsLarge, { color: isGirls ? '#DB2777' : '#2563EB' }]}>
+                                {getInitials(selectedHostelDetails.hostel_name)}
+                            </Text>
+                        )}
                     </View>
                     <View style={{ flex: 1, marginLeft: 14 }}>
                         <Text style={[styles.hostelName, { color: theme.textPrimary }]} numberOfLines={1}>
                             {selectedHostelDetails.hostel_name}
                         </Text>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
                             <View style={[styles.typeBadge, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
                                 <Text style={[styles.typeBadgeText, { color: isDark ? theme.primary : '#475569' }]}>
                                     {selectedHostelDetails.hostel_type || 'Co-Living'}
@@ -153,43 +161,23 @@ useEffect(() => {
                                     {(Number(selectedHostelDetails.hostel_id) === Number(user?.hostel_id)) ? 'Active' : 'Inactive'}
                                 </Text>
                             </View>
+                            {selectedHostelDetails.hostel_code && (
+                                <TouchableOpacity 
+                                    onPress={() => handleCopyCode(selectedHostelDetails.hostel_code)}
+                                    style={[styles.typeBadge, { backgroundColor: copied ? (isDark ? '#064E3B' : '#D1FAE5') : (isDark ? '#1E293B' : '#F1F5F9'), borderColor: copied ? '#10B981' : 'transparent', borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 4 }]}
+                                    activeOpacity={0.7}
+                                >
+                                    <Ionicons name={copied ? "checkmark-circle" : "key-outline"} size={11} color={copied ? '#10B981' : theme.primary} />
+                                    <Text style={[styles.typeBadgeText, { color: copied ? (isDark ? '#A7F3D0' : '#064E3B') : (isDark ? '#FFF' : '#475569'), fontSize: 10 }]}>
+                                        Code: {selectedHostelDetails.hostel_code}
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
                         </View>
                     </View>
                 </View>
 
                 <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
-
-                {/* Hostel Connection Code Block */}
-                {selectedHostelDetails.hostel_code && (
-                    <View style={[styles.premiumCardContainer, { backgroundColor: theme.cardBg, borderColor: theme.primary, borderWidth: 1 }]}>
-                        <View style={styles.premiumCardHeader}>
-                            <Ionicons name="key" size={16} color={theme.primary} />
-                            <Text style={[styles.premiumCardHeaderTitle, { color: theme.primary }]}>Hostel Connection Code</Text>
-                        </View>
-                        <TouchableOpacity 
-                            style={[styles.premiumGridItem, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9', alignItems: 'center', paddingVertical: 20 }]}
-                            onPress={() => handleCopyCode(selectedHostelDetails.hostel_code)}
-                            activeOpacity={0.75}
-                        >
-                            <Text style={{ color: theme.textSecondary, marginBottom: 8, textAlign: 'center', fontSize: 13 }}>
-                                Share this code with your tenants so they can connect to this hostel in their app.
-                            </Text>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                                <Text style={{ fontSize: 28, fontWeight: 'bold', color: copied ? '#10B981' : theme.textPrimary, letterSpacing: 4 }}>
-                                    {selectedHostelDetails.hostel_code}
-                                </Text>
-                                <Ionicons 
-                                    name={copied ? "checkmark-circle" : "copy-outline"} 
-                                    size={22} 
-                                    color={copied ? '#10B981' : theme.primary} 
-                                />
-                            </View>
-                            <Text style={{ fontSize: 11, color: copied ? '#10B981' : theme.textSecondary, marginTop: 8, fontWeight: copied ? '700' : '400' }}>
-                                {copied ? 'Code copied to clipboard!' : 'Tap code to copy and share.'}
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-                )}
 
                 {/* Premium Card: Hostel General & Location Info */}
                 <View style={[styles.premiumCardContainer, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
@@ -208,20 +196,39 @@ useEffect(() => {
                                 <Text style={[styles.premiumValue, { color: theme.textPrimary }]}>{selectedHostelDetails.total_floors || 'N/A'}</Text>
                             </View>
                         </View>
-                    {(() => {
-                        const addressParts = [selectedHostelDetails.address, selectedHostelDetails.city, selectedHostelDetails.state].filter(Boolean);
-                        const addressLabel = addressParts.join(', ');
-                        const pincodeText = selectedHostelDetails.pincode ? ` - ${selectedHostelDetails.pincode}` : '';
-                        if (!addressLabel && !selectedHostelDetails.pincode) return null;
-                        return (
-                            <View style={[styles.premiumGridItem, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9' }]}> 
-                                <Text style={styles.premiumLabel}>Hostel Address</Text>
-                                <Text style={[styles.premiumValue, { color: theme.textPrimary, lineHeight: 18 }]}> 
-                                    {addressLabel || 'Not available'}{pincodeText}
-                                </Text>
-                            </View>
-                        );
-                    })()}
+                        {selectedHostelDetails.hostel_code && (
+                            <TouchableOpacity
+                                style={[styles.premiumGridItem, { backgroundColor: copied ? (isDark ? '#064E3B' : '#D1FAE5') : (isDark ? '#0F172A' : '#F8FAFC'), borderColor: copied ? '#10B981' : (isDark ? '#334155' : '#F1F5F9'), borderWidth: 1 }]}
+                                onPress={() => handleCopyCode(selectedHostelDetails.hostel_code)}
+                                activeOpacity={0.75}
+                            >
+                                <Text style={styles.premiumLabel}>Connection Code (Tap to Copy)</Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                                    <Text style={[styles.premiumValue, { color: copied ? '#10B981' : theme.primary, fontWeight: 'bold' }]}>
+                                        {selectedHostelDetails.hostel_code}
+                                    </Text>
+                                    <Ionicons 
+                                        name={copied ? "checkmark-circle" : "copy-outline"} 
+                                        size={14} 
+                                        color={copied ? '#10B981' : theme.primary} 
+                                    />
+                                </View>
+                            </TouchableOpacity>
+                        )}
+                        {(() => {
+                            const addressParts = [selectedHostelDetails.address, selectedHostelDetails.city, selectedHostelDetails.state].filter(Boolean);
+                            const addressLabel = addressParts.join(', ');
+                            const pincodeText = selectedHostelDetails.pincode ? ` - ${selectedHostelDetails.pincode}` : '';
+                            if (!addressLabel && !selectedHostelDetails.pincode) return null;
+                            return (
+                                <View style={[styles.premiumGridItem, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9' }]}> 
+                                    <Text style={styles.premiumLabel}>Hostel Address</Text>
+                                    <Text style={[styles.premiumValue, { color: theme.textPrimary, lineHeight: 18 }]}> 
+                                        {addressLabel || 'Not available'}{pincodeText}
+                                    </Text>
+                                </View>
+                            );
+                        })()}
                     </View>
                 </View>
 
@@ -322,6 +329,11 @@ const styles = StyleSheet.create({
         borderRadius: 28,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    avatarImgLarge: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
     },
     avatarTextInitialsLarge: {
         fontSize: 18,
