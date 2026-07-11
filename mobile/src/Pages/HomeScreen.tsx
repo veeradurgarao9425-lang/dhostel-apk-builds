@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import api from '../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useToast } from '../context/ToastContext';
 import { ProfileMenu } from '../components/ProfileMenu';
 import { AppHeader } from '../components/AppHeader';
 import { HeaderNotification } from '../components/HeaderNotification';
@@ -116,7 +117,8 @@ const Skeleton = ({ style }: { style?: any }) => (
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function HomeScreen() {
     const navigation = useNavigation<any>();
-    const { user } = useAuth();
+    const { user, hostels, loadHostels, updateTokenAndUser } = useAuth();
+    const { showError, showApiError, showSuccess } = useToast();
     const { theme, isDark, fontSize } = useTheme();
     const { t } = useTranslation();
     const [data, setData] = useState(INITIAL_STATE);
@@ -125,6 +127,8 @@ export default function HomeScreen() {
     const [hasError, setHasError] = useState(false);
     const [backgroundLoading, setBackgroundLoading] = useState(false);
     const [showCollectionSheet, setShowCollectionSheet] = useState(false);
+    const [showHostelSelector, setShowHostelSelector] = useState(false);
+    const [switchingHostelId, setSwitchingHostelId] = useState<number | null>(null);
     const isFirstLoadRef = React.useRef(true);
 
     const pulseValue = useRef(new Animated.Value(1)).current;
@@ -145,6 +149,13 @@ export default function HomeScreen() {
             ])
         ).start();
     }, []);
+
+    // Load hostels on component mount if empty
+    useEffect(() => {
+        if (hostels.length === 0) {
+            loadHostels();
+        }
+    }, [hostels.length, loadHostels]);
 
     // ── Data loader ───────────────────────────────────────────────────────────
     const load = useCallback(async (isRefresh = false) => {
@@ -353,6 +364,33 @@ export default function HomeScreen() {
         }
     }, [refreshCounter]);
 
+    // ── Active Hostel switcher handler ─────────────────────────────────────────
+    const handleHostelSelect = async (hostelId: number, hostelName: string) => {
+        if (Number(hostelId) === Number(user?.hostel_id)) {
+            setShowHostelSelector(false);
+            return;
+        }
+        try {
+            setSwitchingHostelId(hostelId);
+            const res = await api.put('/auth/active-hostel', { hostel_id: hostelId });
+            if (res.data?.success) {
+                const { token, hostel_name } = res.data.data;
+                await updateTokenAndUser(token, { hostel_id: hostelId, hostel_name });
+                showSuccess(`Switched active hostel to ${hostel_name}`);
+                setShowHostelSelector(false);
+                // Trigger reload of stats
+                await load(true);
+            } else {
+                showError(res.data?.error || 'Failed to switch active hostel');
+            }
+        } catch (err: any) {
+            console.error('Switch active hostel error:', err);
+            showApiError(err, 'An error occurred while switching hostels.');
+        } finally {
+            setSwitchingHostelId(null);
+        }
+    };
+
     // ── Quick action press handler ────────────────────────────────────────────
     const handleQuickAction = (a: typeof QUICK_ACTIONS[0]) => {
         navigation.navigate(a.route);
@@ -465,9 +503,9 @@ export default function HomeScreen() {
                             </View>
                         </TouchableOpacity>
 
-                        {/* Hostel name → tap to go to Hostels — Pill drop-down style */}
+                        {/* Hostel name → tap to open Hostel Selector Bottom Sheet */}
                         <TouchableOpacity
-                            onPress={() => navigation.navigate('Hostels')}
+                            onPress={() => setShowHostelSelector(true)}
                             activeOpacity={0.75}
                             style={s.hostelNameBtn}
                         >
@@ -544,6 +582,140 @@ export default function HomeScreen() {
 </View>
             </ScrollView>
             <CollectionDetailsSheet data={data} showCollectionSheet={showCollectionSheet} setShowCollectionSheet={setShowCollectionSheet} />
+
+            {/* Hostel Selector Bottom Sheet */}
+            <ModalSheet visible={showHostelSelector} onClose={() => setShowHostelSelector(false)} maxHeight="75%">
+                {/* Header */}
+                <View style={[s.selectorHeader, { borderBottomColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <View style={[s.selectorIconWrap, { backgroundColor: theme.primary + '15' }]}>
+                            <Ionicons name="business" size={16} color={theme.primary} />
+                        </View>
+                        <View>
+                            <Text style={[s.selectorTitle, { color: theme.textPrimary }]}>Select Active Hostel</Text>
+                            <Text style={[s.selectorSub, { color: theme.textSecondary }]}>
+                                {hostels.length} {hostels.length === 1 ? 'hostel' : 'hostels'} registered
+                            </Text>
+                        </View>
+                    </View>
+                    <TouchableOpacity onPress={() => setShowHostelSelector(false)} style={[s.selectorCloseBtn, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
+                        <Ionicons name="close" size={16} color={theme.textSecondary} />
+                    </TouchableOpacity>
+                </View>
+
+                {/* List of Hostels */}
+                <ScrollView contentContainerStyle={s.selectorScrollContent} showsVerticalScrollIndicator={false}>
+                    {hostels.map((h: any) => {
+                        const isActive = Number(h.hostel_id) === Number(user?.hostel_id);
+                        const isSwitching = switchingHostelId === h.hostel_id;
+                        
+                        // Color theme based on hostel type
+                        const isGirls = h.hostel_type?.toLowerCase().includes('girl');
+                        const isBoys = h.hostel_type?.toLowerCase().includes('boy');
+                        const statusColor = isGirls ? '#DB2777' : (isBoys ? '#2563EB' : '#0EA5E9');
+                        const avatarBg = isGirls ? 'rgba(219, 39, 119, 0.12)' : (isBoys ? 'rgba(37, 99, 235, 0.12)' : 'rgba(14, 165, 233, 0.12)');
+
+                        // Extract initials
+                        const getInitials = (name: string) => {
+                            if (!name) return 'H';
+                            const parts = name.split(' ');
+                            if (parts.length > 1) {
+                                return (parts[0][0] + parts[1][0]).toUpperCase();
+                            }
+                            return name.slice(0, 2).toUpperCase();
+                        };
+
+                        return (
+                            <TouchableOpacity
+                                key={h.hostel_id}
+                                style={[
+                                    s.hostelSelectItem,
+                                    {
+                                        backgroundColor: isActive ? (isDark ? '#1E293B' : '#F8FAFC') : 'transparent',
+                                        borderColor: isActive ? theme.primary + '30' : (isDark ? '#334155' : '#E2E8F0'),
+                                        borderWidth: 1,
+                                    }
+                                ]}
+                                onPress={() => handleHostelSelect(h.hostel_id, h.hostel_name)}
+                                activeOpacity={0.75}
+                                disabled={isSwitching}
+                            >
+                                <View style={s.hostelSelectInner}>
+                                    {/* Left initials badge */}
+                                    <View style={[s.hostelSelectAvatar, { backgroundColor: avatarBg }]}>
+                                        <Text style={[s.hostelSelectAvatarText, { color: statusColor }]}>
+                                            {getInitials(h.hostel_name)}
+                                        </Text>
+                                    </View>
+
+                                    {/* Middle info */}
+                                    <View style={s.hostelSelectInfo}>
+                                        <Text style={[s.hostelSelectName, { color: theme.textPrimary }]} numberOfLines={1}>
+                                            {h.hostel_name}
+                                        </Text>
+                                        <View style={s.hostelSelectSubRow}>
+                                            <Ionicons name="location-outline" size={11} color={theme.textSecondary} style={{ marginRight: 2 }} />
+                                            <Text style={[s.hostelSelectAddress, { color: theme.textSecondary }]} numberOfLines={1}>
+                                                {(() => {
+                                                    const addressParts = [h.address, h.city].filter(v => v && String(v).trim().length > 0 && String(v).trim() !== ',');
+                                                    return addressParts.join(', ') || 'No address';
+                                                })()}
+                                            </Text>
+                                        </View>
+                                    </View>
+
+                                    {/* Right status / actions */}
+                                    <View style={s.hostelSelectRight}>
+                                        {isSwitching ? (
+                                            <ActivityIndicator size="small" color={theme.primary} />
+                                        ) : isActive ? (
+                                            <View style={[s.activeIndicator, { backgroundColor: theme.primary }]}>
+                                                <Ionicons name="checkmark" size={12} color="#FFF" />
+                                            </View>
+                                        ) : (
+                                            <View style={s.inactiveIndicator} />
+                                        )}
+                                    </View>
+                                </View>
+                            </TouchableOpacity>
+                        );
+                    })}
+
+                    {/* Divider */}
+                    <View style={[s.selectorDivider, { backgroundColor: isDark ? '#1E293B' : '#E2E8F0' }]} />
+
+                    {/* Actions at the bottom of the list */}
+                    <TouchableOpacity
+                        style={[s.selectorActionBtn, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderWidth: 1, borderColor: isDark ? '#334155' : '#E2E8F0' }]}
+                        onPress={() => {
+                            setShowHostelSelector(false);
+                            navigation.navigate('AddHostel');
+                        }}
+                        activeOpacity={0.75}
+                    >
+                        <View style={[s.selectorActionIcon, { backgroundColor: '#EDE9FE' }]}>
+                            <Ionicons name="add" size={18} color="#7C3AED" />
+                        </View>
+                        <Text style={[s.selectorActionText, { color: theme.textPrimary }]}>Add New Hostel</Text>
+                        <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} style={{ marginLeft: 'auto' }} />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[s.selectorActionBtn, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderWidth: 1, borderColor: isDark ? '#334155' : '#E2E8F0' }]}
+                        onPress={() => {
+                            setShowHostelSelector(false);
+                            navigation.navigate('Hostels');
+                        }}
+                        activeOpacity={0.75}
+                    >
+                        <View style={[s.selectorActionIcon, { backgroundColor: '#DBEAFE' }]}>
+                            <Ionicons name="settings-outline" size={16} color="#2563EB" />
+                        </View>
+                        <Text style={[s.selectorActionText, { color: theme.textPrimary }]}>Manage All Hostels</Text>
+                        <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} style={{ marginLeft: 'auto' }} />
+                    </TouchableOpacity>
+                </ScrollView>
+            </ModalSheet>
         </View>
     );
 }
@@ -1214,5 +1386,126 @@ const s = StyleSheet.create({
         borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+
+    // ── Hostel Selector Sheet ────────────────────────────────────────────────
+    selectorHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingBottom: 16,
+        paddingTop: 8,
+        borderBottomWidth: 1,
+    },
+    selectorIconWrap: {
+        width: 36,
+        height: 36,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    selectorTitle: {
+        fontSize: 16,
+        fontWeight: '800',
+    },
+    selectorSub: {
+        fontSize: 11,
+        fontWeight: '600',
+        marginTop: 1,
+    },
+    selectorCloseBtn: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    selectorScrollContent: {
+        paddingHorizontal: 20,
+        paddingTop: 16,
+        paddingBottom: 40,
+    },
+    hostelSelectItem: {
+        borderRadius: 14,
+        marginBottom: 12,
+        padding: 14,
+    },
+    hostelSelectInner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    hostelSelectAvatar: {
+        width: 40,
+        height: 40,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    hostelSelectAvatarText: {
+        fontSize: 14,
+        fontWeight: '800',
+    },
+    hostelSelectInfo: {
+        flex: 1,
+        marginLeft: 12,
+        marginRight: 8,
+    },
+    hostelSelectName: {
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    hostelSelectSubRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 4,
+    },
+    hostelSelectAddress: {
+        fontSize: 11,
+        fontWeight: '500',
+    },
+    hostelSelectRight: {
+        width: 24,
+        height: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    activeIndicator: {
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    inactiveIndicator: {
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        borderWidth: 2,
+        borderColor: '#CBD5E1',
+    },
+    selectorDivider: {
+        height: 1,
+        marginVertical: 16,
+    },
+    selectorActionBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 8,
+        borderRadius: 12,
+        marginBottom: 8,
+    },
+    selectorActionIcon: {
+        width: 32,
+        height: 32,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 12,
+    },
+    selectorActionText: {
+        fontSize: 13,
+        fontWeight: '700',
     },
 });
