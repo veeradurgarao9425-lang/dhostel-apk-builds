@@ -2,6 +2,7 @@ import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { isOverstaying, expectedLastDay } from '../jobs/guestOverstay.js';
+import { checkHostelUniqueIdentifiers } from '../utils/validation.js';
 
 // Resolve the hostel the request is scoped to (owner = JWT hostel, admin = body/query)
 function resolveHostelId(req: AuthRequest): number | null {
@@ -96,6 +97,16 @@ export const createGuest = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ success: false, error: 'Required fields: full_name, check_in_date' });
     }
 
+    if (phone) {
+      const validation = await checkHostelUniqueIdentifiers(hostelId, { phone });
+      if (!validation.isUnique) {
+        return res.status(409).json({
+          success: false,
+          error: `The ${validation.conflictField} is already registered to a ${validation.conflictEntity} in this hostel.`
+        });
+      }
+    }
+
     const [guest_id] = await db('guests').insert({
       hostel_id: hostelId,
       full_name,
@@ -140,6 +151,21 @@ export const updateGuest = async (req: AuthRequest, res: Response) => {
     // If the booking dates/length changed, allow the overstay alert to fire again.
     if (req.body.check_in_date !== undefined || req.body.check_out_date !== undefined || req.body.days !== undefined) {
       updateData.overstay_notified = 0;
+    }
+
+    if (req.body.phone !== undefined) {
+      const validation = await checkHostelUniqueIdentifiers(
+        existing.hostel_id,
+        { phone: req.body.phone },
+        { entityType: 'guest', entityId: guestId }
+      );
+
+      if (!validation.isUnique) {
+        return res.status(409).json({
+          success: false,
+          error: `The ${validation.conflictField} is already registered to a ${validation.conflictEntity} in this hostel.`
+        });
+      }
     }
 
     await db('guests').where('guest_id', guestId).update(updateData);

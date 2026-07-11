@@ -9,7 +9,8 @@ import {
   deleteStaff,
   getStaffPayments,
   addStaffPayment,
-  deleteStaffPayment
+  deleteStaffPayment,
+  getStaffMonthlySummary
 } from '../controllers/staffController.js';
 
 const router = express.Router();
@@ -18,6 +19,7 @@ const router = express.Router();
 router.use(authMiddleware, requireActiveSubscription);
 
 // Staff wage payments (declare specific routes before '/:staffId')
+router.get('/:staffId/salary-summary', getStaffMonthlySummary);
 router.get('/:staffId/payments', getStaffPayments);
 router.post('/:staffId/payments', addStaffPayment);
 router.delete('/payments/:paymentId', deleteStaffPayment);

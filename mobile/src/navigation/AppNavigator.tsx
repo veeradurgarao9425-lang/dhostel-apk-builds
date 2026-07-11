@@ -49,6 +49,7 @@ import ComingSoonScreen      from '../Pages/ComingSoonScreen';
 import StaffScreen           from '../Pages/StaffScreen';
 import AddStaffScreen        from '../Pages/AddStaffScreen';
 import StaffPaymentsScreen   from '../Pages/StaffPaymentsScreen';
+import StaffDetailsScreen    from '../Pages/StaffDetailsScreen';
 import GuestsScreen          from '../Pages/GuestsScreen';
 import AddGuestScreen        from '../Pages/AddGuestScreen';
 import BillRemindersScreen   from '../Pages/BillRemindersScreen';
@@ -176,6 +177,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
 
                     {/* Staff */}
                     <Stack.Screen name="Staff"           component={StaffScreen}           />
+                    <Stack.Screen name="StaffDetails"    component={StaffDetailsScreen}    />
                     <Stack.Screen
                         name="AddStaff"
                         component={AddStaffScreen}

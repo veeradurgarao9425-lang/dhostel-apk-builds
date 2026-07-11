@@ -11,6 +11,8 @@ import {
     TextInput,
     Modal,
     FlatList,
+    Animated,
+    Pressable,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { AppHeader } from '../components/AppHeader';
@@ -34,6 +36,7 @@ import {
     Lock,
     Pencil,
     X,
+    AlertTriangle,
 } from 'lucide-react-native';
 import { FullScreenLoader } from '../components/FullScreenLoader';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -42,6 +45,92 @@ import { extractCapacity } from './AddRoomScreen';
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
 type Mode = 'simple' | 'mixed' | 'nested';
+
+const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: any) => {
+    const { theme } = useTheme();
+    const anim = useRef(new Animated.Value(0)).current;
+    const insets = useSafeAreaInsets();
+
+    useEffect(() => {
+        if (visible) {
+            Animated.timing(anim, {
+                toValue: 1,
+                duration: 250,
+                useNativeDriver: true,
+            }).start();
+        } else {
+            Animated.timing(anim, {
+                toValue: 0,
+                duration: 200,
+                useNativeDriver: true,
+            }).start();
+        }
+    }, [visible]);
+
+    if (!visible) return null;
+
+    const backdropOpacity = anim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, 0.5],
+    });
+
+    const sheetTranslateY = anim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [600, 0],
+    });
+
+    return (
+        <Modal transparent visible={visible} animationType="none" statusBarTranslucent onRequestClose={onClose}>
+            <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+                <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#000', opacity: backdropOpacity }]}>
+                    <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} />
+                </Animated.View>
+                <Animated.View style={[
+                    styles.sheet,
+                    { maxHeight, backgroundColor: theme.cardBg || '#FFF', transform: [{ translateY: sheetTranslateY }], paddingBottom: insets.bottom > 0 ? insets.bottom : 24 }
+                ]}>
+                    {children}
+                </Animated.View>
+            </View>
+        </Modal>
+    );
+};
+
+const CustomAlertModal = ({ visible, title, message, onClose, primaryAction, secondaryAction, icon: Icon = AlertTriangle }: any) => {
+    const { theme, isDark } = useTheme();
+    return (
+        <Modal transparent visible={visible} animationType="fade" statusBarTranslucent onRequestClose={onClose}>
+            <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+                <View style={{ backgroundColor: isDark ? '#1E293B' : '#FFF', borderRadius: 24, padding: 24, width: '100%', maxWidth: 340, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 }}>
+                    <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : '#FEE2E2', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+                        <Icon size={32} color="#EF4444" />
+                    </View>
+                    <Text style={{ fontSize: 16, fontWeight: '800', color: theme.textPrimary, marginBottom: 12, textAlign: 'center' }}>{title}</Text>
+                    <Text style={{ fontSize: 14, color: theme.textSecondary, textAlign: 'center', marginBottom: 28, lineHeight: 22, fontWeight: '700' }}>{message}</Text>
+                    
+                    {primaryAction || secondaryAction ? (
+                        <View style={{ flexDirection: 'row', gap: 12, width: '100%' }}>
+                            {secondaryAction && (
+                                <TouchableOpacity onPress={secondaryAction.onPress} activeOpacity={0.8} style={{ flex: 1, backgroundColor: isDark ? '#334155' : '#F1F5F9', paddingVertical: 14, borderRadius: 12, alignItems: 'center' }}>
+                                    <Text style={{ color: theme.textSecondary, fontSize: 14, fontWeight: '700' }}>{secondaryAction.label}</Text>
+                                </TouchableOpacity>
+                            )}
+                            {primaryAction && (
+                                <TouchableOpacity onPress={primaryAction.onPress} activeOpacity={0.8} style={{ flex: 1, backgroundColor: theme.primary || '#6C3ACD', paddingVertical: 14, borderRadius: 12, alignItems: 'center' }}>
+                                    <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '700' }}>{primaryAction.label}</Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    ) : (
+                        <TouchableOpacity onPress={onClose} activeOpacity={0.8} style={{ width: '100%', backgroundColor: theme.primary || '#6C3ACD', paddingVertical: 14, borderRadius: 14, alignItems: 'center' }}>
+                            <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '700' }}>Okay, I understand</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+            </View>
+        </Modal>
+    );
+};
 
 interface PatternRow {
     id: string;
@@ -134,6 +223,7 @@ export const BulkRoomSetupScreen = ({ navigation }: any) => {
     const [preview, setPreview] = useState<PreviewRoom[] | null>(null);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [typeModalTarget, setTypeModalTarget] = useState<TypeModalTarget>(null);
+    const [confirmModalVisible, setConfirmModalVisible] = useState(false);
 
     useFocusEffect(
         useCallback(() => {
@@ -345,7 +435,13 @@ export const BulkRoomSetupScreen = ({ navigation }: any) => {
     }, [mode, preview]);
 
     // ── Submit (lock the floor) ──────────────────────────────────────────────────
+    const initiateSubmit = () => {
+        if (!preview || preview.length === 0 || activeFloor === null) return;
+        setConfirmModalVisible(true);
+    };
+
     const handleSubmit = async () => {
+        setConfirmModalVisible(false);
         if (!preview || preview.length === 0 || activeFloor === null) return;
 
         const numbers = preview.map(p => p.room_number.trim());
@@ -407,7 +503,7 @@ export const BulkRoomSetupScreen = ({ navigation }: any) => {
     // ── Render helpers ───────────────────────────────────────────────────────────
     const cardBg = theme.cardBg;
     const borderCol = isDark ? '#334155' : '#E8EAF6';
-    const inputBg = isDark ? '#1E293B' : '#F8FAFC';
+    const inputBg = isDark ? '#1E1B4B' : '#F5F3FF';
 
     const renderOverview = () => (
         <>
@@ -722,74 +818,145 @@ export const BulkRoomSetupScreen = ({ navigation }: any) => {
         </>
     );
 
+    const previewSummary = useMemo(() => {
+        if (!preview) return null;
+        let totalRent = 0;
+        const counts: Record<string, number> = {};
+        preview.forEach(r => {
+            const type = r.room_type_name;
+            const beds = parseInt(r.capacity, 10) || 0;
+            const rent = parseFloat(r.rent_per_bed) || 0;
+            totalRent += (beds * rent);
+            counts[type] = (counts[type] || 0) + 1;
+        });
+        return {
+            totalRent,
+            types: Object.entries(counts).map(([name, count]) => ({ name, count }))
+        };
+    }, [preview]);
+
     const renderPreview = () => (
         <>
             {renderBackRow('Edit Numbers', () => setPreview(null))}
-            <View style={[styles.card, { backgroundColor: cardBg }]}>
-                <View style={styles.cardHeader}>
-                    <View style={[styles.cardIconWrap, { backgroundColor: '#EDE9FE' }]}>
-                        <Layers size={18} color="#7C3AED" />
-                    </View>
-                    <View>
-                        <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>
-                            Preview — Floor {activeFloor} · {preview?.length} Rooms
-                        </Text>
-                        <Text style={[styles.cardSubtitle, { color: theme.textSecondary }]}>Check everything before locking this floor</Text>
-                    </View>
+            <View style={styles.previewHeader}>
+                <View style={[styles.cardIconWrap, { backgroundColor: '#EDE9FE' }]}>
+                    <Layers size={18} color="#7C3AED" />
                 </View>
+                <View style={{ flex: 1 }}>
+                    <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>
+                        Blueprint — Floor {activeFloor}
+                    </Text>
+                    <Text style={[styles.cardSubtitle, { color: theme.textSecondary }]}>
+                        <Text style={{ fontWeight: '800', color: isDark ? '#C4B5FD' : '#6C3ACD' }}>
+                            {preview?.length} Rooms
+                        </Text>
+                        {' · Tap to edit numbers or rent'}
+                    </Text>
+                </View>
+            </View>
 
+            {previewSummary && (
+                <View style={styles.summaryScroll}>
+                    {previewSummary.types.map(t => (
+                        <View key={t.name} style={[styles.summaryPill, { backgroundColor: isDark ? '#1E293B' : '#EDE9FE' }]}>
+                            <Text style={[styles.summaryPillText, { color: isDark ? '#C4B5FD' : '#6C3ACD' }]}>{t.count} × {t.name}</Text>
+                        </View>
+                    ))}
+                    {previewSummary.totalRent > 0 && (
+                        <View style={[styles.summaryPill, { backgroundColor: isDark ? '#064E3B' : '#D1FAE5' }]}>
+                            <Text style={[styles.summaryPillText, { color: isDark ? '#34D399' : '#065F46' }]}>
+                                Total Expected Rent: ₹{previewSummary.totalRent.toLocaleString('en-IN')}
+                            </Text>
+                        </View>
+                    )}
+                </View>
+            )}
+
+            <View style={styles.blueprintGrid}>
                 {mode === 'nested' && groupedPreview
                     ? groupedPreview.map(group => (
-                        <View key={group[0].main_group} style={[styles.groupBox, { borderColor: borderCol, backgroundColor: inputBg }]}>
-                            <Text style={[styles.groupTitle, { color: theme.textPrimary }]}>Room {group[0].main_group}</Text>
-                            {group.map(row => (
-                                <View key={row.id} style={[styles.previewRow, { borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                                    <View style={[styles.inputBox, { flex: 1.1, backgroundColor: cardBg, borderColor: borderCol, marginBottom: 0 }]}>
+                        <View key={group[0].main_group} style={[styles.blueprintMainRoom, { borderColor: borderCol, backgroundColor: isDark ? '#1E293B' : '#FFF' }]}>
+                            <Text style={[styles.blueprintMainRoomLabel, { color: theme.textSecondary }]}>
+                                MAIN UNIT {group[0].main_group}
+                            </Text>
+                            <View style={styles.blueprintSubRoomsGrid}>
+                                {group.map(row => (
+                                    <View key={row.id} style={[styles.blueprintCard, { borderColor: borderCol, backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }]}>
+                                        <View style={styles.blueprintCardHeader}>
+                                            <View style={styles.blueprintRoomNumWrap}>
+                                                <Text style={styles.blueprintRoomLabel}>ROOM NO.</Text>
+                                                <View style={styles.blueprintEditableInput}>
+                                                    <TextInput
+                                                        style={[styles.blueprintRoomNum, { color: theme.textPrimary }]}
+                                                        value={row.room_number}
+                                                        onChangeText={text => updatePreviewRow(row.id, { room_number: text })}
+                                                        keyboardType="default"
+                                                    />
+                                                </View>
+                                            </View>
+                                            <TouchableOpacity onPress={() => removePreviewRow(row.id)} style={styles.blueprintRemove}>
+                                                <Trash2 size={14} color="#EF4444" />
+                                            </TouchableOpacity>
+                                        </View>
+                                        <View style={styles.blueprintCardBody}>
+                                            <View style={styles.blueprintTypeWrap}>
+                                                <Text style={styles.blueprintType} numberOfLines={1}>{row.room_type_name}</Text>
+                                            </View>
+                                            
+                                            <View style={styles.blueprintRentSection}>
+                                                <Text style={styles.blueprintRentLabel}>Monthly Rent / Bed</Text>
+                                                <View style={styles.blueprintEditableInput}>
+                                                    <IndianRupee size={12} color="#64748B" />
+                                                    <TextInput
+                                                        style={[styles.blueprintRent, { color: theme.textPrimary }]}
+                                                        keyboardType="numeric"
+                                                        value={row.rent_per_bed}
+                                                        onChangeText={text => updatePreviewRow(row.id, { rent_per_bed: text })}
+                                                    />
+                                                </View>
+                                            </View>
+                                        </View>
+                                    </View>
+                                ))}
+                            </View>
+                        </View>
+                    ))
+                    : preview?.map(row => (
+                        <View key={row.id} style={[styles.blueprintCard, { borderColor: borderCol, backgroundColor: cardBg }]}>
+                            <View style={styles.blueprintCardHeader}>
+                                <View style={styles.blueprintRoomNumWrap}>
+                                    <Text style={styles.blueprintRoomLabel}>ROOM NO.</Text>
+                                    <View style={styles.blueprintEditableInput}>
                                         <TextInput
-                                            style={[styles.inputText, { color: theme.textPrimary, fontSize: 12.5 }]}
+                                            style={[styles.blueprintRoomNum, { color: theme.textPrimary }]}
                                             value={row.room_number}
                                             onChangeText={text => updatePreviewRow(row.id, { room_number: text })}
+                                            keyboardType="default"
                                         />
                                     </View>
-                                    <Text style={[styles.previewType, { color: theme.textSecondary }]} numberOfLines={1}>{row.room_type_name}</Text>
-                                    <View style={[styles.rentBox, { backgroundColor: cardBg, borderColor: borderCol }]}>
-                                        <IndianRupee size={11} color="#94A3B8" />
+                                </View>
+                                <TouchableOpacity onPress={() => removePreviewRow(row.id)} style={styles.blueprintRemove}>
+                                    <Trash2 size={14} color="#EF4444" />
+                                </TouchableOpacity>
+                            </View>
+                            <View style={styles.blueprintCardBody}>
+                                <View style={styles.blueprintTypeWrap}>
+                                    <Text style={styles.blueprintType} numberOfLines={1}>{row.room_type_name}</Text>
+                                </View>
+                                
+                                <View style={styles.blueprintRentSection}>
+                                    <Text style={styles.blueprintRentLabel}>Monthly Rent / Bed</Text>
+                                    <View style={styles.blueprintEditableInput}>
+                                        <IndianRupee size={12} color="#64748B" />
                                         <TextInput
-                                            style={[styles.inputText, { color: theme.textPrimary, fontSize: 12 }]}
+                                            style={[styles.blueprintRent, { color: theme.textPrimary }]}
                                             keyboardType="numeric"
                                             value={row.rent_per_bed}
                                             onChangeText={text => updatePreviewRow(row.id, { rent_per_bed: text })}
                                         />
                                     </View>
-                                    <TouchableOpacity onPress={() => removePreviewRow(row.id)} style={styles.removeBtn}>
-                                        <Trash2 size={14} color="#EF4444" />
-                                    </TouchableOpacity>
                                 </View>
-                            ))}
-                        </View>
-                    ))
-                    : preview?.map(row => (
-                        <View key={row.id} style={[styles.previewRow, { borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                            <View style={[styles.inputBox, { flex: 1.2, backgroundColor: inputBg, borderColor: borderCol, marginBottom: 0 }]}>
-                                <TextInput
-                                    style={[styles.inputText, { color: theme.textPrimary }]}
-                                    value={row.room_number}
-                                    onChangeText={text => updatePreviewRow(row.id, { room_number: text })}
-                                />
                             </View>
-                            <Text style={[styles.previewType, { color: theme.textSecondary }]} numberOfLines={1}>{row.room_type_name}</Text>
-                            <View style={[styles.rentBox, { backgroundColor: inputBg, borderColor: borderCol }]}>
-                                <IndianRupee size={12} color="#94A3B8" />
-                                <TextInput
-                                    style={[styles.inputText, { color: theme.textPrimary, fontSize: 13 }]}
-                                    keyboardType="numeric"
-                                    value={row.rent_per_bed}
-                                    onChangeText={text => updatePreviewRow(row.id, { rent_per_bed: text })}
-                                />
-                            </View>
-                            <TouchableOpacity onPress={() => removePreviewRow(row.id)} style={styles.removeBtn}>
-                                <Trash2 size={15} color="#EF4444" />
-                            </TouchableOpacity>
                         </View>
                     ))}
             </View>
@@ -836,7 +1003,7 @@ export const BulkRoomSetupScreen = ({ navigation }: any) => {
             {/* Sticky footer — only while reviewing a generated preview */}
             {activeFloor !== null && preview && preview.length > 0 && (
                 <View style={[styles.footer, { backgroundColor: theme.cardBg, borderTopColor: isDark ? '#1E293B' : '#F1F5F9', paddingBottom: insets.bottom + 12 }]}>
-                    <TouchableOpacity style={[styles.createBtn, { backgroundColor: '#0E9F6E', opacity: submitting ? 0.7 : 1 }]} onPress={handleSubmit} disabled={submitting} activeOpacity={0.85}>
+                    <TouchableOpacity style={[styles.createBtn, { backgroundColor: '#0E9F6E', opacity: submitting ? 0.7 : 1 }]} onPress={initiateSubmit} disabled={submitting} activeOpacity={0.85}>
                         <Lock size={17} color="#FFF" />
                         <Text style={styles.createBtnText}>Confirm & Lock Floor {activeFloor}</Text>
                     </TouchableOpacity>
@@ -844,52 +1011,64 @@ export const BulkRoomSetupScreen = ({ navigation }: any) => {
             )}
 
             {/* Room Type Modal — shared by all three modes */}
-            <Modal
+            <ModalSheet
                 visible={!!typeModalTarget}
-                transparent
-                animationType="slide"
-                statusBarTranslucent
-                onRequestClose={() => setTypeModalTarget(null)}
+                onClose={() => setTypeModalTarget(null)}
+                maxHeight="60%"
             >
-                <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setTypeModalTarget(null)}>
-                    <TouchableOpacity activeOpacity={1} style={styles.modalSheet} onPress={e => e.stopPropagation()}>
-                        <View style={styles.modalHandle} />
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Select Room Type</Text>
-                            <TouchableOpacity onPress={() => setTypeModalTarget(null)} style={styles.doneBtn} activeOpacity={0.7}>
-                                <Text style={styles.doneBtnText}>Done</Text>
-                            </TouchableOpacity>
-                        </View>
-                        <FlatList
-                            data={roomTypes}
-                            keyExtractor={item => item.room_type_id.toString()}
-                            showsVerticalScrollIndicator={false}
-                            renderItem={({ item }) => {
-                                const selected = typeModalPickedId === item.room_type_id.toString();
-                                return (
-                                    <TouchableOpacity
-                                        style={[styles.modalOption, selected && { backgroundColor: '#F5F3FF' }]}
-                                        onPress={() => {
-                                            const id = item.room_type_id.toString();
-                                            if (typeModalTarget?.kind === 'simple') setSimpleTypeId(id);
-                                            else if (typeModalTarget?.kind === 'mixed') updateMixedGroup(typeModalTarget.rowId, { room_type_id: id });
-                                            else if (typeModalTarget?.kind === 'nested') updatePatternRow(typeModalTarget.rowId, { room_type_id: id });
-                                            setTypeModalTarget(null);
-                                        }}
-                                        activeOpacity={0.7}
-                                    >
-                                        <Text style={[styles.modalOptionText, selected && { color: '#7C3AED', fontWeight: '700' }]}>
-                                            {item.room_type_name}
-                                        </Text>
-                                        {selected && <Check size={18} color="#7C3AED" />}
-                                    </TouchableOpacity>
-                                );
-                            }}
-                            contentContainerStyle={{ paddingBottom: 40 }}
-                        />
+                <View style={styles.modalHandle} />
+                <View style={styles.modalHeader}>
+                    <Text style={styles.modalTitle}>Select Room Type</Text>
+                    <TouchableOpacity onPress={() => setTypeModalTarget(null)} style={styles.doneBtn} activeOpacity={0.7}>
+                        <Text style={styles.doneBtnText}>Done</Text>
                     </TouchableOpacity>
-                </TouchableOpacity>
-            </Modal>
+                </View>
+                <FlatList
+                    data={roomTypes}
+                    keyExtractor={item => item.room_type_id.toString()}
+                    showsVerticalScrollIndicator={false}
+                    renderItem={({ item }) => {
+                        const selected = typeModalPickedId === item.room_type_id.toString();
+                        return (
+                            <TouchableOpacity
+                                style={[styles.modalOption, selected && { backgroundColor: '#F5F3FF' }]}
+                                onPress={() => {
+                                    const id = item.room_type_id.toString();
+                                    if (typeModalTarget?.kind === 'simple') setSimpleTypeId(id);
+                                    else if (typeModalTarget?.kind === 'mixed') updateMixedGroup(typeModalTarget.rowId, { room_type_id: id });
+                                    else if (typeModalTarget?.kind === 'nested') updatePatternRow(typeModalTarget.rowId, { room_type_id: id });
+                                    setTypeModalTarget(null);
+                                }}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={[styles.modalOptionText, selected && { color: '#7C3AED', fontWeight: '700' }]}>
+                                    {item.room_type_name}
+                                </Text>
+                                {selected && <Check size={18} color="#7C3AED" />}
+                            </TouchableOpacity>
+                        );
+                    }}
+                    contentContainerStyle={{ paddingBottom: 40 }}
+                />
+            </ModalSheet>
+
+            <CustomAlertModal
+                visible={confirmModalVisible}
+                title="Lock Floor Configuration?"
+                message={
+                    <>
+                        Are you sure you want to lock Floor {activeFloor} and create{' '}
+                        <Text style={{ fontWeight: '900', color: isDark ? '#C4B5FD' : '#6C3ACD' }}>
+                            {preview?.length || 0} rooms
+                        </Text>
+                        ? This action is not easily reversible.
+                    </>
+                }
+                onClose={() => setConfirmModalVisible(false)}
+                icon={Lock}
+                primaryAction={{ label: 'Yes, Lock Floor', onPress: handleSubmit }}
+                secondaryAction={{ label: 'Cancel', onPress: () => setConfirmModalVisible(false) }}
+            />
         </KeyboardAvoidingView>
     );
 };
@@ -1085,17 +1264,148 @@ const styles = StyleSheet.create({
     },
     generateBtnText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
 
-    groupBox: { borderWidth: 1, borderRadius: 12, padding: 10, marginBottom: 10 },
-    groupTitle: { fontSize: 12.5, fontWeight: '800', marginBottom: 6 },
-
-    previewRow: {
+    // Blueprint Preview Styles
+    previewHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
-        paddingVertical: 8,
-        borderBottomWidth: 1,
+        gap: 10,
+        marginBottom: 12,
+        paddingHorizontal: 4,
     },
-    previewType: { flex: 1, fontSize: 11, fontWeight: '600' },
+    summaryScroll: {
+        marginBottom: 18,
+        paddingHorizontal: 4,
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    summaryScrollContent: {
+        gap: 8,
+        alignItems: 'center',
+    },
+    summaryPill: {
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
+    },
+    summaryPillText: {
+        fontSize: 11,
+        fontWeight: '700',
+    },
+    blueprintGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 12,
+        paddingBottom: 20,
+        justifyContent: 'space-between',
+    },
+    blueprintCard: {
+        width: '48%', 
+        borderWidth: 1.5,
+        borderRadius: 12,
+        padding: 10,
+        borderStyle: 'solid',
+        shadowColor: '#6366F1',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 3,
+        elevation: 1,
+    },
+    blueprintCardHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(148, 163, 184, 0.2)',
+        paddingBottom: 8,
+        marginBottom: 8,
+    },
+    blueprintRoomNumWrap: {
+        flex: 1,
+    },
+    blueprintRoomLabel: {
+        fontSize: 9,
+        fontWeight: '800',
+        color: '#64748B',
+        marginBottom: 2,
+    },
+    blueprintEditableInput: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(124, 58, 237, 0.08)',
+        borderRadius: 6,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderWidth: 1,
+        borderColor: 'rgba(124, 58, 237, 0.2)',
+        gap: 4,
+        alignSelf: 'flex-start',
+    },
+    blueprintRoomNum: {
+        width: 55,
+        fontSize: 16,
+        fontWeight: '800',
+        padding: 0,
+        margin: 0,
+        includeFontPadding: false,
+    },
+    blueprintRemove: {
+        padding: 6,
+        backgroundColor: '#FEE2E2',
+        borderRadius: 100,
+        marginLeft: 4,
+    },
+    blueprintCardBody: {
+        gap: 8,
+    },
+    blueprintTypeWrap: {
+        backgroundColor: '#EDE9FE',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+        alignSelf: 'flex-start',
+    },
+    blueprintType: {
+        fontSize: 10,
+        fontWeight: '800',
+        textTransform: 'uppercase',
+        color: '#6C3ACD',
+    },
+    blueprintRentSection: {
+        gap: 4,
+    },
+    blueprintRentLabel: {
+        fontSize: 9,
+        fontWeight: '700',
+        color: '#64748B',
+    },
+    blueprintRent: {
+        width: 65,
+        fontSize: 13,
+        fontWeight: '700',
+        padding: 0,
+        margin: 0,
+    },
+    blueprintMainRoom: {
+        width: '100%',
+        borderWidth: 1.5,
+        borderStyle: 'dashed',
+        borderRadius: 14,
+        padding: 12,
+        marginBottom: 8,
+    },
+    blueprintMainRoomLabel: {
+        fontSize: 11,
+        fontWeight: '800',
+        letterSpacing: 1,
+        marginBottom: 10,
+    },
+    blueprintSubRoomsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 12,
+        justifyContent: 'space-between',
+    },
 
     footer: {
         flexDirection: 'row',
@@ -1120,13 +1430,12 @@ const styles = StyleSheet.create({
     },
     createBtnText: { color: '#FFF', fontSize: 14.5, fontWeight: '700' },
 
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-    modalSheet: {
+    sheet: {
         backgroundColor: '#FFF',
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         paddingTop: 12,
-        maxHeight: '70%',
+        overflow: 'hidden',
     },
     modalHandle: { width: 40, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, alignSelf: 'center', marginBottom: 12 },
     modalHeader: {

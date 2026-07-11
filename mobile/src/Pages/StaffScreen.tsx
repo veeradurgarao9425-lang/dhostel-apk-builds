@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity,
     StatusBar, LayoutAnimation, Platform, UIManager,
-    Linking, ScrollView, SectionList
+    Linking, ScrollView, SectionList, Modal
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -36,12 +36,12 @@ const CATEGORIES = [
 const ROLES = ['Cook', 'Housekeeping', 'Security', 'Warden', 'Cleaner', 'Others'];
 
 // ─── Staff Card Component ───────────────────────────────────────────────────
-const StaffCard = React.memo(({ item, onCall, onWhatsApp, onToggleStatus, onPayments }: any) => {
+const StaffCard = React.memo(({ item, onCall, onWhatsApp, onToggleStatus, onPayments, onPressCard }: any) => {
     const isActive = item.status === 'ACTIVE';
     const initials = item.full_name ? item.full_name[0].toUpperCase() : 'S';
 
     return (
-        <View style={s.card}>
+        <TouchableOpacity style={s.card} activeOpacity={0.9} onPress={() => onPressCard(item)}>
             <View style={s.cardMain}>
                 <View style={s.avatarBox}>
                     <Text style={s.avatarInitials}>{initials}</Text>
@@ -49,48 +49,69 @@ const StaffCard = React.memo(({ item, onCall, onWhatsApp, onToggleStatus, onPaym
                 <View style={s.infoContainer}>
                     <Text style={s.nameText} numberOfLines={1}>{item.full_name}</Text>
                     <Text style={s.phoneText}>{item.phone}</Text>
-                    {item.monthly_salary != null && item.monthly_salary !== '' && (
-                        <Text style={s.salaryText}>₹ {Number(item.monthly_salary).toLocaleString('en-IN')}</Text>
-                    )}
-                    <View style={s.badgeRow}>
+                    <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
                         <View style={s.roleBadge}>
                             <Text style={s.roleBadgeText}>{item.role}</Text>
                         </View>
-                        <TouchableOpacity 
-                            onPress={() => onToggleStatus(item)}
-                            style={[s.statusBadge, { backgroundColor: isActive ? '#DCFCE7' : '#FEE2E2' }]}
-                        >
-                            <Text style={[s.statusBadgeText, { color: isActive ? '#16A34A' : '#EF4444' }]}>
-                                {item.status}
-                            </Text>
-                        </TouchableOpacity>
+                        {item.monthly_salary != null && item.monthly_salary !== '' && (
+                            <View style={[s.roleBadge, { backgroundColor: '#F0FDF4' }]}>
+                                <Text style={[s.roleBadgeText, { color: '#16A34A' }]}>₹ {Number(item.monthly_salary).toLocaleString('en-IN')}</Text>
+                            </View>
+                        )}
                     </View>
                 </View>
-                <View style={s.actionColumn}>
-                    <TouchableOpacity
-                        onPress={() => onCall(item.phone)}
-                        style={s.iconCircle}
-                        activeOpacity={0.7}
-                    >
-                        <Ionicons name="call" size={16} color="#10B981" />
-                    </TouchableOpacity>
+                <View style={[s.statusBadge, { backgroundColor: isActive ? '#DCFCE7' : '#FEE2E2', position: 'absolute', top: 15, right: 15 }]}>
+                    <Text style={[s.statusBadgeText, { color: isActive ? '#16A34A' : '#EF4444' }]}>
+                        {item.status}
+                    </Text>
+                </View>
+            </View>
+
+            <View style={s.divider} />
+
+            <View style={s.cardActions}>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
                     <TouchableOpacity
                         onPress={() => onWhatsApp(item.phone, item.full_name)}
-                        style={s.iconCircle}
+                        style={s.actionBtnIcon}
                         activeOpacity={0.7}
                     >
-                        <Ionicons name="logo-whatsapp" size={16} color="#22C55E" />
+                        <Ionicons name="logo-whatsapp" size={14} color="#25D366" />
+                        <Text style={s.actionBtnIconText}>WhatsApp</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                        onPress={() => onPayments(item)}
-                        style={s.iconCircle}
+                        onPress={() => onCall(item.phone)}
+                        style={s.actionBtnIcon}
                         activeOpacity={0.7}
                     >
-                        <Ionicons name="wallet" size={16} color="#7C3AED" />
+                        <Ionicons name="call" size={14} color="#0EA5E9" />
+                        <Text style={s.actionBtnIconText}>Call</Text>
+                    </TouchableOpacity>
+                </View>
+                <View style={{ flexDirection: 'row', gap: 6 }}>
+                    <TouchableOpacity
+                        onPress={() => onPayments(item)}
+                        style={[s.statusToggleBtnNew, { backgroundColor: '#F3E8FF', borderColor: '#E9D5FF' }]}
+                    >
+                        <Text style={[s.statusToggleTextNew, { color: '#9333EA' }]}>Wallet</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => onToggleStatus(item)}
+                        style={[
+                            s.statusToggleBtnNew,
+                            {
+                                backgroundColor: isActive ? '#FEE2E2' : '#DCFCE7',
+                                borderColor: isActive ? '#FECACA' : '#BBF7D0'
+                            }
+                        ]}
+                    >
+                        <Text style={[s.statusToggleTextNew, { color: isActive ? '#EF4444' : '#16A34A' }]}>
+                            {isActive ? 'Deactivate' : 'Activate'}
+                        </Text>
                     </TouchableOpacity>
                 </View>
             </View>
-        </View>
+        </TouchableOpacity>
     );
 });
 
@@ -195,11 +216,13 @@ export default function StaffScreen() {
         });
     }, [confirm]);
 
-
-
     // ── Rendering helper for list items ──────────────────────────────────────
     const handlePayments = useCallback((item: any) => {
         navigation.navigate('StaffPayments', { staffId: item.staff_id, staffName: item.full_name });
+    }, [navigation]);
+
+    const handleCardPress = useCallback((item: any) => {
+        navigation.navigate('StaffDetails', { staffId: item.staff_id });
     }, [navigation]);
 
     const renderItem = useCallback(({ item }: any) => (
@@ -209,8 +232,9 @@ export default function StaffScreen() {
             onWhatsApp={handleWhatsApp}
             onToggleStatus={handleToggleStatus}
             onPayments={handlePayments}
+            onPressCard={handleCardPress}
         />
-    ), [handleCall, handleWhatsApp, handleToggleStatus, handlePayments]);
+    ), [handleCall, handleWhatsApp, handleToggleStatus, handlePayments, handleCardPress]);
 
     return (
         <View style={s.container}>
@@ -271,7 +295,6 @@ export default function StaffScreen() {
                     showsVerticalScrollIndicator={false}
                     ListEmptyComponent={
                         <EmptyState illustration="staff"
-                            variant={search.trim() ? 'noResults' : 'noData'}
                             title={search.trim() ? 'No Results' : 'No Staff Yet'}
                             subtitle={
                                 search.trim()
@@ -387,6 +410,13 @@ const s = StyleSheet.create({
         borderWidth: 1, borderColor: '#F1F5F9'
     },
 
+    divider: { height: 1, backgroundColor: '#F1F5F9' },
+    cardActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, backgroundColor: '#FAFAFA' },
+    actionBtnIcon: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0' },
+    actionBtnIconText: { fontSize: 11, fontWeight: '700', color: '#64748B' },
+    statusToggleBtnNew: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1 },
+    statusToggleTextNew: { fontSize: 11, fontWeight: '800' },
+
     fab: {
         position: 'absolute', bottom: 45, right: 24, width: 50, height: 50, borderRadius: 25,
         justifyContent: 'center', alignItems: 'center', elevation: 5,
@@ -452,5 +482,11 @@ const s = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
-    submitButtonText: { color: '#FFF', fontWeight: '700', fontSize: 15 }
+    submitButtonText: { color: '#FFF', fontWeight: '700', fontSize: 15 },
+
+    // Modal Styles
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+    sheet: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 32 },
+    sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+    sheetTitle: { fontSize: 18, fontWeight: '800', color: '#1E293B' },
 });

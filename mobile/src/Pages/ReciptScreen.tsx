@@ -49,18 +49,23 @@ export const ReceiptScreen = ({ navigation, route }: any) => {
         return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
     };
 
+    const isStaff = feeData.isStaff === true;
     const hostelName = user?.hostel_name || 'My Hostel';
     const amountPaid = feeData.paid_amount || feeData.amount || 0;
-    const paymentMode = feeData.payment_mode_name || 'CASH';
+    const paymentMode = feeData.payment_mode_name || feeData.mode || feeData.payment_mode || 'CASH';
     const transactionId = feeData.transaction_id || 'N/A';
-    const receiptNo = feeData.receipt_number || (feeData.fee_id ? `REC-${feeData.fee_id}` : 'N/A');
+    const receiptNo = feeData.receipt_number || (feeData.fee_id ? `REC-${feeData.fee_id}` : (feeData.payment_id ? `REC-${feeData.payment_id}` : 'N/A'));
     const transactionTime = formatDateTime(feeData.payment_date || feeData.created_at || new Date().toISOString());
-    const studentName = `${feeData.first_name || ''} ${feeData.last_name || ''}`.trim();
-    const roomNo = feeData.room_number || 'N/A';
+    const studentName = `${feeData.first_name || ''} ${feeData.last_name || ''}`.trim() || feeData.full_name || 'N/A';
+    const roomNo = isStaff ? 'N/A' : (feeData.room_number || 'N/A');
     const mobileNo = feeData.phone || 'N/A';
-    const feeMonth = feeData.fee_month || 'N/A';
+    const feeMonth = isStaff ? (feeData.note || 'Wage Payment') : (feeData.fee_month || 'N/A');
     const avatarInitials = getInitials(hostelName);
     const upiId = `${hostelName.toLowerCase().replace(/\s+/g, '')}@yesbank`;
+
+    const documentTitle = isStaff ? 'WAGE RECEIPT' : 'RENT RECEIPT';
+    const amountLabel = isStaff ? 'Wage / Advance Paid' : 'Rent / Fee Paid';
+    const recipientLabel = isStaff ? 'Paid To (Staff)' : 'Paid By (Student)';
 
     const generateHtml = () => {
         return `
@@ -68,22 +73,29 @@ export const ReceiptScreen = ({ navigation, route }: any) => {
               <head>
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                 <style>
-                  @page { margin: 0; size: A5 portrait; }
+                  @page { margin: 20px; size: auto; }
                   body {
                     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
                     background-color: #ffffff;
                     margin: 0;
                     padding: 24px;
                     color: #1e293b;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    min-height: 100vh;
                   }
                   .receipt-container {
                     width: 100%;
                     max-width: 100%;
                     background-color: #ffffff;
+                  }
+                  .document-title {
+                    text-align: center;
+                    font-size: 24px;
+                    font-weight: 900;
+                    color: #0f172a;
+                    margin-bottom: 24px;
+                    text-transform: uppercase;
+                    letter-spacing: 2px;
+                    border-bottom: 2px dashed #e2e8f0;
+                    padding-bottom: 16px;
                   }
                   .status-header {
                     display: flex;
@@ -96,7 +108,7 @@ export const ReceiptScreen = ({ navigation, route }: any) => {
                     width: 48px;
                     height: 48px;
                     border-radius: 50%;
-                    background-color: #5f259f;
+                    background-color: #10B981;
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -237,7 +249,7 @@ export const ReceiptScreen = ({ navigation, route }: any) => {
                     width: 24px;
                     height: 24px;
                     border-radius: 50%;
-                    background-color: #5f259f;
+                    background-color: #10B981;
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -276,12 +288,13 @@ export const ReceiptScreen = ({ navigation, route }: any) => {
               </head>
               <body>
                 <div class="receipt-container">
+                  <div class="document-title">${documentTitle}</div>
                   <div class="status-header">
                     <div class="status-icon-circle">
                       <span style="font-size: 20px; line-height: 48px;">✓</span>
                     </div>
                     <div class="status-text-container">
-                      <h2 class="status-title">Transaction Successful</h2>
+                      <h2 class="status-title">Payment Successful</h2>
                       <p class="status-time">${transactionTime}</p>
                     </div>
                   </div>
@@ -302,19 +315,25 @@ export const ReceiptScreen = ({ navigation, route }: any) => {
                     <div class="divider"></div>
 
                     <div class="transfer-header">
-                      <h4 class="transfer-title">Transfer Details</h4>
-                      <span class="chevron-icon"></span>
+                      <h4 class="transfer-title">${recipientLabel}</h4>
                     </div>
 
                     <div class="details-list">
                       <div class="detail-group">
-                        <span class="detail-label">Message / Fee Month</span>
-                        <span class="detail-value">Rent for ${feeMonth}</span>
+                        <span class="detail-label">Name</span>
+                        <span class="detail-value">${studentName}</span>
                       </div>
 
+                      ${!isStaff ? `
                       <div class="detail-group">
-                        <span class="detail-label">Student Name / Room</span>
-                        <span class="detail-value">${studentName} (Room ${roomNo})</span>
+                        <span class="detail-label">Room No.</span>
+                        <span class="detail-value">${roomNo}</span>
+                      </div>
+                      ` : ''}
+
+                      <div class="detail-group">
+                        <span class="detail-label">Message / Fee Month</span>
+                        <span class="detail-value">Rent for ${feeMonth}</span>
                       </div>
 
                       <div class="detail-group">
@@ -384,10 +403,10 @@ export const ReceiptScreen = ({ navigation, route }: any) => {
                 {/* Status Header Block */}
                 <View style={styles.statusHeader}>
                     <View style={styles.statusIconCircle}>
-                        <Ionicons name="checkmark-sharp" size={24} color="#FFF" />
+                        <Ionicons name="checkmark-sharp" size={40} color="#FFF" />
                     </View>
                     <View style={styles.statusTextContainer}>
-                        <Text style={styles.statusTitle}>Transaction Successful</Text>
+                        <Text style={styles.statusTitle}>Payment Successful</Text>
                         <Text style={styles.statusTime}>{transactionTime}</Text>
                     </View>
                 </View>
@@ -414,20 +433,26 @@ export const ReceiptScreen = ({ navigation, route }: any) => {
 
                     {/* Transfer Details Header */}
                     <View style={styles.transferHeader}>
-                        <Text style={styles.transferTitle}>Transfer Details</Text>
-                        <Ionicons name="chevron-up" size={20} color="#64748B" />
+                        <Text style={styles.transferTitle}>{recipientLabel}</Text>
                     </View>
 
                     {/* Details List */}
                     <View style={styles.detailsList}>
                         <View style={styles.detailGroup}>
-                            <Text style={styles.detailLabel}>Message / Fee Month</Text>
-                            <Text style={styles.detailValue}>Rent for {feeMonth}</Text>
+                            <Text style={styles.detailLabel}>Name</Text>
+                            <Text style={styles.detailValue}>{studentName}</Text>
                         </View>
+                        
+                        {!isStaff && (
+                            <View style={styles.detailGroup}>
+                                <Text style={styles.detailLabel}>Room No.</Text>
+                                <Text style={styles.detailValue}>{roomNo}</Text>
+                            </View>
+                        )}
 
                         <View style={styles.detailGroup}>
-                            <Text style={styles.detailLabel}>Student Name / Room</Text>
-                            <Text style={styles.detailValue}>{studentName} (Room {roomNo})</Text>
+                            <Text style={styles.detailLabel}>Message / Fee Month</Text>
+                            <Text style={styles.detailValue}>Rent for {feeMonth}</Text>
                         </View>
 
                         <View style={styles.detailGroup}>
@@ -459,14 +484,14 @@ export const ReceiptScreen = ({ navigation, route }: any) => {
                 {/* Action Buttons Row */}
                 <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
                     {/* Share Button */}
-                    <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#25D366', flex: 1 }]} onPress={sharePdf} activeOpacity={0.85}>
-                        <Ionicons name="logo-whatsapp" size={18} color="#FFF" style={{ marginRight: 6 }} />
-                        <Text style={styles.actionBtnText}>Share WhatsApp</Text>
+                    <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#E6F9F3', flex: 1, borderWidth: 1, borderColor: '#00B074' }]} onPress={sharePdf} activeOpacity={0.85}>
+                        <Ionicons name="logo-whatsapp" size={20} color="#00B074" style={{ marginRight: 8 }} />
+                        <Text style={[styles.actionBtnText, { color: '#00B074' }]}>Share Receipt</Text>
                     </TouchableOpacity>
 
                     {/* Download Button */}
-                    <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#4F46E5', flex: 1 }]} onPress={downloadPdf} activeOpacity={0.85}>
-                        <Ionicons name="download-outline" size={18} color="#FFF" style={{ marginRight: 6 }} />
+                    <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#00B074', flex: 1 }]} onPress={downloadPdf} activeOpacity={0.85}>
+                        <Ionicons name="download-outline" size={20} color="#FFF" style={{ marginRight: 8 }} />
                         <Text style={styles.actionBtnText}>Save PDF</Text>
                     </TouchableOpacity>
                 </View>
@@ -492,34 +517,34 @@ const styles = StyleSheet.create({
         padding: 16,
     },
     statusHeader: {
-        flexDirection: 'row',
+        flexDirection: 'column',
         alignItems: 'center',
-        gap: 16,
-        marginBottom: 20,
-        marginTop: 10,
-        paddingHorizontal: 8,
+        justifyContent: 'center',
+        marginBottom: 24,
+        marginTop: 20,
     },
     statusIconCircle: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        backgroundColor: '#5f259f',
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: '#10B981',
         justifyContent: 'center',
         alignItems: 'center',
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        elevation: 4,
+        shadowColor: '#10B981',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
     },
     statusTextContainer: {
         flexDirection: 'column',
-        flex: 1,
+        alignItems: 'center',
     },
     statusTitle: {
-        fontSize: 18,
-        fontWeight: '800',
+        fontSize: 22,
+        fontWeight: '900',
         color: '#0F172A',
+        marginTop: 16,
     },
     statusTime: {
         fontSize: 13,
@@ -711,10 +736,7 @@ const styles = StyleSheet.create({
         color: '#5f259f',
         fontSize: 14,
         letterSpacing: 1,
-    },
-    brandingDot: {
-        color: '#10B981',
-    },
+    }
 });
 
 export default ReceiptScreen;

@@ -99,17 +99,17 @@ const CustomAlertModal = ({ visible, title, message, onClose, primaryAction, sec
                         <Icon size={32} color="#EF4444" />
                     </View>
                     <Text style={{ fontSize: fontSize + 2, fontWeight: '800', color: theme.textPrimary, marginBottom: 12, textAlign: 'center' }}>{title}</Text>
-                    <Text style={{ fontSize: fontSize, color: theme.textSecondary, textAlign: 'center', marginBottom: 28, lineHeight: 22 }}>{message}</Text>
+                    <Text style={{ fontSize: fontSize, color: theme.textSecondary, textAlign: 'center', marginBottom: 28, lineHeight: 22, fontWeight: '700' }}>{message}</Text>
                     
                     {primaryAction || secondaryAction ? (
                         <View style={{ flexDirection: 'row', gap: 12, width: '100%' }}>
                             {secondaryAction && (
-                                <TouchableOpacity onPress={secondaryAction.onPress} activeOpacity={0.8} style={{ flex: 1, backgroundColor: isDark ? '#334155' : '#F1F5F9', paddingVertical: 14, borderRadius: 14, alignItems: 'center' }}>
+                                <TouchableOpacity onPress={secondaryAction.onPress} activeOpacity={0.8} style={{ flex: 1, backgroundColor: isDark ? '#334155' : '#F1F5F9', paddingVertical: 14, borderRadius: 12, alignItems: 'center' }}>
                                     <Text style={{ color: theme.textSecondary, fontSize: fontSize, fontWeight: '700' }}>{secondaryAction.label}</Text>
                                 </TouchableOpacity>
                             )}
                             {primaryAction && (
-                                <TouchableOpacity onPress={primaryAction.onPress} activeOpacity={0.8} style={{ flex: 1, backgroundColor: theme.primary, paddingVertical: 14, borderRadius: 14, alignItems: 'center' }}>
+                                <TouchableOpacity onPress={primaryAction.onPress} activeOpacity={0.8} style={{ flex: 1, backgroundColor: theme.primary, paddingVertical: 14, borderRadius: 12, alignItems: 'center' }}>
                                     <Text style={{ color: '#FFF', fontSize: fontSize, fontWeight: '700' }}>{primaryAction.label}</Text>
                                 </TouchableOpacity>
                             )}
@@ -133,12 +133,12 @@ const renderLabel = (text: any) => {
     return text;
 };
 
-const FormInput = ({ label, icon: Icon, placeholder, value, onChangeText, keyboardType, multiline, error, onFocus, onBlur, autoCapitalize }: any) => {
+const FormInput = ({ label, icon: Icon, placeholder, value, onChangeText, keyboardType, multiline, error, onFocus, onBlur, autoCapitalize, editable = true }: any) => {
     const { theme, isDark, fontSize } = useTheme();
     return (
         <View style={styles.inputGroup}>
             <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }]}>{renderLabel(label)}</Text>
-            <View style={[styles.inputContainer, { backgroundColor: isDark ? '#1E293B' : '#F9FAFB', borderColor: isDark ? '#334155' : '#F1F5F9' }, multiline && styles.multilineContainer, error && styles.inputError]}>
+            <View style={[styles.inputContainer, { backgroundColor: isDark ? '#1E293B' : '#F9FAFB', borderColor: isDark ? '#334155' : '#F1F5F9' }, multiline && styles.multilineContainer, error && styles.inputError, !editable && { opacity: 0.6 }]}>
                 <View style={styles.inputIcon}><Icon size={18} color={error ? '#EF4444' : theme.primary} /></View>
                 <TextInput
                     style={[styles.input, { color: theme.textPrimary, fontSize }, multiline && styles.multilineInput]}
@@ -152,6 +152,7 @@ const FormInput = ({ label, icon: Icon, placeholder, value, onChangeText, keyboa
                     onFocus={onFocus}
                     onBlur={onBlur}
                     autoCapitalize={autoCapitalize}
+                    editable={editable}
                 />
             </View>
             {error && <Text style={styles.errorText}>{error}</Text>}
@@ -174,7 +175,7 @@ const SelectField = ({ label, value, placeholder, icon: Icon, onPress, error }: 
     );
 };
 
-const Selector = ({ label, options, selected, onSelect }: any) => {
+const Selector = ({ label, options, selected, onSelect, disabled = false }: any) => {
     const { theme, isDark, fontSize } = useTheme();
     const selectedIndex = options.indexOf(selected);
     const anim = useRef(new Animated.Value(selectedIndex >= 0 ? selectedIndex : 0)).current;
@@ -208,7 +209,8 @@ const Selector = ({ label, options, selected, onSelect }: any) => {
                     { 
                         backgroundColor: isDark ? '#1E293B' : '#F1F5F9', 
                         borderColor: isDark ? '#334155' : '#E2E8F0' 
-                    }
+                    },
+                    disabled && { opacity: 0.6 }
                 ]}
                 onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
             >
@@ -230,7 +232,7 @@ const Selector = ({ label, options, selected, onSelect }: any) => {
                         <TouchableOpacity
                             key={opt}
                             style={styles.selectorTab}
-                            onPress={() => onSelect(opt)}
+                            onPress={() => !disabled && onSelect(opt)}
                             activeOpacity={0.8}
                         >
                             <Text 
@@ -589,7 +591,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
         date_of_birth: '', id_proof_number: '', id_proof_type_id: '',
         guardian_name: '', guardian_phone: '', guardian_relation_id: '',
         admission_date: new Date().toISOString().split('T')[0],
-        admission_fee: '', admission_status: 'Paid', permanent_address: '',
+        admission_fee: '', admission_status: 'Paid', permanent_address: '', present_working_address: '',
         room_id: '', bed_id: '', floor_number: '', monthly_rent: '',
     });
 
@@ -642,11 +644,14 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
             if (value) {
                 if (!/^[6-9]/.test(value)) err = 'Must start with 6, 7, 8, or 9';
                 else if (value.length !== 10) err = 'Must be exactly 10 digits';
+                else if (value === formData.phone) err = 'Guardian number cannot be same as tenant number';
             }
         } else if (name === 'admission_date') {
             if (!value) err = 'Admission date is required';
+        } else if (name === 'present_working_address') {
+            if (!value || !value.trim()) err = 'Present address is required';
         } else if (name === 'permanent_address') {
-            if (!value || !value.trim()) err = 'Address is required';
+            if (!value || !value.trim()) err = 'Permanent address is required';
         } else if (name === 'profilePhoto') {
             if (!value) err = 'Profile photo is required';
         } else if (name === 'aadhaarFront') {
@@ -690,7 +695,34 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
 
     const markTouched = (name: string) => {
         setTouched(prev => ({ ...prev, [name]: true }));
-        validateField(name, formData[name as keyof typeof formData]);
+        const currentErr = validateField(name, formData[name as keyof typeof formData]);
+        
+        if (!currentErr) {
+            if (name === 'phone') checkUnique('phone', formData.phone);
+            if (name === 'email') checkUnique('email', formData.email);
+        }
+    };
+
+    const checkUnique = async (field: 'phone' | 'email', value: string) => {
+        if (!value) return;
+        try {
+            const res = await api.get('/students/check-unique', {
+                params: {
+                    [field]: value,
+                    ...(isEdit ? { studentId: student.student_id } : {})
+                }
+            });
+            if (res.data?.success) {
+                if (field === 'phone' && res.data.phoneExists) {
+                    setErrors(prev => ({ ...prev, phone: 'This phone number is already registered' }));
+                }
+                if (field === 'email' && res.data.emailExists) {
+                    setErrors(prev => ({ ...prev, email: 'This email is already registered' }));
+                }
+            }
+        } catch (e) {
+            console.log('Check unique error', e);
+        }
     };
 
     const selectedRoom = availableRooms.find(r => r.room_id?.toString() === formData.room_id);
@@ -736,6 +768,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 admission_fee: (student.admission_fee > 0 || student.admission_status === 1) ? student.admission_fee.toString() : '',
                 admission_status: student.admission_status === 1 ? 'Paid' : 'Unpaid',
                 permanent_address: student.permanent_address || '',
+                present_working_address: student.present_working_address || '',
                 room_id: student.room_id ? student.room_id.toString() : '',
                 bed_id: student.bed_id ? student.bed_id.toString() : '',
                 floor_number: student.floor_number ? student.floor_number.toString() : '',
@@ -773,11 +806,18 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                         // Pass matchedRoom directly so fetchBeds doesn't depend on stale availableRooms state
                         fetchBeds(activeRoomId.toString(), matchedRoom);
                     }
+                } else if (isEdit && student?.room_id) {
+                    const matchedRoom = roomsData.find((r: any) => r.room_id?.toString() === student.room_id.toString());
+                    if (matchedRoom) {
+                        fetchBeds(student.room_id.toString(), matchedRoom);
+                    }
                 }
             }
             if (hostelRes && hostelRes.data?.success) {
                 const hostelData = hostelRes.data.data;
-                const defaultFee = hostelData?.admission_fee ? hostelData.admission_fee.toString() : '';
+                let defaultFee = hostelData?.admission_fee ? hostelData.admission_fee.toString() : '';
+                if (parseFloat(defaultFee) === 0) defaultFee = '';
+                
                 if (!isEdit) {
                     setFormData(p => ({
                         ...p,
@@ -866,15 +906,19 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
         if (formData.guardian_phone) {
             if (!/^[6-9]/.test(formData.guardian_phone)) e.guardian_phone = 'Must start with 6, 7, 8, or 9';
             else if (formData.guardian_phone.length !== 10) e.guardian_phone = 'Must be exactly 10 digits';
+            else if (formData.guardian_phone === formData.phone) e.guardian_phone = 'Guardian number cannot be same as tenant number';
         }
         if (!formData.admission_date) {
             e.admission_date = 'Admission date is required';
         }
-        if (!formData.admission_fee || parseFloat(formData.admission_fee) < 0 || formData.admission_fee === '') {
-            e.admission_fee = 'Admission fee is required (can be 0)';
+        if (formData.admission_fee && parseFloat(formData.admission_fee) < 0) {
+            e.admission_fee = 'Admission fee cannot be negative';
+        }
+        if (!formData.present_working_address || !formData.present_working_address.trim()) {
+            e.present_working_address = 'Present address is required';
         }
         if (!formData.permanent_address || !formData.permanent_address.trim()) {
-            e.permanent_address = 'Address is required';
+            e.permanent_address = 'Permanent address is required';
         }
 
         setErrors(e);
@@ -892,6 +936,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 id_proof_type_id: 'ID Proof Type',
                 id_proof_number: 'ID Proof Number',
                 admission_date: 'Admission Date',
+                present_working_address: 'Present Address',
                 permanent_address: 'Permanent Address',
                 aadhaarFront: 'ID Front Image',
                 aadhaarBack: 'ID Back Image',
@@ -904,6 +949,54 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
             showError(`Please fill: ${missed}`);
             return;
         }
+
+        if (formData.admission_status === 'Unpaid' && (!formData.admission_fee || parseFloat(formData.admission_fee) === 0)) {
+            setPageAlert({
+                visible: true,
+                title: 'Admission Fee Not Updated',
+                message: 'Admission fee is empty or zero. You can update it later. Proceed?',
+                icon: Info,
+                primaryAction: { label: 'Yes, proceed', onPress: () => { setPageAlert({visible: false}); executeSave(); } },
+                secondaryAction: { label: 'Wait', onPress: () => setPageAlert({visible: false}) }
+            });
+            return;
+        }
+
+        if (formData.admission_status === 'Paid' && (!formData.admission_fee || parseFloat(formData.admission_fee) === 0)) {
+            setPageAlert({
+                visible: true,
+                title: 'Zero Admission Fee',
+                message: 'Status is Paid but the amount is zero. Please enter a valid fee amount or change the status to Unpaid.',
+                icon: AlertTriangle,
+                primaryAction: {
+                    label: 'Go Back & Change',
+                    onPress: () => setPageAlert({visible: false})
+                }
+            });
+            return;
+        }
+
+        if (!isEdit && !formData.room_id) {
+            setPageAlert({
+                visible: true,
+                title: 'No Room Selected',
+                message: 'Billing starts only after you allocate a room. Would you like to allocate one now?',
+                icon: Info,
+                secondaryAction: { label: 'Save Without Room', onPress: () => { setPageAlert({ visible: false }); executeSave(); } },
+                primaryAction: {
+                    label: 'Allocate Now',
+                    onPress: () => {
+                        setPageAlert({ visible: false });
+                    }
+                }
+            });
+            return;
+        }
+
+        executeSave();
+    };
+
+    const executeSave = async (forceStatus?: 'Unpaid') => {
         setLoading(true);
         try {
             const payload = {
@@ -912,7 +1005,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 guardian_phone: formData.guardian_phone || null,
                 guardian_name: formData.guardian_name || null,
                 admission_fee: parseFloat(formData.admission_fee || '0'),
-                admission_status: formData.admission_status === 'Paid' ? 1 : 0,
+                admission_status: forceStatus ? 0 : (formData.admission_status === 'Paid' ? 1 : 0),
                 status: (isEdit && !quickAllocate) ? student.status : 1,
                 room_id: formData.room_id ? parseInt(formData.room_id) : null,
                 bed_id: formData.bed_id || null,
@@ -925,51 +1018,25 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
             };
             const res = isEdit ? await api.put(`/students/${student.student_id}`, payload) : await api.post('/students', payload);
             if (res.data.success) {
-                // If a NEW tenant was added without a room, prompt to allocate now.
-                // Billing only starts once a room is allocated, so this keeps the rent roll clean.
-                if (!isEdit && !payload.room_id) {
-                    const newId = res.data.data?.student_id;
-                    // Trigger refresh now so list is ready when user goes back
-                    triggerRefresh();
+                if (!isEdit && parseFloat(payload.admission_fee) > 0 && payload.admission_status === 0) {
                     setPageAlert({
                         visible: true,
-                        title: 'Tenant Added',
-                        message: 'Billing starts only after you allocate a room. Would you like to allocate one now?',
+                        title: 'Admission Fee Pending',
+                        message: 'Tenant registered successfully, but the Admission Fee is still pending. Please collect it soon.',
                         icon: Info,
-                        secondaryAction: { label: 'Later', onPress: () => { setPageAlert({ visible: false }); navigation.goBack(); } },
                         primaryAction: {
-                            label: 'Allocate Now',
+                            label: 'Okay',
                             onPress: () => {
                                 setPageAlert({ visible: false });
-                                navigation.replace('AddStudent', {
-                                    student: { ...payload, student_id: newId, photo: profilePhoto },
-                                    isEdit: true,
-                                });
+                                navigation.goBack();
+                                setTimeout(() => triggerRefresh({ studentAllocated: !!payload.room_id }), 50);
                             }
                         }
                     });
                 } else {
-                    if (!isEdit && parseFloat(payload.admission_fee) > 0 && payload.admission_status === 'Pending') {
-                        setPageAlert({
-                            visible: true,
-                            title: 'Admission Fee Pending',
-                            message: 'Tenant registered successfully, but the Admission Fee is still pending. Please collect it soon.',
-                            icon: Info,
-                            primaryAction: {
-                                label: 'Okay',
-                                onPress: () => {
-                                    setPageAlert({ visible: false });
-                                    navigation.goBack();
-                                    setTimeout(() => triggerRefresh({ studentAllocated: !!payload.room_id }), 50);
-                                }
-                            }
-                        });
-                    } else {
-                        showSuccess(`Tenant ${isEdit ? 'updated' : 'registered'} successfully!`);
-                        // Navigate first, then signal refresh so destination screen fetches fresh data
-                        navigation.goBack();
-                        setTimeout(() => triggerRefresh({ studentAllocated: !!payload.room_id }), 50);
-                    }
+                    showSuccess(`Tenant ${isEdit ? 'updated' : 'registered'} successfully!`);
+                    navigation.goBack();
+                    setTimeout(() => triggerRefresh({ studentAllocated: !!payload.room_id }), 50);
                 }
             }
         } catch (error: any) {
@@ -977,17 +1044,22 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
             if (msg.toLowerCase().includes('phone') || msg.toLowerCase().includes('mobile')) {
                 setErrors(prev => ({ ...prev, phone: msg }));
             }
+            if (msg.toLowerCase().includes('id proof') || msg.toLowerCase().includes('aadhaar') || msg.toLowerCase().includes('pan') || msg.toLowerCase().includes('id_proof')) {
+                setErrors(prev => ({ ...prev, id_proof_number: msg }));
+            }
             showApiError(error, 'Failed to save tenant');
         } finally { setLoading(false); }
     };
 
     const handleReset = () => {
-        setFormData({ first_name: '', last_name: '', gender: 'Male', phone: '', email: '', date_of_birth: '', id_proof_number: '', id_proof_type_id: '', guardian_name: '', guardian_phone: '', guardian_relation_id: '', admission_date: new Date().toISOString().split('T')[0], admission_fee: '0', admission_status: 'Paid', permanent_address: '', room_id: '', bed_id: '', floor_number: '', monthly_rent: '' });
+        setFormData({ first_name: '', last_name: '', gender: 'Male', phone: '', email: '', date_of_birth: '', id_proof_number: '', id_proof_type_id: '', guardian_name: '', guardian_phone: '', guardian_relation_id: '', admission_date: new Date().toISOString().split('T')[0], admission_fee: '', admission_status: 'Paid', permanent_address: '', present_working_address: '', room_id: '', bed_id: '', floor_number: '', monthly_rent: '' });
         setProfilePhoto(null); setAadhaarFront(null); setAadhaarBack(null); setErrors({}); setTouched({});
         setRoomModal(false); setBedModal(false); setGenderModal(false); setProofModal(false); setRelationModal(false); setShowDatePicker(false);
     };
 
     const up = (key: string, val: any) => setFormData(p => ({ ...p, [key]: val }));
+
+    const isAdmissionPaid = isEdit && student?.admission_status === 1;
 
     return (
         <KeyboardAvoidingView
@@ -997,7 +1069,11 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
         >
             <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-            <AppHeader title={quickAllocate ? 'Approve Tenant' : (isEdit ? 'Edit Tenant' : 'Add Tenant')} />
+            <AppHeader 
+                title={quickAllocate ? 'Approve Tenant' : (isEdit ? 'Edit Tenant' : 'Add Tenant')} 
+                subtitle="Note: Please ensure the name matches the ID proof exactly."
+                alignLeft={true}
+            />
             <FullScreenLoader visible={loading} />
 
             <ScrollView
@@ -1187,8 +1263,8 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                             setShowDatePicker(true); 
                         }} 
                     />
-                    <FormInput label="Admission Fee (₹) *" icon={CreditCard} placeholder="0" keyboardType="numeric" value={formData.admission_fee} onChangeText={(t: string) => up('admission_fee', t.replace(/\D/g, ''))} />
-                    <Selector label="Payment Status" options={['Paid', 'Unpaid']} selected={formData.admission_status} onSelect={(v: string) => up('admission_status', v)} />
+                    <FormInput label="Admission Fee (₹) *" icon={CreditCard} placeholder="0" keyboardType="numeric" value={formData.admission_fee} editable={!isAdmissionPaid} onChangeText={(t: string) => up('admission_fee', t.replace(/\D/g, ''))} />
+                    <Selector label="Payment Status" options={['Paid', 'Unpaid']} selected={formData.admission_status} disabled={isAdmissionPaid} onSelect={(v: string) => up('admission_status', v)} />
                 </View>
 
                 {/* ── Room & Bed ── */}
@@ -1235,7 +1311,20 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
 
                 {/* ── Address ── */}
                 <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
-                    <SectionHeader number={6} title="Address" />
+                    <SectionHeader number={6} title="Addresses" />
+                    <FormInput
+                        label="Present / Working Address *"
+                        icon={MapPin}
+                        placeholder="Current address..."
+                        multiline
+                        value={formData.present_working_address}
+                        error={getFieldError('present_working_address')}
+                        onBlur={() => markTouched('present_working_address')}
+                        onChangeText={(t: string) => {
+                            up('present_working_address', t);
+                            validateField('present_working_address', t);
+                        }}
+                    />
                     <FormInput
                         label="Permanent Address *"
                         icon={MapPin}
@@ -1289,6 +1378,25 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
             {/* ── Drawers ── */}
             <OptionsDrawer visible={genderModal} title="Select Gender" data={['Male', 'Female', 'Other']} selectedId={formData.gender} keyExtractor={(i: string) => i} labelExtractor={(i: string) => i} onSelect={(i: string) => up('gender', i)} onClose={() => setGenderModal(false)} />
             <OptionsDrawer visible={proofModal} title="ID Proof Type" data={idProofTypes} selectedId={formData.id_proof_type_id} keyExtractor={(i: any) => i.id.toString()} labelExtractor={(i: any) => i.name} 
+                searchable={true}
+                onCustomAdd={async (customName: string) => {
+                    try {
+                        const res = await api.post('/id-proof-types', {
+                            code: customName.toUpperCase().replace(/[^A-Z0-9]/g, '_').substring(0, 20),
+                            name: customName,
+                            regex_pattern: '^.*$',
+                            min_length: 4,
+                            max_length: 20
+                        });
+                        if (res.data.success) {
+                            setIdProofTypes(prev => [...prev, res.data.data]);
+                            up('id_proof_type_id', res.data.data.id.toString());
+                            showSuccess(`Added ${customName}`);
+                        }
+                    } catch (e) {
+                        showError('Failed to add custom type');
+                    }
+                }}
                 onSelect={(i: any) => {
                     const newId = i.id.toString();
                     up('id_proof_type_id', newId);

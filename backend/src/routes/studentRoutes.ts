@@ -12,6 +12,7 @@ import {
   rejectRegistration,
   getPendingRegistrations,
   submitVacateNotice,
+  checkUnique,
 } from '../controllers/studentController.js';
 
 const router = express.Router();
@@ -23,6 +24,7 @@ router.use(authMiddleware, requireActiveSubscription);
 router.get('/pending-registrations', getPendingRegistrations);
 
 // Student routes
+router.get('/check-unique', checkUnique);
 router.get('/stats', getStudentStats);
 router.post('/vacate', submitVacateNotice); // Tenant route
 router.get('/', getStudents);

@@ -529,7 +529,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
             <View pointerEvents={payModalVisible ? 'none' : 'auto'}>
                 <AppHeader 
                     title="Tenant Details"
-                    style={{ paddingTop: 50, paddingBottom: 15 }}
+                    style={{ paddingTop: 65, paddingBottom: 26 }}
                     rightComponent={
                         <View style={styles.headerActions}>
                             <TouchableOpacity
@@ -668,7 +668,9 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                             </Text>
                                         </View>
                                     </View>
-                                    <Text style={[styles.roomInfo, { color: theme.textSecondary }]}>Room {student.room_number || 'N/A'}</Text>
+                                    <Text style={[styles.roomInfo, { color: theme.textSecondary }]}>
+                                        Room: {student.room_number || 'N/A'}{student.bed_number ? ` • Bed: ${student.bed_number}` : (student.bed_id ? ` • Bed: ${student.bed_id}` : '')}
+                                    </Text>
                                     <View style={styles.cardBadgesRow}>
                                         <View style={[styles.cardBadge, { backgroundColor: outstandingBalance > 0 ? '#FFEBEE' : '#E6F9F3' }]}>
                                             {outstandingBalance > 0 ? (
@@ -960,14 +962,27 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
 
                                         <View style={styles.infoRowDivider} />
 
-                                        {/* Address Row — only permanent address (form has one field) */}
+                                        {/* Permanent Address Row */}
                                         <View style={styles.infoRow}>
                                             <View style={[styles.infoRowIconCircle, { backgroundColor: '#E8F8F0' }]}>
                                                 <MapPin size={13} color="#00B074" />
                                             </View>
                                             <View style={styles.infoRowText}>
-                                                <Text style={styles.infoRowLabel}>Address</Text>
+                                                <Text style={styles.infoRowLabel}>Permanent Address</Text>
                                                 <Text style={[styles.infoRowValue, { color: theme.textPrimary }]}>{student.permanent_address || 'N/A'}</Text>
+                                            </View>
+                                        </View>
+
+                                        <View style={styles.infoRowDivider} />
+
+                                        {/* Present / Working Address Row */}
+                                        <View style={styles.infoRow}>
+                                            <View style={[styles.infoRowIconCircle, { backgroundColor: '#FFF3E0' }]}>
+                                                <MapPin size={13} color="#FF9800" />
+                                            </View>
+                                            <View style={styles.infoRowText}>
+                                                <Text style={styles.infoRowLabel}>Present / Working Address</Text>
+                                                <Text style={[styles.infoRowValue, { color: theme.textPrimary }]}>{student.present_working_address || 'N/A'}</Text>
                                             </View>
                                         </View>
                                     </View>
@@ -1051,6 +1066,21 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                         <Text style={[styles.infoSectionHeaderTitle, { color: theme.primary }]}>Hostel Registration</Text>
                                     </View>
                                     <View style={styles.infoSectionBody}>
+                                        <View style={[styles.infoRowGrid, { marginBottom: 12 }]}>
+                                            <View style={[styles.infoGridItem, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                                                <Text style={styles.infoRowLabel}>Allocated Room</Text>
+                                                <Text style={[styles.infoRowValue, { color: theme.textPrimary, fontWeight: '800' }]}>
+                                                    Room {student.room_number || 'N/A'}
+                                                </Text>
+                                            </View>
+                                            <View style={[styles.infoGridItem, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                                                <Text style={styles.infoRowLabel}>Allocated Bed</Text>
+                                                <Text style={[styles.infoRowValue, { color: theme.textPrimary, fontWeight: '800' }]}>
+                                                    Bed {student.bed_number || student.bed_id || 'N/A'}
+                                                </Text>
+                                            </View>
+                                        </View>
+
                                         <View style={styles.infoRowGrid}>
                                             <View style={[styles.infoGridItem, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
                                                 <Text style={styles.infoRowLabel}>Admission Date</Text>
@@ -1089,22 +1119,42 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                         <Text style={[styles.infoSectionHeaderTitle, { color: theme.primary }]}>History Timeline</Text>
                                     </View>
                                     <View style={styles.timelineContainer}>
-                                        {/* Event 1: Admission */}
-                                        <View style={styles.timelineItem}>
-                                            <View style={styles.timelineLine} />
-                                            <View style={[styles.timelineDot, { backgroundColor: theme.primary }]}>
-                                                <User size={10} color="#FFF" />
-                                            </View>
-                                            <View style={styles.timelineContent}>
-                                                <Text style={[styles.timelineEventTitle, { color: theme.textPrimary }]}>Registered & Admitted</Text>
-                                                <Text style={[styles.timelineEventDate, { color: theme.textSecondary }]}>
-                                                    {student.admission_date ? new Date(student.admission_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
-                                                </Text>
-                                                <Text style={[styles.timelineEventDesc, { color: theme.textSecondary }]}>
-                                                    Admitted to room {student.room_number || 'N/A'} with monthly rent of ₹{student.monthly_rent || 0} and admission fee of ₹{student.admission_fee || 0}.
-                                                </Text>
-                                            </View>
-                                        </View>
+                                        {/* Event 3+: Payments (Most Recent First) */}
+                                        {[...paymentHistory].reverse().map((payment: any, index: number) => (
+                                            <TouchableOpacity 
+                                                key={`timeline-pay-${index}`} 
+                                                activeOpacity={0.7} 
+                                                onPress={() => navigation.navigate('Receipt', { 
+                                                    feeData: {
+                                                        ...payment,
+                                                        first_name: student.first_name,
+                                                        last_name: student.last_name,
+                                                        phone: student.phone,
+                                                        room_number: student.room_number,
+                                                        paid_amount: payment.amount,
+                                                        fee_id: payment.payment_id || payment.id
+                                                    }
+                                                })}
+                                            >
+                                                <View style={styles.timelineItem}>
+                                                    <View style={styles.timelineLine} />
+                                                    <View style={[styles.timelineDot, { backgroundColor: '#00B074' }]}>
+                                                        <IndianRupee size={10} color="#FFF" />
+                                                    </View>
+                                                    <View style={styles.timelineContent}>
+                                                        <Text style={[styles.timelineEventTitle, { color: theme.textPrimary }]}>
+                                                            Rent Payment Recorded ({payment.fee_month || 'Payment'})
+                                                        </Text>
+                                                        <Text style={[styles.timelineEventDate, { color: theme.textSecondary }]}>
+                                                            {new Date(payment.payment_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                        </Text>
+                                                        <Text style={[styles.timelineEventDesc, { color: theme.textSecondary }]}>
+                                                            Recorded payment of ₹{payment.amount} via {payment.payment_mode_name || 'N/A'}. {payment.receipt_number ? `Receipt No: ${payment.receipt_number}` : ''}
+                                                        </Text>
+                                                    </View>
+                                                </View>
+                                            </TouchableOpacity>
+                                        ))}
 
                                         {/* Event 2: Vacancy Notice (If exists) */}
                                         {student.vacate_notice_date && (
@@ -1125,26 +1175,22 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                             </View>
                                         )}
 
-                                        {/* Event 3+: Payments */}
-                                        {paymentHistory.map((payment: any, index: number) => (
-                                            <View key={`timeline-pay-${index}`} style={styles.timelineItem}>
-                                                {index < paymentHistory.length - 1 && <View style={styles.timelineLine} />}
-                                                <View style={[styles.timelineDot, { backgroundColor: '#00B074' }]}>
-                                                    <IndianRupee size={10} color="#FFF" />
-                                                </View>
-                                                <View style={styles.timelineContent}>
-                                                    <Text style={[styles.timelineEventTitle, { color: theme.textPrimary }]}>
-                                                        Rent Payment Recorded ({payment.fee_month || 'Payment'})
-                                                    </Text>
-                                                    <Text style={[styles.timelineEventDate, { color: theme.textSecondary }]}>
-                                                        {new Date(payment.payment_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                                    </Text>
-                                                    <Text style={[styles.timelineEventDesc, { color: theme.textSecondary }]}>
-                                                        Recorded payment of ₹{payment.amount} via {payment.payment_mode_name || 'N/A'}. {payment.receipt_number ? `Receipt No: ${payment.receipt_number}` : ''}
-                                                    </Text>
-                                                </View>
+                                        {/* Event 1: Admission (Oldest, so Last) */}
+                                        <View style={styles.timelineItem}>
+                                            <View style={styles.timelineLine} />
+                                            <View style={[styles.timelineDot, { backgroundColor: theme.primary }]}>
+                                                <User size={10} color="#FFF" />
                                             </View>
-                                        ))}
+                                            <View style={styles.timelineContent}>
+                                                <Text style={[styles.timelineEventTitle, { color: theme.textPrimary }]}>Registered & Admitted</Text>
+                                                <Text style={[styles.timelineEventDate, { color: theme.textSecondary }]}>
+                                                    {student.admission_date ? new Date(student.admission_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
+                                                </Text>
+                                                <Text style={[styles.timelineEventDesc, { color: theme.textSecondary }]}>
+                                                    Admitted to room {student.room_number || 'N/A'} with monthly rent of ₹{student.monthly_rent || 0} and admission fee of ₹{student.admission_fee || 0}.
+                                                </Text>
+                                            </View>
+                                        </View>
                                     </View>
                                 </Card>
                             </>
@@ -1367,22 +1413,22 @@ const styles = StyleSheet.create({
     tabButtonText: { fontSize: 13, fontWeight: '600' },
 
     /* ── Info Section Cards ── */
-    infoSectionCard: { borderRadius: 12, borderWidth: 1, padding: 16, marginBottom: 12 },
-    infoSectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
-    infoSectionHeaderTitle: { fontSize: 14, fontWeight: '800' },
-    infoSectionBody: { flexDirection: 'column', gap: 0 },
+    infoSectionCard: { borderRadius: 20, marginBottom: 16, overflow: 'hidden', borderWidth: 1 },
+    infoSectionHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16, backgroundColor: 'rgba(99, 102, 241, 0.05)', gap: 8, borderBottomWidth: 1, borderBottomColor: 'rgba(99, 102, 241, 0.1)' },
+    infoSectionHeaderTitle: { fontSize: 14, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
+    infoSectionBody: { flexDirection: 'column', gap: 0, padding: 20 },
 
     /* ── Info Rows ── */
     infoRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
-    infoRowIconCircle: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+    infoRowIconCircle: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginRight: 16 },
     infoRowText: { flex: 1 },
-    infoRowLabel: { fontSize: 10, fontWeight: '600', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 3 },
-    infoRowValue: { fontSize: 14, fontWeight: '600', lineHeight: 20 },
+    infoRowLabel: { fontSize: 10, fontWeight: '700', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 },
+    infoRowValue: { fontSize: 15, fontWeight: '700', lineHeight: 22 },
     infoRowActions: { flexDirection: 'row', gap: 6 },
     infoRowActionIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
     infoRowPillBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
     infoRowPillBtnText: { fontSize: 11, fontWeight: '700' },
-    infoRowDivider: { height: 1, backgroundColor: '#F1F5F9', marginLeft: 46 },
+    infoRowDivider: { height: 1, backgroundColor: 'rgba(0,0,0,0.05)', marginLeft: 56, marginVertical: 8 },
 
     /* ── Info Grid (2-column) ── */
     infoRowGrid: { flexDirection: 'row', gap: 10 },

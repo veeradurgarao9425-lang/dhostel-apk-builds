@@ -14,24 +14,31 @@ import {
     Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
-import Toast from 'react-native-toast-message';
+import { useToast } from '../context/ToastContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import api from '../services/api';
 import { AppHeader } from '../components/AppHeader';
 import { FullScreenLoader } from '../components/FullScreenLoader';
 import { SPACING } from '../theme/index';
+import { OptionsDrawer } from '../components/FormComponents';
+import { ChevronDown } from 'lucide-react-native';
 
 const ROLES = ['Cook', 'Housekeeping', 'Security', 'Warden', 'Cleaner', 'Others'];
 
 export default function AddStaffScreen() {
     const navigation = useNavigation<any>();
+    const route = useRoute<any>();
+    const { isEdit, staffId } = route.params || {};
+    
     const { theme } = useTheme();
     const { user } = useAuth();
     const insets = useSafeAreaInsets();
+
+    const { showSuccess, showApiError, showError } = useToast();
 
     const [loading, setLoading] = useState(false);
     const [isKeyboardVisible, setKeyboardVisible] = useState(false);
@@ -44,8 +51,12 @@ export default function AddStaffScreen() {
     const [status, setStatus] = useState('ACTIVE');
     const [joinDate, setJoinDate] = useState(new Date().toISOString().split('T')[0]);
     const [monthlySalary, setMonthlySalary] = useState('');
-    const [aadhaarNumber, setAadhaarNumber] = useState('');
     const [notes, setNotes] = useState('');
+
+    // ID Proof fields
+    const [idProofTypes, setIdProofTypes] = useState<any[]>([]);
+    const [idProofTypeId, setIdProofTypeId] = useState('');
+    const [idProofNumber, setIdProofNumber] = useState('');
 
     // Verification Mock uploads state
     const [selfieCaptured, setSelfieCaptured] = useState(false);
@@ -53,16 +64,76 @@ export default function AddStaffScreen() {
     const [aadhaarBackUploaded, setAadhaarBackUploaded] = useState(false);
 
     const [isDatePickerVisible, setDatePickerVisible] = useState(false);
+    const [proofModalVisible, setProofModalVisible] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
+
+    useEffect(() => {
+        const fetchInitialData = async () => {
+            try {
+                const proofRes = await api.get('/id-proof-types');
+                if (proofRes.data.success) {
+                    setIdProofTypes(proofRes.data.data);
+                }
+            } catch (error) {
+                console.error("Error fetching proof types:", error);
+            }
+        };
+        fetchInitialData();
+    }, []);
+
+    useEffect(() => {
+        if (isEdit && staffId) {
+            fetchStaffDetails();
+        }
+    }, [isEdit, staffId]);
+
+    const fetchStaffDetails = async () => {
+        try {
+            setLoading(true);
+            const res = await api.get(`/staff/${staffId}`);
+            if (res.data.success) {
+                const s = res.data.data;
+                setFullName(s.full_name || '');
+                setPhone(s.phone ? String(s.phone).replace(/\D/g, '').slice(0, 10) : '');
+                setEmail(s.email || '');
+                setRole(s.role || 'Cook');
+                setStatus(s.status || 'ACTIVE');
+                if (s.join_date) {
+                    try {
+                        const d = new Date(s.join_date);
+                        if (!isNaN(d.getTime())) setJoinDate(d.toISOString().split('T')[0]);
+                    } catch {}
+                }
+                setMonthlySalary(s.monthly_salary ? s.monthly_salary.toString() : '');
+                setIdProofTypeId(s.id_proof_type_id ? s.id_proof_type_id.toString() : (s.id_proof_type ? s.id_proof_type.toString() : ''));
+                setIdProofNumber(s.id_proof_number || s.aadhaar_number || '');
+                setNotes(s.notes || '');
+                
+                setSelfieCaptured(!!s.photo);
+                setAadhaarFrontUploaded(!!s.aadhaar_front);
+                setAadhaarBackUploaded(!!s.aadhaar_back);
+            }
+        } catch (e: any) {
+            showApiError(e, 'Failed to fetch staff details');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
         const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
         const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+        
         return () => {
             keyboardDidShowListener.remove();
             keyboardDidHideListener.remove();
         };
     }, []);
+
+    const selectedProofName = idProofTypes.find(t => t.id.toString() === idProofTypeId)?.name || '';
+    const isAadhaar = selectedProofName.toLowerCase().includes('aadhar') || selectedProofName.toLowerCase().includes('aadhaar');
+    const isPan = selectedProofName.toLowerCase().includes('pan');
+    const isPhotoReq = isAadhaar || isPan;
 
     const validate = () => {
         const errs: Record<string, string> = {};
@@ -80,9 +151,26 @@ export default function AddStaffScreen() {
         if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
             errs.email = 'Invalid email address';
         }
-        if (aadhaarNumber.trim() && !/^\d{12}$/.test(aadhaarNumber.trim())) {
-            errs.aadhaarNumber = 'Aadhaar must be exactly 12 digits';
+        
+        if (!idProofTypeId) {
+            errs.idProofTypeId = 'ID Proof Type is required';
         }
+        if (!idProofNumber.trim()) {
+            errs.idProofNumber = 'ID Proof Number is required';
+        } else if (isAadhaar) {
+            if (idProofNumber.length !== 12) errs.idProofNumber = 'Aadhaar must be exactly 12 digits';
+            else if (!/^\d{12}$/.test(idProofNumber)) errs.idProofNumber = 'Aadhaar must be numeric';
+        } else if (isPan) {
+            if (idProofNumber.length !== 10) errs.idProofNumber = 'PAN must be exactly 10 characters';
+            else if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i.test(idProofNumber)) errs.idProofNumber = 'Invalid PAN format';
+        }
+
+        if (!selfieCaptured) errs.selfie = 'Selfie is required';
+        if (isPhotoReq) {
+            if (!aadhaarFrontUploaded) errs.idFront = 'ID Front is required';
+            if (!aadhaarBackUploaded) errs.idBack = 'ID Back is required';
+        }
+
         setErrors(errs);
         return errs;
     };
@@ -90,17 +178,7 @@ export default function AddStaffScreen() {
     const handleSave = async () => {
         const validationErrors = validate();
         if (Object.keys(validationErrors).length > 0) {
-            const missing = Object.keys(validationErrors).map((key) => {
-                const labels: Record<string, string> = {
-                    fullName: 'Full name',
-                    phone: 'Phone number',
-                    monthlySalary: 'Salary',
-                    email: 'Email',
-                    aadhaarNumber: 'Aadhaar number',
-                };
-                return labels[key] || key;
-            }).join(', ');
-            Toast.show({ type: 'error', text1: 'Validation Error', text2: `Please correct: ${missing}` });
+            showError('Please correct the highlighted errors');
             return;
         }
 
@@ -115,21 +193,35 @@ export default function AddStaffScreen() {
                 status,
                 join_date: joinDate,
                 monthly_salary: monthlySalary ? parseFloat(monthlySalary) : null,
-                aadhaar_number: aadhaarNumber.trim() || null,
+                id_proof_type: idProofTypeId,
+                id_proof_status: 1, // Assume verified initially
+                aadhaar_number: idProofNumber.trim(),
+                id_proof_type_id: idProofTypeId,
+                id_proof_number: idProofNumber.trim(),
                 notes: notes.trim() || null,
-                photo: selfieCaptured ? 'https://via.placeholder.com/150' : null,
+                photo: selfieCaptured ? 'uploaded' : null,
                 aadhaar_front: aadhaarFrontUploaded ? 'uploaded' : null,
                 aadhaar_back: aadhaarBackUploaded ? 'uploaded' : null
             };
 
-            const res = await api.post('/staff', payload);
+            const res = isEdit 
+                ? await api.put(`/staff/${staffId}`, payload)
+                : await api.post('/staff', payload);
+                
             if (res.data.success) {
-                Toast.show({ type: 'success', text1: '✓ Staff Added!', text2: `${fullName} registered successfully` });
+                showSuccess(`${fullName} ${isEdit ? 'updated' : 'registered'} successfully`);
                 navigation.goBack();
             }
         } catch (e: any) {
             console.error('Save staff error:', e);
-            Alert.alert('Registration Failed', e.response?.data?.error || 'Could not register staff member');
+            const msg = e.response?.data?.error || '';
+            if (msg.toLowerCase().includes('phone') || msg.toLowerCase().includes('mobile')) {
+                setErrors(prev => ({ ...prev, phone: msg }));
+            }
+            if (msg.toLowerCase().includes('id proof') || msg.toLowerCase().includes('aadhaar') || msg.toLowerCase().includes('pan') || msg.toLowerCase().includes('id_proof')) {
+                setErrors(prev => ({ ...prev, idProofNumber: msg }));
+            }
+            showApiError(e, 'Could not register staff member');
         } finally {
             setLoading(false);
         }
@@ -143,7 +235,8 @@ export default function AddStaffScreen() {
         setStatus('ACTIVE');
         setJoinDate(new Date().toISOString().split('T')[0]);
         setMonthlySalary('');
-        setAadhaarNumber('');
+        setIdProofTypeId('');
+        setIdProofNumber('');
         setNotes('');
         setSelfieCaptured(false);
         setAadhaarFrontUploaded(false);
@@ -157,7 +250,7 @@ export default function AddStaffScreen() {
             style={styles.container}
         >
             <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-            <AppHeader title="Add Staff" onBack={() => navigation.goBack()} />
+            <AppHeader title={isEdit ? "Edit Staff" : "Add Staff"} onBack={() => navigation.goBack()} />
             <FullScreenLoader visible={loading} />
 
             <ScrollView
@@ -174,10 +267,7 @@ export default function AddStaffScreen() {
                             styles.selfieBox, 
                             selfieCaptured && { borderColor: '#10B981', backgroundColor: '#ECFDF5' }
                         ]} 
-                        onPress={() => { 
-                            setSelfieCaptured(true); 
-                            Toast.show({ type: 'success', text1: 'Selfie Captured ✓' }); 
-                        }}
+                        onPress={() => setSelfieCaptured(!selfieCaptured)}
                         activeOpacity={0.8}
                     >
                         <Ionicons 
@@ -318,56 +408,78 @@ export default function AddStaffScreen() {
                     </View>
                 </View>
 
-                {/* Identity & Aadhaar Verification */}
+                {/* Identity Verification */}
                 <View style={styles.formCard}>
                     <Text style={styles.sectionTitle}>🪪 Verification Documents</Text>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>Aadhaar Number</Text>
-                        <View style={[styles.inputContainer, errors.aadhaarNumber && styles.inputError]}>
-                            <Ionicons name="card-outline" size={18} color={errors.aadhaarNumber ? '#EF4444' : theme.primary} style={styles.inputIcon} />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Enter 12-digit Aadhaar Number"
-                                placeholderTextColor="#A0AEC0"
-                                keyboardType="numeric"
-                                maxLength={12}
-                                value={aadhaarNumber}
-                                onChangeText={setAadhaarNumber}
-                            />
-                        </View>
-                        {errors.aadhaarNumber && <Text style={styles.errorText}>{errors.aadhaarNumber}</Text>}
+                        <Text style={styles.inputLabel}>ID Proof Type <Text style={{ color: '#EF4444' }}>*</Text></Text>
+                        <TouchableOpacity 
+                            style={[styles.inputContainer, errors.idProofTypeId && styles.inputError]} 
+                            onPress={() => setProofModalVisible(true)} 
+                            activeOpacity={0.7}
+                        >
+                            <Ionicons name="documents-outline" size={18} color={errors.idProofTypeId ? '#EF4444' : theme.primary} style={styles.inputIcon} />
+                            <Text style={[styles.input, !idProofTypeId && { color: '#A0AEC0' }]}>
+                                {selectedProofName || 'Select ID Proof'}
+                            </Text>
+                            <ChevronDown size={18} color="#64748B" />
+                        </TouchableOpacity>
+                        {errors.idProofTypeId && <Text style={styles.errorText}>{errors.idProofTypeId}</Text>}
                     </View>
 
-                    <Text style={[styles.fieldLabel, { marginTop: 8 }]}>Aadhaar Photos</Text>
-                    <View style={styles.uploadContainer}>
-                        <View style={{ flex: 1, marginRight: 6 }}>
-                            <TouchableOpacity 
-                                style={[styles.uploadButton, aadhaarFrontUploaded && { backgroundColor: '#10B981' }]} 
-                                onPress={() => { 
-                                    setAadhaarFrontUploaded(true); 
-                                    Toast.show({ type: 'success', text1: 'Front Uploaded ✓' }); 
-                                }}
-                                activeOpacity={0.8}
-                            >
-                                <Ionicons name={aadhaarFrontUploaded ? 'checkmark-circle' : 'cloud-upload-outline'} size={16} color="#FFF" />
-                                <Text style={styles.uploadBtnText}>{aadhaarFrontUploaded ? 'Front Active' : 'Front Side'}</Text>
-                            </TouchableOpacity>
+                    {idProofTypeId ? (
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.inputLabel}>{selectedProofName || 'ID'} Number <Text style={{ color: '#EF4444' }}>*</Text></Text>
+                            <View style={[styles.inputContainer, errors.idProofNumber && styles.inputError]}>
+                                <Ionicons name="card-outline" size={18} color={errors.idProofNumber ? '#EF4444' : theme.primary} style={styles.inputIcon} />
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder={`Enter ${selectedProofName || 'ID'} Number`}
+                                    placeholderTextColor="#A0AEC0"
+                                    keyboardType={isAadhaar ? 'number-pad' : 'default'}
+                                    autoCapitalize={isPan ? 'characters' : 'none'}
+                                    maxLength={isAadhaar ? 12 : isPan ? 10 : 20}
+                                    value={idProofNumber}
+                                    onChangeText={(t) => {
+                                        let clean = t;
+                                        if (isAadhaar) clean = t.replace(/\D/g, '').slice(0, 12);
+                                        else if (isPan) clean = t.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
+                                        setIdProofNumber(clean);
+                                    }}
+                                />
+                            </View>
+                            {errors.idProofNumber && <Text style={styles.errorText}>{errors.idProofNumber}</Text>}
                         </View>
-                        <View style={{ flex: 1, marginLeft: 6 }}>
-                            <TouchableOpacity 
-                                style={[styles.uploadButton, aadhaarBackUploaded && { backgroundColor: '#10B981' }]} 
-                                onPress={() => { 
-                                    setAadhaarBackUploaded(true); 
-                                    Toast.show({ type: 'success', text1: 'Back Uploaded ✓' }); 
-                                }}
-                                activeOpacity={0.8}
-                            >
-                                <Ionicons name={aadhaarBackUploaded ? 'checkmark-circle' : 'cloud-upload-outline'} size={16} color="#FFF" />
-                                <Text style={styles.uploadBtnText}>{aadhaarBackUploaded ? 'Back Active' : 'Back Side'}</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
+                    ) : null}
+
+                    {isPhotoReq && idProofTypeId ? (
+                        <>
+                            <Text style={[styles.fieldLabel, { marginTop: 8 }]}>{selectedProofName || 'ID'} Photos <Text style={{ color: '#EF4444' }}>*</Text></Text>
+                            <View style={styles.uploadContainer}>
+                                <View style={{ flex: 1, marginRight: 6 }}>
+                                    <TouchableOpacity 
+                                        style={[styles.uploadButton, errors.idFront && !aadhaarFrontUploaded && { borderColor: '#EF4444', borderWidth: 1 }, aadhaarFrontUploaded && { backgroundColor: '#10B981', borderColor: '#10B981' }]} 
+                                        onPress={() => setAadhaarFrontUploaded(!aadhaarFrontUploaded)}
+                                        activeOpacity={0.8}
+                                    >
+                                        <Ionicons name={aadhaarFrontUploaded ? 'checkmark-circle' : 'cloud-upload-outline'} size={16} color="#FFF" />
+                                        <Text style={styles.uploadBtnText}>{aadhaarFrontUploaded ? 'Front Active' : 'Front Side'}</Text>
+                                    </TouchableOpacity>
+                                </View>
+                                <View style={{ flex: 1, marginLeft: 6 }}>
+                                    <TouchableOpacity 
+                                        style={[styles.uploadButton, errors.idBack && !aadhaarBackUploaded && { borderColor: '#EF4444', borderWidth: 1 }, aadhaarBackUploaded && { backgroundColor: '#10B981', borderColor: '#10B981' }]} 
+                                        onPress={() => setAadhaarBackUploaded(!aadhaarBackUploaded)}
+                                        activeOpacity={0.8}
+                                    >
+                                        <Ionicons name={aadhaarBackUploaded ? 'checkmark-circle' : 'cloud-upload-outline'} size={16} color="#FFF" />
+                                        <Text style={styles.uploadBtnText}>{aadhaarBackUploaded ? 'Back Active' : 'Back Side'}</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        </>
+                    ) : null}
                 </View>
 
                 {/* Additional Notes */}
@@ -406,7 +518,7 @@ export default function AddStaffScreen() {
                     {loading ? (
                         <ActivityIndicator color="#FFF" size="small" />
                     ) : (
-                        <Text style={styles.submitButtonText}>Add Employee</Text>
+                        <Text style={styles.submitButtonText}>{isEdit ? 'Update Staff Details' : 'Add Employee'}</Text>
                     )}
                 </TouchableOpacity>
             </View>
@@ -420,6 +532,20 @@ export default function AddStaffScreen() {
                     setDatePickerVisible(false); 
                 }}
                 onCancel={() => setDatePickerVisible(false)}
+            />
+
+            <OptionsDrawer 
+                visible={proofModalVisible} 
+                title="ID Proof Type" 
+                data={idProofTypes} 
+                selectedId={idProofTypeId} 
+                keyExtractor={(i: any) => i.id.toString()} 
+                labelExtractor={(i: any) => i.name} 
+                onSelect={(i: any) => { 
+                    setIdProofTypeId(i.id.toString());
+                    setIdProofNumber(''); 
+                }} 
+                onClose={() => setProofModalVisible(false)} 
             />
         </KeyboardAvoidingView>
     );

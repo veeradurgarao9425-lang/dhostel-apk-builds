@@ -97,7 +97,7 @@ export const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: an
     );
 };
 
-export const OptionsDrawer = ({ visible, title, data, selectedId, onSelect, onClose, keyExtractor, labelExtractor, searchable }: any) => {
+export const OptionsDrawer = ({ visible, title, data, selectedId, onSelect, onClose, keyExtractor, labelExtractor, searchable, onCustomAdd }: any) => {
     const [search, setSearch] = useState('');
     const filtered = React.useMemo(() => {
         if (!searchable || !search) return data;
@@ -128,7 +128,25 @@ export const OptionsDrawer = ({ visible, title, data, selectedId, onSelect, onCl
                         </TouchableOpacity>
                     );
                 }}
-                ListEmptyComponent={<View style={{ padding: 40, alignItems: 'center' }}><Text style={{ color: '#94A3B8', fontSize: 14 }}>No options</Text></View>}
+                ListEmptyComponent={
+                    <View style={{ padding: 40, alignItems: 'center' }}>
+                        <Text style={{ color: '#94A3B8', fontSize: 14, marginBottom: 12 }}>No options available</Text>
+                        {onCustomAdd && (
+                            <TouchableOpacity style={{ backgroundColor: '#7C3AED', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 }} onPress={() => { onCustomAdd(search || 'Custom'); setSearch(''); onClose(); }}>
+                                <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Add Custom {search ? `"${search}"` : 'Option'}</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                }
+                ListFooterComponent={
+                    (onCustomAdd && data && data.length > 0) ? (
+                        <View style={{ padding: 20, alignItems: 'center' }}>
+                            <TouchableOpacity style={{ backgroundColor: '#F5F3FF', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#7C3AED' }} onPress={() => { onCustomAdd(search || 'Custom'); setSearch(''); onClose(); }}>
+                                <Text style={{ color: '#7C3AED', fontWeight: 'bold' }}>+ Add Custom {search ? `"${search}"` : 'Option'}</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ) : null
+                }
                 contentContainerStyle={{ paddingBottom: 60 }}
             />
         </ModalSheet>
