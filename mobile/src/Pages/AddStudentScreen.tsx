@@ -24,7 +24,7 @@ import {
     User, Phone, Mail, Home, MapPin,
     CreditCard, Users, Fingerprint, Check,
     ChevronDown, Camera, X, BedDouble, Calendar, Search,
-    Upload, AlertTriangle, Info, Plus
+    Upload, AlertTriangle, Info, Plus, QrCode, ChevronRight
 } from 'lucide-react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import * as ImagePicker from 'expo-image-picker';
@@ -1083,6 +1083,35 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 contentContainerStyle={[styles.scrollContent, { paddingBottom: (isKeyboardVisible ? 180 : 100) + insets.bottom }]}
                 keyboardShouldPersistTaps="handled"
             >
+                {/* Self-registration QR Option */}
+                {!isEdit && !quickAllocate && (
+                    <TouchableOpacity
+                        style={styles.selfRegisterCard}
+                        onPress={() => navigation.navigate('QRSignup')}
+                        activeOpacity={0.8}
+                    >
+                        <LinearGradient
+                            colors={isDark ? ['#312E81', '#1E1B4B'] : ['#EDE9FE', '#F5F3FF']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={styles.selfRegisterGradient}
+                        >
+                            <View style={styles.selfRegisterLeft}>
+                                <View style={[styles.qrIconCircle, { backgroundColor: isDark ? '#4C1D95' : '#DDD6FE' }]}>
+                                    <QrCode size={18} color={isDark ? '#DDD6FE' : '#7C3AED'} />
+                                </View>
+                                <View style={{ flex: 1, paddingRight: 8 }}>
+                                    <Text style={[styles.selfRegisterTitle, { color: isDark ? '#FFF' : '#4C1D95' }]}>Let Tenant Self-Register</Text>
+                                    <Text style={[styles.selfRegisterSub, { color: isDark ? '#C4B5FD' : '#6D28D9' }]}>Tenants scan a QR code with their camera to fill their own details.</Text>
+                                </View>
+                            </View>
+                            <View style={[styles.selfRegisterRight, { backgroundColor: isDark ? '#7C3AED' : '#4C1D95' }]}>
+                                <Text style={styles.selfRegisterBtnText}>Show QR</Text>
+                                <ChevronRight size={12} color="#FFF" style={{ marginLeft: 2 }} />
+                            </View>
+                        </LinearGradient>
+                    </TouchableOpacity>
+                )}
 
                 {/* ── Profile Photo ── */}
                 <ProfilePhotoCapture 
@@ -2081,6 +2110,58 @@ const styles = StyleSheet.create({
     sourceOptionText: {
         fontWeight: '700',
         fontSize: 14,
+    },
+    selfRegisterCard: {
+        marginBottom: 16,
+        borderRadius: 16,
+        overflow: 'hidden',
+        elevation: 2,
+        shadowColor: '#7C3AED',
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 3 },
+    },
+    selfRegisterGradient: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 14,
+        justifyContent: 'space-between',
+    },
+    selfRegisterLeft: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    qrIconCircle: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    selfRegisterTitle: {
+        fontSize: 13.5,
+        fontWeight: '800',
+    },
+    selfRegisterSub: {
+        fontSize: 10.5,
+        fontWeight: '600',
+        lineHeight: 14,
+        marginTop: 2,
+    },
+    selfRegisterRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 6,
+        paddingHorizontal: 10,
+        borderRadius: 10,
+    },
+    selfRegisterBtnText: {
+        color: '#FFF',
+        fontSize: 10,
+        fontWeight: '800',
+        textTransform: 'uppercase',
     },
 });
 

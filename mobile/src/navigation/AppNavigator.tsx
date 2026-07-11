@@ -80,7 +80,7 @@ import { navigationRef } from './navigationRef';
 const Stack = createNativeStackNavigator();
 const Tab   = createBottomTabNavigator();
 
-// ── Tab Navigator — 4 tabs: Home / Pending Dues / Overview / More ───────────
+// ── Tab Navigator — 4 tabs: Home / Money / Students / Finance ────────────────
 const TabNavigator = () => (
     <Tab.Navigator
         tabBar={props => <BottomTabNavigator {...props} />}
@@ -88,8 +88,8 @@ const TabNavigator = () => (
     >
         <Tab.Screen name="HomeTab"        component={HomeScreen}            />
         <Tab.Screen name="PendingDuesTab" component={PendingPaymentsScreen} />
+        <Tab.Screen name="StudentsTab"    component={StudentsScreen}        />
         <Tab.Screen name="OverviewTab"    component={OverviewScreen}        />
-        <Tab.Screen name="MoreTab"        component={MoreScreen}            />
     </Tab.Navigator>
 );
 
@@ -273,6 +273,9 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
 
                     {/* Premium Subscription */}
                     <Stack.Screen name="PremiumSubscription" component={PremiumSubscriptionScreen} />
+
+                    {/* More screen (accessible via stack, not tab) */}
+                    <Stack.Screen name="More" component={MoreScreen} />
 
                     {/* Coming Soon */}
                     <Stack.Screen name="ComingSoon" component={ComingSoonScreen} />

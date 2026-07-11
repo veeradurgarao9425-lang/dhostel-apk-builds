@@ -335,7 +335,10 @@ export default function OverviewScreen() {
                     <View style={s.summaryRow}>
                         {/* Income Card */}
                         <TouchableOpacity
-                            style={[s.summaryCard, s.incomeCard, isDark && { backgroundColor: 'rgba(16,185,129,0.1)', borderColor: '#0F5C46' }]}
+                            style={[s.summaryCard, {
+                                backgroundColor: theme.cardBg,
+                                borderColor: isDark ? '#334155' : '#E2E8F0',
+                            }]}
                             onPress={() => navigation.navigate('IncomeDetails')}
                             activeOpacity={0.8}
                         >
@@ -343,7 +346,7 @@ export default function OverviewScreen() {
                                 <Ionicons name="arrow-up-circle" size={16} color="#10B981" />
                             </View>
                             <Text style={[s.summaryLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>{t('overview.income')}</Text>
-                            <Text style={[s.summaryValue, { color: isDark ? '#6EE7B7' : '#065F46' }]}>{fmt(cm.totalIncome || 0)}</Text>
+                            <Text style={[s.summaryValue, { color: isDark ? '#6EE7B7' : '#10B981' }]}>{fmt(cm.totalIncome || 0)}</Text>
                             <View style={s.summaryDetail}>
                                 <Text style={[s.summaryDetailText, { color: isDark ? '#94A3B8' : '#64748B' }]}>{t('overview.fees')}: {fmt(cm.feeCollection || 0)}</Text>
                                 {Number(cm.admissionFeeCollection || 0) > 0 && (
@@ -357,7 +360,10 @@ export default function OverviewScreen() {
 
                         {/* Expenses Card */}
                         <TouchableOpacity
-                            style={[s.summaryCard, s.expenseCard, isDark && { backgroundColor: 'rgba(239,68,68,0.1)', borderColor: '#7F2D2D' }]}
+                            style={[s.summaryCard, {
+                                backgroundColor: theme.cardBg,
+                                borderColor: isDark ? '#334155' : '#E2E8F0',
+                            }]}
                             onPress={() => navigation.navigate('Expenses')}
                             activeOpacity={0.8}
                         >
@@ -365,7 +371,7 @@ export default function OverviewScreen() {
                                 <Ionicons name="arrow-down-circle" size={16} color="#EF4444" />
                             </View>
                             <Text style={[s.summaryLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>{t('overview.expenses')}</Text>
-                            <Text style={[s.summaryValue, { color: isDark ? '#FCA5A5' : '#991B1B' }]}>{fmt(cm.totalExpenses || 0)}</Text>
+                            <Text style={[s.summaryValue, { color: isDark ? '#FCA5A5' : '#EF4444' }]}>{fmt(cm.totalExpenses || 0)}</Text>
                             <View style={s.summaryDetail}>
                                 <Text style={[s.summaryDetailText, { color: isDark ? '#94A3B8' : '#64748B' }]}>
                                     {(cm.expenseBreakdown || []).length} {t('overview.categories')}

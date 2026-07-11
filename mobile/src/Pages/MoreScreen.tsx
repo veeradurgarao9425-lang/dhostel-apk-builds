@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
     StatusBar, ScrollView, Platform, TextInput,
-    Modal, ActivityIndicator, Image
+    Modal, ActivityIndicator, Image, Animated
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,6 +15,7 @@ import { useConfirmation } from '../../contexts/ConfirmationContext';
 import { useToast } from '../context/ToastContext';
 import * as Clipboard from 'expo-clipboard';
 import { TestUIModal } from '../components/TestUIModal';
+import { TenantAppCard } from '../components/TenantAppCard';
 
 // ─── Menu item definition ─────────────────────────────────────────────────────
 interface MenuItem {
@@ -35,6 +36,17 @@ export default function MoreScreen() {
     const { user, signOut, updateTokenAndUser, hostels: authHostels, loadHostels } = useAuth();
     const confirm = useConfirmation();
     const [testUiVisible, setTestUiVisible] = useState(false);
+
+    const borderAnim = React.useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(borderAnim, { toValue: 1, duration: 4000, useNativeDriver: false }),
+                Animated.timing(borderAnim, { toValue: 0, duration: 4000, useNativeDriver: false })
+            ])
+        ).start();
+    }, [borderAnim]);
 
     const [stats, setStats] = useState<any>(null);
 
@@ -92,51 +104,53 @@ export default function MoreScreen() {
 
     const menuGroups = useMemo(() => [
         {
-            groupTitle: t('more.management'),
+            groupTitle: 'Quick Actions (One-Tap)',
             items: [
                 {
+                    label: 'Add Tenant',
+                    subtitle: 'Register and check-in a new tenant',
+                    icon: 'person-add-outline',
+                    iconColor: '#7C3AED',
+                    iconBg: '#EDE9FE',
+                    route: 'AddStudent',
+                },
+                {
+                    label: 'Add Room',
+                    subtitle: 'Create a new room or beds',
+                    icon: 'bed-outline',
+                    iconColor: '#0284C7',
+                    iconBg: '#E0F2FE',
+                    route: 'AddRoom',
+                },
+                {
                     label: 'Collect Rent',
-                    subtitle: 'Collect fees and record payments',
+                    subtitle: 'Record manual rent payments',
                     icon: 'cash-outline',
                     iconColor: '#10B981',
                     iconBg: '#D1FAE5',
                     route: 'CollectedPayments',
                 },
                 {
-                    label: t('more.pendingPayments'),
-                    subtitle: t('more.pendingPaymentsSub'),
-                    icon: 'alert-circle',
-                    iconColor: '#DC2626',
-                    iconBg: '#FEE2E2',
-                    route: 'PendingTab',
-                    badgeCount: stats?.pendingDuesCount ?? 0,
+                    label: 'Add Expense',
+                    subtitle: 'Record hostel maintenance expenses',
+                    icon: 'receipt-outline',
+                    iconColor: '#EA580C',
+                    iconBg: '#FFEDD5',
+                    route: 'AddExpense',
                 },
                 {
-                    label: t('more.incomeReport'),
-                    subtitle: t('more.incomeReportSub'),
-                    icon: 'trending-up',
-                    iconColor: '#16A34A',
-                    iconBg: '#DCFCE7',
-                    route: 'IncomeDetails',
-                    routeParams: { period: 'month' },
+                    label: 'Add Staff',
+                    subtitle: 'Register a new hostel helper/guard',
+                    icon: 'people-outline',
+                    iconColor: '#0891B2',
+                    iconBg: '#CFFAFE',
+                    route: 'AddStaff',
                 },
-                {
-                    label: t('more.reportsAnalytics'),
-                    subtitle: t('more.reportsAnalyticsSub'),
-                    icon: 'bar-chart',
-                    iconColor: '#059669',
-                    iconBg: '#D1FAE5',
-                    route: 'Reports',
-                },
-                {
-                    label: t('more.rooms'),
-                    subtitle: t('more.roomsSub'),
-                    icon: 'bed',
-                    iconColor: '#2563EB',
-                    iconBg: '#DBEAFE',
-                    route: 'Rooms',
-                    badgeCount: stats?.rooms ? `${stats.rooms.occupied_beds}/${stats.rooms.total_beds}` : '0/0',
-                },
+            ],
+        },
+        {
+            groupTitle: 'People',
+            items: [
                 {
                     label: t('more.tenants'),
                     subtitle: t('more.tenantsSub'),
@@ -156,47 +170,12 @@ export default function MoreScreen() {
                     badgeCount: stats?.staffCount ?? 0,
                 },
                 {
-                    label: 'Verify Rent',
-                    subtitle: 'Verify uploaded payment proofs',
-                    icon: 'shield-checkmark-outline',
-                    iconColor: '#16A34A',
-                    iconBg: '#DCFCE7',
-                    route: 'PaymentVerification',
-                    badgeCount: 0,
-                },
-                {
-                    label: 'Mess Menu',
-                    subtitle: 'Manage weekly food schedule',
-                    icon: 'restaurant-outline',
-                    iconColor: '#059669',
-                    iconBg: '#D1FAE5',
-                    route: 'MessMenuManagement',
-                },
-                {
-                    label: 'Notices Board',
-                    subtitle: 'Post announcements to tenants',
-                    icon: 'megaphone-outline',
-                    iconColor: '#7C3AED',
-                    iconBg: '#EDE9FE',
-                    route: 'NoticesManagement',
-                },
-                {
-                    label: 'Complaints',
-                    subtitle: 'Manage tenant complaints',
-                    icon: 'construct-outline',
-                    iconColor: '#DC2626',
-                    iconBg: '#FEE2E2',
-                    route: 'ComplaintsManagement',
-                    badgeCount: 0,
-                },
-                {
-                    label: t('more.vacateNotices'),
-                    subtitle: t('more.vacateNoticesSub'),
-                    icon: 'calendar-outline',
-                    iconColor: '#EA580C',
-                    iconBg: '#FFEDD5',
-                    route: 'Notices',
-                    badgeCount: stats?.noticesCount || 0,
+                    label: t('more.guests'),
+                    subtitle: t('more.guestsSub'),
+                    icon: 'walk',
+                    iconColor: '#0891B2',
+                    iconBg: '#CFFAFE',
+                    route: 'Guests',
                 },
                 {
                     label: 'Tenant Reviews',
@@ -209,11 +188,68 @@ export default function MoreScreen() {
             ],
         },
         {
-            groupTitle: 'Hostel',
+            groupTitle: 'Money & Finance',
             items: [
                 {
-                    label: t('more.hostels'),
-                    subtitle: t('more.hostelsSub'),
+                    label: t('more.pendingPayments'),
+                    subtitle: t('more.pendingPaymentsSub'),
+                    icon: 'alert-circle',
+                    iconColor: '#DC2626',
+                    iconBg: '#FEE2E2',
+                    route: 'PendingTab',
+                    badgeCount: stats?.pendingDuesCount ?? 0,
+                },
+                {
+                    label: 'Verify Rent',
+                    subtitle: 'Verify uploaded payment proofs',
+                    icon: 'shield-checkmark-outline',
+                    iconColor: '#16A34A',
+                    iconBg: '#DCFCE7',
+                    route: 'PaymentVerification',
+                    badgeCount: 0,
+                },
+                {
+                    label: t('more.expenses'),
+                    subtitle: t('more.expensesSub'),
+                    icon: 'card',
+                    iconColor: '#2563EB',
+                    iconBg: '#DBEAFE',
+                    route: 'Expenses',
+                },
+                {
+                    label: t('more.incomeReport'),
+                    subtitle: t('more.incomeReportSub'),
+                    icon: 'trending-up',
+                    iconColor: '#16A34A',
+                    iconBg: '#DCFCE7',
+                    route: 'IncomeDetails',
+                    routeParams: { period: 'month' },
+                },
+                {
+                    label: t('more.reportsAnalytics'),
+                    subtitle: t('more.reportsAnalyticsSub'),
+                    icon: 'bar-chart',
+                    iconColor: '#059669',
+                    iconBg: '#D1FAE5',
+                    route: 'Reports',
+                },
+            ],
+        },
+        {
+            groupTitle: 'Property & Mess',
+            items: [
+                {
+                    label: t('more.rooms'),
+                    subtitle: t('more.roomsSub', 'Manage rooms and bed configurations'),
+                    icon: 'bed',
+                    iconColor: '#2563EB',
+                    iconBg: '#DBEAFE',
+                    route: 'Rooms',
+                    badgeCount: stats?.rooms ? `${stats.rooms.occupied_beds}/${stats.rooms.total_beds}` : '0/0',
+                },
+                {
+                    label: t('more.hostels', 'My Hostels'),
+                    subtitle: t('more.hostelsSub', 'Manage and switch branches'),
                     icon: 'business',
                     iconColor: '#16A34A',
                     iconBg: '#DCFCE7',
@@ -221,34 +257,84 @@ export default function MoreScreen() {
                     badgeCount: stats?.hostelsCount || 0,
                 },
                 {
-                    label: t('more.bulkDelete'),
-                    subtitle: t('more.bulkDeleteSub'),
-                    icon: 'trash-outline',
-                    iconColor: '#DC2626',
-                    iconBg: '#FEE2E2',
-                    route: 'BulkDelete',
+                    label: 'Mess Menu',
+                    subtitle: 'Manage weekly food schedule',
+                    icon: 'restaurant-outline',
+                    iconColor: '#059669',
+                    iconBg: '#D1FAE5',
+                    route: 'MessMenuManagement',
                 },
             ],
         },
         {
-            groupTitle: t('more.tools'),
+            groupTitle: 'Shortcuts & Info',
             items: [
                 {
+                    label: t('more.qrSignup', 'Tenant QR Register'),
+                    subtitle: t('more.qrSignupSub', 'Invite tenants to self-register'),
+                    icon: 'qr-code',
+                    iconColor: '#7C3AED',
+                    iconBg: '#EDE9FE',
+                    route: 'QRSignup',
+                },
+                {
+                    label: 'Pre-Bookings',
+                    subtitle: 'Manage upcoming reservations',
+                    icon: 'calendar-outline',
+                    iconColor: '#D97706',
+                    iconBg: '#FEF3C7',
+                    route: 'PreBooking',
+                },
+                {
+                    label: 'Notices Board',
+                    subtitle: 'Post announcements to tenants',
+                    icon: 'megaphone-outline',
+                    iconColor: '#7C3AED',
+                    iconBg: '#EDE9FE',
+                    route: 'NoticesManagement',
+                },
+                {
+                    label: t('more.vacateNotices', 'Vacate Notices'),
+                    subtitle: t('more.vacateNoticesSub', 'View check-out schedule requests'),
+                    icon: 'calendar-outline',
+                    iconColor: '#EA580C',
+                    iconBg: '#FFEDD5',
+                    route: 'Notices',
+                    badgeCount: stats?.noticesCount || 0,
+                },
+                {
+                    label: 'Complaints',
+                    subtitle: 'Manage tenant complaints',
+                    icon: 'construct-outline',
+                    iconColor: '#DC2626',
+                    iconBg: '#FEE2E2',
+                    route: 'ComplaintsManagement',
+                    badgeCount: 0,
+                },
+            ],
+        },
+        {
+            groupTitle: 'Settings & Other',
+            items: [
+                {
+                    label: 'Bill Reminders',
+                    subtitle: 'Configure automated payment alerts',
+                    icon: 'notifications-outline',
+                    iconColor: '#4F46E5',
+                    iconBg: '#EEF2FF',
+                    route: 'BillReminders',
+                },
+                {
                     label: t('more.reminders'),
-                    subtitle: t('more.remindersSub'),
+                    subtitle: t('more.remindersSub', 'View and manage rent alerts'),
                     icon: 'notifications',
                     iconColor: '#0891B2',
                     iconBg: '#CFFAFE',
                     route: 'Reminders',
                 },
-            ],
-        },
-        {
-            groupTitle: t('more.account'),
-            items: [
                 {
                     label: t('more.profile'),
-                    subtitle: t('more.profileSub'),
+                    subtitle: t('more.profileSub', 'Manage your account and branch details'),
                     icon: 'person',
                     iconColor: '#8B5CF6',
                     iconBg: '#EDE9FE',
@@ -256,11 +342,19 @@ export default function MoreScreen() {
                 },
                 {
                     label: t('more.settings', 'Settings'),
-                    subtitle: t('more.appSettingsSub'),
+                    subtitle: t('more.appSettingsSub', 'Configure app theme and preferences'),
                     icon: 'settings',
                     iconColor: '#3B82F6',
                     iconBg: '#DBEAFE',
                     route: 'Settings',
+                },
+                {
+                    label: t('more.bulkDelete'),
+                    subtitle: t('more.bulkDeleteSub', 'Delete rooms, beds, and records in bulk'),
+                    icon: 'trash-outline',
+                    iconColor: '#DC2626',
+                    iconBg: '#FEE2E2',
+                    route: 'BulkDelete',
                 },
             ],
         },
@@ -339,6 +433,11 @@ export default function MoreScreen() {
             return;
         }
 
+        if (item.route === 'LOGOUT') {
+            handleLogout();
+            return;
+        }
+
         if (item.route === 'TestUI') {
             setTestUiVisible(true);
             return;
@@ -386,7 +485,18 @@ export default function MoreScreen() {
         }).filter(group => group.items.length > 0);
     }, [searchQuery, menuGroups]);
 
-    const isListEmpty = filteredTopTools.length === 0 && filteredMenuGroups.length === 0;
+    const isListEmpty = filteredMenuGroups.length === 0;
+
+    // Google Gemini search bar breathing glow animations
+    const animatedBorderColor = borderAnim.interpolate({
+        inputRange: [0, 0.25, 0.5, 0.75, 1],
+        outputRange: ['#3B82F6', '#8B5CF6', '#EC4899', '#F97316', '#3B82F6']
+    });
+
+    const animatedShadowColor = borderAnim.interpolate({
+        inputRange: [0, 0.25, 0.5, 0.75, 1],
+        outputRange: ['rgba(59, 130, 246, 0.3)', 'rgba(139, 92, 246, 0.3)', 'rgba(236, 72, 153, 0.3)', 'rgba(249, 115, 22, 0.3)', 'rgba(59, 130, 246, 0.3)']
+    });
 
     return (
         <View style={[s.root, { backgroundColor: theme.background }]}>
@@ -410,104 +520,67 @@ export default function MoreScreen() {
                             </Text>
                         </View>
                     </TouchableOpacity>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <TouchableOpacity
-                            onPress={() => { setShowSearch(!showSearch); if (showSearch) setSearchQuery(''); }}
-                            style={s.searchIconBtn}
-                            activeOpacity={0.7}
-                        >
-                            <Ionicons name={showSearch ? "close" : "search"} size={22} color="#FFF" />
-                        </TouchableOpacity>
-                    </View>
                 </View>
-
-                {showSearch && (
-                    <View style={s.headerSearchWrap}>
-                        <Ionicons name="search" size={18} color="#94A3B8" style={{ marginRight: 8 }} />
-                        <TextInput
-                            style={[s.headerSearchInput, { fontSize: fontSize }]}
-                            placeholder={t('more.searchPlaceholder')}
-                            placeholderTextColor="#94A3B8"
-                            value={searchQuery}
-                            onChangeText={setSearchQuery}
-                            autoFocus
-                        />
-                        {searchQuery.length > 0 && (
-                            <TouchableOpacity onPress={() => setSearchQuery('')}>
-                                <Ionicons name="close-circle" size={18} color="#94A3B8" />
-                            </TouchableOpacity>
-                        )}
-                    </View>
-                )}
             </LinearGradient>
+
+            {/* Big Search Bar - Always Visible with Gemini breathing border glow */}
+            <Animated.View style={[
+                s.bigSearchWrap,
+                {
+                    backgroundColor: isDark ? '#1E293B' : '#FFF',
+                    borderColor: animatedBorderColor,
+                    shadowColor: animatedShadowColor,
+                    shadowOpacity: 0.5,
+                    shadowRadius: 10,
+                }
+            ]}>
+                <Ionicons name="search" size={18} color={isDark ? '#94A3B8' : '#64748B'} style={{ marginRight: 8 }} />
+                <TextInput
+                    style={[s.bigSearchInput, { color: theme.textPrimary, fontSize: fontSize - 1 }]}
+                    placeholder="Search settings, tools, actions..."
+                    placeholderTextColor={isDark ? '#475569' : '#94A3B8'}
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                />
+                {searchQuery.length > 0 && (
+                    <TouchableOpacity onPress={() => setSearchQuery('')}>
+                        <Ionicons name="close-circle" size={18} color="#94A3B8" />
+                    </TouchableOpacity>
+                )}
+            </Animated.View>
 
             {/* Menu groups */}
             <ScrollView
                 style={s.scroll}
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 110, paddingTop: 16 }}
+                contentContainerStyle={{ paddingBottom: 110, paddingTop: 4 }}
             >
-                {/* Active Hostel Selection Card */}
-                {!isListEmpty && !searchQuery && (
-                    <View>
-                        <TouchableOpacity
-                            style={[
-                                s.activeHostelCard,
-                                {
-                                    backgroundColor: theme.cardBg,
-                                    borderColor: isDark ? '#334155' : '#E2E8F0',
-                                }
-                            ]}
-                            onPress={openHostelSelector}
-                            activeOpacity={0.8}
-                        >
-                            <View style={s.activeHostelLeft}>
-                                <View style={[s.activeHostelIconContainer, { backgroundColor: isDark ? 'rgba(124, 58, 237, 0.15)' : theme.primary + '12' }]}>
-                                    <Ionicons name="business" size={20} color={theme.primary} />
-                                </View>
-                                <View style={s.activeHostelTextWrap}>
-                                    <Text style={[s.activeHostelLabel, { color: theme.textSecondary, fontSize: fontSize - 4 }]}>{t('more.activeHostel')}</Text>
-                                    <Text style={[s.activeHostelName, { color: theme.textPrimary, fontSize: fontSize - 1 }]} numberOfLines={1}>
-                                        {user?.hostel_name || t('more.noActiveHostel')}
-                                    </Text>
-                                    {(() => {
-                                        const hCode = authHostels.find((h: any) => h.hostel_id === user?.hostel_id)?.hostel_code;
-                                        if (hCode) {
-                                            return (
-                                                <TouchableOpacity
-                                                    onPress={(e) => {
-                                                        e.stopPropagation();
-                                                        handleCopyCode(hCode, 'active');
-                                                    }}
-                                                    style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}
-                                                    activeOpacity={0.7}
-                                                >
-                                                    <Text style={{ fontSize: fontSize - 3, color: copiedActiveCode ? '#10B981' : theme.primary, fontWeight: '700' }}>
-                                                        {copiedActiveCode ? 'Copied!' : `Code: ${hCode}`}
-                                                    </Text>
-                                                    <Ionicons
-                                                        name={copiedActiveCode ? "checkmark-circle" : "copy-outline"}
-                                                        size={12}
-                                                        color={copiedActiveCode ? '#10B981' : theme.primary}
-                                                    />
-                                                </TouchableOpacity>
-                                            );
-                                        }
-                                        return null;
-                                    })()}
-                                </View>
+                {/* QR Signup Onboarding Card */}
+                {!searchQuery && (
+                    <TouchableOpacity
+                        style={[s.selfRegisterCard, { backgroundColor: isDark ? '#1E1B4B' : '#EDE9FE', borderColor: isDark ? '#312E81' : '#DDD6FE' }]}
+                        onPress={() => navigation.navigate('QRSignup')}
+                        activeOpacity={0.8}
+                    >
+                        <View style={s.selfRegisterContent}>
+                            <View style={[s.selfRegisterIconCircle, { backgroundColor: isDark ? '#4C1D95' : '#7C3AED' }]}>
+                                <Ionicons name="qr-code-outline" size={20} color="#FFF" />
                             </View>
-                            <View style={[s.activeHostelSwitchBtn, { backgroundColor: theme.primary }]}>
-                                <Text style={s.activeHostelSwitchText}>{t('more.switch')}</Text>
-                                <Ionicons name="swap-horizontal" size={12} color="#FFF" />
+                            <View style={{ flex: 1 }}>
+                                <Text style={[s.selfRegisterTitle, { color: isDark ? '#FFF' : '#4C1D95' }]}>
+                                    Tenant Self-Registration
+                                </Text>
+                                <Text style={[s.selfRegisterSub, { color: isDark ? '#C4B5FD' : '#6D28D9' }]}>
+                                    Tenants scan QR via camera to fill profiles. No app download required!
+                                </Text>
                             </View>
-                        </TouchableOpacity>
-
-
-                    </View>
+                            <View style={[s.selfRegisterBtn, { backgroundColor: isDark ? '#7C3AED' : '#4C1D95' }]}>
+                                <Text style={s.selfRegisterBtnText}>View QR</Text>
+                                <Ionicons name="chevron-forward" size={12} color="#FFF" style={{ marginLeft: 2 }} />
+                            </View>
+                        </View>
+                    </TouchableOpacity>
                 )}
-
-
 
                 {/* Empty State */}
                 {isListEmpty && (
@@ -515,28 +588,6 @@ export default function MoreScreen() {
                         <Text style={{ fontSize: 40, marginBottom: 12 }}>🔍</Text>
                         <Text style={[s.emptyText, { color: theme.textPrimary, fontSize: fontSize + 1, fontWeight: '700' }]}>{t('more.noMatchingTools')}</Text>
                         <Text style={{ color: theme.textSecondary, fontSize: fontSize - 2, marginTop: 4 }}>{t('more.trySearchingDifferent')}</Text>
-                    </View>
-                )}
-
-                {/* Quick Access Tools */}
-                {!isListEmpty && filteredTopTools.length > 0 && (
-                    <View style={s.topToolsGroup}>
-                        <Text style={[s.groupTitle, { color: theme.textSecondary, fontSize: fontSize - 2 }]}>{t('more.quickTools')}</Text>
-                        <View style={s.topToolsRow}>
-                            {filteredTopTools.map((tool, index) => (
-                                <TouchableOpacity
-                                    key={index}
-                                    style={[s.topToolCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
-                                    onPress={() => handlePress(tool)}
-                                    activeOpacity={0.7}
-                                >
-                                    <View style={[s.topToolIconCircle, { backgroundColor: isDark ? '#334155' : tool.iconBg }]}>
-                                        <Ionicons name={tool.icon as any} size={20} color={isDark ? theme.primary : tool.iconColor} />
-                                    </View>
-                                    <Text style={[s.topToolLabel, { color: theme.textPrimary, fontSize: fontSize - 3 }]} numberOfLines={1}>{tool.label}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
                     </View>
                 )}
 
@@ -781,6 +832,27 @@ const s = StyleSheet.create({
         flex: 1,
         color: '#1E293B',
         fontWeight: '700',
+    },
+    bigSearchWrap: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderRadius: 16,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        marginHorizontal: 16,
+        marginTop: 16,
+        marginBottom: 10,
+        borderWidth: 1.5,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 2 },
+    },
+    bigSearchInput: {
+        flex: 1,
+        fontWeight: '700',
+        paddingVertical: 2,
     },
     emptyState: {
         alignItems: 'center',
@@ -1174,5 +1246,53 @@ const s = StyleSheet.create({
         borderRadius: 14,
         alignItems: 'center',
         borderWidth: 1,
+    },
+    selfRegisterCard: {
+        marginHorizontal: 16,
+        marginBottom: 12,
+        borderRadius: 20,
+        borderWidth: 1,
+        padding: 14,
+        elevation: 2,
+        shadowColor: '#7C3AED',
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 2 },
+    },
+    selfRegisterContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    selfRegisterIconCircle: {
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    selfRegisterTitle: {
+        fontSize: 14,
+        fontWeight: '800',
+    },
+    selfRegisterSub: {
+        fontSize: 10.5,
+        fontWeight: '600',
+        lineHeight: 14,
+        marginTop: 2,
+        paddingRight: 6,
+    },
+    selfRegisterBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 6,
+        paddingHorizontal: 10,
+        borderRadius: 10,
+    },
+    selfRegisterBtnText: {
+        color: '#FFF',
+        fontSize: 10,
+        fontWeight: '800',
+        textTransform: 'uppercase',
     },
 });

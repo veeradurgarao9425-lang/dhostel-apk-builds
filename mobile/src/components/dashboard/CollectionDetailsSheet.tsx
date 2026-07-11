@@ -8,6 +8,10 @@ import { ModalSheet } from '../../components/FormComponents';
 
 interface CollectionDetailsSheetProps {
     data: {
+        todayAmount?: number;
+        monthAmount?: number;
+        monthDue?: number;
+        totalDuesAmount?: number;
         collectionStats: {
             totalExpected: number;
             collected: number;
@@ -40,6 +44,8 @@ export const CollectionDetailsSheet = ({ data, showCollectionSheet, setShowColle
 
     const close = () => setShowCollectionSheet(false);
 
+    const mName = data.collectionStats.monthName || 'Month';
+
     return (
         <ModalSheet visible={showCollectionSheet} onClose={close} maxHeight="88%">
 
@@ -51,7 +57,7 @@ export const CollectionDetailsSheet = ({ data, showCollectionSheet, setShowColle
                     </View>
                     <View>
                         <Text style={[s.headerTitle, { color: theme.textPrimary }]}>
-                            {data.collectionStats.monthName} Collection
+                            {mName} Collection
                         </Text>
                         <Text style={[s.headerSub, { color: theme.textSecondary }]}>
                             {data.collectionStats.tenantsCount} tenants · {pct}% collected
@@ -111,47 +117,109 @@ export const CollectionDetailsSheet = ({ data, showCollectionSheet, setShowColle
                     <View style={[s.progressFill, { width: `${pct}%` }]} />
                 </View>
 
-                {/* ── Stat tiles: 4 in a row ── */}
-                <View style={s.tilesRow}>
+                {/* ── Scrollable Horizontal Stat Tiles ── */}
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ gap: 8, paddingBottom: 16 }}
+                >
+                    {/* Today Collection */}
+                    <View style={[s.tile, { backgroundColor: isDark ? '#0A1F14' : '#E8FDF5' }]}>
+                        <Ionicons name="cash" size={15} color="#10B981" />
+                        <Text style={[s.tileValue, { color: '#10B981' }]} numberOfLines={1}>
+                            ₹{(data.todayAmount || 0).toLocaleString('en-IN')}
+                        </Text>
+                        <Text style={[s.tileLabel, { color: theme.textSecondary }]} numberOfLines={1}>
+                            Today Coll.
+                        </Text>
+                    </View>
+
+                    {/* This Month Collection */}
+                    <View style={[s.tile, { backgroundColor: isDark ? '#0A1F14' : '#E8FDF5' }]}>
+                        <Ionicons name="wallet" size={15} color="#10B981" />
+                        <Text style={[s.tileValue, { color: '#10B981' }]} numberOfLines={1}>
+                            ₹{data.collectionStats.collected.toLocaleString('en-IN')}
+                        </Text>
+                        <Text style={[s.tileLabel, { color: theme.textSecondary }]} numberOfLines={1}>
+                            {mName} Coll.
+                        </Text>
+                    </View>
+
+                    {/* This Month Dues */}
                     <TouchableOpacity
-                        style={[s.tile, { backgroundColor: isDark ? '#2A0A0A' : '#FFF1F2', borderTopColor: '#E11D48' }]}
+                        style={[s.tile, { backgroundColor: isDark ? '#1A1000' : '#FFFBEB' }]}
                         activeOpacity={0.75}
-                        onPress={() => { close(); navigation.navigate('PendingTab'); }}
+                        onPress={() => { close(); navigation.navigate('PendingTab', { tab: 'All Dues' }); }}
                     >
-                        <Ionicons name="warning" size={15} color="#E11D48" />
-                        <Text style={[s.tileValue, { color: '#E11D48' }]}>{data.collectionStats.overdueCount}</Text>
-                        <Text style={[s.tileLabel, { color: theme.textSecondary }]}>Overdue</Text>
-                        {(data.collectionStats.overdueAmount || 0) > 0 && (
-                            <Text style={s.tileSub}>₹{(data.collectionStats.overdueAmount || 0).toLocaleString('en-IN')}</Text>
-                        )}
+                        <Ionicons name="hourglass" size={15} color="#D97706" />
+                        <Text style={[s.tileValue, { color: '#D97706' }]} numberOfLines={1}>
+                            ₹{data.collectionStats.pending.toLocaleString('en-IN')}
+                        </Text>
+                        <Text style={[s.tileLabel, { color: theme.textSecondary }]} numberOfLines={1}>
+                            {mName} Dues
+                        </Text>
                     </TouchableOpacity>
 
+                    {/* All Dues */}
                     <TouchableOpacity
-                        style={[s.tile, { backgroundColor: isDark ? '#1A1000' : '#FFFBEB', borderTopColor: '#D97706' }]}
+                        style={[s.tile, { backgroundColor: isDark ? '#2A0A0A' : '#FFF1F2' }]}
+                        activeOpacity={0.75}
+                        onPress={() => { close(); navigation.navigate('PendingTab', { tab: 'All Dues' }); }}
+                    >
+                        <Ionicons name="alert-circle" size={15} color="#E11D48" />
+                        <Text style={[s.tileValue, { color: '#E11D48' }]} numberOfLines={1}>
+                            ₹{(data.totalDuesAmount || 0).toLocaleString('en-IN')}
+                        </Text>
+                        <Text style={[s.tileLabel, { color: theme.textSecondary }]} numberOfLines={1}>
+                            All Dues
+                        </Text>
+                    </TouchableOpacity>
+
+                    {/* Overdue */}
+                    <TouchableOpacity
+                        style={[s.tile, { backgroundColor: isDark ? '#2A0A0A' : '#FFF1F2' }]}
+                        activeOpacity={0.75}
+                        onPress={() => { close(); navigation.navigate('PendingTab', { tab: 'Overdue' }); }}
+                    >
+                        <Ionicons name="warning" size={15} color="#E11D48" />
+                        <Text style={[s.tileValue, { color: '#E11D48' }]} numberOfLines={1}>
+                            ₹{(data.collectionStats.overdueAmount || 0).toLocaleString('en-IN')}
+                        </Text>
+                        <Text style={[s.tileLabel, { color: theme.textSecondary }]} numberOfLines={1}>
+                            Overdue Dues
+                        </Text>
+                    </TouchableOpacity>
+
+                    {/* Due Today (Count) */}
+                    <TouchableOpacity
+                        style={[s.tile, { backgroundColor: isDark ? '#1A1000' : '#FFFBEB' }]}
                         activeOpacity={0.75}
                         onPress={() => { close(); navigation.navigate('PendingTab', { tab: 'Next 7 Days' }); }}
                     >
                         <Ionicons name="time" size={15} color="#D97706" />
-                        <Text style={[s.tileValue, { color: '#D97706' }]}>{data.collectionStats.dueTodayCount}</Text>
-                        <Text style={[s.tileLabel, { color: theme.textSecondary }]}>Due Today</Text>
+                        <Text style={[s.tileValue, { color: '#D97706' }]} numberOfLines={1}>
+                            {data.collectionStats.dueTodayCount}
+                        </Text>
+                        <Text style={[s.tileLabel, { color: theme.textSecondary }]} numberOfLines={1}>
+                            Due Today
+                        </Text>
                     </TouchableOpacity>
 
+                    {/* This Week (Count) */}
                     <TouchableOpacity
-                        style={[s.tile, { backgroundColor: isDark ? '#0A0A1A' : '#EEF2FF', borderTopColor: '#4F46E5' }]}
+                        style={[s.tile, { backgroundColor: isDark ? '#0A0A1A' : '#EEF2FF' }]}
                         activeOpacity={0.75}
                         onPress={() => { close(); navigation.navigate('PendingTab', { tab: 'Next 7 Days' }); }}
                     >
                         <Ionicons name="calendar" size={15} color="#4F46E5" />
-                        <Text style={[s.tileValue, { color: '#4F46E5' }]}>{data.collectionStats.dueThisWeekCount}</Text>
-                        <Text style={[s.tileLabel, { color: theme.textSecondary }]}>This Week</Text>
+                        <Text style={[s.tileValue, { color: '#4F46E5' }]} numberOfLines={1}>
+                            {data.collectionStats.dueThisWeekCount}
+                        </Text>
+                        <Text style={[s.tileLabel, { color: theme.textSecondary }]} numberOfLines={1}>
+                            This Week
+                        </Text>
                     </TouchableOpacity>
-
-                    <View style={[s.tile, { backgroundColor: isDark ? '#0A1F14' : '#ECFDF5', borderTopColor: '#10B981' }]}>
-                        <Ionicons name="checkmark-circle" size={15} color="#10B981" />
-                        <Text style={[s.tileValue, { color: '#10B981' }]}>{data.collectionStats.paidCount}</Text>
-                        <Text style={[s.tileLabel, { color: theme.textSecondary }]}>Paid</Text>
-                    </View>
-                </View>
+                </ScrollView>
 
                 {/* ── Overdue tenants preview ── */}
                 {data.unpaidStudents && data.unpaidStudents.length > 0 && (
@@ -341,12 +409,11 @@ const s = StyleSheet.create({
         marginBottom: 18,
     },
     tile: {
-        flex: 1,
+        width: 106,
         borderRadius: 12,
         padding: 10,
         alignItems: 'center',
         gap: 3,
-        borderTopWidth: 2.5,
     },
     tileValue: {
         fontSize: 16, fontWeight: '800',
@@ -412,7 +479,8 @@ const s = StyleSheet.create({
         flexDirection: 'row',
         gap: 10,
         paddingHorizontal: 16,
-        paddingVertical: 12,
+        paddingTop: 12,
+        paddingBottom: 28,
         borderTopWidth: 1,
     },
     footerBtnSecondary: {

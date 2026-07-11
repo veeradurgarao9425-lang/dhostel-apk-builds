@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView, SafeAreaView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../../contexts/ThemeContext';
+import { ModalSheet } from '../../FormComponents';
 
 // Basic Date Logic
 const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
@@ -118,120 +119,118 @@ export function CustomDateRangePicker({
     };
 
     return (
-        <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-            <View style={S.modalOverlay}>
-                <View style={S.container}>
-                    {/* Header */}
-                    <View style={S.header}>
-                        <TouchableOpacity onPress={onClose} style={{ padding: 4 }}>
-                            <Ionicons name="arrow-back" size={24} color="#1E293B" />
-                        </TouchableOpacity>
-                        <Text style={S.headerTitle}>Select Date Range</Text>
-                        <View style={{ width: 24 }} />
+        <ModalSheet visible={visible} onClose={onClose} maxHeight="75%">
+            <View style={{ flex: 1 }}>
+                {/* Header */}
+                <View style={S.header}>
+                    <TouchableOpacity onPress={onClose} style={{ padding: 4 }}>
+                        <Ionicons name="arrow-back" size={24} color="#1E293B" />
+                    </TouchableOpacity>
+                    <Text style={S.headerTitle}>Select Date Range</Text>
+                    <View style={{ width: 24 }} />
+                </View>
+
+                <ScrollView style={{ paddingHorizontal: 20 }}>
+                    {/* Month Selector */}
+                    <View style={S.monthSelector}>
+                        {!restrictMonth ? (
+                            <TouchableOpacity onPress={() => changeMonth(-1)}>
+                                <Ionicons name="chevron-back" size={24} color="#64748B" />
+                            </TouchableOpacity>
+                        ) : (
+                            <View style={{ width: 24 }} />
+                        )}
+                        <Text style={S.monthText}>{MONTHS[month]} {year}</Text>
+                        {!restrictMonth ? (
+                            <TouchableOpacity onPress={() => changeMonth(1)}>
+                                <Ionicons name="chevron-forward" size={24} color="#64748B" />
+                            </TouchableOpacity>
+                        ) : (
+                            <View style={{ width: 24 }} />
+                        )}
                     </View>
 
-                    <ScrollView style={{ paddingHorizontal: 20 }}>
-                        {/* Month Selector */}
-                        <View style={S.monthSelector}>
-                            {!restrictMonth ? (
-                                <TouchableOpacity onPress={() => changeMonth(-1)}>
-                                    <Ionicons name="chevron-back" size={24} color="#64748B" />
-                                </TouchableOpacity>
-                            ) : (
-                                <View style={{ width: 24 }} />
-                            )}
-                            <Text style={S.monthText}>{MONTHS[month]} {year}</Text>
-                            {!restrictMonth ? (
-                                <TouchableOpacity onPress={() => changeMonth(1)}>
-                                    <Ionicons name="chevron-forward" size={24} color="#64748B" />
-                                </TouchableOpacity>
-                            ) : (
-                                <View style={{ width: 24 }} />
-                            )}
-                        </View>
-
-                        {/* Days Header */}
-                        <View style={S.daysHeader}>
-                            {DAYS.map((d, i) => (
-                                <Text key={i} style={S.dayHeaderText}>{d}</Text>
-                            ))}
-                        </View>
-
-                        {/* Calendar Grid */}
-                        <View style={S.grid}>
-                            {calendarGrid.map((day, i) => {
-                                const sel = day ? isSelected(day) : false;
-                                const inR = day ? isInRange(day) : false;
-                                
-                                const isStart = day ? (range.start?.getTime() === new Date(year, month, day).getTime()) : false;
-                                const isEnd = day ? (range.end?.getTime() === new Date(year, month, day).getTime()) : false;
-                                
-                                return (
-                                    <View key={i} style={[
-                                        S.cellWrap,
-                                        inR && { backgroundColor: primarySoft },
-                                        isStart && { borderTopLeftRadius: 22, borderBottomLeftRadius: 22, backgroundColor: range.end ? primarySoft : 'transparent', overflow: 'hidden' },
-                                        isEnd && { borderTopRightRadius: 22, borderBottomRightRadius: 22, backgroundColor: primarySoft, overflow: 'hidden' }
-                                    ]}>
-                                        {day ? (
-                                            <TouchableOpacity 
-                                                style={[S.dayCell, sel && { backgroundColor: primary }]}
-                                                onPress={() => handleDayPress(day)}
-                                            >
-                                                <Text style={[S.dayText, (sel || inR) && { color: sel ? '#FFF' : primary, fontWeight: '900' }]}>{day}</Text>
-                                            </TouchableOpacity>
-                                        ) : <View style={S.dayCell} />}
-                                    </View>
-                                );
-                            })}
-                        </View>
-
-                        {/* Selected Display */}
-                        <View style={S.selectedBox}>
-                            <View style={S.selectedRow}>
-                                <View style={S.iconBox}>
-                                    <Ionicons name="calendar-outline" size={16} color={primary} />
-                                </View>
-                                <Text style={S.selectedLabel}>Start Date</Text>
-                                <Text style={S.selectedDate}>{formatDisplay(range.start)}</Text>
-                            </View>
-                            <View style={S.divider} />
-                            <View style={S.selectedRow}>
-                                <View style={S.iconBox}>
-                                    <Ionicons name="calendar-outline" size={16} color={primary} />
-                                </View>
-                                <Text style={S.selectedLabel}>End Date</Text>
-                                <Text style={S.selectedDate}>{formatDisplay(range.end)}</Text>
-                            </View>
-                        </View>
-
-                    </ScrollView>
-
-                    <View style={S.footer}>
-                        <TouchableOpacity 
-                            style={[S.confirmBtn, { backgroundColor: primary }]} 
-                            onPress={() => { if (range.start && range.end) onConfirm(range.start, range.end); }}
-                        >
-                            <Text style={S.confirmBtnText}>Confirm</Text>
-                        </TouchableOpacity>
+                    {/* Days Header */}
+                    <View style={S.daysHeader}>
+                        {DAYS.map((d, i) => (
+                            <Text key={i} style={S.dayHeaderText}>{d}</Text>
+                        ))}
                     </View>
+
+                    {/* Calendar Grid */}
+                    <View style={S.grid}>
+                        {calendarGrid.map((day, i) => {
+                            const sel = day ? isSelected(day) : false;
+                            const inR = day ? isInRange(day) : false;
+                            
+                            const isStart = day ? (range.start?.getTime() === new Date(year, month, day).getTime()) : false;
+                            const isEnd = day ? (range.end?.getTime() === new Date(year, month, day).getTime()) : false;
+                            
+                            return (
+                                <View key={i} style={[
+                                    S.cellWrap,
+                                    inR && { backgroundColor: primarySoft },
+                                    isStart && { borderTopLeftRadius: 22, borderBottomLeftRadius: 22, backgroundColor: range.end ? primarySoft : 'transparent', overflow: 'hidden' },
+                                    isEnd && { borderTopRightRadius: 22, borderBottomRightRadius: 22, backgroundColor: primarySoft, overflow: 'hidden' }
+                                ]}>
+                                    {day ? (
+                                        <TouchableOpacity 
+                                            style={[S.dayCell, sel && { backgroundColor: primary }]}
+                                            onPress={() => handleDayPress(day)}
+                                        >
+                                            <Text style={[S.dayText, (sel || inR) && { color: sel ? '#FFF' : primary, fontWeight: '900' }]}>{day}</Text>
+                                        </TouchableOpacity>
+                                    ) : <View style={S.dayCell} />}
+                                </View>
+                            );
+                        })}
+                    </View>
+
+                    {/* Selected Display */}
+                    <View style={S.selectedBox}>
+                        <View style={S.selectedRow}>
+                            <View style={S.iconBox}>
+                                <Ionicons name="calendar-outline" size={16} color={primary} />
+                            </View>
+                            <Text style={S.selectedLabel}>Start Date</Text>
+                            <Text style={S.selectedDate}>{formatDisplay(range.start)}</Text>
+                        </View>
+                        <View style={S.divider} />
+                        <View style={S.selectedRow}>
+                            <View style={S.iconBox}>
+                                <Ionicons name="calendar-outline" size={16} color={primary} />
+                            </View>
+                            <Text style={S.selectedLabel}>End Date</Text>
+                            <Text style={S.selectedDate}>{formatDisplay(range.end)}</Text>
+                        </View>
+                    </View>
+
+                </ScrollView>
+
+                <View style={S.footer}>
+                    <TouchableOpacity 
+                        style={[S.confirmBtn, { backgroundColor: primary }]} 
+                        onPress={() => { if (range.start && range.end) onConfirm(range.start, range.end); }}
+                    >
+                        <Text style={S.confirmBtnText}>Confirm</Text>
+                    </TouchableOpacity>
                 </View>
             </View>
-        </Modal>
+        </ModalSheet>
     );
 }
 
 const S = StyleSheet.create({
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'transparent',
+        backgroundColor: 'rgba(0,0,0,0.4)',
         justifyContent: 'flex-end',
     },
     container: {
         backgroundColor: '#FFFFFF',
         borderTopLeftRadius: 28,
         borderTopRightRadius: 28,
-        height: '90%',
+        height: '75%',
     },
     header: {
         flexDirection: 'row',

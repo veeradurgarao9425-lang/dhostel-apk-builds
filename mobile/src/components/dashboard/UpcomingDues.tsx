@@ -29,8 +29,13 @@ export const UpcomingDues = ({ data }: UpcomingDuesProps) => {
                         DUE IN 7 DAYS
                     </Text>
                 </View>
-                <TouchableOpacity onPress={() => navigation.navigate('PendingTab', { tab: 'Next 7 Days' })} activeOpacity={0.7}>
+                <TouchableOpacity
+                    onPress={() => navigation.navigate('PendingTab', { tab: 'Next 7 Days' })}
+                    activeOpacity={0.7}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}
+                >
                     <Text style={s.seeAll}>{t('dashboard.viewAll')}</Text>
+                    <Ionicons name="chevron-forward" size={12} color="#7C3AED" style={{ marginTop: 1 }} />
                 </TouchableOpacity>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 2 }}>
@@ -38,12 +43,14 @@ export const UpcomingDues = ({ data }: UpcomingDuesProps) => {
                     const isToday = item.daysLeft === 0;
                     const isTomorrow = item.daysLeft === 1;
                     const isUrgent = item.daysLeft <= 2;
-                    const cardBg = isDark
-                        ? (isUrgent ? '#271800' : '#1A1400')
-                        : (isUrgent ? '#FEF3C7' : '#FFF7ED');
-                    const borderColor = isUrgent ? '#F59E0B' : '#FCD34D';
-                    const accentColor = isUrgent ? '#D97706' : '#B45309';
+                    
+                    const cardBg = theme.cardBg;
+                    const borderColor = isDark ? '#334155' : '#E2E8F0';
+                    const avatarBg = isUrgent ? '#FEE2E2' : '#FEF3C7';
+                    const avatarColor = isUrgent ? '#EF4444' : '#D97706';
+                    
                     const dueLabel = isToday ? 'Due Today!' : isTomorrow ? 'Tomorrow' : `${item.daysLeft}d left`;
+                    const badgeBg = isToday ? '#EF4444' : (isTomorrow ? '#F59E0B' : '#64748B');
 
                     return (
                         <TouchableOpacity
@@ -54,35 +61,35 @@ export const UpcomingDues = ({ data }: UpcomingDuesProps) => {
                         >
                             {/* Top: avatar + name */}
                             <View style={s.cardTop}>
-                                <View style={[s.avatar, { backgroundColor: accentColor + '22' }]}>
-                                    <Text style={[s.avatarLetter, { color: accentColor }]}>
+                                <View style={[s.avatar, { backgroundColor: avatarBg }]}>
+                                    <Text style={[s.avatarLetter, { color: avatarColor }]}>
                                         {(item.name || 'T')[0].toUpperCase()}
                                     </Text>
                                 </View>
                                 <View style={{ flex: 1 }}>
-                                    <Text style={[s.name, { color: isDark ? '#FEF3C7' : '#92400E' }]} numberOfLines={1}>{item.name}</Text>
-                                    <Text style={[s.meta, { color: isDark ? '#FCD34D' : '#B45309' }]} numberOfLines={1}>
+                                    <Text style={[s.name, { color: theme.textPrimary }]} numberOfLines={1}>{item.name}</Text>
+                                    <Text style={[s.meta, { color: theme.textSecondary }]} numberOfLines={1}>
                                         {item.room_number ? `Room ${item.room_number}` : 'No Room'}
                                     </Text>
                                 </View>
                                 {!!item.phone && (
                                     <TouchableOpacity
-                                        style={[s.callBtn, { backgroundColor: isDark ? '#422006' : '#FEF3C7' }]}
+                                        style={[s.callBtn, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}
                                         onPress={(e) => { e.stopPropagation(); Linking.openURL(`tel:${item.phone}`); }}
                                         activeOpacity={0.7}
                                     >
-                                        <Ionicons name="call" size={12} color="#D97706" />
+                                        <Ionicons name="call" size={12} color={isUrgent ? '#EF4444' : '#64748B'} />
                                     </TouchableOpacity>
                                 )}
                             </View>
 
                             {/* Bottom: amount + due badge */}
                             <View style={s.cardBottom}>
-                                <Text style={[s.amount, { color: accentColor }]}>
+                                <Text style={[s.amount, { color: theme.textPrimary }]}>
                                     ₹{Number(item.amount).toLocaleString('en-IN')}
                                 </Text>
-                                <View style={[s.daysBadge, { backgroundColor: isUrgent ? '#F59E0B' : '#FCD34D' }]}>
-                                    <Text style={[s.daysBadgeText, { color: isUrgent ? '#FFF' : '#78350F' }]}>{dueLabel}</Text>
+                                <View style={[s.daysBadge, { backgroundColor: badgeBg }]}>
+                                    <Text style={[s.daysBadgeText, { color: '#FFF' }]}>{dueLabel}</Text>
                                 </View>
                             </View>
                         </TouchableOpacity>

@@ -167,8 +167,9 @@
     },
     "tabs": {
         "home": "Home",
-        "dues": "Dues",
-        "overview": "Overview",
+        "money": "Money",
+        "finance": "Finance",
+        "students": "Students",
         "more": "More"
     },
     "dashboard": {

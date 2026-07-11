@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, RefreshControl, ActivityIndicator, Modal, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -13,14 +13,15 @@ import { downloadAndSaveFile } from '../utils/fileDownloader';
 import { toLocalDateStr } from '../utils/dateUtils';
 import { useToast } from '../context/ToastContext';
 import { ErrorState } from '../components/ui/ErrorState';
-import Svg, { Circle, Path } from 'react-native-svg';
+import Svg, { Circle } from 'react-native-svg';
 import { CustomDateRangePicker } from '../components/ui/pickers/CustomDateRangePicker';
 import { CustomMonthYearPicker } from '../components/ui/pickers/CustomMonthYearPicker';
+import { ModalSheet } from '../components/FormComponents';
 
 const fmt = (n: number) => n.toLocaleString('en-IN');
 
 // ── Progress Circle Component ──────────────────────────────────────────────────
-const ProgressCircle = ({ value, size = 68, strokeWidth = 6, color = '#4ADE80', isDark }: any) => {
+const ProgressCircle = ({ value, size = 80, strokeWidth = 8, color = '#4ADE80', isDark }: any) => {
     const radius = (size - strokeWidth) / 2;
     const circumference = radius * 2 * Math.PI;
     const strokeDashoffset = circumference - (Math.min(100, Math.max(0, value)) / 100) * circumference;
@@ -50,21 +51,55 @@ const ProgressCircle = ({ value, size = 68, strokeWidth = 6, color = '#4ADE80', 
                 />
             </Svg>
             <View style={{ position: 'absolute', alignItems: 'center' }}>
-                <Text style={{ fontSize: 13, fontWeight: '900', color: isDark ? '#FFF' : '#0F172A' }}>{value}%</Text>
+                <Text style={{ fontSize: 14, fontWeight: '900', color: isDark ? '#FFF' : '#0F172A' }}>{value}%</Text>
             </View>
         </View>
     );
 };
 
-// ── Card Wave Component ────────────────────────────────────────────────────────
-const CardWave = ({ color }: { color: string }) => (
-    <View style={[StyleSheet.absoluteFillObject, { overflow: 'hidden', borderRadius: 16 }]}>
-        <Svg height="60" width="200%" style={{ position: 'absolute', bottom: -10, left: 0 }} viewBox="0 0 1440 320">
-            <Path fill={color} fillOpacity="0.12" d="M0,256L48,229.3C96,203,192,149,288,154.7C384,160,480,224,576,218.7C672,213,768,139,864,128C960,117,1056,171,1152,197.3C1248,224,1344,224,1392,224L1440,224L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z" />
-            <Path fill={color} fillOpacity="0.2" d="M0,288L48,272C96,256,192,224,288,197.3C384,171,480,149,576,165.3C672,181,768,235,864,250.7C960,267,1056,245,1152,213.3C1248,181,1344,139,1392,117.3L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z" />
-        </Svg>
-    </View>
-);
+// ── Beds Donut Chart Component (Unified Vacant + Occupied Ring) ──────────────────
+const BedsDonutChart = ({ occupied, total, occupancyRate, isDark }: any) => {
+    const size = 110;
+    const strokeWidth = 12;
+    const radius = (size - strokeWidth) / 2;
+    const circumference = radius * 2 * Math.PI;
+    
+    const rate = Math.min(100, Math.max(0, occupancyRate));
+    const occupiedOffset = circumference - (rate / 100) * circumference;
+
+    return (
+        <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+            <Svg width={size} height={size}>
+                <Circle
+                    cx={size / 2}
+                    cy={size / 2}
+                    r={radius}
+                    stroke={isDark ? '#7F1D1D' : '#FCA5A5'}
+                    strokeWidth={strokeWidth}
+                    fill="transparent"
+                />
+                {rate > 0 && (
+                    <Circle
+                        cx={size / 2}
+                        cy={size / 2}
+                        r={radius}
+                        stroke="#10B981"
+                        strokeWidth={strokeWidth}
+                        strokeDasharray={circumference}
+                        strokeDashoffset={occupiedOffset}
+                        strokeLinecap="round"
+                        fill="transparent"
+                        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+                    />
+                )}
+            </Svg>
+            <View style={{ position: 'absolute', alignItems: 'center' }}>
+                <Text style={{ fontSize: 18, fontWeight: '900', color: isDark ? '#FFF' : '#0F172A' }}>{rate}%</Text>
+                <Text style={{ fontSize: 9, fontWeight: '700', color: '#64748B', marginTop: 2 }}>Occupied</Text>
+            </View>
+        </View>
+    );
+};
 
 // ── Skeleton Loader Component ──────────────────────────────────────────────────
 const Skeleton = ({ style, isDark }: { style?: any, isDark?: boolean }) => {
@@ -134,14 +169,20 @@ export default function ReportsScreen() {
     const [showExcelPicker, setShowExcelPicker] = useState(false);
     const [downloadSelectModal, setDownloadSelectModal] = useState(false);
 
-    // -- Filter State --
-    const [filterMode, setFilterMode] = useState<'month' | 'custom'>('month');
-    const [statsMonth, setStatsMonth] = useState(new Date());
-    const [customStart, setCustomStart] = useState(() => { const d = new Date(); d.setDate(1); return d; });
+    // -- Tabs --
+    const [activeTab, setActiveTab] = useState<'financials' | 'occupancy' | 'reports'>('financials');
+
+    // Dynamic current calendar month name (e.g. "July", "August")
+    const currentMonthName = useMemo(() => {
+        return new Date().toLocaleString('en-US', { month: 'long' });
+    }, []);
+
+    // -- Unified Date Filter presets (matching the dues filter) --
+    const [datePreset, setDatePreset] = useState<string>(currentMonthName);
+    const [customStart, setCustomStart] = useState<Date>(() => { const d = new Date(); d.setDate(1); return d; });
     const [customEnd, setCustomEnd] = useState(new Date());
 
     const [filterSelectModal, setFilterSelectModal] = useState(false);
-    const [showMonthPicker, setShowMonthPicker] = useState(false);
     const [showCustomPicker, setShowCustomPicker] = useState(false);
 
     // -- Data State --
@@ -151,18 +192,68 @@ export default function ReportsScreen() {
     const [expensePreview, setExpensePreview] = useState<any[]>([]);
     const [trend, setTrend] = useState<any[]>([]);
 
+    const dateOptions = useMemo(() => [
+        'Custom Date Range',
+        'All Time',
+        'Today',
+        'Yesterday',
+        currentMonthName,
+        'Last 30 Days',
+        'Previous Month',
+        'Last 3 Months',
+        'Last 6 Months',
+        'Last 12 Months',
+        'Previous Year'
+    ], [currentMonthName]);
+
     const getQueryDates = useCallback(() => {
-        if (filterMode === 'month') {
-            const year = statsMonth.getFullYear();
-            const month = statsMonth.getMonth() + 1;
-            const start = `${year}-${String(month).padStart(2, '0')}-01`;
-            const lastDay = new Date(year, month, 0).getDate();
-            const end = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-            return { startDate: start, endDate: end, monthStr: `${year}-${String(month).padStart(2, '0')}` };
-        } else {
-            return { startDate: toLocalDateStr(customStart), endDate: toLocalDateStr(customEnd), monthStr: null };
+        const now = new Date();
+        let start = new Date();
+        let end = new Date();
+
+        if (activeTab !== 'reports') {
+            start = new Date(now.getFullYear(), now.getMonth(), 1);
+            end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            return { startDate: toLocalDateStr(start), endDate: toLocalDateStr(end), monthStr };
         }
-    }, [filterMode, statsMonth, customStart, customEnd]);
+
+        if (datePreset === 'Today') {
+            start.setHours(0, 0, 0, 0);
+            end.setHours(23, 59, 59, 999);
+        } else if (datePreset === 'Yesterday') {
+            start.setDate(now.getDate() - 1);
+            start.setHours(0, 0, 0, 0);
+            end.setDate(now.getDate() - 1);
+            end.setHours(23, 59, 59, 999);
+        } else if (datePreset === 'Last 30 Days') {
+            start.setDate(now.getDate() - 30);
+        } else if (datePreset === 'Last 3 Months') {
+            start.setDate(now.getDate() - 90);
+        } else if (datePreset === 'Last 6 Months') {
+            start.setDate(now.getDate() - 180);
+        } else if (datePreset === 'Last 12 Months') {
+            start.setDate(now.getDate() - 365);
+        } else if (datePreset === 'Previous Month') {
+            start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            end = new Date(now.getFullYear(), now.getMonth(), 0);
+        } else if (datePreset === 'Previous Year') {
+            start = new Date(now.getFullYear() - 1, 0, 1);
+            end = new Date(now.getFullYear() - 1, 11, 31);
+        } else if (datePreset === 'All Time') {
+            start = new Date(2020, 0, 1);
+        } else if (datePreset === 'Custom Date Range') {
+            return { startDate: toLocalDateStr(customStart), endDate: toLocalDateStr(customEnd), monthStr: null };
+        } else {
+            if (datePreset === currentMonthName) {
+                start = new Date(now.getFullYear(), now.getMonth(), 1);
+                end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                return { startDate: toLocalDateStr(start), endDate: toLocalDateStr(end), monthStr };
+            }
+        }
+        return { startDate: toLocalDateStr(start), endDate: toLocalDateStr(end), monthStr: null };
+    }, [activeTab, datePreset, customStart, customEnd, currentMonthName]);
 
     const loadExpensePreview = useCallback(async () => {
         try {
@@ -188,7 +279,6 @@ export default function ReportsScreen() {
 
             if (feesSummaryRes.data?.success && Array.isArray(feesSummaryRes.data.data?.fees)) {
                 const fees: any[] = feesSummaryRes.data.data.fees;
-                const nowDate = new Date(); nowDate.setHours(0, 0, 0, 0);
                 setDefaulters(
                     fees.filter((f) => (f.balance || 0) > 0 && !['fully paid', 'paid'].includes(String(f.fee_status || '').toLowerCase()))
                         .sort((a, b) => (b.balance || 0) - (a.balance || 0))
@@ -216,6 +306,10 @@ export default function ReportsScreen() {
 
     useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
 
+    useEffect(() => {
+        loadData(false);
+    }, [activeTab, datePreset, customStart, customEnd]);
+
     const onRefresh = () => { setRefreshing(true); loadData(true); };
 
     const totalRent = overview?.rentCollected ?? overview?.feeCollection ?? stats?.monthlyRentCollected ?? stats?.feeCollection ?? 0;
@@ -227,12 +321,12 @@ export default function ReportsScreen() {
     const totalBeds = stats?.totalBeds || 0;
     const occupiedBeds = stats?.occupiedBeds || 0;
 
-    let periodLabel = '';
-    if (filterMode === 'month') {
-        periodLabel = statsMonth.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
-    } else {
-        periodLabel = `${customStart.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} - ${customEnd.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`;
-    }
+    const periodLabel = useMemo(() => {
+        if (datePreset === 'Custom Date Range') {
+            return `${customStart.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} - ${customEnd.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+        }
+        return datePreset;
+    }, [datePreset, customStart, customEnd]);
 
     const collectionRate = totalDue > 0 ? Math.round((totalRent / totalDue) * 100) : 0;
 
@@ -268,7 +362,7 @@ export default function ReportsScreen() {
                 filename = `${reportId}_Report_${startStr}_to_${endStr}.xlsx`;
             } else {
                 const { startDate, endDate, monthStr } = getQueryDates();
-                if (filterMode === 'month' && monthStr) {
+                if (datePreset === currentMonthName && monthStr) {
                     url = `${base}/reports/download/excel?month=${monthStr}&reportType=${reportId}&token=${encodeURIComponent(token)}`;
                     filename = `${reportId}_Report_${monthStr}.xlsx`;
                 } else {
@@ -328,18 +422,41 @@ export default function ReportsScreen() {
                 showBack={navigation.canGoBack()}
                 titleColor="#FFF"
                 iconColor="#FFF"
-
                 rightComponent={
-                    <TouchableOpacity style={[R.topFilterBtn, { marginBottom: 0 }]} onPress={() => setFilterSelectModal(true)} activeOpacity={0.8}>
-                        <Ionicons name="calendar-outline" size={14} color="#FFF" />
-                        <Text style={R.topFilterTxt}>{periodLabel}</Text>
-                        <Ionicons name="chevron-down" size={12} color="#FFF" />
-                    </TouchableOpacity>
+                    activeTab === 'reports' ? (
+                        <TouchableOpacity style={[R.topFilterBtn, { marginBottom: 0 }]} onPress={() => setFilterSelectModal(true)} activeOpacity={0.8}>
+                            <Ionicons name="calendar-outline" size={14} color="#FFF" />
+                            <Text style={R.topFilterTxt}>{periodLabel}</Text>
+                            <Ionicons name="chevron-down" size={12} color="#FFF" />
+                        </TouchableOpacity>
+                    ) : null
                 }
-            >
-            </AppHeader>
+            />
 
             <View style={[R.mainSheet, { backgroundColor: isDark ? theme.background : '#F8FAFC' }]}>
+                {/* ── Tabs Segmented Control ── */}
+                <View style={[R.tabBar, { backgroundColor: isDark ? '#1E293B' : '#E2E8F0' }]}>
+                    {(['financials', 'occupancy', 'reports'] as const).map((tab) => {
+                        const isActive = activeTab === tab;
+                        return (
+                            <TouchableOpacity
+                                key={tab}
+                                style={[R.tabBtn, isActive && { backgroundColor: theme.cardBg }]}
+                                onPress={() => setActiveTab(tab)}
+                                activeOpacity={0.8}
+                            >
+                                <Text style={[
+                                    R.tabText, 
+                                    { color: isActive ? theme.primary : (isDark ? '#94A3B8' : '#64748B') },
+                                    isActive && { fontWeight: '800' }
+                                ]}>
+                                    {tab === 'financials' ? 'Financials' : tab === 'occupancy' ? 'Occupancy' : 'All Reports'}
+                                </Text>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </View>
+
                 <ScrollView
                     style={{ flex: 1 }}
                     contentContainerStyle={{ paddingBottom: 120 }}
@@ -352,18 +469,7 @@ export default function ReportsScreen() {
                             <View style={R.gridRow}>
                                 {[1, 2, 3, 4].map(i => <Skeleton key={i} style={[R.gridItem, { height: 110 }]} isDark={isDark} />)}
                             </View>
-                            <Skeleton style={[R.mainDlBtn, { height: 56, marginHorizontal: 16 }]} isDark={isDark} />
-
-                            <View style={R.secRow}>
-                                <Text style={[R.secTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>All Reports</Text>
-                                <View style={[R.liveBadge, { backgroundColor: isDark ? 'rgba(100,116,139,0.2)' : '#F1F5F9' }]}>
-                                    <View style={[R.liveDot, { backgroundColor: isDark ? '#94A3B8' : '#94A3B8' }]} />
-                                    <Text style={[R.liveTxt, { color: isDark ? '#94A3B8' : '#64748B' }]}>Loading...</Text>
-                                </View>
-                            </View>
-                            <View style={R.reportListContainer}>
-                                {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} style={{ height: 72, borderRadius: 16, marginBottom: 12 }} isDark={isDark} />)}
-                            </View>
+                            <Skeleton style={{ height: 160, borderRadius: 20, marginHorizontal: 16 }} isDark={isDark} />
                         </>
                     ) : error ? (
                         <View style={{ paddingTop: 40 }}>
@@ -371,102 +477,199 @@ export default function ReportsScreen() {
                         </View>
                     ) : (
                         <>
-                            <View style={[R.topCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#F1F5F9', borderWidth: 1, overflow: 'hidden' }]}>
-                                <CardWave color={netProfit >= 0 ? '#10B981' : '#EF4444'} />
-                                <View style={R.topCardLeft}>
-                                    <Text style={[R.topCardLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>Net Profit</Text>
-                                    <Text style={[R.topCardVal, { color: isDark ? '#F1F5F9' : '#0F172A', fontSize: 34 }]} numberOfLines={1} adjustsFontSizeToFit>
-                                        {netProfit < 0 ? '-' : ''}{'\u20b9'}{fmt(Math.abs(netProfit))}
-                                    </Text>
-                                    {!!profitChangeLabel && (
-                                        <View style={[R.badge, { backgroundColor: profitChange > 0 ? (isDark ? 'rgba(16,185,129,0.15)' : '#D1FAE5') : profitChange < 0 ? (isDark ? 'rgba(239,68,68,0.15)' : '#FEE2E2') : (isDark ? 'rgba(100,116,139,0.15)' : '#F1F5F9') }]}>
-                                            <Ionicons name={profitChange > 0 ? 'trending-up' : profitChange < 0 ? 'trending-down' : 'remove'} size={12} color={profitChange > 0 ? '#10B981' : profitChange < 0 ? '#EF4444' : '#64748B'} />
-                                            <Text style={[R.badgeTxt, { color: profitChange > 0 ? '#10B981' : profitChange < 0 ? '#EF4444' : '#64748B' }]}>{profitChangeLabel}</Text>
+                            {/* ── TAB CONTENT: Financials ── */}
+                            {activeTab === 'financials' && (
+                                <View style={{ gap: 14 }}>
+                                    {/* Net Profit Banner */}
+                                    <View style={[R.topCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0', borderWidth: 1 }]}>
+                                        <View style={R.topCardLeft}>
+                                            <Text style={[R.topCardLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>Net Profit</Text>
+                                            <Text style={[R.topCardVal, { color: isDark ? '#F1F5F9' : '#0F172A', fontSize: 30 }]} numberOfLines={1} adjustsFontSizeToFit>
+                                                {netProfit < 0 ? '-' : ''}{'\u20b9'}{fmt(Math.abs(netProfit))}
+                                            </Text>
+                                            {!!profitChangeLabel && (
+                                                <View style={[R.badge, { backgroundColor: profitChange > 0 ? (isDark ? 'rgba(16,185,129,0.15)' : '#D1FAE5') : profitChange < 0 ? (isDark ? 'rgba(239,68,68,0.15)' : '#FEE2E2') : (isDark ? 'rgba(100,116,139,0.15)' : '#F1F5F9') }]}>
+                                                    <Ionicons name={profitChange > 0 ? 'trending-up' : profitChange < 0 ? 'trending-down' : 'remove'} size={12} color={profitChange > 0 ? '#10B981' : profitChange < 0 ? '#EF4444' : '#64748B'} />
+                                                    <Text style={[R.badgeTxt, { color: profitChange > 0 ? '#10B981' : profitChange < 0 ? '#EF4444' : '#64748B' }]}>{profitChangeLabel}</Text>
+                                                </View>
+                                            )}
                                         </View>
-                                    )}
-                                </View>
-                                <View style={R.divider} />
-                                <View style={R.topCardRight}>
-                                    <Text style={[R.topCardLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>Collection Rate</Text>
-                                    <ProgressCircle value={collectionRate} size={70} strokeWidth={6} color="#4F46E5" isDark={isDark} />
-                                    <Text style={[R.subLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>of total collection</Text>
-                                </View>
-                            </View>
-
-                            <View style={R.gridRow}>
-                                {[
-                                    { label: 'Collected', val: `₹${fmt(totalRent)}`, sub: 'Rent collected', c: '#10B981', i: 'wallet-outline', bg: '#D1FAE5', screen: 'CollectedPayments' },
-                                    { label: 'Pending', val: `₹${fmt(pending)}`, sub: 'Dues outstanding', c: '#F59E0B', i: 'time-outline', bg: '#FEF3C7', screen: 'PendingPayments' },
-                                    { label: 'Expenses', val: `₹${fmt(totalExpenses)}`, sub: 'Total expenses', c: '#EF4444', i: 'trending-down-outline', bg: '#FEE2E2', screen: 'Expenses' },
-                                    { label: 'Occupancy', val: totalBeds > 0 ? `${occupiedBeds}/${totalBeds}` : 'N/A', sub: totalBeds > 0 ? `${occupancyRate}% occupied` : 'No beds data', c: '#3B82F6', i: 'bed-outline', bg: '#DBEAFE', screen: 'Rooms' },
-                                ].map((m) => (
-                                    <TouchableOpacity key={m.label} style={[R.gridItem, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]} onPress={() => navigation.navigate(m.screen)} activeOpacity={0.8}>
-                                        <CardWave color={m.c} />
-                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 12 }}>
-                                            <View style={[R.gridIconBg, { backgroundColor: isDark ? m.c + '20' : m.bg }]}>
-                                                <Ionicons name={m.i as any} size={20} color={m.c} />
-                                            </View>
-                                            <View style={[R.gridArrow, { borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
-                                                <Ionicons name="arrow-forward" size={14} color={isDark ? '#FFF' : '#0F172A'} />
-                                            </View>
+                                        <View style={[R.divider, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]} />
+                                        <View style={R.topCardRight}>
+                                            <Text style={[R.topCardLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>Collection Rate</Text>
+                                            <ProgressCircle value={collectionRate} size={70} strokeWidth={6} color="#4F46E5" isDark={isDark} />
                                         </View>
-                                        <Text style={[R.gridLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>{m.label}</Text>
-                                        <Text style={[R.gridVal, { color: isDark ? '#F8FAFC' : '#0F172A' }]}>{m.val}</Text>
-                                        <Text style={[R.gridSub, { color: isDark ? '#64748B' : '#94A3B8' }]}>{m.sub}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-
-                            {/* Download Full Report Button */}
-                            <TouchableOpacity style={R.mainDlBtn} onPress={() => setDownloadSelectModal(true)} activeOpacity={0.8}>
-                                <Ionicons name="download-outline" size={20} color="#4F46E5" />
-                                <Text style={R.mainDlBtnTxt}>Download Full Report (Excel)</Text>
-                            </TouchableOpacity>
-
-                            {/* All Reports */}
-                            <View style={R.secRow}>
-                                <Text style={[R.secTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>All Reports</Text>
-                                <View style={[R.liveBadge, { backgroundColor: isDark ? 'rgba(22,163,74,0.18)' : '#DCFCE7' }]}>
-                                    <View style={R.liveDot} />
-                                    <Text style={R.liveTxt}>Live data</Text>
-                                </View>
-                            </View>
-
-                            <View style={R.reportListContainer}>
-                                {REPORTS.map((r) => (
-                                    <View key={r.id} style={{ marginBottom: 12 }}>
-                                        <ReportCard report={r} onView={r.onView} onDownload={downloadHandlers[r.id]} exporting={exporting} isDark={isDark} />
                                     </View>
-                                ))}
-                            </View>
+
+                                    {/* 3 Grid items for financials */}
+                                    <View style={R.gridRow}>
+                                        {[
+                                            { label: 'Collected', val: `₹${fmt(totalRent)}`, sub: 'Rent collected', c: '#10B981', i: 'wallet-outline', bg: '#D1FAE5', screen: 'CollectedPayments' },
+                                            { label: 'Pending Dues', val: `₹${fmt(pending)}`, sub: 'Dues outstanding', c: '#EF4444', i: 'alert-circle-outline', bg: '#FEE2E2', screen: 'PendingPayments' },
+                                            { label: 'Expenses', val: `₹${fmt(totalExpenses)}`, sub: 'Total expenses', c: '#F59E0B', i: 'trending-down-outline', bg: '#FEF3C7', screen: 'Expenses' },
+                                        ].map((m) => (
+                                            <TouchableOpacity key={m.label} style={[R.gridItem, { width: '30%', marginHorizontal: '1%', backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0', borderWidth: 1 }]} onPress={() => navigation.navigate(m.screen)} activeOpacity={0.8}>
+                                                <View style={[R.gridIconBg, { backgroundColor: isDark ? m.c + '20' : m.bg, marginBottom: 8 }]}>
+                                                    <Ionicons name={m.i as any} size={16} color={m.c} />
+                                                </View>
+                                                <Text style={[R.gridLabel, { color: isDark ? '#94A3B8' : '#64748B', fontSize: 9 }]} numberOfLines={1}>{m.label}</Text>
+                                                <Text style={[R.gridVal, { color: isDark ? '#F8FAFC' : '#0F172A', fontSize: 13 }]} numberOfLines={1}>{m.val}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+
+                                    {/* Visual Financial Breakdowns */}
+                                    <View style={[R.breakdownCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0', borderWidth: 1 }]}>
+                                        <Text style={[R.breakdownTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>Financial Insights</Text>
+                                        <View style={{ gap: 14 }}>
+                                            {[
+                                                { label: "Today's Collection", val: `₹${fmt(overview?.todayCollection ?? 0)}`, icon: 'today-outline', color: '#10B981', bg: isDark ? 'rgba(16,185,129,0.15)' : '#D1FAE5' },
+                                                { label: "Month's Collection", val: `₹${fmt(totalRent)}`, icon: 'wallet-outline', color: '#10B981', bg: isDark ? 'rgba(16,185,129,0.15)' : '#D1FAE5' },
+                                                { label: "Pending Dues", val: `₹${fmt(pending)}`, icon: 'alert-circle-outline', color: '#EF4444', bg: isDark ? 'rgba(239,68,68,0.15)' : '#FEE2E2' },
+                                                { label: "Month's Expense", val: `₹${fmt(totalExpenses)}`, icon: 'trending-down-outline', color: '#F59E0B', bg: isDark ? 'rgba(245,158,11,0.15)' : '#FEF3C7' },
+                                                { label: "Net Profit / Loss", val: `₹${fmt(netProfit)}`, icon: 'bar-chart-outline', color: netProfit >= 0 ? '#10B981' : '#EF4444', bg: isDark ? (netProfit >= 0 ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)') : (netProfit >= 0 ? '#D1FAE5' : '#FEE2E2') },
+                                            ].map((item, index) => (
+                                                <View key={index} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                                                        <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: item.bg, alignItems: 'center', justifyContent: 'center' }}>
+                                                            <Ionicons name={item.icon as any} size={14} color={item.color} />
+                                                        </View>
+                                                        <Text style={{ fontSize: 13, fontWeight: '700', color: isDark ? '#E2E8F0' : '#475569' }}>{item.label}</Text>
+                                                    </View>
+                                                    <Text style={{ fontSize: 14, fontWeight: '800', color: isDark ? '#FFF' : '#1E293B' }}>{item.val}</Text>
+                                                </View>
+                                            ))}
+                                        </View>
+                                    </View>
+                                </View>
+                            )}
+
+                            {/* ── TAB CONTENT: Occupancy ── */}
+                            {activeTab === 'occupancy' && (
+                                <View style={{ gap: 14 }}>
+                                    {/* Unified Occupancy Card */}
+                                    <View style={[R.topCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0', borderWidth: 1, paddingVertical: 18, alignItems: 'center' }]}>
+                                        <View style={{ flex: 1.2, alignItems: 'center', justifyContent: 'center' }}>
+                                            <BedsDonutChart occupied={occupiedBeds} total={totalBeds} occupancyRate={occupancyRate} isDark={isDark} />
+                                        </View>
+                                        <View style={[R.divider, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]} />
+                                        <View style={{ flex: 1.5, paddingLeft: 16 }}>
+                                            <Text style={[R.topCardLabel, { color: isDark ? '#94A3B8' : '#64748B', marginBottom: 10 }]}>Beds Overview</Text>
+                                            
+                                            <View style={{ gap: 8 }}>
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#10B981' }} />
+                                                    <Text style={{ fontSize: 11.5, fontWeight: '700', color: isDark ? '#CBD5E1' : '#475569' }}>Occupied: </Text>
+                                                    <Text style={{ fontSize: 12, fontWeight: '800', color: isDark ? '#FFF' : '#0F172A' }}>{occupiedBeds}</Text>
+                                                </View>
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: isDark ? '#7F1D1D' : '#FCA5A5' }} />
+                                                    <Text style={{ fontSize: 11.5, fontWeight: '700', color: isDark ? '#CBD5E1' : '#475569' }}>Vacant: </Text>
+                                                    <Text style={{ fontSize: 12, fontWeight: '800', color: isDark ? '#FFF' : '#0F172A' }}>{Math.max(0, totalBeds - occupiedBeds)}</Text>
+                                                </View>
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#3B82F6' }} />
+                                                    <Text style={{ fontSize: 11.5, fontWeight: '700', color: isDark ? '#CBD5E1' : '#475569' }}>Total Beds: </Text>
+                                                    <Text style={{ fontSize: 12, fontWeight: '800', color: isDark ? '#FFF' : '#0F172A' }}>{totalBeds}</Text>
+                                                </View>
+                                            </View>
+                                        </View>
+                                    </View>
+
+                                    {/* Occupancy stats details list */}
+                                    <View style={[R.breakdownCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0', borderWidth: 1 }]}>
+                                        <Text style={[R.breakdownTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>Occupancy Status Details</Text>
+                                        <View style={{ gap: 14 }}>
+                                            {[
+                                                { label: "Occupancy Rate", val: `${occupancyRate}%`, icon: 'trending-up-outline', color: '#10B981', bg: isDark ? 'rgba(16,185,129,0.15)' : '#D1FAE5' },
+                                                { label: "Occupied Beds", val: `${occupiedBeds}`, icon: 'checkmark-circle-outline', color: '#10B981', bg: isDark ? 'rgba(16,185,129,0.15)' : '#D1FAE5' },
+                                                { label: "Vacant Beds", val: `${Math.max(0, totalBeds - occupiedBeds)}`, icon: 'ellipse-outline', color: '#EF4444', bg: isDark ? 'rgba(239,68,68,0.15)' : '#FEE2E2' },
+                                                { label: "Rent Defaulters", val: `${defaulters.length} tenants`, icon: 'people-outline', color: '#8B5CF6', bg: isDark ? 'rgba(139,92,246,0.15)' : '#EDE9FE' },
+                                                { label: "Total capacity", val: `${totalBeds} Beds`, icon: 'bed-outline', color: '#3B82F6', bg: isDark ? 'rgba(59,130,246,0.15)' : '#DBEAFE' },
+                                            ].map((item, index) => (
+                                                <View key={index} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                                                        <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: item.bg, alignItems: 'center', justifyContent: 'center' }}>
+                                                            <Ionicons name={item.icon as any} size={14} color={item.color} />
+                                                        </View>
+                                                        <Text style={{ fontSize: 13, fontWeight: '700', color: isDark ? '#E2E8F0' : '#475569' }}>{item.label}</Text>
+                                                    </View>
+                                                    <Text style={{ fontSize: 14, fontWeight: '800', color: isDark ? '#FFF' : '#1E293B' }}>{item.val}</Text>
+                                                </View>
+                                            ))}
+                                        </View>
+                                    </View>
+                                </View>
+                            )}
+
+                            {/* ── TAB CONTENT: All Reports ── */}
+                            {activeTab === 'reports' && (
+                                <View style={{ gap: 14 }}>
+                                    {/* Download Full Report Button */}
+                                    <TouchableOpacity style={R.mainDlBtn} onPress={() => setDownloadSelectModal(true)} activeOpacity={0.8}>
+                                        <Ionicons name="download-outline" size={20} color="#4F46E5" />
+                                        <Text style={R.mainDlBtnTxt}>Download Full Report (Excel)</Text>
+                                    </TouchableOpacity>
+
+                                    <View style={R.secRow}>
+                                        <Text style={[R.secTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>Available Sheets</Text>
+                                        <View style={[R.liveBadge, { backgroundColor: isDark ? 'rgba(22,163,74,0.18)' : '#DCFCE7' }]}>
+                                            <View style={R.liveDot} />
+                                            <Text style={R.liveTxt}>Live data</Text>
+                                        </View>
+                                    </View>
+
+                                    <View style={R.reportListContainer}>
+                                        {REPORTS.map((r) => (
+                                            <View key={r.id} style={{ marginBottom: 12 }}>
+                                                <ReportCard report={r} onView={r.onView} onDownload={downloadHandlers[r.id]} exporting={exporting} isDark={isDark} />
+                                            </View>
+                                        ))}
+                                    </View>
+                                </View>
+                            )}
                         </>
                     )}
                 </ScrollView>
             </View>
 
-            <Modal visible={filterSelectModal} transparent animationType="fade" onRequestClose={() => setFilterSelectModal(false)}>
-                <TouchableOpacity style={R.modalOverlay} activeOpacity={1} onPress={() => setFilterSelectModal(false)}>
-                    <View style={[R.dropdownMenu, { backgroundColor: theme.cardBg }]}>
-                        <TouchableOpacity style={[R.filterOpt, { borderBottomColor: isDark ? '#334155' : '#E2E8F0', borderBottomWidth: 1 }]}
-                            onPress={() => { setFilterSelectModal(false); setShowMonthPicker(true); }} activeOpacity={0.7}>
-                            <Ionicons name="calendar-outline" size={18} color={theme.primary} />
-                            <View style={{ flex: 1, marginLeft: 10 }}>
-                                <Text style={[R.fTitle, { color: theme.textPrimary }]}>Specific Month</Text>
-                                <Text style={[R.fSub, { color: theme.textSecondary }]}>E.g., June 2026</Text>
-                            </View>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={R.filterOpt}
-                            onPress={() => { setFilterSelectModal(false); setShowCustomPicker(true); }} activeOpacity={0.7}>
-                            <Ionicons name="calendar-number-outline" size={18} color={theme.primary} />
-                            <View style={{ flex: 1, marginLeft: 10 }}>
-                                <Text style={[R.fTitle, { color: theme.textPrimary }]}>Custom Date Range</Text>
-                                <Text style={[R.fSub, { color: theme.textSecondary }]}>E.g., 12 Jun - 18 Jun</Text>
-                            </View>
+            {/* Premium Date Preset Bottom Sheet Picker */}
+            <ModalSheet visible={filterSelectModal} onClose={() => setFilterSelectModal(false)} maxHeight="60%">
+                <View style={[R.bottomSheetMenu, { backgroundColor: theme.cardBg }]}>
+                    <View style={R.sheetHeader}>
+                        <Text style={[R.sheetTitle, { color: theme.textPrimary }]}>Select Period</Text>
+                        <TouchableOpacity onPress={() => setFilterSelectModal(false)}>
+                            <Ionicons name="close" size={24} color={isDark ? '#FFF' : '#0F172A'} />
                         </TouchableOpacity>
                     </View>
-                </TouchableOpacity>
-            </Modal>
+                    <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }} contentContainerStyle={{ paddingBottom: 24 }}>
+                        {dateOptions.map((opt) => {
+                            const isSelected = datePreset === opt;
+                            return (
+                                <TouchableOpacity
+                                    key={opt}
+                                    style={R.sheetOpt}
+                                    onPress={() => {
+                                        setDatePreset(opt);
+                                        setFilterSelectModal(false);
+                                        if (opt === 'Custom Date Range') {
+                                            setShowCustomPicker(true);
+                                        }
+                                    }}
+                                    activeOpacity={0.7}
+                                >
+                                    <View style={[R.radioCircle, { borderColor: isSelected ? theme.primary : (isDark ? '#475569' : '#CBD5E1') }]}>
+                                        {isSelected && <View style={[R.radioDot, { backgroundColor: theme.primary }]} />}
+                                    </View>
+                                    <Text style={[R.sheetOptText, { color: theme.textPrimary, fontWeight: isSelected ? '800' : '600' }]}>
+                                        {opt}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </ScrollView>
+                </View>
+            </ModalSheet>
 
             {/* Download Selection Centered Modal */}
             <Modal visible={downloadSelectModal} transparent animationType="fade" onRequestClose={() => setDownloadSelectModal(false)}>
@@ -494,20 +697,12 @@ export default function ReportsScreen() {
                 </TouchableOpacity>
             </Modal>
 
-            <CustomMonthYearPicker
-                visible={showMonthPicker}
-                onClose={() => setShowMonthPicker(false)}
-                onSelect={(d) => { setFilterMode('month'); setStatsMonth(d); setShowMonthPicker(false); loadData(); }}
-                initialDate={statsMonth}
-            />
-
             <CustomDateRangePicker
                 visible={showCustomPicker}
                 onClose={() => setShowCustomPicker(false)}
-                onConfirm={(s: Date, e: Date) => { setFilterMode('custom'); setCustomStart(s); setCustomEnd(e); setShowCustomPicker(false); loadData(); }}
+                onConfirm={(s: Date, e: Date) => { setDatePreset('Custom Date Range'); setCustomStart(s); setCustomEnd(e); setShowCustomPicker(false); }}
                 initialStart={customStart}
                 initialEnd={customEnd}
-                restrictMonth={filterMode === 'month' ? statsMonth : undefined}
             />
 
             <CustomDateRangePicker
@@ -519,9 +714,9 @@ export default function ReportsScreen() {
                 }}
                 initialStart={customStart}
                 initialEnd={customEnd}
-                restrictMonth={filterMode === 'month' ? statsMonth : undefined}
             />
 
+            {/* Reusable Loading Overlay */}
             {!!exporting && (
                 <View style={R.overlay}>
                     <View style={[R.overlayBox, { backgroundColor: theme.cardBg }]}>
@@ -557,9 +752,30 @@ const R = StyleSheet.create({
         paddingTop: 16,
         overflow: 'hidden',
     },
+    
+    // Tab Segmented bar
+    tabBar: {
+        flexDirection: 'row',
+        marginHorizontal: 16,
+        marginBottom: 16,
+        borderRadius: 14,
+        padding: 4,
+    },
+    tabBtn: {
+        flex: 1,
+        paddingVertical: 10,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    tabText: {
+        fontSize: 12.5,
+        fontWeight: '600',
+    },
+
     topCard: {
         flexDirection: 'row',
-        borderRadius: 20, padding: 10, marginHorizontal: 16, marginBottom: 12,
+        borderRadius: 20, padding: 16, marginHorizontal: 16, marginBottom: 12,
         alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 3,
     },
     topCardLeft: { flex: 1, paddingRight: 10, justifyContent: 'center' },
@@ -570,12 +786,9 @@ const R = StyleSheet.create({
     divider: { width: 1, backgroundColor: '#F1F5F9', marginHorizontal: 8 },
     topCardRight: { flex: 1, alignItems: 'center', paddingLeft: 10 },
     subLabel: { fontSize: 9, fontWeight: '600', color: '#64748B', marginTop: 6 },
-    gridRow: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 10, marginBottom: 8, justifyContent: 'center' },
+    gridRow: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 14, marginBottom: 8, justifyContent: 'space-between' },
     gridItem: {
-        width: '47%',
-        marginHorizontal: '1.5%',
-        marginBottom: 10,
-        borderRadius: 16, padding: 10, alignItems: 'flex-start',
+        borderRadius: 16, padding: 12, alignItems: 'flex-start',
         shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
     },
     gridIconBg: { width: 32, height: 32, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
@@ -583,15 +796,32 @@ const R = StyleSheet.create({
     gridLabel: { fontSize: 10, fontWeight: '700', marginBottom: 4 },
     gridVal: { fontSize: 16, fontWeight: '800', marginBottom: 2 },
     gridSub: { fontSize: 8, color: '#64748B', fontWeight: '500' },
-    linearCard: {
-        marginHorizontal: 16, borderRadius: 16, padding: 16, marginBottom: 16,
-        shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
+    
+    // Breakdown Section styles
+    breakdownCard: {
+        marginHorizontal: 16,
+        borderRadius: 20,
+        padding: 16,
+        marginBottom: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+        elevation: 2,
     },
-    linearHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-    linearTitle: { fontSize: 12, fontWeight: '800' },
-    linearSub: { fontSize: 10, fontWeight: '600', color: '#64748B', marginTop: 2 },
-    barBg: { height: 8, borderRadius: 4, backgroundColor: '#EEF2FF', width: '100%', overflow: 'hidden' },
-    barFill: { height: '100%', backgroundColor: '#4F46E5', borderRadius: 4 },
+    breakdownTitle: {
+        fontSize: 14,
+        fontWeight: '900',
+        marginBottom: 12,
+    },
+    progressRow: {
+        borderRadius: 12,
+        padding: 12,
+        marginBottom: 14,
+    },
+    barBg: { height: 6, borderRadius: 3, width: '100%', overflow: 'hidden' },
+    barFill: { height: '100%', borderRadius: 3 },
+
     mainDlBtn: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
         marginHorizontal: 16, borderRadius: 12, paddingVertical: 14,
@@ -600,7 +830,7 @@ const R = StyleSheet.create({
     mainDlBtnTxt: { color: '#4F46E5', fontSize: 14, fontWeight: '800' },
     secRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, marginBottom: 12 },
     secTitle: { fontSize: 16, fontWeight: '900' },
-    liveBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, backgroundColor: '#DCFCE7' },
+    liveBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
     liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#16A34A' },
     liveTxt: { fontSize: 10, fontWeight: '700', color: '#16A34A' },
     reportListContainer: { marginHorizontal: 16, paddingBottom: 20 },
@@ -616,7 +846,7 @@ const R = StyleSheet.create({
     cardActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     actionBtn: { padding: 4 },
 
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.15)', justifyContent: 'flex-start', alignItems: 'flex-end', paddingTop: 90, paddingRight: 16 },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end', paddingTop: 0, paddingRight: 0 },
     dropdownMenu: {
         position: 'absolute', top: 90, right: 16,
         borderRadius: 16, padding: 8, width: 220,
@@ -632,4 +862,45 @@ const R = StyleSheet.create({
     overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', zIndex: 9999, elevation: 9999 },
     overlayBox: { borderRadius: 20, padding: 28, alignItems: 'center', gap: 14, minWidth: 200 },
     overlayTxt: { fontSize: 14, fontWeight: '700' },
+
+    // Bottom Sheet styles
+    bottomSheetMenu: {
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        paddingHorizontal: 20,
+        paddingTop: 20,
+        width: '100%',
+    },
+    sheetHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 16,
+    },
+    sheetTitle: {
+        fontSize: 16,
+        fontWeight: '900',
+    },
+    sheetOpt: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 14,
+        gap: 12,
+    },
+    sheetOptText: {
+        fontSize: 14,
+    },
+    radioCircle: {
+        width: 18,
+        height: 18,
+        borderRadius: 9,
+        borderWidth: 2,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    radioDot: {
+        width: 9,
+        height: 9,
+        borderRadius: 4.5,
+    },
 });

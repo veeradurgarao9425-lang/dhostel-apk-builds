@@ -15,22 +15,22 @@ const TABS = [
         inactiveIcon: 'home-outline' as const,
     },
     {
-        label: 'Dues',
+        label: 'Money',
         route: 'PendingDuesTab',
-        activeIcon: 'wallet' as const,
-        inactiveIcon: 'wallet-outline' as const,
+        activeIcon: 'cash' as const,
+        inactiveIcon: 'cash-outline' as const,
     },
     {
-        label: 'Overview',
+        label: 'Students',
+        route: 'StudentsTab',
+        activeIcon: 'people' as const,
+        inactiveIcon: 'people-outline' as const,
+    },
+    {
+        label: 'Finance',
         route: 'OverviewTab',
-        activeIcon: 'bar-chart' as const,
-        inactiveIcon: 'bar-chart-outline' as const,
-    },
-    {
-        label: 'More',
-        route: 'MoreTab',
-        activeIcon: 'apps' as const,
-        inactiveIcon: 'apps-outline' as const,
+        activeIcon: 'trending-up' as const,
+        inactiveIcon: 'trending-up-outline' as const,
     },
 ];
 

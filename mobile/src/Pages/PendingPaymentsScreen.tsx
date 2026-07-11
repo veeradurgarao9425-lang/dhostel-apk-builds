@@ -165,11 +165,11 @@ const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect, isDar
         tagLabel = `${item.daysOverdue}d overdue`;
     } else {
         const dueObj = new Date(item.rawDueDate);
-        dueObj.setHours(0,0,0,0);
+        dueObj.setHours(0, 0, 0, 0);
         const now = new Date();
-        now.setHours(0,0,0,0);
+        now.setHours(0, 0, 0, 0);
         const diffDays = Math.floor((dueObj.getTime() - now.getTime()) / 86400000);
-        
+
         if (diffDays === 0) tagLabel = 'Due Today';
         else if (diffDays === 1) tagLabel = 'Due Tomorrow';
         else if (diffDays > 1) tagLabel = `Due in ${diffDays} days`;
@@ -290,10 +290,10 @@ export default function PendingPaymentsScreen() {
     const [page, setPage] = useState(1);
     const [loadingMore, setLoadingMore] = useState(false);
     const [hasMore, setHasMore] = useState(true);
-    
+
     // Filter Modal state
     const [filterModalVisible, setFilterModalVisible] = useState(false);
-    const [activeFilters, setActiveFilters] = useState<any>({ status: 'All', datePreset: 'All Time', room: 'All' });
+    const [activeFilters, setActiveFilters] = useState<any>({ status: 'All', datePreset: 'All Time', room: 'All', sortBy: 'Due Date - Old to New' });
     const handleApplyFilters = async (filters: any) => {
         setFilterModalVisible(false);
         setActiveFilters(filters);
@@ -472,7 +472,7 @@ export default function PendingPaymentsScreen() {
         setPayAmount(t.dueAmount.toString());
         setPayNotes(''); setPayTransactionId('');
         setPayDate(toLocalDateStr(new Date()));
-        
+
         // Keep the original due date by default so they remain in the Overdue tab on partial payments
         if (t.dueAmount > 0 && t.rawDueDate) {
             setPayDueDate(t.rawDueDate.split('T')[0]);
@@ -480,7 +480,7 @@ export default function PendingPaymentsScreen() {
             const next = new Date(); next.setMonth(next.getMonth() + 1);
             setPayDueDate(toLocalDateStr(next));
         }
-        
+
         setCollectModalVisible(true);
     }, []);
 
@@ -521,8 +521,8 @@ export default function PendingPaymentsScreen() {
     const filteredTenants = tenants.filter(t => {
         // 1. Search filter
         if (searchQuery.trim()) {
-            const matchesSearch = t.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                                  t.room.toLowerCase().includes(searchQuery.toLowerCase());
+            const matchesSearch = t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                t.room.toLowerCase().includes(searchQuery.toLowerCase());
             if (!matchesSearch) return false;
         }
 
@@ -538,17 +538,62 @@ export default function PendingPaymentsScreen() {
             if (activeFilters.room === 'Has Room' && (t.room_number === null || t.room === 'N/A')) return false;
             if (activeFilters.room !== 'Unallocated' && activeFilters.room !== 'Has Room' && t.room_number !== activeFilters.room) return false;
         }
-        
+
         // 4. Date Filter
         if (activeFilters.datePreset !== 'All Time') {
+            const dueDateObj = new Date(t.rawDueDate);
+            dueDateObj.setHours(0, 0, 0, 0);
+
             const now = new Date();
-            const thisMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-            const lastMonthDate = new Date(); lastMonthDate.setMonth(now.getMonth() - 1);
-            const lastMonthStr = `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth() + 1).padStart(2, '0')}`;
-            
-            if (activeFilters.datePreset === 'This Month' && t.feeMonth !== thisMonthStr) return false;
-            if (activeFilters.datePreset === 'Last Month' && t.feeMonth !== lastMonthStr) return false;
-            if (activeFilters.datePreset === 'Older' && (t.feeMonth === thisMonthStr || t.feeMonth === lastMonthStr)) return false;
+            now.setHours(0, 0, 0, 0);
+
+            const preset = activeFilters.datePreset;
+            if (preset === 'Today') {
+                if (dueDateObj.getTime() !== now.getTime()) return false;
+            } else if (preset === 'Yesterday') {
+                const yesterday = new Date(now);
+                yesterday.setDate(now.getDate() - 1);
+                if (dueDateObj.getTime() !== yesterday.getTime()) return false;
+            } else if (preset === 'Last 30 Days') {
+                const thirtyDaysAgo = new Date(now);
+                thirtyDaysAgo.setDate(now.getDate() - 30);
+                if (dueDateObj.getTime() < thirtyDaysAgo.getTime() || dueDateObj.getTime() > now.getTime()) return false;
+            } else if (preset === 'Last 3 Months') {
+                const ninetyDaysAgo = new Date(now);
+                ninetyDaysAgo.setDate(now.getDate() - 90);
+                if (dueDateObj.getTime() < ninetyDaysAgo.getTime() || dueDateObj.getTime() > now.getTime()) return false;
+            } else if (preset === 'Last 6 Months') {
+                const sixMonthsAgo = new Date(now);
+                sixMonthsAgo.setDate(now.getDate() - 180);
+                if (dueDateObj.getTime() < sixMonthsAgo.getTime() || dueDateObj.getTime() > now.getTime()) return false;
+            } else if (preset === 'Last 12 Months') {
+                const twelveMonthsAgo = new Date(now);
+                twelveMonthsAgo.setDate(now.getDate() - 365);
+                if (dueDateObj.getTime() < twelveMonthsAgo.getTime() || dueDateObj.getTime() > now.getTime()) return false;
+            } else if (preset === 'Previous Month') {
+                const prevMonth = new Date(now);
+                prevMonth.setMonth(now.getMonth() - 1);
+                if (dueDateObj.getMonth() !== prevMonth.getMonth() || dueDateObj.getFullYear() !== prevMonth.getFullYear()) return false;
+            } else if (preset === 'Previous Year') {
+                if (dueDateObj.getFullYear() !== (now.getFullYear() - 1)) return false;
+            } else if (preset === 'Custom Date Range') {
+                if (activeFilters.customStartDate) {
+                    const startLimit = new Date(activeFilters.customStartDate);
+                    startLimit.setHours(0, 0, 0, 0);
+                    if (dueDateObj.getTime() < startLimit.getTime()) return false;
+                }
+                if (activeFilters.customEndDate) {
+                    const endLimit = new Date(activeFilters.customEndDate);
+                    endLimit.setHours(0, 0, 0, 0);
+                    if (dueDateObj.getTime() > endLimit.getTime()) return false;
+                }
+            } else {
+                // Check if it's the dynamic current month name (e.g. "July")
+                const currentMonthName = new Date().toLocaleString('en-US', { month: 'long' });
+                if (preset === currentMonthName) {
+                    if (dueDateObj.getMonth() !== now.getMonth() || dueDateObj.getFullYear() !== now.getFullYear()) return false;
+                }
+            }
         }
         // 5. Tab Filter
         const now = new Date();
@@ -556,7 +601,7 @@ export default function PendingPaymentsScreen() {
         const dueObj = new Date(t.rawDueDate);
         dueObj.setHours(0, 0, 0, 0);
         const diffDays = Math.floor((dueObj.getTime() - now.getTime()) / 86400000);
-        
+
         if (activeTab === 'Overdue') {
             if (!t.isOverdue) return false;
         } else if (activeTab === 'Next 7 Days') {
@@ -566,6 +611,26 @@ export default function PendingPaymentsScreen() {
         }
 
         return true;
+    }).sort((a, b) => {
+        const order = activeFilters.sortBy || 'Due Date - Old to New';
+        if (order === 'Due Date - Old to New') {
+            return new Date(a.rawDueDate).getTime() - new Date(b.rawDueDate).getTime();
+        }
+        if (order === 'Due Date - New to Old') {
+            return new Date(b.rawDueDate).getTime() - new Date(a.rawDueDate).getTime();
+        }
+        if (order === 'Room Number') {
+            const rA = parseInt(a.room_number) || 99999;
+            const rB = parseInt(b.room_number) || 99999;
+            return rA - rB;
+        }
+        if (order === 'Due Amount - High to Low') {
+            return b.dueAmount - a.dueAmount;
+        }
+        if (order === 'Due Amount - Low to High') {
+            return a.dueAmount - b.dueAmount;
+        }
+        return 0;
     });
 
     const keyExtractor = useCallback((item: DueTenant) => `due-${item.id}`, []);
@@ -631,45 +696,76 @@ export default function PendingPaymentsScreen() {
                     </View>
                 }
             />
-            {/* ── Fixed Summary Cards ──────────────────────────────────── */}
+            {/* ── Premium Summary Cards (3-card layout) ─────────────── */}
             <View style={s.summaryRow}>
-                {/* Card 1: Outstanding Dues */}
-                <View style={[s.summaryCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#FCA5A5', borderWidth: 1 }]}>
-                    <View style={s.summaryCardTop}>
-                        <View style={[s.summaryIconWrap, { backgroundColor: '#FEF2F2' }]}>
-                            <MaterialCommunityIcons name="file-document-arrow-right-outline" size={24} color="#EF4444" />
-                        </View>
+                {/* Card 1: Total Outstanding */}
+                <TouchableOpacity
+                    style={[s.summaryCard, {
+                        backgroundColor: theme.cardBg,
+                        borderColor: isDark ? '#334155' : '#E2E8F0',
+                    }]}
+                    activeOpacity={0.85}
+                    onPress={() => setActiveTab('Overdue')}
+                >
+                    <View style={[s.summaryIconWrap, { backgroundColor: isDark ? '#450A0A' : '#FEE2E2', marginBottom: 4 }]}>
+                        <Ionicons name="alert-circle" size={18} color="#DC2626" />
                     </View>
-                    <Text style={[s.summaryLabel, { color: '#EF4444' }]}>
-                        {t('pendingDues.outstandingDues')}
+                    <Text style={[s.summaryAmount, { color: '#DC2626', fontSize: 16 }]} numberOfLines={1}>
+                        ₹{totalPending > 1000000
+                            ? `${(totalPending / 100000).toFixed(1)}L`
+                            : totalPending > 999
+                                ? `${(totalPending / 1000).toFixed(1)}k`
+                                : totalPending.toLocaleString('en-IN')}
                     </Text>
-                    <Text style={[s.summaryAmount, { color: isDark ? '#F8FAFC' : '#1F2937' }]}>
-                        ₹{totalPending.toLocaleString('en-IN')}
+                    <Text style={[s.summaryLabel, { color: theme.textSecondary, marginBottom: 0 }]}>Outstanding</Text>
+                    <Text style={[s.summaryFooter, { color: isDark ? '#FCA5A5' : '#9B1C1C', fontSize: 9.5 }]}>
+                        {tabCounts.overdue} overdue
                     </Text>
-                    <Text style={[s.summaryFooter, { color: isDark ? '#CBD5E1' : '#6B7280' }]}>
-                        {totalDefaulters} {t('pendingDues.defaulters')}
-                    </Text>
-                    <WaveDecoration color="#EF4444" />
-                </View>
+                </TouchableOpacity>
 
-                {/* Card 2: Partial Paid */}
-                <View style={[s.summaryCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#FCD34D', borderWidth: 1 }]}>
-                    <View style={s.summaryCardTop}>
-                        <View style={[s.summaryIconWrap, { backgroundColor: '#FFFBEB' }]}>
-                            <Ionicons name="hourglass" size={24} color="#F59E0B" />
-                        </View>
+                {/* Card 2: Due This Week */}
+                <TouchableOpacity
+                    style={[s.summaryCard, {
+                        backgroundColor: theme.cardBg,
+                        borderColor: isDark ? '#334155' : '#E2E8F0',
+                    }]}
+                    activeOpacity={0.85}
+                    onPress={() => setActiveTab('Next 7 Days')}
+                >
+                    <View style={[s.summaryIconWrap, { backgroundColor: isDark ? '#451A03' : '#FEF3C7', marginBottom: 4 }]}>
+                        <Ionicons name="time" size={18} color="#D97706" />
                     </View>
-                    <Text style={[s.summaryLabel, { color: '#F59E0B' }]}>
-                        {t('pendingDues.partialPaid')}
+                    <Text style={[s.summaryAmount, { color: '#D97706', fontSize: 16 }]} numberOfLines={1}>
+                        {tabCounts.next_7_days}
                     </Text>
-                    <Text style={[s.summaryAmount, { color: isDark ? '#F8FAFC' : '#1F2937' }]}>
-                        ₹{partialPaid.toLocaleString('en-IN')}
+                    <Text style={[s.summaryLabel, { color: theme.textSecondary, marginBottom: 0 }]}>Due Soon</Text>
+                    <Text style={[s.summaryFooter, { color: isDark ? '#FCD34D' : '#92400E', fontSize: 9.5 }]}>
+                        in next 7 days
                     </Text>
-                    <Text style={[s.summaryFooter, { color: isDark ? '#CBD5E1' : '#6B7280' }]}>
+                </TouchableOpacity>
+
+                {/* Card 3: Partial Paid */}
+                <TouchableOpacity
+                    style={[s.summaryCard, {
+                        backgroundColor: theme.cardBg,
+                        borderColor: isDark ? '#334155' : '#E2E8F0',
+                    }]}
+                    activeOpacity={0.85}
+                    onPress={() => setActiveTab('All Dues')}
+                >
+                    <View style={[s.summaryIconWrap, { backgroundColor: isDark ? '#0C2A4A' : '#E0F2FE', marginBottom: 4 }]}>
+                        <Ionicons name="hourglass" size={18} color="#0284C7" />
+                    </View>
+                    <Text style={[s.summaryAmount, { color: '#0284C7', fontSize: 16 }]} numberOfLines={1}>
+                        ₹{partialPaid > 999
+                            ? `${(partialPaid / 1000).toFixed(1)}k`
+                            : partialPaid.toLocaleString('en-IN')}
+                    </Text>
+                    <Text style={[s.summaryLabel, { color: theme.textSecondary, marginBottom: 0 }]}>Partial</Text>
+                    <Text style={[s.summaryFooter, { color: isDark ? '#7DD3FC' : '#0369A1', fontSize: 9.5 }]}>
                         {t('pendingDues.duesCollectedPartially')}
                     </Text>
-                    <WaveDecoration color="#F59E0B" />
-                </View>
+                </TouchableOpacity>
             </View>
 
             {/* ── Search & Filter ──────────────────────────────────────── */}
@@ -693,41 +789,78 @@ export default function PendingPaymentsScreen() {
                     )}
                 </View>
 
-                <TouchableOpacity
-                    style={[s.filterBtn, { 
-                        backgroundColor: isDark ? '#1E293B' : '#FFF', 
-                        borderColor: filterModalVisible || Object.values(activeFilters).some(v => v !== 'All' && v !== 'All Time') ? theme.primary : (isDark ? '#334155' : '#ECECEC'), 
-                        borderWidth: filterModalVisible || Object.values(activeFilters).some(v => v !== 'All' && v !== 'All Time') ? 1.5 : 1, 
-                        shadowColor: 'transparent', 
-                        elevation: 0 
-                    }]}
-                    activeOpacity={0.7}
-                    onPress={() => setFilterModalVisible(true)}
-                >
-                    <Ionicons name="filter" size={16} color={theme.primary} />
-                    <Text style={[s.filterTxt, { color: theme.primary }]}>
-                        Filter {Object.values(activeFilters).filter(v => v !== 'All' && v !== 'All Time').length > 0 ? `(${Object.values(activeFilters).filter(v => v !== 'All' && v !== 'All Time').length})` : ''}
-                    </Text>
-                </TouchableOpacity>
+                {(() => {
+                    const activeFiltersCount = Object.values(activeFilters).filter(v => v !== 'All' && v !== 'All Time' && v !== 'Due Date - Old to New').length;
+                    return (
+                        <TouchableOpacity
+                            style={[s.filterBtn, {
+                                backgroundColor: isDark ? '#1E293B' : '#FFF',
+                                borderColor: filterModalVisible || activeFiltersCount > 0 ? theme.primary : (isDark ? '#334155' : '#ECECEC'),
+                                borderWidth: filterModalVisible || activeFiltersCount > 0 ? 1.5 : 1,
+                                shadowColor: 'transparent',
+                                elevation: 0
+                            }]}
+                            activeOpacity={0.7}
+                            onPress={() => setFilterModalVisible(true)}
+                        >
+                            <Ionicons name="filter" size={16} color={theme.primary} />
+                            <Text style={[s.filterTxt, { color: theme.primary }]}>Filter</Text>
+                            {activeFiltersCount > 0 && (
+                                <View style={[s.filterBadge, { backgroundColor: theme.primary }]}>
+                                    <Text style={s.filterBadgeText}>{activeFiltersCount}</Text>
+                                </View>
+                            )}
+                        </TouchableOpacity>
+                    );
+                })()}
             </View>
 
             {/* ── Active Filters Chips ── */}
-            {(activeFilters.status !== 'All' || activeFilters.datePreset !== 'All Time' || activeFilters.room !== 'All') && (
+            {(activeFilters.status !== 'All' || activeFilters.datePreset !== 'All Time' || activeFilters.room !== 'All' || (activeFilters.sortBy && activeFilters.sortBy !== 'Due Date - Old to New')) && (
                 <View style={{ paddingHorizontal: 16, paddingBottom: 8, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                     {activeFilters.status !== 'All' && (
-                        <View style={[s.filterChip, { backgroundColor: isDark ? theme.primary + '30' : theme.primary + '15' }]}>
+                        <TouchableOpacity
+                            style={[s.filterChip, { backgroundColor: isDark ? theme.primary + '30' : theme.primary + '15', flexDirection: 'row', alignItems: 'center', gap: 4 }]}
+                            onPress={() => setActiveFilters((prev: any) => ({ ...prev, status: 'All' }))}
+                            activeOpacity={0.7}
+                        >
                             <Text style={[s.filterChipText, { color: theme.primary }]}>{activeFilters.status}</Text>
-                        </View>
+                            <Ionicons name="close-circle" size={14} color={theme.primary} />
+                        </TouchableOpacity>
                     )}
                     {activeFilters.datePreset !== 'All Time' && (
-                        <View style={[s.filterChip, { backgroundColor: isDark ? theme.primary + '30' : theme.primary + '15' }]}>
-                            <Text style={[s.filterChipText, { color: theme.primary }]}>{activeFilters.datePreset}</Text>
-                        </View>
+                        <TouchableOpacity
+                            style={[s.filterChip, { backgroundColor: isDark ? theme.primary + '30' : theme.primary + '15', flexDirection: 'row', alignItems: 'center', gap: 4 }]}
+                            onPress={() => setActiveFilters((prev: any) => ({ ...prev, datePreset: 'All Time', customStartDate: '', customEndDate: '' }))}
+                            activeOpacity={0.7}
+                        >
+                            <Text style={[s.filterChipText, { color: theme.primary }]}>
+                                {activeFilters.datePreset === 'Custom Date Range'
+                                    ? `${activeFilters.customStartDate} to ${activeFilters.customEndDate}`
+                                    : activeFilters.datePreset}
+                            </Text>
+                            <Ionicons name="close-circle" size={14} color={theme.primary} />
+                        </TouchableOpacity>
                     )}
                     {activeFilters.room !== 'All' && (
-                        <View style={[s.filterChip, { backgroundColor: isDark ? theme.primary + '30' : theme.primary + '15' }]}>
+                        <TouchableOpacity
+                            style={[s.filterChip, { backgroundColor: isDark ? theme.primary + '30' : theme.primary + '15', flexDirection: 'row', alignItems: 'center', gap: 4 }]}
+                            onPress={() => setActiveFilters((prev: any) => ({ ...prev, room: 'All' }))}
+                            activeOpacity={0.7}
+                        >
                             <Text style={[s.filterChipText, { color: theme.primary }]}>Room {activeFilters.room}</Text>
-                        </View>
+                            <Ionicons name="close-circle" size={14} color={theme.primary} />
+                        </TouchableOpacity>
+                    )}
+                    {activeFilters.sortBy && activeFilters.sortBy !== 'Due Date - Old to New' && (
+                        <TouchableOpacity
+                            style={[s.filterChip, { backgroundColor: isDark ? theme.primary + '30' : theme.primary + '15', flexDirection: 'row', alignItems: 'center', gap: 4 }]}
+                            onPress={() => setActiveFilters((prev: any) => ({ ...prev, sortBy: 'Due Date - Old to New' }))}
+                            activeOpacity={0.7}
+                        >
+                            <Text style={[s.filterChipText, { color: theme.primary }]}>Sorted: {activeFilters.sortBy}</Text>
+                            <Ionicons name="close-circle" size={14} color={theme.primary} />
+                        </TouchableOpacity>
                     )}
                 </View>
             )}
@@ -793,8 +926,8 @@ export default function PendingPaymentsScreen() {
                 <Text style={{ fontSize: 13, color: isDark ? '#94A3B8' : '#64748B', fontWeight: '600' }}>
                     Showing {filteredTenants.length} student{filteredTenants.length !== 1 ? 's' : ''}
                 </Text>
-                {Object.values(activeFilters).some(v => v !== 'All' && v !== 'All Time') && (
-                    <TouchableOpacity onPress={() => setActiveFilters({ status: 'All', datePreset: 'All Time', room: 'All' })}>
+                {Object.values(activeFilters).some(v => v !== 'All' && v !== 'All Time' && v !== 'Due Date - Old to New') && (
+                    <TouchableOpacity onPress={() => setActiveFilters({ status: 'All', datePreset: 'All Time', room: 'All', sortBy: 'Due Date - Old to New' })}>
                         <Text style={{ fontSize: 12, color: theme.primary, fontWeight: '700' }}>Clear Filters</Text>
                     </TouchableOpacity>
                 )}
@@ -868,11 +1001,12 @@ export default function PendingPaymentsScreen() {
                 onConfirm={handleCollectRent}
                 themeColor={theme.primary}
             />
-            
-            <FilterDuesModal 
+
+            <FilterDuesModal
                 visible={filterModalVisible}
                 onClose={() => setFilterModalVisible(false)}
                 onApply={handleApplyFilters}
+                initialFilters={activeFilters}
             />
         </View>
     );
@@ -956,6 +1090,18 @@ const card = StyleSheet.create({
     actionBtnText: {
         fontSize: 13,
         fontWeight: '700',
+    },
+    statusBadge: {
+        paddingHorizontal: 7,
+        paddingVertical: 3,
+        borderRadius: 8,
+        marginTop: 4,
+        alignSelf: 'flex-end',
+    },
+    statusBadgeText: {
+        color: '#FFF',
+        fontSize: 9.5,
+        fontWeight: '800',
     },
 });
 
@@ -1056,15 +1202,16 @@ const s = StyleSheet.create({
     summaryCard: {
         flex: 1,
         borderRadius: 16,
-        padding: 10,
+        padding: 9,
         position: 'relative',
         overflow: 'hidden',
-        elevation: 3,
+        elevation: 2,
         shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowRadius: 16,
-        shadowOffset: { width: 0, height: 6 },
-        minHeight: 68,
+        shadowOpacity: 0.04,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 4 },
+        minHeight: 86,
+        borderWidth: 1.5,
     },
     summaryCardTop: {
         flexDirection: 'row',
@@ -1157,6 +1304,19 @@ const s = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
     },
     filterTxt: { fontSize: 13, fontWeight: '700', color: '#FFFFFF' },
+    filterBadge: {
+        width: 16,
+        height: 16,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginLeft: 2,
+    },
+    filterBadgeText: {
+        color: '#FFF',
+        fontSize: 9,
+        fontWeight: '800',
+    },
 
     // ── Empty ──
     emptyWrap: { alignItems: 'center', justifyContent: 'center', paddingVertical: 80 },

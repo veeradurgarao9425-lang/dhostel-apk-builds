@@ -23,10 +23,11 @@ import { WarningCards } from '../components/dashboard/WarningCards';
 import { OverviewCard } from '../components/dashboard/OverviewCard';
 import { QuickActionsGrid } from '../components/dashboard/QuickActionsGrid';
 import { StatisticsGrid } from '../components/dashboard/StatisticsGrid';
-import { TopOverdueStudents } from '../components/dashboard/TopOverdueStudents';
-import { UpcomingDues } from '../components/dashboard/UpcomingDues';
 import { UpcomingCheckoutSchedules } from '../components/dashboard/UpcomingCheckoutSchedules';
 import { CollectionDetailsSheet } from '../components/dashboard/CollectionDetailsSheet';
+import { TopOverdueStudents } from '../components/dashboard/TopOverdueStudents';
+import { UpcomingDues } from '../components/dashboard/UpcomingDues';
+import { OccupancyCard } from '../components/dashboard/OccupancyCard';
 import { SetupGuideCard } from '../components/dashboard/SetupGuideCard';
 
 // ─── Initial state ────────────────────────────────────────────────────────────
@@ -442,40 +443,71 @@ export default function HomeScreen() {
         <View style={[s.root, { backgroundColor: theme.background }]}>
             <StatusBar barStyle="light-content" />
 
-            {/* ─────────────────── FIXED HEADER ─────────────────── */}
-            <AppHeader
-                title={`${t(getGreetingKey())}`}
-                subtitle={user?.full_name || 'Admin'}
-                showBack={false}
-                alignLeft={true}
-                rightComponent={
-                    <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                            {/* Quick tenant search */}
-                            <TouchableOpacity
-                                onPress={() => navigation.navigate('Students')}
-                                style={{
-                                    width: 36, height: 36, borderRadius: 18,
-                                    backgroundColor: 'rgba(255,255,255,0.18)',
-                                    alignItems: 'center', justifyContent: 'center',
-                                }}
-                                activeOpacity={0.7}
-                            >
-                                <Ionicons name="search" size={18} color="#FFF" />
-                            </TouchableOpacity>
-                            <HeaderNotification navigation={navigation} />
-                            <ProfileMenu />
-                        </View>
-                        <Text style={{ fontSize: 8.5, color: 'white', fontWeight: '800', letterSpacing: 0.5, opacity: 0.9 }}>
-                            {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()}
+            {/* ─────────────────── HEADER ─────────────────── */}
+            <LinearGradient
+                colors={[theme.gradientStart, theme.gradientEnd]}
+                style={s.newHeader}
+            >
+                {/* ROW 1: [Avatar + Hostel Name]  ←left    [Search + Bell] →right */}
+                <View style={s.headerRow1}>
+
+                    {/* LEFT: Avatar circle + hostel name stacked next to it */}
+                    <View style={s.headerLeft}>
+                        {/* Avatar → tap to go to Profile */}
+                        <TouchableOpacity
+                            onPress={() => navigation.navigate('Profile')}
+                            activeOpacity={0.8}
+                        >
+                            <View style={s.avatarCircle}>
+                                <Text style={s.avatarLetter}>
+                                    {avatarLetter(user?.full_name || 'O')}
+                                </Text>
+                            </View>
+                        </TouchableOpacity>
+
+                        {/* Hostel name → tap to go to Hostels — Pill drop-down style */}
+                        <TouchableOpacity
+                            onPress={() => navigation.navigate('Hostels')}
+                            activeOpacity={0.75}
+                            style={s.hostelNameBtn}
+                        >
+                            <Text style={s.hostelNameLabel} numberOfLines={1}>
+                                {data.hostelName || 'My Hostel'}
+                            </Text>
+                            <Ionicons name="chevron-down" size={11} color="rgba(255,255,255,0.85)" />
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* RIGHT: Search + Bell */}
+                    <View style={s.headerActions}>
+                        <TouchableOpacity
+                            onPress={() => navigation.navigate('Students')}
+                            style={s.headerIconBtn}
+                            activeOpacity={0.75}
+                        >
+                            <Ionicons name="search" size={18} color="#FFF" />
+                        </TouchableOpacity>
+                        <HeaderNotification navigation={navigation} />
+                    </View>
+                </View>
+
+                {/* ROW 2: Greeting + Date */}
+                <View style={s.headerRow2}>
+                    <View style={{ flex: 1 }}>
+                        <Text style={s.greetingText}>
+                            {t(getGreetingKey())}, {(user?.full_name || 'Admin').split(' ')[0]}! 👋
+                        </Text>
+                        <Text style={s.dateText}>
+                            {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                         </Text>
                     </View>
-                }
-            >
-                <View style={{ marginTop: -2 }}>
-                    <Text style={s.hostelSubText}>{data.hostelName}</Text>
+                    {backgroundLoading && (
+                        <Animated.View style={{ opacity: 0.7 }}>
+                            <ActivityIndicator size="small" color="rgba(255,255,255,0.7)" />
+                        </Animated.View>
+                    )}
                 </View>
-            </AppHeader>
+            </LinearGradient>
 
             <ScrollView
                 style={{ flex: 1 }}
@@ -507,6 +539,7 @@ export default function HomeScreen() {
     <TopOverdueStudents data={data} />
     <UpcomingDues data={data} />
     <UpcomingCheckoutSchedules data={data} />
+    <OccupancyCard data={data} />
     <TenantAppCard theme={theme} isDark={isDark} hostelCode={data.hostelCode} />
 </View>
             </ScrollView>
@@ -519,7 +552,93 @@ export default function HomeScreen() {
 const s = StyleSheet.create({
     root: { flex: 1, backgroundColor: '#F8F7FF' },
 
-    // ── Header ──────────────────────────────────────────────────────────────
+    // ── New Header ──────────────────────────────────────────────────────────
+    newHeader: {
+        paddingTop: 52,
+        paddingBottom: 20,
+        paddingHorizontal: 18,
+        borderBottomLeftRadius: 28,
+        borderBottomRightRadius: 28,
+        gap: 14,
+    },
+    // Row 1: left group + right icons
+    headerRow1: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    // Left: avatar + hostel name side by side
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        flex: 1,
+        marginRight: 10,
+    },
+    avatarCircle: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255,255,255,0.25)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 2,
+        borderColor: 'rgba(255,255,255,0.4)',
+    },
+    avatarLetter: {
+        fontSize: 17,
+        fontWeight: '900',
+        color: '#FFF',
+    },
+    // Hostel name button (translucent pill style drop-down)
+    hostelNameBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 20,
+        gap: 4,
+    },
+    hostelNameLabel: {
+        fontSize: 13,
+        fontWeight: '800',
+        color: '#FFF',
+        maxWidth: 120,
+    },
+
+    headerActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    headerIconBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: 'rgba(255,255,255,0.18)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    headerRow2: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    greetingText: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: '#FFF',
+        letterSpacing: -0.3,
+    },
+    dateText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: 'rgba(255,255,255,0.72)',
+        marginTop: 3,
+    },
+
+    // ── Legacy Header (kept for error/loading screens) ───────────────────────
     header: {
         paddingTop: 52,
         paddingBottom: 24,

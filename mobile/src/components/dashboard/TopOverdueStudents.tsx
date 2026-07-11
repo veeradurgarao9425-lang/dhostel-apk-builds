@@ -29,19 +29,27 @@ export const TopOverdueStudents = ({ data }: TopOverdueStudentsProps) => {
                         TOP OVERDUE
                     </Text>
                 </View>
-                <TouchableOpacity onPress={() => navigation.navigate('PendingTab')} activeOpacity={0.7}>
+                <TouchableOpacity
+                    onPress={() => navigation.navigate('PendingTab')}
+                    activeOpacity={0.7}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}
+                >
                     <Text style={s.seeAll}>{t('dashboard.viewAll')}</Text>
+                    <Ionicons name="chevron-forward" size={12} color="#7C3AED" style={{ marginTop: 1 }} />
                 </TouchableOpacity>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 2 }}>
                 {data.unpaidStudents.map((item, idx) => {
                     const isUrgent = item.daysLate > 30;
-                    const cardBg = isDark
-                        ? (isUrgent ? '#2A0A0A' : '#1A1010')
-                        : (isUrgent ? '#FEE2E2' : '#FEF2F2');
-                    const borderColor = isUrgent ? '#EF4444' : '#FCA5A5';
-                    const nameColor = isDark ? '#FECACA' : '#991B1B';
-                    const metaColor = isDark ? '#FCA5A5' : '#B91C1C';
+                    
+                    // Soft red background tint for overdue alerts
+                    const cardBg = isDark ? '#1E1212' : '#FFF5F5';
+                    const borderColor = isDark ? '#4A1D1D' : '#FEE2E2';
+                    const avatarBg = isDark ? '#3F1A1A' : '#FCA5A5';
+                    const avatarColor = '#EF4444';
+                    
+                    const dueLabel = `${item.daysLate}d late`;
+                    const badgeBg = '#EF4444';
 
                     return (
                         <TouchableOpacity
@@ -52,35 +60,35 @@ export const TopOverdueStudents = ({ data }: TopOverdueStudentsProps) => {
                         >
                             {/* Avatar + name */}
                             <View style={s.cardTop}>
-                                <View style={[s.avatar, { backgroundColor: isUrgent ? '#EF444422' : '#DC262622' }]}>
-                                    <Text style={[s.avatarLetter, { color: isUrgent ? '#EF4444' : '#DC2626' }]}>
+                                <View style={[s.avatar, { backgroundColor: isDark ? '#4A1D1D' : '#FEE2E2' }]}>
+                                    <Text style={[s.avatarLetter, { color: avatarColor }]}>
                                         {(item.name || 'T')[0].toUpperCase()}
                                     </Text>
                                 </View>
                                 <View style={{ flex: 1 }}>
-                                    <Text style={[s.name, { color: nameColor }]} numberOfLines={1}>{item.name}</Text>
-                                    <Text style={[s.meta, { color: metaColor }]} numberOfLines={1}>
+                                    <Text style={[s.name, { color: theme.textPrimary }]} numberOfLines={1}>{item.name}</Text>
+                                    <Text style={[s.meta, { color: theme.textSecondary }]} numberOfLines={1}>
                                         {item.room_number ? `Room ${item.room_number}` : 'No Room'}
                                     </Text>
                                 </View>
                                 {!!item.phone && (
                                     <TouchableOpacity
-                                        style={[s.callBtn, { backgroundColor: isDark ? '#450a0a' : '#FEE2E2' }]}
+                                        style={[s.callBtn, { backgroundColor: isDark ? '#2D1414' : '#FEE2E2' }]}
                                         onPress={(e) => { e.stopPropagation(); Linking.openURL(`tel:${item.phone}`); }}
                                         activeOpacity={0.7}
                                     >
-                                        <Ionicons name="call" size={12} color="#DC2626" />
+                                        <Ionicons name="call" size={12} color="#EF4444" />
                                     </TouchableOpacity>
                                 )}
                             </View>
 
                             {/* Amount + days badge */}
                             <View style={s.cardBottom}>
-                                <Text style={[s.amount, { color: isUrgent ? '#EF4444' : '#DC2626' }]}>
+                                <Text style={[s.amount, { color: theme.textPrimary }]}>
                                     ₹{Number(item.amount).toLocaleString('en-IN')}
                                 </Text>
-                                <View style={[s.daysBadge, { backgroundColor: isUrgent ? '#EF4444' : '#FCA5A5' }]}>
-                                    <Text style={s.daysBadgeText}>{item.daysLate}d late</Text>
+                                <View style={[s.daysBadge, { backgroundColor: badgeBg }]}>
+                                    <Text style={[s.daysBadgeText, { color: '#FFF' }]}>{dueLabel}</Text>
                                 </View>
                             </View>
                         </TouchableOpacity>
