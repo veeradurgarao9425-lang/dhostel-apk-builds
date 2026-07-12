@@ -356,7 +356,7 @@ export default function NoticesScreen({ navigation }: any) {
                             <View>
                                 <View style={[styles.searchContainer, { backgroundColor: isDark ? '#0F172A' : '#F1F5F9' }]}>
                                     <Search size={18} color="#94A3B8" />
-                                    <TextInput 
+                                    <TextInput
                                         style={[styles.searchInput, { color: isDark ? '#F8FAFC' : '#1E293B' }]}
                                         placeholder="Search tenant or room..."
                                         value={searchQuery}
@@ -393,7 +393,7 @@ export default function NoticesScreen({ navigation }: any) {
                                 </ScrollView>
                             </View>
                         )}
-                        
+
                         <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                             {!selectedStudent ? (
 

@@ -176,20 +176,20 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                     const cmYear = now.getFullYear();
                     const cmMonth = now.getMonth() + 1;
                     const currentMonthStr = `${cmYear}-${String(cmMonth).padStart(2, '0')}`;
-                    
+
                     if (latest.fee_month && latest.fee_month < currentMonthStr) {
                         const [ly, lm] = latest.fee_month.split('-').map(Number);
                         const gapMonths = (cmYear - ly) * 12 + (cmMonth - lm);
-                        
+
                         if (gapMonths > 0) {
                             const rent = parseFloat(coreData.monthly_rent || 0);
                             const prevTotalDue = parseFloat(latest.total_due || 0);
                             const prevPaid = parseFloat(latest.paid_amount || 0);
-                            
+
                             // Outstanding from older months + intermediate gap months (minus the current one)
                             const carryForward = Math.max(0, prevTotalDue - prevPaid) + Math.max(0, gapMonths - 1) * rent;
                             const newTotalDue = carryForward + rent;
-                            
+
                             let newDueDate = new Date(cmYear, cmMonth - 1, new Date(latest.due_date || now).getDate());
                             if (newDueDate.getDate() !== new Date(latest.due_date || now).getDate()) {
                                 newDueDate = new Date(cmYear, cmMonth, 0); // fallback to last day of month
@@ -207,7 +207,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                 fee_status: 'Pending',
                                 due_date: newDueDate.toISOString()
                             };
-                            
+
                             // Insert at beginning because dues is sorted descending
                             dues.unshift(virtualDue);
                             coreData.pending_dues = dues;
@@ -303,7 +303,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
         now.setHours(0, 0, 0, 0);
         let maxDays = 0;
         let isOverdue = false;
-        
+
         for (const due of student.pending_dues) {
             if (due.due_date && parseFloat(due.balance) > 0) {
                 const dueDate = new Date(due.due_date);
@@ -395,7 +395,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                         setStudent((prev: any) => ({ ...prev, status: nextStatus }));
                         showSuccess(`${student.first_name} is now ${nextStatus === 1 ? 'active' : 'inactive'}.`);
                         fetchStudentDetails(); // refresh details to sync billing fee histories
-                        
+
                         // Automatically prompt for room allocation if approving a QR signup
                         if (currentStatus === 3 && nextStatus === 1) {
                             setTimeout(() => {
@@ -527,7 +527,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
             <FullScreenLoader visible={statusLoading} />
 
             <View pointerEvents={payModalVisible ? 'none' : 'auto'}>
-                <AppHeader 
+                <AppHeader
                     title="Tenant Details"
                     style={{ paddingTop: 65, paddingBottom: 26 }}
                     rightComponent={
@@ -561,7 +561,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                         {/* ── PAYMENT ALERT BANNER ─────────────────────────────────────── */}
                         {outstandingBalance > 0 && (() => {
                             const pendingDues = student?.pending_dues || [];
-                            const now = new Date(); now.setHours(0,0,0,0);
+                            const now = new Date(); now.setHours(0, 0, 0, 0);
                             const unpaidMonths = pendingDues.filter((d: any) => parseFloat(d.balance) > 0);
                             const isAnyOverdue = overdueDays !== null;
                             const bannerBg = isDark ? (isAnyOverdue ? '#3B1A1A' : '#1C1917') : (isAnyOverdue ? '#FEF2F2' : '#FFFBEB');
@@ -588,10 +588,10 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                     {unpaidMonths.length > 0 && (
                                         <View style={{ backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.05)', borderRadius: 8, padding: 8 }}>
                                             {(() => {
-                                                const latestDue = unpaidMonths.length > 0 
-                                                    ? [...unpaidMonths].sort((a: any, b: any) => b.fee_month.localeCompare(a.fee_month))[0] 
+                                                const latestDue = unpaidMonths.length > 0
+                                                    ? [...unpaidMonths].sort((a: any, b: any) => b.fee_month.localeCompare(a.fee_month))[0]
                                                     : null;
-                                                
+
                                                 if (!latestDue) return null;
 
                                                 const carryForward = parseFloat(latestDue.carry_forward || 0);
@@ -642,9 +642,9 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                             <View style={styles.profileSection}>
                                 <View style={styles.avatarWrapper}>
                                     {student.photo && !avatarError ? (
-                                        <Image 
-                                            source={{ uri: student.photo }} 
-                                            style={styles.avatar} 
+                                        <Image
+                                            source={{ uri: student.photo }}
+                                            style={styles.avatar}
                                             onError={() => setAvatarError(true)}
                                         />
                                     ) : (
@@ -656,7 +656,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                     )}
                                     <View style={[styles.avatarStatusBadge, { backgroundColor: student.status === 1 ? theme.success : student.status === 2 ? theme.warning : student.status === 3 ? theme.primary : theme.error }]} />
                                 </View>
-                                
+
                                 <View style={styles.profileInfo}>
                                     <View style={styles.nameRow}>
                                         <Text style={[styles.name, { color: theme.textPrimary }]} numberOfLines={1}>
@@ -697,8 +697,8 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                             {/* ── Quick Action Row ── */}
                             <View style={styles.quickActionsRow}>
                                 {/* CALL — directly opens dialer */}
-                                <TouchableOpacity 
-                                    style={styles.quickActionItem} 
+                                <TouchableOpacity
+                                    style={styles.quickActionItem}
                                     onPress={() => student.phone && Linking.openURL(`tel:${student.phone}`)}
                                     disabled={!student.phone}
                                     activeOpacity={0.7}
@@ -710,8 +710,8 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                 </TouchableOpacity>
 
                                 {/* WHATSAPP — directly opens WhatsApp chat */}
-                                <TouchableOpacity 
-                                    style={styles.quickActionItem} 
+                                <TouchableOpacity
+                                    style={styles.quickActionItem}
                                     onPress={() => student.phone && Linking.openURL(`https://wa.me/91${student.phone}`)}
                                     disabled={!student.phone}
                                     activeOpacity={0.7}
@@ -723,8 +723,8 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                 </TouchableOpacity>
 
                                 {/* MESSAGE — directly opens SMS app */}
-                                <TouchableOpacity 
-                                    style={styles.quickActionItem} 
+                                <TouchableOpacity
+                                    style={styles.quickActionItem}
                                     onPress={() => student.phone && Linking.openURL(`sms:${student.phone}`)}
                                     disabled={!student.phone}
                                     activeOpacity={0.7}
@@ -735,8 +735,8 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                     <Text style={[styles.quickActionLabel, { color: theme.textPrimary }]}>Message</Text>
                                 </TouchableOpacity>
 
-                                <TouchableOpacity 
-                                    style={styles.quickActionItem} 
+                                <TouchableOpacity
+                                    style={styles.quickActionItem}
                                     onPress={() => {
                                         if (paymentHistory.length > 0) {
                                             const latest = paymentHistory[0];
@@ -814,8 +814,8 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                     <View style={styles.actionCardContent}>
                                         <Text style={[styles.actionCardTitle, { color: theme.textPrimary }]}>Vacancy Notice</Text>
                                         <Text style={[styles.actionCardSubtitle, { color: theme.textSecondary }]}>
-                                            {student.vacate_notice_date 
-                                                ? `Leaving on: ${new Date(student.vacate_notice_date).toLocaleDateString()}` 
+                                            {student.vacate_notice_date
+                                                ? `Leaving on: ${new Date(student.vacate_notice_date).toLocaleDateString()}`
                                                 : 'Schedule tenant checkout'}
                                         </Text>
                                     </View>
@@ -940,7 +940,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                                 <Text style={[styles.infoRowValue, { color: theme.textPrimary }]}>{student.phone || 'N/A'}</Text>
                                             </View>
                                         </View>
-                                        
+
                                         <View style={styles.infoRowDivider} />
 
                                         {/* Email Row */}
@@ -1121,10 +1121,10 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                     <View style={styles.timelineContainer}>
                                         {/* Event 3+: Payments (Most Recent First) */}
                                         {[...paymentHistory].reverse().map((payment: any, index: number) => (
-                                            <TouchableOpacity 
-                                                key={`timeline-pay-${index}`} 
-                                                activeOpacity={0.7} 
-                                                onPress={() => navigation.navigate('Receipt', { 
+                                            <TouchableOpacity
+                                                key={`timeline-pay-${index}`}
+                                                activeOpacity={0.7}
+                                                onPress={() => navigation.navigate('Receipt', {
                                                     feeData: {
                                                         ...payment,
                                                         first_name: student.first_name,

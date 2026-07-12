@@ -18,28 +18,42 @@ const convertToDateOnly = (dateValue: any): string | null => {
 // Check if email or phone already exists in the same hostel
 export const checkUnique = async (req: AuthRequest, res: Response) => {
   try {
-    const { phone, email, studentId } = req.query;
+    const { phone, email, id_proof_number, studentId } = req.query;
     const hostelId = req.user?.hostel_id;
-    if (!hostelId) return res.json({ success: true, phoneExists: false, emailExists: false });
+    if (!hostelId) return res.json({ success: true, phoneExists: false, emailExists: false, idProofExists: false });
 
     let phoneExists = false;
     let emailExists = false;
+    let idProofExists = false;
 
     if (phone) {
-      let q = db('students').where('hostel_id', hostelId).where('phone', phone);
-      if (studentId) q = q.whereNot('student_id', studentId);
-      const row = await q.first();
-      if (row) phoneExists = true;
+      const validation = await checkHostelUniqueIdentifiers(
+        hostelId,
+        { phone: phone as string },
+        studentId ? { entityType: 'student', entityId: studentId as string } : undefined
+      );
+      if (!validation.isUnique) phoneExists = true;
     }
 
     if (email) {
-      let q = db('students').where('hostel_id', hostelId).where('email', email);
-      if (studentId) q = q.whereNot('student_id', studentId);
-      const row = await q.first();
-      if (row) emailExists = true;
+      const validation = await checkHostelUniqueIdentifiers(
+        hostelId,
+        { email: email as string },
+        studentId ? { entityType: 'student', entityId: studentId as string } : undefined
+      );
+      if (!validation.isUnique) emailExists = true;
     }
 
-    return res.json({ success: true, phoneExists, emailExists });
+    if (id_proof_number) {
+      const validation = await checkHostelUniqueIdentifiers(
+        hostelId,
+        { id_number: id_proof_number as string },
+        studentId ? { entityType: 'student', entityId: studentId as string } : undefined
+      );
+      if (!validation.isUnique) idProofExists = true;
+    }
+
+    return res.json({ success: true, phoneExists, emailExists, idProofExists });
   } catch (error) {
     console.error('Check unique error:', error);
     return res.status(500).json({ success: false, error: 'Failed to check uniqueness' });

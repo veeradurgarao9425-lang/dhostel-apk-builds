@@ -7,12 +7,14 @@ import {
   updateGuest,
   checkoutGuest,
   deleteGuest,
+  checkUnique,
 } from '../controllers/guestController.js';
 
 const router = express.Router();
 
 router.use(authMiddleware, requireActiveSubscription);
 
+router.get('/check-unique', checkUnique);
 router.get('/', getGuests);
 router.post('/', createGuest);
 router.put('/:guestId', updateGuest);

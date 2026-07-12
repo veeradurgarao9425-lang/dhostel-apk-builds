@@ -62,6 +62,11 @@ export const checkHostelUniqueIdentifiers = async (
     let qStaff = db('staff').where({ hostel_id, email });
     if (exclude?.entityType === 'staff') qStaff = qStaff.whereNot('staff_id', exclude.entityId);
     if (await qStaff.first()) return { isUnique: false, conflictField: 'email', conflictEntity: 'staff' };
+
+    // Check guest
+    let qGuest = db('guests').where({ hostel_id, email });
+    if (exclude?.entityType === 'guest') qGuest = qGuest.whereNot('guest_id', exclude.entityId);
+    if (await qGuest.first()) return { isUnique: false, conflictField: 'email', conflictEntity: 'guest' };
   }
   
   // 3. Check ID Number (Aadhaar, PAN, etc.)
@@ -75,6 +80,11 @@ export const checkHostelUniqueIdentifiers = async (
     let qStaff = db('staff').where({ hostel_id, aadhaar_number: id_number });
     if (exclude?.entityType === 'staff') qStaff = qStaff.whereNot('staff_id', exclude.entityId);
     if (await qStaff.first()) return { isUnique: false, conflictField: 'Aadhaar number', conflictEntity: 'staff' };
+
+    // Check guest (id_proof_number)
+    let qGuest = db('guests').where({ hostel_id, id_proof_number: id_number });
+    if (exclude?.entityType === 'guest') qGuest = qGuest.whereNot('guest_id', exclude.entityId);
+    if (await qGuest.first()) return { isUnique: false, conflictField: 'ID proof number', conflictEntity: 'guest' };
   }
   
   return { isUnique: true };

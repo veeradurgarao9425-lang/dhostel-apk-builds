@@ -2,8 +2,9 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
     ScrollView, StatusBar, RefreshControl, Animated,
-    ActivityIndicator, Linking, Image,
+    ActivityIndicator, Linking, Image, Dimensions, Platform, DeviceEventEmitter,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
@@ -129,6 +130,15 @@ export default function HomeScreen() {
     const [showCollectionSheet, setShowCollectionSheet] = useState(false);
     const [showHostelSelector, setShowHostelSelector] = useState(false);
     const [switchingHostelId, setSwitchingHostelId] = useState<number | null>(null);
+    const [showTour, setShowTour] = useState(false);
+    const [tourStep, setTourStep] = useState(0);
+
+    useEffect(() => {
+        DeviceEventEmitter.emit('TOUR_STATE_CHANGE', showTour);
+    }, [showTour]);
+    const scrollViewRef = useRef<ScrollView>(null);
+    const headerSelectorRef = useRef<any>(null);
+
     const isFirstLoadRef = React.useRef(true);
 
     const pulseValue = useRef(new Animated.Value(1)).current;
@@ -156,6 +166,26 @@ export default function HomeScreen() {
             loadHostels();
         }
     }, [hostels.length, loadHostels]);
+
+    // Check tour status on user load
+    useEffect(() => {
+        const checkTour = async () => {
+            try {
+                const tourCompleted = await AsyncStorage.getItem('has_completed_tour_v1');
+                if (!tourCompleted && user) {
+                    setTimeout(() => {
+                        setShowTour(true);
+                        scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+                    }, 800);
+                }
+            } catch (err) {
+                console.log('Error checking tour:', err);
+            }
+        };
+        checkTour();
+    }, [user]);
+
+
 
     // ── Data loader ───────────────────────────────────────────────────────────
     const load = useCallback(async (isRefresh = false) => {
@@ -476,6 +506,161 @@ export default function HomeScreen() {
         );
     }
 
+    const renderTourOverlay = () => {
+        if (!showTour) return null;
+
+        const showSetupGuide = data.totalBeds === 0 || data.totalStudentsCount === 0;
+        const tourSteps = [
+            {
+                icon: "business",
+                iconColor: "#7C3AED",
+                iconBg: isDark ? 'rgba(124, 58, 237, 0.18)' : 'rgba(124, 58, 237, 0.08)',
+                title: "Select Active Hostel",
+                desc: "Tap the hostel name dropdown inside the top header to switch between your different hostels instantly from anywhere on the dashboard.",
+            },
+            ...(showSetupGuide ? [{
+                icon: "rocket",
+                iconColor: "#EA580C",
+                iconBg: isDark ? 'rgba(234, 88, 12, 0.18)' : 'rgba(234, 88, 12, 0.08)',
+                title: "Quick Setup Guide",
+                desc: "Follow the 3-step checklist to configure your rooms, add floors, and register your first tenant to get started.",
+            }] : []),
+            {
+                icon: "cash",
+                iconColor: "#16A34A",
+                iconBg: isDark ? 'rgba(22, 163, 74, 0.18)' : 'rgba(22, 163, 74, 0.08)',
+                title: "Record Rent Collection",
+                desc: "Issue rent bills, record payments, and send digital PDF receipts to your tenants in one click.",
+            },
+            {
+                icon: "flash",
+                iconColor: "#2563EB",
+                iconBg: isDark ? 'rgba(37, 99, 235, 0.18)' : 'rgba(37, 99, 235, 0.08)',
+                title: "Shortcuts & Quick Actions",
+                desc: "Add new rooms, check in tenants, or broadcast notice announcements to all occupants quickly.",
+            },
+            {
+                icon: "pie-chart",
+                iconColor: "#06B6D4",
+                iconBg: isDark ? 'rgba(6, 182, 212, 0.18)' : 'rgba(6, 182, 212, 0.08)',
+                title: "Performance Statistics",
+                desc: "Track your total occupied beds, available rooms, pending dues, and current month collections at a glance.",
+            },
+            {
+                icon: "calendar",
+                iconColor: "#E11D48",
+                iconBg: isDark ? 'rgba(225, 29, 72, 0.18)' : 'rgba(225, 29, 72, 0.08)',
+                title: "Upcoming Dues List",
+                desc: "Track tenants with pending room rent due and send automatic payment reminders directly to their phones.",
+            },
+            {
+                icon: "log-out",
+                iconColor: "#8B5CF6",
+                iconBg: isDark ? 'rgba(139, 92, 246, 0.18)' : 'rgba(139, 92, 246, 0.08)',
+                title: "Upcoming Checkout Schedule",
+                desc: "Keep track of upcoming tenant check-outs to manage room availability and advance booking plans.",
+            },
+        ];
+
+        const step = tourSteps[tourStep];
+        if (!step) return null;
+
+        const handleNext = async () => {
+            if (tourStep < tourSteps.length - 1) {
+                setTourStep(tourStep + 1);
+            } else {
+                setShowTour(false);
+                try {
+                    await AsyncStorage.setItem('has_completed_tour_v1', 'true');
+                } catch (e) {
+                    console.log(e);
+                }
+            }
+        };
+
+        const handleBack = () => {
+            if (tourStep > 0) {
+                setTourStep(tourStep - 1);
+            }
+        };
+
+        const handleSkip = async () => {
+            setShowTour(false);
+            try {
+                await AsyncStorage.setItem('has_completed_tour_v1', 'true');
+            } catch (e) {
+                console.log(e);
+            }
+        };
+
+        return (
+            <View style={s.tourOverlayContainer}>
+                {/* Full screen dimming overlay that captures and blocks all touches */}
+                <View 
+                    style={s.tourOverlayDimmer} 
+                    onStartShouldSetResponder={() => true}
+                    onResponderTerminationRequest={() => false}
+                />
+
+                {/* Bottom Sheet Card Container */}
+                <View style={s.tourDialogCenter}>
+                    <View style={[s.tourDialogCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                        {/* Triangular arrow on the upper side (pointing up) */}
+                        <View style={[s.tourArrowUp, { borderBottomColor: theme.cardBg }]} />
+
+                        {/* 1. Title */}
+                        <Text style={[s.tourDialogTitle, { color: theme.textPrimary }]}>{step.title}</Text>
+
+                        {/* 2. Description */}
+                        <Text style={[s.tourDialogDesc, { color: theme.textSecondary }]}>{step.desc}</Text>
+
+                        {/* 3. Footer Row */}
+                        <View style={s.tourDialogFooter}>
+                            {/* Left: Back (if step > 0) or Skip + Progress dots */}
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                                {tourStep > 0 ? (
+                                    <TouchableOpacity onPress={handleBack} activeOpacity={0.7}>
+                                        <Text style={[s.tourDialogBackText, { color: theme.primary }]}>Back</Text>
+                                    </TouchableOpacity>
+                                ) : (
+                                    <TouchableOpacity onPress={handleSkip} activeOpacity={0.7}>
+                                        <Text style={[s.tourDialogBackText, { color: theme.textSecondary }]}>Skip</Text>
+                                    </TouchableOpacity>
+                                )}
+
+                                {/* Progress dots */}
+                                <View style={s.tourProgressIndicatorRow}>
+                                    {tourSteps.map((_, idx) => (
+                                        <View 
+                                            key={idx} 
+                                            style={[
+                                                s.tourProgressDot, 
+                                                idx === tourStep 
+                                                    ? { backgroundColor: theme.primary, width: 6 } 
+                                                    : { backgroundColor: isDark ? '#334155' : '#E2E8F0', width: 6 }
+                                            ]} 
+                                        />
+                                    ))}
+                                </View>
+                            </View>
+
+                            {/* Right: Next button */}
+                            <TouchableOpacity 
+                                style={[s.tourDialogNextBtn, { backgroundColor: theme.primary }]} 
+                                onPress={handleNext}
+                                activeOpacity={0.85}
+                            >
+                                <Text style={s.tourDialogNextBtnText}>
+                                    {tourStep === tourSteps.length - 1 ? 'Finish' : 'Next'}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </View>
+        );
+    };
+
     // ── Main Dashboard ────────────────────────────────────────────────────────
     return (
         <View style={[s.root, { backgroundColor: theme.background }]}>
@@ -509,6 +694,7 @@ export default function HomeScreen() {
 
                         {/* Hostel name → tap to open Hostel Selector Bottom Sheet */}
                         <TouchableOpacity
+                            ref={headerSelectorRef}
                             onPress={() => setShowHostelSelector(true)}
                             activeOpacity={0.75}
                             style={s.hostelNameBtn}
@@ -552,6 +738,8 @@ export default function HomeScreen() {
             </LinearGradient>
 
             <ScrollView
+                ref={scrollViewRef}
+                scrollEnabled={true}
                 style={{ flex: 1 }}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: 180 }}
@@ -566,21 +754,33 @@ export default function HomeScreen() {
 <View style={s.body}>
     {/* Setup guide for first-time owners */}
     {data.totalBeds === 0 || data.totalStudentsCount === 0 ? (
-        <SetupGuideCard
-            hasHostel={true}
-            hasRooms={data.totalBeds > 0}
-            hasTenants={data.totalStudentsCount > 0}
-        />
+        <View collapsable={false}>
+            <SetupGuideCard
+                hasHostel={true}
+                hasRooms={data.totalBeds > 0}
+                hasTenants={data.totalStudentsCount > 0}
+            />
+        </View>
     ) : null}
     {(data.unallocatedCount > 0 || data.qrRegisterCount > 0 || data.openComplaintsCount > 0 || data.pendingAdmissionsCount > 0) && (
         <WarningCards data={data} />
     )}
-    <OverviewCard data={data} setShowCollectionSheet={setShowCollectionSheet} pulseValue={pulseValue} fmt={fmt} />
-    <QuickActionsGrid data={data} />
-    <StatisticsGrid data={data} fmt={fmt} />
+    <View collapsable={false}>
+        <OverviewCard data={data} setShowCollectionSheet={setShowCollectionSheet} pulseValue={pulseValue} fmt={fmt} />
+    </View>
+    <View collapsable={false}>
+        <QuickActionsGrid data={data} />
+    </View>
+    <View collapsable={false}>
+        <StatisticsGrid data={data} fmt={fmt} />
+    </View>
     <TopOverdueStudents data={data} />
-    <UpcomingDues data={data} />
-    <UpcomingCheckoutSchedules data={data} />
+    <View collapsable={false}>
+        <UpcomingDues data={data} />
+    </View>
+    <View collapsable={false}>
+        <UpcomingCheckoutSchedules data={data} />
+    </View>
     <OccupancyCard data={data} />
     <TenantAppCard theme={theme} isDark={isDark} hostelCode={data.hostelCode} />
 </View>
@@ -725,8 +925,25 @@ export default function HomeScreen() {
                         <Text style={[s.selectorActionText, { color: theme.textPrimary }]}>Manage All Hostels</Text>
                         <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} style={{ marginLeft: 'auto' }} />
                     </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[s.selectorActionBtn, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderWidth: 1, borderColor: isDark ? '#334155' : '#E2E8F0', marginTop: 8 }]}
+                        onPress={() => {
+                            setShowHostelSelector(false);
+                            setTourStep(0);
+                            setShowTour(true);
+                        }}
+                        activeOpacity={0.75}
+                    >
+                        <View style={[s.selectorActionIcon, { backgroundColor: '#FEF3C7' }]}>
+                            <Ionicons name="help-circle-outline" size={16} color="#D97706" />
+                        </View>
+                        <Text style={[s.selectorActionText, { color: theme.textPrimary }]}>Quick Tour Guide</Text>
+                        <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} style={{ marginLeft: 'auto' }} />
+                    </TouchableOpacity>
                 </ScrollView>
             </ModalSheet>
+            {renderTourOverlay()}
         </View>
     );
 }
@@ -1523,5 +1740,98 @@ const s = StyleSheet.create({
         width: 36,
         height: 36,
         borderRadius: 18,
+    },
+    tourOverlayContainer: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 99999,
+    },
+    tourOverlayDimmer: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    },
+    tourDialogCenter: {
+        flex: 1,
+        justifyContent: 'flex-end',
+        alignItems: 'center',
+        paddingBottom: Platform.OS === 'ios' ? 130 : 115,
+    },
+    tourDialogCard: {
+        width: Dimensions.get('window').width - 32,
+        borderRadius: 14,
+        padding: 20,
+        borderWidth: 1,
+        shadowColor: '#000',
+        shadowOpacity: 0.15,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 4 },
+        elevation: 6,
+        position: 'relative',
+    },
+    tourArrowUp: {
+        width: 0,
+        height: 0,
+        borderLeftWidth: 10,
+        borderRightWidth: 10,
+        borderBottomWidth: 10,
+        borderStyle: 'solid',
+        backgroundColor: 'transparent',
+        borderLeftColor: 'transparent',
+        borderRightColor: 'transparent',
+        position: 'absolute',
+        top: -10,
+        alignSelf: 'center',
+    },
+    tourDialogTitle: {
+        fontSize: 16,
+        fontWeight: '800',
+        marginBottom: 8,
+        textAlign: 'left',
+    },
+    tourDialogDesc: {
+        fontSize: 13,
+        fontWeight: '500',
+        lineHeight: 18,
+        marginBottom: 20,
+        textAlign: 'left',
+    },
+    tourProgressIndicatorRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+    },
+    tourProgressDot: {
+        height: 6,
+        width: 6,
+        borderRadius: 3,
+    },
+    tourDialogFooter: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        width: '100%',
+    },
+    tourDialogBackText: {
+        fontSize: 13,
+        fontWeight: '700',
+    },
+    tourDialogNextBtn: {
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    tourDialogNextBtnText: {
+        color: '#FFF',
+        fontSize: 13,
+        fontWeight: '800',
     },
 });

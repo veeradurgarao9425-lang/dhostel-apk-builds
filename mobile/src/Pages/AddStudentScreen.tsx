@@ -700,15 +700,18 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
         if (!currentErr) {
             if (name === 'phone') checkUnique('phone', formData.phone);
             if (name === 'email') checkUnique('email', formData.email);
+            if (name === 'id_proof_number') checkUnique('id_proof_number', formData.id_proof_number);
         }
     };
 
-    const checkUnique = async (field: 'phone' | 'email', value: string) => {
+    const checkUnique = async (field: 'phone' | 'email' | 'id_proof_number', value: string) => {
         if (!value) return;
         try {
             const res = await api.get('/students/check-unique', {
                 params: {
-                    [field]: value,
+                    ...(field === 'phone' ? { phone: value } : {}),
+                    ...(field === 'email' ? { email: value } : {}),
+                    ...(field === 'id_proof_number' ? { id_proof_number: value } : {}),
                     ...(isEdit ? { studentId: student.student_id } : {})
                 }
             });
@@ -718,6 +721,9 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 }
                 if (field === 'email' && res.data.emailExists) {
                     setErrors(prev => ({ ...prev, email: 'This email is already registered' }));
+                }
+                if (field === 'id_proof_number' && res.data.idProofExists) {
+                    setErrors(prev => ({ ...prev, id_proof_number: 'This ID proof number is already registered' }));
                 }
             }
         } catch (e) {

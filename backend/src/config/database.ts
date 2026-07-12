@@ -616,6 +616,32 @@ async function patchDatabaseSchema() {
       console.error('[schema-patch] Error updating user_push_tokens for tenant tokens:', e.message);
     }
 
+    // 13.6 Ensure guests table has email, id_proof_type_id, and id_proof_number columns
+    try {
+      if (tableNamesLower.includes('guests')) {
+        const [guestCols] = await db.raw("SHOW COLUMNS FROM guests");
+        const guestColNames = (guestCols as any[]).map(c => c.Field.toLowerCase());
+        
+        if (!guestColNames.includes('email')) {
+          console.log('[schema-patch] adding email column to guests...');
+          await db.raw("ALTER TABLE guests ADD COLUMN email VARCHAR(255) NULL");
+        }
+        
+        if (!guestColNames.includes('id_proof_type_id')) {
+          console.log('[schema-patch] adding id_proof_type_id column to guests...');
+          await db.raw("ALTER TABLE guests ADD COLUMN id_proof_type_id INT NULL");
+          await db.raw("ALTER TABLE guests ADD FOREIGN KEY (id_proof_type_id) REFERENCES id_proof_types(id) ON DELETE SET NULL").catch(() => {});
+        }
+        
+        if (!guestColNames.includes('id_proof_number')) {
+          console.log('[schema-patch] adding id_proof_number column to guests...');
+          await db.raw("ALTER TABLE guests ADD COLUMN id_proof_number VARCHAR(100) NULL");
+        }
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error checking/updating guests columns:', e.message);
+    }
+
     // 14. Ensure notifications table has hostel_id and priority columns
     try {
       if (tableNamesLower.includes('notifications')) {

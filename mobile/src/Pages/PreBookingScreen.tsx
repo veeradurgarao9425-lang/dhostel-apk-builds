@@ -22,6 +22,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import {
     User, Phone, Home, Calendar,
     ChevronDown, Check, BedDouble, Plus, Search,
+    Mail, CreditCard
 } from 'lucide-react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { useAuth } from '../../contexts/AuthContext';
@@ -33,7 +34,7 @@ import { AppHeader } from '../components/AppHeader';
 import { FullScreenLoader } from '../components/FullScreenLoader';
 
 // ─── Reusable custom components ──────────────────────────────────────────────
-const FormInput = ({ label, icon: Icon, placeholder, value, onChangeText, keyboardType, error }: any) => {
+const FormInput = ({ label, icon: Icon, placeholder, value, onChangeText, keyboardType, error, onBlur }: any) => {
     const { theme, isDark, fontSize } = useTheme();
     const renderLabel = (text: string) => {
         if (text.includes('*')) {
@@ -60,6 +61,7 @@ const FormInput = ({ label, icon: Icon, placeholder, value, onChangeText, keyboa
                     onChangeText={onChangeText}
                     keyboardType={keyboardType}
                     maxLength={keyboardType === 'phone-pad' ? 10 : undefined}
+                    onBlur={onBlur}
                 />
             </View>
             {error && <Text style={styles.errorText}>{error}</Text>}
@@ -428,6 +430,9 @@ export default function PreBookingScreen({ navigation, route }: any) {
         first_name: '',
         last_name: '',
         phone: '',
+        email: '',
+        id_proof_type_id: '',
+        id_proof_number: '',
         gender: 'Male',
         expected_join_date: new Date().toISOString().split('T')[0],
         room_id: '',
@@ -441,30 +446,42 @@ export default function PreBookingScreen({ navigation, route }: any) {
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
+    const [idProofTypes, setIdProofTypes] = useState<any[]>([]);
+    const [proofModal, setProofModal] = useState(false);
+
     const selectedRoom = rooms.find(r => r.room_id?.toString() === formData.room_id);
     const selectedBed = beds.find(b => b.bed_id?.toString() === formData.bed_id);
     const [isKeyboardVisible, setKeyboardVisible] = useState(false);
 
+    const fetchInitialData = async () => {
+        try {
+            setLoading(true);
+            const [roomsRes, proofRes] = await Promise.all([
+                api.get(`/rooms?hostelId=${user?.hostel_id}&limit=200`),
+                api.get('/id-proof-types'),
+            ]);
+            if (roomsRes.data?.success) {
+                setRooms(roomsRes.data.data || []);
+            }
+            if (proofRes.data?.success) {
+                setIdProofTypes(proofRes.data.data || []);
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        fetchRooms();
+        fetchInitialData();
         const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
         const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
         return () => {
             keyboardDidShowListener.remove();
             keyboardDidHideListener.remove();
         };
-    }, []);
-
-    const fetchRooms = async () => {
-        try {
-            const res = await api.get(`/rooms?hostelId=${user?.hostel_id}&limit=200`);
-            if (res.data.success) {
-                setRooms(res.data.data || []);
-            }
-        } catch (e) {
-            console.error(e);
-        }
-    };
+    }, [user?.hostel_id]);
 
     const fetchBeds = useCallback(async (roomId: string) => {
         setBedsLoading(true);
@@ -492,17 +509,72 @@ export default function PreBookingScreen({ navigation, route }: any) {
     const validate = () => {
         const e: Record<string, string> = {};
         if (!formData.first_name) e.first_name = 'First name is required';
-        if (!formData.phone) e.phone = 'Phone is required';
-        else if (!/^\d{10}$/.test(formData.phone)) e.phone = 'Must be exactly 10 digits';
+        if (!formData.phone) {
+            e.phone = 'Phone is required';
+        } else if (!/^\d{10}$/.test(formData.phone)) {
+            e.phone = 'Must be exactly 10 digits';
+        }
+        if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+            e.email = 'Invalid email format';
+        }
+        if (formData.id_proof_type_id) {
+            if (!formData.id_proof_number.trim()) {
+                e.id_proof_number = 'ID Proof number is required';
+            } else {
+                const proofTypeName = idProofTypes.find(t => t.id.toString() === formData.id_proof_type_id)?.name || '';
+                if (proofTypeName.toLowerCase().includes('aadhar') || proofTypeName.toLowerCase().includes('aadhaar')) {
+                    if (formData.id_proof_number.length !== 12) e.id_proof_number = 'Aadhaar must be exactly 12 digits';
+                    else if (!/^\d{12}$/.test(formData.id_proof_number)) e.id_proof_number = 'Aadhaar must be numeric';
+                } else if (proofTypeName.toLowerCase().includes('pan')) {
+                    if (formData.id_proof_number.length !== 10) e.id_proof_number = 'PAN must be exactly 10 characters';
+                    else if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i.test(formData.id_proof_number)) e.id_proof_number = 'Invalid PAN format. Must be like ABCDE1234F';
+                }
+            }
+        }
         if (!formData.expected_join_date) e.expected_join_date = 'Expected join date is required';
         if (!formData.room_id) e.room_id = 'Room allocation is strictly mandatory';
         setErrors(e);
         return Object.keys(e).length === 0;
     };
 
+    const checkUnique = async (field: 'phone' | 'email' | 'id_proof_number', value: string) => {
+        if (!value || !value.trim()) return;
+
+        if (field === 'phone' && !/^\d{10}$/.test(value.trim())) return;
+        if (field === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) return;
+        if (field === 'id_proof_number' && formData.id_proof_type_id) {
+            const typeName = idProofTypes.find(t => t.id.toString() === formData.id_proof_type_id)?.name || '';
+            if ((typeName.toLowerCase().includes('aadhar') || typeName.toLowerCase().includes('aadhaar')) && value.trim().length !== 12) return;
+            if (typeName.toLowerCase().includes('pan') && value.trim().length !== 10) return;
+        }
+
+        try {
+            const res = await api.get('/students/check-unique', {
+                params: {
+                    ...(field === 'phone' ? { phone: value.trim() } : {}),
+                    ...(field === 'email' ? { email: value.trim() } : {}),
+                    ...(field === 'id_proof_number' ? { id_proof_number: value.trim() } : {}),
+                }
+            });
+            if (res.data?.success) {
+                if (field === 'phone' && res.data.phoneExists) {
+                    setErrors(prev => ({ ...prev, phone: 'This phone number is already registered' }));
+                }
+                if (field === 'email' && res.data.emailExists) {
+                    setErrors(prev => ({ ...prev, email: 'This email is already registered' }));
+                }
+                if (field === 'id_proof_number' && res.data.idProofExists) {
+                    setErrors(prev => ({ ...prev, id_proof_number: 'This ID proof number is already registered' }));
+                }
+            }
+        } catch (e) {
+            console.log('Check unique prebooking error', e);
+        }
+    };
+
     const handleReset = () => {
         setFormData({
-            first_name: '', last_name: '', gender: 'Male', phone: '', expected_join_date: new Date().toISOString().split('T')[0],
+            first_name: '', last_name: '', phone: '', email: '', id_proof_type_id: '', id_proof_number: '', gender: 'Male', expected_join_date: new Date().toISOString().split('T')[0],
             room_id: '', bed_id: '', floor_number: '', monthly_rent: '',
         });
         setErrors({});
@@ -516,7 +588,13 @@ export default function PreBookingScreen({ navigation, route }: any) {
         setLoading(true);
         try {
             const payload = {
-                ...formData,
+                first_name: formData.first_name.trim(),
+                last_name: formData.last_name.trim(),
+                gender: formData.gender,
+                phone: formData.phone.trim(),
+                email: formData.email.trim() || null,
+                id_proof_type: formData.id_proof_type_id || null,
+                id_proof_number: formData.id_proof_number.trim() || null,
                 hostel_id: user?.hostel_id,
                 admission_date: formData.expected_join_date,
                 room_id: parseInt(formData.room_id),
@@ -525,12 +603,13 @@ export default function PreBookingScreen({ navigation, route }: any) {
                 status: 2,
                 admission_fee: 0,
                 admission_status: 0,
+                id_proof_status: 1,
             };
             await api.post('/students', payload);
             Toast.show({ type: 'success', text1: 'Pre-Booking Saved', text2: 'The bed has been successfully reserved.' });
             navigation.goBack();
-        } catch (e) {
-            Alert.alert('Error', 'Failed to save');
+        } catch (e: any) {
+            Alert.alert('Error', e.response?.data?.error || 'Failed to save pre-booking');
         } finally {
             setLoading(false);
         }
@@ -545,7 +624,7 @@ export default function PreBookingScreen({ navigation, route }: any) {
             <ScrollView 
                 style={styles.content} 
                 showsVerticalScrollIndicator={false} 
-                contentContainerStyle={[styles.scrollContent, { paddingBottom: (isKeyboardVisible ? 250 : 150) + insets.bottom }]}
+                contentContainerStyle={[styles.scrollContent, { paddingBottom: (isKeyboardVisible ? 280 : 150) + insets.bottom }]}
                 keyboardShouldPersistTaps="handled"
             >
                 <View style={{ marginBottom: 20, paddingHorizontal: 5 }}>
@@ -562,17 +641,62 @@ export default function PreBookingScreen({ navigation, route }: any) {
                     <FormInput label="First Name *" icon={User} placeholder="e.g. Rahul" value={formData.first_name} error={errors.first_name} onChangeText={(t: string) => up('first_name', t)} />
                     <FormInput label="Last Name" icon={User} placeholder="e.g. Sharma" value={formData.last_name} onChangeText={(t: string) => up('last_name', t)} />
                     <Selector label="Gender" options={['Male', 'Female', 'Other']} selected={formData.gender} onSelect={(v: string) => up('gender', v)} />
-                    <FormInput label="Phone *" icon={Phone} placeholder="9876543210" keyboardType="phone-pad" value={formData.phone} error={errors.phone} onChangeText={(t: string) => {
-                        const numericText = t.replace(/\D/g, '').substring(0, 10);
-                        if (numericText.length > 0 && /^[0-5]/.test(numericText)) {
-                            setErrors(prev => ({ ...prev, phone: 'Number should start with 6, 7, 8, or 9 only' }));
-                        } else if (numericText.length > 0 && numericText.length < 10) {
-                            setErrors(prev => ({ ...prev, phone: 'Please enter a 10-digit number' }));
-                        } else {
+                    <FormInput 
+                        label="Phone *" 
+                        icon={Phone} 
+                        placeholder="9876543210" 
+                        keyboardType="phone-pad" 
+                        value={formData.phone} 
+                        error={errors.phone} 
+                        onChangeText={(t: string) => {
+                            const numericText = t.replace(/\D/g, '').substring(0, 10);
+                            up('phone', numericText);
                             setErrors(prev => { const newE = { ...prev }; delete newE.phone; return newE; });
-                        }
-                        up('phone', numericText);
-                    }} />
+                        }} 
+                        onBlur={() => checkUnique('phone', formData.phone)}
+                    />
+                    <FormInput 
+                        label="Email Address" 
+                        icon={Mail} 
+                        placeholder="e.g. tenant@example.com" 
+                        keyboardType="email-address"
+                        value={formData.email} 
+                        error={errors.email} 
+                        onChangeText={(t: string) => {
+                            up('email', t);
+                            setErrors(prev => { const newE = { ...prev }; delete newE.email; return newE; });
+                        }} 
+                        onBlur={() => checkUnique('email', formData.email)}
+                    />
+                    <SelectField 
+                        label="ID Proof Type" 
+                        icon={CreditCard} 
+                        placeholder="Select ID Proof Type" 
+                        value={idProofTypes.find(t => t.id.toString() === formData.id_proof_type_id)?.name || ''} 
+                        error={errors.id_proof_type_id} 
+                        onPress={() => setProofModal(true)} 
+                    />
+                    {formData.id_proof_type_id ? (
+                        <FormInput 
+                            label={`${idProofTypes.find(t => t.id.toString() === formData.id_proof_type_id)?.name || 'ID'} Number *`} 
+                            icon={CreditCard} 
+                            placeholder={`Enter ${idProofTypes.find(t => t.id.toString() === formData.id_proof_type_id)?.name || 'ID'} Number`} 
+                            value={formData.id_proof_number} 
+                            error={errors.id_proof_number} 
+                            onChangeText={(t: string) => {
+                                const proofTypeName = idProofTypes.find(p => p.id.toString() === formData.id_proof_type_id)?.name || '';
+                                let clean = t;
+                                if (proofTypeName.toLowerCase().includes('aadhar') || proofTypeName.toLowerCase().includes('aadhaar')) {
+                                    clean = t.replace(/\D/g, '').slice(0, 12);
+                                } else if (proofTypeName.toLowerCase().includes('pan')) {
+                                    clean = t.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
+                                }
+                                up('id_proof_number', clean);
+                                setErrors(prev => { const newE = { ...prev }; delete newE.id_proof_number; return newE; });
+                            }} 
+                            onBlur={() => checkUnique('id_proof_number', formData.id_proof_number)}
+                        />
+                    ) : null}
                 </View>
 
                 <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
@@ -606,6 +730,47 @@ export default function PreBookingScreen({ navigation, route }: any) {
             <DateTimePickerModal isVisible={showDatePicker} mode="date" onConfirm={(date) => { up('expected_join_date', date.toISOString().split('T')[0]); setShowDatePicker(false); }} onCancel={() => setShowDatePicker(false)} />
             <RoomPickerDrawer visible={roomModal} rooms={rooms} selectedRoomId={formData.room_id} onSelectRoom={(room: any) => { up('room_id', room.room_id.toString()); fetchBeds(room.room_id.toString()); }} onClose={() => setRoomModal(false)} />
             <BedPickerDrawer visible={bedModal} room={selectedRoom} beds={beds} selectedBedId={formData.bed_id} loading={bedsLoading} onSelectBed={(bed: any) => up('bed_id', bed.bed_id.toString())} onClose={() => setBedModal(false)} />
+
+            {/* ID Proof Type Modal */}
+            <Modal
+                visible={proofModal}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setProofModal(false)}
+            >
+                <TouchableOpacity 
+                    style={styles.modalOverlay} 
+                    activeOpacity={1} 
+                    onPress={() => setProofModal(false)}
+                >
+                    <View style={[styles.modalContent, { backgroundColor: theme.cardBg }]}>
+                        <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>Select ID Proof Type</Text>
+                        <ScrollView style={{ maxHeight: 300 }}>
+                            {idProofTypes.map((type) => (
+                                <TouchableOpacity
+                                    key={type.id}
+                                    style={[
+                                        styles.modalItem,
+                                        formData.id_proof_type_id === type.id.toString() && { backgroundColor: theme.primary + '15' }
+                                    ]}
+                                    onPress={() => {
+                                        up('id_proof_type_id', type.id.toString());
+                                        setProofModal(false);
+                                    }}
+                                >
+                                    <Text style={[
+                                        styles.modalItemText, 
+                                        { color: theme.textPrimary },
+                                        formData.id_proof_type_id === type.id.toString() && { color: theme.primary, fontWeight: '700' }
+                                    ]}>
+                                        {type.name}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
+                </TouchableOpacity>
+            </Modal>
         </KeyboardAvoidingView>
     );
 }
@@ -618,107 +783,88 @@ const styles = StyleSheet.create({
     sectionTitle: { fontWeight: '700', marginBottom: 14 },
     inputGroup: { marginBottom: 14 },
     inputLabel: { fontWeight: '600', marginBottom: 6 },
-    inputContainer: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, height: 48, overflow: 'hidden' },
-    inputIcon: { width: 44, alignItems: 'center', justifyContent: 'center' },
-    input: { flex: 1, height: '100%', fontWeight: '500', paddingRight: 12 },
-    inputText: { flex: 1, fontWeight: '500' },
-    inputError: { borderColor: '#EF4444', backgroundColor: '#FEF2F2' },
-    errorText: { color: '#EF4444', fontSize: 11, fontWeight: '600', marginTop: 4, marginLeft: 4 },
-    selectorRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
-    selectorItem: { flex: 1, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-    selectorItemActive: {},
-    selectorText: { fontSize: 13, color: '#64748B', fontWeight: '600' },
-    selectorTextActive: { fontWeight: '700' },
-    row: { flexDirection: 'row' },
-    allocationBtn: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 12,
-        paddingVertical: 12,
-        borderRadius: 12,
-        borderWidth: 1,
-    },
-    allocationBtnActive: {},
+    inputContainer: { height: 48, borderRadius: 10, borderWidth: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12 },
+    inputIcon: { marginRight: 10 },
+    input: { flex: 1, height: '100%' },
+    inputText: { flex: 1 },
+    inputError: { borderColor: '#EF4444' },
+    errorText: { color: '#EF4444', fontSize: 11, marginTop: 4, marginLeft: 2 },
+    row: { flexDirection: 'row', justifyContent: 'space-between' },
+    allocationBtn: { flex: 1, height: 48, borderRadius: 10, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
     allocationBtnDisabled: { opacity: 0.5 },
-    allocationBtnText: { flex: 1, fontSize: 13, fontWeight: '600' },
-    stickyFooter: {
-        flexDirection: 'row',
-        gap: 12,
-        paddingHorizontal: 16,
-        paddingTop: 12,
-        borderTopWidth: 1,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 8,
-    },
-    cancelButton: {
+    allocationBtnText: { fontSize: 13, fontWeight: '700' },
+    stickyFooter: { paddingHorizontal: 16, borderTopWidth: 1, elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.05, shadowRadius: 8 },
+    cancelButton: { flex: 1, height: 48, borderRadius: 10, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+    cancelButtonText: { fontSize: 15, fontWeight: '700' },
+    submitButton: { flex: 2, height: 48, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+    submitButtonText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
+    sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingVertical: 16, elevation: 20, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 16 },
+    sheetHandle: { width: 40, height: 5, borderRadius: 2.5, backgroundColor: '#E2E8F0', alignSelf: 'center', marginBottom: 12 },
+    sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+    sheetTitle: { fontSize: 16, fontWeight: '800' },
+    doneBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+    doneBtnText: { fontSize: 12, fontWeight: '700' },
+    searchBarWrap: { height: 40, borderRadius: 10, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12 },
+    floorChip: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginBottom: 10 },
+    floorChipText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+    roomCard: { zIndex: 1 },
+    bedCard: { width: '48%', padding: 12, borderRadius: 12, borderWidth: 1.5, alignItems: 'center', gap: 6 },
+    bedName: { fontWeight: '700', marginTop: 4 },
+    modalOverlay: {
         flex: 1,
-        height: 48,
-        borderRadius: 12,
-        borderWidth: 1.5,
-        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
         justifyContent: 'center',
-    },
-    cancelButtonText: { fontWeight: '600', fontSize: 15 },
-    submitButton: {
-        flex: 2,
-        height: 48,
-        borderRadius: 12,
         alignItems: 'center',
-        justifyContent: 'center',
+        padding: 20,
     },
-    submitButtonText: { color: '#FFF', fontWeight: '700', fontSize: 15 },
-    modalOverlay: { flex: 1, backgroundColor: 'transparent', justifyContent: 'flex-end' },
-    sheet: { position: 'absolute', bottom: 0, left: 0, right: 0, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 8 },
-    sheetHandle: { width: 40, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, alignSelf: 'center', marginBottom: 12 },
-    sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-    sheetTitle: { fontSize: 17, fontWeight: '700' },
-    doneBtn: { paddingVertical: 6, paddingHorizontal: 14, borderRadius: 8 },
-    doneBtnText: { fontWeight: '700', fontSize: 14 },
-    searchBarWrap: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10 },
-    floorChip: { borderRadius: 8, paddingHorizontal: 12, paddingVertical: 4, alignSelf: 'flex-start', marginBottom: 10, marginTop: 8 },
-    floorChipText: { fontSize: 11, fontWeight: '700' },
-    roomCard: { borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1.5, position: 'relative' },
-    roomCardSel: {},
-    roomNum: { fontWeight: '700' },
-    roomCap: { fontWeight: '600' },
-    roomAvail: { fontWeight: '700', marginTop: 4 },
-    roomRent: { marginTop: 3 },
-    selectedBadge: { position: 'absolute', top: 10, right: 10, flexDirection: 'row', alignItems: 'center', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, gap: 4 },
-    selectedBadgeText: { fontSize: 11, fontWeight: '700' },
-    bedCard: { borderRadius: 12, padding: 14, borderWidth: 1.5, width: '47%', alignItems: 'center', gap: 6 },
-    bedCardSel: {},
-    bedCardOcc: { opacity: 0.65 },
-    bedName: { fontWeight: '700' },
-    saveBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
-    disabledBtn: { opacity: 0.7 },
+    modalContent: {
+        width: '85%',
+        borderRadius: 16,
+        padding: 20,
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOpacity: 0.15,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 4 },
+    },
+    modalTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        marginBottom: 16,
+        textAlign: 'center',
+    },
+    modalItem: {
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        marginVertical: 2,
+    },
+    modalItemText: {
+        fontSize: 14,
+    },
     selectorContainer: {
+        height: 40,
+        borderRadius: 10,
         flexDirection: 'row',
-        position: 'relative',
-        borderRadius: 14,
         padding: 4,
-        borderWidth: 1,
-        height: 48,
         alignItems: 'center',
+        position: 'relative',
     },
     selectorPill: {
+        height: 32,
+        borderRadius: 8,
         position: 'absolute',
-        top: 4,
-        bottom: 4,
         left: 4,
-        borderRadius: 10,
     },
     selectorTab: {
         flex: 1,
         height: '100%',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 2,
+        zIndex: 10,
     },
     selectorTabText: {
+        fontSize: 14,
         fontWeight: '600',
     },
 });

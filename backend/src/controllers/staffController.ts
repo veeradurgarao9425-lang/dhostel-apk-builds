@@ -450,3 +450,47 @@ export const deleteStaff = async (req: AuthRequest, res: Response) => {
     });
   }
 };
+
+export const checkUnique = async (req: AuthRequest, res: Response) => {
+  try {
+    const { phone, email, idProofNumber, staffId } = req.query;
+    const hostelId = req.user?.hostel_id;
+    if (!hostelId) return res.json({ success: true, phoneExists: false, emailExists: false, idProofExists: false });
+
+    let phoneExists = false;
+    let emailExists = false;
+    let idProofExists = false;
+
+    if (phone) {
+      const validation = await checkHostelUniqueIdentifiers(
+        hostelId,
+        { phone: phone as string },
+        staffId ? { entityType: 'staff', entityId: staffId as string } : undefined
+      );
+      if (!validation.isUnique) phoneExists = true;
+    }
+
+    if (email) {
+      const validation = await checkHostelUniqueIdentifiers(
+        hostelId,
+        { email: email as string },
+        staffId ? { entityType: 'staff', entityId: staffId as string } : undefined
+      );
+      if (!validation.isUnique) emailExists = true;
+    }
+
+    if (idProofNumber) {
+      const validation = await checkHostelUniqueIdentifiers(
+        hostelId,
+        { id_number: idProofNumber as string },
+        staffId ? { entityType: 'staff', entityId: staffId as string } : undefined
+      );
+      if (!validation.isUnique) idProofExists = true;
+    }
+
+    return res.json({ success: true, phoneExists, emailExists, idProofExists });
+  } catch (error) {
+    console.error('Staff check unique error:', error);
+    return res.status(500).json({ success: false, error: 'Failed to check uniqueness' });
+  }
+};

@@ -10,7 +10,8 @@ import {
   getStaffPayments,
   addStaffPayment,
   deleteStaffPayment,
-  getStaffMonthlySummary
+  getStaffMonthlySummary,
+  checkUnique
 } from '../controllers/staffController.js';
 
 const router = express.Router();
@@ -25,6 +26,7 @@ router.post('/:staffId/payments', addStaffPayment);
 router.delete('/payments/:paymentId', deleteStaffPayment);
 
 // Staff routes
+router.get('/check-unique', checkUnique);
 router.get('/', getStaff);
 router.get('/:staffId', getStaffById);
 router.post('/', createStaff);

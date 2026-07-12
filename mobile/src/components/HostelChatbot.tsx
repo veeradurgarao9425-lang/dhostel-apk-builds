@@ -9,7 +9,8 @@ import {
   Modal,
   Platform,
   KeyboardAvoidingView,
-  Image
+  Image,
+  DeviceEventEmitter
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,6 +30,14 @@ export const HostelChatbot: React.FC = () => {
   const [activeFaq, setActiveFaq] = useState<FAQItem | null>(null);
   const [currentRoute, setCurrentRoute] = useState<string | null>(null);
   const { user } = useAuth();
+  const [isTourActive, setIsTourActive] = useState(false);
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('TOUR_STATE_CHANGE', (isActive) => {
+      setIsTourActive(isActive);
+    });
+    return () => sub.remove();
+  }, []);
 
   const faqList = useMemo(() => {
     return i18n.language === 'te' ? FAQ_DATA_TE : FAQ_DATA_EN;
@@ -201,7 +210,7 @@ export const HostelChatbot: React.FC = () => {
   };
 
 
-  if (!user) return null;
+  if (!user || isTourActive) return null;
 
   return (
     <>

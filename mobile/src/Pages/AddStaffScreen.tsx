@@ -175,6 +175,41 @@ export default function AddStaffScreen() {
         return errs;
     };
 
+    const checkUnique = async (field: 'phone' | 'email' | 'idProofNumber', value: string) => {
+        if (!value || !value.trim()) return;
+
+        if (field === 'phone' && !/^\d{10}$/.test(value.trim())) return;
+        if (field === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) return;
+        if (field === 'idProofNumber') {
+            if (isAadhaar && value.trim().length !== 12) return;
+            if (isPan && value.trim().length !== 10) return;
+        }
+
+        try {
+            const res = await api.get('/staff/check-unique', {
+                params: {
+                    ...(field === 'phone' ? { phone: value.trim() } : {}),
+                    ...(field === 'email' ? { email: value.trim() } : {}),
+                    ...(field === 'idProofNumber' ? { idProofNumber: value.trim() } : {}),
+                    ...(isEdit ? { staffId } : {})
+                }
+            });
+            if (res.data?.success) {
+                if (field === 'phone' && res.data.phoneExists) {
+                    setErrors(prev => ({ ...prev, phone: 'This phone number is already registered' }));
+                }
+                if (field === 'email' && res.data.emailExists) {
+                    setErrors(prev => ({ ...prev, email: 'This email is already registered' }));
+                }
+                if (field === 'idProofNumber' && res.data.idProofExists) {
+                    setErrors(prev => ({ ...prev, idProofNumber: 'This ID proof number is already registered' }));
+                }
+            }
+        } catch (e) {
+            console.log('Check unique staff error', e);
+        }
+    };
+
     const handleSave = async () => {
         const validationErrors = validate();
         if (Object.keys(validationErrors).length > 0) {
@@ -312,7 +347,15 @@ export default function AddStaffScreen() {
                                 keyboardType="phone-pad"
                                 maxLength={10}
                                 value={phone}
-                                onChangeText={setPhone}
+                                onChangeText={(text) => {
+                                    setPhone(text);
+                                    setErrors(prev => {
+                                        const copy = { ...prev };
+                                        delete copy.phone;
+                                        return copy;
+                                    });
+                                }}
+                                onBlur={() => checkUnique('phone', phone)}
                             />
                         </View>
                         {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
@@ -328,7 +371,15 @@ export default function AddStaffScreen() {
                                 placeholderTextColor="#A0AEC0"
                                 keyboardType="email-address"
                                 value={email}
-                                onChangeText={setEmail}
+                                onChangeText={(text) => {
+                                    setEmail(text);
+                                    setErrors(prev => {
+                                        const copy = { ...prev };
+                                        delete copy.email;
+                                        return copy;
+                                    });
+                                }}
+                                onBlur={() => checkUnique('email', email)}
                             />
                         </View>
                         {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
@@ -446,7 +497,13 @@ export default function AddStaffScreen() {
                                         if (isAadhaar) clean = t.replace(/\D/g, '').slice(0, 12);
                                         else if (isPan) clean = t.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
                                         setIdProofNumber(clean);
+                                        setErrors(prev => {
+                                            const copy = { ...prev };
+                                            delete copy.idProofNumber;
+                                            return copy;
+                                        });
                                     }}
+                                    onBlur={() => checkUnique('idProofNumber', idProofNumber)}
                                 />
                             </View>
                             {errors.idProofNumber && <Text style={styles.errorText}>{errors.idProofNumber}</Text>}
