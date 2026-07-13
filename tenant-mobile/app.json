@@ -45,6 +45,11 @@
         }
       ]
     ],
-    "owner": "durgarao2"
+    "owner": "durgarao2",
+    "extra": {
+      "eas": {
+        "projectId": "7303856b-fde0-4922-baf9-c6487aa06e02"
+      }
+    }
   }
 }
