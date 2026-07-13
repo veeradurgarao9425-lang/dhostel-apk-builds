@@ -171,14 +171,14 @@ export default function HomeScreen({ navigation }: any) {
 
   // ── Quick shortcuts ──────────────────────────────────────────────────────
   const shortcuts = [
-    { id: "rent", name: "Pay Rent", icon: "cash" as const, nav: "Dues", bg: "#EEF2FF", color: "#4F46E5" },
-    { id: "complaints", name: "Complaints", icon: "chatbubble-ellipses" as const, nav: "Complaints", bg: "#EEF2FF", color: "#4F46E5" },
-    { id: "room", name: "Room Info", icon: "bed" as const, nav: "RoomInfo", bg: "#EEF2FF", color: "#4F46E5" },
-    { id: "splits", name: "Splits", icon: "receipt" as const, nav: "Splits", bg: "#EEF2FF", color: "#4F46E5" },
-    { id: "visitor", name: "Visitor", icon: "person-add" as const, nav: "VisitorPass", bg: "#EEF2FF", color: "#4F46E5" },
-    { id: "gatepass", name: "Gate Pass", icon: "qr-code" as const, nav: "GatePass", bg: "#EEF2FF", color: "#4F46E5" },
-    { id: "documents", name: "Documents", icon: "document-text" as const, nav: "Documents", bg: "#EEF2FF", color: "#4F46E5" },
-    { id: "notes", name: "Notes", icon: "create" as const, nav: "Notes", bg: "#EEF2FF", color: "#4F46E5" },
+    { id: "rent", name: "Pay Rent", icon: "wallet" as const, nav: "Dues", bg: "#E0E7FF", color: "#6366F1" }, // Indigo
+    { id: "splits", name: "Bill Splits", icon: "people" as const, nav: "Splits", bg: "#ECFDF5", color: "#10B981" }, // Emerald
+    { id: "complaints", name: "Complaints", icon: "chatbubbles" as const, nav: "Complaints", bg: "#FEF2F2", color: "#EF4444" }, // Red
+    { id: "room", name: "My Room", icon: "bed" as const, nav: "RoomInfo", bg: "#FEF3C7", color: "#D97706" }, // Amber
+    { id: "visitor", name: "Visitor Pass", icon: "person-add" as const, nav: "VisitorPass", bg: "#E0E7FF", color: "#6366F1" }, // Indigo
+    { id: "gatepass", name: "Gate Pass", icon: "qr-code" as const, nav: "GatePass", bg: "#ECFDF5", color: "#10B981" }, // Emerald
+    { id: "documents", name: "Documents", icon: "document-text" as const, nav: "Documents", bg: "#FEF2F2", color: "#EF4444" }, // Red
+    { id: "notes", name: "My Notes", icon: "create" as const, nav: "Notes", bg: "#FEF3C7", color: "#D97706" }, // Amber
   ];
 
   // ── Notif count ──────────────────────────────────────────────────────────

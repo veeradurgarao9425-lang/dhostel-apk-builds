@@ -1,515 +1,268 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  StatusBar,
-  Dimensions,
-  TouchableOpacity,
-  Animated,
-  Platform,
-  Image,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import React, { useRef, useState } from 'react';
+import { View, Text, StyleSheet, Dimensions, Animated, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS, FONT, RADIUS, SPACING } from '../theme/index';
 
-const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
-
-// Persisted flag so the intro is shown only once (first launch).
+const { width, height } = Dimensions.get('window');
 export const ONBOARDING_KEY = 'hasSeenIntro';
 
-// ─── Slides ───────────────────────────────────────────────────────────────────
-// Each slide is shown as a contained "board": a rounded preview panel up top
-// (not full-bleed) with the copy sitting below on a clean light background —
-// the same structure as a modern app intro. Icons come from @expo/vector-icons
-// so there are no image assets to ship.
-type Slide = {
-  key: string;
-  badge: keyof typeof Ionicons.glyphMap;
-  image: any; // real app screenshot shown in the phone-frame
-  eyebrow: string;
-  title: string;
-  subtitle: string;
-  gradient: [string, string, string];
-  chips: string[];
-  bgColor?: string;
-};
-
-const SLIDES: Slide[] = [
-  {
-    key: 'welcome',
-    badge: 'sparkles',
-    image: require('../../assets/onboarding/slide2.jpg'), // 01 Dashboard
-    eyebrow: 'WELCOME',
-    title: 'Manage your PG,\nthe smart way',
-    subtitle: 'Everything you need to run your PG — tenants, rooms, fees and reports — in one beautiful app.',
-    gradient: ['#7B4FEA', '#5F2EEA', '#3B0FAB'],
-    chips: ['All-in-one', 'Fast', 'Secure'],
-  },
-  {
-    key: 'students',
-    badge: 'person-add',
-    image: require('../../assets/onboarding/slide1.jpg'), // 02 Manage Students
-    eyebrow: 'STUDENTS & ROOMS',
-    title: 'Tenants & rooms\nat your fingertips',
-    subtitle: 'Add tenants in seconds, track room occupancy live, and never lose a record again.',
-    gradient: ['#5F6BFF', '#4338CA', '#2A1E8F'],
-    chips: ['Live occupancy', 'Quick add', 'Room map'],
-  },
-  {
-    key: 'rooms',
-    badge: 'business',
-    image: require('../../assets/onboarding/slide3.jpg'), // 03 Room Status
-    eyebrow: 'ROOM STATUS',
-    title: 'Rooms at a\nQuick View',
-    subtitle: 'Know which rooms are vacant, occupied or full across all floors instantly.',
-    gradient: ['#0EA5E9', '#0284C7', '#0369A1'],
-    chips: ['Floor views', 'Live status', 'Smart filters'],
-  },
-  {
-    key: 'collections',
-    badge: 'cash',
-    image: require('../../assets/onboarding/slide4.jpeg'), // 04 Pending Dues
-    eyebrow: 'COLLECTIONS',
-    title: 'Track & Collect\nPending Dues Effortlessly',
-    subtitle: 'Stay on top of outstanding payments, send reminders and collect dues faster – all in one place.',
-    gradient: ['#F59E0B', '#D97706', '#B45309'],
-    chips: ['Overdue alerts', 'Reminders', 'Quick collect'],
-  },
-  {
-    key: 'more_features',
-    badge: 'star',
-    image: require('../../assets/onboarding/slide5.jpeg'), // 05 More Features
-    eyebrow: 'AND MORE',
-    title: 'Everything you need,\nin your pocket',
-    subtitle: 'Manage expenses, support tickets, and get comprehensive reports anywhere you go.',
-    gradient: ['#EC4899', '#DB2777', '#BE185D'],
-    chips: ['Expenses', 'Support', 'Reports'],
-  },
-  {
-    key: 'notifications',
-    badge: 'notifications',
-    image: require('../../assets/onboarding/slide6.jpeg'), // 06 Notifications
-    eyebrow: 'STAY INFORMED',
-    title: 'Real-Time Alerts\n& Updates',
-    subtitle: 'Never miss a beat. Get instant push notifications for rent payments, student complaints, and important hostel updates.',
-    gradient: ['#06B6D4', '#0891B2', '#155E75'],
-    chips: ['Push Alerts', 'Reminders', 'Instant Updates'],
-  },
-  {
-    key: 'security',
-    badge: 'shield-checkmark',
-    image: require('../../assets/onboarding/slide7.jpeg'), // 07 Security
-    eyebrow: 'BANK-LEVEL SECURITY',
-    title: 'Your Data is\nSafe & Secure',
-    subtitle: 'We use industry-leading encryption to protect your data. Your privacy and security are our top priorities.',
-    gradient: ['#10B981', '#059669', '#047857'],
-    chips: ['Encrypted', 'Cloud Backup', 'Privacy First'],
-    bgColor: '#F2EEFC', // Matches the image background for slide 7
-  }
+const SLIDES = [
+    {
+        id: '1',
+        title: 'Manage your PG like never before',
+        titleHighlight: 'never',
+        subtitle: 'Welcome to your Admin Dashboard',
+        description: 'All-in-one platform to simplify rooms, tenants, collections and reports.',
+        color: '#6366F1', // Indigo
+        image: require('../../assets/hostel_only_3d.png'),
+        features: [
+            { icon: 'business', label: 'Rooms', color: '#6366F1', bg: '#E0E7FF' },
+            { icon: 'people', label: 'Tenants', color: '#10B981', bg: '#ECFDF5' },
+            { icon: 'cash', label: 'Collect', color: '#EF4444', bg: '#FEF2F2' },
+            { icon: 'pie-chart', label: 'Reports', color: '#D97706', bg: '#FEF3C7' },
+        ]
+    },
+    {
+        id: '2',
+        title: 'Track & Collect Dues effortlessly',
+        titleHighlight: 'effortlessly',
+        subtitle: 'Digital Collections',
+        description: 'Stay on top of outstanding payments, send reminders, and collect dues faster.',
+        color: '#F43F5E', // Rose
+        image: require('../../assets/payments_3d.png'),
+        features: [
+            { icon: 'wallet', label: 'Dues', color: '#F43F5E', bg: '#FFE4E6' },
+            { icon: 'notifications', label: 'Reminds', color: '#10B981', bg: '#ECFDF5' },
+            { icon: 'time', label: 'History', color: '#6366F1', bg: '#E0E7FF' },
+            { icon: 'trending-up', label: 'Analytics', color: '#D97706', bg: '#FEF3C7' },
+        ]
+    },
+    {
+        id: '3',
+        title: 'Stay in control with Live Updates',
+        titleHighlight: 'Live',
+        subtitle: 'Real-Time Alerts',
+        description: 'Get instant push notifications for rent payments, complaints, and important updates.',
+        color: '#F59E0B', // Amber
+        image: require('../../assets/notices_3d.png'),
+        features: [
+            { icon: 'megaphone', label: 'Alerts', color: '#F59E0B', bg: '#FEF3C7' },
+            { icon: 'chatbubbles', label: 'Issues', color: '#F43F5E', bg: '#FFE4E6' },
+            { icon: 'construct', label: 'Fixes', color: '#6366F1', bg: '#E0E7FF' },
+            { icon: 'shield-checkmark', label: 'Secure', color: '#10B981', bg: '#ECFDF5' },
+        ]
+    }
 ];
 
-const AUTO_ADVANCE_MS = 4000;
+export default function OnboardingScreen() {
+    const navigation = useNavigation<any>();
+    const insets = useSafeAreaInsets();
+    const scrollX = useRef(new Animated.Value(0)).current;
+    const flatListRef = useRef<any>(null);
+    const [currentIndex, setCurrentIndex] = useState(0);
 
-// The preview board occupies the upper portion of the screen; the copy sits
-// below it on the light background.
-const BOARD_HEIGHT = Math.min(SCREEN_H * 0.52, 460);
+    const handleNext = async () => {
+        if (currentIndex < SLIDES.length - 1) {
+            flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
+        } else {
+            await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
+            navigation.replace('Login');
+        }
+    };
 
-export default function OnboardingScreen({ navigation }: any) {
-  const insets = useSafeAreaInsets();
-  const scrollX = useRef(new Animated.Value(0)).current;
-  const listRef = useRef<Animated.FlatList<Slide>>(null);
-  const [index, setIndex] = useState(0);
-  const interacting = useRef(false);
+    const handleSkip = async () => {
+        await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
+        navigation.replace('Login');
+    };
 
-  const finish = useCallback(async () => {
-    try {
-      await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
-    } catch {
-      /* non-fatal — worst case the intro shows again */
-    }
-    navigation.replace('Login');
-  }, [navigation]);
+    return (
+        <View style={styles.container}>
+            <View style={{ height: insets.top + 20 }} />
 
-  const goToIndex = useCallback((i: number) => {
-    listRef.current?.scrollToOffset({ offset: i * SCREEN_W, animated: true });
-  }, []);
+            <View style={{ flex: 1 }}>
+                <Animated.FlatList
+                    ref={flatListRef}
+                    data={SLIDES}
+                    keyExtractor={(item) => item.id}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    bounces={false}
+                    onScroll={Animated.event(
+                        [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+                        { useNativeDriver: false }
+                    )}
+                    onMomentumScrollEnd={(e) => {
+                        setCurrentIndex(Math.round(e.nativeEvent.contentOffset.x / width));
+                    }}
+                    renderItem={({ item, index }) => {
+                        const inputRange = [
+                            (index - 1) * width,
+                            index * width,
+                            (index + 1) * width
+                        ];
+                        const textTranslateY = scrollX.interpolate({
+                            inputRange,
+                            outputRange: [100, 0, 100],
+                            extrapolate: 'clamp'
+                        });
+                        const cardsTranslateY = scrollX.interpolate({
+                            inputRange,
+                            outputRange: [150, 0, 150],
+                            extrapolate: 'clamp'
+                        });
+                        const imageScale = scrollX.interpolate({
+                            inputRange,
+                            outputRange: [0.8, 1, 0.8],
+                            extrapolate: 'clamp'
+                        });
 
-  const handleNext = useCallback(() => {
-    if (index >= SLIDES.length - 1) {
-      finish();
-    } else {
-      goToIndex(index + 1);
-    }
-  }, [index, finish, goToIndex]);
+                        const titleParts = item.title.split(item.titleHighlight);
 
-  // Gentle auto-advance. Pauses while the user is dragging and stops once they
-  // reach the last slide so the CTA stays put.
-  useEffect(() => {
-    if (index >= SLIDES.length - 1) return;
-    const timer = setTimeout(() => {
-      if (!interacting.current) goToIndex(index + 1);
-    }, AUTO_ADVANCE_MS);
-    return () => clearTimeout(timer);
-  }, [index, goToIndex]);
+                        const CardsRow = (
+                            <Animated.View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: index !== 0 ? 24 : 0, marginBottom: index === 0 ? 10 : 0, transform: [{ translateY: cardsTranslateY }] }}>
+                                {item.features.map((feature, i) => (
+                                    <View key={i} style={{ alignItems: 'center', flex: 1 }}>
+                                        <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: feature.bg, alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+                                            <Ionicons name={feature.icon as any} size={20} color={feature.color} />
+                                        </View>
+                                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#1E293B', textAlign: 'center' }}>{feature.label}</Text>
+                                    </View>
+                                ))}
+                            </Animated.View>
+                        );
 
-  const onMomentumEnd = useCallback((e: any) => {
-    const i = Math.round(e.nativeEvent.contentOffset.x / SCREEN_W);
-    setIndex(i);
-    interacting.current = false;
-  }, []);
+                        return (
+                            <View style={{ width, height: '100%', backgroundColor: '#F8FAFC', paddingHorizontal: 24, paddingTop: 10 }}>
+                                {/* Top Text */}
+                                <Animated.View style={{ transform: [{ translateY: textTranslateY }] }}>
+                                    <Text style={{ color: item.color, fontSize: 14, fontWeight: '800', marginBottom: 8 }}>{item.subtitle}</Text>
+                                    <Text style={{ color: '#0F172A', fontSize: 36, fontWeight: '900', lineHeight: 44 }}>
+                                        {titleParts[0]}
+                                        <Text style={{ color: item.color, textDecorationLine: 'underline' }}>{item.titleHighlight}</Text>
+                                        {titleParts[1]}
+                                    </Text>
+                                    <Text style={{ color: '#64748B', fontSize: 15, fontWeight: '500', marginTop: 12, lineHeight: 24, paddingRight: 40 }}>
+                                        {item.description}
+                                    </Text>
+                                </Animated.View>
 
-  const isLast = index === SLIDES.length - 1;
+                                {/* If not first slide, put cards above the image */}
+                                {index !== 0 && CardsRow}
 
-  return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+                                {/* 3D Image */}
+                                <Animated.View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', transform: [{ scale: imageScale }] }}>
+                                    <Image 
+                                        source={item.image} 
+                                        style={{ 
+                                            width: index === 0 ? width * 1.1 : width * 0.85, 
+                                            height: index === 0 ? width * 1.1 : width * 0.85, 
+                                            resizeMode: 'contain' 
+                                        }} 
+                                    />
+                                </Animated.View>
 
-      {/* ── Swipeable slides ── */}
-      <Animated.FlatList
-        ref={listRef}
-        data={SLIDES}
-        keyExtractor={(item) => item.key}
-        horizontal
-        pagingEnabled
-        bounces={false}
-        showsHorizontalScrollIndicator={false}
-        onScrollBeginDrag={() => { interacting.current = true; }}
-        onMomentumScrollEnd={onMomentumEnd}
-        scrollEventThrottle={16}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-          { useNativeDriver: true }
-        )}
-        renderItem={({ item, index: i }) => (
-          <Panel item={item} i={i} scrollX={scrollX} insets={insets} />
-        )}
-      />
-
-      {/* ── Skip (top-right) ── */}
-      {!isLast && (
-        <TouchableOpacity
-          style={[styles.skip, { top: insets.top + 8 }]}
-          onPress={finish}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-        >
-          <Text style={styles.skipText}>Skip</Text>
-        </TouchableOpacity>
-      )}
-
-      {/* ── Bottom controls: dots + Get Started ── */}
-      <View style={[styles.footer, { paddingBottom: insets.bottom + SPACING.xl }]}>
-        {/* Animated page dots */}
-        <View style={styles.dots}>
-          {SLIDES.map((_, i) => {
-            const inputRange = [(i - 1) * SCREEN_W, i * SCREEN_W, (i + 1) * SCREEN_W];
-            // Animate scaleX (not width) so this stays on the native driver,
-            // matching the natively-driven scrollX. Base width 8 → up to 24 (×3).
-            const scaleX = scrollX.interpolate({
-              inputRange,
-              outputRange: [1, 3, 1],
-              extrapolate: 'clamp',
-            });
-            const opacity = scrollX.interpolate({
-              inputRange,
-              outputRange: [0.25, 1, 0.25],
-              extrapolate: 'clamp',
-            });
-            return (
-              <View key={i} style={styles.dotContainer}>
-                <Animated.View
-                  style={[styles.dot, { opacity, transform: [{ scaleX }] }]}
+                                {/* If first slide, put cards below the image */}
+                                {index === 0 && CardsRow}
+                            </View>
+                        );
+                    }}
                 />
-              </View>
-            );
-          })}
+            </View>
+
+            {/* Bottom Container */}
+            <View style={[styles.bottomContainer, { paddingBottom: Math.max(insets.bottom + 20, 48) }]}>
+                <View style={styles.pagination}>
+                    {SLIDES.map((_, i) => {
+                        const dotWidth = scrollX.interpolate({
+                            inputRange: [(i - 1) * width, i * width, (i + 1) * width],
+                            outputRange: [8, 32, 8],
+                            extrapolate: 'clamp',
+                        });
+                        const opacity = scrollX.interpolate({
+                            inputRange: [(i - 1) * width, i * width, (i + 1) * width],
+                            outputRange: [0.3, 1, 0.3],
+                            extrapolate: 'clamp',
+                        });
+                        return (
+                            <Animated.View
+                                key={i.toString()}
+                                style={[styles.dot, { width: dotWidth, opacity, backgroundColor: SLIDES[currentIndex].color }]}
+                            />
+                        );
+                    })}
+                </View>
+
+                <View style={styles.buttonRow}>
+                    <TouchableOpacity onPress={handleSkip} style={styles.skipBtn}>
+                        <Text style={styles.skipText}>Skip</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity 
+                        onPress={handleNext} 
+                        activeOpacity={0.8}
+                        style={[styles.nextBtn, { backgroundColor: SLIDES[currentIndex].color, shadowColor: SLIDES[currentIndex].color }]}
+                    >
+                        <Text style={styles.nextText}>{currentIndex === SLIDES.length - 1 ? "Let's Go!" : "Next"}</Text>
+                        <Ionicons name={currentIndex === SLIDES.length - 1 ? "rocket" : "arrow-forward"} size={18} color="#FFF" />
+                    </TouchableOpacity>
+                </View>
+            </View>
         </View>
-
-        <TouchableOpacity activeOpacity={0.85} onPress={handleNext} style={styles.ctaWrap}>
-          <LinearGradient
-            colors={[COLORS.gradientStart, COLORS.primary]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.cta}
-          >
-            <Text style={styles.ctaText}>{isLast ? 'Get Started' : 'Next'}</Text>
-            <Ionicons
-              name={isLast ? 'rocket' : 'arrow-forward'}
-              size={18}
-              color={COLORS.white}
-              style={{ marginLeft: 8 }}
-            />
-          </LinearGradient>
-        </TouchableOpacity>
-
-        {isLast && (
-          <TouchableOpacity onPress={finish} style={styles.loginHint} hitSlop={{ top: 8, bottom: 8 }}>
-            <Text style={styles.loginHintText}>
-              Already have an account? <Text style={styles.loginHintLink}>Sign in</Text>
-            </Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    </View>
-  );
-}
-
-function Panel({
-  item,
-  i,
-  scrollX,
-  insets,
-}: {
-  item: Slide;
-  i: number;
-  scrollX: Animated.Value;
-  insets: { top: number };
-}) {
-  return (
-    <View style={[styles.panel, { backgroundColor: item.bgColor || '#F2EEFC', paddingTop: insets.top + 40, paddingBottom: 130 }]}>
-      <Image
-        source={item.image}
-        style={{ flex: 1, width: '100%', resizeMode: 'contain' }}
-      />
-    </View>
-  );
+    );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F2EEFC' },
-
-  // Slide
-  panel: {
-    width: SCREEN_W,
-    height: SCREEN_H,
-    backgroundColor: '#F2EEFC',
-  },
-
-  // Preview board
-  board: {
-    width: SCREEN_W,
-    borderBottomLeftRadius: RADIUS.xxl + 8,
-    borderBottomRightRadius: RADIUS.xxl + 8,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Platform.select({
-      android: { elevation: 10 },
-      default: {
-        shadowColor: COLORS.primary,
+    container: {
+        flex: 1,
+        backgroundColor: '#F8FAFC',
+    },
+    bottomContainer: {
+        width: '100%',
+        paddingHorizontal: 24,
+        backgroundColor: '#F8FAFC',
+    },
+    pagination: {
+        flexDirection: 'row',
+        marginBottom: 32,
+        justifyContent: 'center',
+        gap: 8,
+    },
+    dot: {
+        height: 8,
+        borderRadius: 4,
+    },
+    buttonRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    skipBtn: {
+        paddingVertical: 12,
+        paddingRight: 20,
+    },
+    skipText: {
+        fontSize: 16,
+        fontWeight: '800',
+        color: '#94A3B8',
+    },
+    nextBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 32,
+        paddingVertical: 16,
+        borderRadius: 24,
+        gap: 8,
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.25,
-        shadowRadius: 18,
-      },
-    }),
-  },
-  blob: {
-    position: 'absolute',
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  blobTop: {
-    width: 220,
-    height: 220,
-    top: -70,
-    right: -70,
-  },
-  blobBottom: {
-    width: 260,
-    height: 260,
-    bottom: -90,
-    left: -100,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-  },
-
-  // Hero: phone-frame screenshot
-  heroWrap: { alignItems: 'center' },
-  phoneFrame: {
-    height: BOARD_HEIGHT * 0.8,
-    aspectRatio: 630 / 1400, // matches the screenshots exactly → no crop, no side bars
-    borderRadius: 30,
-    backgroundColor: '#0B0B14',
-    borderWidth: 5,
-    borderColor: 'rgba(255,255,255,0.9)',
-    overflow: 'hidden',
-    ...Platform.select({
-      android: { elevation: 12 },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.35,
-        shadowRadius: 20,
-      },
-    }),
-  },
-  phoneImage: {
-    width: '100%',
-    height: '100%',
-  },
-  heroBadge: {
-    position: 'absolute',
-    bottom: -6,
-    right: -6,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Platform.select({
-      android: { elevation: 6 },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.2,
-        shadowRadius: 6,
-      },
-    }),
-  },
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: SPACING.sm,
-    marginTop: SPACING.xxl,
-    paddingHorizontal: SPACING.xl,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingVertical: 6,
-    paddingHorizontal: SPACING.md,
-    borderRadius: RADIUS.full,
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.22)',
-  },
-  chipText: {
-    color: COLORS.white,
-    fontSize: FONT.sm,
-    fontWeight: FONT.semiBold,
-  },
-
-  // Copy
-  copy: {
-    paddingHorizontal: SPACING.xxl,
-    marginTop: SPACING.xxxl,
-    alignItems: 'flex-start',
-  },
-  eyebrow: {
-    fontSize: FONT.sm,
-    fontWeight: FONT.bold,
-    letterSpacing: 1.5,
-    color: COLORS.primary,
-    marginBottom: SPACING.sm,
-  },
-  title: {
-    fontSize: FONT.xxxl,
-    lineHeight: FONT.xxxl + 6,
-    fontWeight: FONT.black,
-    color: COLORS.textPrimary,
-    textAlign: 'left',
-    letterSpacing: 0.2,
-  },
-  subtitle: {
-    marginTop: SPACING.md,
-    fontSize: FONT.md,
-    lineHeight: 23,
-    color: COLORS.textSecondary,
-    textAlign: 'left',
-    fontWeight: FONT.medium,
-  },
-
-  // Skip
-  skip: {
-    position: 'absolute',
-    right: SPACING.xl,
-    zIndex: 10,
-    paddingVertical: 6,
-    paddingHorizontal: SPACING.md,
-    borderRadius: RADIUS.full,
-    backgroundColor: COLORS.primary,
-    ...Platform.select({
-      android: { elevation: 4 },
-      default: {
-        shadowColor: COLORS.primary,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-      },
-    }),
-  },
-  skipText: {
-    color: COLORS.white,
-    fontSize: FONT.base,
-    fontWeight: 'bold', // User requested bold
-  },
-
-  // Footer
-  footer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: SPACING.xxl,
-    alignItems: 'center',
-  },
-  dots: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: SPACING.xl,
-  },
-  dotContainer: {
-    width: 28, // Active dot will be 24px wide, leaving a nice 4px gap.
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dot: {
-    height: 8,
-    width: 8,
-    borderRadius: 4,
-    backgroundColor: COLORS.primary,
-  },
-  ctaWrap: {
-    width: '100%',
-    borderRadius: RADIUS.xl,
-    overflow: 'hidden',
-    ...Platform.select({
-      android: { elevation: 8 },
-      default: {
-        shadowColor: COLORS.primary,
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.4,
-        shadowRadius: 14,
-      },
-    }),
-  },
-  cta: {
-    height: 56,
-    borderRadius: RADIUS.xl,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ctaText: {
-    color: COLORS.white,
-    fontSize: FONT.lg,
-    fontWeight: FONT.bold,
-    letterSpacing: 0.3,
-  },
-  loginHint: { marginTop: SPACING.lg },
-  loginHintText: {
-    color: COLORS.textSecondary,
-    fontSize: FONT.base,
-    fontWeight: FONT.medium,
-  },
-  loginHintLink: {
-    color: COLORS.primary,
-    fontWeight: FONT.bold,
-    textDecorationLine: 'underline',
-  },
+        shadowRadius: 12,
+        elevation: 6,
+    },
+    nextText: {
+        fontSize: 16,
+        fontWeight: '900',
+        color: '#FFFFFF',
+    },
 });

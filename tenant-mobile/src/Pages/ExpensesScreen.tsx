@@ -745,9 +745,6 @@ export default function ExpensesScreen({ navigation }: any) {
                 {selectedDate.toLocaleString('en-US', { month: 'short' })}
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }} onPress={() => setShowExport(true)} activeOpacity={0.7}>
-              <Download size={18} color={WHITE} strokeWidth={2} />
-            </TouchableOpacity>
           </View>
         }
       />

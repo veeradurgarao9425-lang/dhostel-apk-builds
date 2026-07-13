@@ -88,7 +88,7 @@ export default function NoticesScreen({ navigation }: any) {
         subtitle={selectedMonth 
           ? `Updates for ${selectedMonth.toLocaleString('default', { month: 'short' })} ${selectedMonth.getFullYear()}` 
           : 'Alerts, updates, and announcements'}
-        showBack={navigation.canGoBack()}
+        showBack={false}
         rightComponent={
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <TouchableOpacity style={styles.hBtn} onPress={() => setShowPicker(true)}>

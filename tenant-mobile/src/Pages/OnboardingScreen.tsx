@@ -11,47 +11,47 @@ const { width, height } = Dimensions.get('window');
 const SLIDES = [
     {
         id: '1',
-        title: 'Manage your Hostel like never before',
+        title: 'Experience Hostel Life like never before',
         titleHighlight: 'never',
-        subtitle: 'Welcome to your Hostel',
-        description: 'All-in-one platform to simplify rooms, tenants, payments and more.',
+        subtitle: 'Welcome to your Dashboard',
+        description: 'Your all-in-one companion to simplify your stay, rent, and daily hostel activities.',
         color: '#6366F1', // Indigo
         image: require('../../assets/hostel_only_3d.png'),
         features: [
-            { icon: 'business', label: 'Rooms', color: '#6366F1', bg: '#E0E7FF' },
-            { icon: 'people', label: 'Tenants', color: '#10B981', bg: '#ECFDF5' },
-            { icon: 'card', label: 'Payments', color: '#EF4444', bg: '#FEF2F2' },
-            { icon: 'pie-chart', label: 'Reports', color: '#D97706', bg: '#FEF3C7' },
+            { icon: 'bed', label: 'My Room', color: '#6366F1', bg: '#E0E7FF' },
+            { icon: 'restaurant', label: 'Mess Menu', color: '#10B981', bg: '#ECFDF5' },
+            { icon: 'chatbubbles', label: 'Complaints', color: '#EF4444', bg: '#FEF2F2' },
+            { icon: 'megaphone', label: 'Notices', color: '#D97706', bg: '#FEF3C7' },
         ]
     },
     {
         id: '2',
-        title: 'Track your Dues & Expenses instantly',
+        title: 'Master your Finances & Dues instantly',
         titleHighlight: 'instantly',
-        subtitle: 'Digital Payments',
-        description: 'Never miss a rent payment. View your due amounts, history, and daily limits on the go.',
+        subtitle: 'Budgets & Splits',
+        description: 'Set monthly budgets, seamlessly split bills with roommates, and track pending dues.',
         color: '#F43F5E', // Rose
         image: require('../../assets/payments_3d.png'),
         features: [
-            { icon: 'wallet', label: 'Dues', color: '#F43F5E', bg: '#FFE4E6' },
-            { icon: 'cash', label: 'Expenses', color: '#10B981', bg: '#ECFDF5' },
-            { icon: 'time', label: 'History', color: '#6366F1', bg: '#E0E7FF' },
-            { icon: 'trending-up', label: 'Limits', color: '#D97706', bg: '#FEF3C7' },
+            { icon: 'pie-chart', label: 'Budgets', color: '#F43F5E', bg: '#FFE4E6' },
+            { icon: 'people', label: 'Splits', color: '#10B981', bg: '#ECFDF5' },
+            { icon: 'wallet', label: 'Dues', color: '#6366F1', bg: '#E0E7FF' },
+            { icon: 'cash', label: 'Expenses', color: '#D97706', bg: '#FEF3C7' },
         ]
     },
     {
         id: '3',
-        title: 'Stay updated with your Hostel Feed',
-        titleHighlight: 'updated',
-        subtitle: 'Community & Notices',
-        description: 'Get instant announcements, mess menus, and maintenance updates right on your phone.',
+        title: 'Never miss an update with Smart Alerts',
+        titleHighlight: 'Smart',
+        subtitle: 'Real-Time Notifications',
+        description: 'Get instant push notifications for rent dues, bill splits, and important hostel announcements.',
         color: '#F59E0B', // Amber
         image: require('../../assets/notices_3d.png'),
         features: [
-            { icon: 'megaphone', label: 'Notices', color: '#F59E0B', bg: '#FEF3C7' },
-            { icon: 'restaurant', label: 'Menu', color: '#F43F5E', bg: '#FFE4E6' },
-            { icon: 'chatbubbles', label: 'Complaints', color: '#6366F1', bg: '#E0E7FF' },
-            { icon: 'construct', label: 'Updates', color: '#10B981', bg: '#ECFDF5' },
+            { icon: 'notifications', label: 'Notices', color: '#F59E0B', bg: '#FEF3C7' },
+            { icon: 'alert-circle', label: 'Due Alerts', color: '#F43F5E', bg: '#FFE4E6' },
+            { icon: 'git-network', label: 'Split Alerts', color: '#6366F1', bg: '#E0E7FF' },
+            { icon: 'time', label: 'Reminders', color: '#10B981', bg: '#ECFDF5' },
         ]
     }
 ];
