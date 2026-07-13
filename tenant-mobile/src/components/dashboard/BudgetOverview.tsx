@@ -1,8 +1,8 @@
 import React, { useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Animated, StyleSheet } from 'react-native';
-import { Wallet, CheckCircle2, AlertCircle, ChevronRight } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-
+import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../../theme';
 
 interface BudgetOverviewProps {
@@ -21,189 +21,257 @@ export const BudgetOverview = ({
     const navigation = useNavigation<any>();
 
     const overBudget = budget > 0 && spent > budget;
+    const pctNum = budget > 0 ? Math.min(Math.round((spent / budget) * 100), 100) : 0;
+    const isRentDue = dueAmount > 0;
+
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const slideAnim = useRef(new Animated.Value(8)).current;
+    useEffect(() => {
+        Animated.parallel([
+            Animated.timing(fadeAnim, { toValue: 1, duration: 320, useNativeDriver: true }),
+            Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, tension: 80, friction: 9 }),
+        ]).start();
+    }, []);
 
     return (
-        <View style={styles.container}>
-            {/* ── MAIN FOCUS: RENT DUE ── */}
-            <TouchableOpacity 
-                activeOpacity={dueAmount > 0 ? 0.8 : 1}
-                onPress={() => dueAmount > 0 ? navigation.navigate('Payments') : undefined}
-                style={[styles.dueCard, { borderColor: dueAmount > 0 ? theme.colors.dangerSoft : theme.colors.successSoft }]}
+        <Animated.View style={[styles.wrapper, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+
+            {/* ── RENT ROW (compact horizontal card) ── */}
+            <TouchableOpacity
+                activeOpacity={isRentDue ? 0.85 : 1}
+                onPress={() => isRentDue && navigation.navigate('Dues')}
+                style={[styles.rentRow, { borderColor: isRentDue ? '#FECACA' : '#BBF7D0' }]}
             >
-                <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 16, gap: 14 }}>
-                    <View style={[styles.iconWrap, { backgroundColor: dueAmount > 0 ? theme.colors.dangerSoft : theme.colors.successSoft }]}>
-                        {dueAmount > 0
-                            ? <AlertCircle size={24} color={theme.colors.danger} strokeWidth={2.5} />
-                            : <CheckCircle2 size={24} color={theme.colors.successDark} strokeWidth={2.5} />
-                        }
-                    </View>
-                    
-                    <View style={{ flex: 1 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                            <Text style={styles.dueTitleText}>
-                                {dueAmount > 0 ? 'Rent Due' : 'Rent Cleared'}
+                {/* Icon */}
+                <View style={[styles.rentIconWrap, { backgroundColor: isRentDue ? theme.colors.dangerSoft : theme.colors.successSoft }]}>
+                    <Ionicons
+                        name={isRentDue ? 'home' : 'checkmark-circle'}
+                        size={20}
+                        color={isRentDue ? theme.colors.danger : theme.colors.successDark}
+                    />
+                </View>
+
+                {/* Info */}
+                <View style={{ flex: 1 }}>
+                    <Text style={styles.rentLabel}>Monthly Rent</Text>
+                    <View style={styles.rentAmountRow}>
+                        <Text style={[styles.rentAmount, { color: isRentDue ? theme.colors.danger : theme.colors.successDark }]}>
+                            ₹{(isRentDue ? dueAmount : totalRentAmount || 0).toLocaleString('en-IN')}
+                        </Text>
+                        <View style={[styles.dueBadge, { backgroundColor: isRentDue ? theme.colors.dangerSoft : theme.colors.successSoft }]}>
+                            <Text style={[styles.rentSub, { color: isRentDue ? theme.colors.danger : theme.colors.successDark }]}>
+                                {isRentDue
+                                    ? (rentDueDate ? `Due ${formatDate(rentDueDate)}` : 'Pending')
+                                    : 'Cleared'
+                                }
                             </Text>
-                            {dueAmount > 0 && rentDueDate && (
-                                <View style={styles.dueBadge}>
-                                    <Text style={styles.dueBadgeText}>Due {formatDate(rentDueDate)}</Text>
-                                </View>
-                            )}
                         </View>
-                        <Text style={[styles.dueAmountText, { color: dueAmount > 0 ? theme.colors.danger : theme.colors.successDark }]}>
-                            ₹{(dueAmount > 0 ? dueAmount : (totalRentAmount || 0)).toLocaleString('en-IN')}
+                    </View>
+                </View>
+
+                {/* CTA */}
+                {isRentDue ? (
+                    <TouchableOpacity
+                        style={styles.payBtn}
+                        onPress={() => navigation.navigate('Dues')}
+                        activeOpacity={0.85}
+                    >
+                        <Text style={styles.payBtnText}>Pay</Text>
+                    </TouchableOpacity>
+                ) : (
+                    <View style={styles.paidChip}>
+                        <Ionicons name="checkmark" size={12} color={theme.colors.successDark} />
+                        <Text style={styles.paidChipText}>Paid</Text>
+                    </View>
+                )}
+            </TouchableOpacity>
+
+            {/* ── BUDGET ROW (compact inline) ── */}
+            <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => navigation.navigate('Expenses')}
+                style={styles.budgetRow}
+            >
+                {/* Icon */}
+                <View style={[styles.budgetIconWrap, { backgroundColor: overBudget ? theme.colors.dangerSoft : theme.colors.primarySoft }]}>
+                    <Ionicons
+                        name="wallet"
+                        size={18}
+                        color={overBudget ? theme.colors.danger : theme.colors.primary}
+                    />
+                </View>
+
+                {/* Label + bar */}
+                <View style={{ flex: 1, gap: 5 }}>
+                    <View style={styles.budgetTopRow}>
+                        <Text style={styles.budgetLabel}>Budget</Text>
+                        <Text style={[styles.budgetAmt, overBudget && { color: theme.colors.danger }]}>
+                            ₹{spent.toLocaleString('en-IN')}
+                            <Text style={styles.budgetOf}> / ₹{budget > 0 ? budget.toLocaleString('en-IN') : '—'}</Text>
                         </Text>
                     </View>
-
-                    {dueAmount > 0 ? (
-                        <View style={[styles.payBtnSolid, { backgroundColor: theme.colors.danger }]}>
-                            <Text style={styles.payBtnSolidText}>Pay Now</Text>
-                        </View>
-                    ) : (
-                        <View style={[styles.dueBadge, { backgroundColor: theme.colors.successSoft }]}>
-                            <Text style={[styles.dueBadgeText, { color: theme.colors.successDark }]}>All Paid</Text>
-                        </View>
-                    )}
-                </View>
-            </TouchableOpacity>
-
-            {/* ── SMALL BUDGET ROW ── */}
-            <TouchableOpacity activeOpacity={0.8} onPress={() => navigation.navigate('Expenses')} style={styles.smallBudgetRow}>
-                <View style={{ width: '100%' }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                        <View style={styles.smallBudgetLeft}>
-                            <Wallet size={16} color={theme.colors.primary} strokeWidth={2} />
-                            <Text style={styles.smallBudgetLabel}>Monthly Budget</Text>
-                        </View>
-                        <View style={styles.smallBudgetRight}>
-                            <Text style={styles.smallBudgetAmount}>
-                                <Text style={[styles.smallBudgetSpent, overBudget && { color: theme.colors.danger }]}>
-                                    ₹{spent.toLocaleString('en-IN')}
-                                </Text>
-                                <Text style={styles.smallBudgetLimit}> / ₹{budget > 0 ? budget.toLocaleString('en-IN') : '0'}</Text>
-                            </Text>
-                            <ChevronRight size={16} color={theme.colors.textMuted} strokeWidth={2.5} style={{ marginLeft: 6 }} />
-                        </View>
+                    <View style={styles.progressTrack}>
+                        <Animated.View
+                            style={[
+                                styles.progressFill,
+                                {
+                                    width: progressAnim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }),
+                                    backgroundColor: overBudget ? theme.colors.danger : theme.colors.primary,
+                                },
+                            ]}
+                        />
                     </View>
-                    <View style={{ height: 6, backgroundColor: 'rgba(109, 74, 255, 0.15)', borderRadius: 3, overflow: 'hidden' }}>
-                        <Animated.View style={{ height: '100%', width: progressAnim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }), backgroundColor: theme.colors.success, borderRadius: 3 }} />
-                    </View>
+                    <Text style={styles.budgetHint}>
+                        {budget > 0
+                            ? (overBudget ? `₹${(spent - budget).toLocaleString('en-IN')} over budget` : `${pctNum}% used this month`)
+                            : 'Tap to set a monthly budget'}
+                    </Text>
                 </View>
+
+                <Ionicons name="chevron-forward" size={14} color={theme.colors.textSubtle} style={{ marginLeft: 8 }} />
             </TouchableOpacity>
-        </View>
+        </Animated.View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
+    wrapper: {
         marginHorizontal: 16,
-        marginBottom: 16,
-        gap: 16,
-    },
-    // SHARED STYLES
-    iconWrap: {
-        width: 48,
-        height: 48,
-        borderRadius: 14,
-        alignItems: 'center',
-        justifyContent: 'center',
+        gap: 10,
+        marginBottom: 8,
     },
 
-    // DUE CARD
-    dueCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 20,
-        shadowColor: theme.colors.primary,
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.08,
-        shadowRadius: 16,
-        elevation: 4,
-        borderWidth: 1,
-        borderColor: theme.colors.borderSoft,
-    },
-    dueContent: {
-        padding: 20,
-    },
-    dueHeaderRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-    dueHeaderLeft: {
+    // ── RENT ROW
+    rentRow: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
+        backgroundColor: theme.colors.surface,
+        borderRadius: 16,
+        paddingVertical: 14,
+        paddingHorizontal: 14,
+        borderWidth: 1.5,
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.06,
+        shadowRadius: 10,
+        elevation: 2,
     },
-    dueTitleText: {
-        fontSize: 16,
+    rentIconWrap: {
+        width: 40,
+        height: 40,
+        borderRadius: 11,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    rentLabel: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: theme.colors.textMuted,
+        marginBottom: 2,
+    },
+    rentAmountRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginTop: 2,
+    },
+    rentAmount: {
+        fontSize: 18,
         fontWeight: '800',
-        color: theme.colors.text,
+        letterSpacing: -0.3,
     },
     dueBadge: {
-        backgroundColor: theme.colors.dangerSoft,
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 8,
+        paddingHorizontal: 6,
+        paddingVertical: 3,
+        borderRadius: 6,
     },
-    dueBadgeText: {
-        fontSize: 11,
-        fontWeight: '800',
-        color: theme.colors.danger,
+    rentSub: {
+        fontSize: 10,
+        fontWeight: '700',
     },
-    dueAmountText: {
-        fontSize: 24,
-        fontWeight: '900',
-        letterSpacing: -0.5,
-    },
-    payBtnSolid: {
+    payBtn: {
+        backgroundColor: theme.colors.danger,
         paddingHorizontal: 16,
-        paddingVertical: 10,
-        borderRadius: 12,
+        paddingVertical: 8,
+        borderRadius: 99,
     },
-    payBtnSolidText: {
-        color: '#FFFFFF',
+    payBtnText: {
         fontSize: 13,
         fontWeight: '800',
+        color: '#FFFFFF',
+    },
+    paidChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: theme.colors.successSoft,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 99,
+    },
+    paidChipText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: theme.colors.successDark,
     },
 
-    // SMALL BUDGET ROW
-    smallBudgetRow: {
+    // ── BUDGET ROW
+    budgetRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        backgroundColor: theme.colors.surface,
+        borderRadius: 16,
+        padding: 14,
+        borderWidth: 1,
+        borderColor: theme.colors.borderSoft,
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 1,
+    },
+    budgetIconWrap: {
+        width: 40,
+        height: 40,
+        borderRadius: 11,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    budgetTopRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        backgroundColor: theme.colors.primarySoft,
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: 'rgba(109, 74, 255, 0.1)',
     },
-    smallBudgetLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-    },
-    smallBudgetLabel: {
-        fontSize: 13,
+    budgetLabel: {
+        fontSize: 12,
         fontWeight: '700',
-        color: theme.colors.primaryDark,
+        color: theme.colors.textMuted,
     },
-    smallBudgetRight: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    smallBudgetAmount: {
-        flexDirection: 'row',
-        alignItems: 'baseline',
-    },
-    smallBudgetSpent: {
-        fontSize: 14,
+    budgetAmt: {
+        fontSize: 13,
         fontWeight: '800',
         color: theme.colors.primaryDark,
     },
-    smallBudgetLimit: {
-        fontSize: 12,
+    budgetOf: {
+        fontSize: 11,
+        fontWeight: '500',
+        color: theme.colors.textMuted,
+    },
+    progressTrack: {
+        height: 5,
+        backgroundColor: theme.colors.borderSoft,
+        borderRadius: 3,
+        overflow: 'hidden',
+    },
+    progressFill: {
+        height: '100%',
+        borderRadius: 3,
+    },
+    budgetHint: {
+        fontSize: 10,
         fontWeight: '600',
-        color: theme.colors.primary,
+        color: theme.colors.textSubtle,
     },
 });

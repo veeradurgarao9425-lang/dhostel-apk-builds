@@ -22,6 +22,7 @@ import { colors, radius, spacing, shadow } from '../theme';
 import { formatCurrency } from '../utils/format';
 import api from '../services/api';
 import AppHeader from '../components/ui/AppHeader';
+import { QuickTips } from '../components/dashboard/QuickTips';
 
 const BLUE      = colors.primary;       // #6D4AFF — brand purple
 const BLUE_DARK = colors.primaryDark;   // #5B39E0
@@ -102,11 +103,10 @@ function getModeStyle(mode?: string) {
   return modeStyle[key] || modeStyle['default'];
 }
 
-// ── Payment tips shown at bottom of "This Month" ─────────────────────
 const PAYMENT_TIPS = [
-  { Icon: Calendar, title: 'Avoid Late Fees', text: 'Pay before the due date to avoid late fees.', bg: '#F8FAFC', iconBg: '#EEF2FF', iconColor: '#2952F3', textColor: '#0F172A', descColor: '#64748B' },
-  { Icon: Receipt,  title: 'Keep Records', text: 'Always save your transactions.', bg: '#F8FAFC', iconBg: '#EEF2FF', iconColor: '#2952F3', textColor: '#0F172A', descColor: '#64748B' },
-  { Icon: ShieldCheck, title: 'Instant Confirm', text: 'Use UPI or net banking for instant confirmation.', bg: '#F8FAFC', iconBg: '#EEF2FF', iconColor: '#2952F3', textColor: '#0F172A', descColor: '#64748B' },
+  { id: '1', icon: 'calendar', title: 'Avoid Late Fees', desc: 'Pay before the due date to avoid late fees.', colors: ['#F8FAFC', '#EEF2FF'], iconColor: '#2952F3' },
+  { id: '2', icon: 'receipt',  title: 'Keep Records', desc: 'Always save your transactions for your personal records.', colors: ['#F8FAFC', '#EEF2FF'], iconColor: '#2952F3' },
+  { id: '3', icon: 'shield-checkmark', title: 'Instant Confirm', desc: 'Use UPI or net banking for instant payment confirmation.', colors: ['#F8FAFC', '#EEF2FF'], iconColor: '#2952F3' },
 ];
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -378,9 +378,9 @@ export default function DuesScreen({ route, navigation }: any) {
         {loading ? (
           <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
             {/* List Item Skeletons */}
-            <View style={{ height: 75, backgroundColor: '#F8FAFC', borderRadius: 16, marginBottom: 12, opacity: 0.7 }} />
-            <View style={{ height: 75, backgroundColor: '#F8FAFC', borderRadius: 16, marginBottom: 12, opacity: 0.7 }} />
-            <View style={{ height: 75, backgroundColor: '#F8FAFC', borderRadius: 16, opacity: 0.7 }} />
+            <View style={{ height: 75, backgroundColor: '#E2E8F0', borderRadius: 16, marginBottom: 12, opacity: 0.6 }} />
+            <View style={{ height: 75, backgroundColor: '#E2E8F0', borderRadius: 16, marginBottom: 12, opacity: 0.6 }} />
+            <View style={{ height: 75, backgroundColor: '#E2E8F0', borderRadius: 16, opacity: 0.6 }} />
           </View>
         ) : error ? (
           <View style={{ marginTop: 60 }}>
@@ -501,26 +501,7 @@ export default function DuesScreen({ route, navigation }: any) {
 
             {/* Payment Tips */}
             <View style={{ marginTop: 20, marginBottom: 10 }}>
-              <Text style={styles.groupLabel}>Quick Tips</Text>
-              <ScrollView 
-                horizontal 
-                showsHorizontalScrollIndicator={false} 
-                contentContainerStyle={{ paddingHorizontal: 20, gap: 12, paddingBottom: 16 }}
-                snapToInterval={280}
-                decelerationRate="fast"
-              >
-                {PAYMENT_TIPS.map(({ Icon, title, text, bg, iconBg, iconColor, textColor, descColor }, i) => (
-                  <View key={i} style={{ width: 268, borderRadius: 16, backgroundColor: bg, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: iconBg }}>
-                    <View style={{ backgroundColor: iconBg, width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}>
-                      <Icon size={22} color={iconColor} strokeWidth={2.5} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: textColor, fontSize: 14, fontWeight: '800', marginBottom: 2 }}>{title}</Text>
-                      <Text style={{ color: descColor, fontSize: 12, lineHeight: 16 }}>{text}</Text>
-                    </View>
-                  </View>
-                ))}
-              </ScrollView>
+              <QuickTips tips={PAYMENT_TIPS} />
             </View>
           </View>
 
@@ -688,7 +669,7 @@ const styles = StyleSheet.create({
   heroSingleTop:    { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 },
   heroSingleLabel:  { fontSize: 13, fontWeight: '600', color: TEXT_MID, marginBottom: 3 },
   heroSingleDate:   { fontSize: 11, color: TEXT_MID },
-  heroSingleAmount: { fontSize: 36, fontWeight: '900', color: colors.danger, letterSpacing: -1, marginBottom: 4 },
+  heroSingleAmount: { fontSize: 28, fontWeight: '900', color: colors.danger, letterSpacing: -1, marginBottom: 4 },
   heroSinglePartial:{ fontSize: 12, color: colors.primary, fontWeight: '600', marginBottom: 12 },
   heroIconBadge:    { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   heroPayBtn:       { borderRadius: 14, overflow: 'hidden', marginTop: 16 },
@@ -723,7 +704,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   splitLabel:  { fontSize: 12, color: TEXT_MID, fontWeight: '600', marginBottom: 4 },
-  splitAmount: { fontSize: 22, fontWeight: '800', marginBottom: 4 },
+  splitAmount: { fontSize: 20, fontWeight: '800', marginBottom: 4 },
   splitStatus: { fontSize: 12, fontWeight: '600' },
 
   // ── Pay Now button ─────────────────────────────────────────────────────────

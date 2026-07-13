@@ -1,20 +1,18 @@
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Home, Wallet, TrendingUp, Megaphone, House, BadgeIndianRupee, ReceiptText, HandCoins, FileSpreadsheet, ClipboardList, MessageSquareWarning, BellDot, Sparkles, CircleDollarSign, Landmark } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { theme } from '../theme';
 
 // ── 4-tab configuration ───────────────────────────────────────────────────────
 const TABS = [
-  { label: "Home", route: "Home", Icon: House },
-  { label: "Dues", route: "Dues", Icon: HandCoins },
-  { label: "Expenses", route: "Expenses", Icon: ReceiptText },
-  { label: "Notices", route: "Notices", Icon: Megaphone },
+  { label: "Home", route: "Home", icon: "home" as const },
+  { label: "Dues", route: "Dues", icon: "wallet" as const },
+  { label: "Expenses", route: "Expenses", icon: "receipt" as const },
+  { label: "Notices", route: "Notices", icon: "megaphone" as const },
 ];
 
 const TAB_BAR_HEIGHT = 64;
-const PRIMARY_BLUE = '#2952F3';
-const PRIMARY_SOFT = '#EEF2FF';
-const GREY = '#6B7280';
 
 const BottomTabNavigator = ({ state, navigation }: any) => {
   const insets = useSafeAreaInsets();
@@ -31,7 +29,7 @@ const BottomTabNavigator = ({ state, navigation }: any) => {
         if (routeIndex === -1) return null;
 
         const isActive = state.index === routeIndex;
-        const { Icon } = tab;
+        const iconName = isActive ? tab.icon : (`${tab.icon}-outline` as const);
 
         const handlePress = () => {
           const route = state.routes[routeIndex];
@@ -57,10 +55,10 @@ const BottomTabNavigator = ({ state, navigation }: any) => {
           >
             {/* Icon */}
             <View style={[styles.iconWrap, isActive && styles.iconWrapActive]}>
-              <Icon
-                size={24}
-                color={isActive ? PRIMARY_BLUE : GREY}
-                strokeWidth={isActive ? 2.5 : 1.8}
+              <Ionicons
+                name={iconName as any}
+                size={22}
+                color={isActive ? theme.colors.primary : theme.colors.textMuted}
               />
             </View>
 
@@ -68,7 +66,7 @@ const BottomTabNavigator = ({ state, navigation }: any) => {
             <Text
               style={[
                 styles.label,
-                { color: isActive ? PRIMARY_BLUE : GREY },
+                { color: isActive ? theme.colors.primary : theme.colors.textMuted },
                 isActive && styles.labelActive,
               ]}
               numberOfLines={1}
@@ -88,8 +86,9 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 0,
+    backgroundColor: theme.colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.borderSoft,
     paddingTop: 8,
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -109,23 +108,23 @@ const styles = StyleSheet.create({
     minHeight: TAB_BAR_HEIGHT - 8,
   },
   iconWrap: {
-    width: 52,
+    width: 48,
     height: 32,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   iconWrapActive: {
-    backgroundColor: PRIMARY_SOFT,
+    backgroundColor: theme.colors.primarySoft,
   },
   label: {
-    fontSize: 11,
+    fontSize: 10,
     letterSpacing: 0.1,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   labelActive: {
-    fontWeight: '700',
-    color: PRIMARY_BLUE,
+    fontWeight: '800',
+    color: theme.colors.primary,
   },
 });
 

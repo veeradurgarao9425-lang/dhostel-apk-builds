@@ -1,195 +1,361 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Megaphone, ArrowRight, Bell } from 'lucide-react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../../theme';
 
+interface Meal {
+    key: 'morning' | 'lunch' | 'dinner';
+    title: string;
+    sub: string;
+    time: string;
+    Icon: any;
+    iconColor: string;
+    iconBg: string;
+}
+
 interface MessMenuCardProps {
-    meals: {
-        key: "morning" | "lunch" | "dinner";
-        title: string;
-        sub: string;
-        time: string;
-        Icon: any;
-        iconColor: string;
-        iconBg: string;
-    }[];
+    meals: Meal[];
     recentNotices: any[];
     BLUE: string;
 }
 
-// Accent colors per meal
-const MEAL_COLORS: Record<string, { accent: string; soft: string; gradient: [string, string] }> = {
-    morning: { accent: '#F97316', soft: '#FFF7ED', gradient: ['#F97316', '#FB923C'] },
-    lunch:   { accent: '#EF4444', soft: '#FEF2F2', gradient: ['#EF4444', '#F87171'] },
-    dinner:  { accent: '#8B5CF6', soft: '#F5F3FF', gradient: ['#8B5CF6', '#A78BFA'] },
+const MEAL_CONFIG: Record<string, { icon: string; color: string; soft: string; label: string }> = {
+    morning: { icon: 'sunny',      color: '#EA580C', soft: '#FFF7ED', label: 'Breakfast' },
+    lunch:   { icon: 'restaurant', color: '#16A34A', soft: '#DCFCE7', label: 'Lunch'     },
+    dinner:  { icon: 'moon',       color: '#7C3AED', soft: '#EDE9FE', label: 'Dinner'    },
 };
 
 export const MessMenuCard = ({ meals, recentNotices, BLUE }: MessMenuCardProps) => {
     const navigation = useNavigation<any>();
 
+    // Auto-select the current meal based on time
+    const hour = new Date().getHours();
+    const defaultMeal = hour < 11 ? 'morning' : hour < 17 ? 'lunch' : 'dinner';
+    const [activeMeal, setActiveMeal] = useState<'morning' | 'lunch' | 'dinner'>(defaultMeal);
+
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const slideAnim = useRef(new Animated.Value(10)).current;
+
+    useEffect(() => {
+        Animated.parallel([
+            Animated.timing(fadeAnim, { toValue: 1, duration: 380, delay: 80, useNativeDriver: true }),
+            Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, tension: 80, friction: 10, delay: 80 }),
+        ]).start();
+    }, []);
+
+    // Animate tab switch
+    const contentFade = useRef(new Animated.Value(1)).current;
+    const switchMeal = (key: 'morning' | 'lunch' | 'dinner') => {
+        Animated.sequence([
+            Animated.timing(contentFade, { toValue: 0, duration: 100, useNativeDriver: true }),
+            Animated.timing(contentFade, { toValue: 1, duration: 200, useNativeDriver: true }),
+        ]).start();
+        setActiveMeal(key);
+    };
+
+    const activeMealData = meals.find(m => m.key === activeMeal);
+    const activeCfg = MEAL_CONFIG[activeMeal];
+    const isPlaceholder = !activeMealData?.sub || activeMealData.sub === 'Menu not updated';
+
     return (
-        <View style={{ marginBottom: theme.spacing['2xl'] }}>
-            {/* Today's Menu */}
-            <View style={{ marginBottom: theme.spacing.xl }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.md, paddingHorizontal: 4 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.text }}>Today's Menu</Text>
-                        <View style={{ backgroundColor: theme.colors.primarySoft, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
-                            <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.primary }}>
+        <Animated.View style={[styles.wrapper, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+
+            {/* ══════════════════════════════════════════════
+                TODAY'S MENU CARD
+            ══════════════════════════════════════════════ */}
+            <View style={styles.card}>
+                {/* Card Header */}
+                <View style={styles.cardHeader}>
+                    <View style={styles.titleRow}>
+                        <View style={styles.sectionDot} />
+                        <Text style={styles.cardTitle}>Today's Menu</Text>
+                        <View style={styles.dateBadge}>
+                            <Text style={styles.dateBadgeText}>
                                 {new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
                             </Text>
                         </View>
                     </View>
-                    <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }} onPress={() => navigation.navigate('FullMenu')}>
-                        <Text style={{ fontSize: 13, color: theme.colors.primary, fontWeight: '700' }}>View All</Text>
-                        <ArrowRight size={14} color={theme.colors.primary} strokeWidth={2.5} />
+                    <TouchableOpacity style={styles.viewAllBtn} onPress={() => navigation.navigate('FullMenu')}>
+                        <Text style={styles.viewAllText}>Full Menu</Text>
+                        <Ionicons name="chevron-forward" size={12} color={theme.colors.primary} />
                     </TouchableOpacity>
                 </View>
 
-                <View style={{ gap: theme.spacing.md }}>
-                    {meals.map((meal, idx) => {
-                        const MealIcon = meal.Icon;
-                        const mc = MEAL_COLORS[meal.key] || MEAL_COLORS.morning;
-                        const isPlaceholder = !meal.sub || meal.sub === 'Menu not updated';
-
+                {/* ── Meal Tab Switcher ── */}
+                <View style={styles.tabRow}>
+                    {meals.map((meal) => {
+                        const cfg = MEAL_CONFIG[meal.key];
+                        const isActive = meal.key === activeMeal;
                         return (
                             <TouchableOpacity
-                                key={idx}
-                                activeOpacity={0.9}
-                                onPress={() => navigation.navigate('FullMenu')}
-                                style={styles.mealCard}
+                                key={meal.key}
+                                style={[
+                                    styles.tab,
+                                    isActive && { backgroundColor: cfg.color },
+                                ]}
+                                onPress={() => switchMeal(meal.key)}
+                                activeOpacity={0.8}
                             >
-                                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 14, paddingHorizontal: 16, paddingVertical: 14 }}>
-                                    {/* Solid background icon */}
-                                    <View style={[styles.mealIconWrap, { backgroundColor: mc.soft }]}>
-                                        <MealIcon size={22} color={mc.accent} strokeWidth={2} />
-                                    </View>
-
-                                    {/* Text */}
-                                    <View style={{ flex: 1, paddingRight: 8 }}>
-                                        <Text style={{ fontSize: 15, fontWeight: '800', color: theme.colors.text, marginBottom: 3 }}>{meal.title}</Text>
-                                        {isPlaceholder ? (
-                                            <Text style={{ fontSize: 13, color: theme.colors.primary, fontWeight: '600' }}>+ View menu</Text>
-                                        ) : (
-                                            <Text style={{ fontSize: 13, color: theme.colors.textMuted, fontWeight: '500' }} numberOfLines={1}>{meal.sub}</Text>
-                                        )}
-                                    </View>
-
-                                    {/* Time badge */}
-                                    <View style={{ alignItems: 'flex-end', gap: 6 }}>
-                                        <View style={[styles.timeBadge, { backgroundColor: theme.colors.primarySoft }]}>
-                                            <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.primary }}>{meal.time.split(' - ')[0]}</Text>
-                                        </View>
-                                        <View style={{ backgroundColor: theme.colors.surfaceAlt, width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center' }}>
-                                            <ArrowRight size={14} color={theme.colors.primary} strokeWidth={2.5} />
-                                        </View>
-                                    </View>
-                                </View>
+                                <Ionicons
+                                    name={cfg.icon as any}
+                                    size={13}
+                                    color={isActive ? '#FFFFFF' : theme.colors.textMuted}
+                                />
+                                <Text style={[styles.tabText, isActive && { color: '#FFFFFF' }]}>
+                                    {cfg.label}
+                                </Text>
                             </TouchableOpacity>
                         );
                     })}
                 </View>
-            </View>
 
-            {/* Notice Board */}
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.md, paddingHorizontal: 4, marginTop: 4 }}>
-                <Text style={{ fontSize: 16, fontWeight: '800', color: theme.colors.text }}>Notice Board</Text>
-                {recentNotices.length > 0 && (
-                    <View style={{ backgroundColor: theme.colors.dangerSoft, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
-                        <Text style={{ color: theme.colors.danger, fontSize: 11, fontWeight: '700' }}>{recentNotices.length} new</Text>
-                    </View>
-                )}
-            </View>
-
-            <TouchableOpacity
-                activeOpacity={0.9}
-                onPress={() => navigation.navigate('Notices')}
-                style={styles.noticeCard}
-            >
-                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 14, paddingHorizontal: 16, paddingVertical: 14 }}>
-                    {/* Amber icon */}
-                    <View style={[styles.mealIconWrap, { backgroundColor: '#FEF3C7' }]}>
-                        <Megaphone size={22} color="#D97706" strokeWidth={2} />
+                {/* ── Active Meal Content ── */}
+                <Animated.View style={[styles.mealContent, { opacity: contentFade }]}>
+                    {/* Time row */}
+                    <View style={[styles.timePill, { backgroundColor: activeCfg.soft }]}>
+                        <Ionicons name="time-outline" size={13} color={activeCfg.color} />
+                        <Text style={[styles.timePillText, { color: activeCfg.color }]}>
+                            {activeMealData?.time}
+                        </Text>
                     </View>
 
-                    {recentNotices.length > 0 ? (
-                        <View style={{ flex: 1 }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-                                <Text style={{ color: theme.colors.text, fontSize: 15, fontWeight: '800', flexShrink: 1 }} numberOfLines={1}>
-                                    {recentNotices[0]?.title || 'New Notice'}
-                                </Text>
-                                <View style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
-                                    <Text style={{ color: '#92400E', fontSize: 9, fontWeight: '800', textTransform: 'uppercase' }}>New</Text>
-                                </View>
-                            </View>
-                            <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '500', lineHeight: 18 }} numberOfLines={2}>
-                                {recentNotices[0]?.body || 'Check here for daily updates.'}
-                            </Text>
-                        </View>
+                    {/* Food chips */}
+                    {isPlaceholder ? (
+                        <TouchableOpacity
+                            style={styles.viewMenuBtn}
+                            onPress={() => navigation.navigate('FullMenu')}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons name="eye-outline" size={13} color={theme.colors.primary} />
+                            <Text style={styles.viewMenuText}>Tap to view full menu</Text>
+                        </TouchableOpacity>
                     ) : (
-                        <View style={{ flex: 1 }}>
-                            <Text style={{ color: theme.colors.text, fontSize: 15, fontWeight: '800', marginBottom: 3 }}>Notice Board</Text>
-                            <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '500' }}>No new announcements right now</Text>
+                        <View style={styles.chipsWrap}>
+                            {(activeMealData?.sub || '')
+                                .split(/[,\n]/)
+                                .map((item: string) => item.trim())
+                                .filter((item: string) => item.length > 0)
+                                .map((item: string, idx: number) => (
+                                    <View key={idx} style={[styles.chip, { backgroundColor: activeCfg.soft }]}>
+                                        <Text style={[styles.chipText, { color: activeCfg.color }]}>{item}</Text>
+                                    </View>
+                                ))
+                            }
                         </View>
                     )}
-
-                    <View style={{ backgroundColor: theme.colors.surfaceAlt, width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' }}>
-                        <ArrowRight size={16} color={theme.colors.textMuted} strokeWidth={2.5} />
-                    </View>
-                </View>
-            </TouchableOpacity>
-        </View>
+                </Animated.View>
+            </View>
+        </Animated.View>
     );
 };
 
 const styles = StyleSheet.create({
-    mealCard: {
+    wrapper: {
+        paddingHorizontal: 16,
+        gap: 10,
+        marginBottom: 8,
+    },
+
+    // ── TODAY'S MENU CARD
+    card: {
         backgroundColor: theme.colors.surface,
-        borderRadius: 16,
-        flexDirection: 'row',
-        alignItems: 'stretch',
+        borderRadius: 20,
+        padding: 16,
         borderWidth: 1,
         borderColor: theme.colors.borderSoft,
         shadowColor: theme.colors.primary,
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 12,
-        elevation: 2,
-        overflow: 'hidden',
+        shadowOpacity: 0.06,
+        shadowRadius: 14,
+        elevation: 3,
     },
-    mealIconWrap: {
-        width: 48,
-        height: 48,
-        borderRadius: 12,
+    cardHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'center',
-        justifyContent: 'center',
+        marginBottom: 14,
     },
-    timeBadge: {
+    titleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    sectionDot: {
+        width: 4,
+        height: 16,
+        borderRadius: 2,
+        backgroundColor: theme.colors.primary,
+    },
+    cardTitle: {
+        fontSize: 16,
+        fontWeight: '800',
+        color: theme.colors.text,
+        letterSpacing: -0.2,
+    },
+    dateBadge: {
+        backgroundColor: theme.colors.primarySoft,
         paddingHorizontal: 8,
-        paddingVertical: 4,
+        paddingVertical: 3,
         borderRadius: 8,
     },
-    noticeCard: {
+    dateBadgeText: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: theme.colors.primary,
+    },
+    viewAllBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 2,
+    },
+    viewAllText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: theme.colors.primary,
+    },
+
+    // ── TAB SWITCHER
+    tabRow: {
+        flexDirection: 'row',
+        gap: 8,
+        marginBottom: 16,
+        backgroundColor: theme.colors.surfaceAlt,
+        borderRadius: 12,
+        padding: 4,
+    },
+    tab: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 5,
+        paddingVertical: 8,
+        borderRadius: 9,
+    },
+    tabText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: theme.colors.textMuted,
+    },
+
+    // ── MEAL CONTENT
+    mealContent: {
+        gap: 12,
+    },
+    timePill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        alignSelf: 'flex-start',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 20,
+    },
+    timePillText: {
+        fontSize: 12,
+        fontWeight: '700',
+    },
+    chipsWrap: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 7,
+    },
+    chip: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+    },
+    chipText: {
+        fontSize: 12,
+        fontWeight: '700',
+    },
+    viewMenuBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        backgroundColor: theme.colors.primarySoft,
+        alignSelf: 'flex-start',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
+    },
+    viewMenuText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: theme.colors.primary,
+    },
+
+    // ── NOTICE ROW
+    noticeRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
         backgroundColor: theme.colors.surface,
         borderRadius: 16,
-        flexDirection: 'row',
-        alignItems: 'stretch',
+        paddingVertical: 13,
+        paddingRight: 12,
+        paddingLeft: 16,
         borderWidth: 1,
         borderColor: '#FDE68A',
-        shadowColor: theme.colors.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 12,
+        shadowColor: '#D97706',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.07,
+        shadowRadius: 8,
         elevation: 2,
         overflow: 'hidden',
     },
-    cardIconWrap: {
-        width: 44,
-        height: 44,
-        borderRadius: 12,
+    noticeStripe: {
+        position: 'absolute',
+        left: 0,
+        top: 0,
+        bottom: 0,
+        width: 3,
+        backgroundColor: '#D97706',
+    },
+    noticeIconWrap: {
+        width: 38,
+        height: 38,
+        borderRadius: 10,
+        backgroundColor: '#FEF3C7',
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    noticeTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 2,
+    },
+    noticeTitle: {
+        fontSize: 13,
+        fontWeight: '800',
+        color: theme.colors.text,
+        flexShrink: 1,
+    },
+    noticeBody: {
+        fontSize: 12,
+        fontWeight: '500',
+        color: theme.colors.textMuted,
+    },
+    noticeArrow: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: theme.colors.surfaceAlt,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    newChip: {
+        backgroundColor: '#FEF3C7',
+        paddingHorizontal: 5,
+        paddingVertical: 2,
+        borderRadius: 5,
+    },
+    newChipText: {
+        color: '#92400E',
+        fontSize: 8,
+        fontWeight: '800',
+        letterSpacing: 0.5,
     },
 });

@@ -1,35 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import {
-  StyleSheet, Text, TouchableOpacity, View, ScrollView, StatusBar, ActivityIndicator, FlatList
+  StyleSheet, Text, TouchableOpacity, View, ScrollView, StatusBar, FlatList, Animated, Dimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {
-  Bell, AlertCircle, Wrench, UtensilsCrossed,
-  ChevronRight, SlidersHorizontal, Plus, Calendar
-} from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import api from '../services/api';
-import { mockNotices } from '../data/dummyData';
-import { AppHeader, EmptyState, SkeletonNotificationRow } from '../components/ui';
 import { CustomMonthYearPicker } from '../components/pickers/CustomMonthYearPicker';
 import { LinearGradient } from 'expo-linear-gradient';
+import { theme } from '../theme';
+import { Phase3EmptyState } from '../components/UIComponents';
+import { SkeletonNotificationRow } from '../components/ui';
 
-const BLUE      = '#2245D4';
-const BLUE_SOFT = '#EEF3FF';
-const WHITE     = '#FFFFFF';
-const TEXT_DARK = '#0D1B3E';
-const TEXT_MID  = '#4A5568';
-const TEXT_LIGHT= '#9CA3AF';
-const BG        = '#F8FAFD';
-const BORDER    = '#E8EDF5';
+const { width: SCREEN_W } = Dimensions.get('window');
 
 type FilterTab = 'All' | 'Important' | 'Maintenance' | 'Food' | 'General';
 const FILTER_TABS: FilterTab[] = ['All', 'Important', 'Maintenance', 'Food', 'General'];
 
 const categoryMeta: Record<string, { icon: any; iconColor: string; iconBg: string }> = {
-  Important:   { icon: AlertCircle,     iconColor: '#DC2626', iconBg: '#FEE2E2' },
-  Maintenance: { icon: Wrench,          iconColor: '#EA580C', iconBg: '#FFEDD5' },
-  General:     { icon: Bell,            iconColor: '#2952F3', iconBg: '#EEF2FF' },
-  Food:        { icon: UtensilsCrossed, iconColor: '#16A34A', iconBg: '#DCFCE7' },
+  Important:   { icon: 'alert-circle', iconColor: '#DC2626', iconBg: '#FEE2E2' },
+  Maintenance: { icon: 'build',        iconColor: '#EA580C', iconBg: '#FFEDD5' },
+  General:     { icon: 'notifications',iconColor: theme.colors.primary, iconBg: theme.colors.primarySoft },
+  Food:        { icon: 'restaurant',   iconColor: '#16A34A', iconBg: '#DCFCE7' },
 };
 
 export default function NoticesScreen({ navigation }: any) {
@@ -77,7 +68,6 @@ export default function NoticesScreen({ navigation }: any) {
     return passCategory && passDate;
   });
 
-  // Count badges per filter tab
   const getCounts = () => {
     const counts: Record<string, number> = { All: notices.length };
     FILTER_TABS.forEach(tab => {
@@ -89,31 +79,49 @@ export default function NoticesScreen({ navigation }: any) {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={BLUE} />
+      <StatusBar barStyle="light-content" backgroundColor={theme.colors.primary} />
 
-      <AppHeader
-        title="Notices"
-        subtitle={selectedMonth 
-          ? `Showing notices for ${selectedMonth.toLocaleString('default', { month: 'short' })} ${selectedMonth.getFullYear()}` 
-          : 'Latest hostel announcements'}
-        showBack={navigation.canGoBack()}
-        rightComponent={
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <TouchableOpacity style={styles.hBtn} onPress={() => setShowPicker(true)}>
-              <Calendar size={20} color={WHITE} />
-              {selectedMonth && <View style={styles.filterDot} />}
-            </TouchableOpacity>
-            {selectedMonth && (
-              <TouchableOpacity style={styles.hBtn} onPress={() => setSelectedMonth(null)}>
-                <Plus size={20} color={WHITE} style={{ transform: [{ rotate: '45deg' }] }} />
+      {/* ── Header ── */}
+      <LinearGradient
+        colors={[theme.colors.primary, theme.colors.primaryDark]}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+        style={styles.headerWrap}
+      >
+        <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
+          <View style={styles.header}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              {navigation.canGoBack() && (
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                  <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+                </TouchableOpacity>
+              )}
+              <View>
+                <Text style={styles.headerGreeting}>Notice Board</Text>
+                <Text style={styles.headerSub}>
+                  {selectedMonth 
+                    ? `Notices for ${selectedMonth.toLocaleString('default', { month: 'short' })} ${selectedMonth.getFullYear()}` 
+                    : 'Latest hostel announcements'}
+                </Text>
+              </View>
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity style={styles.hBtn} onPress={() => setShowPicker(true)}>
+                <Ionicons name="calendar-outline" size={20} color="#FFFFFF" />
+                {selectedMonth && <View style={styles.filterDot} />}
               </TouchableOpacity>
-            )}
+              {selectedMonth && (
+                <TouchableOpacity style={styles.hBtn} onPress={() => setSelectedMonth(null)}>
+                  <Ionicons name="close" size={20} color="#FFFFFF" />
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
-        }
-      />
+        </SafeAreaView>
+      </LinearGradient>
 
-      {/* ── Tabs Outside Header ── */}
-      <View style={{ paddingTop: 12, paddingBottom: 4 }}>
+      {/* ── Tabs ── */}
+      <View style={styles.filterScrollWrap}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContainer}>
           {FILTER_TABS.map(tab => {
             const isActive = activeFilter === tab;
@@ -144,8 +152,6 @@ export default function NoticesScreen({ navigation }: any) {
         initialDate={selectedMonth || new Date()}
       />
 
-
-
       {/* ── Notices List ── */}
       <View style={{ flex: 1 }}>
         {loading ? (
@@ -156,7 +162,7 @@ export default function NoticesScreen({ navigation }: any) {
           </View>
         ) : error ? (
           <View style={{ marginTop: 60 }}>
-            <Text style={{ textAlign: 'center', color: TEXT_MID }}>Network error occurred.</Text>
+            <Text style={{ textAlign: 'center', color: theme.colors.textMuted }}>Network error occurred.</Text>
           </View>
         ) : (
           <FlatList
@@ -165,71 +171,171 @@ export default function NoticesScreen({ navigation }: any) {
             contentContainerStyle={styles.noticesWrapper}
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={
-              <EmptyState
-                icon={Bell}
-                title="No notices found"
-                message="Your hostel announcements will appear here."
-                action={{ label: "Refresh", onPress: fetchNotices }}
-              />
+              <Phase3EmptyState variant="notices" onAction={fetchNotices} />
             }
             renderItem={({ item: notice }) => {
               const meta = categoryMeta[notice.category] || categoryMeta.General;
-              const Icon = meta.icon;
               return (
-                <TouchableOpacity activeOpacity={0.85} style={{ marginBottom: 16, marginHorizontal: 20 }}>
-                  <LinearGradient
-                    colors={['#FFFFFF', '#F8FAFC']}
-                    style={{ borderRadius: 24, padding: 16, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#F1F5F9', shadowColor: meta.iconColor, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 16, elevation: 5 }}
-                  >
-                    <View style={{ backgroundColor: meta.iconBg, width: 52, height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
-                      <Icon size={24} color={meta.iconColor} strokeWidth={2.5} />
+                <TouchableOpacity activeOpacity={0.85} style={styles.noticeCard}>
+                  {/* Category Accent */}
+                  <View style={[styles.accentLine, { backgroundColor: meta.iconColor }]} />
+
+                  <View style={styles.cardContent}>
+                    <View style={[styles.iconWrap, { backgroundColor: meta.iconBg }]}>
+                      <Ionicons name={meta.icon as any} size={22} color={meta.iconColor} />
                     </View>
+
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 16, fontWeight: '800', color: '#0F172A', marginBottom: 4 }} numberOfLines={1}>{notice.title}</Text>
-                      <Text style={{ fontSize: 13, color: '#64748B', lineHeight: 18 }} numberOfLines={2}>{notice.body}</Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10 }}>
-                        <Calendar size={12} color="#94A3B8" />
-                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#94A3B8', marginLeft: 4 }}>{notice.date}</Text>
+                      <View style={styles.noticeTopRow}>
+                        <Text style={styles.noticeCategory} numberOfLines={1}>{notice.category}</Text>
+                        <View style={styles.dateChip}>
+                          <Ionicons name="calendar-outline" size={10} color={theme.colors.textSubtle} />
+                          <Text style={styles.noticeDate}>{notice.date}</Text>
+                        </View>
                       </View>
+
+                      <Text style={styles.noticeTitle} numberOfLines={2}>{notice.title}</Text>
+                      <Text style={styles.noticeBody} numberOfLines={3}>{notice.body}</Text>
                     </View>
-                  </LinearGradient>
+                  </View>
                 </TouchableOpacity>
               );
             }}
           />
         )}
       </View>
-
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: BG },
-  headerWrap: { backgroundColor: BLUE, paddingBottom: 16 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 },
-  headerGreeting: { color: WHITE, fontSize: 18, fontWeight: '700' },
-  headerSub:      { color: 'rgba(255,255,255,0.8)', fontSize: 13, marginTop: 2 },
+  root: { flex: 1, backgroundColor: theme.colors.bg },
+  
+  // Header
+  headerWrap: {
+    paddingBottom: 16,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerGreeting: { color: '#FFFFFF', fontSize: 22, fontWeight: '800', letterSpacing: -0.5 },
+  headerSub: { color: 'rgba(255,255,255,0.8)', fontSize: 13, marginTop: 2, fontWeight: '500' },
   hBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
-  filterDot: { position: 'absolute', top: 10, right: 10, width: 8, height: 8, borderRadius: 4, backgroundColor: '#EF4444', borderWidth: 1, borderColor: BLUE },
+  filterDot: { position: 'absolute', top: 10, right: 10, width: 8, height: 8, borderRadius: 4, backgroundColor: '#EF4444', borderWidth: 1, borderColor: theme.colors.primary },
 
-  filterScroll:    { backgroundColor: WHITE, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: BORDER },
+  // Filters
+  filterScrollWrap: {
+    backgroundColor: theme.colors.surface,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.borderSoft,
+  },
   filterContainer: { paddingHorizontal: 16, gap: 10 },
-  filterChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: BG, borderWidth: 1, borderColor: BORDER },
-  filterChipActive:    { backgroundColor: BLUE, borderColor: BLUE },
-  filterText:          { fontSize: 13, fontWeight: '600', color: TEXT_MID },
-  filterTextActive:    { color: WHITE },
-  countBadge:          { minWidth: 20, height: 20, borderRadius: 10, backgroundColor: BLUE_SOFT, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
-  countBadgeActive:    { backgroundColor: 'rgba(255,255,255,0.25)' },
-  countBadgeText:      { fontSize: 10, fontWeight: '800', color: BLUE },
-  countBadgeTextActive:{ color: WHITE },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: theme.colors.bg,
+    borderWidth: 1,
+    borderColor: theme.colors.borderSoft,
+  },
+  filterChipActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
+  filterText: { fontSize: 13, fontWeight: '600', color: theme.colors.textMuted },
+  filterTextActive: { color: '#FFFFFF' },
+  countBadge: { minWidth: 20, height: 20, borderRadius: 10, backgroundColor: theme.colors.primarySoft, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
+  countBadgeActive: { backgroundColor: 'rgba(255,255,255,0.25)' },
+  countBadgeText: { fontSize: 10, fontWeight: '800', color: theme.colors.primary },
+  countBadgeTextActive: { color: '#FFFFFF' },
 
-  noticesWrapper: { paddingHorizontal: 16, paddingTop: 12, gap: 12 },
-  noticeCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: WHITE, borderRadius: 16, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 1, borderWidth: 1, borderColor: BORDER },
-  noticeIconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  noticeTitle:    { fontSize: 15, fontWeight: '700', color: TEXT_DARK, marginBottom: 4 },
-  noticeBody:     { fontSize: 13, color: TEXT_MID, lineHeight: 18, marginBottom: 6 },
-  noticeDate:     { fontSize: 11, color: TEXT_LIGHT, fontWeight: '500' },
-  emptyState:     { alignItems: 'center', justifyContent: 'center', marginTop: 80, opacity: 0.7 },
-  emptyText:      { marginTop: 16, fontSize: 15, color: TEXT_MID, fontWeight: '500' },
+  // List
+  noticesWrapper: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 100, gap: 12 },
+  
+  // Notice Card
+  noticeCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: theme.colors.borderSoft,
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  accentLine: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+  },
+  cardContent: {
+    flexDirection: 'row',
+    padding: 16,
+    gap: 14,
+  },
+  iconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noticeTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  noticeCategory: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: theme.colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  dateChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: theme.colors.surfaceAlt,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  noticeDate: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: theme.colors.textMuted,
+  },
+  noticeTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: theme.colors.text,
+    marginBottom: 6,
+    lineHeight: 20,
+  },
+  noticeBody: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: theme.colors.textSubtle,
+    lineHeight: 18,
+  },
 });

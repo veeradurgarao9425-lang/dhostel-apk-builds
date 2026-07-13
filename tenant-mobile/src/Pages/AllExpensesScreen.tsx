@@ -15,7 +15,7 @@ import { useFocusEffect } from '@react-navigation/native';
 
 import { useToast } from '../context/ToastContext';
 import { Phase3EmptyState, BaseBottomSheet } from '../components/UIComponents';
-import CategoryGlowBadge from '../components/ui/CategoryGlowBadge';
+// import CategoryGlowBadge from '../components/ui/CategoryGlowBadge';
 import { SkeletonExpenseCard } from '../components/ui/SkeletonLoader';
 import api from '../services/api';
 
@@ -198,7 +198,7 @@ export default function AllExpensesScreen({ navigation }: any) {
           const meta = CATS[cat]; const active = activeFilter === cat;
           return (
             <TouchableOpacity key={cat} style={[s.filterPill, active && { backgroundColor: meta ? meta.bg : BLUE, borderColor: meta ? meta.color : BLUE }]} onPress={() => setActiveFilter(cat)} activeOpacity={0.7}>
-              {meta && <CategoryGlowBadge category={cat} size="xs" active={active} />}
+              {meta && <meta.Icon size={14} color={active ? meta.color : '#94A3B8'} strokeWidth={2.5} />}
               <Text style={[s.filterPillText, active && { color: meta ? meta.color : WHITE, fontWeight: '700' }]}>{cat}</Text>
             </TouchableOpacity>
           );
@@ -247,8 +247,10 @@ export default function AllExpensesScreen({ navigation }: any) {
                     {items.map((item: any) => {
                       const meta = CATS[item.cat] || CATS.Others;
                       return (
-                        <TouchableOpacity key={item.id} style={[s.row, { backgroundColor: WHITE, borderColor: 'rgba(0,0,0,0.04)', borderWidth: 1, borderRadius: 16, borderLeftWidth: 3, borderLeftColor: meta.color }]} activeOpacity={0.7}>
-                          <CategoryGlowBadge category={item.cat} size="md" />
+                        <TouchableOpacity key={item.id} style={[s.row, { backgroundColor: WHITE, borderColor: 'rgba(0,0,0,0.04)', borderWidth: 1, borderRadius: 16 }]} activeOpacity={0.7}>
+                          <View style={{ width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: meta.bg, marginRight: 12 }}>
+                            <meta.Icon size={22} color={meta.color} strokeWidth={2.2} />
+                          </View>
                           <View style={{ flex: 1 }}><Text style={s.rowTitle}>{item.title}</Text><Text style={s.rowTime}>{item.time}</Text></View>
                           <View style={{ alignItems: 'flex-end' }}>
                             <Text style={s.rowAmt}>- ₹{item.amt}</Text>

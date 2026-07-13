@@ -17,24 +17,8 @@ export function SkeletonBox({
   borderRadius = radius.sm,
   style,
 }: SkeletonBoxProps) {
-  const pulse = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: 900, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0, duration: 900, useNativeDriver: true }),
-      ])
-    ).start();
-    return () => pulse.stopAnimation();
-  }, [pulse]);
-
-  const shimmerOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0, 0.4] });
-
   return (
-    <View style={[{ width: width as any, height, borderRadius, backgroundColor: '#F1F5F9', overflow: 'hidden' }, style]}>
-      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: '#FFFFFF', opacity: shimmerOpacity }]} />
-    </View>
+    <View style={[{ width: width as any, height, borderRadius, backgroundColor: '#E2E8F0', opacity: 0.6, overflow: 'hidden' }, style]} />
   );
 }
 

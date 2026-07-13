@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle } from 'react-native-svg';
 import { ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, Search, X } from 'lucide-react-native';
 import { MonthYearPickerSheet } from '../components/UIComponents';
-import CategoryGlowBadge from '../components/ui/CategoryGlowBadge';
+// import CategoryGlowBadge from '../components/ui/CategoryGlowBadge';
 import CategoryHeroArt from '../components/ui/CategoryHeroArt';
 import { SkeletonListRow } from '../components/ui/SkeletonLoader';
 import { getCategoryTheme, getCategoryHeroImage } from '../constants/categoryTheme';
@@ -180,7 +180,9 @@ export default function CategoryDetailScreen({ navigation, route }: any) {
         {!hasHeroImage && (
           <View style={[s.heroInner, { flex: 1, justifyContent: 'center' }]}>
             <View style={s.heroContent}>
-              <CategoryGlowBadge category={categoryName} size="hero" pulse entrance />
+              <View style={{ width: 84, height: 84, borderRadius: 42, backgroundColor: catMeta.bg, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                <catMeta.Icon size={38} color={catMeta.color} />
+              </View>
               <Text style={s.heroTitle}>{categoryName}</Text>
               <Text style={s.heroSub}>{`All ${categoryName} expenses`}</Text>
             </View>
@@ -259,7 +261,9 @@ export default function CategoryDetailScreen({ navigation, route }: any) {
                 filteredRecent.map((item, i) => {
                   return (
                     <View key={item.id} style={[s.row, i < filteredRecent.length - 1 && s.rowBorder]}>
-                      <CategoryGlowBadge category={categoryName} size="sm" style={{ marginRight: 12 }} />
+                      <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: catMeta.bg, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                        <catMeta.Icon size={20} color={catMeta.color} />
+                      </View>
                       <View style={{ flex: 1 }}>
                         <Text style={s.rowTitle}>{item.title}</Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>

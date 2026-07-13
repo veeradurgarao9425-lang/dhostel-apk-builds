@@ -2,7 +2,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, ScrollView, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { FileText, FileCheck2, Receipt, IdCard, Download, File, ArrowLeft } from 'lucide-react-native';
+import { FileText, FileCheck2, Receipt, IdCard, Download, File, ArrowLeft, Plus } from 'lucide-react-native';
 
 import { useToast } from '../context/ToastContext';
 import { Phase3ErrorState, DocumentsSkeleton } from '../components/UIComponents';
@@ -168,24 +168,22 @@ export default function DocumentsScreen({ navigation }: any) {
             <Phase3ErrorState variant="server" onAction={fetchDocuments} />
           </View>
         ) : documents.length === 0 ? (
-          <View style={s.emptyCard}>
-            <View style={[s.emptyIconWrap, { backgroundColor: BLUE_SOFT }]}>
-              <FileText size={32} color={BLUE} />
-            </View>
-            <Text style={s.emptyTitle}>No Documents Found</Text>
-            <Text style={s.emptySub}>Your rental agreement, payment receipts, and KYC documents will appear here once verified.</Text>
-          </View>
+          <EmptyState
+            icon={FileText}
+            title="No Documents Found"
+            message="Your rental agreement, payment receipts, and KYC documents will appear here once verified."
+          />
         ) : null}
 
         {!loading && !error && documents.length > 0 && (() => {
           const filtered = activeFilter === 'All' ? documents : documents.filter(d => d.type === activeFilter);
           if (filtered.length === 0) return (
-            <View style={s.emptyCard}>
-              <View style={[s.emptyIconWrap, { backgroundColor: '#F1F5F9' }]}>
-                <FileText size={32} color={TEXT_MID} />
-              </View>
-              <Text style={s.emptyTitle}>No {activeFilter} Documents</Text>
-              <Text style={s.emptySub}>No documents of this type found.</Text>
+            <View style={{ marginTop: 24 }}>
+              <EmptyState
+                icon={FileText}
+                title={`No ${activeFilter} Documents`}
+                message="No documents of this type found."
+              />
             </View>
           );
           return (
@@ -223,7 +221,17 @@ export default function DocumentsScreen({ navigation }: any) {
             <FileErrorState type={dlError} />
           </View>
         )}
+        )}
       </ScrollView>
+
+      {/* Floating Action Button for Upload */}
+      <TouchableOpacity 
+        style={s.fab}
+        onPress={() => showError('Document upload feature coming soon!')}
+        activeOpacity={0.9}
+      >
+        <Plus size={24} color="#FFF" />
+      </TouchableOpacity>
 
       {/* ── Download Progress Sheet ── */}
       <DownloadProgressSheet
@@ -255,4 +263,5 @@ const s = StyleSheet.create({
   metaTxt: { fontSize: 13, color: TEXT_MID, fontWeight: '500' },
   dlBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: BLUE_SOFT, alignItems: 'center', justifyContent: 'center' },
   divider: { height: 1, backgroundColor: BORDER, marginLeft: 64 },
+  fab: { position: 'absolute', bottom: 32, right: 24, width: 60, height: 60, borderRadius: 30, backgroundColor: BLUE, justifyContent: 'center', alignItems: 'center', shadowColor: BLUE, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 16, elevation: 12 },
 });

@@ -10,15 +10,18 @@ import {
   Platform,
   Modal,
 } from 'react-native';
-import { Wallet, Receipt, X, Check, Plus, ArrowDownLeft, ArrowUpRight } from 'lucide-react-native';
+import { Wallet, Receipt, X, Check, Plus, ArrowDownLeft, ArrowUpRight, UserPlus } from 'lucide-react-native';
+import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppHeader, SkeletonExpenseCard, EmptyState } from '../components/ui';
+import { BaseBottomSheet, ConfirmationDialog } from '../components/UIComponents';
 import { colors } from '../theme';
 import { formatCurrency, relativeDay } from '../utils/format';
 import { useSplits, YOU_ID } from '../hooks/useSplits';
 
 export default function SplitsScreen() {
+  const navigation = useNavigation();
   const {
     loaded,
     members,
@@ -28,6 +31,7 @@ export default function SplitsScreen() {
     removeMember,
     addExpense,
     removeExpense,
+    settleAll,
   } = useSplits();
 
   // Drawer States
@@ -40,6 +44,12 @@ export default function SplitsScreen() {
 
   // Add Member State
   const [newMemberName, setNewMemberName] = useState('');
+
+  // Settle State
+  const [settleMember, setSettleMember] = useState<any>(null);
+
+  // Delete States
+  const [deleteMemberId, setDeleteMemberId] = useState<string | null>(null);
 
   const youBalance = balances.find((b) => b.member.id === YOU_ID)?.net ?? 0;
   const nameById = (id: string) => members.find((m) => m.id === id)?.name ?? '—';
@@ -67,6 +77,16 @@ export default function SplitsScreen() {
       setNewMemberName('');
       setActiveDrawer('none');
     }
+  };
+
+  const executeSettle = () => {
+    if (!settleMember) return;
+    if (settleMember.net < 0) {
+      addExpense({ title: 'Payment', amount: Math.abs(settleMember.net), paidById: settleMember.member.id, participantIds: [YOU_ID] });
+    } else {
+      addExpense({ title: 'Payment', amount: settleMember.net, paidById: YOU_ID, participantIds: [settleMember.member.id] });
+    }
+    setSettleMember(null);
   };
 
   if (!loaded) {
@@ -118,10 +138,11 @@ export default function SplitsScreen() {
 
         {/* Roommates & Balances */}
         <View style={{ paddingHorizontal: 16, marginTop: 20 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <Text style={styles.sectionTitle}>Roommates</Text>
-            <TouchableOpacity onPress={() => setActiveDrawer('member')} style={{ paddingVertical: 4 }}>
-              <Text style={{ fontSize: 14, fontWeight: '700', color: '#2952F3' }}>+ Add Roommate</Text>
+            <TouchableOpacity onPress={() => setActiveDrawer('member')} style={styles.pillBtn} activeOpacity={0.7}>
+              <UserPlus size={16} color="#2952F3" strokeWidth={2.5} />
+              <Text style={styles.pillBtnTxt}>Add</Text>
             </TouchableOpacity>
           </View>
           
@@ -143,9 +164,18 @@ export default function SplitsScreen() {
                     {b.net === 0 ? 'Settled' : b.net > 0 ? `To get ${formatCurrency(b.net)}` : `To pay ${formatCurrency(Math.abs(b.net))}`}
                   </Text>
                 </View>
+                {b.member.id !== YOU_ID && b.net !== 0 && (
+                  <TouchableOpacity onPress={() => setSettleMember(b)} style={{ backgroundColor: '#2952F3', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, marginLeft: 8 }}>
+                    <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>Settle</Text>
+                  </TouchableOpacity>
+                )}
                 {b.member.id !== YOU_ID && b.net === 0 && (
-                  <TouchableOpacity onPress={() => removeMember(b.member.id)} style={{ padding: 4, marginLeft: 8 }}>
-                    <X size={16} color={colors.textMuted} />
+                  <TouchableOpacity 
+                    onPress={() => setDeleteMemberId(b.member.id)} 
+                    style={{ padding: 8, marginLeft: 8 }}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <X size={18} color={colors.textMuted} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -154,64 +184,76 @@ export default function SplitsScreen() {
         </View>
 
         {/* Recent Expenses List */}
-        <View style={{ paddingHorizontal: 16, marginTop: 20 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <View style={{ paddingHorizontal: 16, marginTop: 24 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <Text style={styles.sectionTitle}>Recent Expenses</Text>
-            <TouchableOpacity 
-              style={styles.smallAddBtn}
-              onPress={() => setActiveDrawer('expense')}
-            >
-              <Plus size={16} color="#FFF" />
-              <Text style={styles.smallAddBtnTxt}>Add</Text>
-            </TouchableOpacity>
+            {expenses.length > 0 && (
+              <TouchableOpacity onPress={() => navigation.navigate('SplitHistory' as never)}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#2952F3' }}>View All</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {expenses.length === 0 ? (
             <EmptyState
               icon={Receipt}
               title="No expenses yet"
-              message="Start sharing bills with your roommates."
+              description="Add an expense to start splitting with your roommates."
             />
           ) : (
-            <View style={styles.card}>
-              {expenses.map((e, i) => (
-                <View key={e.id} style={[styles.row, i !== 0 && styles.divider]}>
-                  <View style={{ flexDirection: 'row', flex: 1, alignItems: 'center' }}>
-                    <View style={styles.expIcon}>
-                      <Receipt size={18} color="#64748B" />
+            <View style={{ gap: 12 }}>
+              {expenses.slice(0, 5).map((e, i) => {
+                const iconColors = ['#6D4AFF', '#10B981', '#F59E0B', '#EF4444', '#06B6D4', '#8B5CF6', '#EC4899'];
+                const itemColor = iconColors[e.title.length % iconColors.length];
+                
+                return (
+                  <View key={e.id} style={[styles.card, { padding: 14, flexDirection: 'row', alignItems: 'center' }]}>
+                    <View style={{ flexDirection: 'row', flex: 1, alignItems: 'center' }}>
+                      <View style={[styles.expIcon, { backgroundColor: itemColor + '1A' }]}>
+                        <Receipt size={22} color={itemColor} strokeWidth={2.2} />
+                      </View>
+                      <View style={{ flex: 1, marginLeft: 12 }}>
+                        <Text style={styles.expTitle}>{e.title}</Text>
+                        <Text style={styles.expSub}>
+                          Paid by {nameById(e.paidById)} • {relativeDay(e.date)}
+                        </Text>
+                      </View>
                     </View>
-                    <View style={{ flex: 1, marginLeft: 12 }}>
-                      <Text style={styles.expTitle}>{e.title}</Text>
-                      <Text style={styles.expSub}>
-                        Paid by {nameById(e.paidById)} • {relativeDay(e.date)}
+                    <View style={{ alignItems: 'flex-end', marginLeft: 12 }}>
+                      <Text style={styles.expAmt}>{formatCurrency(e.amount)}</Text>
+                      <Text style={{ fontSize: 12, color: '#94A3B8', fontWeight: '600', marginTop: 2 }}>
+                        {e.participantIds.length > 1 ? `Split ${e.participantIds.length}` : 'Payment'}
                       </Text>
                     </View>
                   </View>
-                  <View style={{ alignItems: 'flex-end', marginLeft: 12 }}>
-                    <Text style={styles.expAmt}>{formatCurrency(e.amount)}</Text>
-                    <TouchableOpacity onPress={() => removeExpense(e.id)} style={{ padding: 4, marginTop: 2 }}>
-                      <Text style={{ fontSize: 11, color: colors.danger, fontWeight: '700' }}>Remove</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))}
+                );
+              })}
             </View>
           )}
         </View>
 
       </ScrollView>
 
+      {/* Floating Action Button for Add Expense */}
+      <TouchableOpacity 
+        style={styles.fab}
+        onPress={() => setActiveDrawer('expense')}
+        activeOpacity={0.9}
+      >
+        <Plus size={28} color="#FFF" strokeWidth={3} />
+      </TouchableOpacity>
+
       {/* Bottom Drawer for Add Expense */}
-      <Modal visible={activeDrawer === 'expense'} transparent animationType="slide" onRequestClose={() => setActiveDrawer('none')}>
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setActiveDrawer('none')} />
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-            <View style={styles.bottomSheet}>
-              <View style={styles.sheetHandle} />
+      <BaseBottomSheet visible={activeDrawer === 'expense'} onClose={() => setActiveDrawer('none')}>
+        <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 550 }} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <Text style={styles.sheetTitle}>Add Expense</Text>
-                <TouchableOpacity onPress={() => setActiveDrawer('none')} style={{ padding: 4 }}>
-                  <X size={20} color="#64748B" />
+                <TouchableOpacity 
+                  onPress={() => setActiveDrawer('none')} 
+                  style={{ padding: 8, marginRight: -8 }}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <X size={24} color="#64748B" />
                 </TouchableOpacity>
               </View>
 
@@ -222,8 +264,24 @@ export default function SplitsScreen() {
                 placeholderTextColor="#9CA3AF"
                 value={title}
                 onChangeText={setTitle}
-                autoFocus
               />
+
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20, flexGrow: 0 }} contentContainerStyle={{ gap: 8 }}>
+                {['🍔 Food', '🚕 Travel', '🏠 Rent', '🛒 Groceries', '📶 WiFi', '🎬 Movies', '⚡ Electricity', '💧 Water', '💊 Meds', '👔 Clothes', '🍕 Snacks', '🎉 Party'].map(cat => {
+                  // We remove emojis just to check if it's strictly equivalent, but setting it sets the whole string.
+                  const isActive = title === cat;
+                  return (
+                    <TouchableOpacity 
+                      key={cat}
+                      style={[styles.catChip, isActive && styles.catChipActive]}
+                      onPress={() => setTitle(cat)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.catChipTxt, isActive && styles.catChipTxtActive]}>{cat}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
               
               <Text style={styles.inputLabel}>Total Amount (₹)</Text>
               <TextInput
@@ -263,23 +321,20 @@ export default function SplitsScreen() {
               >
                 <Text style={styles.primaryBtnLargeTxt}>Split Equally</Text>
               </TouchableOpacity>
-              <SafeAreaView edges={['bottom']} />
-            </View>
-          </KeyboardAvoidingView>
-        </View>
-      </Modal>
+        </ScrollView>
+      </BaseBottomSheet>
 
       {/* Bottom Drawer for Add Member */}
-      <Modal visible={activeDrawer === 'member'} transparent animationType="slide" onRequestClose={() => setActiveDrawer('none')}>
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setActiveDrawer('none')} />
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-            <View style={styles.bottomSheet}>
-              <View style={styles.sheetHandle} />
+      <BaseBottomSheet visible={activeDrawer === 'member'} onClose={() => setActiveDrawer('none')}>
+        <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 400 }} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <Text style={styles.sheetTitle}>Add Roommate</Text>
-                <TouchableOpacity onPress={() => setActiveDrawer('none')} style={{ padding: 4 }}>
-                  <X size={20} color="#64748B" />
+                <TouchableOpacity 
+                  onPress={() => setActiveDrawer('none')} 
+                  style={{ padding: 8, marginRight: -8 }}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <X size={24} color="#64748B" />
                 </TouchableOpacity>
               </View>
 
@@ -300,12 +355,38 @@ export default function SplitsScreen() {
               >
                 <Text style={styles.primaryBtnLargeTxt}>Add to Splits</Text>
               </TouchableOpacity>
-              <SafeAreaView edges={['bottom']} />
-            </View>
-          </KeyboardAvoidingView>
-        </View>
-      </Modal>
+        </ScrollView>
+      </BaseBottomSheet>
 
+      <ConfirmationDialog
+        visible={!!settleMember}
+        onClose={() => setSettleMember(null)}
+        type="success"
+        title="Settle Up"
+        description={
+          settleMember?.net < 0
+            ? `Did ${settleMember.member.name} pay you ${formatCurrency(Math.abs(settleMember.net))}?`
+            : `Did you pay ${settleMember?.member.name} ${formatCurrency(settleMember?.net || 0)}?`
+        }
+        primaryAction={{ label: 'Confirm Payment', onPress: executeSettle }}
+        secondaryAction={{ label: 'Cancel', onPress: () => setSettleMember(null) }}
+      />
+      
+      <ConfirmationDialog
+        visible={!!deleteMemberId}
+        onClose={() => setDeleteMemberId(null)}
+        type="danger"
+        title="Remove Roommate"
+        description="Are you sure you want to remove this roommate from the group?"
+        primaryAction={{ 
+          label: 'Remove', 
+          onPress: () => {
+            if (deleteMemberId) removeMember(deleteMemberId);
+            setDeleteMemberId(null);
+          }
+        }}
+        secondaryAction={{ label: 'Cancel', onPress: () => setDeleteMemberId(null) }}
+      />
     </View>
   );
 }
@@ -332,14 +413,16 @@ const styles = StyleSheet.create({
   settledBadge: { backgroundColor: '#F1F5F9', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   settledBadgeTxt: { fontSize: 12, fontWeight: '700', color: '#64748B' },
 
-  expIcon: { width: 36, height: 36, borderRadius: 12, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' },
+  expIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(109, 74, 255, 0.1)', justifyContent: 'center', alignItems: 'center' },
   expTitle: { fontSize: 15, fontWeight: '700', color: '#1A1A1A' },
   expSub: { fontSize: 12, color: '#64748B', marginTop: 2, fontWeight: '500' },
   expAmt: { fontSize: 16, fontWeight: '800', color: '#1A1A1A' },
 
-  // Small Add Button
-  smallAddBtn: { flexDirection: 'row', backgroundColor: '#2952F3', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, alignItems: 'center' },
-  smallAddBtnTxt: { color: '#FFF', fontSize: 13, fontWeight: '700', marginLeft: 4 },
+  // Buttons
+  pillBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(41, 82, 243, 0.1)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20 },
+  pillBtnTxt: { fontSize: 13, fontWeight: '700', color: '#2952F3', marginLeft: 6 },
+  
+  fab: { position: 'absolute', bottom: 84, right: 24, width: 64, height: 64, borderRadius: 32, backgroundColor: '#2952F3', justifyContent: 'center', alignItems: 'center', shadowColor: '#2952F3', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 16, elevation: 12 },
 
   // Bottom Sheet Modal
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(15, 23, 42, 0.4)' },
@@ -360,4 +443,9 @@ const styles = StyleSheet.create({
   chipTxtActive: { color: '#FFF' },
   avatarMicro: { width: 20, height: 20, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
   avatarMicroTxt: { fontSize: 10, fontWeight: '700', color: '#64748B' },
+  
+  catChip: { backgroundColor: '#F8FAFC', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0' },
+  catChipActive: { backgroundColor: 'rgba(41, 82, 243, 0.1)', borderColor: '#2952F3' },
+  catChipTxt: { fontSize: 13, fontWeight: '600', color: '#64748B' },
+  catChipTxtActive: { color: '#2952F3', fontWeight: '700' },
 });

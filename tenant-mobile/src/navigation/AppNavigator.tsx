@@ -141,6 +141,7 @@ export default function AppNavigator() {
             <Stack.Screen name="Complaints" component={ComplaintsScreen} />
             <Stack.Screen name="Documents" component={DocumentsScreen} />
             <Stack.Screen name="Splits" component={SplitsScreen} />
+            <Stack.Screen name="SplitHistory" component={require('../Pages/SplitHistoryScreen').default} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
             <Stack.Screen name="Payments" component={PaymentScreen} />
             <Stack.Screen name="More" component={MoreScreen} />

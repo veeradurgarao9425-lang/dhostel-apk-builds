@@ -32,24 +32,25 @@ import AppHeader from '../components/ui/AppHeader';
 
 const { width } = Dimensions.get('window');
 
-// ── Palette ───────────────────────────────────────────────────────────────────
-const BLUE = '#2245D4';
-const BLUE_DARK = '#1E3A8A';
-const BLUE_SOFT = '#EEF3FF';
-const BLUE_BORDER = '#C5D3FF';
+import { theme } from '../theme';
+
+const BLUE = theme.colors.primary;
+const BLUE_DARK = theme.colors.primaryDark;
+const BLUE_SOFT = theme.colors.primarySoft;
+const BLUE_BORDER = theme.colors.primaryBorder;
 const WHITE = '#FFFFFF';
-const TEXT_DARK = '#0D1B3E';
-const TEXT_MID = '#4A5568';
-const TEXT_LIGHT = '#9CA3AF';
-const BG = '#F4F7FE';
-const BORDER = '#E8EDF5';
-const SUCCESS = '#16A34A';
-const SUCCESS_BG = '#DCFCE7';
-const WARN_COLOR = '#D97706';
-const WARN_BG = '#FEF3C7';
-const WARN_BORDER = '#FDE68A';
-const DANGER = '#EF4444';
-const DANGER_BG = '#FEE2E2';
+const TEXT_DARK = theme.colors.text;
+const TEXT_MID = theme.colors.textMuted;
+const TEXT_LIGHT = theme.colors.textSubtle;
+const BG = theme.colors.bg;
+const BORDER = theme.colors.border;
+const SUCCESS = theme.colors.success;
+const SUCCESS_BG = theme.colors.successSoft;
+const WARN_COLOR = theme.colors.warning;
+const WARN_BG = theme.colors.warningSoft;
+const WARN_BORDER = theme.colors.warningBorder;
+const DANGER = theme.colors.danger;
+const DANGER_BG = theme.colors.dangerSoft;
 
 const CATS: Record<string, { color: string; bg: string; Icon: any }> = {
   Food: { color: '#FF6B35', bg: '#FFF0EA', Icon: Utensils },
@@ -887,17 +888,7 @@ export default function ExpensesScreen({ navigation }: any) {
 // OVERVIEW TAB
 // ══════════════════════════════════════════════════════════════════════════════
 function FadeSlideIn({ children, delay = 0, style }: { children: React.ReactNode; delay?: number; style?: any }) {
-  const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(28)).current;
-  useEffect(() => {
-    opacity.setValue(0);
-    translateY.setValue(28);
-    Animated.parallel([
-      Animated.timing(opacity, { toValue: 1, duration: 480, delay, useNativeDriver: true }),
-      Animated.spring(translateY, { toValue: 0, delay, friction: 7, tension: 50, useNativeDriver: true }),
-    ]).start();
-  }, []);
-  return <Animated.View style={[{ opacity, transform: [{ translateY }] }, style]}>{children}</Animated.View>;
+  return <View style={style}>{children}</View>;
 }
 
 function MiniSparkline({ data, color = BLUE, height = 40 }: { data: any[]; color?: string; height?: number }) {
@@ -1222,9 +1213,12 @@ function OverviewTab({
           <View style={{ gap: 8 }}>
             {filteredRecent.slice(0, 5).map((item: any, i: number) => {
               const itemTheme = getCategoryTheme(item.cat);
+              const IconComp = itemTheme.Icon;
               return (
-                <View key={item.id} style={[s.txnCard, { marginBottom: 0, paddingVertical: 8, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 10, borderLeftWidth: 4, borderLeftColor: itemTheme.color, borderRadius: 14 }]}>
-                  <CategoryGlowBadge category={item.cat} size="sm" />
+                <View key={item.id} style={[s.txnCard, { marginBottom: 0, paddingVertical: 8, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 14 }]}>
+                  <View style={{ width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: itemTheme.bg }}>
+                    <IconComp size={20} color={itemTheme.color} strokeWidth={2.2} />
+                  </View>
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
                       <Text style={[s.txnTitle, { fontSize: 13, marginBottom: 0 }]}>{item.title}</Text>
@@ -1387,12 +1381,16 @@ function CategoriesTab({ expenses, monthTotal, breakdown, navigation, selectedDa
       <FadeSlideIn delay={240}>
         <View style={{ gap: 8, marginBottom: 16 }}>
           {breakdown.map((cat: any, i: number) => {
+            const itemTheme = getCategoryTheme(cat.name);
+            const IconComp = itemTheme.Icon;
             return (
-              <TouchableOpacity key={cat.name} style={[s.txnCard, { marginBottom: 0, paddingVertical: 10, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 10, borderLeftWidth: 4, borderLeftColor: cat.color, borderRadius: 14 }]}
+              <TouchableOpacity key={cat.name} style={[s.txnCard, { marginBottom: 0, paddingVertical: 10, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 14 }]}
                 onPress={() => navigation.navigate('CategoryDetail', { categoryName: cat.name, spent: cat.amount, totalPct: cat.pct, color: cat.color, bg: cat.bg, selectedDateStr: selectedDate.toISOString() })}
                 activeOpacity={0.7}
               >
-                <CategoryGlowBadge category={cat.name} size="sm" entrance />
+                <View style={{ width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: itemTheme.bg }}>
+                  <IconComp size={20} color={itemTheme.color} strokeWidth={2.2} />
+                </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[s.txnTitle, { fontSize: 13, marginBottom: 0 }]}>{cat.name}</Text>
                   <View style={[s.catDetailBar]}><View style={[s.catDetailFill, { width: `${cat.pct}%` as any, backgroundColor: cat.color }]} /></View>
@@ -1512,16 +1510,22 @@ function AnalyticsTab({ expenses, monthTotal, monthlyData, maxAmt, breakdown }: 
         <Text style={[s.sectionTitle, { marginBottom: 10 }]}>Where your money goes</Text>
         {topThree.length > 0 ? (
           <View style={[s.card, { padding: 0, overflow: 'hidden' }]}>
-            {topThree.map((cat: any, i: number) => (
-              <View key={cat.name} style={[s.txnRow, i < topThree.length - 1 && s.txnDivider, { padding: 16 }]}>
-                <CategoryGlowBadge category={cat.name} size="sm" style={{ marginRight: 12 }} />
-                <View style={{ flex: 1 }}>
+            {topThree.map((cat: any, i: number) => {
+              const itemTheme = getCategoryTheme(cat.name);
+              const IconComp = itemTheme.Icon;
+              return (
+                <View key={cat.name} style={[s.txnRow, i < topThree.length - 1 && s.txnDivider, { padding: 16 }]}>
+                  <View style={{ width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: itemTheme.bg, marginRight: 12 }}>
+                    <IconComp size={18} color={itemTheme.color} strokeWidth={2.2} />
+                  </View>
+                  <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 14, fontWeight: '700', color: TEXT_DARK }}>{cat.name}</Text>
                   <Text style={{ fontSize: 11, color: TEXT_LIGHT, marginTop: 2 }}>{cat.pct}% of total</Text>
                 </View>
                 <Text style={{ fontSize: 14, fontWeight: '800', color: TEXT_DARK }}>₹{cat.amount.toLocaleString('en-IN')}</Text>
               </View>
-            ))}
+              );
+            })}
           </View>
         ) : (
           <View style={{ paddingVertical: 20 }}>
@@ -1717,8 +1721,8 @@ const bm = StyleSheet.create({
 
   titleLabel: { fontSize: 12, fontWeight: '800', color: '#94A3B8', marginBottom: 12, letterSpacing: 0.5 },
 
-  inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: WHITE, borderRadius: 20, borderWidth: 1.5, borderColor: '#3B82F6', paddingHorizontal: 16, height: 72, marginBottom: 12 },
-  rupeeBadge: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#E0E7FF', alignItems: 'center', justifyContent: 'center', marginRight: 16 },
+  inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: WHITE, borderRadius: 20, borderWidth: 1.5, borderColor: BLUE, paddingHorizontal: 16, height: 72, marginBottom: 12 },
+  rupeeBadge: { width: 44, height: 44, borderRadius: 22, backgroundColor: BLUE_SOFT, alignItems: 'center', justifyContent: 'center', marginRight: 16 },
   input: { flex: 1, fontSize: 40, fontWeight: '900', color: TEXT_DARK, padding: 0 },
   editBadge: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
 
@@ -1728,17 +1732,17 @@ const bm = StyleSheet.create({
   presetLabel: { fontSize: 12, fontWeight: '800', color: '#94A3B8', marginBottom: 12, letterSpacing: 0.5 },
   presetRow: { flexDirection: 'row', gap: 10, marginBottom: 28, flexWrap: 'wrap', justifyContent: 'space-between' },
   preset: { flex: 1, minWidth: 50, height: 48, alignItems: 'center', justifyContent: 'center', backgroundColor: WHITE, borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0' },
-  presetActive: { backgroundColor: '#EFF6FF', borderColor: '#3B82F6', borderWidth: 1.5 },
+  presetActive: { backgroundColor: BLUE_SOFT, borderColor: BLUE, borderWidth: 1.5 },
   presetText: { fontSize: 15, fontWeight: '700', color: '#475569' },
-  presetTextActive: { color: '#3B82F6' },
-  presetCheckBadge: { position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: 10, backgroundColor: '#3B82F6', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: WHITE },
+  presetTextActive: { color: BLUE },
+  presetCheckBadge: { position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: 10, backgroundColor: BLUE, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: WHITE },
 
   infoBanner: { flexDirection: 'row', backgroundColor: '#F8FAFC', borderRadius: 16, padding: 16, marginBottom: 28, alignItems: 'center' },
-  infoBannerIconWrap: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#3B82F6', alignItems: 'center', justifyContent: 'center', marginRight: 12, shadowColor: '#3B82F6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
-  infoBannerTitle: { fontSize: 14, fontWeight: '800', color: '#1E40AF', marginBottom: 4 },
+  infoBannerIconWrap: { width: 40, height: 40, borderRadius: 20, backgroundColor: BLUE, alignItems: 'center', justifyContent: 'center', marginRight: 12, shadowColor: BLUE, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
+  infoBannerTitle: { fontSize: 14, fontWeight: '800', color: TEXT_DARK, marginBottom: 4 },
   infoBannerDesc: { fontSize: 12, color: '#64748B', lineHeight: 18 },
 
-  saveBtn: { flexDirection: 'row', backgroundColor: '#2563EB', borderRadius: 16, height: 56, alignItems: 'center', justifyContent: 'center', shadowColor: '#2563EB', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 6 },
+  saveBtn: { flexDirection: 'row', backgroundColor: BLUE, borderRadius: 16, height: 56, alignItems: 'center', justifyContent: 'center', shadowColor: BLUE, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 6 },
   saveBtnOff: { backgroundColor: '#94A3B8', shadowOpacity: 0 },
   saveBtnText: { color: WHITE, fontSize: 16, fontWeight: '800' },
 

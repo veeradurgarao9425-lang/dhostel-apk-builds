@@ -586,27 +586,32 @@ export default function ComplaintsScreen({ navigation }: any) {
                 <TouchableOpacity
                   style={s.listCard}
                   onPress={() => setSelectedComplaint({ ...c, date: dateStr, note: c.description })}
-                  activeOpacity={0.9}
+                  activeOpacity={0.85}
                 >
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, paddingRight: 12 }}>
-                      <View style={[s.iconWrap, { backgroundColor: '#F8FAFC' }]}>
-                        {getCategoryIcon(c.category || '')}
+                  <View style={[s.accentLine, { backgroundColor: status.text }]} />
+                  <View style={s.cardContent}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, paddingRight: 12 }}>
+                        <View style={[s.iconWrap, { backgroundColor: '#F8FAFC' }]}>
+                          {getCategoryIcon(c.category || '')}
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={s.cardTitle} numberOfLines={1}>{c.title}</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                            <Calendar size={12} color={TEXT_MID} />
+                            <Text style={s.cardDate}>{dateStr.split(',')[0]}</Text>
+                          </View>
+                        </View>
                       </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={s.cardTitle} numberOfLines={1}>{c.title}</Text>
-                        <Text style={s.cardDate}>{dateStr}</Text>
+                      <View style={[s.statusPill, { backgroundColor: status.bg }]}>
+                        <Text style={[s.statusPillTxt, { color: status.text }]}>{statusKey}</Text>
                       </View>
                     </View>
-                    <View style={[s.statusPill, { backgroundColor: status.bg }]}>
-                      <Text style={[s.statusPillTxt, { color: status.text }]}>{statusKey}</Text>
-                    </View>
-                  </View>
 
-                  {c.description ? (
-                    <Text style={{ fontSize: 14, color: TEXT_MID, lineHeight: 20 }} numberOfLines={2}>{c.description}</Text>
-                  ) : null}
-                  
+                    <Text style={{ fontSize: 13, color: TEXT_MID, lineHeight: 18, marginTop: 4 }} numberOfLines={2}>
+                      {c.description || 'No description provided.'}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
               );
             }}
@@ -677,13 +682,15 @@ const s = StyleSheet.create({
 
   // List Cards
   listContent: { padding: 16, paddingTop: 8, paddingBottom: 100 },
-  listCard: { backgroundColor: WHITE, borderRadius: 20, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 1 },
-  iconWrap: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#EEF2FF', justifyContent: 'center', alignItems: 'center' },
+  listCard: { backgroundColor: WHITE, borderRadius: 16, overflow: 'hidden', marginBottom: 16, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: BLUE, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
+  accentLine: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 },
+  cardContent: { padding: 16, paddingLeft: 20 },
+  iconWrap: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#EEF2FF', justifyContent: 'center', alignItems: 'center' },
   cardTitle: { fontSize: 16, fontWeight: '800', color: '#0F172A' },
-  cardDate: { fontSize: 12, color: TEXT_MID, fontWeight: '500' },
+  cardDate: { fontSize: 12, color: TEXT_MID, fontWeight: '600' },
   
-  statusPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  statusPillTxt: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
+  statusPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  statusPillTxt: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
 
   // FAB
   fabWrapper: { position: 'absolute', bottom: 100, right: 24, width: 56, height: 56, borderRadius: 28, shadowColor: '#2952F3', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 6 },

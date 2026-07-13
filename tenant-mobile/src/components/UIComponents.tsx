@@ -22,6 +22,19 @@ export function BaseBottomSheet({ visible, onClose, children, height, disableDra
   const panY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
 
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    if (Platform.OS !== 'ios') {
+      const showSub = Keyboard.addListener('keyboardDidShow', (e) => setKeyboardHeight(e.endCoordinates.height));
+      const hideSub = Keyboard.addListener('keyboardDidHide', () => setKeyboardHeight(0));
+      return () => {
+        showSub.remove();
+        hideSub.remove();
+      };
+    }
+  }, []);
+
   useEffect(() => {
     if (visible) {
       setRender(true);
@@ -33,7 +46,10 @@ export function BaseBottomSheet({ visible, onClose, children, height, disableDra
       Animated.parallel([
         Animated.timing(panY, { toValue: SCREEN_HEIGHT, duration: 250, useNativeDriver: true }),
         Animated.timing(overlayOpacity, { toValue: 0, duration: 200, useNativeDriver: true })
-      ]).start(() => setRender(false));
+      ]).start(() => {
+        setRender(false);
+        setKeyboardHeight(0); // reset on close just in case
+      });
     }
   }, [visible]);
 
@@ -60,7 +76,7 @@ export function BaseBottomSheet({ visible, onClose, children, height, disableDra
   if (!render) return null;
 
   const SheetContent = (
-    <Animated.View style={[bsStyles.sheet, { paddingBottom: insets.bottom + 100 }, height ? { height } : undefined, { transform: [{ translateY: panY }] }]}>
+    <Animated.View style={[bsStyles.sheet, { paddingBottom: Math.max(insets.bottom, 20) }, height ? { height } : undefined, { transform: [{ translateY: panY }] }]}>
       <View {...panResponder.panHandlers} style={bsStyles.dragZone}>
         <View style={bsStyles.handle} />
       </View>
@@ -78,7 +94,7 @@ export function BaseBottomSheet({ visible, onClose, children, height, disableDra
           {SheetContent}
         </KeyboardAvoidingView>
       ) : (
-        <View style={bsStyles.container} pointerEvents="box-none">
+        <View style={[bsStyles.container, { paddingBottom: keyboardHeight }]} pointerEvents="box-none">
           {SheetContent}
         </View>
       )}
@@ -89,7 +105,7 @@ export function BaseBottomSheet({ visible, onClose, children, height, disableDra
 const bsStyles = StyleSheet.create({
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
   container: { flex: 1, justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, marginBottom: -100, shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 20 },
+  sheet: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 20 },
   dragZone: { alignItems: 'center', paddingVertical: 12, marginBottom: 8 },
   handle: { width: 40, height: 5, borderRadius: 3, backgroundColor: '#E2E8F0' },
 });
@@ -106,8 +122,20 @@ export interface BaseDialogProps {
 
 export function BaseDialog({ visible, onClose, children, dismissable = true }: BaseDialogProps) {
   const [render, setRender] = useState(visible);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const opacity = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(0.9)).current;
+
+  useEffect(() => {
+    if (Platform.OS !== 'ios') {
+      const showSub = Keyboard.addListener('keyboardDidShow', (e) => setKeyboardHeight(e.endCoordinates.height));
+      const hideSub = Keyboard.addListener('keyboardDidHide', () => setKeyboardHeight(0));
+      return () => {
+        showSub.remove();
+        hideSub.remove();
+      };
+    }
+  }, []);
 
   useEffect(() => {
     if (visible) {
@@ -120,22 +148,37 @@ export function BaseDialog({ visible, onClose, children, dismissable = true }: B
       Animated.parallel([
         Animated.timing(opacity, { toValue: 0, duration: 150, useNativeDriver: true }),
         Animated.timing(scale, { toValue: 0.9, duration: 150, useNativeDriver: true }),
-      ]).start(() => setRender(false));
+      ]).start(() => {
+        setRender(false);
+        setKeyboardHeight(0);
+      });
     }
   }, [visible]);
 
   if (!render) return null;
 
+  const DialogContent = (
+    <>
+      <Animated.View style={[bdStyles.overlay, { opacity }]}>
+        <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => { if(dismissable) { Keyboard.dismiss(); onClose(); } }} />
+      </Animated.View>
+      <Animated.View style={[bdStyles.dialog, { opacity, transform: [{ scale }] }]}>
+        {children}
+      </Animated.View>
+    </>
+  );
+
   return (
     <Modal visible={render} transparent animationType="none" onRequestClose={() => dismissable && onClose()} statusBarTranslucent navigationBarTranslucent>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={bdStyles.container} pointerEvents="box-none">
-        <Animated.View style={[bdStyles.overlay, { opacity }]}>
-          <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => { if(dismissable) { Keyboard.dismiss(); onClose(); } }} />
-        </Animated.View>
-        <Animated.View style={[bdStyles.dialog, { opacity, transform: [{ scale }] }]}>
-          {children}
-        </Animated.View>
-      </KeyboardAvoidingView>
+      {Platform.OS === 'ios' ? (
+        <KeyboardAvoidingView behavior="padding" style={bdStyles.container} pointerEvents="box-none">
+          {DialogContent}
+        </KeyboardAvoidingView>
+      ) : (
+        <View style={[bdStyles.container, { paddingBottom: keyboardHeight }]} pointerEvents="box-none">
+          {DialogContent}
+        </View>
+      )}
     </Modal>
   );
 }
