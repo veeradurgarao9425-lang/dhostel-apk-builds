@@ -121,6 +121,19 @@ export default function OnboardingScreen() {
 
                         const titleParts = item.title.split(item.titleHighlight);
 
+                        const CardsRow = (
+                            <Animated.View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: index !== 0 ? 24 : 0, marginBottom: index === 0 ? 10 : 0, transform: [{ translateY: cardsTranslateY }] }}>
+                                {item.features.map((feature, i) => (
+                                    <View key={i} style={{ alignItems: 'center', flex: 1 }}>
+                                        <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: feature.bg, alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+                                            <Ionicons name={feature.icon as any} size={20} color={feature.color} />
+                                        </View>
+                                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#1E293B', textAlign: 'center' }}>{feature.label}</Text>
+                                    </View>
+                                ))}
+                            </Animated.View>
+                        );
+
                         return (
                             <View style={{ width, height: '100%', backgroundColor: '#F8FAFC', paddingHorizontal: 24, paddingTop: 10 }}>
                                 {/* Top Text */}
@@ -136,25 +149,23 @@ export default function OnboardingScreen() {
                                     </Text>
                                 </Animated.View>
 
+                                {/* If not first slide, put cards above the image */}
+                                {index !== 0 && CardsRow}
+
                                 {/* 3D Image */}
                                 <Animated.View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', transform: [{ scale: imageScale }] }}>
                                     <Image 
                                         source={item.image} 
-                                        style={{ width: width * 1.1, height: width * 1.1, resizeMode: 'contain' }} 
+                                        style={{ 
+                                            width: index === 0 ? width * 1.1 : width * 0.85, 
+                                            height: index === 0 ? width * 1.1 : width * 0.85, 
+                                            resizeMode: 'contain' 
+                                        }} 
                                     />
                                 </Animated.View>
 
-                                {/* 4 Small Cards Row */}
-                                <Animated.View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10, transform: [{ translateY: cardsTranslateY }] }}>
-                                    {item.features.map((feature, i) => (
-                                        <View key={i} style={{ alignItems: 'center', flex: 1 }}>
-                                            <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: feature.bg, alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
-                                                <Ionicons name={feature.icon as any} size={20} color={feature.color} />
-                                            </View>
-                                            <Text style={{ fontSize: 11, fontWeight: '800', color: '#1E293B', textAlign: 'center' }}>{feature.label}</Text>
-                                        </View>
-                                    ))}
-                                </Animated.View>
+                                {/* If first slide, put cards below the image */}
+                                {index === 0 && CardsRow}
                             </View>
                         );
                     }}
