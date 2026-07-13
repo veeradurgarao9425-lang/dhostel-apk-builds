@@ -146,7 +146,11 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
   }
 
   if (deliveryStatus === 'Failed') {
-    throw new Error(`Failed to send email: ${errorMessage}`);
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(`⚠️ Warning: Failed to send email in development: ${errorMessage}`);
+    } else {
+      throw new Error(`Failed to send email: ${errorMessage}`);
+    }
   }
 };
 
