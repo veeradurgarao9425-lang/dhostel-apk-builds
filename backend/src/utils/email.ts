@@ -207,7 +207,7 @@ export const sendPasswordResetEmail = async (
     console.log('='.repeat(80) + '\n');
   }
 
-  await sendEmail({ to: email, subject: 'Password Reset Request - Hostix', html });
+  await sendEmail({ to: email, subject: 'Password Reset Request - Hostix', html, emailType: 'ForgotPassword' });
 };
 
 // ─── OTP verification email ────────────────────────────────────────────────────
