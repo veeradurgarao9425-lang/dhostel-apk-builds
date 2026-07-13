@@ -400,7 +400,7 @@ export default function HomeScreen({ navigation }: any) {
               <View style={styles.hostelRow}>
                 <Ionicons name="location-outline" size={12} color="rgba(255,255,255,0.7)" />
                 <Text style={styles.hostelName} numberOfLines={1}>
-                  {user?.hostel_name ?? "Welcome Back"}
+                  {(user as any)?.hostel_name ?? "Welcome Back"}
                 </Text>
               </View>
             </View>

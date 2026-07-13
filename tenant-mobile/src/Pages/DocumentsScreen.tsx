@@ -221,7 +221,6 @@ export default function DocumentsScreen({ navigation }: any) {
             <FileErrorState type={dlError} />
           </View>
         )}
-        )}
       </ScrollView>
 
       {/* Floating Action Button for Upload */}

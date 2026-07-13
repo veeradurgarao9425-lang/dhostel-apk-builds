@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, TextInput, Platform } from 'react-native';
 import { BaseBottomSheet } from './UIComponents';
 import { Calendar, X, Trash2, CalendarDays } from 'lucide-react-native';
-import { colors, spacing, radius, typography } from '../theme';
+import { colors, spacing, radius, text as typography } from '../theme';
 import api from '../services/api';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
@@ -89,7 +89,7 @@ export default function VacateModal({ visible, onClose, onSuccess }: VacateModal
   };
 
   return (
-    <BaseBottomSheet visible={visible} onClose={onClose} title="Vacate Room" snapPoints={['75%']}>
+    <BaseBottomSheet visible={visible} onClose={onClose}>
       {loading ? (
         <View style={{ padding: 40, alignItems: 'center' }}>
           <ActivityIndicator color={colors.primary} />

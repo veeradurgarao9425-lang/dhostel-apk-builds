@@ -362,7 +362,7 @@ export default function VisitorPassScreen({ navigation }: any) {
         onConfirm={handleConfirmFilterDate}
         onCancel={() => setFilterDatePickerVisible(false)}
       />
-      <LoaderOverlay visible={submitting} message="Submitting Request..." />
+      <LoaderOverlay visible={submitting} label="Submitting Request..." />
     </View>
   );
 }

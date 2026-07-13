@@ -98,10 +98,10 @@ export const QuickTips = ({ tips = HOME_TIPS }: QuickTipsProps) => {
 
     const viewConfigRef = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
 
-    const renderItem = ({ item }: { item: typeof TIPS[0] }) => (
+    const renderItem = ({ item }: { item: typeof tips[0] }) => (
         <View style={styles.cardContainer}>
             <LinearGradient
-                colors={item.colors}
+                colors={item.colors as any}
                 style={styles.card}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}

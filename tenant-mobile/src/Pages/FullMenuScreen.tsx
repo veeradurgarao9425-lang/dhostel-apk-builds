@@ -315,7 +315,7 @@ export default function FullMenuScreen({ navigation }: any) {
               </View>
             ) : (
               MEALS.map((meal) => {
-                const slot = dayMenu[meal.key];
+                const slot = dayMenu[meal.key as keyof DayMenu];
                 const itemsArr = slot.items ? slot.items.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0) : [];
                 const isSkipped = skipTypes.includes(meal.key);
                 return (
@@ -334,7 +334,7 @@ export default function FullMenuScreen({ navigation }: any) {
                     <View style={styles.mealBody}>
                       {itemsArr.length > 0 ? (
                         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                          {itemsArr.map((item, idx) => {
+                          {itemsArr.map((item: string, idx: number) => {
                             const colorTheme = isSkipped ? { bg: '#F1F5F9', text: '#94A3B8' } : { bg: meal.bg, text: meal.color };
                             return (
                               <View key={idx} style={{ backgroundColor: colorTheme.bg, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 }}>

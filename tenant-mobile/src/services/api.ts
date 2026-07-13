@@ -55,6 +55,7 @@ api.interceptors.response.use(
     }
 
     if (status === 403 && error.response?.data?.message === "Your subscription has expired. Please renew to continue.") {
+      // @ts-ignore
       navigate('SubscriptionExpired');
     }
 

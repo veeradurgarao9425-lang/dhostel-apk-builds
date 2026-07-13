@@ -419,7 +419,7 @@ export default function GatePassScreen({ navigation }: any) {
         onCancel={() => setFilterDatePickerVisible(false)}
       />
 
-      <LoaderOverlay visible={submitting} message="Submitting Request..." />
+      <LoaderOverlay visible={submitting} label="Submitting Request..." />
     </View>
   );
 }

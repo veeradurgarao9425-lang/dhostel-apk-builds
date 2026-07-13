@@ -423,6 +423,18 @@ function SetGoalModal({ visible, currentName, currentTarget, onSave, onClose }: 
   );
 }
 
+const savingsStyles = StyleSheet.create({
+  iconRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 24, paddingHorizontal: 20 },
+  iconWrap: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginRight: 16 },
+  title: { fontSize: 20, fontWeight: '800', color: '#1E293B', marginBottom: 4 },
+  sub: { fontSize: 13, color: '#64748B' },
+  inputWrap: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 2, borderBottomColor: '#16A34A', marginHorizontal: 20, paddingBottom: 12 },
+  rupee: { fontSize: 40, fontWeight: '800', color: '#16A34A', marginRight: 8 },
+  input: { flex: 1, fontSize: 40, fontWeight: '800', color: '#1E293B', padding: 0 },
+  saveBtn: { height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  saveBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' }
+});
+
 // ── Add Savings Modal ─────────────────────────────────────────────────────────
 function AddSavingsModal({ visible, currentSaved, onSave, onClose }: {
   visible: boolean; currentSaved: number; onSave: (added: number) => void; onClose: () => void;
@@ -430,19 +442,19 @@ function AddSavingsModal({ visible, currentSaved, onSave, onClose }: {
   const [val, setVal] = useState('');
   return (
     <BaseBottomSheet visible={visible} onClose={onClose} height={380}>
-      <View style={bm.iconRow}>
-        <View style={[bm.iconWrap, { backgroundColor: '#DCFCE7' }]}>
+      <View style={savingsStyles.iconRow}>
+        <View style={[savingsStyles.iconWrap, { backgroundColor: '#DCFCE7' }]}>
           <Plus size={24} color="#16A34A" strokeWidth={2.5} />
         </View>
         <View>
-          <Text style={bm.title}>Add to Savings</Text>
-          <Text style={bm.sub}>Deposit money into your goal!</Text>
+          <Text style={savingsStyles.title}>Add to Savings</Text>
+          <Text style={savingsStyles.sub}>Deposit money into your goal!</Text>
         </View>
       </View>
-      <View style={bm.inputWrap}>
-        <Text style={bm.rupee}>₹</Text>
+      <View style={savingsStyles.inputWrap}>
+        <Text style={savingsStyles.rupee}>₹</Text>
         <TextInput
-          style={bm.input}
+          style={savingsStyles.input}
           value={val}
           onChangeText={v => setVal(v.replace(/[^0-9]/g, ''))}
           keyboardType="numeric"
@@ -453,15 +465,15 @@ function AddSavingsModal({ visible, currentSaved, onSave, onClose }: {
       </View>
       <View style={{ marginTop: 24, paddingBottom: 16 }}>
         <View style={{ flexDirection: 'row', gap: 12 }}>
-          <TouchableOpacity style={[bm.saveBtn, { backgroundColor: '#F1F5F9', flex: 1 }]} onPress={onClose} activeOpacity={0.85}>
-            <Text style={[bm.saveBtnText, { color: TEXT_DARK }]}>Cancel</Text>
+          <TouchableOpacity style={[savingsStyles.saveBtn, { backgroundColor: '#F1F5F9', flex: 1 }]} onPress={onClose} activeOpacity={0.85}>
+            <Text style={[savingsStyles.saveBtnText, { color: '#1E293B' }]}>Cancel</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[bm.saveBtn, { flex: 1, backgroundColor: '#16A34A' }, (!val || Number(val) <= 0) && { backgroundColor: '#86EFAC', shadowOpacity: 0 }]}
+            style={[savingsStyles.saveBtn, { flex: 1, backgroundColor: '#16A34A' }, (!val || Number(val) <= 0) && { backgroundColor: '#86EFAC', shadowOpacity: 0 }]}
             onPress={() => { if (val && Number(val) > 0) { onSave(Number(val)); setVal(''); } }}
             activeOpacity={0.85}
           >
-            <Text style={bm.saveBtnText}>Add Funds</Text>
+            <Text style={savingsStyles.saveBtnText}>Add Funds</Text>
           </TouchableOpacity>
         </View>
       </View>

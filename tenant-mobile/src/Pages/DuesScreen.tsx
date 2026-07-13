@@ -708,8 +708,7 @@ const styles = StyleSheet.create({
   splitStatus: { fontSize: 12, fontWeight: '600' },
 
   // ── Pay Now button ─────────────────────────────────────────────────────────
-  heroPayBtn:     { backgroundColor: BLUE, borderRadius: 14, paddingHorizontal: 20, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 16 },
-  heroPayBtnText: { color: WHITE, fontWeight: '700', fontSize: 14 },
+
   payNowBtn:      { backgroundColor: BLUE, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
   payNowBtnText:  { color: WHITE, fontWeight: '700', fontSize: 11 },
 

@@ -242,8 +242,8 @@ export default function RoomInfoScreen({ route, navigation }: any) {
                 const isPaid = status === 'paid' || status === 'fully paid';
                 const isOverdue = status === 'overdue';
                 
-                let accentColor = theme.colors.warning;
-                let accentSoft = theme.colors.warningSoft;
+                let accentColor = theme.colors.warning as string;
+                let accentSoft = theme.colors.warningSoft as string;
                 if (isPaid) {
                     accentColor = theme.colors.success;
                     accentSoft = theme.colors.successSoft;

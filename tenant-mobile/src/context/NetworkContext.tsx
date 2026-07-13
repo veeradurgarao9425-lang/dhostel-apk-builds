@@ -90,7 +90,7 @@ function NetworkBanner({
     }
   }, [isReconnecting]);
 
-  if (!visible && slideY._value === -80) return null;
+  if (!visible && (slideY as any)._value === -80) return null;
 
   return (
     <Animated.View
