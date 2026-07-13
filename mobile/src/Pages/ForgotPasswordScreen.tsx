@@ -134,7 +134,7 @@ export default function ForgotPasswordScreen({ navigation }: any) {
                     </View>
                 </View>
 
-                {step === 'EMAIL' ? (
+                {step === 'EMAIL' && (
                     <>
                         <Text style={styles.title}>Reset Your Password</Text>
                         <Text style={styles.subtitle}>Enter your registered email address and we will send you an OTP to reset your password.</Text>
@@ -161,10 +161,14 @@ export default function ForgotPasswordScreen({ navigation }: any) {
                             </LinearGradient>
                         </TouchableOpacity>
                     </>
-                ) : (
+                )}
+
+                {step === 'OTP' && (
                     <>
-                        <Text style={styles.title}>Verify & Reset</Text>
-                        <Text style={styles.subtitle}>Enter the OTP sent to {email} along with your new password.</Text>
+                        <Text style={styles.title}>Enter OTP</Text>
+                        <Text style={styles.subtitle}>
+                            Please enter the 6-digit code sent to {email}
+                        </Text>
                         
                         {errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
                         {successMsg && <Text style={styles.successText}>{successMsg}</Text>}
@@ -176,10 +180,33 @@ export default function ForgotPasswordScreen({ navigation }: any) {
                                 placeholder="Enter 6-digit OTP"
                                 placeholderTextColor="#94A3B8"
                                 keyboardType="number-pad"
+                                maxLength={6}
                                 value={otp}
                                 onChangeText={(t) => { setOtp(t); setErrorMsg(null); }}
                             />
                         </View>
+
+                        <TouchableOpacity style={styles.submitBtn} onPress={handleVerifyOTP}>
+                            <LinearGradient colors={['#7C3AED', '#5F2EEA']} style={styles.submitGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                                <Text style={styles.submitTxt}>Verify Code</Text>
+                            </LinearGradient>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={{ marginTop: 20 }} onPress={() => setStep('EMAIL')} disabled={isLoading}>
+                            <Text style={styles.resendTxt}>Didn't receive OTP? Try again</Text>
+                        </TouchableOpacity>
+                    </>
+                )}
+
+                {step === 'RESET' && (
+                    <>
+                        <Text style={styles.title}>New Password</Text>
+                        <Text style={styles.subtitle}>
+                            Please enter and confirm your new password.
+                        </Text>
+                        
+                        {errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+                        {successMsg && <Text style={styles.successText}>{successMsg}</Text>}
 
                         <View style={styles.inputContainer}>
                             <Ionicons name="lock-closed-outline" size={20} color="#94A3B8" style={styles.inputIcon} />
@@ -193,14 +220,26 @@ export default function ForgotPasswordScreen({ navigation }: any) {
                             />
                         </View>
 
+                        <View style={styles.inputContainer}>
+                            <Ionicons name="lock-closed-outline" size={20} color="#94A3B8" style={styles.inputIcon} />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Confirm new password"
+                                placeholderTextColor="#94A3B8"
+                                secureTextEntry
+                                value={confirmPassword}
+                                onChangeText={(t) => { setConfirmPassword(t); setErrorMsg(null); }}
+                            />
+                        </View>
+
                         <TouchableOpacity style={styles.submitBtn} onPress={handleResetPassword} disabled={isLoading}>
                             <LinearGradient colors={['#7C3AED', '#5F2EEA']} style={styles.submitGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-                                {isLoading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.submitTxt}>Reset Password</Text>}
+                                {isLoading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.submitTxt}>Save & Login</Text>}
                             </LinearGradient>
                         </TouchableOpacity>
 
-                        <TouchableOpacity style={{ marginTop: 20 }} onPress={() => setStep('EMAIL')} disabled={isLoading}>
-                            <Text style={styles.resendTxt}>Didn't receive OTP? Try again</Text>
+                        <TouchableOpacity style={{ marginTop: 20 }} onPress={() => setStep('OTP')} disabled={isLoading}>
+                            <Text style={styles.resendTxt}>Back to OTP code</Text>
                         </TouchableOpacity>
                     </>
                 )}
