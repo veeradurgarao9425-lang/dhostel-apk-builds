@@ -474,10 +474,9 @@ export const authController = {
         .first();
 
       if (!user) {
-        // Don't reveal if email exists for security
-        return res.status(200).json({
-          success: true,
-          message: 'If email exists, a password reset link has been sent',
+        return res.status(404).json({
+          success: false,
+          error: 'No account found with this email address. Please check your spelling and try again.',
         });
       }
 
@@ -488,7 +487,10 @@ export const authController = {
         { expiresIn: process.env.PASSWORD_RESET_EXPIRES_IN || '1h' } as any
       );
 
-      // Save reset token to database with expiry
+      // Generate 6-digit OTP
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+      // Save reset token and OTP to database with expiry
       const resetExpiresAt = new Date();
       resetExpiresAt.setHours(resetExpiresAt.getHours() + 1);
 
@@ -496,11 +498,12 @@ export const authController = {
         .where('user_id', user.user_id)
         .update({
           password_reset_token: resetToken,
+          password_reset_otp: otp,
           password_reset_expires_at: resetExpiresAt,
         });
 
-      // Send email
-      await sendPasswordResetEmail(user.email, resetToken, user.full_name);
+      // Send email (passing otp as well if we update the email utility)
+      await sendPasswordResetEmail(user.email, resetToken, user.full_name, otp);
 
       // In development mode, log the reset link to console
       if (process.env.NODE_ENV === 'development') {
@@ -510,6 +513,7 @@ export const authController = {
         console.log('='.repeat(80));
         console.log(`User Email: ${user.email}`);
         console.log(`Reset Link: ${resetLink}`);
+        console.log(`OTP: ${otp}`);
         console.log(`Expires at: ${resetExpiresAt}`);
         console.log('='.repeat(80) + '\n');
       }
@@ -598,6 +602,7 @@ export const authController = {
       await db('users').where('user_id', user.user_id).update({
         password_hash,
         password_reset_token: null,
+        password_reset_otp: null,
         password_reset_expires_at: null,
       });
 

@@ -90,7 +90,7 @@ const UpiIcon = () => (
     <Svg width="24" height="10" viewBox="0 0 24 10">
         <Path d="M1,5 L4,2 L5.5,3.5 L2.5,6.5 Z" fill="#FF9933" />
         <Path d="M9,5 L6,8 L4.5,6.5 L7.5,3.5 Z" fill="#000080" />
-        <Text style={{ fontWeight: '900', color: '#000080', fontSize: 8, fontStyle: 'italic' } as any} x="10" y="8">UPI</Text>
+        <Text style={{ fontWeight: '900', color: '#000080', fontSize: 8, fontStyle: 'italic' } as any} {...{ x: "10", y: "8" } as any}>UPI</Text>
     </Svg>
 );
 

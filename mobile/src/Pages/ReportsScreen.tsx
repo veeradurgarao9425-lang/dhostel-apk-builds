@@ -420,6 +420,7 @@ export default function ReportsScreen() {
                 subtitle="Track performance & insights"
                 alignLeft
                 showBack={navigation.canGoBack()}
+                // @ts-ignore
                 titleColor="#FFF"
                 iconColor="#FFF"
                 rightComponent={

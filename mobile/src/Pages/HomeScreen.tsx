@@ -682,7 +682,7 @@ export default function HomeScreen() {
                             activeOpacity={0.8}
                         >
                             <View style={s.avatarCircle}>
-                                {user?.photo && typeof user.photo === 'string' && user.photo.trim() !== '' && user.photo.trim() !== 'null' && user.photo.startsWith('http') ? (
+                                {(user as any)?.photo && typeof user.photo === 'string' && user.photo.trim() !== '' && user.photo.trim() !== 'null' && user.photo.startsWith('http') ? (
                                     <Image source={{ uri: user.photo }} style={s.avatarImage} />
                                 ) : (
                                     <Text style={s.avatarLetter}>

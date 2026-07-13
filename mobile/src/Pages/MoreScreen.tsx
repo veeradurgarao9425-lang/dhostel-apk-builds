@@ -74,6 +74,7 @@ export default function MoreScreen() {
     }, [authHostels.length, loadHostels]);
     const { theme, isDark, fontSize } = useTheme();
     const { t } = useTranslation();
+    const { showToast, showSuccess, showError, showApiError } = useToast();
 
     const topTools = useMemo<MenuItem[]>(() => [
         {
@@ -598,7 +599,7 @@ export default function MoreScreen() {
                             {group.items.map((item, ii) => (
                                 <TouchableOpacity
                                     key={ii}
-                                    style={[s.gridCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }, item.comingSoon && { opacity: 0.6 }]}
+                                    style={[s.gridCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }, (item as any).comingSoon && { opacity: 0.6 }]}
                                     onPress={() => handlePress(item)}
                                     activeOpacity={0.7}
                                 >
@@ -615,7 +616,7 @@ export default function MoreScreen() {
                                         </View>
                                     )}
 
-                                    {item.comingSoon && (
+                                    {(item as any).comingSoon && (
                                         <View style={s.soonBadge}>
                                             <Text style={s.soonBadgeText}>Soon</Text>
                                         </View>
@@ -676,8 +677,8 @@ export default function MoreScreen() {
                                 <View style={{
                                     flexDirection: 'row',
                                     alignItems: 'center',
-                                    backgroundColor: theme.isDark ? 'rgba(79, 70, 229, 0.12)' : '#F0F9FF',
-                                    borderColor: theme.isDark ? 'rgba(79, 70, 229, 0.25)' : '#E0F2FE',
+                                    backgroundColor: (theme as any).isDark ? 'rgba(79, 70, 229, 0.12)' : '#F0F9FF',
+                                    borderColor: (theme as any).isDark ? 'rgba(79, 70, 229, 0.25)' : '#E0F2FE',
                                     borderWidth: 1,
                                     padding: 12,
                                     borderRadius: 14,

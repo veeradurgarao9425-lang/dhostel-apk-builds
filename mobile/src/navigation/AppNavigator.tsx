@@ -16,6 +16,7 @@ import MoreScreen      from '../Pages/MoreScreen';
 import SplashScreen          from '../Pages/SplashScreen';
 import OnboardingScreen      from '../Pages/OnboardingScreen';
 import LoginScreen           from '../Pages/LoginScreen';
+import ForgotPasswordScreen  from '../Pages/ForgotPasswordScreen';
 import RegisterScreen        from '../Pages/RegisterScreen';
 import NotificationScreen    from '../Pages/NotificationScreen';
 import StudentDetailsScreen  from '../Pages/StudentDetailsScreen';
@@ -143,6 +144,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                         options={{ animation: 'fade' }}
                     />
                     <Stack.Screen name="Login"  component={LoginScreen}  />
+                    <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
                     <Stack.Screen name="Register" component={RegisterScreen} />
 
                     {/* Main tab container */}

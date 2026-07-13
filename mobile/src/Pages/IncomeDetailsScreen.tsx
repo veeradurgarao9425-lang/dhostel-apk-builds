@@ -468,13 +468,13 @@ export default function IncomeDetailsScreen() {
         return (
             <View style={[s.flatCard, { padding: 16 }]}>
                 {[1, 2, 3, 4].map((key) => (
-                    <View key={key} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: key === 4 ? 0 : 1, borderBottomColor: theme.isDark ? '#334155' : '#F1F5F9', gap: 12 }}>
-                        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: theme.isDark ? '#334155' : '#E2E8F0' }} />
+                    <View key={key} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: key === 4 ? 0 : 1, borderBottomColor: (theme as any).isDark ? '#334155' : '#F1F5F9', gap: 12 }}>
+                        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: (theme as any).isDark ? '#334155' : '#E2E8F0' }} />
                         <View style={{ flex: 1, gap: 6 }}>
-                            <View style={{ width: '60%', height: 14, backgroundColor: theme.isDark ? '#334155' : '#E2E8F0', borderRadius: 4 }} />
-                            <View style={{ width: '40%', height: 10, backgroundColor: theme.isDark ? '#334155' : '#E2E8F0', borderRadius: 4 }} />
+                            <View style={{ width: '60%', height: 14, backgroundColor: (theme as any).isDark ? '#334155' : '#E2E8F0', borderRadius: 4 }} />
+                            <View style={{ width: '40%', height: 10, backgroundColor: (theme as any).isDark ? '#334155' : '#E2E8F0', borderRadius: 4 }} />
                         </View>
-                        <View style={{ width: 50, height: 14, backgroundColor: theme.isDark ? '#334155' : '#E2E8F0', borderRadius: 4 }} />
+                        <View style={{ width: 50, height: 14, backgroundColor: (theme as any).isDark ? '#334155' : '#E2E8F0', borderRadius: 4 }} />
                     </View>
                 ))}
             </View>
@@ -519,8 +519,8 @@ export default function IncomeDetailsScreen() {
                     borderWidth: 1,
                     marginBottom: 10,
                     backgroundColor: theme.cardBg,
-                    borderColor: theme.isDark ? 'rgba(255,255,255,0.08)' : '#F1F5F9',
-                    shadowColor: theme.isDark ? '#000' : '#475569',
+                    borderColor: (theme as any).isDark ? 'rgba(255,255,255,0.08)' : '#F1F5F9',
+                    shadowColor: (theme as any).isDark ? '#000' : '#475569',
                     shadowOffset: { width: 0, height: 2 },
                     shadowOpacity: 0.05,
                     shadowRadius: 6,
@@ -758,8 +758,8 @@ export default function IncomeDetailsScreen() {
                                         borderWidth: 1,
                                         marginTop: 4,
                                         backgroundColor: theme.cardBg,
-                                        borderColor: theme.isDark ? 'rgba(255,255,255,0.08)' : '#F1F5F9',
-                                        shadowColor: theme.isDark ? '#000' : '#475569',
+                                        borderColor: (theme as any).isDark ? 'rgba(255,255,255,0.08)' : '#F1F5F9',
+                                        shadowColor: (theme as any).isDark ? '#000' : '#475569',
                                         shadowOffset: { width: 0, height: 2 },
                                         shadowOpacity: 0.05,
                                         shadowRadius: 6,
@@ -875,7 +875,7 @@ export default function IncomeDetailsScreen() {
 
                     <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
                         <TouchableOpacity 
-                            style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: theme.isDark ? '#334155' : '#F8FAFC', borderWidth: 1, borderColor: theme.isDark ? '#475569' : '#E2E8F0', padding: 12, borderRadius: 12, gap: 8 }} 
+                            style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: (theme as any).isDark ? '#334155' : '#F8FAFC', borderWidth: 1, borderColor: (theme as any).isDark ? '#475569' : '#E2E8F0', padding: 12, borderRadius: 12, gap: 8 }} 
                             onPress={() => setStartDatePickerVisible(true)}
                         >
                             <Ionicons name="calendar-outline" size={18} color="#64748B" />
@@ -888,7 +888,7 @@ export default function IncomeDetailsScreen() {
                         </TouchableOpacity>
 
                         <TouchableOpacity 
-                            style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: theme.isDark ? '#334155' : '#F8FAFC', borderWidth: 1, borderColor: theme.isDark ? '#475569' : '#E2E8F0', padding: 12, borderRadius: 12, gap: 8 }} 
+                            style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: (theme as any).isDark ? '#334155' : '#F8FAFC', borderWidth: 1, borderColor: (theme as any).isDark ? '#475569' : '#E2E8F0', padding: 12, borderRadius: 12, gap: 8 }} 
                             onPress={() => setEndDatePickerVisible(true)}
                         >
                             <Ionicons name="calendar-outline" size={18} color="#64748B" />
@@ -1644,26 +1644,6 @@ const s = StyleSheet.create({
         borderLeftWidth: 1,
         borderRightWidth: 1,
         borderColor: 'rgba(148, 163, 184, 0.15)',
-    },
-    modalHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 20,
-        paddingBottom: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(148, 163, 184, 0.15)',
-    },
-    modalTitle: {
-        fontSize: 18,
-        fontWeight: '800',
-    },
-    modalCloseBtn: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        alignItems: 'center',
-        justifyContent: 'center',
     },
     filterOption: {
         flexDirection: 'row',

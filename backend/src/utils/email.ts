@@ -154,7 +154,8 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
 export const sendPasswordResetEmail = async (
   email: string,
   resetToken: string,
-  userName: string
+  userName: string,
+  otp?: string
 ): Promise<void> => {
   const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
 
@@ -171,6 +172,16 @@ export const sendPasswordResetEmail = async (
             Reset Password
           </a>
         </div>
+        
+        ${otp ? `
+        <div style="text-align: center; margin: 30px 0;">
+          <p style="color: #666; font-size: 14px;">Or use this 6-digit OTP code in the mobile app:</p>
+          <div style="background-color: #f3f4f6; border-radius: 8px; padding: 15px; margin: 10px auto; max-width: 200px; border: 1px dashed #cbd5e1;">
+            <span style="font-size: 24px; font-weight: bold; color: #4f46e5; letter-spacing: 4px;">${otp}</span>
+          </div>
+        </div>
+        ` : ''}
+
         <p style="color: #666; line-height: 1.6;">Or copy and paste this link in your browser:</p>
         <p style="background-color: #f0f0f0; padding: 10px; border-radius: 4px; word-break: break-all; color: #333;">
           ${resetLink}

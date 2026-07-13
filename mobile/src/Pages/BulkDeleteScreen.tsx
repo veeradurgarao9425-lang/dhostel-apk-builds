@@ -529,8 +529,8 @@ export default function BulkDeleteScreen() {
             </View>
 
             <Modal visible={deleting} transparent animationType="fade">
-                <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.6)', flex: 1, justifyContent: 'center', padding: 20 }]}>
-                    <View style={[styles.dangerModalContent, { backgroundColor: isDark ? '#1E293B' : '#FFF', alignItems: 'center', padding: 20, borderRadius: 16 }]}>
+                <View style={[(styles as any).modalOverlay, { backgroundColor: 'rgba(0,0,0,0.6)', flex: 1, justifyContent: 'center', padding: 20 }]}>
+                    <View style={[(styles as any).dangerModalContent, { backgroundColor: isDark ? '#1E293B' : '#FFF', alignItems: 'center', padding: 20, borderRadius: 16 }]}>
                         <ActivityIndicator size="large" color={theme.primary} style={{ marginBottom: 15 }} />
                         <Text style={{ fontSize: fontSize + 2, fontWeight: '700', color: theme.textPrimary, marginBottom: 10 }}>Deleting...</Text>
                         <Text style={{ fontSize: fontSize, color: theme.textSecondary, marginBottom: 20 }}>

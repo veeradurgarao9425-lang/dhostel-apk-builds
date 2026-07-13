@@ -86,7 +86,7 @@ export const CustomToast = ({ variant, title, message, progress, onAction, onClo
                 {/* Progress Bar (Only for downloading) */}
                 {variant === 'downloading' && (
                     <View style={S.progressBarBg}>
-                        <View style={[S.progressBarFill, { width: `${progress}%`, backgroundColor: config.color }]} />
+                        <View style={[S.progressBarFill, { width: `${progress}%` as any, backgroundColor: config.color }]} />
                     </View>
                 )}
             </View>

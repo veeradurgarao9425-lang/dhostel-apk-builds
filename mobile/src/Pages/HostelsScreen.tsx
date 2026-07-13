@@ -185,7 +185,7 @@ export const HostelsScreen = () => {
                     <ErrorState onRetry={fetchHostels} />
                 ) : hostels.length === 0 ? (
                     <EmptyState illustration="pg"
-                        variant="noData"
+                        
                         title="No Hostels Yet"
                         subtitle="Add your first hostel to start managing tenants, rooms and finances."
                         actionLabel="Add Hostel"

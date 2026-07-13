@@ -394,7 +394,7 @@ const ProfileScreen = ({ navigation }: any) => {
                     </Text>
                     <TouchableOpacity 
                         onPress={openEditModal} 
-                        style={[styles.editLink, { backgroundColor: theme.primary, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }]}
+                        style={[(styles as any).editLink, { backgroundColor: theme.primary, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }]}
                         activeOpacity={0.8}
                     >
                         <Ionicons name="pencil" size={12} color="#FFF" style={{ marginRight: 4 }} />
@@ -504,8 +504,8 @@ const ProfileScreen = ({ navigation }: any) => {
                                 <View style={{
                                     flexDirection: 'row',
                                     alignItems: 'center',
-                                    backgroundColor: theme.isDark ? 'rgba(79, 70, 229, 0.12)' : '#F0F9FF',
-                                    borderColor: theme.isDark ? 'rgba(79, 70, 229, 0.25)' : '#E0F2FE',
+                                    backgroundColor: (theme as any).isDark ? 'rgba(79, 70, 229, 0.12)' : '#F0F9FF',
+                                    borderColor: (theme as any).isDark ? 'rgba(79, 70, 229, 0.25)' : '#E0F2FE',
                                     borderWidth: 1,
                                     padding: 12,
                                     borderRadius: 14,
@@ -695,9 +695,9 @@ const ProfileScreen = ({ navigation }: any) => {
             <Modal visible={supportModalVisible} transparent animationType="fade" onRequestClose={() => setSupportModalVisible(false)}>
                 <View style={[styles.modalOverlay, { justifyContent: 'center', paddingHorizontal: 32, backgroundColor: 'rgba(0,0,0,0.5)' }]}>
                     <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => setSupportModalVisible(false)} />
-                    <View style={[styles.modalContent, { backgroundColor: theme.cardBg, borderRadius: 24, padding: 20, alignItems: 'center', width: '100%', maxHeight: undefined, paddingBottom: 20 }]}>
+                    <View style={[(styles as any).modalContent, { backgroundColor: theme.cardBg, borderRadius: 24, padding: 20, alignItems: 'center', width: '100%', maxHeight: undefined, paddingBottom: 20 }]}>
                         
-                        <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: isDark ? '#1E1B4B' : '#EFF6FF', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                        <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: (theme as any).isDark ? '#1E1B4B' : '#EFF6FF', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
                             <Ionicons name="headset" size={28} color="#3B82F6" />
                         </View>
                         

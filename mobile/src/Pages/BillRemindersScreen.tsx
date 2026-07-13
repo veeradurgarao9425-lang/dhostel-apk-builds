@@ -210,7 +210,7 @@ export default function BillRemindersScreen() {
             <CustomMonthYearPicker
                 visible={showMonthPicker}
                 onClose={() => setShowMonthPicker(false)}
-                onSelect={(date) => {
+                onChange={(date) => {
                     setFilterDate(date);
                     setShowMonthPicker(false);
                 }}

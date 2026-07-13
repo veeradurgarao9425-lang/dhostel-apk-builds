@@ -281,7 +281,7 @@ export default function RegisterScreen({ navigation }: any) {
                 hostel_name: trimmedHostelName,
                 total_floors: trimmedFloors,
                 address: trimmedAddress,
-            });
+            } as any);
             if (!error) {
                 navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
             } else {

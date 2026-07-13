@@ -1007,7 +1007,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
         try {
             const payload = {
                 ...formData,
-                hostel_id: user?.hostel_id,
+                hostel_id: String(user?.hostel_id),
                 guardian_phone: formData.guardian_phone || null,
                 guardian_name: formData.guardian_name || null,
                 admission_fee: parseFloat(formData.admission_fee || '0'),

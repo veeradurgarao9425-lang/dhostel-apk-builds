@@ -29,7 +29,8 @@ const DEFAULT_CATEGORIES = [
 export default function NoticesManagementScreen({ navigation }: any) {
     const { user } = useAuth();
     const { theme, isDark } = useTheme();
-    const { refreshKey } = useRefresh();
+    const refreshData = (useRefresh as any)();
+    const refreshKey = refreshData.refreshKey;
     const { showSuccess, showApiError } = useToast();
     
     const [loading, setLoading] = useState(true);

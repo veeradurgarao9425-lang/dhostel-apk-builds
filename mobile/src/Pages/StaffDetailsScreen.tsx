@@ -544,7 +544,7 @@ export default function StaffDetailsScreen({ route, navigation }: any) {
                                     <View style={styles.salarySummaryCard}>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
                                             <IndianRupee size={16} color='#16A34A' />
-                                            <Text style={[styles.cardTitle, { color: theme.textPrimary, marginBottom: 0, marginLeft: 6 }]}>Salary Cycle</Text>
+                                            <Text style={[(styles as any).cardTitle, { color: theme.textPrimary, marginBottom: 0, marginLeft: 6 }]}>Advance Balance</Text>
                                         </View>
                                         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                                             <View style={{ alignItems: 'center' }}>
@@ -581,7 +581,7 @@ export default function StaffDetailsScreen({ route, navigation }: any) {
 
                                 {/* Recent history preview */}
                                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, marginTop: 8 }}>
-                                    <Text style={[styles.cardTitle, { color: theme.textPrimary, marginBottom: 0 }]}>Recent Payments</Text>
+                                    <Text style={[(styles as any).cardTitle, { color: theme.textPrimary, marginBottom: 0 }]}>Recent Payments</Text>
                                 </View>
 
                                 {historyLoading ? (
