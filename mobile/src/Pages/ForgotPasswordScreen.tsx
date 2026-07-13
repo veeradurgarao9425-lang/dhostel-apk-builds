@@ -32,6 +32,8 @@ export default function ForgotPasswordScreen({ navigation }: any) {
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
+    const [resetToken, setResetToken] = useState<string | null>(null);
+
     const handleSendOTP = async () => {
         if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
             setErrorMsg('Please enter a valid email address');
@@ -41,6 +43,7 @@ export default function ForgotPasswordScreen({ navigation }: any) {
         setIsLoading(true);
         setErrorMsg(null);
         setSuccessMsg(null);
+        setOtp(''); // Clear OTP input field on fresh request
 
         try {
             const response = await api.post('/auth/forgot-password', { email: email.trim() });
@@ -57,14 +60,42 @@ export default function ForgotPasswordScreen({ navigation }: any) {
         }
     };
 
-    const handleVerifyOTP = () => {
+    const handleVerifyOTP = async () => {
         if (!otp.trim() || otp.trim().length !== 6) {
             setErrorMsg('Please enter a valid 6-digit OTP');
             return;
         }
+        Keyboard.dismiss();
+        setIsLoading(true);
         setErrorMsg(null);
         setSuccessMsg(null);
-        setStep('RESET');
+
+        try {
+            // Verify OTP using verify-reset-token or a combined check, or we can use the backend reset token if it can be verified.
+            // Wait, the backend has /verify-reset-token which checks the token. But the user has OTP.
+            // Let's create or use verify OTP endpoint in backend or let the backend verify the OTP first.
+            // Let's check how the backend verifies the reset token/otp. 
+            // In backend, `/auth/forgot-password` generates a token and updates password_reset_token and password_reset_otp.
+            // We can add a simple backend route or logic to verify the password reset OTP and return the token, 
+            // OR we can make a call to a verification endpoint to check if the OTP matches, so the app knows it is correct.
+            // Let's look at what endpoints we have in backend.
+            const response = await api.post('/auth/verify-reset-otp', {
+                email: email.trim(),
+                otp: otp.trim()
+            });
+
+            if (response.data?.success || response.status === 200) {
+                setResetToken(response.data.token);
+                setSuccessMsg('OTP verified successfully.');
+                setStep('RESET');
+            } else {
+                setErrorMsg(response.data?.error || 'Invalid OTP');
+            }
+        } catch (err: any) {
+            setErrorMsg(err.response?.data?.error || err.response?.data?.message || 'Invalid OTP or verification error.');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleResetPassword = async () => {
@@ -88,9 +119,9 @@ export default function ForgotPasswordScreen({ navigation }: any) {
 
         try {
             const response = await api.post('/auth/reset-password', { 
-                email: email.trim(), 
-                otp: otp.trim(), 
-                newPassword 
+                token: resetToken, 
+                newPassword,
+                confirmPassword
             });
             
             if (response.data?.success || response.status === 200) {
@@ -102,9 +133,7 @@ export default function ForgotPasswordScreen({ navigation }: any) {
                 setErrorMsg(response.data?.error || response.data?.message || 'Failed to reset password.');
             }
         } catch (err: any) {
-            setErrorMsg(err.response?.data?.error || err.response?.data?.message || 'Invalid OTP or network error.');
-            // If OTP was wrong, take them back to OTP step
-            setStep('OTP');
+            setErrorMsg(err.response?.data?.error || err.response?.data?.message || 'Error resetting password.');
         } finally {
             setIsLoading(false);
         }

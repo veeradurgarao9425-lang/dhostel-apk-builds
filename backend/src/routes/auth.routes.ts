@@ -14,6 +14,7 @@ router.post('/logout', authController.logout);
 router.post('/forgot-password', authController.forgotPassword);
 router.post('/reset-password', authController.resetPassword);
 router.post('/verify-reset-token', authController.verifyResetToken);
+router.post('/verify-reset-otp', authController.verifyResetOtp);
 
 // Tenant routes
 router.post('/tenant/verify-hostel', authController.verifyHostelKey);

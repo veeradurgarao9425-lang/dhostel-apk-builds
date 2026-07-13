@@ -685,6 +685,57 @@ export const authController = {
     }
   },
 
+  // Verify Reset OTP
+  async verifyResetOtp(req: Request, res: Response) {
+    try {
+      const { email, otp } = req.body;
+
+      if (!email || !otp) {
+        return res.status(400).json({
+          success: false,
+          error: 'Email and OTP are required',
+        });
+      }
+
+      // Find user by email and otp
+      const user = await db('users')
+        .where('email', email)
+        .where('password_reset_otp', otp)
+        .where('is_active', true)
+        .first();
+
+      if (!user) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid OTP code',
+        });
+      }
+
+      // Check if OTP has expired
+      if (
+        user.password_reset_expires_at &&
+        new Date(user.password_reset_expires_at) < new Date()
+      ) {
+        return res.status(400).json({
+          success: false,
+          error: 'OTP code has expired',
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: 'OTP verified successfully',
+        token: user.password_reset_token, // Return the reset token so it can be used for /reset-password
+      });
+    } catch (error: any) {
+      console.error('Verify reset OTP error:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to verify OTP',
+      });
+    }
+  },
+
   // Switch active hostel
   async switchActiveHostel(req: AuthRequest, res: Response) {
     try {
