@@ -13,7 +13,7 @@ const SLIDES = [
         id: '1',
         title: 'Manage your Hostel like never before',
         titleHighlight: 'never',
-        subtitle: 'Welcome to DHostel',
+        subtitle: 'Welcome to your Hostel',
         description: 'All-in-one platform to simplify rooms, tenants, payments and more.',
         color: '#6366F1', // Indigo
         image: require('../../assets/hostel_only_3d.png'),
