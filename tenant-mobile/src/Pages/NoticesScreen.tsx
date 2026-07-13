@@ -10,6 +10,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../theme';
 import { Phase3EmptyState } from '../components/UIComponents';
 import { SkeletonNotificationRow } from '../components/ui';
+import AppHeader from '../components/ui/AppHeader';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -82,43 +83,26 @@ export default function NoticesScreen({ navigation }: any) {
       <StatusBar barStyle="light-content" backgroundColor={theme.colors.primary} />
 
       {/* ── Header ── */}
-      <LinearGradient
-        colors={[theme.colors.primary, theme.colors.primaryDark]}
-        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-        style={styles.headerWrap}
-      >
-        <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
-          <View style={styles.header}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              {navigation.canGoBack() && (
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                  <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
-                </TouchableOpacity>
-              )}
-              <View>
-                <Text style={styles.headerGreeting}>Hostel Feed</Text>
-                <Text style={styles.headerSub}>
-                  {selectedMonth 
-                    ? `Updates for ${selectedMonth.toLocaleString('default', { month: 'short' })} ${selectedMonth.getFullYear()}` 
-                    : 'Alerts, updates, and announcements'}
-                </Text>
-              </View>
-            </View>
-
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <TouchableOpacity style={styles.hBtn} onPress={() => setShowPicker(true)}>
-                <Ionicons name="calendar-outline" size={20} color="#FFFFFF" />
-                {selectedMonth && <View style={styles.filterDot} />}
+      <AppHeader
+        title="Hostel Feed"
+        subtitle={selectedMonth 
+          ? `Updates for ${selectedMonth.toLocaleString('default', { month: 'short' })} ${selectedMonth.getFullYear()}` 
+          : 'Alerts, updates, and announcements'}
+        showBack={navigation.canGoBack()}
+        rightComponent={
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <TouchableOpacity style={styles.hBtn} onPress={() => setShowPicker(true)}>
+              <Ionicons name="calendar-outline" size={20} color="#FFFFFF" />
+              {selectedMonth && <View style={styles.filterDot} />}
+            </TouchableOpacity>
+            {selectedMonth && (
+              <TouchableOpacity style={styles.hBtn} onPress={() => setSelectedMonth(null)}>
+                <Ionicons name="close" size={20} color="#FFFFFF" />
               </TouchableOpacity>
-              {selectedMonth && (
-                <TouchableOpacity style={styles.hBtn} onPress={() => setSelectedMonth(null)}>
-                  <Ionicons name="close" size={20} color="#FFFFFF" />
-                </TouchableOpacity>
-              )}
-            </View>
+            )}
           </View>
-        </SafeAreaView>
-      </LinearGradient>
+        }
+      />
 
       {/* ── Tabs ── */}
       <View style={styles.filterScrollWrap}>

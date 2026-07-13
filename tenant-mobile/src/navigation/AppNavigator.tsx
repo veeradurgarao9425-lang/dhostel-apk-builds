@@ -15,6 +15,7 @@ import { HostelKeyScreen } from '../Pages/HostelKeyScreen';
 import LoginScreen from '../Pages/LoginScreen';
 import RegistrationScreen from '../Pages/RegistrationScreen';
 import HelpScreen from '../Pages/HelpScreen';
+import OnboardingScreen from '../Pages/OnboardingScreen';
 
 // Main tabs
 import HomeScreen from '../Pages/HomeScreen';
@@ -125,6 +126,7 @@ export default function AppNavigator() {
           </>
         ) : user ? (
           <>
+            <Stack.Screen name="Onboarding" component={OnboardingScreen} />
             <Stack.Screen name="Main" component={MainTabs} />
             {/* Stack screens accessible from any tab */}
             <Stack.Screen name="Profile" component={ProfileScreen} />

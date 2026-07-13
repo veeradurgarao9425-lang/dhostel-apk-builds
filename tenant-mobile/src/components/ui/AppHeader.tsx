@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, ViewStyle } from 'react-nativ
 import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronLeft } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
-import { colors } from '../../theme';
+import { colors, theme } from '../../theme';
 
 interface AppHeaderProps {
     title: string;
@@ -37,7 +37,15 @@ export default function AppHeader({
     };
 
     return (
-        <LinearGradient colors={[colors.gradientStart, colors.gradientEnd]} style={[styles.header, style]}>
+        <LinearGradient 
+            colors={[theme.colors.primary, theme.colors.primaryDark]} 
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.header, style]}
+        >
+            <View style={styles.headerAccentCircle} />
+            <View style={styles.headerAccentCircle2} />
+
             <View style={styles.headerTop}>
                 {showBack ? (
                     <TouchableOpacity onPress={handleBack} style={styles.backBtn} activeOpacity={0.7}>
@@ -66,8 +74,27 @@ const styles = StyleSheet.create({
         paddingTop: 50,
         paddingBottom: 20,
         paddingHorizontal: 20,
-        borderBottomLeftRadius: 28,
-        borderBottomRightRadius: 28,
+        borderBottomLeftRadius: 0,
+        borderBottomRightRadius: 0,
+        overflow: 'hidden',
+    },
+    headerAccentCircle: {
+        position: 'absolute',
+        width: 140,
+        height: 140,
+        borderRadius: 70,
+        backgroundColor: 'rgba(255,255,255,0.05)',
+        top: -40,
+        right: -30,
+    },
+    headerAccentCircle2: {
+        position: 'absolute',
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: 'rgba(255,255,255,0.04)',
+        bottom: 10,
+        left: 60,
     },
     headerTop: {
         flexDirection: 'row',
