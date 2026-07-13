@@ -114,14 +114,14 @@ export const QuickShortcuts = ({ shortcuts }: QuickShortcutsProps) => {
 const styles = StyleSheet.create({
     section: {
         marginBottom: 8,
-        backgroundColor: theme.colors.surface,
-        borderRadius: 20,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
         marginHorizontal: SECTION_H_PAD,
         paddingTop: 14,
         paddingBottom: 10,
-        borderWidth: 1,
-        borderColor: theme.colors.borderSoft,
-        shadowColor: theme.colors.primary,
+        borderWidth: 1.5,
+        borderColor: '#F1F5F9',
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.05,
         shadowRadius: 12,
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
     },
     sectionTitle: {
         fontSize: 12,
-        fontWeight: '700',
+        fontWeight: '800',
         color: theme.colors.textMuted,
         letterSpacing: 0.5,
     },

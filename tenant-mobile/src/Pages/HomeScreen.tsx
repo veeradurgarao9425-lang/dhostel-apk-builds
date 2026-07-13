@@ -73,6 +73,15 @@ export default function HomeScreen({ navigation }: any) {
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const progressAnim = useRef(new Animated.Value(0)).current;
 
+  // Staggered entry animations for 6 sections
+  const enterAnims = useRef([...Array(6)].map(() => new Animated.Value(0))).current;
+
+  useEffect(() => {
+    Animated.stagger(100, 
+      enterAnims.map(a => Animated.spring(a, { toValue: 1, tension: 50, friction: 8, useNativeDriver: true }))
+    ).start();
+  }, []);
+
   // ── Budget Progress animation ────────────────────────────────────────────
   useEffect(() => {
     if (budget > 0) {
@@ -162,14 +171,14 @@ export default function HomeScreen({ navigation }: any) {
 
   // ── Quick shortcuts ──────────────────────────────────────────────────────
   const shortcuts = [
-    { id: "rent", name: "Pay Rent", icon: "cash" as const, nav: "Dues", bg: "#DCFCE7", color: "#16A34A" },
-    { id: "complaints", name: "Complaints", icon: "chatbubble-ellipses" as const, nav: "Complaints", bg: "#FEE2E2", color: "#E11D48" },
-    { id: "room", name: "Room Info", icon: "bed" as const, nav: "RoomInfo", bg: theme.colors.primarySoft, color: theme.colors.primary },
-    { id: "splits", name: "Splits", icon: "receipt" as const, nav: "Splits", bg: theme.colors.primarySoft, color: theme.colors.primary },
-    { id: "visitor", name: "Visitor Pass", icon: "person-add" as const, nav: "VisitorPass", bg: theme.colors.primarySoft, color: theme.colors.primary },
-    { id: "gatepass", name: "Gate Pass", icon: "qr-code" as const, nav: "GatePass", bg: theme.colors.primarySoft, color: theme.colors.primary },
-    { id: "documents", name: "Documents", icon: "document-text" as const, nav: "Documents", bg: theme.colors.primarySoft, color: theme.colors.primary },
-    { id: "notes", name: "Notes", icon: "create" as const, nav: "Notes", bg: theme.colors.primarySoft, color: theme.colors.primary },
+    { id: "rent", name: "Pay Rent", icon: "cash" as const, nav: "Dues", bg: "#EEF2FF", color: "#4F46E5" },
+    { id: "complaints", name: "Complaints", icon: "chatbubble-ellipses" as const, nav: "Complaints", bg: "#EEF2FF", color: "#4F46E5" },
+    { id: "room", name: "Room Info", icon: "bed" as const, nav: "RoomInfo", bg: "#EEF2FF", color: "#4F46E5" },
+    { id: "splits", name: "Splits", icon: "receipt" as const, nav: "Splits", bg: "#EEF2FF", color: "#4F46E5" },
+    { id: "visitor", name: "Visitor", icon: "person-add" as const, nav: "VisitorPass", bg: "#EEF2FF", color: "#4F46E5" },
+    { id: "gatepass", name: "Gate Pass", icon: "qr-code" as const, nav: "GatePass", bg: "#EEF2FF", color: "#4F46E5" },
+    { id: "documents", name: "Documents", icon: "document-text" as const, nav: "Documents", bg: "#EEF2FF", color: "#4F46E5" },
+    { id: "notes", name: "Notes", icon: "create" as const, nav: "Notes", bg: "#EEF2FF", color: "#4F46E5" },
   ];
 
   // ── Notif count ──────────────────────────────────────────────────────────
@@ -442,7 +451,6 @@ export default function HomeScreen({ navigation }: any) {
               </View>
             )}
           </View>
-
         </SafeAreaView>
       </LinearGradient>
 
@@ -461,75 +469,87 @@ export default function HomeScreen({ navigation }: any) {
         }
       >
         {/* Rent + Budget */}
-        <BudgetOverview
-          budget={budget}
-          spent={spent}
-          progressAnim={progressAnim}
-          dueAmount={dueAmount}
-          totalRentAmount={totalRentAmount}
-          rentDueDate={rentDueDate}
-          formatDate={formatDate}
-        />
+        <Animated.View style={{ opacity: enterAnims[0], transform: [{ translateY: enterAnims[0].interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
+          <BudgetOverview
+            budget={budget}
+            spent={spent}
+            progressAnim={progressAnim}
+            dueAmount={dueAmount}
+            totalRentAmount={totalRentAmount}
+            rentDueDate={rentDueDate}
+            formatDate={formatDate}
+          />
+        </Animated.View>
 
         <View style={styles.divider} />
 
         {/* Today's Menu */}
-        <MessMenuCard meals={meals} recentNotices={recentNotices} BLUE={BRAND} />
+        <Animated.View style={{ opacity: enterAnims[1], transform: [{ translateY: enterAnims[1].interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
+          <MessMenuCard meals={meals} recentNotices={recentNotices} BLUE={BRAND} />
+        </Animated.View>
 
         <View style={styles.divider} />
 
         {/* Quick Shortcuts */}
-        <QuickShortcuts shortcuts={shortcuts} />
+        <Animated.View style={{ opacity: enterAnims[2], transform: [{ translateY: enterAnims[2].interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
+          <QuickShortcuts shortcuts={shortcuts} />
+        </Animated.View>
 
         <View style={styles.divider} />
 
         {/* Notice banner */}
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={() => navigation.navigate("Notices")}
-          style={styles.noticeRow}
-        >
-          <View style={styles.noticeIconWrap}>
-            <Ionicons name="megaphone" size={18} color="#D97706" />
-          </View>
-          {recentNotices.length > 0 ? (
-            <View style={{ flex: 1 }}>
-              <View style={styles.noticeTitleRow}>
-                <Text style={styles.noticeTitle} numberOfLines={1}>
-                  {recentNotices[0]?.title || "New Notice"}
-                </Text>
-                <View style={styles.newChip}>
-                  <Text style={styles.newChipText}>NEW</Text>
+        <Animated.View style={{ opacity: enterAnims[3], transform: [{ translateY: enterAnims[3].interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate("Notices")}
+            style={styles.noticeRow}
+          >
+            <View style={styles.noticeIconWrap}>
+              <Ionicons name="megaphone" size={18} color="#D97706" />
+            </View>
+            {recentNotices.length > 0 ? (
+              <View style={{ flex: 1 }}>
+                <View style={styles.noticeTitleRow}>
+                  <Text style={styles.noticeTitle} numberOfLines={1}>
+                    {recentNotices[0]?.title || "New Notice"}
+                  </Text>
+                  <View style={styles.newChip}>
+                    <Text style={styles.newChipText}>NEW</Text>
+                  </View>
                 </View>
+                <Text style={styles.noticeBody} numberOfLines={1}>
+                  {recentNotices[0]?.body || "Check here for hostel updates."}
+                </Text>
               </View>
-              <Text style={styles.noticeBody} numberOfLines={1}>
-                {recentNotices[0]?.body || "Check here for hostel updates."}
-              </Text>
+            ) : (
+              <View style={{ flex: 1 }}>
+                <Text style={styles.noticeTitle}>Announcements</Text>
+                <Text style={styles.noticeBody}>No new notices from hostel</Text>
+              </View>
+            )}
+            <View style={styles.noticeArrow}>
+              <Ionicons name="chevron-forward" size={14} color="#B45309" />
             </View>
-          ) : (
-            <View style={{ flex: 1 }}>
-              <Text style={styles.noticeTitle}>Announcements</Text>
-              <Text style={styles.noticeBody}>No new notices from hostel</Text>
-            </View>
-          )}
-          <View style={styles.noticeArrow}>
-            <Ionicons name="chevron-forward" size={14} color="#B45309" />
-          </View>
-        </TouchableOpacity>
+          </TouchableOpacity>
+        </Animated.View>
 
         <View style={styles.divider} />
 
         {/* Quick Tips */}
-        <QuickTips />
+        <Animated.View style={{ opacity: enterAnims[4], transform: [{ translateY: enterAnims[4].interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
+          <QuickTips />
+        </Animated.View>
 
         <View style={styles.divider} />
 
         {/* Recent Activity */}
-        <RecentActivity
-          recentPayments={recentPayments}
-          formatDate={formatDate}
-          formatTime={formatTime}
-        />
+        <Animated.View style={{ opacity: enterAnims[5], transform: [{ translateY: enterAnims[5].interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
+          <RecentActivity
+            recentPayments={recentPayments}
+            formatDate={formatDate}
+            formatTime={formatTime}
+          />
+        </Animated.View>
       </Animated.ScrollView>
     </View>
   );
@@ -539,7 +559,7 @@ export default function HomeScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: theme.colors.bg,
+    backgroundColor: '#F8FAFC',
   },
 
   // ── HEADER
@@ -690,12 +710,12 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     paddingHorizontal: 14,
     marginHorizontal: 16,
-    borderWidth: 1,
-    borderColor: "#FDE68A",
-    shadowColor: "#D97706",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07,
-    shadowRadius: 8,
+    borderWidth: 1.5,
+    borderColor: "#F1F5F9",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
     elevation: 2,
   },
   noticeIconWrap: {

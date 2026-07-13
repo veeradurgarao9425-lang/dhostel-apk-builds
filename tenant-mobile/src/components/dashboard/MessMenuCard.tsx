@@ -164,16 +164,16 @@ const styles = StyleSheet.create({
     },
 
     card: {
-        backgroundColor: theme.colors.surface,
-        borderRadius: 18,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
         padding: 16,
-        borderWidth: 1,
-        borderColor: theme.colors.borderSoft,
+        borderWidth: 1.5,
+        borderColor: '#F1F5F9',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.06,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
         shadowRadius: 12,
-        elevation: 3,
+        elevation: 2,
     },
 
     // ── HEADER
@@ -196,9 +196,9 @@ const styles = StyleSheet.create({
     },
     cardTitle: {
         fontSize: 16,
-        fontWeight: '800',
+        fontWeight: '900',
         color: theme.colors.text,
-        letterSpacing: -0.2,
+        letterSpacing: -0.5,
     },
     fullMenuBtn: {
         flexDirection: 'row',

@@ -146,9 +146,9 @@ const styles = StyleSheet.create({
     },
     sectionTitle: {
         fontSize: 17,
-        fontWeight: '800',
+        fontWeight: '900',
         color: theme.colors.text,
-        letterSpacing: -0.3,
+        letterSpacing: -0.5,
     },
     viewAllBtn: {
         flexDirection: 'row',
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
     },
     viewAllText: {
         fontSize: 12,
-        fontWeight: '700',
+        fontWeight: '800',
         color: theme.colors.primary,
     },
 
@@ -170,13 +170,13 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         borderRadius: 16,
         overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: '#F0F0F5',
-        shadowColor: '#6D4AFF',
+        borderWidth: 1.5,
+        borderColor: '#F1F5F9',
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.06,
-        shadowRadius: 16,
-        elevation: 3,
+        shadowOpacity: 0.05,
+        shadowRadius: 12,
+        elevation: 2,
     },
 
     // ── Transaction row
