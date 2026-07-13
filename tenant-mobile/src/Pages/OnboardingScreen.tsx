@@ -16,7 +16,7 @@ const SLIDES = [
         subtitle: 'Welcome to DHostel',
         description: 'All-in-one platform to simplify rooms, tenants, payments and more.',
         color: '#6366F1', // Indigo
-        image: require('../../assets/durgarao_hostel_3d.png'),
+        image: require('../../assets/hostel_only_3d.png'),
         features: [
             { icon: 'business', label: 'Rooms', color: '#6366F1', bg: '#E0E7FF' },
             { icon: 'people', label: 'Tenants', color: '#10B981', bg: '#ECFDF5' },
