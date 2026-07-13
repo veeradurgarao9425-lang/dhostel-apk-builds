@@ -26,6 +26,22 @@ const HOME_TIPS = [
     },
     {
         id: '3',
+        title: 'Track Your Daily Spending',
+        desc: 'Log food, travel, and personal expenses in the app. See exactly where your money goes each month.',
+        icon: 'wallet',
+        colors: ['#F5F3FF', '#EDE9FE'],
+        iconColor: '#7C3AED',
+    },
+    {
+        id: '4',
+        title: 'Split Bills with Roommates',
+        desc: 'Use the Splits feature to divide shared expenses like grocery, electricity, or subscriptions fairly.',
+        icon: 'receipt',
+        colors: ['#FFF7ED', '#FFEDD5'],
+        iconColor: '#EA580C',
+    },
+    {
+        id: '5',
         title: 'Report Issues Quickly',
         desc: 'Use the Complaints section to immediately notify management about any maintenance issues.',
         icon: 'construct',
@@ -33,6 +49,7 @@ const HOME_TIPS = [
         iconColor: '#4F46E5',
     },
 ];
+
 
 export interface Tip {
     id: string;

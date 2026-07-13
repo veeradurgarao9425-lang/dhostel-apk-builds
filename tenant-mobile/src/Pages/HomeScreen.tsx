@@ -27,18 +27,30 @@ import { theme } from "../theme";
 
 const { width } = Dimensions.get("window");
 
-// ── Removed FadeSlideIn to prevent the "shaded" stuck look on Android ─────────
-function FadeSlideIn({ children, style }: { children: React.ReactNode; delay?: number; style?: any }) {
-  return <View style={style}>{children}</View>;
-}
+const BRAND = theme.colors.primary;      // #6D4AFF
+const BRAND_DARK = theme.colors.primaryDark; // #5B39E0
+const WHITE = "#FFFFFF";
 
-function Shimmer({ style, light }: { style?: any, light?: boolean }) {
+// ── Pulsing Shimmer ─────────────────────────────────────────────────────────
+function Shimmer({ style, light }: { style?: any; light?: boolean }) {
+  const pulse = useRef(new Animated.Value(0.5)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 700, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0.5, duration: 700, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+
   return (
-    <View
+    <Animated.View
       style={[
         {
-          backgroundColor: light ? "rgba(255,255,255,0.2)" : "#F1F5F9",
+          backgroundColor: light ? "rgba(255,255,255,0.18)" : "#ECEEF2",
           borderRadius: 12,
+          opacity: pulse,
         },
         style,
       ]}
@@ -46,14 +58,9 @@ function Shimmer({ style, light }: { style?: any, light?: boolean }) {
   );
 }
 
-const BLUE = theme.colors.primary;
-const BLUE_DARK = theme.colors.primaryDark;
-const WHITE = "#FFFFFF";
-
 export default function HomeScreen({ navigation }: any) {
   const { user, refreshUser } = useAuth();
 
-  // ── State ──────────────────────────────────────────────────────────────────
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [recentNotices, setRecentNotices] = useState<any[]>([]);
@@ -65,21 +72,8 @@ export default function HomeScreen({ navigation }: any) {
   const [spent, setSpent] = useState(0);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const progressAnim = useRef(new Animated.Value(0)).current;
-  const scrollY = useRef(new Animated.Value(0)).current;
 
-  // Header scroll animation
-  const headerElevation = scrollY.interpolate({
-    inputRange: [0, 50],
-    outputRange: [0, 6],
-    extrapolate: "clamp",
-  });
-  const headerShadowOpacity = scrollY.interpolate({
-    inputRange: [0, 50],
-    outputRange: [0, 0.12],
-    extrapolate: "clamp",
-  });
-
-  // ── Budget Progress animation ─────────────────────────────────────────────
+  // ── Budget Progress animation ────────────────────────────────────────────
   useEffect(() => {
     if (budget > 0) {
       Animated.timing(progressAnim, {
@@ -92,7 +86,7 @@ export default function HomeScreen({ navigation }: any) {
     }
   }, [spent, budget]);
 
-  // ── Load budget + expenses on focus ──────────────────────────────────────
+  // ── Load budget + expenses on focus ─────────────────────────────────────
   useFocusEffect(
     useCallback(() => {
       const loadData = async () => {
@@ -125,20 +119,13 @@ export default function HomeScreen({ navigation }: any) {
     }, [])
   );
 
-  // ── Mess skip state ───────────────────────────────────────────────────────
-  const [skipped, setSkipped] = useState({ morning: false, lunch: false, dinner: false });
-  const [currentMealIdx, setCurrentMealIdx] = useState(0);
-  useEffect(() => {
-    const h = new Date().getHours();
-    setCurrentMealIdx(h < 11 ? 0 : h < 18 ? 1 : 2);
-  }, []);
-
-  // ── Mess menu ─────────────────────────────────────────────────────────────
+  // ── Mess menu ────────────────────────────────────────────────────────────
   const [todaysMeals, setTodaysMeals] = useState<any>({
     breakfast: { items: "Menu not updated" },
     lunch: { items: "Menu not updated" },
     dinner: { items: "Menu not updated" },
   });
+
   useFocusEffect(
     useCallback(() => {
       if (!user?.hostel_id) return;
@@ -167,33 +154,25 @@ export default function HomeScreen({ navigation }: any) {
     }, [user?.hostel_id])
   );
 
-  const meals: {
-    key: "morning" | "lunch" | "dinner";
-    title: string;
-    sub: string;
-    time: string;
-    Icon: any;
-    iconColor: string;
-    iconBg: string;
-  }[] = [
-      { key: "morning", title: "Breakfast", sub: todaysMeals.breakfast.items, time: "8:00 AM - 10:00 AM", Icon: null, iconColor: "#EA580C", iconBg: "#FFEDD5" },
-      { key: "lunch", title: "Lunch", sub: todaysMeals.lunch.items, time: "12:00 PM - 2:00 PM", Icon: null, iconColor: "#10B981", iconBg: "#D1FAE5" },
-      { key: "dinner", title: "Dinner", sub: todaysMeals.dinner.items, time: "8:00 PM - 11:00 PM", Icon: null, iconColor: "#7C3AED", iconBg: "#EDE9FE" },
-    ];
+  const meals = [
+    { key: "morning" as const, title: "Breakfast", sub: todaysMeals.breakfast.items, time: "8:00 AM - 10:00 AM", Icon: null, iconColor: "#EA580C", iconBg: "#FFEDD5" },
+    { key: "lunch" as const, title: "Lunch", sub: todaysMeals.lunch.items, time: "12:00 PM - 2:00 PM", Icon: null, iconColor: "#10B981", iconBg: "#D1FAE5" },
+    { key: "dinner" as const, title: "Dinner", sub: todaysMeals.dinner.items, time: "8:00 PM - 11:00 PM", Icon: null, iconColor: "#7C3AED", iconBg: "#EDE9FE" },
+  ];
 
-  // ── Quick shortcuts (Ionicons to match owner app style) ──────────────────
+  // ── Quick shortcuts ──────────────────────────────────────────────────────
   const shortcuts = [
     { id: "rent", name: "Pay Rent", icon: "cash" as const, nav: "Dues", bg: "#DCFCE7", color: "#16A34A" },
     { id: "complaints", name: "Complaints", icon: "chatbubble-ellipses" as const, nav: "Complaints", bg: "#FEE2E2", color: "#E11D48" },
-    { id: "room", name: "Room Info", icon: "bed" as const, nav: "RoomInfo", bg: "#EDE9FE", color: "#7C3AED" },
-    { id: "splits", name: "Splits", icon: "receipt" as const, nav: "Splits", bg: "#DCFCE7", color: "#16A34A" },
-    { id: "visitor", name: "Visitor Pass", icon: "person-add" as const, nav: "VisitorPass", bg: "#E0F2FE", color: "#0284C7" },
-    { id: "gatepass", name: "Gate Pass", icon: "qr-code" as const, nav: "GatePass", bg: "#E0F2FE", color: "#0284C7" },
-    { id: "documents", name: "Documents", icon: "document-text" as const, nav: "Documents", bg: "#FFF7ED", color: "#EA580C" },
-    { id: "notes", name: "Notes", icon: "create" as const, nav: "Notes", bg: "#F3E8FF", color: "#9333EA" },
+    { id: "room", name: "Room Info", icon: "bed" as const, nav: "RoomInfo", bg: theme.colors.primarySoft, color: theme.colors.primary },
+    { id: "splits", name: "Splits", icon: "receipt" as const, nav: "Splits", bg: theme.colors.primarySoft, color: theme.colors.primary },
+    { id: "visitor", name: "Visitor Pass", icon: "person-add" as const, nav: "VisitorPass", bg: theme.colors.primarySoft, color: theme.colors.primary },
+    { id: "gatepass", name: "Gate Pass", icon: "qr-code" as const, nav: "GatePass", bg: theme.colors.primarySoft, color: theme.colors.primary },
+    { id: "documents", name: "Documents", icon: "document-text" as const, nav: "Documents", bg: theme.colors.primarySoft, color: theme.colors.primary },
+    { id: "notes", name: "Notes", icon: "create" as const, nav: "Notes", bg: theme.colors.primarySoft, color: theme.colors.primary },
   ];
 
-  // ── Notif count ───────────────────────────────────────────────────────────
+  // ── Notif count ──────────────────────────────────────────────────────────
   const fetchUnreadNotifCount = useCallback(async () => {
     try {
       const res = await api.get("/notifications");
@@ -213,7 +192,7 @@ export default function HomeScreen({ navigation }: any) {
     return () => sub.remove();
   }, [fetchUnreadNotifCount]);
 
-  // ── Data fetch ────────────────────────────────────────────────────────────
+  // ── Data fetch ───────────────────────────────────────────────────────────
   const fetchData = async () => {
     try {
       fetchUnreadNotifCount();
@@ -317,7 +296,7 @@ export default function HomeScreen({ navigation }: any) {
     setRefreshing(false);
   }, [refreshUser, user?.hostel_id]);
 
-  // ── Derived display values ────────────────────────────────────────────────
+  // ── Derived display values ───────────────────────────────────────────────
   const initials = (user?.name || "V")
     .split(" ")
     .map((w: string) => w[0])
@@ -347,64 +326,67 @@ export default function HomeScreen({ navigation }: any) {
     });
   };
 
-
-
-  // ── Loading Skeleton ──────────────────────────────────────────────────────
+  // ── Loading Skeleton ─────────────────────────────────────────────────────
   if (loading) {
     return (
-      <View style={[styles.root, { backgroundColor: '#F8FAFC' }]}>
-        <StatusBar barStyle="light-content" backgroundColor={BLUE} />
-        <LinearGradient colors={[BLUE, BLUE_DARK]} style={styles.headerSection}>
+      <View style={[styles.root, { backgroundColor: theme.colors.bg }]}>
+        <StatusBar barStyle="light-content" backgroundColor={BRAND} />
+        <LinearGradient colors={[BRAND, BRAND_DARK]} style={styles.headerSection}>
           <SafeAreaView edges={["top"]} style={{ backgroundColor: "transparent" }}>
             <View style={styles.headerRow}>
               <View style={{ flex: 1 }}>
-                <Shimmer style={{ width: 130, height: 22, marginBottom: 8 }} light />
-                <Shimmer style={{ width: 90, height: 14 }} light />
+                <Shimmer style={{ width: 160, height: 24, marginBottom: 8 }} light />
+                <Shimmer style={{ width: 110, height: 13 }} light />
               </View>
               <View style={{ flexDirection: "row", gap: 10 }}>
-                <Shimmer style={{ width: 40, height: 40, borderRadius: 20 }} light />
-                <Shimmer style={{ width: 40, height: 40, borderRadius: 20 }} light />
+                <Shimmer style={{ width: 42, height: 42, borderRadius: 21 }} light />
+                <Shimmer style={{ width: 42, height: 42, borderRadius: 21 }} light />
               </View>
+            </View>
+            {/* Date strip shimmer */}
+            <View style={{ flexDirection: "row", gap: 8, paddingHorizontal: 18, paddingBottom: 12, paddingTop: 2 }}>
+              <Shimmer style={{ width: 110, height: 26, borderRadius: 20 }} light />
+              <Shimmer style={{ width: 80, height: 26, borderRadius: 20 }} light />
             </View>
           </SafeAreaView>
         </LinearGradient>
-        <View style={{ paddingHorizontal: 16, paddingTop: 16, gap: 14 }}>
-          <Shimmer style={{ height: 60, borderRadius: 16 }} />
-          <Shimmer style={{ height: 155, borderRadius: 24 }} />
-          <Shimmer style={{ height: 44, borderRadius: 14 }} />
-          <View style={{ flexDirection: "row", gap: 12 }}>
+        <View style={{ paddingHorizontal: 16, paddingTop: 16, gap: 12 }}>
+          <Shimmer style={{ height: 76, borderRadius: 16 }} />
+          <Shimmer style={{ height: 70, borderRadius: 16 }} />
+          <Shimmer style={{ height: 160, borderRadius: 18 }} />
+          <View style={{ flexDirection: "row", gap: 10 }}>
             {[0, 1, 2, 3].map((i) => (
-              <Shimmer key={i} style={{ flex: 1, height: 80, borderRadius: 16 }} />
+              <Shimmer key={i} style={{ flex: 1, height: 76, borderRadius: 14 }} />
             ))}
           </View>
-          <Shimmer style={{ height: 120, borderRadius: 18 }} />
+          <Shimmer style={{ height: 200, borderRadius: 16 }} />
         </View>
       </View>
     );
   }
 
+
   // ── Main render ──────────────────────────────────────────────────────────
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={BLUE} />
+      <StatusBar barStyle="light-content" backgroundColor={BRAND} />
 
-      {/* ── PREMIUM HEADER ── */}
+      {/* ── HEADER ── */}
       <LinearGradient
-        colors={[BLUE, BLUE_DARK]}
+        colors={[BRAND, BRAND_DARK]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.headerSection}
       >
-        {/* Decorative accent */}
         <View style={styles.headerAccentCircle} />
         <View style={styles.headerAccentCircle2} />
 
         <SafeAreaView edges={["top"]} style={{ backgroundColor: "transparent" }}>
           <View style={styles.headerRow}>
-            {/* LEFT: Greeting */}
+            {/* Greeting */}
             <View style={{ flex: 1 }}>
               <Text style={styles.headerGreeting} numberOfLines={1} ellipsizeMode="tail">
-                {greeting}, {firstName}!
+                {greeting}, {firstName}! 👋
               </Text>
               <View style={styles.hostelRow}>
                 <Ionicons name="location-outline" size={12} color="rgba(255,255,255,0.7)" />
@@ -414,7 +396,7 @@ export default function HomeScreen({ navigation }: any) {
               </View>
             </View>
 
-            {/* RIGHT: Bell + Avatar */}
+            {/* Bell + Avatar */}
             <View style={styles.headerActions}>
               <TouchableOpacity
                 style={styles.headerIconBtn}
@@ -441,135 +423,119 @@ export default function HomeScreen({ navigation }: any) {
             </View>
           </View>
 
-          {/* Date pill */}
-          <View style={styles.datePillRow}>
+          {/* Date strip + room info */}
+          <View style={styles.headerDateStrip}>
             <View style={styles.datePill}>
+              <Ionicons name="calendar-outline" size={11} color="rgba(255,255,255,0.8)" />
               <Text style={styles.datePillText}>
-                {new Date().toLocaleDateString("en-IN", {
-                  weekday: "short",
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
+                {new Date().toLocaleDateString('en-IN', {
+                  weekday: 'short',
+                  day: 'numeric',
+                  month: 'long',
                 })}
               </Text>
             </View>
-            {dueAmount > 0 && (
-              <View style={styles.duePill}>
-                <Ionicons name="alert-circle" size={11} color="#FFF" />
-                <Text style={styles.duePillText}>Rent Due</Text>
+            {user?.room_number && (
+              <View style={styles.roomPill}>
+                <Ionicons name="bed-outline" size={11} color="rgba(255,255,255,0.8)" />
+                <Text style={styles.datePillText}>Room {user.room_number}</Text>
               </View>
             )}
           </View>
+
         </SafeAreaView>
       </LinearGradient>
 
-      {/* ── SCROLLABLE BODY ── */}
+      {/* ── SCROLL BODY ── */}
       <Animated.ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         scrollEventThrottle={16}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: false }
-        )}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={[BLUE]}
-            tintColor={BLUE}
+            colors={[BRAND]}
+            tintColor={BRAND}
           />
         }
       >
-        {/* Rent card + Budget card */}
-        <FadeSlideIn delay={0}>
-          <BudgetOverview
-            budget={budget}
-            spent={spent}
-            progressAnim={progressAnim}
-            dueAmount={dueAmount}
-            totalRentAmount={totalRentAmount}
-            rentDueDate={rentDueDate}
-            formatDate={formatDate}
-          />
-        </FadeSlideIn>
-
-        {/* Divider */}
-        <View style={styles.divider} />
-
-        {/* Mess menu + Notice board */}
-        <FadeSlideIn delay={120}>
-          <MessMenuCard meals={meals} recentNotices={recentNotices} BLUE={BLUE} />
-        </FadeSlideIn>
+        {/* Rent + Budget */}
+        <BudgetOverview
+          budget={budget}
+          spent={spent}
+          progressAnim={progressAnim}
+          dueAmount={dueAmount}
+          totalRentAmount={totalRentAmount}
+          rentDueDate={rentDueDate}
+          formatDate={formatDate}
+        />
 
         <View style={styles.divider} />
 
-        {/* Quick shortcuts */}
-        <FadeSlideIn delay={200}>
-          <QuickShortcuts shortcuts={shortcuts} />
-        </FadeSlideIn>
+        {/* Today's Menu */}
+        <MessMenuCard meals={meals} recentNotices={recentNotices} BLUE={BRAND} />
 
         <View style={styles.divider} />
 
-        {/* Announcement / Notice Board */}
-        <FadeSlideIn delay={250}>
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={() => navigation.navigate('Notices')}
-            style={[styles.noticeRow, { borderColor: '#FDE68A' }]}
-          >
-            <View style={styles.noticeIconWrap}>
-              <Ionicons name="megaphone" size={18} color="#D97706" />
-            </View>
-            {recentNotices.length > 0 ? (
-              <View style={{ flex: 1 }}>
-                <View style={styles.noticeTitleRow}>
-                  <Text style={styles.noticeTitle} numberOfLines={1}>
-                    {recentNotices[0]?.title || 'New Notice'}
-                  </Text>
-                  <View style={styles.newChip}>
-                    <Text style={styles.newChipText}>NEW</Text>
-                  </View>
-                </View>
-                <Text style={styles.noticeBody} numberOfLines={1}>
-                  {recentNotices[0]?.body || 'Check here for hostel updates.'}
+        {/* Quick Shortcuts */}
+        <QuickShortcuts shortcuts={shortcuts} />
+
+        <View style={styles.divider} />
+
+        {/* Notice banner */}
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate("Notices")}
+          style={styles.noticeRow}
+        >
+          <View style={styles.noticeIconWrap}>
+            <Ionicons name="megaphone" size={18} color="#D97706" />
+          </View>
+          {recentNotices.length > 0 ? (
+            <View style={{ flex: 1 }}>
+              <View style={styles.noticeTitleRow}>
+                <Text style={styles.noticeTitle} numberOfLines={1}>
+                  {recentNotices[0]?.title || "New Notice"}
                 </Text>
+                <View style={styles.newChip}>
+                  <Text style={styles.newChipText}>NEW</Text>
+                </View>
               </View>
-            ) : (
-              <View style={{ flex: 1 }}>
-                <Text style={styles.noticeTitle}>Announcements</Text>
-                <Text style={styles.noticeBody}>No new notices from hostel</Text>
-              </View>
-            )}
-            <View style={styles.noticeArrow}>
-              <Ionicons name="chevron-forward" size={14} color="#B45309" />
+              <Text style={styles.noticeBody} numberOfLines={1}>
+                {recentNotices[0]?.body || "Check here for hostel updates."}
+              </Text>
             </View>
-          </TouchableOpacity>
-        </FadeSlideIn>
+          ) : (
+            <View style={{ flex: 1 }}>
+              <Text style={styles.noticeTitle}>Announcements</Text>
+              <Text style={styles.noticeBody}>No new notices from hostel</Text>
+            </View>
+          )}
+          <View style={styles.noticeArrow}>
+            <Ionicons name="chevron-forward" size={14} color="#B45309" />
+          </View>
+        </TouchableOpacity>
 
         <View style={styles.divider} />
 
-        {/* Quick Tips Carousel */}
-        <FadeSlideIn delay={280}>
-          <QuickTips />
-        </FadeSlideIn>
+        {/* Quick Tips */}
+        <QuickTips />
 
         <View style={styles.divider} />
 
-        {/* Recent activity */}
-        <FadeSlideIn delay={320}>
-          <RecentActivity
-            recentPayments={recentPayments}
-            formatDate={formatDate}
-            formatTime={formatTime}
-          />
-        </FadeSlideIn>
+        {/* Recent Activity */}
+        <RecentActivity
+          recentPayments={recentPayments}
+          formatDate={formatDate}
+          formatTime={formatTime}
+        />
       </Animated.ScrollView>
     </View>
   );
 }
 
-// ── Styles ──────────────────────────────────────────────────────────────────
+// ── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   root: {
     flex: 1,
@@ -578,7 +544,7 @@ const styles = StyleSheet.create({
 
   // ── HEADER
   headerSection: {
-    paddingBottom: 18,
+    paddingBottom: 14,
     overflow: "hidden",
   },
   headerAccentCircle: {
@@ -607,10 +573,10 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   headerGreeting: {
-    fontSize: 22,
+    fontSize: 21,
     fontWeight: "800",
     color: "#FFFFFF",
-    letterSpacing: -0.5,
+    letterSpacing: -0.3,
     marginBottom: 4,
   },
   hostelRow: {
@@ -619,7 +585,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   hostelName: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "600",
     color: "rgba(255,255,255,0.75)",
     maxWidth: 200,
@@ -671,37 +637,38 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#FFFFFF",
   },
-  datePillRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 18,
+
+  // ── DATE STRIP
+  headerDateStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
-    paddingBottom: 4,
+    paddingHorizontal: 18,
+    paddingBottom: 12,
+    paddingTop: 2,
   },
   datePill: {
-    backgroundColor: "rgba(255,255,255,0.12)",
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 20,
-  },
-  datePillText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "rgba(255,255,255,0.85)",
-  },
-  duePill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#EF4444",
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(255,255,255,0.12)',
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 20,
   },
-  duePillText: {
+  roomPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  datePillText: {
     fontSize: 11,
-    fontWeight: "800",
-    color: "#FFFFFF",
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.85)',
   },
 
   // ── BODY
@@ -710,10 +677,10 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
   },
   divider: {
-    height: 16,
+    height: 14,
   },
 
-  // ── NOTICE ROW (inline in HomeScreen)
+  // ── NOTICE ROW
   noticeRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -723,10 +690,11 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     paddingHorizontal: 14,
     marginHorizontal: 16,
-    borderWidth: 1.5,
+    borderWidth: 1,
+    borderColor: "#FDE68A",
     shadowColor: "#D97706",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
     shadowRadius: 8,
     elevation: 2,
   },

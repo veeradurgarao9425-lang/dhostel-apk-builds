@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -43,23 +43,44 @@ const ThemedToast = () => {
   return <Toast config={toastConfig} position="top" topOffset={50} />;
 };
 
-/** Inner wrapper that reads auth loading state for the splash */
+/**
+ * InnerApp — manages the splash overlay lifecycle.
+ *
+ * The blink fix:
+ *   Native expo splash → hides ONLY after our React overlay has been laid out
+ *   on screen (onPainted callback). This guarantees no white-flash between
+ *   the native splash and our purple overlay.
+ */
 function InnerApp() {
   const { loading } = useAuth();
-  // Keep splash visible for at least 1.5s as a brand moment
   const [minDelayDone, setMinDelayDone] = useState(false);
+  // Track whether the React SplashScreenView has been painted on screen
+  const [overlayPainted, setOverlayPainted] = useState(false);
+  const hideAsyncCalled = useRef(false);
 
   useEffect(() => {
     const t = setTimeout(() => setMinDelayDone(true), 1500);
     return () => clearTimeout(t);
   }, []);
 
+  // Hide the NATIVE expo splash only once our React overlay has been painted.
+  // This eliminates the white blink between native splash and React overlay.
+  useEffect(() => {
+    if (overlayPainted && !hideAsyncCalled.current) {
+      hideAsyncCalled.current = true;
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [overlayPainted]);
+
   const isReady = !loading && minDelayDone;
 
   return (
     <>
       <AppNavigator />
-      <SplashScreenView isReady={isReady} />
+      <SplashScreenView
+        isReady={isReady}
+        onPainted={() => setOverlayPainted(true)}
+      />
     </>
   );
 }

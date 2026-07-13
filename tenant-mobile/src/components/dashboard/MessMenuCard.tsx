@@ -20,36 +20,54 @@ interface MessMenuCardProps {
     BLUE: string;
 }
 
-const MEAL_CONFIG: Record<string, { icon: string; color: string; soft: string; label: string }> = {
-    morning: { icon: 'sunny',      color: '#EA580C', soft: '#FFF7ED', label: 'Breakfast' },
-    lunch:   { icon: 'restaurant', color: '#16A34A', soft: '#DCFCE7', label: 'Lunch'     },
-    dinner:  { icon: 'moon',       color: '#7C3AED', soft: '#EDE9FE', label: 'Dinner'    },
+// Each meal: minimal accent, no giant color backgrounds
+const MEAL_CONFIG: Record<string, {
+    icon: keyof typeof Ionicons.glyphMap;
+    emoji: string;
+    accentColor: string;
+    timeLabel: string;
+}> = {
+    morning: {
+        icon: 'sunny-outline',
+        emoji: '🌅',
+        accentColor: '#D97706',
+        timeLabel: '8:00 – 10:00 AM',
+    },
+    lunch: {
+        icon: 'restaurant-outline',
+        emoji: '☀️',
+        accentColor: '#059669',
+        timeLabel: '12:00 – 2:00 PM',
+    },
+    dinner: {
+        icon: 'moon-outline',
+        emoji: '🌙',
+        accentColor: '#7C3AED',
+        timeLabel: '8:00 – 11:00 PM',
+    },
+};
+
+const TAB_LABELS: Record<string, string> = {
+    morning: 'Breakfast',
+    lunch: 'Lunch',
+    dinner: 'Dinner',
 };
 
 export const MessMenuCard = ({ meals, recentNotices, BLUE }: MessMenuCardProps) => {
     const navigation = useNavigation<any>();
 
-    // Auto-select the current meal based on time
     const hour = new Date().getHours();
-    const defaultMeal = hour < 11 ? 'morning' : hour < 17 ? 'lunch' : 'dinner';
+    const defaultMeal: 'morning' | 'lunch' | 'dinner' =
+        hour < 11 ? 'morning' : hour < 17 ? 'lunch' : 'dinner';
     const [activeMeal, setActiveMeal] = useState<'morning' | 'lunch' | 'dinner'>(defaultMeal);
 
-    const fadeAnim = useRef(new Animated.Value(0)).current;
-    const slideAnim = useRef(new Animated.Value(10)).current;
-
-    useEffect(() => {
-        Animated.parallel([
-            Animated.timing(fadeAnim, { toValue: 1, duration: 380, delay: 80, useNativeDriver: true }),
-            Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, tension: 80, friction: 10, delay: 80 }),
-        ]).start();
-    }, []);
-
-    // Animate tab switch
+    // Only animate meal-tab content switch, not card entry
     const contentFade = useRef(new Animated.Value(1)).current;
+
     const switchMeal = (key: 'morning' | 'lunch' | 'dinner') => {
         Animated.sequence([
-            Animated.timing(contentFade, { toValue: 0, duration: 100, useNativeDriver: true }),
-            Animated.timing(contentFade, { toValue: 1, duration: 200, useNativeDriver: true }),
+            Animated.timing(contentFade, { toValue: 0, duration: 80, useNativeDriver: true }),
+            Animated.timing(contentFade, { toValue: 1, duration: 180, useNativeDriver: true }),
         ]).start();
         setActiveMeal(key);
     };
@@ -58,118 +76,107 @@ export const MessMenuCard = ({ meals, recentNotices, BLUE }: MessMenuCardProps) 
     const activeCfg = MEAL_CONFIG[activeMeal];
     const isPlaceholder = !activeMealData?.sub || activeMealData.sub === 'Menu not updated';
 
-    return (
-        <Animated.View style={[styles.wrapper, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+    const foodItems = isPlaceholder
+        ? []
+        : (activeMealData?.sub || '').split(/[,\n]/).map(s => s.trim()).filter(Boolean);
 
-            {/* ══════════════════════════════════════════════
-                TODAY'S MENU CARD
-            ══════════════════════════════════════════════ */}
+    return (
+        <View style={styles.wrapper}>
             <View style={styles.card}>
-                {/* Card Header */}
+
+                {/* ── Card Header: title + Full Menu link (NO date badge) ── */}
                 <View style={styles.cardHeader}>
                     <View style={styles.titleRow}>
-                        <View style={styles.sectionDot} />
+                        <View style={styles.accentBar} />
                         <Text style={styles.cardTitle}>Today's Menu</Text>
-                        <View style={styles.dateBadge}>
-                            <Text style={styles.dateBadgeText}>
-                                {new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
-                            </Text>
-                        </View>
                     </View>
-                    <TouchableOpacity style={styles.viewAllBtn} onPress={() => navigation.navigate('FullMenu')}>
-                        <Text style={styles.viewAllText}>Full Menu</Text>
-                        <Ionicons name="chevron-forward" size={12} color={theme.colors.primary} />
+                    <TouchableOpacity
+                        style={styles.fullMenuBtn}
+                        onPress={() => navigation.navigate('FullMenu')}
+                        activeOpacity={0.75}
+                    >
+                        <Text style={styles.fullMenuText}>Full Menu</Text>
+                        <Ionicons name="chevron-forward" size={11} color={theme.colors.primary} />
                     </TouchableOpacity>
                 </View>
 
-                {/* ── Meal Tab Switcher ── */}
+                {/* ── Meal Tabs — all same color until active (uniform purple) ── */}
                 <View style={styles.tabRow}>
-                    {meals.map((meal) => {
-                        const cfg = MEAL_CONFIG[meal.key];
-                        const isActive = meal.key === activeMeal;
+                    {(['morning', 'lunch', 'dinner'] as const).map((key) => {
+                        const cfg = MEAL_CONFIG[key];
+                        const isActive = key === activeMeal;
                         return (
                             <TouchableOpacity
-                                key={meal.key}
+                                key={key}
                                 style={[
                                     styles.tab,
-                                    isActive && { backgroundColor: cfg.color },
+                                    isActive && styles.tabActive,
                                 ]}
-                                onPress={() => switchMeal(meal.key)}
-                                activeOpacity={0.8}
+                                onPress={() => switchMeal(key)}
+                                activeOpacity={0.75}
                             >
-                                <Ionicons
-                                    name={cfg.icon as any}
-                                    size={13}
-                                    color={isActive ? '#FFFFFF' : theme.colors.textMuted}
-                                />
-                                <Text style={[styles.tabText, isActive && { color: '#FFFFFF' }]}>
-                                    {cfg.label}
+                                <Text style={styles.tabEmoji}>{cfg.emoji}</Text>
+                                <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
+                                    {TAB_LABELS[key]}
                                 </Text>
                             </TouchableOpacity>
                         );
                     })}
                 </View>
 
-                {/* ── Active Meal Content ── */}
+                {/* ── Meal Content ── */}
                 <Animated.View style={[styles.mealContent, { opacity: contentFade }]}>
-                    {/* Time row */}
-                    <View style={[styles.timePill, { backgroundColor: activeCfg.soft }]}>
-                        <Ionicons name="time-outline" size={13} color={activeCfg.color} />
-                        <Text style={[styles.timePillText, { color: activeCfg.color }]}>
-                            {activeMealData?.time}
-                        </Text>
+                    {/* Time tag */}
+                    <View style={styles.timeRow}>
+                        <Ionicons name="time-outline" size={12} color={theme.colors.textSubtle} />
+                        <Text style={styles.timeText}>{activeCfg.timeLabel}</Text>
                     </View>
 
-                    {/* Food chips */}
+                    {/* Food items */}
                     {isPlaceholder ? (
                         <TouchableOpacity
-                            style={styles.viewMenuBtn}
+                            style={styles.emptyMenuBtn}
                             onPress={() => navigation.navigate('FullMenu')}
                             activeOpacity={0.8}
                         >
-                            <Ionicons name="eye-outline" size={13} color={theme.colors.primary} />
-                            <Text style={styles.viewMenuText}>Tap to view full menu</Text>
+                            <Ionicons name="calendar-outline" size={14} color={theme.colors.primary} />
+                            <Text style={styles.emptyMenuText}>View full week menu</Text>
                         </TouchableOpacity>
                     ) : (
                         <View style={styles.chipsWrap}>
-                            {(activeMealData?.sub || '')
-                                .split(/[,\n]/)
-                                .map((item: string) => item.trim())
-                                .filter((item: string) => item.length > 0)
-                                .map((item: string, idx: number) => (
-                                    <View key={idx} style={[styles.chip, { backgroundColor: activeCfg.soft }]}>
-                                        <Text style={[styles.chipText, { color: activeCfg.color }]}>{item}</Text>
-                                    </View>
-                                ))
-                            }
+                            {foodItems.map((item: string, idx: number) => (
+                                <View key={idx} style={styles.chip}>
+                                    <Text style={styles.chipText}>{item}</Text>
+                                </View>
+                            ))}
                         </View>
                     )}
                 </Animated.View>
             </View>
-        </Animated.View>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
     wrapper: {
         paddingHorizontal: 16,
-        gap: 10,
-        marginBottom: 8,
+        marginBottom: 4,
     },
 
-    // ── TODAY'S MENU CARD
     card: {
         backgroundColor: theme.colors.surface,
-        borderRadius: 20,
+        borderRadius: 18,
         padding: 16,
         borderWidth: 1,
         borderColor: theme.colors.borderSoft,
-        shadowColor: theme.colors.primary,
-        shadowOffset: { width: 0, height: 4 },
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.06,
-        shadowRadius: 14,
+        shadowRadius: 12,
         elevation: 3,
     },
+
+    // ── HEADER
     cardHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -181,8 +188,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 8,
     },
-    sectionDot: {
-        width: 4,
+    accentBar: {
+        width: 3,
         height: 16,
         borderRadius: 2,
         backgroundColor: theme.colors.primary,
@@ -193,34 +200,23 @@ const styles = StyleSheet.create({
         color: theme.colors.text,
         letterSpacing: -0.2,
     },
-    dateBadge: {
-        backgroundColor: theme.colors.primarySoft,
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: 8,
-    },
-    dateBadgeText: {
-        fontSize: 10,
-        fontWeight: '700',
-        color: theme.colors.primary,
-    },
-    viewAllBtn: {
+    fullMenuBtn: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 2,
     },
-    viewAllText: {
+    fullMenuText: {
         fontSize: 12,
         fontWeight: '700',
         color: theme.colors.primary,
     },
 
-    // ── TAB SWITCHER
+    // ── TABS — uniform, pill style
     tabRow: {
         flexDirection: 'row',
-        gap: 8,
-        marginBottom: 16,
-        backgroundColor: theme.colors.surfaceAlt,
+        gap: 6,
+        marginBottom: 14,
+        backgroundColor: '#F4F4F8',
         borderRadius: 12,
         padding: 4,
     },
@@ -233,129 +229,72 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         borderRadius: 9,
     },
+    tabActive: {
+        backgroundColor: theme.colors.primary,
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    tabEmoji: {
+        fontSize: 13,
+    },
     tabText: {
         fontSize: 12,
-        fontWeight: '700',
+        fontWeight: '600',
         color: theme.colors.textMuted,
+    },
+    tabTextActive: {
+        color: '#FFFFFF',
+        fontWeight: '700',
     },
 
     // ── MEAL CONTENT
     mealContent: {
-        gap: 12,
+        gap: 10,
     },
-    timePill: {
+    timeRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 5,
-        alignSelf: 'flex-start',
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 20,
+        gap: 4,
     },
-    timePillText: {
-        fontSize: 12,
-        fontWeight: '700',
+    timeText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: theme.colors.textSubtle,
     },
     chipsWrap: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 7,
+        gap: 6,
     },
     chip: {
-        paddingHorizontal: 12,
+        backgroundColor: theme.colors.primarySoft,
+        paddingHorizontal: 11,
         paddingVertical: 6,
         borderRadius: 20,
+        borderWidth: 1,
+        borderColor: theme.colors.primaryBorder,
     },
     chipText: {
         fontSize: 12,
-        fontWeight: '700',
+        fontWeight: '600',
+        color: theme.colors.primaryDark,
     },
-    viewMenuBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 5,
-        backgroundColor: theme.colors.primarySoft,
-        alignSelf: 'flex-start',
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 8,
-    },
-    viewMenuText: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: theme.colors.primary,
-    },
-
-    // ── NOTICE ROW
-    noticeRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        backgroundColor: theme.colors.surface,
-        borderRadius: 16,
-        paddingVertical: 13,
-        paddingRight: 12,
-        paddingLeft: 16,
-        borderWidth: 1,
-        borderColor: '#FDE68A',
-        shadowColor: '#D97706',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.07,
-        shadowRadius: 8,
-        elevation: 2,
-        overflow: 'hidden',
-    },
-    noticeStripe: {
-        position: 'absolute',
-        left: 0,
-        top: 0,
-        bottom: 0,
-        width: 3,
-        backgroundColor: '#D97706',
-    },
-    noticeIconWrap: {
-        width: 38,
-        height: 38,
-        borderRadius: 10,
-        backgroundColor: '#FEF3C7',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    noticeTitleRow: {
+    emptyMenuBtn: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
-        marginBottom: 2,
+        alignSelf: 'flex-start',
+        backgroundColor: theme.colors.primarySoft,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 10,
     },
-    noticeTitle: {
-        fontSize: 13,
-        fontWeight: '800',
-        color: theme.colors.text,
-        flexShrink: 1,
-    },
-    noticeBody: {
+    emptyMenuText: {
         fontSize: 12,
-        fontWeight: '500',
-        color: theme.colors.textMuted,
-    },
-    noticeArrow: {
-        width: 28,
-        height: 28,
-        borderRadius: 14,
-        backgroundColor: theme.colors.surfaceAlt,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    newChip: {
-        backgroundColor: '#FEF3C7',
-        paddingHorizontal: 5,
-        paddingVertical: 2,
-        borderRadius: 5,
-    },
-    newChipText: {
-        color: '#92400E',
-        fontSize: 8,
-        fontWeight: '800',
-        letterSpacing: 0.5,
+        fontWeight: '700',
+        color: theme.colors.primary,
     },
 });

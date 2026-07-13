@@ -3,7 +3,6 @@ import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import BottomTabNavigator from '../components/BottomTabNavigator';
-import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 
 import { useAuth } from '../context/AuthContext';
@@ -92,12 +91,6 @@ const MainTabs = () => (
 
 export default function AppNavigator() {
   const { user, connectedHostel, loading } = useAuth();
-
-  useEffect(() => {
-    if (!loading) {
-      SplashScreen.hideAsync().catch(() => {});
-    }
-  }, [loading]);
 
   useEffect(() => {
     if (!user) return;

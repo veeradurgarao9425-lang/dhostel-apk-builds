@@ -1,5 +1,5 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, FlatList, Dimensions } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, FlatList, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../theme';
@@ -32,16 +32,6 @@ export const QuickShortcuts = ({ shortcuts }: QuickShortcutsProps) => {
     const flatListRef = useRef<FlatList>(null);
     const [currentPage, setCurrentPage] = useState(0);
 
-    const fadeAnim = useRef(new Animated.Value(0)).current;
-    const slideAnim = useRef(new Animated.Value(12)).current;
-
-    useEffect(() => {
-        Animated.parallel([
-            Animated.timing(fadeAnim, { toValue: 1, duration: 400, delay: 100, useNativeDriver: true }),
-            Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, tension: 80, friction: 10, delay: 100 }),
-        ]).start();
-    }, []);
-
     const pages = chunk(shortcuts, 4);
     const totalPages = pages.length;
 
@@ -64,7 +54,7 @@ export const QuickShortcuts = ({ shortcuts }: QuickShortcutsProps) => {
     );
 
     return (
-        <Animated.View style={[styles.section, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+        <View style={styles.section}>
             {/* Header */}
             <View style={styles.cardHeader}>
                 <View style={styles.sectionTitleRow}>
@@ -117,7 +107,7 @@ export const QuickShortcuts = ({ shortcuts }: QuickShortcutsProps) => {
                     ))}
                 </View>
             )}
-        </Animated.View>
+        </View>
     );
 };
 

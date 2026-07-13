@@ -8,26 +8,56 @@ import {
   View,
 } from 'react-native';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 interface Props {
   isReady: boolean;
+  onPainted?: () => void;
 }
 
-export default function SplashScreenView({ isReady }: Props) {
-  const opacity = useRef(new Animated.Value(1)).current;
-  const scale = useRef(new Animated.Value(1)).current;
-  const logoOpacity = useRef(new Animated.Value(1)).current;
+export default function SplashScreenView({ isReady, onPainted }: Props) {
+  /**
+   * TWO-LAYER EXIT — fixes the skeleton-showing-through bug
+   *
+   * WRONG approach (what we had):
+   *   Animate container opacity 1→0
+   *   → At 0.5 opacity, the solid purple background becomes semi-transparent
+   *   → Skeleton shows through — user sees logo + skeleton blended together
+   *
+   * CORRECT approach:
+   *   1. Keep the purple BACKGROUND always at opacity 1 (no fade)
+   *   2. Fade only the CONTENT (logo, text, bar) from 1→0 in 220ms
+   *   3. When content is invisible, remove the ENTIRE overlay instantly
+   *
+   * Result: Purple → purple (no logo) → instant cut to app
+   * The instant cut is imperceptible because background color matches.
+   */
+  const contentOpacity = useRef(new Animated.Value(1)).current;
   const [unmounted, setUnmounted] = useState(false);
+  const notifiedPainted = useRef(false);
 
-  // Exit animation
+  // BLINK FIX: double rAF ensures GPU frame is committed before hideAsync
+  useEffect(() => {
+    if (!notifiedPainted.current) {
+      notifiedPainted.current = true;
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          onPainted?.();
+        });
+      });
+    }
+  }, []);
+
+  // EXIT: fade only content, background stays solid until removed
   useEffect(() => {
     if (isReady) {
-      Animated.timing(opacity, {
+      Animated.timing(contentOpacity, {
         toValue: 0,
-        duration: 400,
+        duration: 220,
         useNativeDriver: true,
       }).start(() => {
+        // Content is invisible → remove entire overlay instantly
+        // No background fade → no see-through effect
         setUnmounted(true);
       });
     }
@@ -36,78 +66,56 @@ export default function SplashScreenView({ isReady }: Props) {
   if (unmounted) return null;
 
   return (
-    <Animated.View style={[styles.container, { opacity }]} pointerEvents="none">
+    // This View (not Animated.View!) stays at full opacity always
+    // Only the CONTENT inside fades
+    <View style={styles.container} pointerEvents="none">
+      {/* Solid purple — never becomes transparent */}
       <View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#6D4AFF' }]} />
 
-      <Animated.View style={[styles.content, { transform: [{ scale }], opacity: logoOpacity }]}>
-        <View style={styles.logoContainer}>
-          <View style={styles.logoInnerWrap}>
-            <Image
-              source={require('../../assets/icon.png')}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-          </View>
-        </View>
+      {/* Decorative circles */}
+      <View style={styles.glowRing1} />
+      <View style={styles.glowRing2} />
 
+      {/* CONTENT — this fades out cleanly */}
+      <Animated.View style={[styles.content, { opacity: contentOpacity }]}>
+        <View style={styles.logoWrap}>
+          <Image
+            source={require('../../assets/icon.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
         <Text style={styles.appName}>Hostix</Text>
         <Text style={styles.tagline}>Your Hostel, Simplified</Text>
       </Animated.View>
 
-      <Animated.View style={[styles.loaderWrap, { opacity: logoOpacity }]}>
-        <DotsLoader />
-        <Text style={styles.loaderText}>Loading your space…</Text>
+      {/* Progress bar also fades with content */}
+      <Animated.View style={[styles.progressWrap, { opacity: contentOpacity }]}>
+        <ProgressBar />
       </Animated.View>
-    </Animated.View>
+    </View>
   );
 }
 
-function DotsLoader() {
-  const dot1 = useRef(new Animated.Value(0)).current;
-  const dot2 = useRef(new Animated.Value(0)).current;
-  const dot3 = useRef(new Animated.Value(0)).current;
+function ProgressBar() {
+  const progress = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const animateDot = (anim: Animated.Value, delay: number) => {
-      return Animated.sequence([
-        Animated.delay(delay),
-        Animated.loop(
-          Animated.sequence([
-            Animated.timing(anim, {
-              toValue: 1,
-              duration: 400,
-              useNativeDriver: true,
-            }),
-            Animated.timing(anim, {
-              toValue: 0,
-              duration: 400,
-              useNativeDriver: true,
-            }),
-            Animated.delay(400)
-          ])
-        )
-      ]);
-    };
-
-    Animated.parallel([
-      animateDot(dot1, 0),
-      animateDot(dot2, 200),
-      animateDot(dot3, 400)
-    ]).start();
+    Animated.timing(progress, {
+      toValue: 1,
+      duration: 1400,
+      useNativeDriver: false,
+    }).start();
   }, []);
 
-  const getStyle = (anim: Animated.Value) => ({
-    opacity: anim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }),
-    transform: [{
-      translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [0, -4] })
-    }]
+  const barWidth = progress.interpolate({
+    inputRange: [0, 0.6, 0.9, 1],
+    outputRange: ['0%', '60%', '90%', '100%'],
   });
 
   return (
-    <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
-      <Animated.View style={[{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#FFFFFF' }, getStyle(dot1)]} />
-      <Animated.View style={[{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#FFFFFF' }, getStyle(dot2)]} />
-      <Animated.View style={[{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#FFFFFF' }, getStyle(dot3)]} />
+    <View style={styles.progressTrack}>
+      <Animated.View style={[styles.progressFill, { width: barWidth }]} />
     </View>
   );
 }
@@ -119,98 +127,74 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  blob: {
+  glowRing1: {
     position: 'absolute',
-    width: width * 1.5,
-    height: width * 1.5,
-    borderRadius: width * 0.75,
-    opacity: 0.15,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    top: -80,
+    right: -60,
   },
-  blob1: {
-    top: -width * 0.5,
-    right: -width * 0.5,
-    backgroundColor: '#3B82F6',
-  },
-  blob2: {
-    bottom: -width * 0.5,
-    left: -width * 0.5,
-    backgroundColor: '#60A5FA',
+  glowRing2: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    bottom: 80,
+    left: -60,
   },
   content: {
     alignItems: 'center',
-    marginBottom: 80,
-    zIndex: 10,
+    marginBottom: 60,
   },
-  logoContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 30,
-  },
-  glowRing: {
-    position: 'absolute',
-    width: 130,
-    height: 130,
-    borderRadius: 65,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-  },
-  logoInnerWrap: {
-    width: 100,
-    height: 100,
-    borderRadius: 30,
+  logoWrap: {
+    width: 104,
+    height: 104,
+    borderRadius: 28,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 28,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.3,
-    shadowRadius: 24,
-    elevation: 16,
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.25,
+    shadowRadius: 32,
+    elevation: 20,
   },
   logo: {
-    width: 76,
-    height: 76,
+    width: 80,
+    height: 80,
   },
   appName: {
-    fontSize: 36,
+    fontSize: 38,
     fontWeight: '800',
     color: '#FFFFFF',
-    letterSpacing: -0.5,
-    marginBottom: 8,
+    letterSpacing: -1,
+    marginBottom: 6,
   },
   tagline: {
-    fontSize: 15,
-    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
     fontWeight: '500',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
-  loaderWrap: {
+  progressWrap: {
     position: 'absolute',
-    bottom: 80,
+    bottom: 52,
     left: 48,
     right: 48,
-    alignItems: 'center',
-    gap: 12,
   },
-  loaderTrack: {
-    width: '100%',
-    height: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+  progressTrack: {
+    height: 3,
+    backgroundColor: 'rgba(255,255,255,0.18)',
     borderRadius: 2,
     overflow: 'hidden',
   },
-  loaderBar: {
+  progressFill: {
     height: '100%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255,255,255,0.85)',
     borderRadius: 2,
-    shadowColor: '#FFFFFF',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 4,
-  },
-  loaderText: {
-    fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontWeight: '600',
-    letterSpacing: 0.5,
   },
 });
