@@ -96,11 +96,11 @@ export default function NoticesScreen({ navigation }: any) {
                 </TouchableOpacity>
               )}
               <View>
-                <Text style={styles.headerGreeting}>Notice Board</Text>
+                <Text style={styles.headerGreeting}>Hostel Feed</Text>
                 <Text style={styles.headerSub}>
                   {selectedMonth 
-                    ? `Notices for ${selectedMonth.toLocaleString('default', { month: 'short' })} ${selectedMonth.getFullYear()}` 
-                    : 'Latest hostel announcements'}
+                    ? `Updates for ${selectedMonth.toLocaleString('default', { month: 'short' })} ${selectedMonth.getFullYear()}` 
+                    : 'Alerts, updates, and announcements'}
                 </Text>
               </View>
             </View>

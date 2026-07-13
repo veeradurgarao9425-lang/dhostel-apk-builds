@@ -54,6 +54,50 @@ const getCategoryIcon = (cat: string) => {
   return <Wrench size={20} color={BLUE} />;
 };
 
+function ComplaintTracker({ status }: { status: string }) {
+  const steps = [
+    { label: 'Complaint Raised', key: 'Open', desc: 'We have received your complaint.' },
+    { label: 'Technician Assigned', key: 'In Progress', desc: 'A technician will attend to this shortly.' },
+    { label: status === 'Rejected' ? 'Complaint Rejected' : 'Resolved', key: status === 'Rejected' ? 'Rejected' : 'Resolved', desc: status === 'Rejected' ? 'Complaint was rejected by admin.' : 'The issue has been fixed.' }
+  ];
+
+  let currentIdx = 0;
+  if (status === 'In Progress') currentIdx = 1;
+  if (status === 'Resolved' || status === 'Rejected') currentIdx = 2;
+
+  return (
+    <View style={{ backgroundColor: WHITE, padding: 20, borderRadius: 16, marginBottom: 24, borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 1 }}>
+      <Text style={{ fontSize: 15, fontWeight: '800', color: TEXT_DARK, marginBottom: 16 }}>Live Status Tracker</Text>
+      {steps.map((step, idx) => {
+        const isCompleted = idx <= currentIdx;
+        const isCurrent = idx === currentIdx;
+        const isLast = idx === steps.length - 1;
+        const isActiveState = idx < currentIdx;
+        
+        let color = '#CBD5E1';
+        if (isCompleted) color = BLUE;
+        if (isCompleted && step.key === 'Rejected') color = '#EF4444';
+        if (isCompleted && step.key === 'Resolved') color = '#10B981';
+
+        return (
+          <View key={idx} style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+            <View style={{ alignItems: 'center', width: 24 }}>
+              <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: isCompleted ? color : '#F1F5F9', borderWidth: 2, borderColor: isCompleted ? color : '#E2E8F0', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}>
+                 {isCompleted && <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: WHITE }} />}
+              </View>
+              {!isLast && <View style={{ width: 2, height: 36, backgroundColor: isActiveState ? color : '#F1F5F9', marginVertical: -2, zIndex: 1 }} />}
+            </View>
+            <View style={{ marginLeft: 12, paddingBottom: isLast ? 0 : 20, flex: 1, marginTop: -2 }}>
+              <Text style={{ fontSize: 14, fontWeight: isCurrent ? '800' : (isCompleted ? '700' : '600'), color: isCurrent ? color : (isCompleted ? TEXT_DARK : TEXT_MID) }}>{step.label}</Text>
+              {(isCurrent || isCompleted) && <Text style={{ fontSize: 12, color: TEXT_MID, marginTop: 4, lineHeight: 16 }}>{step.desc}</Text>}
+            </View>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 function ComplaintDetailView({ complaint, onClose }: { complaint: any; onClose: () => void }) {
   const statusKey = complaint.status ?? 'Open';
   const status = statusConfig[statusKey] ?? statusConfig['Open'];
@@ -65,8 +109,7 @@ function ComplaintDetailView({ complaint, onClose }: { complaint: any; onClose: 
       <StatusBar barStyle="light-content" backgroundColor={BLUE} />
       <AppHeader 
         title="Complaint Details" 
-        onBack={onClose} 
-        style={{ paddingTop: Platform.OS === 'ios' ? 44 : 16, paddingBottom: 16 }}
+        onBack={onClose}
         rightComponent={
           <TouchableOpacity style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }} activeOpacity={0.7}>
             <Edit2 size={20} color={WHITE} />
@@ -86,6 +129,9 @@ function ComplaintDetailView({ complaint, onClose }: { complaint: any; onClose: 
           </View>
           <Text style={s.detailDate}>Submitted on {complaint.date}</Text>
         </View>
+
+        {/* Live Tracker (Swiggy Style) */}
+        <ComplaintTracker status={statusKey} />
 
         {/* Category & Priority Side-by-Side */}
         <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
@@ -213,7 +259,6 @@ function StepperForm({ visible, onClose, onSubmit, hostelId }: { visible: boolea
           title="New Complaint" 
           onBack={onClose} 
           showBack={true}
-          style={{ paddingTop: Platform.OS === 'ios' ? 44 : 16, paddingBottom: 16 }}
         />
         <SafeAreaView style={s.modalContainerFull} edges={['bottom']}>
           {/* Stepper Indicator */}
