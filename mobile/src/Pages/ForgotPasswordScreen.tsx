@@ -20,12 +20,13 @@ export default function ForgotPasswordScreen({ navigation }: any) {
     const insets = useSafeAreaInsets();
     
     // Steps: 'EMAIL' -> 'RESET'
-    const [step, setStep] = useState<'EMAIL' | 'RESET'>('EMAIL');
+    const [step, setStep] = useState<'EMAIL' | 'OTP' | 'RESET'>('EMAIL');
     
     // Form fields
     const [email, setEmail] = useState('');
     const [otp, setOtp] = useState('');
     const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     
     const [isLoading, setIsLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -45,7 +46,7 @@ export default function ForgotPasswordScreen({ navigation }: any) {
             const response = await api.post('/auth/forgot-password', { email: email.trim() });
             if (response.data?.success || response.status === 200) {
                 setSuccessMsg('OTP sent successfully to your email.');
-                setStep('RESET');
+                setStep('OTP');
             } else {
                 setErrorMsg(response.data?.error || response.data?.message || 'Failed to send OTP.');
             }
@@ -56,9 +57,23 @@ export default function ForgotPasswordScreen({ navigation }: any) {
         }
     };
 
+    const handleVerifyOTP = () => {
+        if (!otp.trim() || otp.trim().length !== 6) {
+            setErrorMsg('Please enter a valid 6-digit OTP');
+            return;
+        }
+        setErrorMsg(null);
+        setSuccessMsg(null);
+        setStep('RESET');
+    };
+
     const handleResetPassword = async () => {
-        if (!otp.trim() || !newPassword.trim()) {
-            setErrorMsg('OTP and new password are required');
+        if (!newPassword.trim() || !confirmPassword.trim()) {
+            setErrorMsg('Password fields are required');
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            setErrorMsg('Passwords do not match');
             return;
         }
         if (newPassword.length < 6) {
@@ -88,10 +103,13 @@ export default function ForgotPasswordScreen({ navigation }: any) {
             }
         } catch (err: any) {
             setErrorMsg(err.response?.data?.error || err.response?.data?.message || 'Invalid OTP or network error.');
+            // If OTP was wrong, take them back to OTP step
+            setStep('OTP');
         } finally {
             setIsLoading(false);
         }
     };
+
 
     return (
         <KeyboardAvoidingView
