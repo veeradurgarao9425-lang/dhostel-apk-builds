@@ -121,11 +121,16 @@ export const createHostel = async (req: AuthRequest, res: Response) => {
     // Insert hostel
     const [hostel_id] = await db('hostel_master').insert(hostelData);
 
-    // Always set this new hostel as the creator's active hostel.
-    // This ensures the app reflects the new hostel immediately after creation.
-    await db('users')
-      .where({ user_id: req.user?.user_id })
-      .update({ hostel_id });
+    // Set this new hostel as the creator's active hostel, but only when the creator
+    // is an Owner (role 2) creating their own hostel. Admin/Super Admin (role 1) must
+    // stay unscoped so they retain global access to every hostel, not just the last one created.
+    let tokenHostelId = req.user?.hostel_id;
+    if (req.user?.role_id === 2) {
+      await db('users')
+        .where({ user_id: req.user?.user_id })
+        .update({ hostel_id });
+      tokenHostelId = hostel_id;
+    }
 
     // If the owner is a different user than the creator, also update the owner's hostel_id
     // if they don't have one yet (don't override their existing active hostel).
@@ -138,13 +143,13 @@ export const createHostel = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // Issue a fresh JWT so the frontend gets the updated hostel_id immediately
+    // Issue a fresh JWT so the frontend gets the updated hostel_id immediately (Owner only)
     const { generateToken } = await import('../utils/jwt.js');
     const newToken = generateToken({
       user_id: req.user?.user_id,
       email: req.user?.email,
       role_id: req.user?.role_id,
-      hostel_id,
+      hostel_id: tokenHostelId,
     });
 
     const { getWelcomeEmailTemplate, getSuperAdminNewRegistrationTemplate } = await import('../utils/emailTemplates.js');

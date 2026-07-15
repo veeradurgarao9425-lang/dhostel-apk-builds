@@ -63,6 +63,13 @@ export const getTenantLeaves = async (req: AuthRequest, res: Response) => {
 export const getHostelLeaves = async (req: AuthRequest, res: Response) => {
   try {
     const { hostelId } = req.params;
+    const user = req.user;
+
+    // Restrict Owner to their own hostel
+    if (user?.role_id === 2 && user.hostel_id !== Number(hostelId)) {
+      return res.status(403).json({ success: false, error: 'Access denied.' });
+    }
+
     const leaves = await db('leave_requests')
       .join('students', 'leave_requests.student_id', '=', 'students.student_id')
       .where('leave_requests.hostel_id', hostelId)
@@ -80,6 +87,7 @@ export const updateLeaveStatus = async (req: AuthRequest, res: Response) => {
   try {
     const { leaveId } = req.params;
     const { status } = req.body;
+    const user = req.user;
 
     if (!['Approved', 'Rejected'].includes(status)) {
       return res.status(400).json({ success: false, message: 'Invalid status' });
@@ -87,6 +95,11 @@ export const updateLeaveStatus = async (req: AuthRequest, res: Response) => {
 
     const leave = await db('leave_requests').where('leave_id', leaveId).first();
     if (!leave) return res.status(404).json({ success: false, message: 'Not found' });
+
+    // Restrict Owner to their own hostel
+    if (user?.role_id === 2 && leave.hostel_id !== user.hostel_id) {
+      return res.status(403).json({ success: false, error: 'Access denied.' });
+    }
 
     await db('leave_requests').where('leave_id', leaveId).update({ status });
 
@@ -167,6 +180,13 @@ export const getTenantVisitors = async (req: AuthRequest, res: Response) => {
 export const getHostelVisitors = async (req: AuthRequest, res: Response) => {
   try {
     const { hostelId } = req.params;
+    const user = req.user;
+
+    // Restrict Owner to their own hostel
+    if (user?.role_id === 2 && user.hostel_id !== Number(hostelId)) {
+      return res.status(403).json({ success: false, error: 'Access denied.' });
+    }
+
     const visitors = await db('visitor_requests')
       .join('students', 'visitor_requests.student_id', '=', 'students.student_id')
       .where('visitor_requests.hostel_id', hostelId)
@@ -184,6 +204,7 @@ export const updateVisitorStatus = async (req: AuthRequest, res: Response) => {
   try {
     const { visitorId } = req.params;
     const { status } = req.body;
+    const user = req.user;
 
     if (!['Approved', 'Rejected'].includes(status)) {
       return res.status(400).json({ success: false, message: 'Invalid status' });
@@ -191,6 +212,11 @@ export const updateVisitorStatus = async (req: AuthRequest, res: Response) => {
 
     const visitor = await db('visitor_requests').where('visitor_id', visitorId).first();
     if (!visitor) return res.status(404).json({ success: false, message: 'Not found' });
+
+    // Restrict Owner to their own hostel
+    if (user?.role_id === 2 && visitor.hostel_id !== user.hostel_id) {
+      return res.status(403).json({ success: false, error: 'Access denied.' });
+    }
 
     await db('visitor_requests').where('visitor_id', visitorId).update({ status });
 

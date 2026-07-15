@@ -93,6 +93,12 @@ export const getTenantComplaints = async (req: AuthRequest, res: Response) => {
 export const getHostelComplaints = async (req: AuthRequest, res: Response) => {
   try {
     const { hostelId } = req.params;
+    const user = req.user;
+
+    // Restrict Owner to their own hostel
+    if (user?.role_id === 2 && user.hostel_id !== Number(hostelId)) {
+      return res.status(403).json({ success: false, error: 'Access denied.' });
+    }
     
     // Join with students table to get name and room/bed
     const complaints = await db('complaints')
@@ -120,6 +126,7 @@ export const updateComplaintStatus = async (req: AuthRequest, res: Response) => 
   try {
     const { complaintId } = req.params;
     const { status } = req.body;
+    const user = req.user;
 
     if (!status || !['Open', 'In Progress', 'Resolved'].includes(status)) {
       return res.status(400).json({ success: false, message: 'Invalid status' });
@@ -128,6 +135,11 @@ export const updateComplaintStatus = async (req: AuthRequest, res: Response) => 
     const complaint = await db('complaints').where('complaint_id', complaintId).first();
     if (!complaint) {
       return res.status(404).json({ success: false, message: 'Complaint not found' });
+    }
+
+    // Restrict Owner to their own hostel
+    if (user?.role_id === 2 && complaint.hostel_id !== user.hostel_id) {
+      return res.status(403).json({ success: false, error: 'Access denied.' });
     }
 
     await db('complaints').where('complaint_id', complaintId).update({ status });

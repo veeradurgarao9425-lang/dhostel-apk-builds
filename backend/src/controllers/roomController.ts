@@ -2,6 +2,7 @@ import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { sendNotificationToHostelOwner } from '../utils/notification.js';
+import { resolveScopedHostelId } from '../utils/scope.js';
 
 // Shared helper: derive bed capacity from room_type_name / description
 const getCapacityFromRoomTypeName = (roomTypeName: string, description: string | null): number => {
@@ -35,7 +36,7 @@ const resolveHostelId = (
   user: AuthRequest['user'],
   hostel_id?: number
 ): { hostelId: number } | { status: number; error: string } => {
-  if (user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) {
+  if (user?.role_id === 2) {
     if (!user.hostel_id) {
       return { status: 403, error: 'Your account is not linked to any hostel. Please contact administrator.' };
     }
@@ -118,19 +119,17 @@ export const getRooms = async (req: AuthRequest, res: Response) => {
 
 
 
-    // If user is hostel owner (role_id = 2), filter by their hostel_id from JWT token
-    if (user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id && !hostelId)) {
-      if (!user.hostel_id) {
-        return res.status(403).json({
-          success: false,
-          error: 'Your account is not linked to any hostel. Please contact administrator.'
-        });
-      }
-      // Filter by the single hostel_id from user's token
-      query = query.where('r.hostel_id', user.hostel_id);
+    // Owner (role 2): always scoped to their own hostel. Admin/Super Admin
+    // (role 1): scoped to ?hostelId if given, otherwise global across all hostels.
+    if (user?.role_id === 2 && !user.hostel_id) {
+      return res.status(403).json({
+        success: false,
+        error: 'Your account is not linked to any hostel. Please contact administrator.'
+      });
     }
-    if (hostelId && user?.role_id === 1) {
-      query = query.where('r.hostel_id', hostelId);
+    const scopedHostelId = resolveScopedHostelId(user, hostelId as string | undefined);
+    if (scopedHostelId) {
+      query = query.where('r.hostel_id', scopedHostelId);
     }
 
     const rooms = await query.orderBy('r.hostel_id').orderBy('r.room_number');
@@ -401,8 +400,8 @@ export const updateRoom = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // If user is hostel owner, verify they own this room's hostel
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
+    // Only Owner is blocked from acting on a room outside their own hostel; Admin bypasses.
+    if (user?.role_id === 2) {
       if (!user.hostel_id) {
         return res.status(403).json({
           success: false,
@@ -472,8 +471,8 @@ export const deleteRoom = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // If user is hostel owner, verify they own this room's hostel
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
+    // Only Owner is blocked from acting on a room outside their own hostel; Admin bypasses.
+    if (user?.role_id === 2) {
       if (!user.hostel_id) {
         return res.status(403).json({
           success: false,

@@ -3,6 +3,7 @@ import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { sendNotificationToStudent, sendNotificationToHostelOwner } from '../utils/notification.js';
 import { io } from '../socket/index.js';
+import { resolveScopedHostelId } from '../utils/scope.js';
 
 // Get all fee payments
 export const getFeePayments = async (req: AuthRequest, res: Response) => {
@@ -40,22 +41,20 @@ export const getFeePayments = async (req: AuthRequest, res: Response) => {
         'pm.payment_mode_name as payment_mode'
       );
 
-    // If user is hostel owner, filter by their current hostel from JWT
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
-      if (!user.hostel_id) {
-        return res.status(403).json({
-          success: false,
-          error: 'Your account is not linked to any hostel.'
-        });
-      }
-      query = query.where('fp.hostel_id', user.hostel_id);
+    // Owner (role 2): always scoped to their own hostel. Admin/Super Admin
+    // (role 1): scoped to ?hostelId if given, otherwise global across all hostels.
+    const scopedHostelId = resolveScopedHostelId(user, hostelId as string | undefined);
+    if (user?.role_id === 2 && !scopedHostelId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Your account is not linked to any hostel.'
+      });
+    }
+    if (scopedHostelId) {
+      query = query.where('fp.hostel_id', scopedHostelId);
     }
 
     // Apply filters
-    if (hostelId) {
-      query = query.where('fp.hostel_id', hostelId);
-    }
-
     if (studentId) {
       query = query.where('fp.student_id', studentId);
     }
@@ -121,15 +120,18 @@ export const getStudentPaymentHistory = async (req: AuthRequest, res: Response) 
       )
       .where('fp.student_id', studentId);
 
-    // If user is hostel owner, filter by their current hostel from JWT
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
-      if (!user.hostel_id) {
+    // Owner (role 2): always scoped to their own hostel. Admin/Super Admin
+    // (role 1): this endpoint is already scoped by studentId, so no further
+    // hostel restriction applies (global access across all hostels).
+    if (user?.role_id === 2) {
+      const scopedHostelId = resolveScopedHostelId(user, undefined);
+      if (!scopedHostelId) {
         return res.status(403).json({
           success: false,
           error: 'Your account is not linked to any hostel.'
         });
       }
-      query = query.where('fp.hostel_id', user.hostel_id);
+      query = query.where('fp.hostel_id', scopedHostelId);
     }
 
     const payments = await query
@@ -336,7 +338,8 @@ export const getReceipt = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    if (req.user?.hostel_id && payment.hostel_id !== req.user.hostel_id) {
+    // Only Owner (role 2) is restricted to their own hostel; Admin/Super Admin (role 1) bypasses.
+    if (req.user?.role_id === 2 && req.user?.hostel_id && payment.hostel_id !== req.user.hostel_id) {
       return res.status(403).json({ success: false, error: 'Access denied.' });
     }
 
@@ -362,15 +365,17 @@ export const getAvailableMonths = async (req: AuthRequest, res: Response) => {
       .distinct('fee_month')
       .orderBy('fee_month', 'desc');
 
-    // If user is hostel owner, filter by their hostel
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
-      if (!user.hostel_id) {
+    // Owner (role 2): always scoped to their own hostel. Admin/Super Admin
+    // (role 1): global across all hostels (no filter).
+    if (user?.role_id === 2) {
+      const scopedHostelId = resolveScopedHostelId(user, undefined);
+      if (!scopedHostelId) {
         return res.status(403).json({
           success: false,
           error: 'Your account is not linked to any hostel.'
         });
       }
-      query = query.where('hostel_id', user.hostel_id);
+      query = query.where('hostel_id', scopedHostelId);
     }
 
     const months = await query;

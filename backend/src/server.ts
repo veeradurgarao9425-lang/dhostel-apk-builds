@@ -1,9 +1,13 @@
-// QR Signup form: v2 â€” fixed regex, toast CSS, no-redirect HTML serving
+// QR Signup form: v2 - fixed regex, toast CSS, no-redirect HTML serving
+import dotenv from 'dotenv';
+// Load environment variables FIRST - before any module that reads process.env
+dotenv.config();
+
 import express from 'express';
 import { createServer } from 'http';
 import cors from 'cors';
 import helmet from 'helmet';
-import dotenv from 'dotenv';
+import rateLimit from 'express-rate-limit';
 import multer from 'multer';
 import path from 'path';
 import { setupSocket } from './socket/index.js';
@@ -35,6 +39,7 @@ import tenantExpenseRoutes from './routes/tenantExpenseRoutes.js';
 import splitsRoutes from './routes/splitsRoutes.js';
 import messSkipRoutes from './routes/messSkipRoutes.js';
 import ratingRoutes from './routes/ratingRoutes.js';
+import subscriptionRoutes from './routes/subscriptionRoutes.js';
 import { startMonthlyFeesGenerationJob } from './jobs/monthlyFeesGeneration.js';
 import { startGuestOverstayJob } from './jobs/guestOverstay.js';
 import { startChatResetJob } from './jobs/chatReset.js';
@@ -43,11 +48,8 @@ import { startWeeklyReportsJob } from './jobs/weeklyReports.js';
 import { startMonthlyReportsJob } from './jobs/monthlyReports.js';
 import { startFeeRemindersJob } from './jobs/feeReminders.js';
 import { startOwnerDailyAlertsJob } from './jobs/ownerDailyAlerts.js';
-
 import { sendNotificationToHostelOwner } from './utils/notification.js';
 
-// Load environment variables
-dotenv.config();
 
 // Start Background Jobs
 startMonthlyFeesGenerationJob();
@@ -83,28 +85,61 @@ const getAllowedOrigins = (): string[] => {
   ];
 };
 
+// Rate Limiters
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20,                   // max 20 attempts per 15-min window
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many attempts, please try again after 15 minutes.' },
+});
+
+const otpLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 3,              // max 3 OTP requests per minute (prevents SMS bombing)
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many OTP requests, please wait before trying again.' },
+});
+
 // Middleware
 app.use(helmet({
-  contentSecurityPolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "blob:", "https:"],
+      connectSrc: ["'self'", ...getAllowedOrigins()],
+      objectSrc: ["'none'"],
+      frameSrc: ["'none'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false, // Required for PDF/Excel file downloads
 }));
 app.use(cors({
   origin: getAllowedOrigins(),
   credentials: true,
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Request Logger
-app.use((req, res, next) => {
-  console.log(`[REQ] ${req.method} ${req.url}`);
+app.use((req, _res, next) => {
+  const ts = new Date().toISOString();
+  console.log(`[${ts}] ${req.method} ${req.url}`);
   next();
 });
 
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));
 
-// API Routes
-app.use('/api/auth', authRoutes);
+// API Routes — OTP and auth routes have rate limiting applied
+app.use('/api/auth/send-otp', otpLimiter);
+app.use('/api/auth/tenant/send-otp', otpLimiter);
+app.use('/api/auth/verify-reset-otp', otpLimiter);
+app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/reports', reportRoutes); // High-accuracy report/dashboard logic
 app.use('/api/analytics', reportRoutes); // Keep for mobile mapping
 app.use('/api/dashboard', reportRoutes); // Map dashboard to reports for owner-stats
@@ -134,7 +169,6 @@ app.use('/api/tenant-expenses', tenantExpenseRoutes);
 app.use('/api/splits', splitsRoutes);
 app.use('/api/mess', messSkipRoutes);
 app.use('/api/ratings', ratingRoutes);
-import subscriptionRoutes from './routes/subscriptionRoutes.js';
 app.use('/api/subscriptions', subscriptionRoutes);
 // Multer storage for the public QR signup Aadhaar photos
 const qrSignupUpload = multer({

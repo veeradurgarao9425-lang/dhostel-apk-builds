@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Plus, TrendingUp, Edit, Trash2, ChevronDown, ChevronUp, Search, X } from 'lucide-react';
+import { Plus, TrendingUp, Edit, Trash2, ChevronDown, ChevronUp, Search, X, Building2 } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
+import { useAuthStore } from '../store/authStore';
 
 interface Income {
   income_id: number;
@@ -31,7 +32,13 @@ interface PaymentMode {
   order_index?: number;
 }
 
+interface Hostel {
+  hostel_id: number;
+  hostel_name: string;
+}
+
 export const IncomePage: React.FC = () => {
+  const user = useAuthStore((state) => state.user);
   const [incomes, setIncomes] = useState<Income[]>([]);
   const [paymentModes, setPaymentModes] = useState<PaymentMode[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,6 +47,7 @@ export const IncomePage: React.FC = () => {
   const [expandedCardId, setExpandedCardId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showTotalIncomeCard, setShowTotalIncomeCard] = useState<boolean>(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   // Default to current month in YYYY-MM format
   const [selectedMonth, setSelectedMonth] = useState<string>(() => {
     const now = new Date();
@@ -50,8 +58,11 @@ export const IncomePage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const incomePerPage = 10;
 
+  // Default hostel_id from user's auth context (not hardcoded to '1')
+  const defaultHostelId = user?.hostel_id?.toString() || '';
+
   const [formData, setFormData] = useState<IncomeFormData>({
-    hostel_id: '1',
+    hostel_id: defaultHostelId,
     income_date: new Date().toISOString().split('T')[0],
     amount: '',
     source: '',
@@ -60,15 +71,41 @@ export const IncomePage: React.FC = () => {
     receipt_number: ''
   });
 
+  // Super Admin states
+  const [hostels, setHostels] = useState<Hostel[]>([]);
+  const [selectedHostelId, setSelectedHostelId] = useState<string>("");
+
   useEffect(() => {
-    fetchIncomes();
+    if (user?.role_id === 1) {
+      fetchHostels();
+    } else {
+      fetchIncomes();
+    }
     fetchPaymentModes();
   }, [selectedMonth]);
+
+  useEffect(() => {
+    if (selectedHostelId) {
+      fetchIncomes();
+    }
+  }, [selectedHostelId]);
+
+  const fetchHostels = async () => {
+    try {
+      const response = await api.get('/hostels');
+      const data: Hostel[] = response.data.data || [];
+      setHostels(data);
+      if (data.length > 0 && !selectedHostelId) {
+        setSelectedHostelId(data[0].hostel_id.toString());
+      }
+    } catch (error) {
+      console.error('Failed to fetch hostels:', error);
+    }
+  };
 
   const fetchIncomes = async () => {
     try {
       setLoading(true);
-      // Calculate start and end dates for the selected month
       const [year, month] = selectedMonth.split('-').map(Number);
       const lastDay = new Date(year, month, 0).getDate();
       const startDateStr = `${year}-${String(month).padStart(2, '0')}-01`;
@@ -77,7 +114,8 @@ export const IncomePage: React.FC = () => {
       const response = await api.get('/income', {
         params: {
           startDate: startDateStr,
-          endDate: endDateStr
+          endDate: endDateStr,
+          hostelId: selectedHostelId || undefined
         }
       });
       setIncomes(response.data.data);
@@ -107,7 +145,7 @@ export const IncomePage: React.FC = () => {
     e.preventDefault();
 
     const payload = {
-      hostel_id: parseInt(formData.hostel_id),
+      hostel_id: user?.role_id === 1 ? parseInt(selectedHostelId) : (user?.hostel_id || parseInt(formData.hostel_id)),
       income_date: formData.income_date,
       amount: parseFloat(formData.amount),
       source: formData.source,
@@ -134,7 +172,6 @@ export const IncomePage: React.FC = () => {
 
   const handleEdit = (income: Income) => {
     setEditingIncome(income);
-    // Find payment_mode_id by matching payment_mode name
     const matchedPaymentMode = paymentModes.find(
       mode => mode.payment_mode_name === income.payment_mode
     );
@@ -151,12 +188,16 @@ export const IncomePage: React.FC = () => {
     setShowModal(true);
   };
 
-  const handleDelete = async (incomeId: number) => {
-    if (!window.confirm('Are you sure you want to delete this income record?')) return;
+  const handleDeleteRequest = (incomeId: number) => {
+    setDeleteConfirmId(incomeId);
+  };
 
+  const handleDeleteConfirm = async () => {
+    if (deleteConfirmId === null) return;
     try {
-      await api.delete(`/income/${incomeId}`);
+      await api.delete(`/income/${deleteConfirmId}`);
       toast.success('Income deleted successfully');
+      setDeleteConfirmId(null);
       fetchIncomes();
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to delete income');
@@ -168,7 +209,7 @@ export const IncomePage: React.FC = () => {
     setShowModal(false);
     setEditingIncome(null);
     setFormData({
-      hostel_id: '1',
+      hostel_id: user?.hostel_id?.toString() || defaultHostelId,
       income_date: new Date().toISOString().split('T')[0],
       amount: '',
       source: '',
@@ -284,6 +325,33 @@ export const IncomePage: React.FC = () => {
 
   return (
     <div className="space-y-4">
+      {/* Super Admin Hostel Selector */}
+      {user?.role_id === 1 && hostels.length > 0 && (
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Building2 className="h-5 w-5 text-cyan-600" />
+            <div>
+              <h2 className="text-sm font-semibold text-slate-800">Select Hostel</h2>
+              <p className="text-xs text-slate-500">Choose the hostel to manage income for</p>
+            </div>
+          </div>
+          <select
+            value={selectedHostelId}
+            onChange={(e) => {
+              setSelectedHostelId(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-white text-slate-800 font-medium min-w-[280px]"
+          >
+            {hostels.map((h) => (
+              <option key={h.hostel_id} value={h.hostel_id.toString()}>
+                {h.hostel_name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* Header */}
       <div className="space-y-4">
         {/* Mobile: Single Line Header with Month */}
@@ -483,8 +551,8 @@ export const IncomePage: React.FC = () => {
                             </button>
                             <button
                               onClick={(e) => {
-                                e.stopPropagation();
-                                handleDelete(income.income_id);
+                                 e.stopPropagation();
+                                 handleDeleteRequest(income.income_id);
                               }}
                               className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
                               title="Delete"
@@ -574,7 +642,7 @@ export const IncomePage: React.FC = () => {
                                   <Edit className="h-4 w-4" />
                                 </button>
                                 <button
-                                  onClick={() => handleDelete(income.income_id)}
+                                  onClick={() => handleDeleteRequest(income.income_id)}
                                   className="p-1.5 bg-red-50 text-red-600 rounded hover:bg-red-100 transition-colors"
                                   title="Delete"
                                 >
@@ -986,6 +1054,44 @@ export const IncomePage: React.FC = () => {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmId !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50"
+            onClick={() => setDeleteConfirmId(null)}
+          />
+          <div className="relative bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm mx-4 z-10">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <Trash2 className="h-5 w-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-gray-900">Delete Income Record</h3>
+                <p className="text-sm text-gray-500">This action cannot be undone.</p>
+              </div>
+            </div>
+            <p className="text-sm text-gray-600 mb-6">
+              Are you sure you want to delete this income record? All data associated with it will be permanently removed.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirmId(null)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+              >
+                Delete
+              </button>
             </div>
           </div>
         </div>

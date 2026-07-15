@@ -3,12 +3,23 @@ import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
 import ExcelJS from 'exceljs';
 import { sendEmail } from '../utils/email.js';
+import { resolveScopedHostelId } from '../utils/scope.js';
 
 // Get all income records
 export const getAllIncome = async (req: AuthRequest, res: Response) => {
   try {
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate, hostelId } = req.query;
     const user = req.user;
+
+    // Owner (role 2): always scoped to their own hostel. Admin/Super Admin
+    // (role 1): scoped to ?hostelId if given, otherwise global across all hostels.
+    const scopedHostelId = resolveScopedHostelId(user, hostelId as string | undefined);
+    if (user?.role_id === 2 && !scopedHostelId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Your account is not linked to any hostel.'
+      });
+    }
 
     let query = db('income as i')
       .leftJoin('hostel_master as h', 'i.hostel_id', 'h.hostel_id')
@@ -25,15 +36,8 @@ export const getAllIncome = async (req: AuthRequest, res: Response) => {
         'i.description'
       );
 
-    // If user is hostel owner, filter by their current hostel from JWT
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
-      if (!user.hostel_id) {
-        return res.status(403).json({
-          success: false,
-          error: 'Your account is not linked to any hostel.'
-        });
-      }
-      query = query.where('i.hostel_id', user.hostel_id);
+    if (scopedHostelId) {
+      query = query.where('i.hostel_id', scopedHostelId);
     }
 
     // Apply date filters if provided
@@ -58,8 +62,8 @@ export const getAllIncome = async (req: AuthRequest, res: Response) => {
           'g.purpose'
         )
         .where('g.amount_paid', '>', 0);
-      if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && user.hostel_id) {
-        guestQuery = guestQuery.where('g.hostel_id', user.hostel_id);
+      if (scopedHostelId) {
+        guestQuery = guestQuery.where('g.hostel_id', scopedHostelId);
       }
       if (startDate && endDate) {
         guestQuery = guestQuery.whereBetween('g.check_in_date', [startDate, endDate]);
@@ -102,8 +106,8 @@ export const getAllIncome = async (req: AuthRequest, res: Response) => {
           this.where('s.admission_status', 1)
             .orWhere('s.admission_status', 'Paid');
         });
-      if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && user.hostel_id) {
-        admissionQuery = admissionQuery.where('s.hostel_id', user.hostel_id);
+      if (scopedHostelId) {
+        admissionQuery = admissionQuery.where('s.hostel_id', scopedHostelId);
       }
       if (startDate && endDate) {
         admissionQuery = admissionQuery.whereBetween('s.admission_date', [startDate, endDate]);
@@ -164,11 +168,12 @@ export const createIncome = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Determine hostel_id based on user role
+    // Determine hostel_id based on user role. Owner always uses their own
+    // hostel; Admin/Super Admin must specify hostel_id explicitly (never
+    // silently defaults to the admin's own possibly-stale hostel_id).
     let hostel_id: number;
 
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
-      // Hostel owner - use hostel from JWT
+    if (user?.role_id === 2) {
       if (!user.hostel_id) {
         return res.status(403).json({
           success: false,
@@ -237,8 +242,9 @@ export const updateIncome = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // If user is hostel owner, ensure they can only update their own hostel's income
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
+    // Only Owner (role 2) is restricted to their own hostel's income; Admin/Super
+    // Admin (role 1) can update income for any hostel.
+    if (user?.role_id === 2) {
       if (!user.hostel_id) {
         return res.status(403).json({
           success: false,
@@ -296,8 +302,9 @@ export const deleteIncome = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // If user is hostel owner, ensure they can only delete their own hostel's income
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
+    // Only Owner (role 2) is restricted to their own hostel's income; Admin/Super
+    // Admin (role 1) can delete income for any hostel.
+    if (user?.role_id === 2) {
       if (!user.hostel_id) {
         return res.status(403).json({
           success: false,
@@ -340,15 +347,17 @@ export const getIncomeSummary = async (req: AuthRequest, res: Response) => {
       .count('* as count')
       .groupBy('source');
 
-    // If user is hostel owner, filter by their current hostel from JWT
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
-      if (!user.hostel_id) {
-        return res.status(403).json({
-          success: false,
-          error: 'Your account is not linked to any hostel.'
-        });
-      }
-      query = query.where('hostel_id', user.hostel_id);
+    // Owner (role 2): always scoped to their own hostel. Admin/Super Admin
+    // (role 1): scoped to ?hostelId if given, otherwise global across all hostels.
+    const scopedHostelId = resolveScopedHostelId(user, req.query.hostelId as string | undefined);
+    if (user?.role_id === 2 && !scopedHostelId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Your account is not linked to any hostel.'
+      });
+    }
+    if (scopedHostelId) {
+      query = query.where('hostel_id', scopedHostelId);
     }
 
     const summary = await query.orderBy('total_amount', 'desc');
@@ -384,9 +393,15 @@ export const safeGetDateString = (d: any): string => {
 // Get income analytics for breakdown charts
 export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
   try {
-    const { type, date, startDate: queryStartDate, endDate: queryEndDate, page, limit, search } = req.query; // type: 'day' | 'week' | 'month', date: 'YYYY-MM-DD'
+    const { type, date, startDate: queryStartDate, endDate: queryEndDate, page, limit, search, hostelId: queryHostelId } = req.query; // type: 'day' | 'week' | 'month', date: 'YYYY-MM-DD'
     const user = req.user;
-    const hostelId = user?.hostel_id;
+
+    // Owner (role 2): always scoped to their own hostel. Admin/Super Admin
+    // (role 1): scoped to ?hostelId if given, otherwise global across all hostels.
+    const scopedHostelId = resolveScopedHostelId(user, queryHostelId as string | undefined);
+    if (user?.role_id === 2 && !scopedHostelId) {
+      return res.status(403).json({ success: false, error: 'Your account is not linked to any hostel.' });
+    }
 
     let startDate: string, endDate: string;
     let year = new Date().getFullYear();
@@ -435,8 +450,8 @@ export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
       .leftJoin('payment_modes as pm', 'i.payment_mode_id', 'pm.payment_mode_id')
       .whereBetween('i.income_date', [startDate, endDate]);
 
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && hostelId) {
-      incomeQuery = incomeQuery.where('i.hostel_id', hostelId);
+    if (scopedHostelId) {
+      incomeQuery = incomeQuery.where('i.hostel_id', scopedHostelId);
     }
 
     if (search) {
@@ -461,8 +476,8 @@ export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
       .leftJoin('monthly_fees as mf', 'fp.fee_id', 'mf.fee_id')
       .whereBetween('fp.payment_date', [startDate, endDate]);
 
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && hostelId) {
-      feeQuery = feeQuery.where('fp.hostel_id', hostelId);
+    if (scopedHostelId) {
+      feeQuery = feeQuery.where('fp.hostel_id', scopedHostelId);
     }
 
     if (search) {
@@ -490,8 +505,8 @@ export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
       .where('g.amount_paid', '>', 0)
       .whereBetween('g.check_in_date', [startDate, endDate]);
 
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && hostelId) {
-      guestQuery = guestQuery.where('g.hostel_id', hostelId);
+    if (scopedHostelId) {
+      guestQuery = guestQuery.where('g.hostel_id', scopedHostelId);
     }
     if (search) {
       const s = `%${search}%`;
@@ -517,8 +532,8 @@ export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
       })
       .whereBetween('s.admission_date', [startDate, endDate]);
 
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && hostelId) {
-      admissionQuery = admissionQuery.where('s.hostel_id', hostelId);
+    if (scopedHostelId) {
+      admissionQuery = admissionQuery.where('s.hostel_id', scopedHostelId);
     }
     if (search) {
       const s = `%${search}%`;
@@ -659,17 +674,23 @@ export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
 // Export income records to Excel
 export const getIncomeExport = async (req: AuthRequest, res: Response) => {
   try {
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate, hostelId: queryHostelId } = req.query;
     const user = req.user;
-    const hostelId = user?.hostel_id;
+
+    // Owner (role 2): always scoped to their own hostel. Admin/Super Admin
+    // (role 1): scoped to ?hostelId if given, otherwise global across all hostels.
+    const scopedHostelId = resolveScopedHostelId(user, queryHostelId as string | undefined);
+    if (user?.role_id === 2 && !scopedHostelId) {
+      return res.status(403).json({ success: false, error: 'Your account is not linked to any hostel.' });
+    }
 
     // 1. Fetch Income records
     let incomeQuery = db('income as i')
       .leftJoin('payment_modes as pm', 'i.payment_mode_id', 'pm.payment_mode_id')
       .select('i.*', 'pm.payment_mode_name as payment_mode');
 
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && hostelId) {
-      incomeQuery = incomeQuery.where('i.hostel_id', hostelId);
+    if (scopedHostelId) {
+      incomeQuery = incomeQuery.where('i.hostel_id', scopedHostelId);
     }
     if (startDate && endDate) {
       incomeQuery = incomeQuery.whereBetween('i.income_date', [startDate, endDate]);
@@ -681,8 +702,8 @@ export const getIncomeExport = async (req: AuthRequest, res: Response) => {
       .leftJoin('payment_modes as pm', 'fp.payment_mode_id', 'pm.payment_mode_id')
       .select('fp.*', 's.first_name', 's.last_name', 'pm.payment_mode_name as payment_mode');
 
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && hostelId) {
-      feeQuery = feeQuery.where('fp.hostel_id', hostelId);
+    if (scopedHostelId) {
+      feeQuery = feeQuery.where('fp.hostel_id', scopedHostelId);
     }
     if (startDate && endDate) {
       feeQuery = feeQuery.whereBetween('fp.payment_date', [startDate, endDate]);
@@ -695,7 +716,7 @@ export const getIncomeExport = async (req: AuthRequest, res: Response) => {
         .leftJoin('expense_categories as ec', 'e.category_id', 'ec.category_id')
         .select('e.*', 'ec.category_name')
         .where(function () {
-          if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && hostelId) this.where('e.hostel_id', hostelId);
+          if (scopedHostelId) this.where('e.hostel_id', scopedHostelId);
           if (startDate && endDate) this.whereBetween('e.expense_date', [startDate, endDate]);
         })
     ]);
@@ -704,13 +725,13 @@ export const getIncomeExport = async (req: AuthRequest, res: Response) => {
     let guestQuery = db('guests as g')
       .where('g.amount_paid', '>', 0);
 
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && hostelId) {
-      guestQuery = guestQuery.where('g.hostel_id', hostelId);
+    if (scopedHostelId) {
+      guestQuery = guestQuery.where('g.hostel_id', scopedHostelId);
     }
     if (startDate && endDate) {
       guestQuery = guestQuery.whereBetween('g.check_in_date', [startDate, endDate]);
     }
-    
+
     let guests: any[] = [];
     try {
         guests = await guestQuery.select('g.*');
@@ -726,8 +747,8 @@ export const getIncomeExport = async (req: AuthRequest, res: Response) => {
           .orWhere('s.admission_status', 'Paid');
       });
 
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && hostelId) {
-      admissionQuery = admissionQuery.where('s.hostel_id', hostelId);
+    if (scopedHostelId) {
+      admissionQuery = admissionQuery.where('s.hostel_id', scopedHostelId);
     }
     if (startDate && endDate) {
       admissionQuery = admissionQuery.whereBetween('s.admission_date', [startDate, endDate]);
@@ -856,14 +877,20 @@ export const getIncomeExport = async (req: AuthRequest, res: Response) => {
 // Export income records to Excel and send via email
 export const emailIncomeExport = async (req: AuthRequest, res: Response) => {
   try {
-    const { month } = req.body;
+    const { month, hostelId: queryHostelId } = req.body;
     const user = req.user;
-    const hostelId = user?.hostel_id;
-    
+
+    // Owner (role 2): always scoped to their own hostel. Admin/Super Admin
+    // (role 1): scoped to body.hostelId if given, otherwise global across all hostels.
+    const scopedHostelId = resolveScopedHostelId(user, queryHostelId as string | undefined);
+    if (user?.role_id === 2 && !scopedHostelId) {
+      return res.status(403).json({ success: false, error: 'Your account is not linked to any hostel.' });
+    }
+
     if (!month) {
         return res.status(400).json({ success: false, error: 'Month is required (YYYY-MM)' });
     }
-    
+
     const owner = await db('users').where({ user_id: user?.user_id }).first();
     if (!owner || !owner.email) {
         return res.status(400).json({ success: false, error: 'User email not found' });
@@ -877,8 +904,8 @@ export const emailIncomeExport = async (req: AuthRequest, res: Response) => {
       .leftJoin('payment_modes as pm', 'i.payment_mode_id', 'pm.payment_mode_id')
       .select('i.*', 'pm.payment_mode_name as payment_mode');
 
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && hostelId) {
-      incomeQuery = incomeQuery.where('i.hostel_id', hostelId);
+    if (scopedHostelId) {
+      incomeQuery = incomeQuery.where('i.hostel_id', scopedHostelId);
     }
     incomeQuery = incomeQuery.whereBetween('i.income_date', [startDate, endDate]);
 
@@ -888,8 +915,8 @@ export const emailIncomeExport = async (req: AuthRequest, res: Response) => {
       .leftJoin('payment_modes as pm', 'fp.payment_mode_id', 'pm.payment_mode_id')
       .select('fp.*', 's.first_name', 's.last_name', 'pm.payment_mode_name as payment_mode');
 
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && hostelId) {
-      feeQuery = feeQuery.where('fp.hostel_id', hostelId);
+    if (scopedHostelId) {
+      feeQuery = feeQuery.where('fp.hostel_id', scopedHostelId);
     }
     feeQuery = feeQuery.whereBetween('fp.payment_date', [startDate, endDate]);
 
@@ -900,18 +927,18 @@ export const emailIncomeExport = async (req: AuthRequest, res: Response) => {
         .leftJoin('expense_categories as ec', 'e.category_id', 'ec.category_id')
         .select('e.*', 'ec.category_name')
         .where(function () {
-          if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && hostelId) this.where('e.hostel_id', hostelId);
+          if (scopedHostelId) this.where('e.hostel_id', scopedHostelId);
           this.whereBetween('e.expense_date', [startDate, endDate]);
         })
     ]);
 
     // Fetch Guest Payments
     let guestQuery = db('guests as g').where('g.amount_paid', '>', 0);
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && hostelId) {
-      guestQuery = guestQuery.where('g.hostel_id', hostelId);
+    if (scopedHostelId) {
+      guestQuery = guestQuery.where('g.hostel_id', scopedHostelId);
     }
     guestQuery = guestQuery.whereBetween('g.check_in_date', [startDate, endDate]);
-    
+
     let guests: any[] = [];
     try { guests = await guestQuery.select('g.*'); } catch (e) { guests = []; }
 
@@ -922,8 +949,8 @@ export const emailIncomeExport = async (req: AuthRequest, res: Response) => {
         this.where('s.admission_status', 1).orWhere('s.admission_status', 'Paid');
       });
 
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) && hostelId) {
-      admissionQuery = admissionQuery.where('s.hostel_id', hostelId);
+    if (scopedHostelId) {
+      admissionQuery = admissionQuery.where('s.hostel_id', scopedHostelId);
     }
     admissionQuery = admissionQuery.whereBetween('s.admission_date', [startDate, endDate]);
 
@@ -1040,7 +1067,7 @@ export const emailIncomeExport = async (req: AuthRequest, res: Response) => {
         content: buffer as unknown as Buffer
       }],
       emailType: 'Report',
-      hostelId: hostelId
+      hostelId: scopedHostelId
     });
 
     res.status(200).json({ success: true, message: 'Email sent successfully' });

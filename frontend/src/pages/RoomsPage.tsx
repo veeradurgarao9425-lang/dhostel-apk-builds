@@ -80,6 +80,10 @@ export const RoomsPage: React.FC = () => {
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
+  // Super Admin states
+  const [hostels, setHostels] = useState<any[]>([]);
+  const [selectedHostelId, setSelectedHostelId] = useState<string>("");
+
   // Search and Filter states
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<
@@ -99,23 +103,48 @@ export const RoomsPage: React.FC = () => {
   const roomsPerPage = 10;
 
   useEffect(() => {
-    fetchRooms();
+    if (user?.role_id === 1) {
+      fetchHostels();
+    } else {
+      fetchRooms();
+      fetchHostelInfo();
+    }
     fetchRoomTypes();
-    fetchHostelInfo();
     fetchRoomAmenities();
   }, []);
+
+  useEffect(() => {
+    if (selectedHostelId) {
+      fetchRooms();
+      const currentHostel = hostels.find(h => h.hostel_id.toString() === selectedHostelId);
+      if (currentHostel) {
+        setTotalFloors(currentHostel.total_floors || null);
+      }
+    }
+  }, [selectedHostelId, hostels]);
+
+  const fetchHostels = async () => {
+    try {
+      const response = await api.get('/hostels');
+      const data = response.data.data || [];
+      setHostels(data);
+      if (data.length > 0 && !selectedHostelId) {
+        setSelectedHostelId(data[0].hostel_id.toString());
+      }
+    } catch (error) {
+      console.error('Failed to fetch hostels:', error);
+    }
+  };
 
   const fetchRoomAmenities = async () => {
     try {
       const response = await api.get('/amenities/rooms');
       if (response.data.success) {
-        // Extract amenity names from the response
         const amenityNames = response.data.data.map((amenity: any) => amenity.amenity_name);
         setAmenitiesList(amenityNames);
       }
     } catch (error) {
       console.error('Fetch room amenities error:', error);
-      // Fallback to default amenities if API fails
       setAmenitiesList([
         "AC",
         "Attached Bathroom",
@@ -132,10 +161,9 @@ export const RoomsPage: React.FC = () => {
   const fetchHostelInfo = async () => {
     try {
       const response = await api.get('/hostels');
-      const hostels = response.data.data || [];
-      // Owner should only see their own hostel (filtered by backend)
-      if (hostels.length > 0) {
-        setTotalFloors(hostels[0].total_floors || null);
+      const hostelsData = response.data.data || [];
+      if (hostelsData.length > 0) {
+        setTotalFloors(hostelsData[0].total_floors || null);
       }
     } catch (error) {
       console.error('Failed to fetch hostel info:', error);
@@ -145,7 +173,8 @@ export const RoomsPage: React.FC = () => {
   const fetchRooms = async () => {
     try {
       setLoading(true);
-      const response = await api.get("/rooms");
+      const params = selectedHostelId ? { hostelId: selectedHostelId } : {};
+      const response = await api.get("/rooms", { params });
       setRooms(response.data.data);
     } catch (error) {
       toast.error("Failed to fetch rooms");
@@ -352,7 +381,7 @@ export const RoomsPage: React.FC = () => {
     }
 
     const payload = {
-      hostel_id: user?.hostel_id || 0,  // Use logged-in user's hostel_id
+      hostel_id: user?.role_id === 1 ? parseInt(selectedHostelId) : (user?.hostel_id || 0),  // Use selectedHostelId if Admin
       room_number: formData.room_number,
       room_type_id: parseInt(formData.room_type_id),
       floor_number: parseInt(formData.floor_number),
@@ -463,6 +492,33 @@ export const RoomsPage: React.FC = () => {
 
   return (
     <div className="space-y-4">
+      {/* Super Admin Hostel Selector */}
+      {user?.role_id === 1 && hostels.length > 0 && (
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Building2 className="h-5 w-5 text-cyan-600" />
+            <div>
+              <h2 className="text-sm font-semibold text-slate-800">Select Hostel</h2>
+              <p className="text-xs text-slate-500">Choose the hostel to manage rooms for</p>
+            </div>
+          </div>
+          <select
+            value={selectedHostelId}
+            onChange={(e) => {
+              setSelectedHostelId(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-white text-slate-800 font-medium min-w-[280px]"
+          >
+            {hostels.map((h) => (
+              <option key={h.hostel_id} value={h.hostel_id.toString()}>
+                {h.hostel_name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* Mobile Header */}
       <div className="md:hidden space-y-4">
         <div className="flex justify-between items-center">

@@ -114,6 +114,13 @@ export const submitRating = async (req: AuthRequest, res: Response) => {
 export const getHostelRatings = async (req: AuthRequest, res: Response) => {
   try {
     const { hostelId } = req.params;
+    const user = req.user;
+
+    // Restrict Owner to their own hostel
+    if (user?.role_id === 2 && user.hostel_id !== Number(hostelId)) {
+      return res.status(403).json({ success: false, error: 'Access denied.' });
+    }
+
     const ratings = await db('hostel_ratings')
       .leftJoin('students', 'hostel_ratings.student_id', 'students.student_id')
       .where('hostel_ratings.hostel_id', hostelId)
@@ -136,6 +143,13 @@ export const getHostelRatings = async (req: AuthRequest, res: Response) => {
 export const getRatingAnalytics = async (req: AuthRequest, res: Response) => {
   try {
     const { hostelId } = req.params;
+    const user = req.user;
+
+    // Restrict Owner to their own hostel
+    if (user?.role_id === 2 && user.hostel_id !== Number(hostelId)) {
+      return res.status(403).json({ success: false, error: 'Access denied.' });
+    }
+
     const ratings = await db('hostel_ratings')
       .where('hostel_id', hostelId)
       .select(

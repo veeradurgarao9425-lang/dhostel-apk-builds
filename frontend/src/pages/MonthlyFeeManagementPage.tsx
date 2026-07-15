@@ -10,11 +10,13 @@ import {
   Search,
   X,
   Filter,
+  Building2,
 } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { Modal } from "../components/ui/Modal";
 import api from "../services/api";
 import toast from "react-hot-toast";
+import { useAuthStore } from "../store/authStore";
 
 interface MonthlySummary {
   total_students: number;
@@ -86,8 +88,14 @@ interface AdjustmentFormData {
   notes: string;
 }
 
+interface Hostel {
+  hostel_id: number;
+  hostel_name: string;
+}
+
 export const MonthlyFeeManagementPage: React.FC = () => {
   const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
   const [currentMonth, setCurrentMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(
@@ -110,6 +118,10 @@ export const MonthlyFeeManagementPage: React.FC = () => {
   const [showDateFilter, setShowDateFilter] = useState(false);
   const [dateFilterStartDate, setDateFilterStartDate] = useState("");
   const [dateFilterEndDate, setDateFilterEndDate] = useState("");
+
+  // Super Admin states
+  const [hostels, setHostels] = useState<Hostel[]>([]);
+  const [selectedHostelId, setSelectedHostelId] = useState<string>("");
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -151,18 +163,37 @@ export const MonthlyFeeManagementPage: React.FC = () => {
   });
 
   useEffect(() => {
-    console.log(
-      "[MonthlyFeesPage] useEffect triggered, currentMonth:",
-      currentMonth
-    );
-    fetchMonthlyFeesSummary();
+    if (user?.role_id === 1) {
+      fetchHostels();
+    } else {
+      fetchMonthlyFeesSummary();
+    }
     fetchPaymentModes();
   }, [currentMonth]);
+
+  useEffect(() => {
+    if (selectedHostelId) {
+      fetchMonthlyFeesSummary();
+    }
+  }, [selectedHostelId]);
 
   // Reset pagination when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [statusFilter, searchTerm, dateFilterStartDate, dateFilterEndDate]);
+
+  const fetchHostels = async () => {
+    try {
+      const response = await api.get('/hostels');
+      const data: Hostel[] = response.data.data || [];
+      setHostels(data);
+      if (data.length > 0 && !selectedHostelId) {
+        setSelectedHostelId(data[0].hostel_id.toString());
+      }
+    } catch (error) {
+      console.error('Failed to fetch hostels:', error);
+    }
+  };
 
   const fetchPaymentModes = async () => {
     try {
@@ -174,41 +205,24 @@ export const MonthlyFeeManagementPage: React.FC = () => {
   };
 
   const fetchMonthlyFeesSummary = async () => {
-    console.log(
-      "[MonthlyFeesPage] fetchMonthlyFeesSummary called for month:",
-      currentMonth
-    );
     try {
       setLoading(true);
-      const response = await api.get("/monthly-fees/summary", {
-        params: { fee_month: currentMonth },
-      });
-
-      console.log("[MonthlyFeesPage] API response:", response.data);
+      const params: Record<string, string> = { fee_month: currentMonth };
+      if (selectedHostelId) {
+        params.hostelId = selectedHostelId;
+      }
+      const response = await api.get("/monthly-fees/summary", { params });
 
       if (response.data && response.data.success) {
         const { summary: summaryData, fees: feesData } = response.data.data;
-        console.log("[MonthlyFeesPage] Summary:", summaryData);
-        console.log("[MonthlyFeesPage] Fees count:", feesData?.length || 0);
         setSummary(summaryData);
         setFees(feesData || []);
       } else {
-        console.error(
-          "[MonthlyFeesPage] Response not successful:",
-          response.data
-        );
         toast.error(response.data?.error || "Failed to fetch monthly fees");
         setSummary(null);
         setFees([]);
       }
     } catch (error: any) {
-      console.error("[MonthlyFeesPage] Fetch fees error:", error);
-      console.error("[MonthlyFeesPage] Error details:", {
-        message: error?.message,
-        response: error?.response,
-        responseData: error?.response?.data,
-        status: error?.response?.status,
-      });
       const errorMessage =
         error?.response?.data?.error ||
         error?.message ||
@@ -222,10 +236,6 @@ export const MonthlyFeeManagementPage: React.FC = () => {
   };
 
   const handleRecordPayment = async () => {
-    console.log("[MonthlyFeesPage] handleRecordPayment called");
-    console.log("[MonthlyFeesPage] paymentForm:", paymentForm);
-    console.log("[MonthlyFeesPage] selectedFee:", selectedFee);
-
     if (!paymentForm.amount || !selectedFee || !paymentForm.payment_mode_id || !paymentForm.due_date) {
       toast.error("Please fill all required fields including Due Date");
       return;
@@ -237,31 +247,28 @@ export const MonthlyFeeManagementPage: React.FC = () => {
       return;
     }
 
+    if (paymentAmount > selectedFee.balance) {
+      toast.error(`Payment amount cannot exceed the balance of ₹${formatCurrency(selectedFee.balance)}`);
+      return;
+    }
+
     try {
       const payload = {
-        fee_id: selectedFee.fee_id || null, // Can be null, backend will create fee record
+        fee_id: selectedFee.fee_id || null,
         student_id: selectedFee.student_id,
         hostel_id: selectedFee.hostel_id,
-        fee_month: currentMonth, // Pass the selected month
+        fee_month: currentMonth,
         amount: paymentAmount,
         payment_date: paymentForm.payment_date,
-        due_date: paymentForm.due_date, // User-entered due date
+        due_date: paymentForm.due_date,
         payment_mode_id: parseInt(paymentForm.payment_mode_id),
         transaction_id: paymentForm.transaction_id || null,
         receipt_number: paymentForm.receipt_number || null,
         notes: paymentForm.notes || null,
       };
 
-      console.log("[MonthlyFeesPage] Sending payment payload:", payload);
-
-      // Use fee_id if available, otherwise use a placeholder (backend will handle it)
       const feeIdParam = selectedFee.fee_id || "new";
-      const response = await api.post(
-        `/monthly-fees/${feeIdParam}/payment`,
-        payload
-      );
-
-      console.log("[MonthlyFeesPage] Payment response:", response.data);
+      await api.post(`/monthly-fees/${feeIdParam}/payment`, payload);
 
       toast.success("Payment recorded successfully");
       setShowPaymentModal(false);
@@ -278,16 +285,8 @@ export const MonthlyFeeManagementPage: React.FC = () => {
         notes: "",
       });
 
-      // Refresh data
       fetchMonthlyFeesSummary();
     } catch (error: any) {
-      console.error("[MonthlyFeesPage] Payment error:", error);
-      console.error("[MonthlyFeesPage] Error details:", {
-        message: error?.message,
-        response: error?.response,
-        responseData: error?.response?.data,
-        status: error?.response?.status,
-      });
       const errorMessage =
         error?.response?.data?.error ||
         error?.message ||
@@ -323,7 +322,6 @@ export const MonthlyFeeManagementPage: React.FC = () => {
         notes: "",
       });
 
-      // Refresh data
       fetchMonthlyFeesSummary();
     } catch (error) {
       toast.error("Failed to update monthly fee");
@@ -332,26 +330,23 @@ export const MonthlyFeeManagementPage: React.FC = () => {
   };
 
   const handleFetchPaymentHistory = async (fee: MonthlyFee) => {
-    // Navigate to the Fee Details page to show all past payment history
     navigate(`/owner/fee-details/${fee.student_id}/${currentMonth}`);
   };
 
   const handleOpenPaymentModal = (fee: MonthlyFee) => {
     setSelectedFee(fee);
 
-    // Pre-fill due_date from existing fee record or leave empty for user to enter
     let prefillDueDate = "";
     if (fee.due_date) {
-      // Convert to YYYY-MM-DD format for input
       const date = new Date(fee.due_date);
       prefillDueDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
     }
 
     setPaymentForm({
-      fee_id: fee.fee_id ? fee.fee_id.toString() : "", // Can be empty, backend will create fee record
+      fee_id: fee.fee_id ? fee.fee_id.toString() : "",
       student_id: fee.student_id.toString(),
       hostel_id: fee.hostel_id.toString(),
-      amount: fee.balance > 0 ? fee.balance.toString() : "", // Auto-fill with balance amount
+      amount: fee.balance > 0 ? fee.balance.toString() : "",
       payment_date: new Date().toISOString().split("T")[0],
       due_date: prefillDueDate,
       payment_mode_id: "",
@@ -397,10 +392,7 @@ export const MonthlyFeeManagementPage: React.FC = () => {
       toast.success(`${adjustmentForm.transaction_type} recorded successfully`);
       setShowAdjustmentModal(false);
 
-      // Refresh payment history
       await handleFetchPaymentHistory(selectedFee);
-
-      // Refresh main data
       fetchMonthlyFeesSummary();
     } catch (error: any) {
       console.error("Adjustment error:", error);
@@ -425,15 +417,14 @@ export const MonthlyFeeManagementPage: React.FC = () => {
     }
   };
 
+  // Format currency using proper INR formatting (no paise loss)
+  const formatCurrency = (amount: number): string => {
+    return new Intl.NumberFormat("en-IN", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  };
 
-  console.log(
-    "[MonthlyFeesPage] Render - loading:",
-    loading,
-    "summary:",
-    summary,
-    "fees.length:",
-    fees.length
-  );
 
   if (loading && !summary) {
     return (
@@ -580,6 +571,33 @@ export const MonthlyFeeManagementPage: React.FC = () => {
 
   return (
     <div className="space-y-4">
+      {/* Super Admin Hostel Selector */}
+      {user?.role_id === 1 && hostels.length > 0 && (
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Building2 className="h-5 w-5 text-cyan-600" />
+            <div>
+              <h2 className="text-sm font-semibold text-slate-800">Select Hostel</h2>
+              <p className="text-xs text-slate-500">Choose the hostel to manage fees for</p>
+            </div>
+          </div>
+          <select
+            value={selectedHostelId}
+            onChange={(e) => {
+              setSelectedHostelId(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-white text-slate-800 font-medium min-w-[280px]"
+          >
+            {hostels.map((h) => (
+              <option key={h.hostel_id} value={h.hostel_id.toString()}>
+                {h.hostel_name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* Header Left + Filters Right */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         {/* Left: Header */}

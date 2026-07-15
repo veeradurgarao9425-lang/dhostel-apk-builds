@@ -2,6 +2,7 @@ import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { checkHostelUniqueIdentifiers } from '../utils/validation.js';
+import { resolveScopedHostelId } from '../utils/scope.js';
 
 // Get all staff (Owner sees only their hostel staff)
 export const getStaff = async (req: AuthRequest, res: Response) => {
@@ -11,17 +12,17 @@ export const getStaff = async (req: AuthRequest, res: Response) => {
 
     let query = db('staff').select('*');
 
-    // If user is hostel owner (role_id = 2), filter by their hostel_id from JWT token
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
-      if (!user.hostel_id) {
-        return res.status(403).json({
-          success: false,
-          error: 'Your account is not linked to any hostel.'
-        });
-      }
-      query = query.where('hostel_id', user.hostel_id);
-    } else if (hostelId) {
-      query = query.where('hostel_id', hostelId);
+    // Owner (role 2): always scoped to their own hostel. Admin/Super Admin
+    // (role 1): scoped to ?hostelId if given, otherwise global across all hostels.
+    if (user?.role_id === 2 && !user.hostel_id) {
+      return res.status(403).json({
+        success: false,
+        error: 'Your account is not linked to any hostel.'
+      });
+    }
+    const scopedHostelId = resolveScopedHostelId(user, hostelId as string | undefined);
+    if (scopedHostelId) {
+      query = query.where('hostel_id', scopedHostelId);
     }
 
     if (role && role !== 'Management' && role !== 'All') {
@@ -65,7 +66,7 @@ export const getStaffById = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    if (req.user?.hostel_id && staff.hostel_id !== req.user.hostel_id) {
+    if (req.user?.role_id === 2 && staff.hostel_id !== req.user.hostel_id) {
       return res.status(403).json({ success: false, error: 'Access denied.' });
     }
 
@@ -101,8 +102,10 @@ export const createStaff = async (req: AuthRequest, res: Response) => {
       notes
     } = req.body;
 
+    // Determine hostel_id: Owner always uses their own hostel; Admin/Super Admin
+    // must specify it explicitly (never silently defaults to the admin's own hostel_id).
     let hostel_id: number;
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
+    if (user?.role_id === 2) {
       if (!user.hostel_id) {
         return res.status(403).json({
           success: false,
@@ -184,7 +187,7 @@ export const updateStaff = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    if (req.user?.hostel_id && staff.hostel_id !== req.user.hostel_id) {
+    if (req.user?.role_id === 2 && staff.hostel_id !== req.user.hostel_id) {
       return res.status(403).json({ success: false, error: 'Access denied.' });
     }
 
@@ -236,7 +239,7 @@ export const getStaffPayments = async (req: AuthRequest, res: Response) => {
     if (!staff) {
       return res.status(404).json({ success: false, error: 'Staff member not found' });
     }
-    if (req.user?.hostel_id && staff.hostel_id !== req.user.hostel_id) {
+    if (req.user?.role_id === 2 && staff.hostel_id !== req.user.hostel_id) {
       return res.status(403).json({ success: false, error: 'Access denied.' });
     }
 
@@ -274,7 +277,7 @@ export const addStaffPayment = async (req: AuthRequest, res: Response) => {
     if (!staff) {
       return res.status(404).json({ success: false, error: 'Staff member not found' });
     }
-    if (req.user?.hostel_id && staff.hostel_id !== req.user.hostel_id) {
+    if (req.user?.role_id === 2 && staff.hostel_id !== req.user.hostel_id) {
       return res.status(403).json({ success: false, error: 'Access denied.' });
     }
 
@@ -317,7 +320,7 @@ export const getStaffMonthlySummary = async (req: AuthRequest, res: Response) =>
     if (!staff) {
       return res.status(404).json({ success: false, error: 'Staff member not found' });
     }
-    if (req.user?.hostel_id && staff.hostel_id !== req.user.hostel_id) {
+    if (req.user?.role_id === 2 && staff.hostel_id !== req.user.hostel_id) {
       return res.status(403).json({ success: false, error: 'Access denied.' });
     }
 
@@ -407,7 +410,7 @@ export const deleteStaffPayment = async (req: AuthRequest, res: Response) => {
     if (!payment) {
       return res.status(404).json({ success: false, error: 'Payment not found' });
     }
-    if (req.user?.hostel_id && payment.hostel_id !== req.user.hostel_id) {
+    if (req.user?.role_id === 2 && payment.hostel_id !== req.user.hostel_id) {
       return res.status(403).json({ success: false, error: 'Access denied.' });
     }
 
@@ -432,7 +435,7 @@ export const deleteStaff = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    if (req.user?.hostel_id && staff.hostel_id !== req.user.hostel_id) {
+    if (req.user?.role_id === 2 && staff.hostel_id !== req.user.hostel_id) {
       return res.status(403).json({ success: false, error: 'Access denied.' });
     }
 

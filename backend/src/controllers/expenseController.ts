@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
+import { resolveScopedHostelId } from '../utils/scope.js';
 
 // Get all expenses
 export const getExpenses = async (req: AuthRequest, res: Response) => {
@@ -8,15 +9,18 @@ export const getExpenses = async (req: AuthRequest, res: Response) => {
     const { hostelId, categoryId, startDate, endDate, page, limit, search } = req.query;
     const user = req.user;
 
-    // Resolve hostel_id based on user role
-    let hostel_id: number | undefined;
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
-      if (user.hostel_id) {
-        hostel_id = user.hostel_id;
-      }
-    } else if (hostelId) {
-      hostel_id = parseInt(hostelId as string);
+    // Owner (role 2): always scoped to their own hostel. Admin/Super Admin
+    // (role 1): scoped to ?hostelId if given, otherwise global across all hostels.
+    const scopedHostelId = resolveScopedHostelId(user, hostelId as string | undefined);
+    if (user?.role_id === 2 && !scopedHostelId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Your account is not linked to any hostel.'
+      });
     }
+    // Auto-carry forward only applies to a single, specific hostel — skipped
+    // when Admin is viewing globally (no hostel resolved).
+    const hostel_id: number | undefined = scopedHostelId ?? undefined;
 
     // Auto-carry forward logic for current month
     if (hostel_id) {
@@ -105,22 +109,11 @@ export const getExpenses = async (req: AuthRequest, res: Response) => {
       );
 
 
-    // If user is hostel owner, filter by their hostel from JWT
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
-      if (!user.hostel_id) {
-        return res.status(403).json({
-          success: false,
-          error: 'Your account is not linked to any hostel.'
-        });
-      }
-      query = query.where('e.hostel_id', user.hostel_id);
+    if (scopedHostelId) {
+      query = query.where('e.hostel_id', scopedHostelId);
     }
 
     // Apply filters
-    if (hostelId) {
-      query = query.where('e.hostel_id', hostelId);
-    }
-
     if (categoryId) {
       query = query.where('e.category_id', categoryId);
     }
@@ -144,12 +137,14 @@ export const getExpenses = async (req: AuthRequest, res: Response) => {
     let totalExpenses = 0;
     let monthExpensesTotal = 0;
 
-    const resolvedHostelId = hostel_id || user?.hostel_id;
-    if (resolvedHostelId) {
-      const allTimeResult = await db('expenses')
-        .where('hostel_id', resolvedHostelId)
-        .sum('amount as total')
-        .first();
+    // resolvedHostelId: the single hostel to scope totals to, or undefined for
+    // Admin/Super Admin viewing globally (in which case totals aggregate across
+    // ALL hostels — no filter applied).
+    const resolvedHostelId = scopedHostelId ?? undefined;
+    {
+      let allTimeQuery = db('expenses').sum('amount as total');
+      if (resolvedHostelId) allTimeQuery = allTimeQuery.where('hostel_id', resolvedHostelId);
+      const allTimeResult = await allTimeQuery.first();
       totalExpenses = parseFloat(allTimeResult?.total || 0);
 
       let mStart = startDate;
@@ -162,26 +157,23 @@ export const getExpenses = async (req: AuthRequest, res: Response) => {
         mStart = `${curYear}-${String(curMonth).padStart(2, '0')}-01`;
         mEnd = `${curYear}-${String(curMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
       }
-      const monthResult = await db('expenses')
-        .where('hostel_id', resolvedHostelId)
-        .whereBetween('expense_date', [mStart, mEnd])
-        .sum('amount as total')
-        .first();
+      let monthQuery = db('expenses').whereBetween('expense_date', [mStart, mEnd]).sum('amount as total');
+      if (resolvedHostelId) monthQuery = monthQuery.where('hostel_id', resolvedHostelId);
+      const monthResult = await monthQuery.first();
       monthExpensesTotal = parseFloat(monthResult?.total || 0);
 
       // ── Fold staff wage payments into the totals so they reconcile with Overview ──
       try {
-        const allWages = await db('staff_payments')
-          .where('hostel_id', resolvedHostelId)
-          .sum('amount as total')
-          .first();
+        let allWagesQuery = db('staff_payments').sum('amount as total');
+        if (resolvedHostelId) allWagesQuery = allWagesQuery.where('hostel_id', resolvedHostelId);
+        const allWages = await allWagesQuery.first();
         totalExpenses += parseFloat(allWages?.total || 0);
 
-        const monthWages = await db('staff_payments')
-          .where('hostel_id', resolvedHostelId)
+        let monthWagesQuery = db('staff_payments')
           .whereBetween('payment_date', [mStart, mEnd])
-          .sum('amount as total')
-          .first();
+          .sum('amount as total');
+        if (resolvedHostelId) monthWagesQuery = monthWagesQuery.where('hostel_id', resolvedHostelId);
+        const monthWages = await monthWagesQuery.first();
         monthExpensesTotal += parseFloat(monthWages?.total || 0);
       } catch (e) { /* staff_payments table may not exist yet */ }
     }
@@ -198,12 +190,12 @@ export const getExpenses = async (req: AuthRequest, res: Response) => {
     // Surface staff wages as expense line-items (first page / unfiltered only, to keep pagination intact)
     let wageRows: any[] = [];
     const isFirstPage = !page || parseInt(page as string) === 1;
-    if (isFirstPage && !categoryId && resolvedHostelId) {
+    if (isFirstPage && !categoryId) {
       try {
         let wq = db('staff_payments as sp')
           .leftJoin('staff as st', 'sp.staff_id', 'st.staff_id')
-          .where('sp.hostel_id', resolvedHostelId)
-          .select('sp.payment_id', 'sp.amount', 'sp.payment_date', 'sp.note', 'st.full_name');
+          .select('sp.payment_id', 'sp.hostel_id', 'sp.amount', 'sp.payment_date', 'sp.note', 'st.full_name');
+        if (resolvedHostelId) wq = wq.where('sp.hostel_id', resolvedHostelId);
         if (startDate && endDate) wq = wq.whereBetween('sp.payment_date', [startDate, endDate]);
         if (search) {
           const term = `%${search}%`;
@@ -212,7 +204,7 @@ export const getExpenses = async (req: AuthRequest, res: Response) => {
         const wages = await wq.orderBy('sp.payment_date', 'desc');
         wageRows = wages.map((w: any) => ({
           expense_id: `wage_${w.payment_id}`,
-          hostel_id: resolvedHostelId,
+          hostel_id: w.hostel_id,
           category_name: 'Staff Wages',
           expense_date: w.payment_date,
           amount: w.amount,
@@ -272,7 +264,7 @@ export const getExpenseById = async (req: AuthRequest, res: Response) => {
         });
       }
 
-      if (req.user?.hostel_id && wage.hostel_id !== req.user.hostel_id) {
+      if (req.user?.role_id === 2 && req.user?.hostel_id && wage.hostel_id !== req.user.hostel_id) {
         return res.status(403).json({ success: false, error: 'Access denied.' });
       }
 
@@ -313,7 +305,7 @@ export const getExpenseById = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    if (req.user?.hostel_id && expense.hostel_id !== req.user.hostel_id) {
+    if (req.user?.role_id === 2 && req.user?.hostel_id && expense.hostel_id !== req.user.hostel_id) {
       return res.status(403).json({ success: false, error: 'Access denied.' });
     }
 
@@ -352,10 +344,12 @@ export const createExpense = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Determine hostel_id based on user role
+    // Determine hostel_id based on user role. Owner always uses their own
+    // hostel; Admin/Super Admin must specify hostel_id explicitly (never
+    // silently defaults to the admin's own possibly-stale hostel_id).
     let hostel_id: number;
 
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
+    if (user?.role_id === 2) {
       // Hostel owner - use hostel from JWT
       if (!user.hostel_id) {
         return res.status(403).json({
@@ -414,7 +408,7 @@ export const updateExpense = async (req: AuthRequest, res: Response) => {
       if (!payment) {
         return res.status(404).json({ success: false, error: 'Wage payment not found' });
       }
-      if (req.user?.hostel_id && payment.hostel_id !== req.user.hostel_id) {
+      if (req.user?.role_id === 2 && req.user?.hostel_id && payment.hostel_id !== req.user.hostel_id) {
         return res.status(403).json({ success: false, error: 'Access denied.' });
       }
       
@@ -440,8 +434,9 @@ export const updateExpense = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // If user is hostel owner, ensure they can only update their own hostel's expense
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
+    // Only Owner (role 2) is restricted to their own hostel's expense; Admin/Super
+    // Admin (role 1) can update expenses for any hostel.
+    if (user?.role_id === 2) {
       if (!user.hostel_id) {
         return res.status(403).json({
           success: false,
@@ -498,7 +493,7 @@ export const deleteExpense = async (req: AuthRequest, res: Response) => {
       if (!payment) {
         return res.status(404).json({ success: false, error: 'Wage payment not found' });
       }
-      if (req.user?.hostel_id && payment.hostel_id !== req.user.hostel_id) {
+      if (req.user?.role_id === 2 && req.user?.hostel_id && payment.hostel_id !== req.user.hostel_id) {
         return res.status(403).json({ success: false, error: 'Access denied.' });
       }
       await db('staff_payments').where('payment_id', paymentId).del();
@@ -517,8 +512,9 @@ export const deleteExpense = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // If user is hostel owner, ensure they can only delete their own hostel's expense
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
+    // Only Owner (role 2) is restricted to their own hostel's expense; Admin/Super
+    // Admin (role 1) can delete expenses for any hostel.
+    if (user?.role_id === 2) {
       if (!user.hostel_id) {
         return res.status(403).json({
           success: false,
@@ -610,19 +606,17 @@ export const getExpenseSummary = async (req: AuthRequest, res: Response) => {
       .count('e.expense_id as count')
       .groupBy('ec.category_id', 'ec.category_name');
 
-    // If user is hostel owner, filter by their hostel from JWT
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
-      if (!user.hostel_id) {
-        return res.status(403).json({
-          success: false,
-          error: 'Your account is not linked to any hostel.'
-        });
-      }
-      query = query.where('e.hostel_id', user.hostel_id);
+    // Owner (role 2): always scoped to their own hostel. Admin/Super Admin
+    // (role 1): scoped to ?hostelId if given, otherwise global across all hostels.
+    const scopedHostelId = resolveScopedHostelId(user, hostelId as string | undefined);
+    if (user?.role_id === 2 && !scopedHostelId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Your account is not linked to any hostel.'
+      });
     }
-
-    if (hostelId) {
-      query = query.where('e.hostel_id', hostelId);
+    if (scopedHostelId) {
+      query = query.where('e.hostel_id', scopedHostelId);
     }
 
     if (startDate && endDate) {

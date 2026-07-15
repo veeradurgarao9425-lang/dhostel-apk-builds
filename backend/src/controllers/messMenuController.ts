@@ -6,6 +6,12 @@ export const createOrUpdateMenu = async (req: AuthRequest, res: Response) => {
   try {
     const { hostelId } = req.params;
     const { day_of_week, meal_type, items, timing } = req.body;
+    const user = req.user;
+
+    // Restrict Owner to their own hostel
+    if (user?.role_id === 2 && user.hostel_id !== Number(hostelId)) {
+      return res.status(403).json({ success: false, message: 'Access denied.' });
+    }
 
     if (!day_of_week || !meal_type || !items) {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
@@ -41,6 +47,12 @@ export const getMenu = async (req: AuthRequest, res: Response) => {
   try {
     const { hostelId } = req.params;
     const { day_of_week } = req.query;
+    const user = req.user;
+
+    // Restrict Owner to their own hostel
+    if (user?.role_id === 2 && user.hostel_id !== Number(hostelId)) {
+      return res.status(403).json({ success: false, message: 'Access denied.' });
+    }
 
     let query = db('mess_menu').where('hostel_id', hostelId);
     

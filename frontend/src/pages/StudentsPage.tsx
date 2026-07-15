@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { Plus, Edit, Search, Users, X } from "lucide-react";
+import { Plus, Edit, Search, Users, X, Building2 } from "lucide-react";
 import api from "../services/api";
 import toast from "react-hot-toast";
+import { useAuthStore } from "../store/authStore";
 
 interface IdProofType {
   id: number;
@@ -83,6 +84,7 @@ interface StudentFormData {
 }
 
 export const StudentsPage: React.FC = () => {
+  const user = useAuthStore((state) => state.user);
   const [students, setStudents] = useState<Student[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -100,6 +102,10 @@ export const StudentsPage: React.FC = () => {
     totalCapacity: number;
     remaining: number;
   } | null>(null);
+
+  // Super Admin states
+  const [hostels, setHostels] = useState<any[]>([]);
+  const [selectedHostelId, setSelectedHostelId] = useState<string>("");
 
 
 
@@ -153,13 +159,25 @@ export const StudentsPage: React.FC = () => {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    fetchStudents();
-    fetchRooms();
-    fetchHostelStats();
+    if (user?.role_id === 1) {
+      fetchHostels();
+    } else {
+      fetchStudents();
+      fetchRooms();
+      fetchHostelStats();
+    }
     fetchRelations();
     fetchIdProofTypes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (selectedHostelId) {
+      fetchStudents();
+      fetchRooms();
+      fetchHostelStats();
+    }
+  }, [selectedHostelId]);
 
   // Reapply filters when students data or filters change
   useEffect(() => {
@@ -167,10 +185,24 @@ export const StudentsPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [students, statusFilter, searchTerm]);
 
+  const fetchHostels = async () => {
+    try {
+      const response = await api.get('/hostels');
+      const data = response.data.data || [];
+      setHostels(data);
+      if (data.length > 0 && !selectedHostelId) {
+        setSelectedHostelId(data[0].hostel_id.toString());
+      }
+    } catch (error) {
+      console.error('Failed to fetch hostels:', error);
+    }
+  };
+
   const fetchStudents = async () => {
     try {
       setLoading(true);
-      const response = await api.get("/students");
+      const params = selectedHostelId ? { hostelId: selectedHostelId } : {};
+      const response = await api.get("/students", { params });
       setStudents(response.data.data);
       // Filters will be applied by the useEffect that watches 'students'
     } catch (error) {
@@ -217,19 +249,7 @@ export const StudentsPage: React.FC = () => {
           includes(student.guardian_relation) ||
           // Address
           includes(student.permanent_address) ||
-          includes(student.present_working_address) ||
-          // ID Proof
-          includes(student.id_proof_type) ||
-          includes(student.id_proof_number) ||
-          includes(student.id_proof_status) ||
-          // Admission & Financial
-          includes(student.admission_status) ||
-          includes(student.admission_fee) ||
-          // Room Info
-          includes(student.room_number) ||
-          includes(student.floor_number) ||
-          includes(student.monthly_rent) ||
-          includes(student.hostel_name)
+          includes(student.present_working_address)
         );
       });
     }
@@ -255,7 +275,8 @@ export const StudentsPage: React.FC = () => {
 
   const fetchRooms = async (includeFullRooms: boolean = false) => {
     try {
-      const response = await api.get("/rooms");
+      const params = selectedHostelId ? { hostelId: selectedHostelId } : {};
+      const response = await api.get("/rooms", { params });
       if (includeFullRooms) {
         // When editing, show all rooms including full ones
         setRooms(response.data.data);
@@ -273,27 +294,28 @@ export const StudentsPage: React.FC = () => {
 
   const fetchHostelStats = async () => {
     try {
+      const params = selectedHostelId ? { hostelId: selectedHostelId } : {};
       const [roomsResponse, studentsResponse] = await Promise.all([
-        api.get("/rooms"),
-        api.get("/students")
+        api.get("/rooms", { params }),
+        api.get("/students", { params })
       ]);
       
-      const rooms = roomsResponse.data.data || [];
+      const roomsData = roomsResponse.data.data || [];
       const allStudents = studentsResponse.data.data || [];
       
-      const totalCapacity = rooms.reduce((sum: number, room: Room) => {
+      const totalCapacity = roomsData.reduce((sum: number, room: Room) => {
         const capacity = (room.occupied_beds || 0) + (room.available_beds || 0);
         return sum + capacity;
       }, 0);
       
-      const totalOccupied = rooms.reduce((sum: number, room: Room) => sum + (room.occupied_beds || 0), 0);
+      const totalOccupied = roomsData.reduce((sum: number, room: Room) => sum + (room.occupied_beds || 0), 0);
       const totalStudents = allStudents.filter((s: Student) => s.status === 1).length;  // 1 = Active
       const remaining = totalCapacity - totalOccupied;
       
       setHostelStats({
         totalStudents,
         totalCapacity,
-        remaining
+        remaining,
       });
     } catch (error) {
       console.error("Fetch hostel stats error:", error);
@@ -714,7 +736,7 @@ export const StudentsPage: React.FC = () => {
       return;
     }
 
-    const payload = {
+    const payload: any = {
       first_name: formData.first_name,
       last_name: formData.last_name || null,
       date_of_birth: formData.date_of_birth || null,
@@ -742,6 +764,10 @@ export const StudentsPage: React.FC = () => {
         ? parseFloat(formData.monthly_rent)
         : null,
     };
+
+    if (user?.role_id === 1) {
+      payload.hostel_id = parseInt(selectedHostelId);
+    }
 
     try {
       if (editingStudent) {
@@ -850,6 +876,32 @@ export const StudentsPage: React.FC = () => {
 
   return (
     <div className="space-y-4">
+      {/* Super Admin Hostel Selector */}
+      {user?.role_id === 1 && hostels.length > 0 && (
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Building2 className="h-5 w-5 text-cyan-600" />
+            <div>
+              <h2 className="text-sm font-semibold text-slate-800">Select Hostel</h2>
+              <p className="text-xs text-slate-500">Choose the hostel to manage students for</p>
+            </div>
+          </div>
+          <select
+            value={selectedHostelId}
+            onChange={(e) => {
+              setSelectedHostelId(e.target.value);
+            }}
+            className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-white text-slate-800 font-medium min-w-[280px]"
+          >
+            {hostels.map((h) => (
+              <option key={h.hostel_id} value={h.hostel_id.toString()}>
+                {h.hostel_name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* Mobile Header */}
       <div className="md:hidden space-y-4">
         <div>

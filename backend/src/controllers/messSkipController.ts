@@ -1,11 +1,17 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.js';
 import db from '../config/database.js';
+import { resolveScopedHostelId } from '../utils/scope.js';
 
 // GET /api/mess/analytics — Owner sees skip percentages per meal per day
 export const getMessAnalytics = async (req: AuthRequest, res: Response) => {
   try {
-    const hostel_id = req.query.hostel_id || req.user?.hostel_id;
+    const user = req.user;
+    if (user?.role_id === 2 && !user.hostel_id) {
+      return res.status(403).json({ success: false, message: 'Your account is not linked to any hostel.' });
+    }
+
+    const hostel_id = resolveScopedHostelId(user, req.query.hostel_id as string);
     if (!hostel_id) return res.status(400).json({ success: false, message: 'hostel_id required' });
 
     // Total active students in this hostel

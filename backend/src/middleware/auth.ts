@@ -22,18 +22,6 @@ export const authMiddleware = (
 
     const token = authHeader.substring(7);
 
-    // --- Test Mode Bypass ---
-    if (token === 'mock-test-token-123') {
-      req.user = {
-        user_id: 9999,
-        email: 'veeradurgarao840@gmail.com',
-        role_id: 3,
-        hostel_id: 1,
-      };
-      return next();
-    }
-    // ------------------------
-
     const payload = verifyToken(token);
 
     if (payload && payload.role_id) {
@@ -79,20 +67,8 @@ export const queryTokenMiddleware = (
       });
     }
 
-    // --- Test Mode Bypass ---
-    if (token === 'mock-test-token-123') {
-      req.user = {
-        user_id: 9999,
-        email: 'veeradurgarao840@gmail.com',
-        role_id: 2,
-        hostel_id: 1,
-      };
-      return next();
-    }
-    // ------------------------
-
     const payload = verifyToken(token);
-    
+
     if (payload && payload.role_id) {
       payload.role_id = Number(payload.role_id);
     }

@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
+import { resolveScopedHostelId } from '../utils/scope.js';
 
 // Get recent activity for dashboard
 export const getRecentActivity = async (req: AuthRequest, res: Response) => {
@@ -9,17 +10,15 @@ export const getRecentActivity = async (req: AuthRequest, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 10;
 
     // Determine hostel filtering based on user role
-    let hostelIds: number[] = [];
-    // Only filter by hostel for Hostel Owners (role_id = 2)
-    if (user?.role_id === 2) {
-      if (!user.hostel_id) {
-        return res.status(403).json({
-          success: false,
-          error: 'Your account is not linked to any hostel.'
-        });
-      }
-      hostelIds = [user.hostel_id];
+    if (user?.role_id === 2 && !user.hostel_id) {
+      return res.status(403).json({
+        success: false,
+        error: 'Your account is not linked to any hostel.'
+      });
     }
+
+    const scopedHostelId = resolveScopedHostelId(user, req.query.hostelId as string);
+    const hostelIds = scopedHostelId ? [scopedHostelId] : [];
 
     const activities: any[] = [];
 

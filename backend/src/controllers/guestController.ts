@@ -3,27 +3,33 @@ import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { isOverstaying, expectedLastDay } from '../jobs/guestOverstay.js';
 import { checkHostelUniqueIdentifiers } from '../utils/validation.js';
+import { resolveScopedHostelId } from '../utils/scope.js';
 
 // Resolve the hostel the request is scoped to (owner = JWT hostel, admin = body/query)
 function resolveHostelId(req: AuthRequest): number | null {
   const user = req.user;
-  if (user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id)) {
-    return user.hostel_id || null;
-  }
-  const fromReq = req.body?.hostel_id || req.query?.hostelId;
-  return fromReq ? Number(fromReq) : (user?.hostel_id || null);
+  const fromReq = req.body?.hostel_id || req.query?.hostelId || req.query?.hostel_id;
+  return resolveScopedHostelId(user, fromReq as string | number);
 }
 
 // GET /api/guests — list short-stay guests for the active hostel
 export const getGuests = async (req: AuthRequest, res: Response) => {
   try {
+    const user = req.user;
+    if (user?.role_id === 2 && !user.hostel_id) {
+      return res.status(403).json({ success: false, error: 'Your account is not linked to any hostel.' });
+    }
+
     const hostelId = resolveHostelId(req);
-    if (!hostelId) {
+    if (!hostelId && user?.role_id === 2) {
       return res.status(403).json({ success: false, error: 'Your account is not linked to any hostel.' });
     }
 
     const { search, date } = req.query;
-    let query = db('guests').where('hostel_id', hostelId);
+    let query = db('guests');
+    if (hostelId) {
+      query = query.where('hostel_id', hostelId);
+    }
 
     if (date) {
       query = query.where('check_in_date', date);
@@ -76,9 +82,14 @@ export const getGuests = async (req: AuthRequest, res: Response) => {
 // POST /api/guests — record a new short-stay guest
 export const createGuest = async (req: AuthRequest, res: Response) => {
   try {
+    const user = req.user;
+    if (user?.role_id === 2 && !user.hostel_id) {
+      return res.status(403).json({ success: false, error: 'Your account is not linked to any hostel.' });
+    }
+
     const hostelId = resolveHostelId(req);
     if (!hostelId) {
-      return res.status(403).json({ success: false, error: 'Your account is not linked to any hostel.' });
+      return res.status(400).json({ success: false, error: 'hostel_id is required' });
     }
 
     const {
@@ -141,14 +152,16 @@ export const createGuest = async (req: AuthRequest, res: Response) => {
 // PUT /api/guests/:guestId — update a guest (e.g. check-out, amount)
 export const updateGuest = async (req: AuthRequest, res: Response) => {
   try {
-    const hostelId = resolveHostelId(req);
+    const user = req.user;
     const { guestId } = req.params;
 
     const existing = await db('guests').where('guest_id', guestId).first();
     if (!existing) {
       return res.status(404).json({ success: false, error: 'Guest not found' });
     }
-    if (hostelId && existing.hostel_id !== hostelId) {
+    
+    // Restrict Owner to their own hostel
+    if (user?.role_id === 2 && existing.hostel_id !== user.hostel_id) {
       return res.status(403).json({ success: false, error: 'Access denied.' });
     }
 
@@ -201,14 +214,16 @@ export const updateGuest = async (req: AuthRequest, res: Response) => {
 // POST /api/guests/:guestId/checkout — mark a guest as vacated (keeps the income record)
 export const checkoutGuest = async (req: AuthRequest, res: Response) => {
   try {
-    const hostelId = resolveHostelId(req);
+    const user = req.user;
     const { guestId } = req.params;
 
     const existing = await db('guests').where('guest_id', guestId).first();
     if (!existing) {
       return res.status(404).json({ success: false, error: 'Guest not found' });
     }
-    if (hostelId && existing.hostel_id !== hostelId) {
+    
+    // Restrict Owner to their own hostel
+    if (user?.role_id === 2 && existing.hostel_id !== user.hostel_id) {
       return res.status(403).json({ success: false, error: 'Access denied.' });
     }
 
@@ -229,14 +244,16 @@ export const checkoutGuest = async (req: AuthRequest, res: Response) => {
 // DELETE /api/guests/:guestId
 export const deleteGuest = async (req: AuthRequest, res: Response) => {
   try {
-    const hostelId = resolveHostelId(req);
+    const user = req.user;
     const { guestId } = req.params;
 
     const existing = await db('guests').where('guest_id', guestId).first();
     if (!existing) {
       return res.status(404).json({ success: false, error: 'Guest not found' });
     }
-    if (hostelId && existing.hostel_id !== hostelId) {
+    
+    // Restrict Owner to their own hostel
+    if (user?.role_id === 2 && existing.hostel_id !== user.hostel_id) {
       return res.status(403).json({ success: false, error: 'Access denied.' });
     }
 
@@ -251,7 +268,8 @@ export const deleteGuest = async (req: AuthRequest, res: Response) => {
 export const checkUnique = async (req: AuthRequest, res: Response) => {
   try {
     const { phone, email, idProofNumber, guestId } = req.query;
-    const hostelId = req.user?.hostel_id;
+    const user = req.user;
+    const hostelId = resolveScopedHostelId(user, req.query.hostel_id as string || req.query.hostelId as string);
     if (!hostelId) return res.json({ success: true, phoneExists: false, emailExists: false, idProofExists: false });
 
     let phoneExists = false;

@@ -2,6 +2,7 @@
 import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
+import { resolveScopedHostelId } from '../utils/scope.js';
 
 const tableExists = async (tableName: string): Promise<boolean> => {
   try {
@@ -26,15 +27,15 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user;
 
-    // Determine hostel filtering based on user role
+    // Determine hostel filtering based on user role.
+    // Owner (role 2): always scoped to their own hostel_id.
+    // Admin/Super Admin (role 1): scoped to ?hostelId if given, otherwise global
+    // (hostelIds stays empty, which every query below already treats as "no filter").
     let hostelIds: number[] = [];
 
-    if (user?.hostel_id) {
-      // Always scope the dashboard to the active hostel from the JWT.
-      // Previously role_id 1 (owner-admin) fell through here and the counts
-      // summed EVERY hostel in the database — so an empty hostel still showed
-      // numbers belonging to other hostels.
-      hostelIds = [user.hostel_id];
+    const scopedHostelId = resolveScopedHostelId(user, req.query.hostelId as string | undefined);
+    if (scopedHostelId) {
+      hostelIds = [scopedHostelId];
     }
 
 
@@ -405,17 +406,16 @@ export const getIncomeReport = async (req: AuthRequest, res: Response) => {
       .groupBy('month', 'pm.payment_mode_name')
       .orderBy('month', 'desc');
 
-    // Always scope to the active hostel from the JWT (fixes role 1 leaking
-    // global data). Admins with no active hostel may target one explicitly.
-    if (user?.hostel_id) {
-      query = query.where('fp.hostel_id', user.hostel_id);
+    // Owner: always scoped to their own hostel. Admin/Super Admin: scoped to
+    // ?hostelId if given, otherwise global (no filter) across all hostels.
+    const scopedHostelId = resolveScopedHostelId(user, hostelId as string | undefined);
+    if (scopedHostelId) {
+      query = query.where('fp.hostel_id', scopedHostelId);
     } else if (user?.role_id === 2) {
       return res.status(403).json({
         success: false,
         error: 'Your account is not linked to any hostel.'
       });
-    } else if (hostelId) {
-      query = query.where('fp.hostel_id', hostelId);
     }
 
     if (startDate && endDate) {
@@ -464,17 +464,16 @@ export const getExpenseReport = async (req: AuthRequest, res: Response) => {
       .groupBy('month', 'ec.category_name')
       .orderBy('month', 'desc');
 
-    // Always scope to the active hostel from the JWT (fixes role 1 leaking
-    // global data). Admins with no active hostel may target one explicitly.
-    if (user?.hostel_id) {
-      query = query.where('e.hostel_id', user.hostel_id);
+    // Owner: always scoped to their own hostel. Admin/Super Admin: scoped to
+    // ?hostelId if given, otherwise global (no filter) across all hostels.
+    const scopedHostelId = resolveScopedHostelId(user, hostelId as string | undefined);
+    if (scopedHostelId) {
+      query = query.where('e.hostel_id', scopedHostelId);
     } else if (user?.role_id === 2) {
       return res.status(403).json({
         success: false,
         error: 'Your account is not linked to any hostel.'
       });
-    } else if (hostelId) {
-      query = query.where('e.hostel_id', hostelId);
     }
 
     if (startDate && endDate) {
@@ -529,19 +528,21 @@ export const getProfitLoss = async (req: AuthRequest, res: Response) => {
       dateEnd = new Date(currentYear, 11, 31);
     }
 
-    // Get hostel IDs for owner
+    // Get hostel IDs for owner. Owner (role 2): own hostel. Admin/Super Admin
+    // (role 1): the per-query `hostelId && role_id !== 2` checks below already
+    // apply an explicit ?hostelId; leave hostelIds empty here for Admin so an
+    // omitted hostelId means global (no filter), not the admin's own hostel_id.
     let hostelIds: number[] = [];
-    if (user?.hostel_id) {
-      // Always scope to the active hostel from the JWT — works for owners
-      // (role 2) AND owner-admins (role 1) who have switched into a hostel.
-      // Previously role 1 fell through to GLOBAL data across all hostels.
-      hostelIds = [user.hostel_id];
-    } else if (user?.role_id === 2) {
-      // Owner with no linked hostel — block rather than leak global data.
-      return res.status(403).json({
-        success: false,
-        error: 'Your account is not linked to any hostel.'
-      });
+    if (user?.role_id === 2) {
+      if (user?.hostel_id) {
+        hostelIds = [user.hostel_id];
+      } else {
+        // Owner with no linked hostel — block rather than leak global data.
+        return res.status(403).json({
+          success: false,
+          error: 'Your account is not linked to any hostel.'
+        });
+      }
     }
 
     // Get income by month
@@ -682,19 +683,21 @@ export const getOccupancyTrends = async (req: AuthRequest, res: Response) => {
     const { hostelId } = req.query;
     const user = req.user;
 
-    // Get hostel IDs for owner
+    // Get hostel IDs for owner. Owner (role 2): own hostel. Admin/Super Admin
+    // (role 1): the per-query `hostelId && role_id !== 2` checks below already
+    // apply an explicit ?hostelId; leave hostelIds empty here for Admin so an
+    // omitted hostelId means global (no filter), not the admin's own hostel_id.
     let hostelIds: number[] = [];
-    if (user?.hostel_id) {
-      // Always scope to the active hostel from the JWT — works for owners
-      // (role 2) AND owner-admins (role 1) who have switched into a hostel.
-      // Previously role 1 fell through to GLOBAL data across all hostels.
-      hostelIds = [user.hostel_id];
-    } else if (user?.role_id === 2) {
-      // Owner with no linked hostel — block rather than leak global data.
-      return res.status(403).json({
-        success: false,
-        error: 'Your account is not linked to any hostel.'
-      });
+    if (user?.role_id === 2) {
+      if (user?.hostel_id) {
+        hostelIds = [user.hostel_id];
+      } else {
+        // Owner with no linked hostel — block rather than leak global data.
+        return res.status(403).json({
+          success: false,
+          error: 'Your account is not linked to any hostel.'
+        });
+      }
     }
 
     // Get current occupancy by hostel
@@ -762,19 +765,21 @@ export const getPaymentCollectionReport = async (req: AuthRequest, res: Response
     const { hostelId, startDate, endDate } = req.query;
     const user = req.user;
 
-    // Get hostel IDs for owner
+    // Get hostel IDs for owner. Owner (role 2): own hostel. Admin/Super Admin
+    // (role 1): the per-query `hostelId && role_id !== 2` checks below already
+    // apply an explicit ?hostelId; leave hostelIds empty here for Admin so an
+    // omitted hostelId means global (no filter), not the admin's own hostel_id.
     let hostelIds: number[] = [];
-    if (user?.hostel_id) {
-      // Always scope to the active hostel from the JWT — works for owners
-      // (role 2) AND owner-admins (role 1) who have switched into a hostel.
-      // Previously role 1 fell through to GLOBAL data across all hostels.
-      hostelIds = [user.hostel_id];
-    } else if (user?.role_id === 2) {
-      // Owner with no linked hostel — block rather than leak global data.
-      return res.status(403).json({
-        success: false,
-        error: 'Your account is not linked to any hostel.'
-      });
+    if (user?.role_id === 2) {
+      if (user?.hostel_id) {
+        hostelIds = [user.hostel_id];
+      } else {
+        // Owner with no linked hostel — block rather than leak global data.
+        return res.status(403).json({
+          success: false,
+          error: 'Your account is not linked to any hostel.'
+        });
+      }
     }
 
     // Determine date range
@@ -1029,15 +1034,14 @@ export const getOwnerStats = async (req: AuthRequest, res: Response) => {
 export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user;
-    const { month } = req.query; // Expected format: YYYY-MM
+    const { month, hostelId } = req.query; // month expected format: YYYY-MM
 
-    // Determine hostel filtering
+    // Owner: always scoped to their own hostel. Admin/Super Admin: scoped to
+    // ?hostelId if given, otherwise global (no filter) across all hostels.
     let hostelIds: number[] = [];
-    if (user?.hostel_id) {
-      // Always scope to the active hostel from the JWT — works for owners
-      // (role 2) AND owner-admins (role 1) who have switched into a hostel.
-      // Previously role 1 fell through to GLOBAL data across all hostels.
-      hostelIds = [user.hostel_id];
+    const scopedHostelId = resolveScopedHostelId(user, hostelId as string | undefined);
+    if (scopedHostelId) {
+      hostelIds = [scopedHostelId];
     } else if (user?.role_id === 2) {
       // Owner with no linked hostel — block rather than leak global data.
       return res.status(403).json({

@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './store/authStore';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { LandingPage } from './pages/LandingPage';
 import { AdminLogin } from './pages/AdminLogin';
 import { OwnerLogin } from './pages/OwnerLogin';
@@ -67,9 +68,10 @@ function App() {
   }, [initializeAuth]);
 
   return (
-    <ThemeProvider>
-      <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <QueryClientProvider client={queryClient}>
+          <BrowserRouter>
         <Routes>
           {/* Public Routes - Landing and Login Pages */}
           <Route path="/" element={<LandingPage />} />
@@ -349,8 +351,9 @@ function App() {
           }}
         />
         </BrowserRouter>
-      </QueryClientProvider>
-    </ThemeProvider>
+        </QueryClientProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 

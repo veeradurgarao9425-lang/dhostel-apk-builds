@@ -4,6 +4,7 @@ import { AuthRequest } from '../middleware/auth.js';
 import { sendNotificationToHostelOwner, sendNotificationToStudent } from '../utils/notification.js';
 import { kickUserFromRoomChat } from '../socket/index.js';
 import { checkHostelUniqueIdentifiers } from '../utils/validation.js';
+import { resolveScopedHostelId } from '../utils/scope.js';
 
 // Helper function to convert ISO datetime string to date-only format (YYYY-MM-DD)
 const convertToDateOnly = (dateValue: any): string | null => {
@@ -76,20 +77,17 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
         's.admission_date as check_in_date'
       );
 
-    // If user is hostel owner (role_id = 2), filter by their hostel_id from JWT token
-    if (user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id && !hostelId)) {
-      if (!user.hostel_id) {
-        return res.status(403).json({
-          success: false,
-          error: 'Your account is not linked to any hostel. Please contact administrator.'
-        });
-      }
-      query = query.where('s.hostel_id', user.hostel_id);
+    // Owner (role 2): always scoped to their own hostel. Admin/Super Admin
+    // (role 1): scoped to ?hostelId if given, otherwise global across all hostels.
+    if (user?.role_id === 2 && !user.hostel_id) {
+      return res.status(403).json({
+        success: false,
+        error: 'Your account is not linked to any hostel. Please contact administrator.'
+      });
     }
-
-    // Filter by specific hostel if provided
-    if (hostelId) {
-      query = query.where('s.hostel_id', hostelId);
+    const scopedHostelId = resolveScopedHostelId(user, hostelId as string | undefined);
+    if (scopedHostelId) {
+      query = query.where('s.hostel_id', scopedHostelId);
     }
 
     // Filter by unallocated (no room assigned)
@@ -174,22 +172,23 @@ export const getStudentStats = async (req: AuthRequest, res: Response) => {
     const user = req.user;
     const { hostelId } = req.query;
 
-    let hostel_id = user?.hostel_id;
-    if (user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id && !hostelId)) {
-      hostel_id = user.hostel_id;
-    } else if (hostelId) {
-      hostel_id = parseInt(hostelId as string);
-    }
+    // Owner: always scoped to their own hostel. Admin/Super Admin: scoped to
+    // ?hostelId if given, otherwise global (aggregated across all hostels).
+    const scopedHostelId = resolveScopedHostelId(user, hostelId as string | undefined);
 
-    if (!hostel_id) {
+    if (user?.role_id === 2 && !scopedHostelId) {
       return res.status(403).json({
         success: false,
         error: 'Your account is not linked to any hostel.'
       });
     }
 
-    const stats = await db('students')
-      .where('hostel_id', hostel_id)
+    let statsQuery = db('students');
+    if (scopedHostelId) {
+      statsQuery = statsQuery.where('hostel_id', scopedHostelId);
+    }
+
+    const stats = await statsQuery
       .select(
         db.raw('count(*) as total'),
         db.raw('sum(case when status = 1 then 1 else 0 end) as active'),
@@ -307,9 +306,10 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
       monthly_rent
     } = req.body;
 
-    // Determine hostel_id from JWT token for owners
+    // Determine hostel_id: Owner always uses their own hostel; Admin/Super Admin
+    // must specify it explicitly (never silently defaults to the admin's own hostel_id).
     let hostel_id: number;
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
+    if (user?.role_id === 2) {
       if (!user.hostel_id) {
         return res.status(403).json({
           success: false,
@@ -843,6 +843,17 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
         } else {
           // Auto-create monthly fee for current month on check-in/activation
           const now = new Date();
+          let calculatedDueDate = now;
+          if (updatedStudent.admission_date) {
+            const admDate = new Date(updatedStudent.admission_date);
+            const admDay = admDate.getDate();
+            calculatedDueDate = new Date(now.getFullYear(), now.getMonth(), admDay);
+            // Handle month overflow (e.g. Feb 31 -> Mar 3)
+            if (calculatedDueDate.getMonth() !== now.getMonth()) {
+              calculatedDueDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            }
+          }
+
           await db('monthly_fees').insert({
             student_id: studentId,
             hostel_id: updatedStudent.hostel_id,
@@ -854,7 +865,7 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
             paid_amount: 0.00,
             balance: updatedRent,
             fee_status: 'Pending',
-            due_date: null,
+            due_date: calculatedDueDate,
             notes: 'Auto-created on student activation',
             created_at: new Date(),
             updated_at: new Date()

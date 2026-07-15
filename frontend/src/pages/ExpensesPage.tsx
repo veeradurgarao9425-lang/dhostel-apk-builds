@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Plus, DollarSign, Search, X, Edit, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, DollarSign, Search, X, Edit, Trash2, ChevronDown, ChevronUp, Building2 } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
+import { useAuthStore } from '../store/authStore';
 
 interface Expense {
   expense_id: number;
@@ -43,6 +44,7 @@ interface PaymentMode {
 }
 
 export const ExpensesPage: React.FC = () => {
+  const user = useAuthStore((state) => state.user);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
   const [paymentModes, setPaymentModes] = useState<PaymentMode[]>([]);
@@ -74,11 +76,38 @@ export const ExpensesPage: React.FC = () => {
     bill_number: ''
   });
 
+  // Super Admin states
+  const [hostels, setHostels] = useState<any[]>([]);
+  const [selectedHostelId, setSelectedHostelId] = useState<string>("");
+
   useEffect(() => {
-    fetchExpenses();
+    if (user?.role_id === 1) {
+      fetchHostels();
+    } else {
+      fetchExpenses();
+    }
     fetchCategories();
     fetchPaymentModes();
   }, [selectedMonth]);
+
+  useEffect(() => {
+    if (selectedHostelId) {
+      fetchExpenses();
+    }
+  }, [selectedHostelId]);
+
+  const fetchHostels = async () => {
+    try {
+      const response = await api.get('/hostels');
+      const data = response.data.data || [];
+      setHostels(data);
+      if (data.length > 0 && !selectedHostelId) {
+        setSelectedHostelId(data[0].hostel_id.toString());
+      }
+    } catch (error) {
+      console.error('Failed to fetch hostels:', error);
+    }
+  };
 
   const fetchExpenses = async () => {
     try {
@@ -91,8 +120,11 @@ export const ExpensesPage: React.FC = () => {
       
       const response = await api.get('/expenses', {
         params: {
+          page: 1,
+          limit: 1000,
           startDate: startDateStr,
-          endDate: endDateStr
+          endDate: endDateStr,
+          hostelId: selectedHostelId || undefined
         }
       });
       setExpenses(response.data.data);
@@ -131,7 +163,7 @@ export const ExpensesPage: React.FC = () => {
     e.preventDefault();
 
     const payload = {
-      hostel_id: parseInt(formData.hostel_id),
+      hostel_id: user?.role_id === 1 ? parseInt(selectedHostelId) : (user?.hostel_id || parseInt(formData.hostel_id)),
       category_id: parseInt(formData.category_id),
       expense_date: formData.expense_date,
       amount: parseFloat(formData.amount),
@@ -337,6 +369,33 @@ export const ExpensesPage: React.FC = () => {
 
   return (
     <div className="space-y-4">
+      {/* Super Admin Hostel Selector */}
+      {user?.role_id === 1 && hostels.length > 0 && (
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Building2 className="h-5 w-5 text-cyan-600" />
+            <div>
+              <h2 className="text-sm font-semibold text-slate-800">Select Hostel</h2>
+              <p className="text-xs text-slate-500">Choose the hostel to manage expenses for</p>
+            </div>
+          </div>
+          <select
+            value={selectedHostelId}
+            onChange={(e) => {
+              setSelectedHostelId(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-white text-slate-800 font-medium min-w-[280px]"
+          >
+            {hostels.map((h) => (
+              <option key={h.hostel_id} value={h.hostel_id.toString()}>
+                {h.hostel_name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* Header */}
       <div className="space-y-4">
         {/* Mobile: Single Line Header with Month */}

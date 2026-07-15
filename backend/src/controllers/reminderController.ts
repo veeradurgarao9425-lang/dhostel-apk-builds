@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
+import { resolveScopedHostelId } from '../utils/scope.js';
 
 // Get all reminders for a hostel
 export const getReminders = async (req: AuthRequest, res: Response) => {
@@ -14,15 +15,20 @@ export const getReminders = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    if (!user.hostel_id) {
+    if (user.role_id === 2 && !user.hostel_id) {
       return res.status(403).json({
         success: false,
         error: 'Your account is not linked to any hostel.'
       });
     }
 
-    const reminders = await db('reminders')
-      .where('hostel_id', user.hostel_id)
+    const scopedHostelId = resolveScopedHostelId(user, req.query.hostelId as string);
+    let query = db('reminders');
+    if (scopedHostelId) {
+      query = query.where('hostel_id', scopedHostelId);
+    }
+
+    const reminders = await query
       .orderBy('reminder_date', 'asc')
       .orderBy('created_at', 'desc');
 
@@ -52,11 +58,23 @@ export const createReminder = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    if (!user.hostel_id) {
-      return res.status(403).json({
-        success: false,
-        error: 'Your account is not linked to any hostel.'
-      });
+    let hostel_id: number;
+    if (user.role_id === 2) {
+      if (!user.hostel_id) {
+        return res.status(403).json({
+          success: false,
+          error: 'Your account is not linked to any hostel.'
+        });
+      }
+      hostel_id = user.hostel_id;
+    } else {
+      hostel_id = Number(req.body.hostel_id);
+      if (!hostel_id) {
+        return res.status(400).json({
+          success: false,
+          error: 'hostel_id is required'
+        });
+      }
     }
 
     if (!title || !reminder_date) {
@@ -67,7 +85,7 @@ export const createReminder = async (req: AuthRequest, res: Response) => {
     }
 
     const [reminder_id] = await db('reminders').insert({
-      hostel_id: user.hostel_id,
+      hostel_id,
       title,
       reminder_date,
       description: description || null,
@@ -104,22 +122,23 @@ export const updateReminder = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    if (!user.hostel_id) {
-      return res.status(403).json({
-        success: false,
-        error: 'Your account is not linked to any hostel.'
-      });
-    }
-
-    // Verify reminder belongs to owner's hostel
+    // Verify reminder exists
     const reminder = await db('reminders')
-      .where({ reminder_id: reminderId, hostel_id: user.hostel_id })
+      .where({ reminder_id: reminderId })
       .first();
 
     if (!reminder) {
       return res.status(404).json({
         success: false,
-        error: 'Reminder not found or unauthorized'
+        error: 'Reminder not found'
+      });
+    }
+
+    // Verify reminder belongs to owner's hostel if user is Owner
+    if (user.role_id === 2 && reminder.hostel_id !== user.hostel_id) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied.'
       });
     }
 
@@ -161,22 +180,23 @@ export const deleteReminder = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    if (!user.hostel_id) {
-      return res.status(403).json({
-        success: false,
-        error: 'Your account is not linked to any hostel.'
-      });
-    }
-
-    // Verify reminder belongs to owner's hostel
+    // Verify reminder exists
     const reminder = await db('reminders')
-      .where({ reminder_id: reminderId, hostel_id: user.hostel_id })
+      .where({ reminder_id: reminderId })
       .first();
 
     if (!reminder) {
       return res.status(404).json({
         success: false,
-        error: 'Reminder not found or unauthorized'
+        error: 'Reminder not found'
+      });
+    }
+
+    // Verify reminder belongs to owner's hostel if user is Owner
+    if (user.role_id === 2 && reminder.hostel_id !== user.hostel_id) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied.'
       });
     }
 
