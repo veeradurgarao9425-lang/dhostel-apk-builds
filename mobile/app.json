@@ -5,10 +5,10 @@
     "scheme": "hostix",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/HostixNew.jpeg",
+    "icon": "./assets/HostixNew.png",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/HostixNew.jpeg",
+      "image": "./assets/HostixNew.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -17,14 +17,14 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/HostixNew.jpeg",
+        "foregroundImage": "./assets/HostixNew.png",
         "backgroundColor": "#ffffff"
       },
       "package": "com.durgarao2.hostixmobile",
       "googleServicesFile": "./google-services.json"
     },
     "web": {
-      "favicon": "./assets/HostixNew.jpeg"
+      "favicon": "./assets/HostixNew.png"
     },
     "plugins": [
       "@react-native-community/datetimepicker",

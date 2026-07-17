@@ -5,7 +5,7 @@
     "scheme": "hostixtenant",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/HostixNew.jpeg",
+    "icon": "./assets/HostixNew.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true
@@ -14,9 +14,9 @@
       "package": "com.durgarao2.hostixtenant",
       "adaptiveIcon": {
         "backgroundColor": "#6D4AFF",
-        "foregroundImage": "./assets/HostixNew.jpeg",
-        "backgroundImage": "./assets/HostixNew.jpeg",
-        "monochromeImage": "./assets/HostixNew.jpeg"
+        "foregroundImage": "./assets/HostixNew.png",
+        "backgroundImage": "./assets/HostixNew.png",
+        "monochromeImage": "./assets/HostixNew.png"
       },
       "predictiveBackGestureEnabled": false,
       "googleServicesFile": "./google-services.json",
@@ -30,10 +30,10 @@
       ]
     },
     "web": {
-      "favicon": "./assets/HostixNew.jpeg"
+      "favicon": "./assets/HostixNew.png"
     },
     "splash": {
-      "image": "./assets/HostixNew.jpeg",
+      "image": "./assets/HostixNew.png",
       "resizeMode": "contain",
       "backgroundColor": "#6D4AFF"
     },
@@ -41,7 +41,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/HostixNew.jpeg",
+          "icon": "./assets/HostixNew.png",
           "color": "#6D4AFF"
         }
       ],
