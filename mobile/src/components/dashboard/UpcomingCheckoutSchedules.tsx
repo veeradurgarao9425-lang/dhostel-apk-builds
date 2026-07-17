@@ -49,13 +49,13 @@ export const UpcomingCheckoutSchedules = ({ data }: UpcomingCheckoutSchedulesPro
                         </View>
                         <View style={[
                             s.checkoutBadge,
-                            { backgroundColor: item.daysLeft <= 3 ? '#FEE2E2' : '#FEF3C7' }
+                            { backgroundColor: item.daysLeft < 0 ? '#FEE2E2' : (item.daysLeft <= 3 ? '#FEF3C7' : '#E0E7FF') }
                         ]}>
                             <Text style={[
                                 s.checkoutBadgeText,
-                                { color: item.daysLeft <= 3 ? '#EF4444' : '#D97706' }
+                                { color: item.daysLeft < 0 ? '#EF4444' : (item.daysLeft <= 3 ? '#D97706' : '#4F46E5') }
                             ]}>
-                                {item.daysLeft <= 0 ? t('dashboard.today') : `${item.daysLeft} ${t('dashboard.daysLeft')}`}
+                                {isNaN(item.daysLeft) ? item.vacate_date : (item.daysLeft < 0 ? t('dashboard.overdue', 'Overdue') : (item.daysLeft === 0 ? t('dashboard.today') : `${item.daysLeft} ${t('dashboard.daysLeft')}`))}
                             </Text>
                         </View>
                     </TouchableOpacity>

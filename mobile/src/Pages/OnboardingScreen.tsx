@@ -77,6 +77,16 @@ export default function OnboardingScreen() {
         navigation.replace('Login');
     };
 
+    const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
+        if (viewableItems && viewableItems.length > 0 && viewableItems[0].index !== null) {
+            setCurrentIndex(viewableItems[0].index);
+        }
+    }).current;
+
+    const viewabilityConfig = useRef({
+        itemVisiblePercentThreshold: 50
+    }).current;
+
     return (
         <View style={styles.container}>
             <View style={{ height: insets.top + 20 }} />
@@ -94,9 +104,13 @@ export default function OnboardingScreen() {
                         [{ nativeEvent: { contentOffset: { x: scrollX } } }],
                         { useNativeDriver: false }
                     )}
-                    onMomentumScrollEnd={(e) => {
-                        setCurrentIndex(Math.round(e.nativeEvent.contentOffset.x / width));
-                    }}
+                    onViewableItemsChanged={onViewableItemsChanged}
+                    viewabilityConfig={viewabilityConfig}
+                    getItemLayout={(_, index) => ({
+                        length: width,
+                        offset: width * index,
+                        index,
+                    })}
                     renderItem={({ item, index }) => {
                         const inputRange = [
                             (index - 1) * width,

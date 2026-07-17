@@ -706,15 +706,8 @@ export default function HomeScreen() {
                         </TouchableOpacity>
                     </View>
 
-                    {/* RIGHT: Search + Bell */}
+                    {/* RIGHT: Bell */}
                     <View style={s.headerActions}>
-                        <TouchableOpacity
-                            onPress={() => navigation.navigate('Students')}
-                            style={s.headerIconBtn}
-                            activeOpacity={0.75}
-                        >
-                            <Ionicons name="search" size={18} color="#FFF" />
-                        </TouchableOpacity>
                         <HeaderNotification navigation={navigation} />
                     </View>
                 </View>

@@ -290,10 +290,13 @@ export default function PendingPaymentsScreen() {
     const [page, setPage] = useState(1);
     const [loadingMore, setLoadingMore] = useState(false);
     const [hasMore, setHasMore] = useState(true);
-
-    // Filter Modal state
     const [filterModalVisible, setFilterModalVisible] = useState(false);
-    const [activeFilters, setActiveFilters] = useState<any>({ status: 'All', datePreset: 'All Time', room: 'All', sortBy: 'Due Date - Old to New' });
+    const [activeFilters, setActiveFilters] = useState<any>({ 
+        status: 'All', 
+        datePreset: route.params?.datePreset || 'All Time', 
+        room: 'All', 
+        sortBy: 'Due Date - Old to New' 
+    });
     const handleApplyFilters = async (filters: any) => {
         setFilterModalVisible(false);
         setActiveFilters(filters);
@@ -864,63 +867,7 @@ export default function PendingPaymentsScreen() {
                     )}
                 </View>
             )}
-            {/* ── Tabs ─────────────────────────────────────── */}
-            <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 8, gap: 8 }}>
-                {(['Overdue', 'Next 7 Days', 'All Dues'] as const).map(tab => {
-                    const isActive = activeTab === tab;
-                    const tabColors: Record<string, string> = {
-                        'Overdue': '#DC2626',
-                        'Next 7 Days': '#D97706',
-                        'All Dues': theme.primary,
-                    };
-                    const color = tabColors[tab];
-                    const counts: Record<string, number> = {
-                        'Overdue': tabCounts.overdue,
-                        'Next 7 Days': tabCounts.next_7_days,
-                        'All Dues': tabCounts.all
-                    };
-                    return (
-                        <TouchableOpacity
-                            key={tab}
-                            style={{
-                                flex: 1,
-                                paddingVertical: 6,
-                                paddingHorizontal: 4,
-                                borderRadius: 18,
-                                backgroundColor: isActive ? color : (isDark ? '#1E293B' : '#F1F5F9'),
-                                borderWidth: 1.5,
-                                borderColor: isActive ? color : (isDark ? '#334155' : '#E2E8F0'),
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: 4,
-                            }}
-                            onPress={() => setActiveTab(tab)}
-                            activeOpacity={0.8}
-                        >
-                            <Text style={{
-                                color: isActive ? '#FFF' : (isDark ? '#94A3B8' : '#64748B'),
-                                fontWeight: isActive ? '700' : '500',
-                                fontSize: 12,
-                            }}>
-                                {tab}
-                            </Text>
-                            {counts[tab] > 0 && (
-                                <View style={{
-                                    backgroundColor: isActive ? 'rgba(255,255,255,0.25)' : color + '20',
-                                    borderRadius: 10,
-                                    paddingHorizontal: 6,
-                                    paddingVertical: 1,
-                                    minWidth: 20,
-                                    alignItems: 'center',
-                                }}>
-                                    <Text style={{ color: isActive ? '#FFF' : color, fontSize: 10, fontWeight: '800' }}>{counts[tab]}</Text>
-                                </View>
-                            )}
-                        </TouchableOpacity>
-                    );
-                })}
-            </View>
+            {/* Tabs removed to avoid redundancy with top summary cards */}
             {/* ── Count row ─────────────────────────────────────────── */}
             <View style={{ paddingHorizontal: 16, paddingBottom: 6, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Text style={{ fontSize: 13, color: isDark ? '#94A3B8' : '#64748B', fontWeight: '600' }}>

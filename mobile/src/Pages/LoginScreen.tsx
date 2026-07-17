@@ -276,7 +276,7 @@ export default function LoginScreen({ navigation }: any) {
                 </View>
 
                 {/* Bottom branding */}
-                <View style={styles.bottomBranding}>
+                <View style={[styles.bottomBranding, { flex: 1, justifyContent: 'flex-end', paddingBottom: Math.max(insets.bottom, 10) }]}>
                     <Text style={styles.bottomBrandingText}>Powered by Hostix • PG OS</Text>
                 </View>
             </ScrollView>

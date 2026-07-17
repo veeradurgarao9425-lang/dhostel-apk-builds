@@ -477,10 +477,13 @@ const S = StyleSheet.create({
     modalOverlay: {
         flex: 1,
         justifyContent: 'flex-end',
+        backgroundColor: 'rgba(0,0,0,0.4)',
     },
     modalContent: {
         flex: 1,
-        marginTop: 0,
+        marginTop: Platform.OS === 'ios' ? 60 : 40,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
         overflow: 'hidden',
     },
     header: {

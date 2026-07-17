@@ -51,6 +51,7 @@ export const ActionRequiredCard = ({ data, fmt }: ActionRequiredCardProps) => {
             badgeColor: '#EA580C',
             badgeBg: isDark ? 'rgba(234,88,12,0.18)' : '#FFEDD5',
             tab: 'Next 7 Days',
+            datePreset: 'Today',
         },
         dueThisWeekCount > 0 && {
             key: 'week',
@@ -62,6 +63,7 @@ export const ActionRequiredCard = ({ data, fmt }: ActionRequiredCardProps) => {
             badgeColor: '#D97706',
             badgeBg: isDark ? 'rgba(217,119,6,0.18)' : '#FEF3C7',
             tab: 'Next 7 Days',
+            datePreset: 'All Time',
         },
     ].filter(Boolean) as any[];
 
@@ -93,7 +95,7 @@ export const ActionRequiredCard = ({ data, fmt }: ActionRequiredCardProps) => {
                             idx < rows.length - 1 && { borderBottomWidth: 1, borderBottomColor: isDark ? '#1E293B' : '#F8F0F0' }
                         ]}
                         activeOpacity={0.75}
-                        onPress={() => navigation.navigate('PendingTab', { tab: row.tab })}
+                        onPress={() => navigation.navigate('PendingTab', { tab: row.tab, datePreset: row.datePreset })}
                     >
                         {/* Icon */}
                         <View style={[s.iconBox, { backgroundColor: row.iconBg }]}>
