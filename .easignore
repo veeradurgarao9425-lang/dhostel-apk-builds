@@ -1,7 +1,6 @@
 # Ignore non-mobile project folders
 /frontend/
 /backend/
-/tenant-mobile/
 
 # Ignore massive temporary claude folders
 /tmpclaude-*
