@@ -1,43 +1,78 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../src/services/api';
 import { notificationService } from '../src/services/notificationService';
 
-type User = {
-  user_id: string | number;
+export type User = {
+  user_id?: string | number;
+  id?: string | number;
   email: string;
   full_name?: string;
-  role?: string;
+  name?: string;
+  role?: 'OWNER' | 'TENANT' | 'ADMIN' | string;
   role_id?: number;
   hostel_id?: number;
   hostel_name?: string;
   phone?: string;
+  // Tenant specific fields
+  gender?: string;
+  status?: number;
+  is_allocated?: boolean;
+  room_id?: number | null;
+  room_number?: string | null;
+  bed_number?: string | null;
+  monthly_rent?: number | null;
+  outstanding_due?: number;
+  next_due_date?: string | null;
+};
+
+export type ConnectedHostel = {
+  hostel_id: number;
+  hostel_name: string;
+  city?: string;
+  state?: string;
+  address?: string;
 };
 
 type AuthContextType = {
   user: User | null;
+  connectedHostel: ConnectedHostel | null;
   loading: boolean;
+  logoutLoading: boolean;
+  hostels: any[];
+  // Owner Auth
   signIn: (identifier: string, password: string) => Promise<{ error: any; user?: User }>;
   signUp: (payload: { full_name: string; email?: string; phone?: string; password: string; hostel_name?: string; address?: string }) => Promise<{ error: any; user?: User }>;
-  signOut: () => Promise<void>;
-  updateTokenAndUser: (token: string | null | undefined, updatedFields: Partial<User>) => Promise<void>;
-  hostels: any[];
   loadHostels: () => Promise<void>;
   cycleHostels: () => Promise<string | undefined>;
-  logoutLoading: boolean;
+  // Tenant Auth
+  connectHostel: (code: string) => Promise<{ error: any; data?: ConnectedHostel }>;
+  signInOtp: (emailOrPhone: string) => Promise<{ error: any; message?: string }>;
+  verifyOtp: (emailOrPhone: string, otp: string) => Promise<{ error: any; user?: User; isNewUser?: boolean; data?: any }>;
+  disconnectHostel: () => Promise<void>;
+  refreshUser: () => Promise<void>;
+  // Common
+  signOut: () => Promise<void>;
+  updateTokenAndUser: (token: string | null | undefined, updatedFields: Partial<User>) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
+  connectedHostel: null,
   loading: true,
+  logoutLoading: false,
+  hostels: [],
   signIn: async () => ({ error: null }),
   signUp: async () => ({ error: null }),
-  signOut: async () => { },
-  updateTokenAndUser: async () => { },
-  hostels: [],
   loadHostels: async () => { },
   cycleHostels: async () => undefined,
-  logoutLoading: false,
+  connectHostel: async () => ({ error: null }),
+  signInOtp: async () => ({ error: null }),
+  verifyOtp: async () => ({ error: null }),
+  disconnectHostel: async () => { },
+  refreshUser: async () => { },
+  signOut: async () => { },
+  updateTokenAndUser: async () => { },
 });
 
 export const useAuth = () => {
@@ -50,6 +85,7 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [connectedHostel, setConnectedHostel] = useState<ConnectedHostel | null>(null);
   const [loading, setLoading] = useState(true);
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [hostels, setHostels] = useState<any[]>([]);
@@ -66,26 +102,43 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
-    // Initializing auth state from storage.
-    // Strategy: read storage in ONE call, unblock the splash immediately once we
-    // know if the user is logged in, then enrich (hostel name / hostels list) in
-    // the background. The UI never waits on the network here.
     const loadUser = async () => {
       try {
-        const [[, storedUser], [, storedToken]] = await AsyncStorage.multiGet(['user', 'token']);
+        const [[, storedUser], [, storedToken], [, storedHostel]] = await AsyncStorage.multiGet([
+          'user',
+          'token',
+          'connected_hostel',
+        ]);
+
+        if (storedHostel) {
+          setConnectedHostel(JSON.parse(storedHostel));
+        }
 
         if (storedUser && storedToken) {
           const parsedUser = JSON.parse(storedUser);
           api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
           setUser(parsedUser);
 
-          // Background enrichment — does not block the splash/navigation.
-          void enrichUserInBackground(parsedUser);
+          // Background enrichment for Owner or Tenant
+          if (parsedUser.role === 'TENANT' || parsedUser.tenant_id) {
+            try {
+              const res = await api.get('/auth/tenant/me');
+              if (res.data?.data) {
+                const fresh = res.data.data;
+                const merged = { ...parsedUser, ...fresh, role: 'TENANT' };
+                setUser(merged);
+                AsyncStorage.setItem('user', JSON.stringify(merged)).catch(() => {});
+              }
+            } catch (e) {
+              if (__DEV__) console.warn('Background tenant refresh failed:', e);
+            }
+          } else {
+            void enrichUserInBackground(parsedUser);
+          }
         }
       } catch (error) {
         if (__DEV__) console.error('Failed to load user from storage', error);
       } finally {
-        // Auth state is resolved the moment storage is read — unblock the app now.
         setLoading(false);
       }
     };
@@ -93,7 +146,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     loadUser();
   }, []);
 
-  // Fetch hostel name (if missing) and the full hostels list without blocking UI.
   const enrichUserInBackground = async (parsedUser: User) => {
     const withTimeout = (p: Promise<any>, ms = 4000) =>
       Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
@@ -119,29 +171,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-
+  // ── Owner Auth Methods ─────────────────────────────────────────────────────
   const signIn = async (identifier: string, password: string) => {
     try {
-      console.log('Mobile - Attempting Login:', identifier);
       const response = await api.post('/auth/login', { identifier, password });
 
-      // Extract data with maximum flexibility
       const contentType = response.headers['content-type'];
       if (contentType && !contentType.includes('application/json')) {
-        console.warn('Mobile - Received HTML instead of JSON. Check backend port.');
         return { error: 'Server configuration error: Received HTML instead of JSON.' };
       }
 
       const body = response.data;
       const token = body?.token || body?.data?.token || body?.accessToken;
-      const userData = body?.user || body?.data?.user || body?.profile;
+      let userData = body?.user || body?.data?.user || body?.profile;
 
       if (response.status === 200 && token) {
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
-        let finalUser = userData || { email: identifier, user_id: 'unknown' };
+        let finalUser: User = { ...(userData || { email: identifier, user_id: 'unknown' }), role: 'OWNER' };
         
-        // Fetch hostel details if missing
         if (finalUser.hostel_id && !finalUser.hostel_name) {
           try {
             const res = await api.get(`/hostels/${finalUser.hostel_id}`);
@@ -154,24 +202,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
         
         setUser(finalUser);
-
-        // Persist data
         await AsyncStorage.setItem('token', token);
         await AsyncStorage.setItem('user', JSON.stringify(finalUser));
 
-        // Fetch all user hostels
         try {
           const res = await api.get('/hostels?my_hostels=true');
           if (res.data?.success) {
             setHostels(res.data.data || []);
           }
         } catch (e) {
-          console.warn('Failed to load hostels list in AuthContext signIn:', e);
+          console.warn('Failed to load hostels list in signIn:', e);
         }
 
-        console.log('Mobile - Login Success');
-
-        // Register for push notifications
         try {
           const pushToken = await notificationService.registerForPushNotificationsAsync();
           if (pushToken) {
@@ -181,17 +223,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.error('Notification setup failed:', e);
         }
 
-        return { error: null, user: userData };
-
+        return { error: null, user: finalUser };
       } else {
         const errorMessage = body?.error || body?.message || 'Authentication failed.';
-        console.warn('Mobile - Login Rejected:', errorMessage);
         return { error: errorMessage };
       }
     } catch (error: any) {
-      console.error('Mobile - Request Failed:', error.message);
       const targetUrl = api.defaults.baseURL;
-      const errorMessage = error.response?.data?.error || error.response?.data?.message || `Cannot reach server at ${targetUrl}. Check WiFi/Firewall.`;
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || `Cannot reach server at ${targetUrl}.`;
       return { error: errorMessage };
     }
   };
@@ -204,18 +243,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const userData = body?.data?.user || body?.user;
 
       if ((response.status === 201 || response.status === 200) && token && userData) {
+        const finalUser: User = { ...userData, role: 'OWNER' };
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        setUser(userData);
+        setUser(finalUser);
         await AsyncStorage.setItem('token', token);
-        await AsyncStorage.setItem('user', JSON.stringify(userData));
+        await AsyncStorage.setItem('user', JSON.stringify(finalUser));
 
-        // Load hostels list (will be empty until they add one)
         try {
           const res = await api.get('/hostels?my_hostels=true');
           if (res.data?.success) setHostels(res.data.data || []);
         } catch { /* non-fatal */ }
 
-        // Register for push notifications (non-fatal)
         try {
           const pushToken = await notificationService.registerForPushNotificationsAsync();
           if (pushToken) await notificationService.sendTokenToBackend(pushToken);
@@ -223,7 +261,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           if (__DEV__) console.error('Notification setup failed:', e);
         }
 
-        return { error: null, user: userData };
+        return { error: null, user: finalUser };
       }
 
       const errorMessage = body?.error || body?.message || 'Registration failed.';
@@ -237,14 +275,112 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  // ── Tenant Auth Methods ────────────────────────────────────────────────────
+  const connectHostel = async (code: string) => {
+    try {
+      const response = await api.post('/auth/tenant/verify-hostel', { hostel_code: code });
+      if (response.data?.success) {
+        const hostelData = response.data.data;
+        setConnectedHostel(hostelData);
+        await AsyncStorage.setItem('connected_hostel', JSON.stringify(hostelData));
+        return { error: null, data: hostelData };
+      }
+      return { error: response.data?.error || 'Failed to verify hostel key' };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error || 'Network error';
+      return { error: errorMessage };
+    }
+  };
+
+  const signInOtp = async (emailOrPhone: string) => {
+    if (!connectedHostel?.hostel_id) {
+      return { error: 'Please connect to a hostel first.' };
+    }
+
+    try {
+      const response = await api.post('/auth/tenant/send-otp', {
+        identifier: emailOrPhone,
+        hostel_id: connectedHostel.hostel_id,
+      });
+      if (response.data?.success || response.status === 200) {
+        return { error: null, message: response.data?.message || 'OTP sent' };
+      }
+      return { error: response.data?.error || response.data?.message || 'Failed to send OTP' };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Network error';
+      return { error: errorMessage };
+    }
+  };
+
+  const verifyOtp = async (emailOrPhone: string, otp: string) => {
+    if (!connectedHostel?.hostel_id) {
+      return { error: 'Please connect to a hostel first.' };
+    }
+
+    try {
+      const response = await api.post('/auth/tenant/verify-otp', {
+        identifier: emailOrPhone,
+        otp,
+        hostel_id: connectedHostel.hostel_id,
+      });
+      const body = response.data;
+
+      if (body?.isNewUser) {
+        return { error: null, isNewUser: true, data: body.data };
+      }
+
+      const token = body?.data?.token;
+      const userData = body?.data?.tenant;
+
+      if (token && userData) {
+        const finalUser: User = { ...userData, role: 'TENANT' };
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        setUser(finalUser);
+        await AsyncStorage.setItem('token', token);
+        await AsyncStorage.setItem('user', JSON.stringify(finalUser));
+
+        try {
+          const pushToken = await notificationService.registerForPushNotificationsAsync();
+          if (pushToken) await notificationService.sendTokenToBackend(pushToken);
+        } catch {}
+
+        return { error: null, user: finalUser };
+      }
+      return { error: body?.error || body?.message || 'Verification failed' };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Network error';
+      return { error: errorMessage };
+    }
+  };
+
+  const disconnectHostel = async () => {
+    try {
+      await signOut();
+      setConnectedHostel(null);
+      await AsyncStorage.removeItem('connected_hostel');
+    } catch (error) {
+      console.error('Failed to disconnect hostel', error);
+    }
+  };
+
+  const refreshUser = useCallback(async () => {
+    try {
+      const response = await api.get('/auth/tenant/me');
+      const fresh = response.data?.data;
+      if (!fresh) return;
+      setUser(prev => {
+        const merged = { ...(prev || {}), ...fresh, role: 'TENANT' } as User;
+        AsyncStorage.setItem('user', JSON.stringify(merged)).catch(() => {});
+        return merged;
+      });
+    } catch (error) {
+      if (__DEV__) console.error('Failed to refresh user', error);
+    }
+  }, []);
+
   const signOut = async () => {
     setLogoutLoading(true);
     try {
-      const pushToken = await notificationService.registerForPushNotificationsAsync();
-      if (pushToken) {
-        await notificationService.removeTokenFromBackend(pushToken);
-      }
-
       delete api.defaults.headers.common['Authorization'];
       setUser(null);
       setHostels([]);
@@ -263,8 +399,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         await AsyncStorage.setItem('token', token);
       }
       setUser(prev => {
-        if (!prev) return null;
-        const newUser = { ...prev, ...updatedFields };
+        const newUser = { ...(prev || {}), ...updatedFields };
         AsyncStorage.setItem('user', JSON.stringify(newUser)).catch(console.error);
         return newUser;
       });
@@ -313,16 +448,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const value = {
     user,
+    connectedHostel,
     loading,
     logoutLoading,
+    hostels,
     signIn,
     signUp,
-    signOut,
-    updateTokenAndUser,
-    hostels,
     loadHostels,
     cycleHostels,
+    connectHostel,
+    signInOtp,
+    verifyOtp,
+    disconnectHostel,
+    refreshUser,
+    signOut,
+    updateTokenAndUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
+

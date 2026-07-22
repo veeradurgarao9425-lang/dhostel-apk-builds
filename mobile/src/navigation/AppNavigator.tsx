@@ -6,15 +6,26 @@ import { useAuth } from '../../contexts/AuthContext';
 import { notificationService } from '../services/notificationService';
 import { FullScreenLoader } from '../components/FullScreenLoader';
 
-// ── Tab screens ───────────────────────────────────────────────────────────────
+// ── Tab screens (Owner) ───────────────────────────────────────────────────────────────
 import HomeScreen      from '../Pages/HomeScreen';
 import StudentsScreen  from '../Pages/StudentsScreen';
 import RoomsScreen     from '../Pages/RoomsScreen';
 import MoreScreen      from '../Pages/MoreScreen';
 
+// ── Tab screens (Tenant) ──────────────────────────────────────────────────────────────
+import { TenantHomeScreen } from '../Pages/tenant/TenantHomeScreen';
+import DuesScreen from '../Pages/tenant/DuesScreen';
+import ExpensesScreen from '../Pages/tenant/ExpensesScreen';
+import TenantNoticesScreen from '../Pages/tenant/NoticesScreen';
+
+
 // ── Stack screens ─────────────────────────────────────────────────────────────
 import SplashScreen          from '../Pages/SplashScreen';
 import OnboardingScreen      from '../Pages/OnboardingScreen';
+import RoleSelectScreen      from '../Pages/RoleSelectScreen';
+import { TenantHostelKeyScreen } from '../Pages/tenant/TenantHostelKeyScreen';
+import { TenantLoginScreen } from '../Pages/tenant/TenantLoginScreen';
+import RegistrationScreen from '../Pages/tenant/RegistrationScreen';
 import LoginScreen           from '../Pages/LoginScreen';
 import ForgotPasswordScreen  from '../Pages/ForgotPasswordScreen';
 import RegisterScreen        from '../Pages/RegisterScreen';
@@ -74,6 +85,7 @@ import RatingsManagementScreen from '../Pages/RatingsManagementScreen';
 
 // ── Navigators ────────────────────────────────────────────────────────────────
 import BottomTabNavigator from '../components/BottomTabNavigator';
+import TenantBottomTabNavigator from '../components/tenant/BottomTabNavigator';
 
 // ── Navigation Ref ────────────────────────────────────────────────────────────
 import { navigationRef } from './navigationRef';
@@ -81,8 +93,8 @@ import { navigationRef } from './navigationRef';
 const Stack = createNativeStackNavigator();
 const Tab   = createBottomTabNavigator();
 
-// ── Tab Navigator — 4 tabs: Home / Money / Students / Finance ────────────────
-const TabNavigator = () => (
+// ── Tab Navigator (Owner) — 4 tabs ───────────────────────────────────────────
+const OwnerTabNavigator = () => (
     <Tab.Navigator
         tabBar={props => <BottomTabNavigator {...props} />}
         screenOptions={{ headerShown: false }}
@@ -93,6 +105,20 @@ const TabNavigator = () => (
         <Tab.Screen name="OverviewTab"    component={OverviewScreen}        />
     </Tab.Navigator>
 );
+
+// ── Tab Navigator (Tenant) — 4 tabs ──────────────────────────────────────────
+const TenantTabNavigator = () => (
+    <Tab.Navigator
+        tabBar={props => <TenantBottomTabNavigator {...props} />}
+        screenOptions={{ headerShown: false }}
+    >
+        <Tab.Screen name="Home"     component={TenantHomeScreen} />
+        <Tab.Screen name="Dues"     component={DuesScreen} />
+        <Tab.Screen name="Expenses" component={ExpensesScreen} />
+        <Tab.Screen name="Notices"  component={TenantNoticesScreen} />
+    </Tab.Navigator>
+);
+
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 interface AppNavigatorProps {
@@ -143,12 +169,16 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                         component={OnboardingScreen}
                         options={{ animation: 'fade' }}
                     />
+                    <Stack.Screen name="RoleSelect" component={RoleSelectScreen} options={{ animation: 'fade' }} />
                     <Stack.Screen name="Login"  component={LoginScreen}  />
                     <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
                     <Stack.Screen name="Register" component={RegisterScreen} />
+                    <Stack.Screen name="TenantHostelKey" component={TenantHostelKeyScreen} />
+                    <Stack.Screen name="TenantLogin" component={TenantLoginScreen} />
+                    <Stack.Screen name="TenantRegister" component={RegistrationScreen} />
 
                     {/* Main tab container */}
-                    <Stack.Screen name="Main" component={TabNavigator} />
+                    <Stack.Screen name="Main" component={user?.role === 'TENANT' ? TenantTabNavigator : OwnerTabNavigator} />
 
                     {/* Notifications */}
                     <Stack.Screen name="Notifications" component={NotificationScreen} />

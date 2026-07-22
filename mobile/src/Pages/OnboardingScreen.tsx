@@ -68,13 +68,13 @@ export default function OnboardingScreen() {
             flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
         } else {
             await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
-            navigation.replace('Login');
+            navigation.replace('RoleSelect');
         }
     };
 
     const handleSkip = async () => {
         await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
-        navigation.replace('Login');
+        navigation.replace('RoleSelect');
     };
 
     const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
