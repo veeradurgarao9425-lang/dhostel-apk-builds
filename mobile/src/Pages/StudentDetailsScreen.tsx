@@ -813,13 +813,15 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                 {statusLoading ? (
                                     <ActivityIndicator size="small" color={theme.primary} />
                                 ) : student.status === 1 ? (
-                                    <TouchableOpacity
-                                        style={{ backgroundColor: '#DC2626', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 }}
-                                        onPress={handleToggleStatus}
-                                        activeOpacity={0.8}
-                                    >
-                                        <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '700' }}>Vacate & Settle</Text>
-                                    </TouchableOpacity>
+                                    student.vacate_notice_date ? (
+                                        <TouchableOpacity
+                                            style={{ backgroundColor: '#DC2626', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 }}
+                                            onPress={handleToggleStatus}
+                                            activeOpacity={0.8}
+                                        >
+                                            <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '700' }}>Vacate & Settle</Text>
+                                        </TouchableOpacity>
+                                    ) : null
                                 ) : (
                                     <TouchableOpacity
                                         style={[
@@ -1373,7 +1375,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                         </View>
 
                         <TouchableOpacity
-                            style={[styles.modalSubmitBtn, { backgroundColor: '#DC2626', marginTop: 24 }]}
+                            style={[styles.submitButton, { backgroundColor: '#DC2626', marginTop: 24 }]}
                             onPress={handleVacateSettlement}
                             disabled={vacateLoading}
                             activeOpacity={0.8}
@@ -1381,7 +1383,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                             {vacateLoading ? (
                                 <ActivityIndicator color="#FFF" />
                             ) : (
-                                <Text style={styles.modalSubmitBtnText}>Settle & Vacate</Text>
+                                <Text style={styles.submitButtonText}>Settle & Vacate</Text>
                             )}
                         </TouchableOpacity>
                     </ScrollView>
