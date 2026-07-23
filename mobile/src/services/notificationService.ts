@@ -77,6 +77,21 @@ export const notificationService = {
     }
   },
 
+  async disableNotifications() {
+    if (!Device.isDevice) return;
+    try {
+      const projectId =
+        Constants?.expoConfig?.extra?.eas?.projectId ??
+        Constants?.easConfig?.projectId;
+      const tokenResponse = await Notifications.getExpoPushTokenAsync({ projectId });
+      if (tokenResponse.data) {
+        await this.removeTokenFromBackend(tokenResponse.data);
+      }
+    } catch (error) {
+      console.error('Error disabling push notifications:', error);
+    }
+  },
+
   async removeTokenFromBackend(token: string) {
     try {
       await api.post('/notifications/deregister-token', {

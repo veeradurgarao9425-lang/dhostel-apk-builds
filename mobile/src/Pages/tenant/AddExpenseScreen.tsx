@@ -12,7 +12,7 @@ import * as ImagePicker from 'expo-image-picker';
 import {
   ArrowLeft, Check, CalendarDays, ChevronDown, FileImage,
   ChevronRight, MoreHorizontal,
-  Plus, RefreshCw, X, ChevronLeft,
+  RefreshCw, X, ChevronLeft,
 } from 'lucide-react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -303,15 +303,10 @@ export default function AddExpenseScreen({ navigation, route }: any) {
               {(showAllCats ? CATEGORIES : CATEGORIES.slice(0, 9)).map(cat => (
                 <CategoryItem key={cat.id} cat={cat} selected={category === cat.id} onPress={() => setCategory(cat.id)} />
               ))}
-              {!showAllCats ? (
+              {!showAllCats && (
                 <TouchableOpacity style={s.catItem} activeOpacity={0.7} onPress={() => setShowAllCats(true)}>
                   <View style={[s.catIconWrap, { backgroundColor: BG }]}><MoreHorizontal size={24} color={TEXT_DARK} strokeWidth={2.5} /></View>
                   <Text style={s.catLabel} numberOfLines={1}>More</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity style={s.catItem} activeOpacity={0.7} onPress={() => navigation.navigate('AddCategory')}>
-                  <View style={[s.catIconWrap, { backgroundColor: BG, borderWidth: 1, borderColor: '#D1D5DB' }]}><Plus size={24} color={TEXT_DARK} strokeWidth={2.5} /></View>
-                  <Text style={s.catLabel} numberOfLines={1}>Add</Text>
                 </TouchableOpacity>
               )}
             </View>

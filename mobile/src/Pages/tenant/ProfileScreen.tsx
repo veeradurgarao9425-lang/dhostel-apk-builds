@@ -9,6 +9,7 @@ import {
 
 import { useAuth } from '../../../contexts/AuthContext';
 import { ConfirmationDialog } from '../../components/tenant/UIComponents';
+import VacateModal from '../../components/tenant/VacateModal';
 import api from '../../services/api';
 
 const BLUE      = '#2245D4';
@@ -34,6 +35,7 @@ export default function ProfileScreen({ navigation }: any) {
   const [editName, setEditName] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editSaving, setEditSaving] = useState(false);
+  const [showVacateModal, setShowVacateModal] = useState(false);
 
   const confirmLogout = () => {
     setShowLogout(true);
@@ -139,6 +141,15 @@ export default function ProfileScreen({ navigation }: any) {
             <Text style={s.menuTxt}>KYC & Documents</Text>
             <ChevronRight size={18} color={TEXT_LIGHT} />
           </TouchableOpacity>
+          <View style={s.divider} />
+
+          <TouchableOpacity style={s.menuRow} activeOpacity={0.7} onPress={() => navigation.navigate('Complaints')}>
+            <View style={[s.menuIconWrap, { backgroundColor: '#FEF3C7' }]}>
+              <MessageSquare size={20} color="#D97706" />
+            </View>
+            <Text style={s.menuTxt}>Complaints</Text>
+            <ChevronRight size={18} color={TEXT_LIGHT} />
+          </TouchableOpacity>
         </View>
 
         <Text style={s.sectionLbl}>PREFERENCES</Text>
@@ -151,12 +162,21 @@ export default function ProfileScreen({ navigation }: any) {
             <ChevronRight size={18} color={TEXT_LIGHT} />
           </TouchableOpacity>
           <View style={s.divider} />
-          
-          <TouchableOpacity style={s.menuRow} activeOpacity={0.7}>
+
+          <TouchableOpacity style={s.menuRow} activeOpacity={0.7} onPress={() => navigation.navigate('Notifications')}>
             <View style={[s.menuIconWrap, { backgroundColor: '#F1F5F9' }]}>
               <Bell size={20} color={TEXT_MID} />
             </View>
             <Text style={s.menuTxt}>Notifications</Text>
+            <ChevronRight size={18} color={TEXT_LIGHT} />
+          </TouchableOpacity>
+          <View style={s.divider} />
+
+          <TouchableOpacity style={s.menuRow} activeOpacity={0.7} onPress={() => navigation.navigate('Messages')}>
+            <View style={[s.menuIconWrap, { backgroundColor: '#EEF2FF' }]}>
+              <MessageSquare size={20} color={BLUE} />
+            </View>
+            <Text style={s.menuTxt}>Messages</Text>
             <ChevronRight size={18} color={TEXT_LIGHT} />
           </TouchableOpacity>
         </View>
@@ -179,6 +199,23 @@ export default function ProfileScreen({ navigation }: any) {
             <ChevronRight size={18} color={TEXT_LIGHT} />
           </TouchableOpacity>
         </View>
+
+        <Text style={s.sectionLbl}>STAY</Text>
+        <View style={s.menuCard}>
+          <TouchableOpacity style={s.menuRow} activeOpacity={0.7} onPress={() => setShowVacateModal(true)}>
+            <View style={[s.menuIconWrap, { backgroundColor: '#FEE2E2' }]}>
+              <LogOut size={20} color="#EF4444" />
+            </View>
+            <Text style={[s.menuTxt, { color: '#EF4444' }]}>Vacate Room</Text>
+            <ChevronRight size={18} color={TEXT_LIGHT} />
+          </TouchableOpacity>
+        </View>
+
+        <VacateModal
+          visible={showVacateModal}
+          onClose={() => setShowVacateModal(false)}
+          onSuccess={() => setShowVacateModal(false)}
+        />
 
         {/* LOGOUT BUTTON */}
         <TouchableOpacity style={s.logoutBtn} activeOpacity={0.8} onPress={confirmLogout}>

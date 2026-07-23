@@ -18,6 +18,33 @@ import DuesScreen from '../Pages/tenant/DuesScreen';
 import ExpensesScreen from '../Pages/tenant/ExpensesScreen';
 import TenantNoticesScreen from '../Pages/tenant/NoticesScreen';
 
+// ── Stack screens (Tenant) — reachable from Home/Dues/Expenses/Profile, but were never
+// registered anywhere in this navigator, so tapping them failed silently or (for the 4
+// that collide with an owner screen name below) rendered the owner's screen instead ──
+import ChatRoomScreen from '../Pages/tenant/ChatRoomScreen';
+import TenantComplaintsScreen from '../Pages/tenant/ComplaintsScreen';
+import RoomInfoScreen from '../Pages/tenant/RoomInfoScreen';
+import VisitorPassScreen from '../Pages/tenant/VisitorPassScreen';
+import GatePassScreen from '../Pages/tenant/GatePassScreen';
+import TenantDocumentsScreen from '../Pages/tenant/DocumentsScreen';
+import NotesScreen from '../Pages/tenant/NotesScreen';
+import TenantHelpScreen from '../Pages/tenant/HelpScreen';
+import PaymentReceiptScreen from '../Pages/tenant/PaymentReceiptScreen';
+import RatingScreen from '../Pages/tenant/RatingScreen';
+import TenantSearchScreen from '../Pages/tenant/SearchScreen';
+import SplitHistoryScreen from '../Pages/tenant/SplitHistoryScreen';
+import SplitsScreen from '../Pages/tenant/SplitsScreen';
+import CategoryDetailScreen from '../Pages/tenant/CategoryDetailScreen';
+import AllExpensesScreen from '../Pages/tenant/AllExpensesScreen';
+import FullMenuScreen from '../Pages/tenant/FullMenuScreen';
+import TenantPaymentScreen from '../Pages/tenant/PaymentScreen';
+import TenantAddExpenseScreen from '../Pages/tenant/AddExpenseScreen';
+import MessagesScreen from '../Pages/tenant/MessagesScreen';
+import TenantProfileScreen from '../Pages/tenant/ProfileScreen';
+import TenantSettingsScreen from '../Pages/tenant/SettingsScreen';
+import TenantPrivacyPolicyScreen from '../Pages/tenant/PrivacyPolicyScreen';
+import { SubscriptionExpiredScreen as TenantSubscriptionExpiredScreen } from '../Pages/tenant/SubscriptionExpiredScreen';
+
 
 // ── Stack screens ─────────────────────────────────────────────────────────────
 import SplashScreen          from '../Pages/SplashScreen';
@@ -252,17 +279,20 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen name="Expenses"        component={ExpenseScreen}        />
                     <Stack.Screen
                         name="AddExpense"
-                        component={AddExpenseScreen}
+                        component={user?.role === 'TENANT' ? TenantAddExpenseScreen : AddExpenseScreen}
                         options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
                     />
                     <Stack.Screen name="ExpenseDetails"  component={ExpenseDetailsScreen} />
                     {/* Consolidated into BulkDelete screen */}
 
-                    {/* Account & Settings */}
-                    <Stack.Screen name="Profile"  component={ProfileScreen}  />
-                    <Stack.Screen name="Settings" component={SettingsScreen} />
-                    <Stack.Screen name="SubscriptionExpired" component={SubscriptionExpiredScreen} options={{ headerShown: false, gestureEnabled: false }} />
-                    <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+                    {/* Account & Settings — Profile/Settings/PrivacyPolicy/SubscriptionExpired are
+                        shared route names between the owner and tenant apps; swap the component by
+                        role the same way "Main" already does below, so a tenant navigating to
+                        'Profile' etc. gets their own screen instead of the owner's. */}
+                    <Stack.Screen name="Profile"  component={user?.role === 'TENANT' ? TenantProfileScreen : ProfileScreen}  />
+                    <Stack.Screen name="Settings" component={user?.role === 'TENANT' ? TenantSettingsScreen : SettingsScreen} />
+                    <Stack.Screen name="SubscriptionExpired" component={user?.role === 'TENANT' ? TenantSubscriptionExpiredScreen : SubscriptionExpiredScreen} options={{ headerShown: false, gestureEnabled: false }} />
+                    <Stack.Screen name="PrivacyPolicy" component={user?.role === 'TENANT' ? TenantPrivacyPolicyScreen : PrivacyPolicyScreen} />
                     <Stack.Screen
                         name="AddHostel"
                         component={AddHostelScreen}
@@ -275,6 +305,27 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen name="QRSignup"    component={QRSignupScreen}    />
                     <Stack.Screen name="PreBooking"  component={PreBookingScreen}  />
                     <Stack.Screen name="Notices"     component={NoticesScreen}     />
+
+                    {/* Tenant — reachable from Home quick actions, Dues, Expenses, and Profile.
+                        None of these route names collide with an owner screen. */}
+                    <Stack.Screen name="ChatRoom"     component={ChatRoomScreen}          />
+                    <Stack.Screen name="Messages"     component={MessagesScreen}          />
+                    <Stack.Screen name="Complaints"   component={TenantComplaintsScreen}  />
+                    <Stack.Screen name="RoomInfo"     component={RoomInfoScreen}          />
+                    <Stack.Screen name="VisitorPass"  component={VisitorPassScreen}       />
+                    <Stack.Screen name="GatePass"     component={GatePassScreen}          />
+                    <Stack.Screen name="Documents"    component={TenantDocumentsScreen}   />
+                    <Stack.Screen name="Notes"        component={NotesScreen}             />
+                    <Stack.Screen name="HelpScreen"   component={TenantHelpScreen}        />
+                    <Stack.Screen name="PaymentReceipt" component={PaymentReceiptScreen}  />
+                    <Stack.Screen name="Rating"       component={RatingScreen}            />
+                    <Stack.Screen name="Search"       component={TenantSearchScreen}      />
+                    <Stack.Screen name="SplitHistory" component={SplitHistoryScreen}      />
+                    <Stack.Screen name="Splits"       component={SplitsScreen}            />
+                    <Stack.Screen name="CategoryDetail" component={CategoryDetailScreen}  />
+                    <Stack.Screen name="AllExpenses"  component={AllExpensesScreen}       />
+                    <Stack.Screen name="FullMenu"     component={FullMenuScreen}          />
+                    <Stack.Screen name="Payments"     component={TenantPaymentScreen}     />
 
                     {/* Ecosystem Management */}
                     <Stack.Screen name="ComplaintsManagement" component={ComplaintsManagementScreen} />

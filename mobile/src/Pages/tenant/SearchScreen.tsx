@@ -1,22 +1,48 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, StatusBar, SafeAreaView } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, StatusBar, SafeAreaView, ActivityIndicator } from 'react-native';
 import { ChevronLeft, Search, X, Clock, ArrowRight, Filter } from 'lucide-react-native';
 import { Phase3EmptyState } from '../../components/tenant/UIComponents';
+import api from '../../services/api';
+
+type SearchResult = { id: string; title: string; date: string; amount?: string; status?: string; statusColor?: string };
 
 export default function SearchScreen({ navigation }: any) {
   const [query, setQuery] = useState('');
-  const [recent, setRecent] = useState(['Mess Charges', 'Room 201', 'Electricity Bill', 'Maintenance', 'Water Bill']);
-  
-  const allResults = [
-    { id: '1', title: 'Mess Charges - May 2026', date: '14 May 2026', amount: '₹ 3,650', status: 'Unpaid', statusColor: '#EF4444' },
-    { id: '2', title: 'Mess Charges - April 2026', date: '14 Apr 2026', amount: '₹ 3,650', status: 'Paid', statusColor: '#22C55E' },
-    { id: '3', title: 'Mess Charges - March 2026', date: '14 Mar 2026', amount: '₹ 3,500', status: 'Paid', statusColor: '#22C55E' },
-    { id: '4', title: 'Mess Advance', date: '01 May 2026', amount: '₹ 2,000', status: 'Paid', statusColor: '#22C55E' },
-    { id: '5', title: 'Mess Charges - Feb 2026', date: '14 Feb 2026', amount: '₹ 3,500', status: 'Overdue', statusColor: '#EF4444' },
-  ];
+  const [recent, setRecent] = useState<string[]>([]);
+  const [allResults, setAllResults] = useState<SearchResult[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredResults = query.length > 2 
-    ? allResults.filter(r => r.title.toLowerCase().includes(query.toLowerCase()))
+  useEffect(() => {
+    const loadSearchable = async () => {
+      try {
+        const [noticesRes, expensesRes] = await Promise.all([
+          api.get('/notices').catch(() => null),
+          api.get('/tenant-expenses').catch(() => null),
+        ]);
+
+        const notices: SearchResult[] = (noticesRes?.data?.data || []).map((n: any) => ({
+          id: `notice-${n.notice_id}`,
+          title: n.title,
+          date: n.created_at ? new Date(n.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
+        }));
+
+        const expenses: SearchResult[] = (expensesRes?.data?.data || []).map((e: any) => ({
+          id: `expense-${e.expense_id}`,
+          title: e.title,
+          date: e.date ? new Date(e.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
+          amount: `₹ ${Number(e.amount || 0).toLocaleString('en-IN')}`,
+        }));
+
+        setAllResults([...notices, ...expenses]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadSearchable();
+  }, []);
+
+  const filteredResults = query.length > 2
+    ? allResults.filter(r => r.title?.toLowerCase().includes(query.toLowerCase()))
     : [];
 
   const renderContent = () => {
@@ -69,7 +95,16 @@ export default function SearchScreen({ navigation }: any) {
       );
     }
 
-    // 3. NO RESULTS FOUND
+    // 3. STILL LOADING SEARCHABLE DATA
+    if (loading) {
+      return (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60 }}>
+          <ActivityIndicator color="#475569" />
+        </View>
+      );
+    }
+
+    // 4. NO RESULTS FOUND
     if (filteredResults.length === 0) {
       return (
         <View style={{ flex: 1, marginTop: 40 }}>
@@ -104,10 +139,11 @@ export default function SearchScreen({ navigation }: any) {
               <Text style={sStyles.cardTitle}>{res.title}</Text>
               <Text style={sStyles.cardDate}>{res.date}</Text>
             </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={sStyles.cardAmount}>{res.amount}</Text>
-              <Text style={[sStyles.cardStatus, { color: res.statusColor }]}>{res.status}</Text>
-            </View>
+            {res.amount && (
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={sStyles.cardAmount}>{res.amount}</Text>
+              </View>
+            )}
           </View>
         ))}
       </ScrollView>

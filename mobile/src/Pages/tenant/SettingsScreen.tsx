@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet, Text, TouchableOpacity, View, ScrollView, Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {
-  Bell, Moon, Globe, Lock, Shield, FileText, Info, ChevronRight, ArrowLeft,
-} from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ChevronRight, ArrowLeft } from 'lucide-react-native';
 
 import { colors, radius, spacing, shadow } from '../../theme/tenantTheme';
+import { notificationService } from '../../services/notificationService';
+
+const NOTIFICATIONS_ENABLED_KEY = 'tenant_notifications_enabled';
 
 // ── Toggle Row ────────────────────────────────────────────────────────────────
 function ToggleRow({
@@ -72,7 +74,22 @@ function SectionLabel({ label }: { label: string }) {
 // ── Main Screen ───────────────────────────────────────────────────────────────
 export default function SettingsScreen({ navigation }: any) {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem(NOTIFICATIONS_ENABLED_KEY).then(v => {
+      if (v !== null) setNotificationsEnabled(v === 'true');
+    });
+  }, []);
+
+  const toggleNotifications = async (enabled: boolean) => {
+    setNotificationsEnabled(enabled);
+    await AsyncStorage.setItem(NOTIFICATIONS_ENABLED_KEY, String(enabled));
+    if (enabled) {
+      await notificationService.registerForPushNotificationsAsync();
+    } else {
+      await notificationService.disableNotifications();
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -99,16 +116,7 @@ export default function SettingsScreen({ navigation }: any) {
           <ToggleRow
             label="Notifications"
             value={notificationsEnabled}
-            onValueChange={setNotificationsEnabled}
-          />
-          <ToggleRow
-            label="Dark Mode"
-            value={darkMode}
-            onValueChange={setDarkMode}
-          />
-          <ChevronRow
-            label="Language"
-            value="English"
+            onValueChange={toggleNotifications}
             isLast
           />
         </View>
@@ -116,9 +124,12 @@ export default function SettingsScreen({ navigation }: any) {
         {/* ── Account ──────────────────────────────────────────────────────── */}
         <SectionLabel label="Account" />
         <View style={styles.card}>
-          <ChevronRow label="Change Password" />
-          <ChevronRow label="Privacy Policy" />
-          <ChevronRow label="Terms & Conditions" isLast />
+          <ChevronRow label="Privacy Policy" onPress={() => navigation.navigate('PrivacyPolicy')} />
+          <ChevronRow
+            label="Terms & Conditions"
+            isLast
+            onPress={() => navigation.navigate('ComingSoon', { featureName: 'Terms & Conditions', icon: 'document-text-outline' })}
+          />
         </View>
 
         {/* ── About ────────────────────────────────────────────────────────── */}
