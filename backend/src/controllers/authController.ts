@@ -726,8 +726,8 @@ export const authController = {
         });
       }
 
-      // Allow 123456 as a master test OTP, otherwise verify database OTP
-      const isMasterOtp = otp === '123456';
+      // Master test OTP only works outside production, so it can never be used for a real account takeover.
+      const isMasterOtp = process.env.NODE_ENV !== 'production' && otp === '123456';
       const isDbOtp = user.password_reset_otp === otp;
 
       if (!isMasterOtp && !isDbOtp) {

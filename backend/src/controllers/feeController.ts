@@ -180,62 +180,80 @@ export const recordPayment = async (req: AuthRequest, res: Response) => {
     const now = new Date();
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-    let monthlyFee = await db('monthly_fees')
-      .where({ student_id, fee_month: currentMonth })
-      .first();
+    // Fee creation + payment + balance update must be atomic, or a mid-write
+    // crash orphans a payment row against a stale balance.
+    const trx = await db.transaction();
 
-    if (!monthlyFee) {
-      // Create a monthly fee record if it doesn't exist
-      const student = await db('students').where({ student_id }).first();
-      const monthlyRent = parseFloat(student?.monthly_rent || 0);
+    let payment_id: number;
+    try {
+      let monthlyFee = await trx('monthly_fees')
+        .where({ student_id, fee_month: currentMonth })
+        .first();
 
-      const [fee_id] = await db('monthly_fees').insert({
+      if (!monthlyFee) {
+        // Create a monthly fee record if it doesn't exist
+        const student = await trx('students').where({ student_id }).first();
+        const monthlyRent = parseFloat(student?.monthly_rent || 0);
+
+        const [fee_id] = await trx('monthly_fees').insert({
+          student_id,
+          hostel_id,
+          fee_month: currentMonth,
+          fee_date: now.getMonth() + 1,
+          monthly_rent: monthlyRent,
+          carry_forward: 0,
+          total_due: monthlyRent,
+          paid_amount: 0,
+          balance: monthlyRent,
+          fee_status: 'Pending',
+          due_date: due_date || now,
+          created_at: now,
+          updated_at: now
+        });
+
+        monthlyFee = await trx('monthly_fees').where({ fee_id }).first();
+      }
+
+      // Insert payment into fee_payments
+      const [inserted_payment_id] = await trx('fee_payments').insert({
+        fee_id: monthlyFee.fee_id,
         student_id,
         hostel_id,
-        fee_month: currentMonth,
-        fee_date: now.getMonth() + 1,
-        monthly_rent: monthlyRent,
-        carry_forward: 0,
-        total_due: monthlyRent,
-        paid_amount: 0,
-        balance: monthlyRent,
-        fee_status: 'Pending',
-        due_date: due_date || now,
-        created_at: now,
-        updated_at: now
-      });
-
-      monthlyFee = await db('monthly_fees').where({ fee_id }).first();
-    }
-
-    // Insert payment into fee_payments
-    const [payment_id] = await db('fee_payments').insert({
-      fee_id: monthlyFee.fee_id,
-      student_id,
-      hostel_id,
-      amount: amount_paid,
-      payment_date: payment_date || new Date(),
-      payment_mode_id,
-      transaction_id: transaction_reference,
-      receipt_number: receiptNumber,
-      notes: remarks,
-      created_at: new Date(),
-      updated_at: new Date()
-    });
-
-    // Update monthly_fees paid_amount and balance
-    const newPaidAmount = parseFloat(monthlyFee.paid_amount || 0) + parseFloat(amount_paid);
-    const newBalance = parseFloat(monthlyFee.total_due || 0) - newPaidAmount;
-    const newFeeStatus = newBalance <= 0 ? 'Fully Paid' : newPaidAmount > 0 ? 'Partially Paid' : 'Pending';
-
-    await db('monthly_fees')
-      .where({ fee_id: monthlyFee.fee_id })
-      .update({
-        paid_amount: newPaidAmount,
-        balance: Math.max(0, newBalance),
-        fee_status: newFeeStatus,
+        amount: amount_paid,
+        payment_date: payment_date || new Date(),
+        payment_mode_id,
+        transaction_id: transaction_reference,
+        receipt_number: receiptNumber,
+        notes: remarks,
+        created_at: new Date(),
         updated_at: new Date()
       });
+      payment_id = inserted_payment_id;
+
+      // Recalculate paid_amount from ALL payments inside the transaction,
+      // rather than monthlyFee.paid_amount + amount_paid, so two concurrent
+      // payments against the same fee can't stomp on each other's balance update.
+      const totalPaidResult = await trx('fee_payments')
+        .where('fee_id', monthlyFee.fee_id)
+        .sum('amount as total');
+      const newPaidAmount = parseFloat(totalPaidResult[0]?.total || 0);
+      const newBalance = Math.max(0, parseFloat(monthlyFee.total_due || 0) - newPaidAmount);
+      const newFeeStatus = newBalance <= 0 ? 'Fully Paid' : newPaidAmount > 0 ? 'Partially Paid' : 'Pending';
+
+      await trx('monthly_fees')
+        .where({ fee_id: monthlyFee.fee_id })
+        .update({
+          paid_amount: newPaidAmount,
+          balance: newBalance,
+          fee_status: newFeeStatus,
+          updated_at: new Date()
+        });
+
+      await trx.commit();
+    } catch (err) {
+      await trx.rollback();
+      throw err;
+    }
 
     res.status(201).json({
       success: true,
