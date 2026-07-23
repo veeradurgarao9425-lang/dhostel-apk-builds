@@ -599,7 +599,12 @@ export default function CollectedPaymentsScreen() {
             <CustomMonthYearPicker
                 visible={showMonthPicker}
                 onClose={() => setShowMonthPicker(false)}
-                onChange={(d) => { setFilterMode('month'); setStatsMonth(d); setSingleDateFilter(null); setShowMonthPicker(false); }}
+                onConfirm={(d: Date) => {
+                    setFilterMode('month');
+                    setStatsMonth(d);
+                    setSingleDateFilter(null);
+                    setShowMonthPicker(false);
+                }}
                 initialDate={statsMonth}
             />
 

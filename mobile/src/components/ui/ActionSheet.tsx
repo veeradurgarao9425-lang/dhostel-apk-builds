@@ -39,7 +39,7 @@ export const ActionSheet = ({ visible, onClose, options, title }: ActionSheetPro
         }
     }, [visible]);
 
-    if (!visible && fadeAnim.interpolate({inputRange: [0, 1], outputRange: [0, 1]}) === 0) return null;
+    if (!visible) return null;
 
     return (
         <Modal transparent visible={visible} onRequestClose={onClose} animationType="none">

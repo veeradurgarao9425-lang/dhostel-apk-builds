@@ -1024,7 +1024,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
             };
             const res = isEdit ? await api.put(`/students/${student.student_id}`, payload) : await api.post('/students', payload);
             if (res.data.success) {
-                if (!isEdit && parseFloat(payload.admission_fee) > 0 && payload.admission_status === 0) {
+                if (!isEdit && payload.admission_fee > 0 && payload.admission_status === 0) {
                     setPageAlert({
                         visible: true,
                         title: 'Admission Fee Pending',

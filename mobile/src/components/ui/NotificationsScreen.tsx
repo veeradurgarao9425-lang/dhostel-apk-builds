@@ -93,8 +93,8 @@ export function NotificationsScreen({ visible, onClose }: NotificationsScreenPro
                             activeOpacity={0.7}
                         >
                             <View style={S.notifRow}>
-                                <View style={[S.iconBox, { backgroundColor: ui.color + '15' }]}>
-                                    <Ionicons name={ui.icon as any} size={24} color={ui.color} />
+                                <View style={[S.iconBox, { backgroundColor: ui.iconColor + '15' }]}>
+                                    <Ionicons name={ui.icon as any} size={24} color={ui.iconColor} />
                                 </View>
                                 <View style={[S.notifContent, { marginLeft: 16 }]}>
                                     <Text style={[S.notifTitle, { color: isDark ? '#F8FAFC' : '#1E293B' }]}>
@@ -106,7 +106,7 @@ export function NotificationsScreen({ visible, onClose }: NotificationsScreenPro
                                     {isExpanded && (
                                         <View style={{ marginTop: 12, flexDirection: 'row', gap: 8 }}>
                                             <TouchableOpacity 
-                                                style={[S.actionBtn, { backgroundColor: ui.color }]}
+                                                style={[S.actionBtn, { backgroundColor: ui.iconColor }]}
                                                 onPress={() => triggerLocalPush(type)}
                                             >
                                                 <Text style={S.actionBtnText}>Test Push</Text>

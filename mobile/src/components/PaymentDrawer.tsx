@@ -499,6 +499,11 @@ const S = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 12,
     },
+    dateTextLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#0F172A',
+    },
     modeList: {
         backgroundColor: '#FFFFFF',
         borderWidth: 1,

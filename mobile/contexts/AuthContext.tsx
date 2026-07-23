@@ -399,7 +399,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         await AsyncStorage.setItem('token', token);
       }
       setUser(prev => {
-        const newUser = { ...(prev || {}), ...updatedFields };
+        if (!prev) return prev;
+        const newUser = { ...prev, ...updatedFields } as User;
         AsyncStorage.setItem('user', JSON.stringify(newUser)).catch(console.error);
         return newUser;
       });

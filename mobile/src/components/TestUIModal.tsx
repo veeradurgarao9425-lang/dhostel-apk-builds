@@ -102,12 +102,12 @@ export function TestUIModal({ visible, onClose }: { visible: boolean; onClose: (
                         <Text style={[S.sectionTitle, { color: theme.textSecondary }]}>Network & Feedback</Text>
 
                         <View style={S.gridContainer}>
-                            <TouchableOpacity style={[S.demoBtn, { borderColor: '#F59E0B' }]} onPress={simulateBanner}>
+                            <TouchableOpacity style={[S.demoBtn, { borderColor: '#F59E0B' }]} onPress={() => simulateBanner('offline')}>
                                 <Ionicons name="flash-outline" size={28} color="#F59E0B" />
                                 <Text style={[S.demoBtnTxt, { color: '#F59E0B' }]}>Network Banner</Text>
                             </TouchableOpacity>
 
-                            <TouchableOpacity style={[S.demoBtn, { borderColor: '#DC2626' }]} onPress={simulateScreen}>
+                            <TouchableOpacity style={[S.demoBtn, { borderColor: '#DC2626' }]} onPress={() => simulateScreen('OFFLINE')}>
                                 <Ionicons name="cloud-offline-outline" size={28} color="#DC2626" />
                                 <Text style={[S.demoBtnTxt, { color: '#DC2626' }]}>Offline Screen</Text>
                             </TouchableOpacity>
@@ -143,9 +143,9 @@ export function TestUIModal({ visible, onClose }: { visible: boolean; onClose: (
                             <StatCard 
                                 title="Total Earnings" 
                                 value="₹12,500" 
-                                subtitle="+12% from last month" 
                                 icon="wallet-outline" 
-                                color={primary} 
+                                colorTheme="purple"
+                                pillText="+12%" 
                             />
                         </View>
 
@@ -165,18 +165,18 @@ export function TestUIModal({ visible, onClose }: { visible: boolean; onClose: (
             </View>
 
             {/* Test Modals */}
-            <CustomDatePicker visible={showSingleDate} onClose={() => setShowSingleDate(false)} onSelect={() => setShowSingleDate(false)} />
-            <CustomMonthYearPicker visible={showMonthYear} onClose={() => setShowMonthYear(false)} onSelect={() => setShowMonthYear(false)} />
-            <CustomTimePicker visible={showTimePicker} onClose={() => setShowTimePicker(false)} onSelect={() => setShowTimePicker(false)} />
-            <CustomDateTimePicker visible={showDateTimePicker} onClose={() => setShowDateTimePicker(false)} onSelect={() => setShowDateTimePicker(false)} />
-            <CustomDateRangePicker visible={showRangePicker} onClose={() => setShowRangePicker(false)} onSelect={() => setShowRangePicker(false)} />
+            <CustomDatePicker visible={showSingleDate} onClose={() => setShowSingleDate(false)} onConfirm={() => setShowSingleDate(false)} />
+            <CustomMonthYearPicker visible={showMonthYear} onClose={() => setShowMonthYear(false)} onConfirm={() => setShowMonthYear(false)} />
+            <CustomTimePicker visible={showTimePicker} onClose={() => setShowTimePicker(false)} onConfirm={() => setShowTimePicker(false)} />
+            <CustomDateTimePicker visible={showDateTimePicker} onClose={() => setShowDateTimePicker(false)} onConfirm={() => setShowDateTimePicker(false)} />
+            <CustomDateRangePicker visible={showRangePicker} onClose={() => setShowRangePicker(false)} onConfirm={() => setShowRangePicker(false)} />
             
             <SelectionModal 
                 visible={showSelectionModal} 
                 onClose={() => setShowSelectionModal(false)} 
                 title="Select Category"
                 items={[{id:'1',label:'Rent'},{id:'2',label:'Maintenance'},{id:'3',label:'Electricity'}]}
-                onSelect={() => setShowSelectionModal(false)} 
+                onConfirm={() => setShowSelectionModal(false)} 
             />
 
             <ActionSheet 
@@ -184,16 +184,16 @@ export function TestUIModal({ visible, onClose }: { visible: boolean; onClose: (
                 onClose={() => setShowActionSheet(false)}
                 title="Manage Tenant"
                 options={[
-                    { label: 'Edit Details', icon: 'create-outline', onPress: () => setShowActionSheet(false) },
-                    { label: 'View Contract', icon: 'document-text-outline', onPress: () => setShowActionSheet(false) },
-                    { label: 'Collect Payment', icon: 'cash-outline', onPress: () => setShowActionSheet(false) },
-                    { label: 'Remove Tenant', icon: 'trash-outline', danger: true, onPress: () => setShowActionSheet(false) },
+                    { id: '1', label: 'Edit Details', icon: 'create-outline', onPress: () => setShowActionSheet(false) },
+                    { id: '2', label: 'View Contract', icon: 'document-text-outline', onPress: () => setShowActionSheet(false) },
+                    { id: '3', label: 'Collect Payment', icon: 'cash-outline', onPress: () => setShowActionSheet(false) },
+                    { id: '4', label: 'Remove Tenant', icon: 'trash-outline', isDanger: true, onPress: () => setShowActionSheet(false) },
                 ]}
             />
 
             <DangerModal 
                 visible={showDangerModal}
-                onClose={() => setShowDangerModal(false)}
+                onCancel={() => setShowDangerModal(false)}
                 onConfirm={() => setShowDangerModal(false)}
                 title="Delete Tenant?"
                 message="Are you sure you want to completely remove this tenant? This action cannot be undone and will delete all payment history."
@@ -204,14 +204,11 @@ export function TestUIModal({ visible, onClose }: { visible: boolean; onClose: (
                 <SearchUI 
                     visible={showSearchUI}
                     onClose={() => setShowSearchUI(false)}
-                    placeholder="Search tenants, rooms, payments..."
-                    onSearch={() => {}}
-                    results={[]}
                 />
             )}
 
             {showNotificationsUI && (
-                <NotificationsScreen onClose={() => setShowNotificationsUI(false)} />
+                <NotificationsScreen visible={showNotificationsUI} onClose={() => setShowNotificationsUI(false)} />
             )}
 
             {showEmptyState && (

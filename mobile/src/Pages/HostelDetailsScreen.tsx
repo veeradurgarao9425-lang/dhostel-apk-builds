@@ -81,7 +81,7 @@ useEffect(() => {
                 setLoadingHostel(true);
                 const res = await api.get(`/hostels/${hostelId}`);
                 if (res.data?.success && res.data.data) {
-                    setSelectedHostelDetails(prev => ({ ...prev, ...res.data.data }));
+                    setSelectedHostelDetails((prev: any) => ({ ...prev, ...res.data.data }));
                 }
             } catch (err: any) {
                 console.error('Hostel details fetch error:', err);

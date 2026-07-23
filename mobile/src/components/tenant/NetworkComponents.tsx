@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native
 import { Wifi, WifiOff, AlertTriangle, RefreshCw, CheckCircle, Server, Wrench, X, Activity } from 'lucide-react-native';
 import { Theme, PrimaryButton, SecondaryButton } from './UIComponents';
 import { BaseBottomSheet } from './UIComponents';
-import { useNetwork } from '../context/NetworkContext';
+import { useNetwork } from '../../../contexts/NetworkContext';
 
 export type NetworkStateType = 
   | 'offline' | 'poor' | 'reconnecting' | 'slow' | 'online' 

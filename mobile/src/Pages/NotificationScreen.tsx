@@ -239,7 +239,6 @@ export const NotificationScreen = () => {
                     ) : (
                         filteredNotifications.map((notif) => {
                             const badge = getBadgeStyle(notif);
-                            const BadgeIcon = badge.Icon;
                             
                             return (
                                 <TouchableOpacity 

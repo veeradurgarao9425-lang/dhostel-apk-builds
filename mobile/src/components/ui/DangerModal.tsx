@@ -40,7 +40,7 @@ export const DangerModal = ({
         }
     }, [visible]);
 
-    if (!visible && fadeAnim.interpolate({inputRange: [0, 1], outputRange: [0, 1]}) === 0) return null;
+    if (!visible) return null;
 
     return (
         <Modal transparent visible={visible} onRequestClose={onCancel} animationType="none">

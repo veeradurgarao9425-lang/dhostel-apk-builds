@@ -264,11 +264,20 @@ export const getAllHostels = async (req: AuthRequest, res: Response) => {
 
     // Security filter: If they are an owner, they must only see their own hostels
     if (req.user?.role_id === 2) {
+      if (!req.user?.user_id) {
+        return res.json({ success: true, data: [] });
+      }
       query = query.where({ 'h.owner_id': req.user.user_id });
     } else if (req.query.my_hostels === 'true' && req.user?.role_id === 1) {
+      if (!req.user?.user_id) {
+        return res.json({ success: true, data: [] });
+      }
       query = query.where({ 'h.owner_id': req.user.user_id });
     } else if (req.query.my_hostels === 'true') {
-      query = query.where({ 'h.hostel_id': req.user?.hostel_id });
+      if (!req.user?.hostel_id) {
+        return res.json({ success: true, data: [] });
+      }
+      query = query.where({ 'h.hostel_id': req.user.hostel_id });
     }
 
     const hostels = await query.orderBy('h.created_at', 'desc');
@@ -280,16 +289,16 @@ export const getAllHostels = async (req: AuthRequest, res: Response) => {
       if (hostel.amenities) {
         try {
           // Try to parse as JSON first
-          amenitiesArray = JSON.parse(hostel.amenities);
+          amenitiesArray = typeof hostel.amenities === 'string' ? JSON.parse(hostel.amenities) : hostel.amenities;
         } catch (e) {
           // If not JSON, treat as comma-separated string
-          amenitiesArray = hostel.amenities.split(',').map((a: string) => a.trim()).filter(Boolean);
+          amenitiesArray = String(hostel.amenities).split(',').map((a: string) => a.trim()).filter(Boolean);
         }
       }
 
       return {
         ...hostel,
-        amenities: amenitiesArray
+        amenities: Array.isArray(amenitiesArray) ? amenitiesArray : []
       };
     });
 
@@ -297,8 +306,8 @@ export const getAllHostels = async (req: AuthRequest, res: Response) => {
       success: true,
       data: hostelsWithParsedAmenities
     });
-  } catch (error) {
-    console.error('Get hostels error:', error);
+  } catch (error: any) {
+    console.error('Get hostels error:', error?.message || error);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch hostels'

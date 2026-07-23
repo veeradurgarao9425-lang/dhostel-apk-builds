@@ -4,9 +4,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { Phase3EmptyState } from '../../components/tenant/UIComponents';
+import { Phase3EmptyState } from '../UIComponents';
 import { theme } from '../../../theme/tenantTheme';
-import { getCategoryTheme } from '../../constants/';
+import { getCategoryTheme } from '../../../constants/categoryTheme';
 
 interface RecentActivityProps {
     recentPayments: any[];

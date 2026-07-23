@@ -1,6 +1,6 @@
 import React from 'react';
 import { ViewStyle } from 'react-native';
-import { getCategoryTheme } from '../../constants/';
+import { getCategoryTheme } from '../../../constants/categoryTheme';
 import IconGlowBadge, { GlowBadgeSize } from './IconGlowBadge';
 
 interface CategoryGlowBadgeProps {
