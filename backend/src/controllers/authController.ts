@@ -56,8 +56,21 @@ export const authController = {
         });
       }
 
-      // Debug: Log hostel_id to verify it's being retrieved
-      console.log(`Login - User ID: ${user.user_id}, Email: ${user.email}, Hostel ID: ${user.hostel_id}`);
+      // If owner has no hostel_id set, check if they own an active hostel
+      let activeHostelId = user.hostel_id;
+      if (!activeHostelId && (user.role_id === 2 || user.role_id === 1)) {
+        try {
+          const firstHostel = await db('hostel_master')
+            .where({ owner_id: user.user_id, is_active: 1 })
+            .first('hostel_id');
+          if (firstHostel?.hostel_id) {
+            activeHostelId = firstHostel.hostel_id;
+            await db('users').where('user_id', user.user_id).update({ hostel_id: activeHostelId }).catch(() => {});
+          }
+        } catch (e) {
+          console.warn('Auto-link hostel on login warning:', e);
+        }
+      }
 
       // Update last login
       await db('users')
@@ -69,7 +82,7 @@ export const authController = {
         user_id: user.user_id,
         email: user.email,
         role_id: user.role_id,
-        hostel_id: user.hostel_id, // Include hostel_id in JWT token
+        hostel_id: activeHostelId, // Include hostel_id in JWT token
       });
 
       // Return response
@@ -280,9 +293,8 @@ export const authController = {
           hostel_name: trimmedHostel,
           hostel_code: crypto.randomBytes(3).toString('hex'),
           owner_id: user_id,
-          // hostel_type is NOT NULL in the schema; default to 'Boys' so the row is
-          // valid and can be edited later without a 500. The owner can change it in Edit Hostel.
-          hostel_type: 'Boys',
+          hostel_type_id: 1, // 'Boys'
+          subscription_status_id: 1, // 'Trial'
           address: String(address).trim(),
           total_floors: parseInt(total_floors, 10) || 1,
           is_active: 1,

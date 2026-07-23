@@ -35,7 +35,7 @@ export const renewSubscription = async (req: AuthRequest, res: Response) => {
         await db('hostel_master')
             .where({ hostel_id })
             .update({
-                subscription_status: 'Active',
+                subscription_status_id: 2, // 'Active'
                 subscription_start_date: now,
                 subscription_end_date: endDate,
                 subscription_plan: plan_name,
@@ -129,9 +129,18 @@ export const getSubscriptionStatus = async (req: AuthRequest, res: Response) => 
             return res.status(400).json({ success: false, error: 'Hostel ID is required' });
         }
 
-        const hostel = await db('hostel_master')
-            .where({ hostel_id })
-            .first('trial_start_date', 'trial_end_date', 'subscription_status', 'subscription_start_date', 'subscription_end_date', 'subscription_plan', 'is_active');
+        const hostel = await db('hostel_master as h')
+            .leftJoin('subscription_status_master as ssm', 'h.subscription_status_id', 'ssm.id')
+            .where({ 'h.hostel_id': hostel_id })
+            .first(
+                'h.trial_start_date',
+                'h.trial_end_date',
+                'ssm.name as subscription_status',
+                'h.subscription_start_date',
+                'h.subscription_end_date',
+                'h.subscription_plan',
+                'h.is_active'
+            );
             
         if (!hostel) {
             return res.status(404).json({ success: false, error: 'Hostel not found' });

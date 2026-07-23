@@ -582,6 +582,7 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
     const dues = db('monthly_fees as mf')
       .join('students as s', 'mf.student_id', 's.student_id')
       .leftJoin('rooms as r', 's.room_id', 'r.room_id')
+      .leftJoin('fee_status_master as fsm', 'mf.fee_status_id', 'fsm.id')
       .select(
         's.first_name',
         's.last_name',
@@ -589,9 +590,9 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
         'mf.fee_month',
         'mf.total_due',
         'mf.due_date',
-        'mf.fee_status'
+        'fsm.name as fee_status'
       )
-      .whereIn('mf.fee_status', ['Pending', 'Partially Paid'])
+      .whereIn('mf.fee_status_id', [3, 4])
       .orderBy('mf.due_date', 'asc');
 
     if (hostelIds.length > 0) dues.whereIn('mf.hostel_id', hostelIds);

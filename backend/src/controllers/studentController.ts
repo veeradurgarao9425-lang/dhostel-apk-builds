@@ -256,7 +256,7 @@ export const getStudentById = async (req: AuthRequest, res: Response) => {
     // Get pending dues from monthly_fees
     const dues = await db('monthly_fees')
       .where({ student_id: studentId })
-      .whereIn('fee_status', ['Pending', 'Partially Paid'])
+      .whereIn('fee_status_id', [3, 4])
       .select('*');
 
     res.json({
@@ -489,7 +489,7 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
             total_due: monthlyRent,
             paid_amount: 0.00,
             balance: monthlyRent,
-            fee_status: 'Pending',
+            fee_status_id: 4, // 'Pending'
             due_date: dueDate,
             notes: 'Auto-created on student registration',
             created_at: new Date(),
@@ -826,9 +826,9 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
           const newTotalDue = parseFloat(updatedRent) + parseFloat(existingFee.carry_forward || 0);
           const newBalance = Math.max(0, newTotalDue - parseFloat(existingFee.paid_amount || 0));
 
-          let newStatus = 'Pending';
-          if (newBalance <= 0) newStatus = 'Fully Paid';
-          else if (parseFloat(existingFee.paid_amount || 0) > 0) newStatus = 'Partially Paid';
+          let newStatusId = 4;
+          if (newBalance <= 0) newStatusId = 2;
+          else if (parseFloat(existingFee.paid_amount || 0) > 0) newStatusId = 3;
 
           await db('monthly_fees')
             .where({ fee_id: existingFee.fee_id })
@@ -836,7 +836,7 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
               monthly_rent: updatedRent,
               total_due: newTotalDue,
               balance: newBalance,
-              fee_status: newStatus,
+              fee_status_id: newStatusId,
               updated_at: new Date()
             });
           console.log(`[updateStudent] Updated current month fee for student ${studentId} to match new rent: ${updatedRent}`);
@@ -864,7 +864,7 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
             total_due: updatedRent,
             paid_amount: 0.00,
             balance: updatedRent,
-            fee_status: 'Pending',
+            fee_status_id: 4, // 'Pending'
             due_date: calculatedDueDate,
             notes: 'Auto-created on student activation',
             created_at: new Date(),

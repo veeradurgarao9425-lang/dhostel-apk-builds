@@ -21,11 +21,11 @@ export const startSubscriptionCheckJob = () => {
         .join('users', 'hostel_master.owner_id', '=', 'users.user_id')
         .select('hostel_master.*', 'users.email', 'users.full_name')
         .where(function() {
-          this.where('subscription_status', 'Trial')
+          this.where('subscription_status_id', 1)
               .andWhere('trial_end_date', '<', now)
         })
         .orWhere(function() {
-          this.where('subscription_status', 'Active')
+          this.where('subscription_status_id', 2)
               .andWhere('subscription_end_date', '<', now)
         });
 
@@ -35,14 +35,14 @@ export const startSubscriptionCheckJob = () => {
           await db('hostel_master')
             .where({ hostel_id: hostel.hostel_id })
             .update({
-              subscription_status: 'Expired',
+              subscription_status_id: null, // Expired
               is_active: 0
             });
 
           // Log History
           await db('subscription_history').insert({
               hostel_id: hostel.hostel_id,
-              event_type: hostel.subscription_status === 'Trial' ? 'Trial Expired' : 'Subscription Expired',
+              event_type: hostel.subscription_status_id === 1 ? 'Trial Expired' : 'Subscription Expired',
               remarks: `Expired on ${todayDate}`
           });
 
@@ -99,13 +99,13 @@ export const startSubscriptionCheckJob = () => {
 
         const warningHostels = await db('hostel_master')
           .join('users', 'hostel_master.owner_id', '=', 'users.user_id')
-          .select('hostel_master.hostel_id', 'hostel_master.hostel_name', 'hostel_master.trial_end_date', 'hostel_master.subscription_end_date', 'hostel_master.subscription_status', 'users.email', 'users.full_name', 'users.user_id')
-          .whereRaw('DATE(trial_end_date) = ? AND subscription_status = "Trial"', [warningDateStr])
-          .orWhereRaw('DATE(subscription_end_date) = ? AND subscription_status = "Active"', [warningDateStr]);
+          .select('hostel_master.hostel_id', 'hostel_master.hostel_name', 'hostel_master.trial_end_date', 'hostel_master.subscription_end_date', 'hostel_master.subscription_status_id', 'users.email', 'users.full_name', 'users.user_id')
+          .whereRaw('DATE(trial_end_date) = ? AND subscription_status_id = 1', [warningDateStr])
+          .orWhereRaw('DATE(subscription_end_date) = ? AND subscription_status_id = 2', [warningDateStr]);
 
         for (const hostel of warningHostels) {
           try {
-             const expiryDate = hostel.subscription_status === 'Trial' ? hostel.trial_end_date : hostel.subscription_end_date;
+             const expiryDate = hostel.subscription_status_id === 1 ? hostel.trial_end_date : hostel.subscription_end_date;
              
              if (hostel.email) {
                await sendEmail({

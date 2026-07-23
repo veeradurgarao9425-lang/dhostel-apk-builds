@@ -21,9 +21,10 @@ export const requireActiveSubscription = async (req: AuthRequest, res: Response,
 
     if (targetHostelId) {
         try {
-            const hostel = await db('hostel_master')
-                .where('hostel_id', targetHostelId)
-                .first('is_active', 'subscription_status');
+            const hostel = await db('hostel_master as h')
+                .leftJoin('subscription_status_master as ssm', 'h.subscription_status_id', 'ssm.id')
+                .where('h.hostel_id', targetHostelId)
+                .first('h.is_active', 'ssm.name as subscription_status');
             
             // Allow access if active. If not active, block it.
             if (hostel && (hostel.is_active === 0 || hostel.is_active === false || hostel.subscription_status === 'Expired')) {

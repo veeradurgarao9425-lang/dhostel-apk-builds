@@ -33,9 +33,45 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
     // (hostelIds stays empty, which every query below already treats as "no filter").
     let hostelIds: number[] = [];
 
-    const scopedHostelId = resolveScopedHostelId(user, req.query.hostelId as string | undefined);
-    if (scopedHostelId) {
-      hostelIds = [scopedHostelId];
+    if (req.query.hostelId && !isNaN(Number(req.query.hostelId)) && Number(req.query.hostelId) > 0) {
+      hostelIds = [Number(req.query.hostelId)];
+    } else if (user?.user_id && (user?.role_id === 2 || user?.role_id === 1)) {
+      const ownerHostels = await db('hostel_master')
+        .where('owner_id', user.user_id)
+        .select('hostel_id');
+      const ids = ownerHostels.map(h => Number(h.hostel_id)).filter(Boolean);
+      if (user?.hostel_id && !ids.includes(Number(user.hostel_id))) {
+        ids.push(Number(user.hostel_id));
+      }
+      hostelIds = ids;
+    } else if (user?.hostel_id) {
+      hostelIds = [Number(user.hostel_id)];
+    }
+
+    if (user?.role_id === 2 && hostelIds.length === 0) {
+      return res.json({
+        success: true,
+        data: {
+          totalRooms: 0,
+          availableRooms: 0,
+          totalStudentsCount: 0,
+          totalBeds: 0,
+          occupiedBeds: 0,
+          occupancyRate: 0,
+          monthlyRentCollected: 0,
+          monthlyRentPending: 0,
+          monthlyRentDue: 0,
+          pendingDuesAmount: 0,
+          todayRent: 0,
+          leftTenants: 0,
+          prebookingsCount: 0,
+          noticesCount: 0,
+          newAdmissionsCount: 0,
+          monthlyExpenses: 0,
+          staffCount: 0,
+          vacatedStudents: 0
+        }
+      });
     }
 
 
@@ -199,7 +235,7 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
         .join('students as s', 'mf.student_id', 's.student_id')
         .whereNotNull('s.room_id')
         .where('s.status', 1)
-        .whereIn('mf.fee_status', ['Pending', 'Partially Paid', 'Overdue'])
+        .whereIn('mf.fee_status_id', [3, 4])
         .count('* as count')
         .sum('mf.balance as total');
       if (hostelIds.length > 0) {
@@ -255,7 +291,7 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
 
     // Get active staff count
     let staffQuery = db('staff')
-      .where('status', 'ACTIVE')
+      .where('status_id', 1)
       .count('* as count');
     if (hostelIds.length > 0) {
       staffQuery = staffQuery.whereIn('hostel_id', hostelIds);
@@ -819,7 +855,7 @@ export const getPaymentCollectionReport = async (req: AuthRequest, res: Response
         .join('students as s', 'mf.student_id', 's.student_id')
         .whereNotNull('s.room_id')
         .where('s.status', 1)
-        .whereIn('mf.fee_status', ['Pending', 'Partially Paid', 'Overdue'])
+        .whereIn('mf.fee_status_id', [3, 4])
         .sum('mf.balance as total');
       
       if (hostelId && user?.role_id !== 2) {
@@ -1039,14 +1075,31 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
     // Owner: always scoped to their own hostel. Admin/Super Admin: scoped to
     // ?hostelId if given, otherwise global (no filter) across all hostels.
     let hostelIds: number[] = [];
-    const scopedHostelId = resolveScopedHostelId(user, hostelId as string | undefined);
-    if (scopedHostelId) {
-      hostelIds = [scopedHostelId];
-    } else if (user?.role_id === 2) {
-      // Owner with no linked hostel — block rather than leak global data.
-      return res.status(403).json({
-        success: false,
-        error: 'Your account is not linked to any hostel.'
+    if (hostelId && !isNaN(Number(hostelId)) && Number(hostelId) > 0) {
+      hostelIds = [Number(hostelId)];
+    } else if (user?.user_id && (user?.role_id === 2 || user?.role_id === 1)) {
+      const ownerHostels = await db('hostel_master')
+        .where('owner_id', user.user_id)
+        .select('hostel_id');
+      const ids = ownerHostels.map(h => Number(h.hostel_id)).filter(Boolean);
+      if (user?.hostel_id && !ids.includes(Number(user.hostel_id))) {
+        ids.push(Number(user.hostel_id));
+      }
+      hostelIds = ids;
+    } else if (user?.hostel_id) {
+      hostelIds = [Number(user.hostel_id)];
+    }
+
+    if (hostelIds.length === 0 && user?.role_id === 2) {
+      return res.json({
+        success: true,
+        data: {
+          currentMonth: { feeCollection: 0, totalIncome: 0, totalExpenses: 0, netProfit: 0 },
+          prevMonth: { feeCollection: 0, totalIncome: 0, totalExpenses: 0, netProfit: 0 },
+          comparison: { incomeChange: 0, expenseChange: 0, profitChange: 0 },
+          trend: [],
+          expenseCategories: []
+        }
       });
     }
 

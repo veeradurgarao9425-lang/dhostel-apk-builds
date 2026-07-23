@@ -41,7 +41,11 @@ export const SetupGuideCard = ({ hasHostel, hasRooms, hasTenants }: SetupGuideCa
     const { theme, isDark } = useTheme();
     const [isCollapsed, setIsCollapsed] = useState(false);
 
-    const stepDone = [hasHostel, hasRooms, hasTenants];
+    const isStep1Done = Boolean(hasHostel);
+    const isStep2Done = isStep1Done && Boolean(hasRooms);
+    const isStep3Done = isStep2Done && Boolean(hasTenants);
+
+    const stepDone = [isStep1Done, isStep2Done, isStep3Done];
     const currentStep = stepDone.findIndex(done => !done);
     const allDone = stepDone.every(Boolean);
 

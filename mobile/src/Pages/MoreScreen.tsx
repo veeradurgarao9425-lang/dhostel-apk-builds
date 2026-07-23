@@ -67,11 +67,13 @@ export default function MoreScreen() {
 
     useFocusEffect(React.useCallback(() => { fetchStats(); }, []));
 
+    const hostelsAttemptedRef = React.useRef(false);
     useEffect(() => {
-        if (authHostels.length === 0) {
+        if (!hostelsAttemptedRef.current && (user?.role === 'OWNER' || user?.role_id === 1 || user?.role_id === 2) && authHostels.length === 0) {
+            hostelsAttemptedRef.current = true;
             loadHostels();
         }
-    }, [authHostels.length, loadHostels]);
+    }, [user?.role, user?.role_id, authHostels.length, loadHostels]);
     const { theme, isDark, fontSize } = useTheme();
     const { t } = useTranslation();
     const { showToast, showSuccess, showError, showApiError } = useToast();

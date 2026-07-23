@@ -346,6 +346,7 @@ export const getMonthlyFees = async (req: AuthRequest, res: Response) => {
 
     let query = db('monthly_fees as mf')
       .leftJoin('fee_payments as fp', 'mf.fee_id', 'fp.fee_id')
+      .leftJoin('fee_status_master as fsm', 'mf.fee_status_id', 'fsm.id')
       .select(
         'mf.fee_id',
         'mf.student_id',
@@ -356,7 +357,7 @@ export const getMonthlyFees = async (req: AuthRequest, res: Response) => {
         'mf.total_due',
         'mf.paid_amount',
         'mf.balance',
-        'mf.fee_status',
+        'fsm.name as fee_status',
         'mf.due_date',
         'mf.notes',
         'mf.created_at',
@@ -462,6 +463,7 @@ export const getMonthlyFeesSummary = async (req: AuthRequest, res: Response) => 
         this.on('s.student_id', '=', 'mf.student_id')
           .andOnVal('mf.fee_month', '=', currentMonth);
       })
+        .leftJoin('fee_status_master as fsm', 'mf.fee_status_id', 'fsm.id')
         .select(
           'mf.fee_id',
           'mf.fee_month',
@@ -470,7 +472,7 @@ export const getMonthlyFeesSummary = async (req: AuthRequest, res: Response) => 
           'mf.total_due',
           'mf.paid_amount',
           'mf.balance',
-          'mf.fee_status',
+          'fsm.name as fee_status',
           'mf.due_date'
         );
     } else {
@@ -488,17 +490,19 @@ export const getMonthlyFeesSummary = async (req: AuthRequest, res: Response) => 
       );
     }
 
-    // Owner (role 2): always scoped to their own hostel. Admin/Super Admin
-    // (role 1): scoped to ?hostelId if given, otherwise global across all hostels.
+    let hostelIds: number[] = [];
     const scopedHostelId = resolveScopedHostelId(user, hostelId as string | undefined);
-    if (user?.role_id === 2 && !scopedHostelId) {
-      return res.status(403).json({
-        success: false,
-        error: 'Your account is not linked to any hostel.'
-      });
-    }
     if (scopedHostelId) {
-      query = query.where('s.hostel_id', scopedHostelId);
+      hostelIds = [scopedHostelId];
+    } else if (user?.user_id && (user?.role_id === 2 || user?.role_id === 1)) {
+      const ownerHostels = await db('hostel_master')
+        .where({ owner_id: user.user_id, is_active: 1 })
+        .select('hostel_id');
+      hostelIds = ownerHostels.map(h => Number(h.hostel_id)).filter(Boolean);
+    }
+
+    if (hostelIds.length > 0) {
+      query = query.whereIn('s.hostel_id', hostelIds);
     }
 
     // Filter by admission_date: Hide students who haven't joined yet for the selected month.

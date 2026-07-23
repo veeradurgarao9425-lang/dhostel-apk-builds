@@ -40,6 +40,7 @@ type AuthContextType = {
   loading: boolean;
   logoutLoading: boolean;
   hostels: any[];
+  hostelsLoading: boolean;
   // Owner Auth
   signIn: (identifier: string, password: string) => Promise<{ error: any; user?: User }>;
   signUp: (payload: { full_name: string; email?: string; phone?: string; password: string; hostel_name?: string; address?: string }) => Promise<{ error: any; user?: User }>;
@@ -62,6 +63,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   logoutLoading: false,
   hostels: [],
+  hostelsLoading: false,
   signIn: async () => ({ error: null }),
   signUp: async () => ({ error: null }),
   loadHostels: async () => { },
@@ -89,17 +91,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [hostels, setHostels] = useState<any[]>([]);
+  const [hostelsLoading, setHostelsLoading] = useState(false);
 
-  const loadHostels = async () => {
+  const loadHostels = useCallback(async () => {
     try {
+      setHostelsLoading(true);
       const res = await api.get('/hostels?my_hostels=true');
       if (res.data?.success) {
         setHostels(res.data.data || []);
       }
-    } catch (e) {
-      console.warn('Failed to load hostels list in AuthContext:', e);
+    } catch (e: any) {
+      if (__DEV__) console.log('Hostels list fetch notice:', e?.message || e);
+    } finally {
+      setHostelsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -453,6 +459,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     loading,
     logoutLoading,
     hostels,
+    hostelsLoading,
     signIn,
     signUp,
     loadHostels,

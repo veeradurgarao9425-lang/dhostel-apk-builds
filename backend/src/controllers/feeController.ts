@@ -199,7 +199,7 @@ export const recordPayment = async (req: AuthRequest, res: Response) => {
         total_due: monthlyRent,
         paid_amount: 0,
         balance: monthlyRent,
-        fee_status: 'Pending',
+        fee_status_id: 4, // 'Pending'
         due_date: due_date || now,
         created_at: now,
         updated_at: now
@@ -226,14 +226,14 @@ export const recordPayment = async (req: AuthRequest, res: Response) => {
     // Update monthly_fees paid_amount and balance
     const newPaidAmount = parseFloat(monthlyFee.paid_amount || 0) + parseFloat(amount_paid);
     const newBalance = parseFloat(monthlyFee.total_due || 0) - newPaidAmount;
-    const newStatus = newBalance <= 0 ? 'Fully Paid' : newPaidAmount > 0 ? 'Partially Paid' : 'Pending';
+    const newStatusId = newBalance <= 0 ? 2 : newPaidAmount > 0 ? 3 : 4; // 2=Fully Paid, 3=Partially Paid, 4=Pending
 
     await db('monthly_fees')
       .where({ fee_id: monthlyFee.fee_id })
       .update({
         paid_amount: newPaidAmount,
         balance: Math.max(0, newBalance),
-        fee_status: newStatus,
+        fee_status_id: newStatusId,
         updated_at: new Date()
       });
 
@@ -424,7 +424,7 @@ export const uploadPaymentProof = async (req: AuthRequest, res: Response) => {
         total_due: monthlyRent,
         paid_amount: 0,
         balance: monthlyRent,
-        fee_status: 'Pending',
+        fee_status_id: 4, // 'Pending'
         due_date: now,
         created_at: now,
         updated_at: now
@@ -480,6 +480,7 @@ export const getTenantFeeHistory = async (req: AuthRequest, res: Response) => {
     const fees = await db('monthly_fees as mf')
       .leftJoin('fee_payments as fp', 'fp.fee_id', 'mf.fee_id')
       .leftJoin('payment_modes as pm', 'fp.payment_mode_id', 'pm.payment_mode_id')
+      .leftJoin('fee_status_master as fsm', 'mf.fee_status_id', 'fsm.id')
       .where('mf.student_id', studentId)
       .select(
         'mf.fee_id',
@@ -488,7 +489,7 @@ export const getTenantFeeHistory = async (req: AuthRequest, res: Response) => {
         'mf.total_due',
         'mf.paid_amount',
         'mf.balance',
-        'mf.fee_status',
+        'fsm.name as fee_status',
         'mf.due_date',
         'fp.payment_id',
         'fp.amount as payment_amount',
@@ -563,14 +564,14 @@ export const verifyPaymentProof = async (req: AuthRequest, res: Response) => {
       if (monthlyFee) {
         const newPaidAmount = parseFloat(monthlyFee.paid_amount || 0) + parseFloat(payment.amount);
         const newBalance = parseFloat(monthlyFee.total_due || 0) - newPaidAmount;
-        const newStatus = newBalance <= 0 ? 'Fully Paid' : newPaidAmount > 0 ? 'Partially Paid' : 'Pending';
+        const newStatusId = newBalance <= 0 ? 2 : newPaidAmount > 0 ? 3 : 4; // 2=Fully Paid, 3=Partially Paid, 4=Pending
 
         await db('monthly_fees')
           .where({ fee_id: monthlyFee.fee_id })
           .update({
             paid_amount: newPaidAmount,
             balance: Math.max(0, newBalance),
-            fee_status: newStatus,
+            fee_status_id: newStatusId,
             updated_at: new Date()
           });
       }

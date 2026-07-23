@@ -118,7 +118,7 @@ const Skeleton = ({ style }: { style?: any }) => (
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function HomeScreen() {
     const navigation = useNavigation<any>();
-    const { user, hostels, loadHostels, updateTokenAndUser } = useAuth();
+    const { user, hostels, hostelsLoading, loadHostels, updateTokenAndUser } = useAuth();
     const { showError, showApiError, showSuccess } = useToast();
     const { theme, isDark, fontSize } = useTheme();
     const { t } = useTranslation();
@@ -160,12 +160,12 @@ export default function HomeScreen() {
         ).start();
     }, []);
 
-    // Load hostels on component mount if empty
+    // Load hostels when hostel selector opens or if empty on mount
     useEffect(() => {
-        if (hostels.length === 0) {
+        if (showHostelSelector || hostels.length === 0) {
             loadHostels();
         }
-    }, [hostels.length, loadHostels]);
+    }, [showHostelSelector, hostels.length, loadHostels]);
 
     // Check tour status on user load
     useEffect(() => {
@@ -211,7 +211,7 @@ export default function HomeScreen() {
                     : Promise.resolve({ data: { success: false } })
             ]);
 
-            if (!statsRes.data.success && !summaryRes.data.success) {
+            if (!statsRes.data?.success && !summaryRes.data?.success && !studentsRes.data?.success && !overviewRes.data?.success) {
                 setHasError(true);
                 return;
             }
@@ -695,7 +695,10 @@ export default function HomeScreen() {
                         {/* Hostel name → tap to open Hostel Selector Bottom Sheet */}
                         <TouchableOpacity
                             ref={headerSelectorRef}
-                            onPress={() => setShowHostelSelector(true)}
+                            onPress={() => {
+                                setShowHostelSelector(true);
+                                loadHostels();
+                            }}
                             activeOpacity={0.75}
                             style={s.hostelNameBtn}
                         >
@@ -744,39 +747,39 @@ export default function HomeScreen() {
                     />
                 }
             >
-<View style={s.body}>
-    {/* Setup guide for first-time owners */}
-    {data.totalBeds === 0 || data.totalStudentsCount === 0 ? (
-        <View collapsable={false}>
-            <SetupGuideCard
-                hasHostel={true}
-                hasRooms={data.totalBeds > 0}
-                hasTenants={data.totalStudentsCount > 0}
-            />
-        </View>
-    ) : null}
-    {(data.unallocatedCount > 0 || data.qrRegisterCount > 0 || data.openComplaintsCount > 0 || data.pendingAdmissionsCount > 0) && (
-        <WarningCards data={data} />
-    )}
-    <View collapsable={false}>
-        <OverviewCard data={data} setShowCollectionSheet={setShowCollectionSheet} pulseValue={pulseValue} fmt={fmt} />
-    </View>
-    <View collapsable={false}>
-        <QuickActionsGrid data={data} />
-    </View>
-    <View collapsable={false}>
-        <StatisticsGrid data={data} fmt={fmt} />
-    </View>
-    <TopOverdueStudents data={data} />
-    <View collapsable={false}>
-        <UpcomingDues data={data} />
-    </View>
-    <View collapsable={false}>
-        <UpcomingCheckoutSchedules data={data} />
-    </View>
-    <OccupancyCard data={data} />
-    <TenantAppCard theme={theme} isDark={isDark} hostelCode={data.hostelCode} />
-</View>
+                <View style={s.body}>
+                    {/* Setup guide for first-time owners: only show when data is loaded and setup is incomplete */}
+                    {!loading && (data.totalBeds === 0 && data.totalRooms === 0) ? (
+                        <View collapsable={false}>
+                            <SetupGuideCard
+                                hasHostel={Boolean(user?.hostel_id || data.hostelName)}
+                                hasRooms={data.totalBeds > 0 || data.totalRooms > 0}
+                                hasTenants={data.totalStudentsCount > 0 || data.occupiedBeds > 0}
+                            />
+                        </View>
+                    ) : null}
+                    {(data.unallocatedCount > 0 || data.qrRegisterCount > 0 || data.openComplaintsCount > 0 || data.pendingAdmissionsCount > 0) && (
+                        <WarningCards data={data} />
+                    )}
+                    <View collapsable={false}>
+                        <OverviewCard data={data} setShowCollectionSheet={setShowCollectionSheet} pulseValue={pulseValue} fmt={fmt} />
+                    </View>
+                    <View collapsable={false}>
+                        <QuickActionsGrid data={data} />
+                    </View>
+                    <View collapsable={false}>
+                        <StatisticsGrid data={data} fmt={fmt} />
+                    </View>
+                    <TopOverdueStudents data={data} />
+                    <View collapsable={false}>
+                        <UpcomingDues data={data} />
+                    </View>
+                    <View collapsable={false}>
+                        <UpcomingCheckoutSchedules data={data} />
+                    </View>
+                    <OccupancyCard data={data} />
+                    <TenantAppCard theme={theme} isDark={isDark} hostelCode={data.hostelCode} />
+                </View>
             </ScrollView>
             <CollectionDetailsSheet data={data} showCollectionSheet={showCollectionSheet} setShowCollectionSheet={setShowCollectionSheet} />
 
@@ -802,88 +805,107 @@ export default function HomeScreen() {
 
                 {/* List of Hostels */}
                 <ScrollView contentContainerStyle={s.selectorScrollContent} showsVerticalScrollIndicator={false}>
-                    {hostels.map((h: any) => {
-                        const isActive = Number(h.hostel_id) === Number(user?.hostel_id);
-                        const isSwitching = switchingHostelId === h.hostel_id;
-                        
-                        // Color theme based on hostel type
-                        const isGirls = h.hostel_type?.toLowerCase().includes('girl');
-                        const isBoys = h.hostel_type?.toLowerCase().includes('boy');
-                        const statusColor = isGirls ? '#DB2777' : (isBoys ? '#2563EB' : '#0EA5E9');
-                        const avatarBg = isGirls ? 'rgba(219, 39, 119, 0.12)' : (isBoys ? 'rgba(37, 99, 235, 0.12)' : 'rgba(14, 165, 233, 0.12)');
-
-                        // Extract initials
-                        const getInitials = (name: string) => {
-                            if (!name || typeof name !== 'string') return 'H';
-                            const cleanName = name.trim().replace(/\s+/g, ' ');
-                            const parts = cleanName.split(' ');
-                            if (parts.length > 1) {
-                                const first = parts[0]?.[0] || '';
-                                const second = parts[1]?.[0] || '';
-                                return (first + second).toUpperCase();
-                            }
-                            return cleanName.slice(0, 2).toUpperCase();
-                        };
-
-                        return (
+                    {hostelsLoading ? (
+                        <View style={{ paddingVertical: 24, alignItems: 'center', gap: 8 }}>
+                            <ActivityIndicator size="small" color={theme.primary} />
+                            <Text style={{ color: theme.textSecondary, fontSize: 13, fontWeight: '600' }}>Fetching your hostels...</Text>
+                        </View>
+                    ) : hostels.length === 0 ? (
+                        <View style={{ paddingVertical: 24, alignItems: 'center', gap: 8, paddingHorizontal: 16 }}>
+                            <Ionicons name="business-outline" size={32} color={theme.textSecondary} />
+                            <Text style={{ color: theme.textPrimary, fontSize: 14, fontWeight: '700' }}>No Hostels Found</Text>
+                            <Text style={{ color: theme.textSecondary, fontSize: 12, textAlign: 'center' }}>No active hostels are registered under your account yet.</Text>
                             <TouchableOpacity
-                                key={h.hostel_id}
-                                style={[
-                                    s.hostelSelectItem,
-                                    {
-                                        backgroundColor: isActive ? (isDark ? '#1E293B' : '#F8FAFC') : 'transparent',
-                                        borderColor: isActive ? theme.primary + '30' : (isDark ? '#334155' : '#E2E8F0'),
-                                        borderWidth: 1,
-                                    }
-                                ]}
-                                onPress={() => handleHostelSelect(h.hostel_id, h.hostel_name)}
-                                activeOpacity={0.75}
-                                disabled={isSwitching}
+                                style={{ marginTop: 8, paddingHorizontal: 14, paddingVertical: 6, backgroundColor: theme.primary + '15', borderRadius: 12 }}
+                                onPress={() => loadHostels()}
                             >
-                                <View style={s.hostelSelectInner}>
-                                    {/* Left initials badge */}
-                                    <View style={[s.hostelSelectAvatar, { backgroundColor: avatarBg, overflow: 'hidden' }]}>
-                                        {h.photo && typeof h.photo === 'string' && h.photo.trim() !== '' && h.photo.trim() !== 'null' && h.photo.startsWith('http') ? (
-                                            <Image source={{ uri: h.photo }} style={s.avatarImage} />
-                                        ) : (
-                                            <Text style={[s.hostelSelectAvatarText, { color: statusColor }]}>
-                                                {getInitials(h.hostel_name)}
-                                            </Text>
-                                        )}
-                                    </View>
+                                <Text style={{ color: theme.primary, fontSize: 12, fontWeight: '700' }}>↺  Retry Loading</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ) : (
+                        hostels.map((h: any) => {
+                            const isActive = Number(h.hostel_id) === Number(user?.hostel_id);
+                            const isSwitching = switchingHostelId === h.hostel_id;
+                            
+                            // Color theme based on hostel type
+                            const isGirls = h.hostel_type?.toLowerCase().includes('girl');
+                            const isBoys = h.hostel_type?.toLowerCase().includes('boy');
+                            const statusColor = isGirls ? '#DB2777' : (isBoys ? '#2563EB' : '#0EA5E9');
+                            const avatarBg = isGirls ? 'rgba(219, 39, 119, 0.12)' : (isBoys ? 'rgba(37, 99, 235, 0.12)' : 'rgba(14, 165, 233, 0.12)');
 
-                                    {/* Middle info */}
-                                    <View style={s.hostelSelectInfo}>
-                                        <Text style={[s.hostelSelectName, { color: theme.textPrimary }]} numberOfLines={1}>
-                                            {h.hostel_name}
-                                        </Text>
-                                        <View style={s.hostelSelectSubRow}>
-                                            <Ionicons name="location-outline" size={11} color={theme.textSecondary} style={{ marginRight: 2 }} />
-                                            <Text style={[s.hostelSelectAddress, { color: theme.textSecondary }]} numberOfLines={1}>
-                                                {(() => {
-                                                    const addressParts = [h.address, h.city].filter(v => v && String(v).trim().length > 0 && String(v).trim() !== ',');
-                                                    return addressParts.join(', ') || 'No address';
-                                                })()}
+                            // Extract initials
+                            const getInitials = (name: string) => {
+                                if (!name || typeof name !== 'string') return 'H';
+                                const cleanName = name.trim().replace(/\s+/g, ' ');
+                                const parts = cleanName.split(' ');
+                                if (parts.length > 1) {
+                                    const first = parts[0]?.[0] || '';
+                                    const second = parts[1]?.[0] || '';
+                                    return (first + second).toUpperCase();
+                                }
+                                return cleanName.slice(0, 2).toUpperCase();
+                            };
+
+                            return (
+                                <TouchableOpacity
+                                    key={h.hostel_id}
+                                    style={[
+                                        s.hostelSelectItem,
+                                        {
+                                            backgroundColor: isActive ? (isDark ? '#1E293B' : '#F8FAFC') : 'transparent',
+                                            borderColor: isActive ? theme.primary + '30' : (isDark ? '#334155' : '#E2E8F0'),
+                                            borderWidth: 1,
+                                        }
+                                    ]}
+                                    onPress={() => handleHostelSelect(h.hostel_id, h.hostel_name)}
+                                    activeOpacity={0.75}
+                                    disabled={isSwitching}
+                                >
+                                    <View style={s.hostelSelectInner}>
+                                        {/* Left initials badge */}
+                                        <View style={[s.hostelSelectAvatar, { backgroundColor: avatarBg, overflow: 'hidden' }]}>
+                                            {h.photo && typeof h.photo === 'string' && h.photo.trim() !== '' && h.photo.trim() !== 'null' && h.photo.startsWith('http') ? (
+                                                <Image source={{ uri: h.photo }} style={s.avatarImage} />
+                                            ) : (
+                                                <Text style={[s.hostelSelectAvatarText, { color: statusColor }]}>
+                                                    {getInitials(h.hostel_name)}
+                                                </Text>
+                                            )}
+                                        </View>
+
+                                        {/* Middle info */}
+                                        <View style={s.hostelSelectInfo}>
+                                            <Text style={[s.hostelSelectName, { color: theme.textPrimary }]} numberOfLines={1}>
+                                                {h.hostel_name}
                                             </Text>
+                                            <View style={s.hostelSelectSubRow}>
+                                                <Ionicons name="location-outline" size={11} color={theme.textSecondary} style={{ marginRight: 2 }} />
+                                                <Text style={[s.hostelSelectAddress, { color: theme.textSecondary }]} numberOfLines={1}>
+                                                    {(() => {
+                                                        const addressParts = [h.address, h.city].filter(v => v && String(v).trim().length > 0 && String(v).trim() !== ',');
+                                                        return addressParts.join(', ') || 'No address';
+                                                    })()}
+                                                </Text>
+                                            </View>
+                                        </View>
+
+                                        {/* Right status / actions */}
+                                        <View style={s.hostelSelectRight}>
+                                            {isSwitching ? (
+                                                <ActivityIndicator size="small" color={theme.primary} />
+                                            ) : isActive ? (
+                                                <View style={[s.activeIndicator, { backgroundColor: theme.primary }]}>
+                                                    <Ionicons name="checkmark" size={12} color="#FFF" />
+                                                </View>
+                                            ) : (
+                                                <View style={s.inactiveIndicator} />
+                                            )}
                                         </View>
                                     </View>
-
-                                    {/* Right status / actions */}
-                                    <View style={s.hostelSelectRight}>
-                                        {isSwitching ? (
-                                            <ActivityIndicator size="small" color={theme.primary} />
-                                        ) : isActive ? (
-                                            <View style={[s.activeIndicator, { backgroundColor: theme.primary }]}>
-                                                <Ionicons name="checkmark" size={12} color="#FFF" />
-                                            </View>
-                                        ) : (
-                                            <View style={s.inactiveIndicator} />
-                                        )}
-                                    </View>
-                                </View>
-                            </TouchableOpacity>
-                        );
-                    })}
+                                </TouchableOpacity>
+                            );
+                        })
+                    )}
 
                     {/* Divider */}
                     <View style={[s.selectorDivider, { backgroundColor: isDark ? '#1E293B' : '#E2E8F0' }]} />
