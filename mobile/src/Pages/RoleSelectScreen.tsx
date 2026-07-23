@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Dimensions,
   StatusBar,
   Image,
   SafeAreaView,
@@ -14,8 +13,6 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const { width } = Dimensions.get('window');
 
 export default function RoleSelectScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -44,8 +41,8 @@ export default function RoleSelectScreen({ navigation }: any) {
         contentContainerStyle={[
           styles.scrollContent,
           {
-            paddingTop: Platform.OS === 'android' ? insets.top + 16 : 16,
-            paddingBottom: insets.bottom + 24,
+            paddingTop: Platform.OS === 'android' ? insets.top + 8 : 8,
+            paddingBottom: insets.bottom + 16,
           },
         ]}
         showsVerticalScrollIndicator={false}
@@ -68,13 +65,13 @@ export default function RoleSelectScreen({ navigation }: any) {
           </View>
 
           <View style={styles.experienceTagContainer}>
-            <Ionicons name="sparkles" size={12} color="#6366F1" style={{ marginRight: 4 }} />
+            <Ionicons name="sparkles" size={10} color="#6366F1" style={{ marginRight: 3 }} />
             <Text style={styles.experienceTagText}>HOSTIX ECOSYSTEM</Text>
           </View>
 
           <Text style={styles.title}>Choose Your Portal</Text>
           <Text style={styles.subtitle}>
-            Select your account type to access personalized dashboards and tailored features.
+            Select your account type to access personalized features.
           </Text>
         </View>
 
@@ -114,7 +111,7 @@ export default function RoleSelectScreen({ navigation }: any) {
                 >
                   <Ionicons
                     name="business-sharp"
-                    size={24}
+                    size={18}
                     color={activeRole === 'OWNER' ? '#A5B4FC' : '#6366F1'}
                   />
                 </View>
@@ -153,7 +150,7 @@ export default function RoleSelectScreen({ navigation }: any) {
                   { color: activeRole === 'OWNER' ? '#C7D2FE' : '#64748B' },
                 ]}
               >
-                Complete property management, tenant allocation, digital KYC, and automated rent collection.
+                Property management, tenant allocation, digital KYC, and automated rent collection.
               </Text>
 
               {/* Feature Pills */}
@@ -169,7 +166,7 @@ export default function RoleSelectScreen({ navigation }: any) {
                 >
                   <Ionicons
                     name="pie-chart-sharp"
-                    size={12}
+                    size={10}
                     color={activeRole === 'OWNER' ? '#A5B4FC' : '#6366F1'}
                   />
                   <Text
@@ -178,7 +175,7 @@ export default function RoleSelectScreen({ navigation }: any) {
                       { color: activeRole === 'OWNER' ? '#E0E7FF' : '#334155' },
                     ]}
                   >
-                    Revenue Analytics
+                    Analytics
                   </Text>
                 </View>
 
@@ -193,7 +190,7 @@ export default function RoleSelectScreen({ navigation }: any) {
                 >
                   <Ionicons
                     name="people-sharp"
-                    size={12}
+                    size={10}
                     color={activeRole === 'OWNER' ? '#A5B4FC' : '#6366F1'}
                   />
                   <Text
@@ -202,7 +199,7 @@ export default function RoleSelectScreen({ navigation }: any) {
                       { color: activeRole === 'OWNER' ? '#E0E7FF' : '#334155' },
                     ]}
                   >
-                    Tenant Directory
+                    Tenants
                   </Text>
                 </View>
 
@@ -217,7 +214,7 @@ export default function RoleSelectScreen({ navigation }: any) {
                 >
                   <Ionicons
                     name="shield-checkmark-sharp"
-                    size={12}
+                    size={10}
                     color={activeRole === 'OWNER' ? '#A5B4FC' : '#6366F1'}
                   />
                   <Text
@@ -226,7 +223,7 @@ export default function RoleSelectScreen({ navigation }: any) {
                       { color: activeRole === 'OWNER' ? '#E0E7FF' : '#334155' },
                     ]}
                   >
-                    Staff & Expenses
+                    Expenses
                   </Text>
                 </View>
               </View>
@@ -253,7 +250,7 @@ export default function RoleSelectScreen({ navigation }: any) {
                   colors={['#6366F1', '#4F46E5']}
                   style={styles.arrowGlowCircle}
                 >
-                  <Ionicons name="arrow-forward" size={16} color="#FFF" />
+                  <Ionicons name="arrow-forward" size={13} color="#FFF" />
                 </LinearGradient>
               </View>
             </LinearGradient>
@@ -292,7 +289,7 @@ export default function RoleSelectScreen({ navigation }: any) {
                 >
                   <Ionicons
                     name="person-sharp"
-                    size={24}
+                    size={18}
                     color={activeRole === 'TENANT' ? '#6EE7B7' : '#10B981'}
                   />
                 </View>
@@ -331,7 +328,7 @@ export default function RoleSelectScreen({ navigation }: any) {
                   { color: activeRole === 'TENANT' ? '#A7F3D0' : '#64748B' },
                 ]}
               >
-                Seamless online rent payments, digital receipts, meal schedules, and complaint tracking.
+                Online rent payments, digital receipts, meal schedules, and complaint tracking.
               </Text>
 
               {/* Feature Chips */}
@@ -347,7 +344,7 @@ export default function RoleSelectScreen({ navigation }: any) {
                 >
                   <Ionicons
                     name="card-sharp"
-                    size={12}
+                    size={10}
                     color={activeRole === 'TENANT' ? '#6EE7B7' : '#10B981'}
                   />
                   <Text
@@ -356,7 +353,7 @@ export default function RoleSelectScreen({ navigation }: any) {
                       { color: activeRole === 'TENANT' ? '#D1FAE5' : '#334155' },
                     ]}
                   >
-                    1-Tap Rent Pay
+                    1-Tap Pay
                   </Text>
                 </View>
 
@@ -371,7 +368,7 @@ export default function RoleSelectScreen({ navigation }: any) {
                 >
                   <MaterialCommunityIcons
                     name="food-fork-drink"
-                    size={12}
+                    size={10}
                     color={activeRole === 'TENANT' ? '#6EE7B7' : '#10B981'}
                   />
                   <Text
@@ -380,7 +377,7 @@ export default function RoleSelectScreen({ navigation }: any) {
                       { color: activeRole === 'TENANT' ? '#D1FAE5' : '#334155' },
                     ]}
                   >
-                    Mess Food Menu
+                    Mess Menu
                   </Text>
                 </View>
 
@@ -395,7 +392,7 @@ export default function RoleSelectScreen({ navigation }: any) {
                 >
                   <Ionicons
                     name="construct-sharp"
-                    size={12}
+                    size={10}
                     color={activeRole === 'TENANT' ? '#6EE7B7' : '#10B981'}
                   />
                   <Text
@@ -431,7 +428,7 @@ export default function RoleSelectScreen({ navigation }: any) {
                   colors={['#10B981', '#059669']}
                   style={styles.arrowGlowCircle}
                 >
-                  <Ionicons name="arrow-forward" size={16} color="#FFF" />
+                  <Ionicons name="arrow-forward" size={13} color="#FFF" />
                 </LinearGradient>
               </View>
             </LinearGradient>
@@ -442,7 +439,7 @@ export default function RoleSelectScreen({ navigation }: any) {
         {/* Footer info */}
         <View style={styles.footer}>
           <View style={styles.footerBadge}>
-            <Ionicons name="shield-checkmark" size={14} color="#6366F1" />
+            <Ionicons name="shield-checkmark" size={12} color="#6366F1" />
             <Text style={styles.footerText}>
               256-Bit Encrypted • Switch Roles Anytime
             </Text>
@@ -460,47 +457,47 @@ const styles = StyleSheet.create({
   },
   ambientGlowTop: {
     position: 'absolute',
-    top: -100,
-    right: -80,
-    width: 260,
-    height: 260,
-    borderRadius: 130,
-    backgroundColor: 'rgba(99, 102, 241, 0.08)',
+    top: -80,
+    right: -60,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: 'rgba(99, 102, 241, 0.07)',
   },
   ambientGlowBottom: {
     position: 'absolute',
-    bottom: -80,
-    left: -60,
-    width: 240,
-    height: 240,
-    borderRadius: 120,
-    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    bottom: -60,
+    left: -50,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(16, 185, 129, 0.07)',
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     justifyContent: 'center',
   },
   header: {
     alignItems: 'center',
-    marginBottom: 28,
+    marginBottom: 16,
   },
   logoWrapper: {
-    marginBottom: 14,
+    marginBottom: 8,
   },
   logoGlowRing: {
-    padding: 3,
-    borderRadius: 22,
+    padding: 2,
+    borderRadius: 16,
     shadowColor: '#6366F1',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
   logoBadge: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     backgroundColor: '#FFFFFF',
     overflow: 'hidden',
   },
@@ -512,50 +509,50 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#EEF2FF',
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 20,
-    marginBottom: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 16,
+    marginBottom: 6,
     borderWidth: 1,
     borderColor: '#E0E7FF',
   },
   experienceTagText: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '800',
     color: '#6366F1',
-    letterSpacing: 1.2,
+    letterSpacing: 1.0,
   },
   title: {
-    fontSize: 26,
+    fontSize: 20,
     fontWeight: '900',
     color: '#0F172A',
     textAlign: 'center',
-    letterSpacing: -0.5,
+    letterSpacing: -0.4,
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '500',
     color: '#64748B',
     textAlign: 'center',
-    marginTop: 8,
-    lineHeight: 20,
-    paddingHorizontal: 12,
+    marginTop: 4,
+    lineHeight: 16,
+    paddingHorizontal: 10,
   },
   cardsContainer: {
-    gap: 18,
-    marginBottom: 24,
+    gap: 12,
+    marginBottom: 16,
   },
   cardTouchable: {
-    borderRadius: 24,
+    borderRadius: 18,
     shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
   },
   card: {
-    borderRadius: 24,
-    padding: 20,
+    borderRadius: 18,
+    padding: 14,
     borderWidth: 1.5,
   },
   ownerCardBorder: {
@@ -567,119 +564,119 @@ const styles = StyleSheet.create({
   cardActiveOwner: {
     borderColor: '#6366F1',
     shadowColor: '#6366F1',
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 6,
   },
   cardActiveTenant: {
     borderColor: '#10B981',
     shadowColor: '#10B981',
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 6,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 8,
   },
   iconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   badgePill: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   badgePillText: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '800',
-    letterSpacing: 0.8,
+    letterSpacing: 0.6,
   },
   cardTitle: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '800',
-    marginBottom: 6,
-    letterSpacing: -0.3,
+    marginBottom: 2,
+    letterSpacing: -0.2,
   },
   cardDesc: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '400',
-    lineHeight: 19,
-    marginBottom: 16,
+    lineHeight: 16,
+    marginBottom: 10,
   },
   featuresRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 18,
+    gap: 6,
+    marginBottom: 10,
   },
   featureChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   featureChipText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
   },
   actionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 14,
+    paddingTop: 10,
     borderTopWidth: 1,
   },
   actionText: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '800',
     letterSpacing: -0.2,
   },
   arrowGlowCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   footer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 6,
   },
   footerBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#F1F5F9',
     shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.03,
-    shadowRadius: 6,
+    shadowRadius: 4,
     elevation: 1,
   },
   footerText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
     color: '#64748B',
   },
 });
+
 
