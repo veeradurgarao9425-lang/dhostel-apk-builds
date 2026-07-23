@@ -16,13 +16,13 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
           cache-dependency-path: mobile/package-lock.json
 
       - name: Install dependencies
         working-directory: mobile
-        run: npm install
+        run: npm ci || npm install
 
       - name: Setup Java 17
         uses: actions/setup-java@v4
@@ -33,13 +33,17 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Generate Native Android Project (Expo Prebuild)
+        working-directory: mobile
+        run: npx expo prebuild --platform android
+
       - name: Grant execute permission to gradlew
         working-directory: mobile/android
         run: chmod +x gradlew
 
       - name: Build Debug APK
         working-directory: mobile/android
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
@@ -47,3 +51,4 @@ jobs:
           name: dhostel-debug-apk
           path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 7
+
