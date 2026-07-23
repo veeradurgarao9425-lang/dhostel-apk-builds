@@ -26,7 +26,8 @@ export const createHostel = async (req: AuthRequest, res: Response) => {
       rooms_per_floor,
       owner_id,
       amenities,
-      admission_fee
+      admission_fee,
+      default_refundable_deposit
     } = req.body;
 
     // Validation
@@ -113,6 +114,7 @@ export const createHostel = async (req: AuthRequest, res: Response) => {
       hostel_type_id,
       owner_id: finalOwnerId,
       admission_fee: admission_fee || 0,
+      default_refundable_deposit: default_refundable_deposit || 0,
       is_active: 1,
       trial_start_date: now,
       trial_end_date: trialEndDate,
@@ -267,6 +269,7 @@ export const getAllHostels = async (req: AuthRequest, res: Response) => {
         'h.owner_id',
         'h.amenities',
         'h.admission_fee',
+        'h.default_refundable_deposit',
         'h.hostel_code',
         'u.full_name as owner_name',
         'u.phone as contact_number',
@@ -428,7 +431,8 @@ export const updateHostel = async (req: AuthRequest, res: Response) => {
       total_floors,
       owner_id,
       amenities,
-      admission_fee
+      admission_fee,
+      default_refundable_deposit
     } = req.body;
 
     // Validate required fields
@@ -545,6 +549,11 @@ export const updateHostel = async (req: AuthRequest, res: Response) => {
     // Add admission_fee if provided
     if (admission_fee !== undefined) {
       updateData.admission_fee = admission_fee;
+    }
+
+    // Add default_refundable_deposit if provided
+    if (default_refundable_deposit !== undefined) {
+      updateData.default_refundable_deposit = default_refundable_deposit;
     }
 
     // Add amenities if provided (store as JSON string)

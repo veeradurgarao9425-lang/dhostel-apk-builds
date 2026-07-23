@@ -1176,6 +1176,7 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
     try {
       let admissionFeeQuery = db('students')
         .whereBetween('admission_date', [monthStart, monthEnd])
+        .where('is_old_student', 0)
         .where(function() {
           this.where('admission_status', 1)
             .orWhere('admission_status', 'Paid');
@@ -1194,6 +1195,7 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
         .where('status', 1)
         .whereNotNull('room_id')
         .where('admission_fee', '>', 0)
+        .where('is_old_student', 0)
         .select(
           db.raw('COUNT(student_id) as total_students'),
           db.raw('SUM(admission_fee) as total_expected'),
@@ -1368,6 +1370,7 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
     try {
       let admissionTrendQuery = db('students')
         .whereBetween('admission_date', [trendStartDateStr, monthEnd])
+        .where('is_old_student', 0)
         .where(function() {
           this.where('admission_status', 1).orWhere('admission_status', 'Paid');
         })

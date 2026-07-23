@@ -43,7 +43,7 @@ type AuthContextType = {
   hostelsLoading: boolean;
   // Owner Auth
   signIn: (identifier: string, password: string) => Promise<{ error: any; user?: User }>;
-  signUp: (payload: { full_name: string; email?: string; phone?: string; password: string; hostel_name?: string; address?: string }) => Promise<{ error: any; user?: User }>;
+  signUp: (payload: { full_name: string; email?: string; phone?: string; password: string; hostel_name?: string; address?: string; admission_fee?: string; default_refundable_deposit?: string }) => Promise<{ error: any; user?: User }>;
   loadHostels: () => Promise<void>;
   cycleHostels: () => Promise<string | undefined>;
   // Tenant Auth
@@ -241,7 +241,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const signUp = async (payload: { full_name: string; email?: string; phone?: string; password: string; hostel_name?: string; address?: string }) => {
+  const signUp = async (payload: { full_name: string; email?: string; phone?: string; password: string; hostel_name?: string; address?: string; admission_fee?: string; default_refundable_deposit?: string }) => {
     try {
       const response = await api.post('/auth/register', payload);
       const body = response.data;

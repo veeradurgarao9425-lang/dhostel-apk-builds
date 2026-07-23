@@ -44,10 +44,11 @@ import { FullScreenLoader } from '../components/FullScreenLoader';
 // }
 
 const PAGE_SIZE = 10;
-type TabType = 'Active' | 'Unallocated' | 'Inactive' | 'PreBooked' | 'QRRegister' | 'All';
+type TabType = 'Active' | 'Unallocated' | 'Inactive' | 'PreBooked' | 'QRRegister' | 'AdmissionPending' | 'All';
 
 const TABS: { key: TabType; label: string }[] = [
     { key: 'Active', label: 'Active' },
+    { key: 'AdmissionPending', label: 'Admission Pending' },
     { key: 'PreBooked', label: 'Pre-Booked' },
     { key: 'QRRegister', label: 'QR Signups' },
     { key: 'Inactive', label: 'Inactive' },
@@ -354,13 +355,18 @@ export default function StudentsScreen({ navigation, route }: any) {
                 setLoadingMore(true);
             }
 
-            const statusParam = activeTab === 'Active' ? 1 : activeTab === 'Inactive' ? 0 : activeTab === 'PreBooked' ? 2 : activeTab === 'QRRegister' ? 3 : undefined;
             const params: Record<string, any> = { page: pageNum, limit: PAGE_SIZE };
             if (debouncedSearch) params.search = debouncedSearch;
-            if (statusParam !== undefined) params.status = statusParam;
+
+            const statusParam = activeTab === 'Active' ? 1 : activeTab === 'Inactive' ? 0 : activeTab === 'PreBooked' ? 2 : activeTab === 'QRRegister' ? 3 : undefined;
+            if (statusParam !== undefined) {
+                params.status = statusParam;
+            }
             if (activeTab === 'Unallocated') {
-                params.status = 1;
-                params.unallocated = 'true';
+                params.unallocated = true;
+            }
+            if (activeTab === 'AdmissionPending') {
+                params.admissionPending = true;
             }
             if (dateFilter) {
                 params.date = toLocalDateStr(dateFilter);
@@ -546,11 +552,12 @@ export default function StudentsScreen({ navigation, route }: any) {
         if (activeTab === 'Unallocated') {
             return `${counts.unallocated} Unallocated ${t('students.residents')}`;
         }
-        const label = activeTab === 'All' ? t('students.total') : activeTab;
+        const label = activeTab === 'All' ? t('students.total') : activeTab === 'AdmissionPending' ? 'Admission Pending' : activeTab;
         const totalCount = activeTab === 'Active' ? counts.active :
                            activeTab === 'Inactive' ? counts.inactive :
                            activeTab === 'PreBooked' ? counts.prebooked :
-                           activeTab === 'QRRegister' ? counts.qrRegister : counts.total;
+                           activeTab === 'QRRegister' ? counts.qrRegister :
+                           activeTab === 'AdmissionPending' ? allStudents.length : counts.total;
         return `${totalCount} ${label} ${t('students.residents')}`;
     }, [counts, activeTab, debouncedSearch, totalMatching, t]);
 

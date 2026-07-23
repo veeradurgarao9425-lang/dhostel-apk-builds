@@ -1,5 +1,5 @@
 import express from 'express';
-import { authMiddleware } from '../middleware/auth.js';
+import { authMiddleware, isOwnerOrAdmin } from '../middleware/auth.js';
 import { requireActiveSubscription } from '../middleware/subscriptionAuth.js';
 import {
   getMonthlyFees,
@@ -17,17 +17,13 @@ import {
   updatePayment,
   deletePayment,
   getCollections,
-  getPaymentModes,
-  debugDatabase // Add this import
+  getPaymentModes
 } from '../controllers/monthlyFeeController.js';
 
 const router = express.Router();
 
-// Public debug route to check schema columns without auth
-router.get('/debug-db', debugDatabase);
-
-// All routes require authentication
-router.use(authMiddleware, requireActiveSubscription);
+// All routes require authentication and owner/admin access
+router.use(authMiddleware, requireActiveSubscription, isOwnerOrAdmin);
 
 // Get all monthly fees for a specific student
 router.get('/student/:studentId', getMonthlyFees);

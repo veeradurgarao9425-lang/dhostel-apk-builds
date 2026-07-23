@@ -139,6 +139,12 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
     const [paymentModes, setPaymentModes] = useState<any[]>([]);
     const [payLoading, setPayLoading] = useState(false);
 
+    // Vacate Settlement State
+    const [vacateModalVisible, setVacateModalVisible] = useState(false);
+    const [damageDeductions, setDamageDeductions] = useState('');
+    const [deductionReason, setDeductionReason] = useState('');
+    const [vacateLoading, setVacateLoading] = useState(false);
+
     // Guard against concurrent fetches
     const isFetching = useRef(false);
     // Ensure the "allocate a room" popup shows only once per screen visit
@@ -357,11 +363,8 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
         let isDestructive = false;
 
         if (currentStatus === 1) {
-            nextStatus = 0;
-            title = 'Mark as Inactive?';
-            message = "This tenant will be marked as inactive, and their room allocation will be cleared.";
-            confirmText = 'Yes, mark Inactive';
-            isDestructive = true;
+            setVacateModalVisible(true);
+            return;
         } else if (currentStatus === 2) {
             nextStatus = 1;
             title = 'Check In Tenant?';
@@ -411,6 +414,32 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
             }
         });
     }, [student, fetchStudentDetails, confirm, goAllocateRoom]);
+
+    const handleVacateSettlement = async () => {
+        if (damageDeductions && parseFloat(damageDeductions) > 0 && !deductionReason) {
+            showError('Please provide a reason for the deduction.');
+            return;
+        }
+        try {
+            setVacateLoading(true);
+            const res = await api.post(`/students/${studentId}/vacate-settlement`, {
+                damageDeductions: damageDeductions ? parseFloat(damageDeductions) : 0,
+                deductionReason: deductionReason || null
+            });
+            if (res.data.success) {
+                showSuccess(`${student.first_name} has been vacated successfully.`);
+                setVacateModalVisible(false);
+                setDamageDeductions('');
+                setDeductionReason('');
+                setStudent((prev: any) => ({ ...prev, status: 0 }));
+                fetchStudentDetails();
+            }
+        } catch (e: any) {
+            showApiError(e, 'Failed to process vacate settlement');
+        } finally {
+            setVacateLoading(false);
+        }
+    };
 
     // ── Schedule Vacancy Notice ───────────────────────────────────────────
     const handleSetVacancyNotice = useCallback(async () => {
@@ -1279,6 +1308,81 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                 onConfirm={handleRecordPayment}
                 themeColor={theme.primary}
             />
+
+            {/* ── Vacate Settlement Modal ─────────────────────────────────────── */}
+            <ModalSheet
+                visible={vacateModalVisible}
+                onClose={() => {
+                    if (!vacateLoading) {
+                        setVacateModalVisible(false);
+                        setDamageDeductions('');
+                        setDeductionReason('');
+                    }
+                }}
+            >
+                <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
+                    <View style={styles.modalHeader}>
+                        <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>Vacate Settlement</Text>
+                        <TouchableOpacity onPress={() => !vacateLoading && setVacateModalVisible(false)}>
+                            <X size={24} color="#666" />
+                        </TouchableOpacity>
+                    </View>
+
+                    <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+                        <View style={{ backgroundColor: '#F8FAFC', padding: 16, borderRadius: 12, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                            <Text style={{ fontSize: 12, color: '#64748B', marginBottom: 4, fontWeight: '600' }}>Deposit Held</Text>
+                            <Text style={{ fontSize: 24, color: theme.textPrimary, fontWeight: '700' }}>
+                                ₹{student?.refundable_deposit || 0}
+                            </Text>
+                        </View>
+
+                        <Text style={styles.inputLabel}>Damage/Dues Deductions (₹)</Text>
+                        <View style={styles.inputContainer}>
+                            <IndianRupee size={18} color="#94A3B8" style={{ marginRight: 8 }} />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="e.g. 500"
+                                placeholderTextColor="#94A3B8"
+                                keyboardType="numeric"
+                                value={damageDeductions}
+                                onChangeText={(t) => setDamageDeductions(t.replace(/\D/g, ''))}
+                            />
+                        </View>
+
+                        <Text style={styles.inputLabel}>Reason for Deduction</Text>
+                        <View style={styles.inputContainer}>
+                            <MessageCircle size={18} color="#94A3B8" style={{ marginRight: 8 }} />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="e.g. Wall damage, pending rent..."
+                                placeholderTextColor="#94A3B8"
+                                value={deductionReason}
+                                onChangeText={setDeductionReason}
+                            />
+                        </View>
+
+                        <View style={{ backgroundColor: '#F0FDF4', padding: 16, borderRadius: 12, marginTop: 12, borderWidth: 1, borderColor: '#BBF7D0' }}>
+                            <Text style={{ fontSize: 13, color: '#166534', marginBottom: 2, fontWeight: '600' }}>Final Refund to Tenant</Text>
+                            <Text style={{ fontSize: 20, color: '#15803D', fontWeight: '800' }}>
+                                ₹{Math.max(0, (student?.refundable_deposit || 0) - (parseFloat(damageDeductions) || 0))}
+                            </Text>
+                        </View>
+
+                        <TouchableOpacity
+                            style={[styles.modalSubmitBtn, { backgroundColor: '#DC2626', marginTop: 24 }]}
+                            onPress={handleVacateSettlement}
+                            disabled={vacateLoading}
+                            activeOpacity={0.8}
+                        >
+                            {vacateLoading ? (
+                                <ActivityIndicator color="#FFF" />
+                            ) : (
+                                <Text style={styles.modalSubmitBtnText}>Confirm Vacate</Text>
+                            )}
+                        </TouchableOpacity>
+                    </ScrollView>
+                </View>
+            </ModalSheet>
 
             {/* ── Vacancy Notice Modal ─────────────────────────────────────── */}
             <ModalSheet

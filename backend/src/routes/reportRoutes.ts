@@ -1,5 +1,5 @@
 import express from 'express';
-import { authMiddleware, queryTokenMiddleware } from '../middleware/auth.js';
+import { authMiddleware, queryTokenMiddleware, isOwnerOrAdmin } from '../middleware/auth.js';
 import { requireActiveSubscription } from '../middleware/subscriptionAuth.js';
 import {
   getDashboardStats,
@@ -19,11 +19,11 @@ import {
 
 const router = express.Router();
 
-// Allow public downloads verified via query parameter token (?token=...)
-router.get('/download/excel', queryTokenMiddleware, downloadExcelReport);
+// Allow public downloads verified via query parameter token (?token=...) and restrict to owner/admin
+router.get('/download/excel', queryTokenMiddleware, isOwnerOrAdmin, downloadExcelReport);
 
-// All other routes require authentication header
-router.use(authMiddleware, requireActiveSubscription);
+// All other routes require authentication header and owner/admin access
+router.use(authMiddleware, requireActiveSubscription, isOwnerOrAdmin);
 
 // Report routes
 router.get('/dashboard-stats', getDashboardStats);

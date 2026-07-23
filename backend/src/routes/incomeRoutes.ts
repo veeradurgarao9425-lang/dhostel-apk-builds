@@ -1,5 +1,5 @@
 import express from 'express';
-import { authMiddleware, queryTokenMiddleware } from '../middleware/auth.js';
+import { authMiddleware, queryTokenMiddleware, isOwnerOrAdmin } from '../middleware/auth.js';
 import { requireActiveSubscription } from '../middleware/subscriptionAuth.js';
 import {
   getAllIncome,
@@ -15,10 +15,10 @@ import {
 const router = express.Router();
 
 // Export route only requires query token, so it goes before the global authMiddleware
-router.get('/export', queryTokenMiddleware, getIncomeExport);
+router.get('/export', queryTokenMiddleware, isOwnerOrAdmin, getIncomeExport);
 
-// All other routes require authentication header
-router.use(authMiddleware, requireActiveSubscription);
+// All other routes require authentication header and owner/admin access
+router.use(authMiddleware, requireActiveSubscription, isOwnerOrAdmin);
 
 // Income routes
 router.post('/email-export', emailIncomeExport);

@@ -1,7 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
-import { authMiddleware } from '../middleware/auth.js';
+import { authMiddleware, isOwnerOrAdmin, isTenantOnly } from '../middleware/auth.js';
 import { requireActiveSubscription } from '../middleware/subscriptionAuth.js';
 import {
   getFeePayments,
@@ -31,18 +31,18 @@ const upload = multer({ storage });
 router.use(authMiddleware, requireActiveSubscription);
 
 // Tenant self-service routes (accessible by role_id=3)
-router.get('/my-fees', getTenantFeeHistory);
+router.get('/my-fees', isTenantOnly, getTenantFeeHistory);
 
 // Fee/Payment routes
-router.get('/payments', getFeePayments);
+router.get('/payments', isOwnerOrAdmin, getFeePayments);
 router.get('/available-months', getAvailableMonths);
-router.get('/student/:studentId/payments', getStudentPaymentHistory);
-router.post('/payments', recordPayment);
+router.get('/student/:studentId/payments', isOwnerOrAdmin, getStudentPaymentHistory);
+router.post('/payments', isOwnerOrAdmin, recordPayment);
 router.get('/payment-modes', getPaymentModes);
 router.get('/receipts/:paymentId', getReceipt);
 
 // Payment proof endpoints (tenant uploads, owner verifies)
-router.post('/upload-proof', upload.single('proof'), uploadPaymentProof);
-router.put('/payments/:paymentId/verify', verifyPaymentProof);
+router.post('/upload-proof', isTenantOnly, upload.single('proof'), uploadPaymentProof);
+router.put('/payments/:paymentId/verify', isOwnerOrAdmin, verifyPaymentProof);
 
 export default router;

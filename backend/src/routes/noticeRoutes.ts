@@ -1,7 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
-import { authMiddleware } from '../middleware/auth.js';
+import { authMiddleware, isOwnerOrAdmin } from '../middleware/auth.js';
 import { requireActiveSubscription } from '../middleware/subscriptionAuth.js';
 import {
   getNotices,
@@ -28,13 +28,13 @@ router.use(authMiddleware, requireActiveSubscription);
 
 // Notice Categories
 router.get('/categories', getNoticeCategories);
-router.post('/categories', createNoticeCategory);
-router.delete('/categories/:categoryName', deleteNoticeCategory);
+router.post('/categories', isOwnerOrAdmin, createNoticeCategory);
+router.delete('/categories/:categoryName', isOwnerOrAdmin, deleteNoticeCategory);
 
 // Notices
 router.get('/', getNotices);
-router.post('/', upload.single('image'), createNotice);
-router.put('/:noticeId', upload.single('image'), updateNotice);
-router.delete('/:noticeId', deleteNotice);
+router.post('/', isOwnerOrAdmin, upload.single('image'), createNotice);
+router.put('/:noticeId', isOwnerOrAdmin, upload.single('image'), updateNotice);
+router.delete('/:noticeId', isOwnerOrAdmin, deleteNotice);
 
 export default router;

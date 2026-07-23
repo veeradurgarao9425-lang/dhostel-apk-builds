@@ -117,17 +117,32 @@ export const notificationService = {
       
       if (data) {
         // Direct navigation based on notification payload structure
-        if (data.type === 'New Admission') {
+        const dataType = typeof data.type === 'string' ? data.type.toUpperCase() : '';
+        
+        if (dataType === 'NEW ADMISSION' || title.includes('admission')) {
           if (data.id) {
             navigate('StudentDetails', { studentId: data.id });
           } else {
             navigate('Students');
           }
-        } else if (title.includes('payment') || title.includes('collect') || data?.type === 'success') {
+        } else if (title.includes('payment') || title.includes('collect') || title.includes('due') || dataType === 'PAYMENT' || dataType === 'SUCCESS' || dataType === 'DUE_REMINDER') {
           navigate('FeeManagement');
-        } else if (title.includes('tenant') || title.includes('admission')) {
+        } else if (title.includes('room') || title.includes('assign') || title.includes('vacate') || dataType === 'ROOM_ALLOCATED' || dataType === 'VACATE') {
           navigate('Rooms');
-        } else if (title.includes('room') || title.includes('assign')) {
+        } else if (dataType === 'NOTICE' || title.includes('notice')) {
+          navigate('Notices');
+        } else if (dataType === 'COMPLAINT' || dataType === 'MAINTENANCE' || title.includes('complaint')) {
+          navigate('Complaints');
+        } else if (dataType === 'EXPENSE' || title.includes('expense')) {
+          navigate('Expenses');
+        } else if (dataType === 'PREBOOKING' || title.includes('pre-booking')) {
+          navigate('PreBooking');
+        } else if (dataType === 'DOCUMENT' || title.includes('receipt')) {
+          // Send them to their payments/receipts area (tenant) or fee management (owner)
+          navigate('FeeManagement');
+        } else if (dataType === 'SUMMARY' || title.includes('summary')) {
+          navigate('Reports');
+        } else if (title.includes('tenant')) {
           navigate('Rooms');
         }
       }

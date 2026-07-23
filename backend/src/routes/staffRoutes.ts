@@ -1,5 +1,5 @@
 import express from 'express';
-import { authMiddleware } from '../middleware/auth.js';
+import { authMiddleware, isOwnerOrAdmin } from '../middleware/auth.js';
 import { requireActiveSubscription } from '../middleware/subscriptionAuth.js';
 import {
   getStaff,
@@ -16,8 +16,8 @@ import {
 
 const router = express.Router();
 
-// All routes require authentication
-router.use(authMiddleware, requireActiveSubscription);
+// All routes require authentication and owner/admin access
+router.use(authMiddleware, requireActiveSubscription, isOwnerOrAdmin);
 
 // Staff wage payments (declare specific routes before '/:staffId')
 router.get('/:staffId/salary-summary', getStaffMonthlySummary);

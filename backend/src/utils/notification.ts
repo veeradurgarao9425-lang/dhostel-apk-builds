@@ -1,4 +1,3 @@
-import https from 'https';
 import db from '../config/database.js';
 
 // Map of notification types to DB enum values (Now VARCHAR in DB)
@@ -74,40 +73,18 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
       }
     }));
 
-    const payload = JSON.stringify(pushMessages);
-
-    const requestOptions = {
-      hostname: 'exp.host',
-      path: '/--/api/v2/push/send',
+    const response = await fetch('https://exp.host/--/api/v2/push/send', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
         'Accept': 'application/json',
         'Accept-Encoding': 'gzip, deflate',
+        'Content-Type': 'application/json',
       },
-    };
-
-    const req = https.request(requestOptions, (res) => {
-      let responseBody = '';
-      res.on('data', (chunk) => {
-        responseBody += chunk;
-      });
-      res.on('end', () => {
-        try {
-          const parsed = JSON.parse(responseBody);
-          console.log(`[Expo Push] Response:`, JSON.stringify(parsed));
-        } catch {
-          console.log(`[Expo Push] Response text: ${responseBody}`);
-        }
-      });
+      body: JSON.stringify(pushMessages),
     });
 
-    req.on('error', (err) => {
-      console.error('[Expo Push] HTTPS request error:', err);
-    });
-
-    req.write(payload);
-    req.end();
+    const result = await response.json();
+    console.log(`[Expo Push] Response:`, JSON.stringify(result));
 
   } catch (error) {
     console.error('[Notification] Error in sendNotificationToUser:', error);

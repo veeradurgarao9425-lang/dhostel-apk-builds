@@ -616,7 +616,7 @@ async function patchDatabaseSchema() {
       console.error('[schema-patch] Error updating user_push_tokens for tenant tokens:', e.message);
     }
 
-    // 13.6 Ensure guests table has email, id_proof_type_id, and id_proof_number columns
+    // 13.6 Ensure guests table has email, id_proof_type_id, id_proof_number, and status columns
     try {
       if (tableNamesLower.includes('guests')) {
         const [guestCols] = await db.raw("SHOW COLUMNS FROM guests");
@@ -637,12 +637,22 @@ async function patchDatabaseSchema() {
           console.log('[schema-patch] adding id_proof_number column to guests...');
           await db.raw("ALTER TABLE guests ADD COLUMN id_proof_number VARCHAR(100) NULL");
         }
+
+        // guests.status — plain VARCHAR so it never suffers ENUM-drift.
+        // The controller reads it as g.status || 'staying', so NULL-safe.
+        if (!guestColNames.includes('status')) {
+          console.log('[schema-patch] adding status column to guests...');
+          await db.raw("ALTER TABLE guests ADD COLUMN status VARCHAR(50) DEFAULT 'staying'");
+        }
       }
     } catch (e: any) {
       console.error('[schema-patch] Error checking/updating guests columns:', e.message);
     }
 
     // 14. Ensure notifications table has hostel_id and priority columns
+    // NOTE: priority is VARCHAR(20), not ENUM — ENUM columns are a historical
+    // source of drift bugs (fee_status, notification_type). VARCHAR is safe to
+    // extend without a migration.
     try {
       if (tableNamesLower.includes('notifications')) {
         console.log('[schema-patch] Checking notifications columns...');
@@ -655,7 +665,15 @@ async function patchDatabaseSchema() {
         }
         if (!columnNames.includes('priority')) {
           console.log('[schema-patch] adding priority to notifications...');
-          await db.raw("ALTER TABLE notifications ADD COLUMN priority ENUM('Low', 'Medium', 'High') DEFAULT 'Medium'");
+          // Use VARCHAR, not ENUM, to prevent drift when new priority levels are added.
+          await db.raw("ALTER TABLE notifications ADD COLUMN priority VARCHAR(20) DEFAULT 'Medium'");
+        } else {
+          // If it was previously created as an ENUM, migrate it to VARCHAR silently.
+          const [notifCols] = await db.raw("SHOW COLUMNS FROM notifications WHERE Field = 'priority'");
+          if (notifCols.length > 0 && String(notifCols[0].Type).startsWith('enum')) {
+            console.log('[schema-patch] converting notifications.priority from ENUM to VARCHAR(20)...');
+            await db.raw("ALTER TABLE notifications MODIFY COLUMN priority VARCHAR(20) DEFAULT 'Medium'");
+          }
         }
       }
     } catch (e: any) {
@@ -995,6 +1013,38 @@ async function patchDatabaseSchema() {
       }
     } catch (e: any) {
       console.error('[schema-patch] Error checking/adding notified column to reminders:', e.message);
+    }
+
+    // 28. Ensure default_refundable_deposit exists on hostel_master
+    try {
+      if (tableNamesLower.includes('hostel_master')) {
+        const columns = await db.raw("SHOW COLUMNS FROM hostel_master");
+        const columnNames = columns[0].map((c: any) => c.Field.toLowerCase());
+        if (!columnNames.includes('default_refundable_deposit')) {
+          console.log('[schema-patch] Adding default_refundable_deposit column to hostel_master...');
+          await db.raw("ALTER TABLE hostel_master ADD COLUMN default_refundable_deposit DECIMAL(10,2) DEFAULT 0.00");
+        }
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error checking/adding default_refundable_deposit to hostel_master:', e.message);
+    }
+
+    // 29. Ensure refundable_deposit and is_old_student exist on students
+    try {
+      if (tableNamesLower.includes('students')) {
+        const columns = await db.raw("SHOW COLUMNS FROM students");
+        const columnNames = columns[0].map((c: any) => c.Field.toLowerCase());
+        if (!columnNames.includes('refundable_deposit')) {
+          console.log('[schema-patch] Adding refundable_deposit column to students...');
+          await db.raw("ALTER TABLE students ADD COLUMN refundable_deposit DECIMAL(10,2) DEFAULT 0.00");
+        }
+        if (!columnNames.includes('is_old_student')) {
+          console.log('[schema-patch] Adding is_old_student column to students...');
+          await db.raw("ALTER TABLE students ADD COLUMN is_old_student TINYINT DEFAULT 0");
+        }
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error checking/adding columns to students:', e.message);
     }
 
     console.log('[schema-patch] Schema check and patch complete.');

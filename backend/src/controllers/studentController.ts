@@ -97,7 +97,7 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
 
     // Filter by admission pending (unpaid admission fee)
     if (req.query.admissionPending === 'true') {
-      query = query.where('s.admission_status', 0).whereIn('s.status', [1, 2]);
+      query = query.where('s.admission_status', 0).whereIn('s.status', [1, 2, 3]);
     }
 
     // Filter by status if provided
@@ -125,7 +125,13 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
     }
 
     // Pagination
+    // Hard cap: callers that omit page/limit still get at most MAX_UNBOUNDED_LIMIT
+    // rows instead of an unbounded full-table scan. A `truncated` flag in the
+    // response tells callers they should add pagination to get the full set.
+    const MAX_UNBOUNDED_LIMIT = 200;
+    let truncated = false;
     let total: number | undefined = undefined;
+
     if (page && limit) {
       const p = parseInt(page as string);
       if (p === 1) {
@@ -136,18 +142,28 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
 
       const l = parseInt(limit as string);
       query = query.limit(l).offset((p - 1) * l);
+    } else {
+      // No pagination params — apply the hard cap so a large hostel doesn't
+      // cause an OOM or multi-second response. Return at most MAX_UNBOUNDED_LIMIT rows.
+      query = query.limit(MAX_UNBOUNDED_LIMIT + 1); // +1 to detect truncation
     }
 
     const students = await query.orderBy('s.created_at', 'desc');
 
     if (!page || !limit) {
+      // Check if the sentinel row was returned (means more rows exist)
+      if (students.length > MAX_UNBOUNDED_LIMIT) {
+        students.pop(); // remove the sentinel extra row
+        truncated = true;
+      }
       total = students.length;
     }
 
     res.json({
       success: true,
       data: students,
-      ...(total !== undefined ? { total } : {})
+      ...(total !== undefined ? { total } : {}),
+      ...(truncated ? { truncated: true, hint: 'Use ?page=1&limit=N to paginate the full list' } : {}),
     });
   } catch (error: any) {
     console.error('Get students error:', error);
@@ -303,7 +319,9 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
       bed_id,
       bed_number,
       floor_number,
-      monthly_rent
+      monthly_rent,
+      refundable_deposit,
+      is_old_student
     } = req.body;
 
     // Determine hostel_id: Owner always uses their own hostel; Admin/Super Admin
@@ -423,6 +441,8 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
       id_proof_status: typeof id_proof_status === 'number' ? id_proof_status : (id_proof_status === 'Submitted' ? 1 : 0),
       admission_date: convertToDateOnly(admission_date),
       admission_fee: admission_fee || 0,
+      refundable_deposit: refundable_deposit || 0,
+      is_old_student: is_old_student ? 1 : 0,
       admission_status: typeof admission_status === 'number' ? admission_status : (admission_status === 'Paid' ? 1 : 0),
       status: typeof status === 'number' ? status : (status === 'Active' ? 1 : 0),
       room_id: room_id || null,
@@ -592,7 +612,7 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
       'permanent_address', 'present_working_address',
       'id_proof_type', 'id_proof_number', 'id_proof_status',
       'admission_date', 'admission_fee', 'admission_status', 'status', 'floor_number',
-      'vacate_notice_date', 'vacate_notice_reason', 'bed_id'
+      'vacate_notice_date', 'vacate_notice_reason', 'bed_id', 'refundable_deposit', 'is_old_student'
     ];
 
     // Check uniqueness within the same hostel if any identifying fields are being updated
@@ -624,6 +644,8 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
         // Handle date fields - convert ISO datetime strings to date-only format
         if (field === 'admission_date' || field === 'date_of_birth' || field === 'vacate_notice_date') {
           updateData[field] = convertToDateOnly(req.body[field]);
+        } else if (field === 'is_old_student') {
+          updateData[field] = req.body[field] ? 1 : 0;
         } else {
           updateData[field] = req.body[field];
         }
@@ -1175,8 +1197,85 @@ export const submitVacateNotice = async (req: AuthRequest, res: Response) => {
       success: true,
       message: formattedDate ? 'Vacate notice submitted successfully.' : 'Vacate notice cancelled.'
     });
+  } catch (error) {
+    console.error('Submit vacate notice error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to submit vacate notice'
+    });
+  }
+};
+
+export const vacateSettlement = async (req: AuthRequest, res: Response) => {
+  try {
+    const { studentId } = req.params;
+    const { damageDeductions = 0, customDeductionReason = 'Damages' } = req.body;
+    
+    // Begin transaction
+    await db.transaction(async (trx) => {
+      const student = await trx('students').where({ student_id: studentId }).first();
+      if (!student) {
+        throw new Error('Student not found');
+      }
+      
+      // Calculate pending rent dues
+      const pendingDuesQuery = await trx('monthly_fees')
+        .where({ student_id: studentId })
+        .whereIn('fee_status_id', [4, 5]) // Pending, Partial
+        .sum('balance as total_dues')
+        .first();
+        
+      const pendingDues = Number(pendingDuesQuery?.total_dues || 0);
+      const originalDeposit = Number(student.refundable_deposit || 0);
+      
+      const refundAmount = originalDeposit - pendingDues - Number(damageDeductions);
+      
+      // If there are damages, record it as income (Damage Recovery)
+      if (Number(damageDeductions) > 0) {
+        await trx('income').insert({
+          hostel_id: student.hostel_id,
+          amount: Number(damageDeductions),
+          source: `Deposit Deduction (${student.first_name}) - ${customDeductionReason}`,
+          income_date: new Date(),
+          created_at: new Date()
+        });
+      }
+      
+      // Mark student as inactive (vacated), clear deposit, remove from room
+      const oldRoomId = student.room_id;
+      
+      await trx('students')
+        .where({ student_id: studentId })
+        .update({
+          status: 0, // Inactive
+          inactive_date: new Date(),
+          room_id: null, // Remove from room
+          bed_id: null,
+          bed_number: null,
+          refundable_deposit: 0, // Deposit is settled
+          updated_at: new Date()
+        });
+        
+      // Decrement room occupancy
+      if (oldRoomId && (student.status === 1 || student.status === 'Active')) {
+        await trx('rooms')
+          .where({ room_id: oldRoomId })
+          .decrement('occupied_beds', 1);
+      }
+      
+      // We could optionally clear their Pending rent dues here, or leave them as unpaid bad debt.
+      // We will leave them so history is maintained, but the deposit offset the owner's loss.
+    });
+
+    res.json({
+      success: true,
+      message: 'Student vacated and settlement complete.'
+    });
   } catch (error: any) {
-    console.error('Error submitting vacate notice:', error);
-    return res.status(500).json({ success: false, error: 'Failed to submit vacate notice.' });
+    console.error('Vacate settlement error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to process vacate settlement'
+    });
   }
 };

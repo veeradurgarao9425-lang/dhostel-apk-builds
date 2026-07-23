@@ -42,7 +42,8 @@ export const authController = {
       if (!user) {
         return res.status(401).json({
           success: false,
-          error: 'Email is not registered.',
+          // Generic message — do not reveal whether the email exists or the password is wrong
+          error: 'Invalid email or password.',
         });
       }
 
@@ -52,7 +53,7 @@ export const authController = {
       if (!isValidPassword) {
         return res.status(401).json({
           success: false,
-          error: 'Incorrect password.',
+          error: 'Invalid email or password.',
         });
       }
 
@@ -186,7 +187,7 @@ export const authController = {
   // Public self-registration for new hostel owners (sign up from the app)
   async register(req: Request, res: Response) {
     try {
-      const { full_name, email, phone, password, hostel_name, address, total_floors } = req.body;
+      const { full_name, email, phone, password, hostel_name, address, total_floors, admission_fee, default_refundable_deposit } = req.body;
 
       // Validate required fields (all are mandatory now)
       if (!full_name || !password || !email || !phone || !hostel_name || !address || !total_floors) {
@@ -269,15 +270,40 @@ export const authController = {
 
       const password_hash = await hashPassword(password);
 
-      // Create the owner account (role 2 = Hostel Owner)
-      const [user_id] = await db('users').insert({
-        username: resolvedUsername,
-        email: resolvedEmail,
-        phone: phone || null,
-        full_name,
-        password_hash,
-        role_id: 2,
-        is_active: true,
+      // Create user account + hostel atomically — if either insert fails, both roll back.
+      let user_id!: number;
+      let hostel_id: number | null = null;
+
+      await db.transaction(async (trx) => {
+        // Create the owner account (role 2 = Hostel Owner)
+        [user_id] = await trx('users').insert({
+          username: resolvedEmail,
+          email: resolvedEmail,
+          phone: phone || null,
+          full_name,
+          password_hash,
+          role_id: 2,
+          is_active: true,
+        });
+
+        // Optionally create their first hostel and set it as active
+        const trimmedHostelInner = (hostel_name || '').trim();
+        if (trimmedHostelInner.length >= 3) {
+          [hostel_id] = await trx('hostel_master').insert({
+            hostel_name: trimmedHostelInner,
+            hostel_code: crypto.randomBytes(3).toString('hex'),
+            owner_id: user_id,
+            hostel_type_id: 1,
+            subscription_status_id: 1,
+            address: String(address).trim(),
+            total_floors: parseInt(total_floors, 10) || 1,
+            admission_fee: admission_fee ? parseFloat(admission_fee) : 0,
+            default_refundable_deposit: default_refundable_deposit ? parseFloat(default_refundable_deposit) : 0,
+            is_active: 1,
+            created_at: new Date(),
+          });
+          await trx('users').where('user_id', user_id).update({ hostel_id });
+        }
       });
 
       // Email confirmed and consumed — clear any OTP rows for it
@@ -285,25 +311,8 @@ export const authController = {
         try { await db('otps').where('email', email).del(); } catch { /* non-fatal */ }
       }
 
-      // Optionally create their first hostel and set it as active
-      let hostel_id: number | null = null;
-      const trimmedHostel = (hostel_name || '').trim();
-      if (trimmedHostel.length >= 3) {
-        [hostel_id] = await db('hostel_master').insert({
-          hostel_name: trimmedHostel,
-          hostel_code: crypto.randomBytes(3).toString('hex'),
-          owner_id: user_id,
-          hostel_type_id: 1, // 'Boys'
-          subscription_status_id: 1, // 'Trial'
-          address: String(address).trim(),
-          total_floors: parseInt(total_floors, 10) || 1,
-          is_active: 1,
-          created_at: new Date(),
-        });
-        await db('users').where('user_id', user_id).update({ hostel_id });
-      }
-
       // Issue a token so the app can log the user in immediately
+      const trimmedHostel = (hostel_name || '').trim();
       const token = generateToken({
         user_id,
         email: resolvedEmail,
@@ -726,20 +735,16 @@ export const authController = {
         });
       }
 
-      // Master test OTP only works outside production, so it can never be used for a real account takeover.
-      const isMasterOtp = process.env.NODE_ENV !== 'production' && otp === '123456';
-      const isDbOtp = user.password_reset_otp === otp;
-
-      if (!isMasterOtp && !isDbOtp) {
+      // Only accept the OTP that was issued for this account — no master bypass.
+      if (user.password_reset_otp !== otp) {
         return res.status(400).json({
           success: false,
           error: 'Invalid OTP code',
         });
       }
 
-      // Check if OTP has expired (skip check if master OTP)
+      // Check if OTP has expired
       if (
-        !isMasterOtp &&
         user.password_reset_expires_at &&
         new Date(user.password_reset_expires_at) < new Date()
       ) {
@@ -1039,15 +1044,21 @@ export const authController = {
       await db('otps').where('email', identifier).del();
       await db('otps').insert({ email: identifier, otp, expires_at: expiresAt });
 
-      console.log(`[TENANT OTP] ${identifier} -> ${otp}`);
-      // Send OTP via email if it's an email (or integrate SMS later if phone)
-      if (identifier.includes('@')) {
-        try {
-          await sendOtpEmail(identifier, otp);
-        } catch (emailErr: any) {
-          console.error('Failed to send OTP email, but OTP was generated:', emailErr.message);
-          return res.status(500).json({ success: false, error: `Brevo Error: ${emailErr.message}` });
-        }
+      // If identifier is a phone number: SMS OTP is not yet integrated.
+      // Return a clear error instead of silently generating an OTP that
+      // is never delivered, then returning success: true misleadingly.
+      if (!identifier.includes('@')) {
+        return res.status(501).json({
+          success: false,
+          error: 'SMS OTP delivery is not supported yet. Please use your email address to log in.'
+        });
+      }
+
+      try {
+        await sendOtpEmail(identifier, otp);
+      } catch (emailErr: any) {
+        console.error('Failed to send OTP email, but OTP was generated:', emailErr.message);
+        return res.status(500).json({ success: false, error: `Failed to send OTP email: ${emailErr.message}` });
       }
 
       return res.json({ 

@@ -87,6 +87,7 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
         pincode: '',
         total_floors: '',
         admission_fee: '',
+        default_refundable_deposit: '',
     });
     const [hostelType, setHostelType] = useState('Boys');
 
@@ -102,13 +103,14 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
                 pincode: editHostel.pincode ? String(editHostel.pincode) : '',
                 total_floors: editHostel.total_floors ? String(editHostel.total_floors) : '',
                 admission_fee: editHostel.admission_fee ? String(editHostel.admission_fee) : '',
+                default_refundable_deposit: editHostel.default_refundable_deposit ? String(editHostel.default_refundable_deposit) : '',
             });
             setHostelType(editHostel.hostel_type || 'Boys');
         }
     }, [isEdit, editHostel]);
 
     const validateForm = () => {
-        const { hostel_name, address, city, state, pincode, total_floors, admission_fee } = formData;
+        const { hostel_name, address, city, state, pincode, total_floors, admission_fee, default_refundable_deposit } = formData;
         const errs: Record<string, string> = {};
 
         if (!hostel_name || hostel_name.trim().length < 3)
@@ -138,7 +140,13 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
         if (!admission_fee || admission_fee.trim().length === 0) {
             errs.admission_fee = 'Admission fee is required';
         } else if (isNaN(Number(admission_fee)) || Number(admission_fee) < 0) {
-            errs.admission_fee = 'Admission fee must be 0 or more';
+            errs.admission_fee = 'Joining fee must be 0 or more';
+        }
+
+        if (!default_refundable_deposit || default_refundable_deposit.trim().length === 0) {
+            errs.default_refundable_deposit = 'Refundable deposit is required';
+        } else if (isNaN(Number(default_refundable_deposit)) || Number(default_refundable_deposit) < 0) {
+            errs.default_refundable_deposit = 'Refundable deposit must be 0 or more';
         }
 
         setFieldErrors(errs);
@@ -154,7 +162,7 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
             });
             return;
         }
-        const { hostel_name, address, city, state, pincode, total_floors, admission_fee } = formData;
+        const { hostel_name, address, city, state, pincode, total_floors, admission_fee, default_refundable_deposit } = formData;
 
         setLoading(true);
         try {
@@ -169,6 +177,7 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
                     hostel_type: hostelType,
                     total_floors: total_floors ? parseInt(total_floors) : 1,
                     admission_fee: admission_fee ? parseFloat(admission_fee) : 0,
+                    default_refundable_deposit: default_refundable_deposit ? parseFloat(default_refundable_deposit) : 0,
                     owner_id: editHostel.owner_id || user?.user_id,
                 });
             } else {
@@ -181,6 +190,7 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
                     hostel_type: hostelType,
                     total_floors: total_floors ? parseInt(total_floors) : 1,
                     admission_fee: admission_fee ? parseFloat(admission_fee) : 0,
+                    default_refundable_deposit: default_refundable_deposit ? parseFloat(default_refundable_deposit) : 0,
                     owner_id: user?.user_id,
                 });
             }
@@ -243,6 +253,7 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
             pincode: '',
             total_floors: '',
             admission_fee: '',
+            default_refundable_deposit: '',
         });
         setHostelType('Boys');
         setFieldErrors({});
@@ -421,7 +432,7 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
                     </View>
 
                     <InputField
-                        label="Admission Fee (₹) *"
+                        label="Default Joining Fee (Non-Refundable) *"
                         placeholder="e.g. 1000"
                         keyboardType="numeric"
                         value={formData.admission_fee}
@@ -430,6 +441,24 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
                             const num = text.replace(/[^0-9.]/g, '');
                             setFormData({ ...formData, admission_fee: num });
                             if (fieldErrors.admission_fee) setFieldErrors(prev => { const e = {...prev}; delete e.admission_fee; return e; });
+                        }}
+                        onFocus={() => {
+                            setTimeout(() => {
+                                scrollViewRef.current?.scrollToEnd({ animated: true });
+                            }, 150);
+                        }}
+                    />
+
+                    <InputField
+                        label="Default Refundable Deposit *"
+                        placeholder="e.g. 2000"
+                        keyboardType="numeric"
+                        value={formData.default_refundable_deposit}
+                        error={fieldErrors.default_refundable_deposit}
+                        onChangeText={(text) => {
+                            const num = text.replace(/[^0-9.]/g, '');
+                            setFormData({ ...formData, default_refundable_deposit: num });
+                            if (fieldErrors.default_refundable_deposit) setFieldErrors(prev => { const e = {...prev}; delete e.default_refundable_deposit; return e; });
                         }}
                         onFocus={() => {
                             setTimeout(() => {

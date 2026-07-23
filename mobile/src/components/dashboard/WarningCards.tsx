@@ -61,7 +61,7 @@ export const WarningCards = ({ data }: WarningCardsProps) => {
             color: '#D97706',
             bg: isDark ? 'rgba(217,119,6,0.15)' : '#FFFBEB',
             border: isDark ? 'rgba(217,119,6,0.35)' : '#FDE68A',
-            onPress: () => navigation.navigate('Students', { filterAdmissionPending: true }),
+            onPress: () => navigation.navigate('Students', { filter: 'AdmissionPending' }),
         });
     }
 

@@ -100,6 +100,7 @@ export const getAllIncome = async (req: AuthRequest, res: Response) => {
           's.last_name'
         )
         .where('s.admission_fee', '>', 0)
+        .where('s.is_old_student', 0)
         .whereNotNull('s.room_id')
         .where('s.status', 1)
         .where(function() {
@@ -526,6 +527,7 @@ export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
     // 2.7 Fetch Admission payments
     let admissionQuery = db('students as s')
       .where('s.admission_fee', '>', 0)
+      .where('s.is_old_student', 0)
       .where(function() {
         this.where('s.admission_status', 1)
           .orWhere('s.admission_status', 'Paid');
@@ -742,6 +744,7 @@ export const getIncomeExport = async (req: AuthRequest, res: Response) => {
     // Fetch Admission Payments
     let admissionQuery = db('students as s')
       .where('s.admission_fee', '>', 0)
+      .where('s.is_old_student', 0)
       .where(function() {
         this.where('s.admission_status', 1)
           .orWhere('s.admission_status', 'Paid');
@@ -945,6 +948,7 @@ export const emailIncomeExport = async (req: AuthRequest, res: Response) => {
     // Fetch Admission Payments
     let admissionQuery = db('students as s')
       .where('s.admission_fee', '>', 0)
+      .where('s.is_old_student', 0)
       .where(function() {
         this.where('s.admission_status', 1).orWhere('s.admission_status', 'Paid');
       });

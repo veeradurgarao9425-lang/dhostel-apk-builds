@@ -1,5 +1,5 @@
 import express from 'express';
-import { authMiddleware } from '../middleware/auth.js';
+import { authMiddleware, isOwnerOrAdmin } from '../middleware/auth.js';
 import { requireActiveSubscription } from '../middleware/subscriptionAuth.js';
 import {
   getGuests,
@@ -12,7 +12,7 @@ import {
 
 const router = express.Router();
 
-router.use(authMiddleware, requireActiveSubscription);
+router.use(authMiddleware, requireActiveSubscription, isOwnerOrAdmin);
 
 router.get('/check-unique', checkUnique);
 router.get('/', getGuests);

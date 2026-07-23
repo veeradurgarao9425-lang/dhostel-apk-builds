@@ -1,14 +1,14 @@
 import { Router } from 'express';
-import { authMiddleware } from '../middleware/auth.js';
+import { authMiddleware, isOwnerOrAdmin, isTenantOnly } from '../middleware/auth.js';
 import { requireActiveSubscription } from '../middleware/subscriptionAuth.js';
 import { submitRating, getHostelRatings, getMyRating, getRatingAnalytics } from '../controllers/ratingController.js';
 
 const router = Router();
 router.use(authMiddleware, requireActiveSubscription);
 
-router.post('/', submitRating);
-router.get('/my', getMyRating);
-router.get('/hostel/:hostelId', getHostelRatings);
-router.get('/analytics/:hostelId', getRatingAnalytics);
+router.post('/', isTenantOnly, submitRating);
+router.get('/my', isTenantOnly, getMyRating);
+router.get('/hostel/:hostelId', isOwnerOrAdmin, getHostelRatings);
+router.get('/analytics/:hostelId', isOwnerOrAdmin, getRatingAnalytics);
 
 export default router;

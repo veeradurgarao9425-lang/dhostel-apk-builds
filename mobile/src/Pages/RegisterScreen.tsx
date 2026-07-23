@@ -31,6 +31,8 @@ export default function RegisterScreen({ navigation }: any) {
     const [hostelName, setHostelName] = useState('');
     const [floors, setFloors] = useState('');
     const [address, setAddress] = useState('');
+    const [admissionFee, setAdmissionFee] = useState('');
+    const [defaultDeposit, setDefaultDeposit] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -228,6 +230,8 @@ export default function RegisterScreen({ navigation }: any) {
         const trimmedHostelName = hostelName.trim();
         const trimmedFloors = floors.trim();
         const trimmedAddress = address.trim();
+        const trimmedFee = admissionFee.trim();
+        const trimmedDeposit = defaultDeposit.trim();
 
         // Mark all fields as touched
         const allTouched = {
@@ -281,6 +285,8 @@ export default function RegisterScreen({ navigation }: any) {
                 hostel_name: trimmedHostelName,
                 total_floors: trimmedFloors,
                 address: trimmedAddress,
+                admission_fee: trimmedFee,
+                default_refundable_deposit: trimmedDeposit,
             } as any);
             if (!error) {
                 navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
@@ -583,6 +589,34 @@ export default function RegisterScreen({ navigation }: any) {
                             validateField('address', t);
                             clearErr();
                         }}
+                    />
+                </Field>
+
+                {/* Joining Fee */}
+                <Field label="Joining Fee (Non-Refundable)" error={getFieldError('admissionFee', admissionFee)}>
+                    <Ionicons name="card-outline" size={18} color="#7C3AED" style={styles.icon} />
+                    <TextInput
+                        style={styles.input}
+                        placeholder="e.g. 1000"
+                        placeholderTextColor="#B8B8B8"
+                        keyboardType="numeric"
+                        value={admissionFee}
+                        returnKeyType="next"
+                        onChangeText={(t) => { setAdmissionFee(t.replace(/\D/g, '')); clearErr(); }}
+                    />
+                </Field>
+
+                {/* Refundable Deposit */}
+                <Field label="Default Refundable Deposit" error={getFieldError('defaultDeposit', defaultDeposit)}>
+                    <Ionicons name="cash-outline" size={18} color="#7C3AED" style={styles.icon} />
+                    <TextInput
+                        style={styles.input}
+                        placeholder="e.g. 5000"
+                        placeholderTextColor="#B8B8B8"
+                        keyboardType="numeric"
+                        value={defaultDeposit}
+                        returnKeyType="next"
+                        onChangeText={(t) => { setDefaultDeposit(t.replace(/\D/g, '')); clearErr(); }}
                     />
                 </Field>
 

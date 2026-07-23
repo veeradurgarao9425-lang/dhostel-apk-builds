@@ -52,6 +52,46 @@ export const isAdmin = (
   next();
 };
 
+/**
+ * Blocks tenants (role_id=3) from owner/admin endpoints.
+ * Super-admins (role 1) and owners (role 2) pass through.
+ * Use on any route that should never be accessible by a tenant.
+ */
+export const isOwnerOrAdmin = (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  const roleId = req.user?.role_id;
+  if (roleId === 3) {
+    return res.status(403).json({
+      success: false,
+      error: 'Access denied. This endpoint is restricted to hostel owners.',
+    });
+  }
+  next();
+};
+
+/**
+ * Restricts an endpoint to tenants only (role_id=3).
+ * Owners (role 2) and admins (role 1) are blocked.
+ * Use on endpoints that write data scoped to a specific tenant's student_id.
+ */
+export const isTenantOnly = (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  const roleId = req.user?.role_id;
+  if (roleId !== 3) {
+    return res.status(403).json({
+      success: false,
+      error: 'Access denied. This endpoint is for tenants only.',
+    });
+  }
+  next();
+};
+
 export const queryTokenMiddleware = (
   req: AuthRequest,
   res: Response,

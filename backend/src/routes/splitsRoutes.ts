@@ -1,10 +1,10 @@
 import { Router } from 'express';
-import { authMiddleware } from '../middleware/auth.js';
+import { authMiddleware, isTenantOnly } from '../middleware/auth.js';
 import { requireActiveSubscription } from '../middleware/subscriptionAuth.js';
 import { getSplitsState, addMember, removeMember, addExpense, removeExpense, settleAll } from '../controllers/splitsController.js';
 
 const router = Router();
-router.use(authMiddleware, requireActiveSubscription);
+router.use(authMiddleware, requireActiveSubscription, isTenantOnly);
 
 router.get('/', getSplitsState);
 router.post('/members', addMember);

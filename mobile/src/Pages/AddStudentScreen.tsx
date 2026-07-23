@@ -17,6 +17,7 @@ import {
     ActivityIndicator,
     Keyboard,
     Pressable,
+    Switch,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -593,6 +594,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
         admission_date: new Date().toISOString().split('T')[0],
         admission_fee: '', admission_status: 'Paid', permanent_address: '', present_working_address: '',
         room_id: '', bed_id: '', floor_number: '', monthly_rent: '',
+        refundable_deposit: '', is_old_student: false,
     });
 
     const [idProofTypes, setIdProofTypes] = useState<any[]>([]);
@@ -779,6 +781,8 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 bed_id: student.bed_id ? student.bed_id.toString() : '',
                 floor_number: student.floor_number ? student.floor_number.toString() : '',
                 monthly_rent: student.monthly_rent ? student.monthly_rent.toString() : '',
+                refundable_deposit: student.refundable_deposit ? student.refundable_deposit.toString() : '',
+                is_old_student: student.is_old_student === 1,
             });
             if (student.photo) setProfilePhoto(student.photo);
         }
@@ -822,12 +826,15 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
             if (hostelRes && hostelRes.data?.success) {
                 const hostelData = hostelRes.data.data;
                 let defaultFee = hostelData?.admission_fee ? hostelData.admission_fee.toString() : '';
+                let defaultDeposit = hostelData?.default_refundable_deposit ? hostelData.default_refundable_deposit.toString() : '';
                 if (parseFloat(defaultFee) === 0) defaultFee = '';
+                if (parseFloat(defaultDeposit) === 0) defaultDeposit = '';
                 
                 if (!isEdit) {
                     setFormData(p => ({
                         ...p,
-                        admission_fee: defaultFee
+                        admission_fee: defaultFee,
+                        refundable_deposit: defaultDeposit
                     }));
                 }
             }
@@ -917,8 +924,11 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
         if (!formData.admission_date) {
             e.admission_date = 'Admission date is required';
         }
-        if (formData.admission_fee && parseFloat(formData.admission_fee) < 0) {
-            e.admission_fee = 'Admission fee cannot be negative';
+        if (formData.admission_date && formData.admission_fee && parseFloat(formData.admission_fee) < 0) {
+            e.admission_fee = 'Joining fee cannot be negative';
+        }
+        if (formData.refundable_deposit && parseFloat(formData.refundable_deposit) < 0) {
+            e.refundable_deposit = 'Refundable deposit cannot be negative';
         }
         if (!formData.present_working_address || !formData.present_working_address.trim()) {
             e.present_working_address = 'Present address is required';
@@ -1021,6 +1031,8 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 guardian_relation: formData.guardian_relation_id || null,
                 id_proof_status: 1,
                 monthly_rent: parseFloat(formData.monthly_rent || '0'),
+                refundable_deposit: parseFloat(formData.refundable_deposit || '0'),
+                is_old_student: formData.is_old_student ? 1 : 0,
             };
             const res = isEdit ? await api.put(`/students/${student.student_id}`, payload) : await api.post('/students', payload);
             if (res.data.success) {
@@ -1287,6 +1299,25 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 {/* ── Admission ── */}
                 <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
                     <SectionHeader number={4} title="Admission Details" />
+                    
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, paddingVertical: 8, paddingHorizontal: 4, backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderRadius: 8 }}>
+                        <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 14, fontWeight: '600', color: theme.textPrimary, marginBottom: 4 }}>Old / Legacy Student</Text>
+                            <Text style={{ fontSize: 11, color: theme.textSecondary }}>Turn this on if they already paid fees before using the app.</Text>
+                        </View>
+                        <Switch
+                            value={formData.is_old_student}
+                            onValueChange={(val) => up('is_old_student', val)}
+                            trackColor={{ false: '#CBD5E1', true: theme.primary }}
+                        />
+                    </View>
+                    
+                    {formData.is_old_student && (
+                        <View style={{ backgroundColor: '#FEF2F2', padding: 12, borderRadius: 8, marginBottom: 12 }}>
+                            <Text style={{ color: '#DC2626', fontSize: 12, fontWeight: '500' }}>Note: Joining Fee for old students will NOT be counted in this month's Income Reports.</Text>
+                        </View>
+                    )}
+
                     <SelectField 
                         label="Admission Date *" 
                         icon={Calendar} 
@@ -1298,8 +1329,21 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                             setShowDatePicker(true); 
                         }} 
                     />
-                    <FormInput label="Admission Fee (₹) *" icon={CreditCard} placeholder="0" keyboardType="numeric" value={formData.admission_fee} editable={!isAdmissionPaid} onChangeText={(t: string) => up('admission_fee', t.replace(/\D/g, ''))} />
-                    <Selector label="Payment Status" options={['Paid', 'Unpaid']} selected={formData.admission_status} disabled={isAdmissionPaid} onSelect={(v: string) => up('admission_status', v)} />
+                    
+                    {formData.is_old_student ? (
+                        <View style={{ marginBottom: 12 }}>
+                            <Text style={{ fontSize: 12, color: theme.textSecondary, marginBottom: 4 }}>
+                                Enter the deposit amount they paid previously, so they can get it back when vacating.
+                            </Text>
+                            <FormInput label="Refundable Deposit" icon={CreditCard} placeholder="0" keyboardType="numeric" value={formData.refundable_deposit} editable={!isAdmissionPaid} onChangeText={(t: string) => up('refundable_deposit', t.replace(/\D/g, ''))} error={getFieldError('refundable_deposit')} />
+                        </View>
+                    ) : (
+                        <>
+                            <FormInput label="Joining Fee (Non-Refundable) *" icon={CreditCard} placeholder="0" keyboardType="numeric" value={formData.admission_fee} editable={!isAdmissionPaid} onChangeText={(t: string) => up('admission_fee', t.replace(/\D/g, ''))} error={getFieldError('admission_fee')} />
+                            <FormInput label="Refundable Deposit *" icon={CreditCard} placeholder="0" keyboardType="numeric" value={formData.refundable_deposit} editable={!isAdmissionPaid} onChangeText={(t: string) => up('refundable_deposit', t.replace(/\D/g, ''))} error={getFieldError('refundable_deposit')} />
+                            <Selector label="Payment Status" options={['Paid', 'Unpaid']} selected={formData.admission_status} disabled={isAdmissionPaid} onSelect={(v: string) => up('admission_status', v)} />
+                        </>
+                    )}
                 </View>
 
                 {/* ── Room & Bed ── */}
