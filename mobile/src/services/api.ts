@@ -61,15 +61,19 @@ api.interceptors.response.use(
     }
 
 
-    // Auto-retry once on network failure (not on 4xx/5xx)
+    // Auto-retry up to 2 times on network failure or timeout (Render server cold-start)
     const config = error.config as any;
+    const isNetworkOrTimeout = !error.response || error.code === 'ECONNABORTED';
+    
     if (
-      !error.response &&
-      !config._retried &&
+      isNetworkOrTimeout &&
+      (config._retryCount || 0) < 2 &&
       config.method?.toLowerCase() === 'get'
     ) {
-      config._retried = true;
-      await new Promise((r) => setTimeout(r, 1500));
+      config._retryCount = (config._retryCount || 0) + 1;
+      // Progressive delay to allow Render server to spin up
+      const delay = config._retryCount * 2500;
+      await new Promise((r) => setTimeout(r, delay));
       return api(config);
     }
 
