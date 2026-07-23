@@ -87,8 +87,8 @@ export default function RoleSelectScreen({ navigation }: any) {
             <LinearGradient
               colors={
                 activeRole === 'OWNER'
-                  ? ['#1E1B4B', '#312E81']
-                  : ['#FFFFFF', '#FAF5FF', '#F5F3FF']
+                  ? ['#F5F3FF', '#EEF2FF']
+                  : ['#FFFFFF', '#FAF5FF']
               }
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -100,150 +100,49 @@ export default function RoleSelectScreen({ navigation }: any) {
             >
               {/* Top Banner Tag */}
               <View style={styles.cardHeader}>
-                <View
-                  style={[
-                    styles.iconBox,
-                    {
-                      backgroundColor:
-                        activeRole === 'OWNER' ? 'rgba(255, 255, 255, 0.15)' : '#EEF2FF',
-                    },
-                  ]}
-                >
-                  <Ionicons
-                    name="business-sharp"
-                    size={18}
-                    color={activeRole === 'OWNER' ? '#A5B4FC' : '#6366F1'}
-                  />
+                <View style={styles.iconAndBadgeRow}>
+                  <View style={[styles.iconBox, { backgroundColor: '#EEF2FF' }]}>
+                    <Ionicons name="business-sharp" size={18} color="#6366F1" />
+                  </View>
+                  <View style={[styles.badgePill, { backgroundColor: '#EEF2FF' }]}>
+                    <Text style={[styles.badgePillText, { color: '#4F46E5' }]}>
+                      OWNER / ADMIN
+                    </Text>
+                  </View>
                 </View>
-                <View
-                  style={[
-                    styles.badgePill,
-                    {
-                      backgroundColor:
-                        activeRole === 'OWNER' ? 'rgba(99, 102, 241, 0.3)' : '#EEF2FF',
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.badgePillText,
-                      { color: activeRole === 'OWNER' ? '#C7D2FE' : '#4F46E5' },
-                    ]}
-                  >
-                    OWNER / ADMIN
-                  </Text>
-                </View>
+
+                {activeRole === 'OWNER' && (
+                  <Ionicons name="checkmark-circle" size={20} color="#6366F1" />
+                )}
               </View>
 
               {/* Title & Subtitle */}
-              <Text
-                style={[
-                  styles.cardTitle,
-                  { color: activeRole === 'OWNER' ? '#FFFFFF' : '#0F172A' },
-                ]}
-              >
-                PG & Hostel Owner
-              </Text>
-              <Text
-                style={[
-                  styles.cardDesc,
-                  { color: activeRole === 'OWNER' ? '#C7D2FE' : '#64748B' },
-                ]}
-              >
+              <Text style={styles.cardTitle}>PG & Hostel Owner</Text>
+              <Text style={styles.cardDesc}>
                 Property management, tenant allocation, digital KYC, and automated rent collection.
               </Text>
 
               {/* Feature Pills */}
               <View style={styles.featuresRow}>
-                <View
-                  style={[
-                    styles.featureChip,
-                    {
-                      backgroundColor:
-                        activeRole === 'OWNER' ? 'rgba(255, 255, 255, 0.1)' : '#F1F5F9',
-                    },
-                  ]}
-                >
-                  <Ionicons
-                    name="pie-chart-sharp"
-                    size={10}
-                    color={activeRole === 'OWNER' ? '#A5B4FC' : '#6366F1'}
-                  />
-                  <Text
-                    style={[
-                      styles.featureChipText,
-                      { color: activeRole === 'OWNER' ? '#E0E7FF' : '#334155' },
-                    ]}
-                  >
-                    Analytics
-                  </Text>
+                <View style={styles.featureChip}>
+                  <Ionicons name="pie-chart-sharp" size={10} color="#6366F1" />
+                  <Text style={styles.featureChipText}>Analytics</Text>
                 </View>
 
-                <View
-                  style={[
-                    styles.featureChip,
-                    {
-                      backgroundColor:
-                        activeRole === 'OWNER' ? 'rgba(255, 255, 255, 0.1)' : '#F1F5F9',
-                    },
-                  ]}
-                >
-                  <Ionicons
-                    name="people-sharp"
-                    size={10}
-                    color={activeRole === 'OWNER' ? '#A5B4FC' : '#6366F1'}
-                  />
-                  <Text
-                    style={[
-                      styles.featureChipText,
-                      { color: activeRole === 'OWNER' ? '#E0E7FF' : '#334155' },
-                    ]}
-                  >
-                    Tenants
-                  </Text>
+                <View style={styles.featureChip}>
+                  <Ionicons name="people-sharp" size={10} color="#6366F1" />
+                  <Text style={styles.featureChipText}>Tenants</Text>
                 </View>
 
-                <View
-                  style={[
-                    styles.featureChip,
-                    {
-                      backgroundColor:
-                        activeRole === 'OWNER' ? 'rgba(255, 255, 255, 0.1)' : '#F1F5F9',
-                    },
-                  ]}
-                >
-                  <Ionicons
-                    name="shield-checkmark-sharp"
-                    size={10}
-                    color={activeRole === 'OWNER' ? '#A5B4FC' : '#6366F1'}
-                  />
-                  <Text
-                    style={[
-                      styles.featureChipText,
-                      { color: activeRole === 'OWNER' ? '#E0E7FF' : '#334155' },
-                    ]}
-                  >
-                    Expenses
-                  </Text>
+                <View style={styles.featureChip}>
+                  <Ionicons name="shield-checkmark-sharp" size={10} color="#6366F1" />
+                  <Text style={styles.featureChipText}>Expenses</Text>
                 </View>
               </View>
 
               {/* Action Button */}
-              <View
-                style={[
-                  styles.actionRow,
-                  {
-                    borderTopColor:
-                      activeRole === 'OWNER' ? 'rgba(255, 255, 255, 0.12)' : '#E2E8F0',
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.actionText,
-                    { color: activeRole === 'OWNER' ? '#818CF8' : '#6366F1' },
-                  ]}
-                >
+              <View style={styles.actionRow}>
+                <Text style={[styles.actionText, { color: '#6366F1' }]}>
                   Continue as Owner
                 </Text>
                 <LinearGradient
@@ -265,8 +164,8 @@ export default function RoleSelectScreen({ navigation }: any) {
             <LinearGradient
               colors={
                 activeRole === 'TENANT'
-                  ? ['#064E3B', '#047857']
-                  : ['#FFFFFF', '#F0FDF4', '#ECFDF5']
+                  ? ['#ECFDF5', '#E6F4EA']
+                  : ['#FFFFFF', '#F0FDF4']
               }
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -278,150 +177,49 @@ export default function RoleSelectScreen({ navigation }: any) {
             >
               {/* Top Banner Tag */}
               <View style={styles.cardHeader}>
-                <View
-                  style={[
-                    styles.iconBox,
-                    {
-                      backgroundColor:
-                        activeRole === 'TENANT' ? 'rgba(255, 255, 255, 0.15)' : '#ECFDF5',
-                    },
-                  ]}
-                >
-                  <Ionicons
-                    name="person-sharp"
-                    size={18}
-                    color={activeRole === 'TENANT' ? '#6EE7B7' : '#10B981'}
-                  />
+                <View style={styles.iconAndBadgeRow}>
+                  <View style={[styles.iconBox, { backgroundColor: '#ECFDF5' }]}>
+                    <Ionicons name="person-sharp" size={18} color="#10B981" />
+                  </View>
+                  <View style={[styles.badgePill, { backgroundColor: '#ECFDF5' }]}>
+                    <Text style={[styles.badgePillText, { color: '#059669' }]}>
+                      TENANT / RESIDENT
+                    </Text>
+                  </View>
                 </View>
-                <View
-                  style={[
-                    styles.badgePill,
-                    {
-                      backgroundColor:
-                        activeRole === 'TENANT' ? 'rgba(16, 185, 129, 0.3)' : '#ECFDF5',
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.badgePillText,
-                      { color: activeRole === 'TENANT' ? '#A7F3D0' : '#059669' },
-                    ]}
-                  >
-                    TENANT / RESIDENT
-                  </Text>
-                </View>
+
+                {activeRole === 'TENANT' && (
+                  <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                )}
               </View>
 
               {/* Title & Subtitle */}
-              <Text
-                style={[
-                  styles.cardTitle,
-                  { color: activeRole === 'TENANT' ? '#FFFFFF' : '#0F172A' },
-                ]}
-              >
-                Tenant & Student
-              </Text>
-              <Text
-                style={[
-                  styles.cardDesc,
-                  { color: activeRole === 'TENANT' ? '#A7F3D0' : '#64748B' },
-                ]}
-              >
+              <Text style={styles.cardTitle}>Tenant & Student</Text>
+              <Text style={styles.cardDesc}>
                 Online rent payments, digital receipts, meal schedules, and complaint tracking.
               </Text>
 
               {/* Feature Chips */}
               <View style={styles.featuresRow}>
-                <View
-                  style={[
-                    styles.featureChip,
-                    {
-                      backgroundColor:
-                        activeRole === 'TENANT' ? 'rgba(255, 255, 255, 0.1)' : '#F1F5F9',
-                    },
-                  ]}
-                >
-                  <Ionicons
-                    name="card-sharp"
-                    size={10}
-                    color={activeRole === 'TENANT' ? '#6EE7B7' : '#10B981'}
-                  />
-                  <Text
-                    style={[
-                      styles.featureChipText,
-                      { color: activeRole === 'TENANT' ? '#D1FAE5' : '#334155' },
-                    ]}
-                  >
-                    1-Tap Pay
-                  </Text>
+                <View style={styles.featureChip}>
+                  <Ionicons name="card-sharp" size={10} color="#10B981" />
+                  <Text style={styles.featureChipText}>1-Tap Pay</Text>
                 </View>
 
-                <View
-                  style={[
-                    styles.featureChip,
-                    {
-                      backgroundColor:
-                        activeRole === 'TENANT' ? 'rgba(255, 255, 255, 0.1)' : '#F1F5F9',
-                    },
-                  ]}
-                >
-                  <MaterialCommunityIcons
-                    name="food-fork-drink"
-                    size={10}
-                    color={activeRole === 'TENANT' ? '#6EE7B7' : '#10B981'}
-                  />
-                  <Text
-                    style={[
-                      styles.featureChipText,
-                      { color: activeRole === 'TENANT' ? '#D1FAE5' : '#334155' },
-                    ]}
-                  >
-                    Mess Menu
-                  </Text>
+                <View style={styles.featureChip}>
+                  <MaterialCommunityIcons name="food-fork-drink" size={10} color="#10B981" />
+                  <Text style={styles.featureChipText}>Mess Menu</Text>
                 </View>
 
-                <View
-                  style={[
-                    styles.featureChip,
-                    {
-                      backgroundColor:
-                        activeRole === 'TENANT' ? 'rgba(255, 255, 255, 0.1)' : '#F1F5F9',
-                    },
-                  ]}
-                >
-                  <Ionicons
-                    name="construct-sharp"
-                    size={10}
-                    color={activeRole === 'TENANT' ? '#6EE7B7' : '#10B981'}
-                  />
-                  <Text
-                    style={[
-                      styles.featureChipText,
-                      { color: activeRole === 'TENANT' ? '#D1FAE5' : '#334155' },
-                    ]}
-                  >
-                    Support & Dues
-                  </Text>
+                <View style={styles.featureChip}>
+                  <Ionicons name="construct-sharp" size={10} color="#10B981" />
+                  <Text style={styles.featureChipText}>Support & Dues</Text>
                 </View>
               </View>
 
               {/* Action Button */}
-              <View
-                style={[
-                  styles.actionRow,
-                  {
-                    borderTopColor:
-                      activeRole === 'TENANT' ? 'rgba(255, 255, 255, 0.12)' : '#E2E8F0',
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.actionText,
-                    { color: activeRole === 'TENANT' ? '#34D399' : '#10B981' },
-                  ]}
-                >
+              <View style={styles.actionRow}>
+                <Text style={[styles.actionText, { color: '#10B981' }]}>
                   Continue as Resident
                 </Text>
                 <LinearGradient
@@ -563,15 +361,17 @@ const styles = StyleSheet.create({
   },
   cardActiveOwner: {
     borderColor: '#6366F1',
+    borderWidth: 2,
     shadowColor: '#6366F1',
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.18,
     shadowRadius: 12,
     elevation: 6,
   },
   cardActiveTenant: {
     borderColor: '#10B981',
+    borderWidth: 2,
     shadowColor: '#10B981',
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.18,
     shadowRadius: 12,
     elevation: 6,
   },
@@ -580,6 +380,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
+  },
+  iconAndBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   iconBox: {
     width: 36,
@@ -601,12 +406,14 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 16,
     fontWeight: '800',
+    color: '#0F172A',
     marginBottom: 2,
     letterSpacing: -0.2,
   },
   cardDesc: {
     fontSize: 11,
     fontWeight: '400',
+    color: '#64748B',
     lineHeight: 16,
     marginBottom: 10,
   },
@@ -620,6 +427,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    backgroundColor: '#F1F5F9',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
@@ -627,6 +435,7 @@ const styles = StyleSheet.create({
   featureChipText: {
     fontSize: 10,
     fontWeight: '600',
+    color: '#334155',
   },
   actionRow: {
     flexDirection: 'row',
@@ -634,6 +443,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 10,
     borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
   },
   actionText: {
     fontSize: 13,
