@@ -17,22 +17,23 @@ import { toLocalDateStr } from '../utils/dateUtils';
 
 const todayStr = () => toLocalDateStr(new Date());
 
-export default function AddGuestScreen({ navigation }: any) {
+export default function AddGuestScreen({ route, navigation }: any) {
+    const { guest, isEdit } = route.params || {};
     const { theme, isDark } = useTheme();
     const insets = useSafeAreaInsets();
 
     const [form, setForm] = useState({
-        full_name: '',
-        phone: '',
-        email: '',
-        id_proof_type_id: '',
-        id_proof_number: '',
-        check_in_date: todayStr(),
-        days: '1',
-        per_day_amount: '',
-        amount_paid: '',
-        room_number: '',
-        purpose: '',
+        full_name: guest?.full_name || '',
+        phone: guest?.phone || '',
+        email: guest?.email || '',
+        id_proof_type_id: guest?.id_proof_type_id?.toString() || '',
+        id_proof_number: guest?.id_proof_number || '',
+        check_in_date: guest?.check_in_date ? toLocalDateStr(new Date(guest.check_in_date)) : todayStr(),
+        days: guest?.days?.toString() || '1',
+        per_day_amount: guest?.per_day_amount?.toString() || '',
+        amount_paid: guest?.amount_paid?.toString() || '',
+        room_number: guest?.room_number || '',
+        purpose: guest?.purpose || '',
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [showDatePicker, setShowDatePicker] = useState(false);
@@ -143,6 +144,7 @@ export default function AddGuestScreen({ navigation }: any) {
                     ...(field === 'phone' ? { phone: value.trim() } : {}),
                     ...(field === 'email' ? { email: value.trim() } : {}),
                     ...(field === 'id_proof_number' ? { id_proof_number: value.trim() } : {}),
+                    ...(isEdit && guest?.id ? { guestId: guest.id } : {})
                 }
             });
             if (res.data?.success) {
@@ -182,7 +184,7 @@ export default function AddGuestScreen({ navigation }: any) {
         }
         setLoading(true);
         try {
-            const res = await api.post('/guests', {
+            const payload = {
                 full_name: form.full_name.trim(),
                 phone: form.phone.trim() || null,
                 email: form.email.trim() || null,
@@ -193,7 +195,14 @@ export default function AddGuestScreen({ navigation }: any) {
                 amount_paid: form.amount_paid ? parseFloat(form.amount_paid) : 0,
                 room_number: form.room_number.trim() || null,
                 purpose: form.purpose.trim() || null,
-            });
+            };
+            
+            let res;
+            if (isEdit && guest?.id) {
+                res = await api.put(`/guests/${guest.id}`, payload);
+            } else {
+                res = await api.post('/guests', payload);
+            }
             if (res.data?.success) {
                 Toast.show({ type: 'success', text1: 'Saved', text2: 'Guest recorded successfully!' });
                 navigation.goBack();
@@ -228,7 +237,12 @@ export default function AddGuestScreen({ navigation }: any) {
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             keyboardVerticalOffset={0}
         >
-            <AppHeader title="Add Guest" showBack />
+            <AppHeader 
+                alignLeft={true} 
+                title={isEdit ? "Edit Guest" : "Add Guest"} 
+                subtitle="Enter details for short-stay or daily visitors"
+                showBack 
+            />
             <FullScreenLoader visible={loading} />
 
             <ScrollView

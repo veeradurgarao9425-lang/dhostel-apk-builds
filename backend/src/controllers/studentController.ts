@@ -212,7 +212,7 @@ export const getStudentStats = async (req: AuthRequest, res: Response) => {
         db.raw('sum(case when status = 2 then 1 else 0 end) as prebooked'),
         db.raw('sum(case when status = 3 then 1 else 0 end) as qr_register'),
         db.raw('sum(case when status = 1 and room_id is null then 1 else 0 end) as unallocated'),
-        db.raw('sum(case when admission_status = 0 and status in (1, 2) then 1 else 0 end) as pendingAdmissions')
+        db.raw('sum(case when admission_status = 0 and status in (1, 2, 3) then 1 else 0 end) as pendingAdmissions')
       )
       .first() as any;
 
@@ -1231,12 +1231,41 @@ export const vacateSettlement = async (req: AuthRequest, res: Response) => {
       const refundAmount = originalDeposit - pendingDues - Number(damageDeductions);
       
       // If there are damages, record it as income (Damage Recovery)
+      // If there are damages, record it as income (Damage Recovery)
       if (Number(damageDeductions) > 0) {
         await trx('income').insert({
           hostel_id: student.hostel_id,
           amount: Number(damageDeductions),
           source: `Deposit Deduction (${student.first_name}) - ${customDeductionReason}`,
           income_date: new Date(),
+          created_at: new Date()
+        });
+      }
+
+      // If there is a refund to be given back to the student, record it as an expense automatically
+      if (refundAmount > 0) {
+        let refundCat = await trx('expense_categories').where({ category_name: 'Deposit Refunds' }).first();
+        if (!refundCat) {
+          // Fallback if category_name column name is different
+          refundCat = await trx('expense_categories').where({ name: 'Deposit Refunds' }).first().catch(() => null);
+        }
+        
+        let categoryId = refundCat?.category_id || refundCat?.id;
+        
+        if (!categoryId) {
+          // We will just insert it without category, or create a category if possible
+          // In some schemas it is 'category_name', in others 'name'. Let's use a safe raw insert or default to 1 (usually 'Others').
+          categoryId = 1; // Fallback category (e.g., General or Others)
+        }
+
+        await trx('expenses').insert({
+          hostel_id: student.hostel_id,
+          category_id: categoryId,
+          expense_date: new Date(),
+          amount: refundAmount,
+          payment_mode_id: 1, // Defaulting to Cash
+          vendor_name: student.first_name,
+          description: `Refunded Deposit to ${student.first_name} on vacate`,
           created_at: new Date()
         });
       }

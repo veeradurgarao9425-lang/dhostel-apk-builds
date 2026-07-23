@@ -363,6 +363,7 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
             <AppHeader
                 title={isEdit ? 'Edit Room' : 'Add New Room'}
                 subtitle="Add the room details and amenities"
+                alignLeft={true}
             />
             <FullScreenLoader visible={loading} />
 

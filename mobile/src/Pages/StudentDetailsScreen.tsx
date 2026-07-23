@@ -14,7 +14,9 @@ import {
     StatusBar,
     InteractionManager,
     Switch,
-    Animated
+    Animated,
+    KeyboardAvoidingView,
+    Platform
 } from 'react-native';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
@@ -810,13 +812,21 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                 </View>
                                 {statusLoading ? (
                                     <ActivityIndicator size="small" color={theme.primary} />
+                                ) : student.status === 1 ? (
+                                    <TouchableOpacity
+                                        style={{ backgroundColor: '#DC2626', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 }}
+                                        onPress={handleToggleStatus}
+                                        activeOpacity={0.8}
+                                    >
+                                        <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '700' }}>Vacate & Settle</Text>
+                                    </TouchableOpacity>
                                 ) : (
                                     <TouchableOpacity
                                         style={[
                                             styles.actionCardButton,
                                             {
-                                                backgroundColor: student.status === 2 ? '#E6F9F3' : student.status === 3 ? '#E0F2FE' : student.status === 1 ? '#FFEBEE' : '#E6F9F3',
-                                                borderColor: student.status === 2 ? '#E6F9F3' : student.status === 3 ? '#E0F2FE' : student.status === 1 ? '#FFEBEE' : '#E6F9F3',
+                                                backgroundColor: student.status === 2 ? '#E6F9F3' : student.status === 3 ? '#E0F2FE' : '#E6F9F3',
+                                                borderColor: student.status === 2 ? '#E6F9F3' : student.status === 3 ? '#E0F2FE' : '#E6F9F3',
                                             }
                                         ]}
                                         onPress={handleToggleStatus}
@@ -824,9 +834,9 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                     >
                                         <Text style={[
                                             styles.actionCardButtonText,
-                                            { color: student.status === 2 ? '#00B074' : student.status === 3 ? '#0EA5E9' : student.status === 1 ? '#E53935' : '#00B074' }
+                                            { color: student.status === 2 ? '#00B074' : student.status === 3 ? '#0EA5E9' : '#00B074' }
                                         ]}>
-                                            {student.status === 2 ? 'Check In' : student.status === 3 ? 'Approve' : student.status === 1 ? 'Deactivate' : 'Activate'}
+                                            {student.status === 2 ? 'Check In' : student.status === 3 ? 'Approve' : 'Activate'}
                                         </Text>
                                     </TouchableOpacity>
                                 )}
@@ -868,6 +878,18 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                         </Text>
                                     </TouchableOpacity>
                                 </View>
+                                
+                                {student.vacate_notice_date && (
+                                    <View style={{ marginTop: 8, alignItems: 'flex-end' }}>
+                                        <TouchableOpacity 
+                                            style={{ paddingHorizontal: 12, paddingVertical: 6 }}
+                                            onPress={handleClearVacancyNotice}
+                                            activeOpacity={0.7}
+                                        >
+                                            <Text style={{ color: '#EF4444', fontWeight: '600', fontSize: 13 }}>Cancel Notice</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
                             </Card>
                         )}
 
@@ -888,25 +910,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                             </Card>
                         )}
 
-                        {/* ── Vacancy Notice Banner (Only show if date set and NOT in Info tab check to avoid overlap) ── */}
-                        {student.vacate_notice_date && (
-                            <Card style={styles.noticeCard}>
-                                <View style={styles.noticeHeader}>
-                                    <View style={styles.noticeInfo}>
-                                        <Text style={styles.noticeTitle}>⚠️ Vacate Date Scheduled</Text>
-                                        <Text style={styles.noticeText}>
-                                            Leaving on: <Text style={{ fontWeight: '700' }}>{new Date(student.vacate_notice_date).toLocaleDateString()}</Text>
-                                        </Text>
-                                        {student.vacate_notice_reason ? (
-                                            <Text style={styles.noticeReason}>Reason: {student.vacate_notice_reason}</Text>
-                                        ) : null}
-                                    </View>
-                                    <TouchableOpacity style={styles.noticeCancelBtn} onPress={handleClearVacancyNotice} activeOpacity={0.75}>
-                                        <Text style={styles.noticeCancelText}>Cancel Notice</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </Card>
-                        )}
+
 
                         {/* ── Tab Switcher (animated pill) ── */}
                         <View style={[styles.tabContainer, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
@@ -1322,7 +1326,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
             >
                 <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
                     <View style={styles.modalHeader}>
-                        <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>Vacate Settlement</Text>
+                        <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>Vacate & Settle</Text>
                         <TouchableOpacity onPress={() => !vacateLoading && setVacateModalVisible(false)}>
                             <X size={24} color="#666" />
                         </TouchableOpacity>
@@ -1377,7 +1381,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                             {vacateLoading ? (
                                 <ActivityIndicator color="#FFF" />
                             ) : (
-                                <Text style={styles.modalSubmitBtnText}>Confirm Vacate</Text>
+                                <Text style={styles.modalSubmitBtnText}>Settle & Vacate</Text>
                             )}
                         </TouchableOpacity>
                     </ScrollView>

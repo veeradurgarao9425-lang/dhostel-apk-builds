@@ -26,7 +26,7 @@ export default function BillRemindersScreen() {
     const [error, setError] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [search, setSearch] = useState('');
-    const [activeTab, setActiveTab] = useState<'Due' | 'Overdue'>('Due');
+    const [activeTab, setActiveTab] = useState<'All' | 'Overdue' | 'Next 7 Days'>('All');
     const [filterDate, setFilterDate] = useState<Date | null>(null);
     const [showMonthPicker, setShowMonthPicker] = useState(false);
 
@@ -58,6 +58,10 @@ export default function BillRemindersScreen() {
                         const due = total - paid;
                         const dueDateObj = f.due_date ? new Date(f.due_date) : new Date();
                         const isOverdue = dueDateObj.getTime() < now.getTime();
+                        
+                        const next7 = new Date(now);
+                        next7.setDate(now.getDate() + 7);
+                        const isNext7Days = dueDateObj.getTime() >= now.getTime() && dueDateObj.getTime() <= next7.getTime();
 
                         // Format due date to DD-MM-YYYY
                         const formattedDueDate = f.due_date 
@@ -97,13 +101,17 @@ export default function BillRemindersScreen() {
 
     // ── Search filtering & Tabs ─────────────────────────────────────────────────────
     const filteredBase = filterDate ? tenants.filter(t => t.dueObj.getMonth() === filterDate.getMonth() && t.dueObj.getFullYear() === filterDate.getFullYear()) : tenants;
-    const dueCount = filteredBase.filter(t => !t.isOverdue).length;
+    const allCount = filteredBase.length;
     const overdueCount = filteredBase.filter(t => t.isOverdue).length;
+    const next7Count = filteredBase.filter(t => t.isNext7Days).length;
 
     const filteredTenants = useMemo(() => {
         const q = search.toLowerCase().trim();
         return tenants.filter(t => {
-            const matchesTab = activeTab === 'Overdue' ? t.isOverdue : !t.isOverdue;
+            let matchesTab = true;
+            if (activeTab === 'Overdue') matchesTab = t.isOverdue;
+            if (activeTab === 'Next 7 Days') matchesTab = t.isNext7Days;
+            
             const matchesSearch = t.name.toLowerCase().includes(q) || t.room.toLowerCase().includes(q);
             const matchesDate = filterDate ? (t.dueObj.getMonth() === filterDate.getMonth() && t.dueObj.getFullYear() === filterDate.getFullYear()) : true;
             return matchesTab && matchesSearch && matchesDate;
@@ -235,28 +243,44 @@ export default function BillRemindersScreen() {
             </View>
 
             {/* Tabs */}
-            <View style={s.tabsContainer}>
-                <TouchableOpacity 
-                    style={[s.tabButton, activeTab === 'Due' && s.tabButtonActive]}
-                    onPress={() => setActiveTab('Due')}
-                    activeOpacity={0.8}
-                >
-                    <Text style={[s.tabText, activeTab === 'Due' && s.tabTextActive]}>Due</Text>
-                    <View style={[s.tabBadge, activeTab === 'Due' && s.tabBadgeActive]}>
-                        <Text style={[s.tabBadgeText, activeTab === 'Due' && s.tabBadgeTextActive]}>{dueCount}</Text>
-                    </View>
-                </TouchableOpacity>
+            <View style={{ paddingHorizontal: 16, marginBottom: 8 }}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                    {/* All Tab */}
+                    <TouchableOpacity 
+                        style={[s.tabButton, activeTab === 'All' && s.tabButtonActive]}
+                        onPress={() => setActiveTab('All')}
+                        activeOpacity={0.8}
+                    >
+                        <Text style={[s.tabText, activeTab === 'All' && s.tabTextActive]}>All</Text>
+                        <View style={[s.tabBadge, activeTab === 'All' && s.tabBadgeActive]}>
+                            <Text style={[s.tabBadgeText, activeTab === 'All' && s.tabBadgeTextActive]}>{allCount}</Text>
+                        </View>
+                    </TouchableOpacity>
 
-                <TouchableOpacity 
-                    style={[s.tabButton, activeTab === 'Overdue' && s.tabButtonActive, activeTab === 'Overdue' && { backgroundColor: '#FEE2E2', borderColor: '#FEE2E2' }]}
-                    onPress={() => setActiveTab('Overdue')}
-                    activeOpacity={0.8}
-                >
-                    <Text style={[s.tabText, activeTab === 'Overdue' && { color: '#DC2626' }]}>Overdue</Text>
-                    <View style={[s.tabBadge, activeTab === 'Overdue' && { backgroundColor: '#DC2626' }]}>
-                        <Text style={[s.tabBadgeText, activeTab === 'Overdue' && { color: '#FFFFFF' }]}>{overdueCount}</Text>
-                    </View>
-                </TouchableOpacity>
+                    {/* Overdue Tab */}
+                    <TouchableOpacity 
+                        style={[s.tabButton, activeTab === 'Overdue' && s.tabButtonActive, activeTab === 'Overdue' && { backgroundColor: '#FEE2E2', borderColor: '#FEE2E2' }]}
+                        onPress={() => setActiveTab('Overdue')}
+                        activeOpacity={0.8}
+                    >
+                        <Text style={[s.tabText, activeTab === 'Overdue' && { color: '#DC2626' }]}>Overdue</Text>
+                        <View style={[s.tabBadge, activeTab === 'Overdue' && { backgroundColor: '#DC2626' }]}>
+                            <Text style={[s.tabBadgeText, activeTab === 'Overdue' && { color: '#FFFFFF' }]}>{overdueCount}</Text>
+                        </View>
+                    </TouchableOpacity>
+
+                    {/* Next 7 Days Tab */}
+                    <TouchableOpacity 
+                        style={[s.tabButton, activeTab === 'Next 7 Days' && s.tabButtonActive, activeTab === 'Next 7 Days' && { backgroundColor: '#FEF3C7', borderColor: '#FEF3C7' }]}
+                        onPress={() => setActiveTab('Next 7 Days')}
+                        activeOpacity={0.8}
+                    >
+                        <Text style={[s.tabText, activeTab === 'Next 7 Days' && { color: '#D97706' }]}>Next 7 Days</Text>
+                        <View style={[s.tabBadge, activeTab === 'Next 7 Days' && { backgroundColor: '#D97706' }]}>
+                            <Text style={[s.tabBadgeText, activeTab === 'Next 7 Days' && { color: '#FFFFFF' }]}>{next7Count}</Text>
+                        </View>
+                    </TouchableOpacity>
+                </ScrollView>
             </View>
 
             {/* Tip Banner */}

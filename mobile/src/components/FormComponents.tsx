@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, Animated, Pressable, FlatList } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, Animated, Pressable, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
 import { ChevronDown, Check } from 'lucide-react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -77,10 +77,11 @@ export const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: an
     if (!shouldRender) return null;
     return (
         <Modal transparent visible={visible || shouldRender} animationType="none" statusBarTranslucent onRequestClose={onClose}>
-            <View style={{ flex: 1 }}>
-                <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(15, 23, 42, 0.6)', opacity }]}>
-                    <Pressable style={{ flex: 1 }} onPress={onClose} />
-                </Animated.View>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+                <View style={{ flex: 1 }}>
+                    <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(15, 23, 42, 0.6)', opacity }]}>
+                        <Pressable style={{ flex: 1 }} onPress={onClose} />
+                    </Animated.View>
                 <Animated.View style={[
                     styles.sheet,
                     { 
@@ -92,7 +93,8 @@ export const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: an
                     <View style={styles.sheetHandle} />
                     {children}
                 </Animated.View>
-            </View>
+                </View>
+            </KeyboardAvoidingView>
         </Modal>
     );
 };

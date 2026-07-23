@@ -101,7 +101,7 @@ const CustomAlertModal = ({ visible, title, message, onClose, primaryAction, sec
                     </View>
                     <Text style={{ fontSize: fontSize + 2, fontWeight: '800', color: theme.textPrimary, marginBottom: 12, textAlign: 'center' }}>{title}</Text>
                     <Text style={{ fontSize: fontSize, color: theme.textSecondary, textAlign: 'center', marginBottom: 28, lineHeight: 22, fontWeight: '700' }}>{message}</Text>
-                    
+
                     {primaryAction || secondaryAction ? (
                         <View style={{ flexDirection: 'row', gap: 12, width: '100%' }}>
                             {secondaryAction && (
@@ -204,25 +204,25 @@ const Selector = ({ label, options, selected, onSelect, disabled = false }: any)
     return (
         <View style={styles.inputGroup}>
             <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }]}>{renderLabel(label)}</Text>
-            <View 
+            <View
                 style={[
-                    styles.selectorContainer, 
-                    { 
-                        backgroundColor: isDark ? '#1E293B' : '#F1F5F9', 
-                        borderColor: isDark ? '#334155' : '#E2E8F0' 
+                    styles.selectorContainer,
+                    {
+                        backgroundColor: isDark ? '#1E293B' : '#F1F5F9',
+                        borderColor: isDark ? '#334155' : '#E2E8F0'
                     },
                     disabled && { opacity: 0.6 }
                 ]}
                 onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
             >
                 {itemWidth > 0 && (
-                    <Animated.View 
+                    <Animated.View
                         style={[
-                            styles.selectorPill, 
-                            { 
-                                width: itemWidth, 
+                            styles.selectorPill,
+                            {
+                                width: itemWidth,
                                 backgroundColor: theme.primary,
-                                transform: [{ translateX }] 
+                                transform: [{ translateX }]
                             }
                         ]}
                     />
@@ -236,9 +236,9 @@ const Selector = ({ label, options, selected, onSelect, disabled = false }: any)
                             onPress={() => !disabled && onSelect(opt)}
                             activeOpacity={0.8}
                         >
-                            <Text 
+                            <Text
                                 style={[
-                                    styles.selectorTabText, 
+                                    styles.selectorTabText,
                                     { fontSize: fontSize, color: isAct ? '#FFF' : theme.textSecondary },
                                     isAct && { fontWeight: '800' }
                                 ]}
@@ -320,7 +320,7 @@ const ImageSourceDrawer = ({ visible, onClose, onSelectCamera, onSelectGallery, 
                 </TouchableOpacity>
             </View>
             <View style={{ padding: 24, paddingBottom: Math.max(insets.bottom, 24) + 20, gap: 16, flexDirection: 'row', justifyContent: 'space-around' }}>
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={[styles.sourceOptionBtn, { backgroundColor: isDark ? '#1E293B' : '#F3EEFF', borderColor: theme.primary }]}
                     onPress={() => { onSelectCamera(); onClose(); }}
                     activeOpacity={0.75}
@@ -331,7 +331,7 @@ const ImageSourceDrawer = ({ visible, onClose, onSelectCamera, onSelectGallery, 
                     <Text style={[styles.sourceOptionText, { color: theme.textPrimary, fontSize }]}>Use Camera</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={[styles.sourceOptionBtn, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
                     onPress={() => { onSelectGallery(); onClose(); }}
                     activeOpacity={0.75}
@@ -418,7 +418,7 @@ const DocumentUploadBox = ({ label, uri, onCapture, onRemove, isFront, error }: 
                             <Text style={styles.docBoxSubtitle}>JPG, PNG or PDF{"\n"}Max. 5MB</Text>
                         </View>
 
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={[styles.docUploadBtn, { borderColor: error ? '#EF4444' : theme.primary }]}
                             onPress={() => setPickerVisible(true)}
                             activeOpacity={0.7}
@@ -431,14 +431,14 @@ const DocumentUploadBox = ({ label, uri, onCapture, onRemove, isFront, error }: 
                 {error && <Text style={{ color: '#EF4444', fontSize: 9, marginTop: 4, fontWeight: '600', textAlign: 'center' }}>{error}</Text>}
             </View>
 
-            <ImageSourceDrawer 
+            <ImageSourceDrawer
                 visible={pickerVisible}
                 onClose={() => setPickerVisible(false)}
                 onSelectCamera={onSelectCamera}
                 onSelectGallery={onSelectGallery}
                 title={`Upload ${label}`}
             />
-            <CustomAlertModal 
+            <CustomAlertModal
                 visible={permError.visible}
                 title={permError.title}
                 message={permError.message}
@@ -448,13 +448,13 @@ const DocumentUploadBox = ({ label, uri, onCapture, onRemove, isFront, error }: 
     );
 };
 
-const IdentityUploadCard = ({ 
-    title, 
-    frontUri, 
-    backUri, 
-    onCaptureFront, 
-    onCaptureBack, 
-    onRemoveFront, 
+const IdentityUploadCard = ({
+    title,
+    frontUri,
+    backUri,
+    onCaptureFront,
+    onCaptureBack,
+    onRemoveFront,
     onRemoveBack,
     frontError,
     backError
@@ -478,20 +478,20 @@ const IdentityUploadCard = ({
             </View>
 
             <View style={styles.idUploadBoxesRow}>
-                <DocumentUploadBox 
-                    label="Front Side" 
-                    uri={frontUri} 
-                    onCapture={onCaptureFront} 
-                    onRemove={onRemoveFront} 
-                    isFront={true} 
+                <DocumentUploadBox
+                    label="Front Side"
+                    uri={frontUri}
+                    onCapture={onCaptureFront}
+                    onRemove={onRemoveFront}
+                    isFront={true}
                     error={frontError}
                 />
-                <DocumentUploadBox 
-                    label="Back Side" 
-                    uri={backUri} 
-                    onCapture={onCaptureBack} 
-                    onRemove={onRemoveBack} 
-                    isFront={false} 
+                <DocumentUploadBox
+                    label="Back Side"
+                    uri={backUri}
+                    onCapture={onCaptureBack}
+                    onRemove={onRemoveBack}
+                    isFront={false}
                     error={backError}
                 />
             </View>
@@ -546,12 +546,12 @@ const ProfilePhotoCapture = ({ uri, onCapture, onRemove, error }: any) => {
                     </View>
                 )}
             </TouchableOpacity>
-            
+
             <View style={styles.profileDetailsContainer}>
                 <Text style={[styles.profilePhotoTitle, { color: theme.textPrimary, fontSize: fontSize + 1 }]}>Add Profile Photo</Text>
                 <Text style={[styles.profilePhotoSubtitle, { color: theme.textSecondary }]}>Upload a clear photo of the tenant</Text>
                 {error && <Text style={{ color: '#EF4444', fontSize: 11, fontWeight: '600', marginBottom: 8 }}>{error}</Text>}
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={[styles.profileUploadBtn, { borderColor: error ? '#EF4444' : theme.primary }]}
                     onPress={openGallery}
                     activeOpacity={0.7}
@@ -561,7 +561,7 @@ const ProfilePhotoCapture = ({ uri, onCapture, onRemove, error }: any) => {
                 </TouchableOpacity>
             </View>
 
-            <CustomAlertModal 
+            <CustomAlertModal
                 visible={permError.visible}
                 title={permError.title}
                 message={permError.message}
@@ -698,7 +698,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
     const markTouched = (name: string) => {
         setTouched(prev => ({ ...prev, [name]: true }));
         const currentErr = validateField(name, formData[name as keyof typeof formData]);
-        
+
         if (!currentErr) {
             if (name === 'phone') checkUnique('phone', formData.phone);
             if (name === 'email') checkUnique('email', formData.email);
@@ -801,7 +801,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
             if (roomsRes.data.success) {
                 const roomsData = roomsRes.data.data;
                 setAvailableRooms(roomsData);
-                
+
                 // If roomId was passed in params or refreshPayload, pre-select it and fetch its beds
                 const activeRoomId = paramsRoomId || refreshPayload?.lastCreatedRoomId;
                 if (activeRoomId) {
@@ -829,7 +829,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 let defaultDeposit = hostelData?.default_refundable_deposit ? hostelData.default_refundable_deposit.toString() : '';
                 if (parseFloat(defaultFee) === 0) defaultFee = '';
                 if (parseFloat(defaultDeposit) === 0) defaultDeposit = '';
-                
+
                 if (!isEdit) {
                     setFormData(p => ({
                         ...p,
@@ -847,9 +847,9 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
         const cap = room?.total_capacity ?? room?.capacity ?? 4;
         const occupiedList = room?.occupied_beds_list || [];
         const bedLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-        
+
         const bedsData = Array.from({ length: Number(cap) }, (_, i) => {
-            const bedNumber = bedLetters[i] || `Bed ${i+1}`;
+            const bedNumber = bedLetters[i] || `Bed ${i + 1}`;
             const isOccupied = occupiedList.includes(bedNumber);
             return {
                 bed_id: bedNumber,
@@ -864,7 +864,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
 
     const validate = () => {
         const e: Record<string, string> = {};
-        
+
         // Touch all validated fields
         const allTouched = {
             first_name: true,
@@ -925,7 +925,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
             e.admission_date = 'Admission date is required';
         }
         if (formData.admission_date && formData.admission_fee && parseFloat(formData.admission_fee) < 0) {
-            e.admission_fee = 'Joining fee cannot be negative';
+            e.admission_fee = 'Admission fee cannot be negative';
         }
         if (formData.refundable_deposit && parseFloat(formData.refundable_deposit) < 0) {
             e.refundable_deposit = 'Refundable deposit cannot be negative';
@@ -972,8 +972,8 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 title: 'Admission Fee Not Updated',
                 message: 'Admission fee is empty or zero. You can update it later. Proceed?',
                 icon: Info,
-                primaryAction: { label: 'Yes, proceed', onPress: () => { setPageAlert({visible: false}); executeSave(); } },
-                secondaryAction: { label: 'Wait', onPress: () => setPageAlert({visible: false}) }
+                primaryAction: { label: 'Yes, proceed', onPress: () => { setPageAlert({ visible: false }); executeSave(); } },
+                secondaryAction: { label: 'Wait', onPress: () => setPageAlert({ visible: false }) }
             });
             return;
         }
@@ -986,7 +986,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 icon: AlertTriangle,
                 primaryAction: {
                     label: 'Go Back & Change',
-                    onPress: () => setPageAlert({visible: false})
+                    onPress: () => setPageAlert({ visible: false })
                 }
             });
             return;
@@ -1087,8 +1087,8 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
         >
             <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-            <AppHeader 
-                title={quickAllocate ? 'Approve Tenant' : (isEdit ? 'Edit Tenant' : 'Add Tenant')} 
+            <AppHeader
+                title={quickAllocate ? 'Approve Tenant' : (isEdit ? 'Edit Tenant' : 'Add Tenant')}
                 subtitle="Note: Please ensure the name matches the ID proof exactly."
                 alignLeft={true}
             />
@@ -1132,99 +1132,99 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 )}
 
                 {/* ── Profile Photo ── */}
-                <ProfilePhotoCapture 
-                    uri={profilePhoto} 
+                <ProfilePhotoCapture
+                    uri={profilePhoto}
                     onCapture={(uri: string) => {
                         setProfilePhoto(uri);
                         setTouched(prev => ({ ...prev, profilePhoto: true }));
                         validateField('profilePhoto', uri);
-                    }} 
+                    }}
                     onRemove={() => {
                         setProfilePhoto(null);
                         setTouched(prev => ({ ...prev, profilePhoto: true }));
                         validateField('profilePhoto', null);
-                    }} 
+                    }}
                     error={getFieldError('profilePhoto')}
                 />
 
                 {/* ── Basic Info ── */}
                 <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
                     <SectionHeader number={1} title="Basic Information" />
-                    <FormInput 
-                        label="First Name *" 
-                        icon={User} 
-                        placeholder="e.g. Ravi" 
-                        value={formData.first_name} 
+                    <FormInput
+                        label="First Name *"
+                        icon={User}
+                        placeholder="e.g. Ravi"
+                        value={formData.first_name}
                         error={getFieldError('first_name')}
                         onBlur={() => markTouched('first_name')}
-                        onChangeText={(t: string) => { 
+                        onChangeText={(t: string) => {
                             const clean = t.replace(/[^a-zA-Z0-9\s]/g, '');
-                            up('first_name', clean); 
+                            up('first_name', clean);
                             validateField('first_name', clean);
-                        }} 
+                        }}
                     />
                     <FormInput label="Last Name" icon={User} placeholder="e.g. Kumar" value={formData.last_name} onChangeText={(t: string) => up('last_name', t.replace(/[^a-zA-Z0-9\s]/g, ''))} />
                     <Selector label="Gender *" options={['Male', 'Female', 'Other']} selected={formData.gender} onSelect={(v: string) => up('gender', v)} />
-                    <SelectField 
-                        label="Date of Birth *" 
-                        icon={Calendar} 
-                        placeholder="Pick date" 
-                        value={formData.date_of_birth} 
+                    <SelectField
+                        label="Date of Birth *"
+                        icon={Calendar}
+                        placeholder="Pick date"
+                        value={formData.date_of_birth}
                         error={getFieldError('date_of_birth')}
-                        onPress={() => { 
-                            setDateMode('dob'); 
-                            setShowDatePicker(true); 
-                        }} 
+                        onPress={() => {
+                            setDateMode('dob');
+                            setShowDatePicker(true);
+                        }}
                     />
-                    <FormInput 
-                        label="Mobile Number *" 
-                        icon={Phone} 
-                        placeholder="9876543210" 
-                        keyboardType="phone-pad" 
-                        value={formData.phone} 
+                    <FormInput
+                        label="Mobile Number *"
+                        icon={Phone}
+                        placeholder="9876543210"
+                        keyboardType="phone-pad"
+                        value={formData.phone}
                         error={getFieldError('phone')}
                         onBlur={() => markTouched('phone')}
-                        onChangeText={(t: string) => { 
-                            const c = t.replace(/\D/g, '').slice(0, 10); 
-                            up('phone', c); 
-                            validateField('phone', c); 
-                        }} 
+                        onChangeText={(t: string) => {
+                            const c = t.replace(/\D/g, '').slice(0, 10);
+                            up('phone', c);
+                            validateField('phone', c);
+                        }}
                     />
-                    <FormInput 
-                        label="Email" 
-                        icon={Mail} 
-                        placeholder="tenant@email.com" 
-                        keyboardType="email-address" 
-                        value={formData.email} 
+                    <FormInput
+                        label="Email"
+                        icon={Mail}
+                        placeholder="tenant@email.com"
+                        keyboardType="email-address"
+                        value={formData.email}
                         error={getFieldError('email')}
                         onBlur={() => markTouched('email')}
                         onChangeText={(t: string) => {
                             const clean = t.trim();
                             up('email', clean);
                             validateField('email', clean);
-                        }} 
+                        }}
                     />
                 </View>
 
                 {/* ── Identity & Aadhaar ── */}
                 <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
                     <SectionHeader number={2} title="Identity & Documents" />
-                    <SelectField 
-                        label="ID Proof Type *" 
-                        value={idProofTypes.find(t => t.id.toString() === formData.id_proof_type_id)?.name} 
-                        placeholder="Select ID Type" 
-                        icon={Fingerprint} 
+                    <SelectField
+                        label="ID Proof Type *"
+                        value={idProofTypes.find(t => t.id.toString() === formData.id_proof_type_id)?.name}
+                        placeholder="Select ID Type"
+                        icon={Fingerprint}
                         error={getFieldError('id_proof_type_id')}
-                        onPress={() => setProofModal(true)} 
+                        onPress={() => setProofModal(true)}
                     />
                     {formData.id_proof_type_id ? (
                         <FormInput
                             label={`${cleanIdLabel} Number *`}
                             icon={CreditCard}
-                            placeholder={(selectedIdProofName.toLowerCase().includes('aadhar') || selectedIdProofName.toLowerCase().includes('aadhaar')) 
-                                ? '12-digit Aadhaar number' 
-                                : selectedIdProofName.toLowerCase().includes('pan') 
-                                    ? '10-character PAN number' 
+                            placeholder={(selectedIdProofName.toLowerCase().includes('aadhar') || selectedIdProofName.toLowerCase().includes('aadhaar'))
+                                ? '12-digit Aadhaar number'
+                                : selectedIdProofName.toLowerCase().includes('pan')
+                                    ? '10-character PAN number'
                                     : 'Enter ID number'}
                             value={formData.id_proof_number}
                             keyboardType={(selectedIdProofName.toLowerCase().includes('aadhar') || selectedIdProofName.toLowerCase().includes('aadhaar')) ? 'number-pad' : 'default'}
@@ -1280,26 +1280,26 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                     <SectionHeader number={3} title="Guardian (Optional)" />
                     <SelectField label="Relation" value={relations.find(r => r.relation_id.toString() === formData.guardian_relation_id)?.relation_name} placeholder="Relation" icon={Users} onPress={() => setRelationModal(true)} />
                     <FormInput label="Guardian Name" icon={User} placeholder="Parent / Guardian" value={formData.guardian_name} onChangeText={(t: string) => up('guardian_name', t.replace(/[^a-zA-Z0-9\s]/g, ''))} />
-                    <FormInput 
-                        label="Guardian Phone" 
-                        icon={Phone} 
-                        placeholder="9876543211" 
-                        keyboardType="phone-pad" 
-                        value={formData.guardian_phone} 
+                    <FormInput
+                        label="Guardian Phone"
+                        icon={Phone}
+                        placeholder="9876543211"
+                        keyboardType="phone-pad"
+                        value={formData.guardian_phone}
                         error={getFieldError('guardian_phone')}
                         onBlur={() => markTouched('guardian_phone')}
-                        onChangeText={(t: string) => { 
-                            const c = t.replace(/\D/g, '').slice(0, 10); 
-                            up('guardian_phone', c); 
-                            validateField('guardian_phone', c); 
-                        }} 
+                        onChangeText={(t: string) => {
+                            const c = t.replace(/\D/g, '').slice(0, 10);
+                            up('guardian_phone', c);
+                            validateField('guardian_phone', c);
+                        }}
                     />
                 </View>
 
                 {/* ── Admission ── */}
                 <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
                     <SectionHeader number={4} title="Admission Details" />
-                    
+
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, paddingVertical: 8, paddingHorizontal: 4, backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderRadius: 8 }}>
                         <View style={{ flex: 1 }}>
                             <Text style={{ fontSize: 14, fontWeight: '600', color: theme.textPrimary, marginBottom: 4 }}>Old / Legacy Student</Text>
@@ -1311,25 +1311,25 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                             trackColor={{ false: '#CBD5E1', true: theme.primary }}
                         />
                     </View>
-                    
+
                     {formData.is_old_student && (
                         <View style={{ backgroundColor: '#FEF2F2', padding: 12, borderRadius: 8, marginBottom: 12 }}>
                             <Text style={{ color: '#DC2626', fontSize: 12, fontWeight: '500' }}>Note: Joining Fee for old students will NOT be counted in this month's Income Reports.</Text>
                         </View>
                     )}
 
-                    <SelectField 
-                        label="Admission Date *" 
-                        icon={Calendar} 
-                        placeholder="Pick date" 
-                        value={formData.admission_date} 
-                        error={getFieldError('admission_date')} 
-                        onPress={() => { 
-                            setDateMode('admission'); 
-                            setShowDatePicker(true); 
-                        }} 
+                    <SelectField
+                        label="Admission Date *"
+                        icon={Calendar}
+                        placeholder="Pick date"
+                        value={formData.admission_date}
+                        error={getFieldError('admission_date')}
+                        onPress={() => {
+                            setDateMode('admission');
+                            setShowDatePicker(true);
+                        }}
                     />
-                    
+
                     {formData.is_old_student ? (
                         <View style={{ marginBottom: 12 }}>
                             <Text style={{ fontSize: 12, color: theme.textSecondary, marginBottom: 4 }}>
@@ -1339,8 +1339,10 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                         </View>
                     ) : (
                         <>
-                            <FormInput label="Joining Fee (Non-Refundable) *" icon={CreditCard} placeholder="0" keyboardType="numeric" value={formData.admission_fee} editable={!isAdmissionPaid} onChangeText={(t: string) => up('admission_fee', t.replace(/\D/g, ''))} error={getFieldError('admission_fee')} />
-                            <FormInput label="Refundable Deposit *" icon={CreditCard} placeholder="0" keyboardType="numeric" value={formData.refundable_deposit} editable={!isAdmissionPaid} onChangeText={(t: string) => up('refundable_deposit', t.replace(/\D/g, ''))} error={getFieldError('refundable_deposit')} />
+                            <FormInput label="Admission Fee (Non-Refundable) *" icon={CreditCard} placeholder="0" keyboardType="numeric" value={formData.admission_fee} editable={!isAdmissionPaid} onChangeText={(t: string) => up('admission_fee', t.replace(/\D/g, ''))} error={getFieldError('admission_fee')} />
+                            {isEdit && (
+                                <FormInput label="Refundable Deposit *" icon={CreditCard} placeholder="0" keyboardType="numeric" value={formData.refundable_deposit} editable={!isAdmissionPaid} onChangeText={(t: string) => up('refundable_deposit', t.replace(/\D/g, ''))} error={getFieldError('refundable_deposit')} />
+                            )}
                             <Selector label="Payment Status" options={['Paid', 'Unpaid']} selected={formData.admission_status} disabled={isAdmissionPaid} onSelect={(v: string) => up('admission_status', v)} />
                         </>
                     )}
@@ -1456,7 +1458,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
 
             {/* ── Drawers ── */}
             <OptionsDrawer visible={genderModal} title="Select Gender" data={['Male', 'Female', 'Other']} selectedId={formData.gender} keyExtractor={(i: string) => i} labelExtractor={(i: string) => i} onSelect={(i: string) => up('gender', i)} onClose={() => setGenderModal(false)} />
-            <OptionsDrawer visible={proofModal} title="ID Proof Type" data={idProofTypes} selectedId={formData.id_proof_type_id} keyExtractor={(i: any) => i.id.toString()} labelExtractor={(i: any) => i.name} 
+            <OptionsDrawer visible={proofModal} title="ID Proof Type" data={idProofTypes} selectedId={formData.id_proof_type_id} keyExtractor={(i: any) => i.id.toString()} labelExtractor={(i: any) => i.name}
                 searchable={true}
                 onCustomAdd={async (customName: string) => {
                     try {
@@ -1482,7 +1484,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                     setTouched(prev => ({ ...prev, id_proof_type_id: true }));
                     validateField('id_proof_type_id', newId);
                     validateField('id_proof_number', formData.id_proof_number, newId);
-                    
+
                     const proofTypeName = i.name || '';
                     const isPhotoReq = proofTypeName.toLowerCase().includes('aadhar') || proofTypeName.toLowerCase().includes('aadhaar') || proofTypeName.toLowerCase().includes('pan');
                     if (isPhotoReq) {
@@ -1496,7 +1498,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                             return copy;
                         });
                     }
-                }} 
+                }}
                 onClose={() => setProofModal(false)} />
             <OptionsDrawer visible={relationModal} title="Relation" data={relations} selectedId={formData.guardian_relation_id} keyExtractor={(i: any) => i.relation_id.toString()} labelExtractor={(i: any) => i.relation_name} onSelect={(i: any) => up('guardian_relation_id', i.relation_id.toString())} onClose={() => setRelationModal(false)} />
 
@@ -1510,15 +1512,15 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
 
             <DateTimePickerModal isVisible={showDatePicker} mode="date"
                 date={(() => { try { const d = dateMode === 'dob' ? (formData.date_of_birth ? new Date(formData.date_of_birth) : new Date(2000, 0, 1)) : (formData.admission_date ? new Date(formData.admission_date) : new Date()); return isNaN(d.getTime()) ? new Date() : d; } catch { return new Date(); } })()}
-                onConfirm={(d: Date) => { 
-                    setShowDatePicker(false); 
-                    const s = d.toISOString().split('T')[0]; 
+                onConfirm={(d: Date) => {
+                    setShowDatePicker(false);
+                    const s = d.toISOString().split('T')[0];
                     if (dateMode === 'dob') {
-                        up('date_of_birth', s); 
+                        up('date_of_birth', s);
                         setTouched(prev => ({ ...prev, date_of_birth: true }));
                         validateField('date_of_birth', s);
                     } else {
-                        up('admission_date', s); 
+                        up('admission_date', s);
                         setTouched(prev => ({ ...prev, admission_date: true }));
                         validateField('admission_date', s);
                     }
@@ -1568,7 +1570,7 @@ const RoomPickerDrawer = ({ visible, rooms, selectedRoomId, onSelectRoom, onClos
         }
         const map: Record<number, any[]> = {};
         f.forEach((r: any) => { const fl = r.floor_number ?? 0; if (!map[fl]) map[fl] = []; map[fl].push(r); });
-        
+
         return Object.keys(map).sort((a, b) => {
             const floorA = map[Number(a)];
             const floorB = map[Number(b)];

@@ -16,6 +16,20 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState } from '../components/ui/ErrorState';
 import { SkeletonList } from '../components/ui/SkeletonCard';
 import { StatCard } from '../components/ui/StatCard';
+
+const MiniStatCard = ({ title, value, icon, color }: any) => {
+    return (
+        <View style={{ flex: 1, backgroundColor: color + '10', borderRadius: 12, padding: 10, borderWidth: 1, borderColor: color + '25', elevation: 0 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                <View style={{ backgroundColor: color + '20', padding: 4, borderRadius: 6 }}>
+                    <Ionicons name={icon} size={14} color={color} />
+                </View>
+                <Text style={{ fontSize: 10, fontWeight: '700', color: color, flex: 1, opacity: 0.8 }} numberOfLines={1}>{title}</Text>
+            </View>
+            <Text style={{ fontSize: 17, fontWeight: '900', color: color }}>{value}</Text>
+        </View>
+    );
+};
 import { DangerModal } from '../components/ui/DangerModal';
 
 const fmtDate = (d?: string) => {
@@ -37,7 +51,8 @@ export default function GuestsScreen() {
     const [error, setError] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [search, setSearch] = useState('');
-    const [dateFilter, setDateFilter] = useState<Date | null>(null);
+    const [dateFilter, setDateFilter] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<'All' | 'staying' | 'checked_out'>('All');
     const [showDatePicker, setShowDatePicker] = useState(false);
 
     const isMounted = useRef(false);
@@ -113,15 +128,24 @@ export default function GuestsScreen() {
         }
     };
 
-    const filtered = search.trim()
+    const filteredBySearch = search.trim()
         ? guests.filter(g =>
             (g.full_name || '').toLowerCase().includes(search.toLowerCase()) ||
             (g.phone || '').includes(search) ||
             (g.purpose || '').toLowerCase().includes(search.toLowerCase()))
         : guests;
 
+    const filtered = filteredBySearch.filter(g => {
+        if (activeTab === 'All') return true;
+        return g.status === activeTab;
+    });
+
     const renderItem = ({ item }: any) => (
-        <View style={[s.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+        <TouchableOpacity 
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('AddGuest', { guest: item, isEdit: true })}
+            style={[s.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
+        >
             <View style={s.cardTop}>
                 <View style={[s.avatar, { backgroundColor: isDark ? '#334155' : '#EDE9FE' }]}>
                     <Text style={[s.avatarText, { color: theme.primary }]}>
@@ -175,19 +199,24 @@ export default function GuestsScreen() {
                 </View>
                 <View style={{ flex: 1 }} />
                 {item.status === 'staying' && (
-                    <TouchableOpacity onPress={() => handleCheckout(item)} style={s.checkoutBtn} activeOpacity={0.8}>
-                        <Ionicons name="log-out-outline" size={13} color="#FFF" />
-                        <Text style={s.checkoutBtnText}>Check Out</Text>
+                <View style={s.cardActions}>
+                    <TouchableOpacity 
+                        style={[s.btn, { backgroundColor: isDark ? theme.primary + '20' : '#E0E7FF' }]} 
+                        onPress={() => handleCheckout(item)}
+                    >
+                        <Ionicons name="log-out-outline" size={16} color={theme.primary} />
+                        <Text style={[s.btnText, { color: theme.primary }]}>Check Out</Text>
                     </TouchableOpacity>
-                )}
-            </View>
+                </View>
+            )}
         </View>
+    </TouchableOpacity>
     );
 
     return (
         <View style={[s.root, { backgroundColor: theme.background }]}>
             <StatusBar barStyle="light-content" />
-            <AppHeader title="Guests" subtitle="Short-stay & daily visitors">
+            <AppHeader alignLeft={true} title="Guests" subtitle="Short-stay & daily visitors">
                 <View style={s.searchWrap}>
                     <Ionicons name="search" size={18} color="#94A3B8" />
                     <TextInput
@@ -217,33 +246,65 @@ export default function GuestsScreen() {
             {/* Summary strip */}
             <View style={s.summaryContainer}>
                 <View style={{ flexDirection: 'row', gap: 12 }}>
-                    <StatCard 
+                    <MiniStatCard 
                         title="Total Guests" 
                         value={summary.count} 
                         icon="people-outline" 
-                        colorTheme="purple" 
-                        pillText="All time" 
-                        fullWidth
+                        color="#7C3AED" 
                     />
-                    <StatCard 
+                    <MiniStatCard 
                         title="Collected Fees" 
                         value={`₹${summary.totalCollected.toLocaleString('en-IN')}`} 
                         icon="cash-outline" 
-                        colorTheme="green" 
-                        pillText="Revenue" 
-                        fullWidth
+                        color="#10B981" 
                     />
                     {filtered.filter(g => g.status === 'staying').length > 0 && (
-                        <StatCard 
+                        <MiniStatCard 
                             title="Active Guests" 
                             value={filtered.filter(g => g.status === 'staying').length} 
                             icon="log-in-outline" 
-                            colorTheme="orange" 
-                            pillText="Staying" 
-                            fullWidth
+                            color="#F59E0B" 
                         />
                     )}
                 </View>
+            </View>
+
+            {/* Tabs */}
+            <View style={{ paddingHorizontal: 16, marginBottom: 0 }}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                    {['All', 'staying', 'checked_out'].map(tab => {
+                        const isSel = activeTab === tab;
+                        const label = tab === 'staying' ? 'Checked In' : tab === 'checked_out' ? 'Checked Out' : 'All';
+                        const count = guests.filter(g => tab === 'All' ? true : g.status === tab).length;
+                        return (
+                            <TouchableOpacity
+                                key={tab}
+                                onPress={() => setActiveTab(tab as any)}
+                                style={{
+                                    paddingHorizontal: 14,
+                                    paddingVertical: 7,
+                                    borderRadius: 20,
+                                    borderWidth: 1.5,
+                                    borderColor: isSel ? theme.primary : (isDark ? '#334155' : '#E2E8F0'),
+                                    backgroundColor: isSel ? theme.primary : (isDark ? '#1E293B' : '#FFF'),
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    gap: 6
+                                }}
+                                activeOpacity={0.75}
+                            >
+                                <Text style={{
+                                    fontSize: 13,
+                                    fontWeight: '700',
+                                    color: isSel ? '#FFF' : theme.textSecondary,
+                                }}>{label}</Text>
+                                <View style={{ backgroundColor: isSel ? '#FFF' : (isDark ? '#334155' : '#F1F5F9'), paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10 }}>
+                                    <Text style={{ fontSize: 10, fontWeight: '700', color: isSel ? theme.primary : theme.textSecondary }}>{count}</Text>
+                                </View>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </ScrollView>
             </View>
 
             {loading ? (
@@ -256,7 +317,7 @@ export default function GuestsScreen() {
                     keyExtractor={(item) => String(item.guest_id)}
                     renderItem={renderItem}
                     contentContainerStyle={[
-                        { padding: 16, paddingBottom: 120 },
+                        { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 120 },
                         filtered.length === 0 && { flex: 1 }
                     ]}
                     showsVerticalScrollIndicator={false}
@@ -318,11 +379,11 @@ const s = StyleSheet.create({
     },
     searchInput: { flex: 1, color: '#1E293B', fontWeight: '600' },
     summaryContainer: {
-        marginTop: 12,
-        marginBottom: 16,
+        marginTop: 10,
+        marginBottom: 8,
         paddingHorizontal: 16,
     },
-    card: { borderRadius: 20, padding: 16, marginBottom: 12, borderWidth: 1 },
+    card: { borderRadius: 16, padding: 14, marginBottom: 10, borderWidth: 1 },
     cardTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     avatar: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
     avatarText: { fontSize: 20, fontWeight: '800' },

@@ -64,9 +64,10 @@ interface StudentCardProps {
     onToggle: (student: any) => void;
     onAllocateRoom: (student: any) => void;
     onReject: (student: any) => void;
+    onPayAdmission: (student: any) => void;
 }
 
-const StudentCard = React.memo(({ student, onPress, onWhatsApp, onCall, onToggle, onAllocateRoom, onReject }: StudentCardProps) => {
+const StudentCard = React.memo(({ student, onPress, onWhatsApp, onCall, onToggle, onAllocateRoom, onReject, onPayAdmission }: StudentCardProps) => {
     const { theme, isDark } = useTheme();
     const { t } = useTranslation();
     const isActive = student.status === 1;
@@ -137,25 +138,29 @@ const StudentCard = React.memo(({ student, onPress, onWhatsApp, onCall, onToggle
                     <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
                         {isActive && !student.room_id && (
                             <TouchableOpacity
-                                style={[styles.allocateChip, { marginTop: 0 }]}
+                                style={[styles.smallActionBtn, { marginTop: 0, backgroundColor: '#FEF2F2', borderColor: '#FECACA' }]}
                                 onPress={() => onAllocateRoom(student)}
-                                activeOpacity={0.8}
+                                activeOpacity={0.7}
                             >
-                                <Text style={styles.allocateChipText}>⚠ {t('students.allocateRoom', 'Allocate Room')}</Text>
+                                <Text style={[styles.smallActionBtnText, { color: '#DC2626' }]}>⚠ {t('students.allocateRoom', 'Allocate Room')}</Text>
                             </TouchableOpacity>
                         )}
                         {(isActive || isQRSignup || isPreBooked) && student.admission_status === 0 && (
-                            <View style={[styles.allocateChip, { marginTop: 0, backgroundColor: '#FFFBEB', borderColor: '#FEF3C7' }]}>
-                                <Text style={[styles.allocateChipText, { color: '#D97706' }]}>⚠ Admission Pending</Text>
-                            </View>
+                            <TouchableOpacity
+                                style={[styles.smallActionBtn, { marginTop: 0, backgroundColor: '#FFFBEB', borderColor: '#FDE68A' }]}
+                                onPress={() => onPayAdmission(student)}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={[styles.smallActionBtnText, { color: '#D97706' }]}>✓ Pay Admission</Text>
+                            </TouchableOpacity>
                         )}
                         {isQRSignup && (
                             <TouchableOpacity
-                                style={[styles.allocateChip, { marginTop: 0, backgroundColor: '#FEF2F2', borderColor: '#FECACA' }]}
+                                style={[styles.smallActionBtn, { marginTop: 0, backgroundColor: '#FEF2F2', borderColor: '#FECACA' }]}
                                 onPress={() => onReject(student)}
-                                activeOpacity={0.8}
+                                activeOpacity={0.7}
                             >
-                                <Text style={[styles.allocateChipText, { color: '#DC2626' }]}>✕ {t('students.reject', 'Reject')}</Text>
+                                <Text style={[styles.smallActionBtnText, { color: '#DC2626' }]}>✕ {t('students.reject', 'Reject')}</Text>
                             </TouchableOpacity>
                         )}
                     </View>
@@ -288,7 +293,7 @@ export default function StudentsScreen({ navigation, route }: any) {
     const [initialLoading, setInitialLoading] = useState(true);
     const [error, setError] = useState(false);
     const [debouncedSearch, setDebouncedSearch] = useState('');
-    const [counts, setCounts] = useState({ active: 0, inactive: 0, prebooked: 0, qrRegister: 0, total: 0, unallocated: 0 });
+    const [counts, setCounts] = useState({ active: 0, inactive: 0, prebooked: 0, qrRegister: 0, total: 0, unallocated: 0, pendingAdmissions: 0 });
     const [totalMatching, setTotalMatching] = useState(0);
     const [dateFilter, setDateFilter] = useState<Date | null>(null);
     const [startDateFilter, setStartDateFilter] = useState<string | null>(null);
@@ -303,8 +308,8 @@ export default function StudentsScreen({ navigation, route }: any) {
         targetStatus: number;
         title: string;
         message: string;
-        action?: 'status' | 'reject';
-    }>({ visible: false, student: null, targetStatus: 1, title: '', message: '', action: 'status' });
+        action?: 'status' | 'reject' | 'pay_admission';
+    }>({ visible: false, student: null, targetStatus: 0, title: '', message: '', action: 'status' });
     const [statusLoading, setStatusLoading] = useState(false);
 
     // Update activeTab if passed via params
@@ -531,6 +536,17 @@ export default function StudentsScreen({ navigation, route }: any) {
         });
     }, [t]);
 
+    const handlePayAdmission = useCallback((student: any) => {
+        setConfirmDialog({
+            visible: true,
+            student,
+            targetStatus: 0, // unused
+            action: 'pay_admission',
+            title: 'Pay Admission Fee',
+            message: `Mark admission fee as paid for ${student.first_name}? This will record the payment in your income.`,
+        });
+    }, []);
+
     const renderItem = useCallback(({ item }: { item: any }) => (
         <StudentCard
             student={item}
@@ -540,8 +556,9 @@ export default function StudentsScreen({ navigation, route }: any) {
             onToggle={handleToggleStatus}
             onAllocateRoom={handleAllocateRoom}
             onReject={handleRejectRegistration}
+            onPayAdmission={handlePayAdmission}
         />
-    ), [handleNavigate, handleWhatsApp, handleCall, handleToggleStatus, handleAllocateRoom, handleRejectRegistration]);
+    ), [handleNavigate, handleWhatsApp, handleCall, handleToggleStatus, handleAllocateRoom, handleRejectRegistration, handlePayAdmission]);
 
     const keyExtractor = useCallback((item: any) => item.student_id.toString(), []);
 
@@ -557,7 +574,11 @@ export default function StudentsScreen({ navigation, route }: any) {
                            activeTab === 'Inactive' ? counts.inactive :
                            activeTab === 'PreBooked' ? counts.prebooked :
                            activeTab === 'QRRegister' ? counts.qrRegister :
-                           activeTab === 'AdmissionPending' ? allStudents.length : counts.total;
+                           activeTab === 'AdmissionPending' ? counts.pendingAdmissions : counts.total;
+                           
+        if (activeTab === 'AdmissionPending') {
+            return `${totalCount} ${label}`;
+        }
         return `${totalCount} ${label} ${t('students.residents')}`;
     }, [counts, activeTab, debouncedSearch, totalMatching, t]);
 
@@ -683,6 +704,7 @@ export default function StudentsScreen({ navigation, route }: any) {
                 >
                     {[
                         { key: 'Active', label: t('students.active'), count: counts.active, show: true },
+                        { key: 'AdmissionPending', label: 'Admission Pending', count: counts.pendingAdmissions || 0, show: true },
                         { key: 'Unallocated', label: t('students.unallocatedTab', 'No Room'), count: counts.unallocated, show: true },
                         { key: 'PreBooked', label: t('students.prebooked'), count: counts.prebooked, show: counts.prebooked > 0 },
                         { key: 'QRRegister', label: t('students.qrSignups'), count: counts.qrRegister, show: counts.qrRegister > 0 },
@@ -791,18 +813,30 @@ export default function StudentsScreen({ navigation, route }: any) {
                     if (!student) return;
                     setStatusLoading(true);
                     try {
-                        const res = action === 'reject'
-                            ? await api.post(`/students/${student.student_id}/reject-registration`, {})
-                            : await api.put(`/students/${student.student_id}`, { status: targetStatus });
+                        let res;
+                        if (action === 'reject') {
+                            res = await api.post(`/students/${student.student_id}/reject-registration`, {});
+                        } else if (action === 'pay_admission') {
+                            res = await api.put(`/students/${student.student_id}`, { admission_status: 1 });
+                        } else {
+                            res = await api.put(`/students/${student.student_id}`, { status: targetStatus });
+                        }
+                        
                         if (res.data.success) {
                             setAllStudents(prev => {
+                                if (action === 'pay_admission') {
+                                    if (activeTab === 'AdmissionPending') {
+                                        return prev.filter(s => s.student_id !== student.student_id);
+                                    }
+                                    return prev.map(s => s.student_id === student.student_id ? { ...s, admission_status: 1 } : s);
+                                }
                                 if (activeTab === 'All') {
                                     return prev.map(s => s.student_id === student.student_id ? { ...s, status: targetStatus } : s);
                                 }
                                 return prev.filter(s => s.student_id !== student.student_id);
                             });
                             fetchCounts();
-                            showSuccess(action === 'reject' ? 'Registration rejected.' : 'Student status updated.');
+                            showSuccess(action === 'reject' ? 'Registration rejected.' : action === 'pay_admission' ? 'Admission fee paid!' : 'Student status updated.');
                         }
                     } catch (e) {
                         showApiError(e, action === 'reject' ? 'Failed to reject registration' : 'Failed to update status');
@@ -947,6 +981,26 @@ const styles = StyleSheet.create({
         color: '#64748B',
         fontWeight: '500',
         marginTop: 4,
+    },
+    smallActionBtn: {
+        alignSelf: 'flex-start',
+        marginTop: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 6,
+        borderWidth: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 1,
+        elevation: 1,
+    },
+    smallActionBtnText: {
+        fontSize: 11,
+        fontWeight: '600'
     },
     allocateChip: {
         alignSelf: 'flex-start',

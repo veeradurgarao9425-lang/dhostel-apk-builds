@@ -285,7 +285,12 @@ export default function AddStaffScreen() {
             style={styles.container}
         >
             <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-            <AppHeader title={isEdit ? "Edit Staff" : "Add Staff"} onBack={() => navigation.goBack()} />
+            <AppHeader 
+                alignLeft={true}
+                title={isEdit ? "Edit Staff" : "Add Staff"} 
+                subtitle="Manage hostel employee records"
+                onBack={() => navigation.goBack()} 
+            />
             <FullScreenLoader visible={loading} />
 
             <ScrollView

@@ -653,7 +653,11 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
     return (
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[styles.container, { backgroundColor: theme.background }]} keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}>
             <StatusBar barStyle="dark-content" />
-            <AppHeader title={expense ? "Edit Expense" : "Add Expense"} />
+            <AppHeader 
+                alignLeft={true} 
+                title={expense ? "Edit Expense" : "Add Expense"} 
+                subtitle="Record hostel bills and maintenance costs" 
+            />
             <FullScreenLoader visible={loading} />
             <ScrollView
                 ref={scrollRef}
