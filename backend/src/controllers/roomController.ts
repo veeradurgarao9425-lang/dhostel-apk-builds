@@ -289,6 +289,47 @@ export const getRoomById = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// List every bed in a room (A, B, C...) with occupancy — used by QR bed-assignment signup
+export const getRoomBeds = async (req: AuthRequest, res: Response) => {
+  try {
+    const { roomId } = req.params;
+
+    const room = await db('rooms')
+      .where('room_id', roomId)
+      .select('room_id', 'room_number', 'capacity')
+      .first();
+
+    if (!room) {
+      return res.status(404).json({ success: false, error: 'Room not found' });
+    }
+
+    const occupants = await db('students')
+      .where('room_id', roomId)
+      .whereIn('status', [1, 2])
+      .select('student_id', 'bed_number');
+
+    const occupantByBed = new Map(occupants.map(o => [o.bed_number, o.student_id]));
+    const capacity = parseInt(String(room.capacity)) || 1;
+
+    const beds = Array.from({ length: capacity }, (_, i) => {
+      const bedLetter = String.fromCharCode(65 + i);
+      const student_id = occupantByBed.get(bedLetter) ?? null;
+      return {
+        bed_id: `${roomId}_${bedLetter}`,
+        bed_number: bedLetter,
+        bed_name: `${room.room_number}${bedLetter}`,
+        status: student_id ? 'occupied' : 'available',
+        student_id
+      };
+    });
+
+    res.json({ success: true, data: beds });
+  } catch (error: any) {
+    console.error('getRoomBeds Error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch beds' });
+  }
+};
+
 // Create new room
 export const createRoom = async (req: AuthRequest, res: Response) => {
   try {

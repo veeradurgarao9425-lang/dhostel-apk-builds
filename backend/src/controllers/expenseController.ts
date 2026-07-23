@@ -590,6 +590,34 @@ export const getExpenseCategories = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// Create a new expense category (shared across all hostels, like the existing list)
+export const createExpenseCategory = async (req: AuthRequest, res: Response) => {
+  try {
+    const { category_name, description } = req.body;
+
+    if (!category_name || !category_name.trim()) {
+      return res.status(400).json({ success: false, error: 'Category name required' });
+    }
+
+    const [category_id] = await db('expense_categories').insert({
+      category_name: category_name.trim(),
+      description: description || null
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Category added successfully',
+      data: { category_id, category_name: category_name.trim(), description: description || null }
+    });
+  } catch (error: any) {
+    console.error('Create expense category error:', error);
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({ success: false, error: 'Category already exists' });
+    }
+    res.status(500).json({ success: false, error: 'Failed to add category' });
+  }
+};
+
 // Get expense summary by category
 export const getExpenseSummary = async (req: AuthRequest, res: Response) => {
   try {

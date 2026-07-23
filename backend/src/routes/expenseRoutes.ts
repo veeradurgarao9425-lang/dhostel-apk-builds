@@ -8,6 +8,7 @@ import {
   updateExpense,
   deleteExpense,
   getExpenseCategories,
+  createExpenseCategory,
   getExpenseSummary
 } from '../controllers/expenseController.js';
 
@@ -19,6 +20,7 @@ router.use(authMiddleware, requireActiveSubscription);
 // Expense routes
 router.get('/', getExpenses);
 router.get('/categories', getExpenseCategories);
+router.post('/categories', createExpenseCategory);
 router.get('/summary', getExpenseSummary);
 router.get('/:expenseId', getExpenseById);
 router.post('/', createExpense);

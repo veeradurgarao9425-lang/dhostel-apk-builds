@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import api from '../src/services/api';
 import { useAuth } from './AuthContext';
 import { AppState, AppStateStatus } from 'react-native';
 
@@ -85,6 +86,17 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
       if (user?.id && user?.status === 1) {
         const token = await AsyncStorage.getItem('token');
         if (!token) return;
+
+        // Load existing history before the socket starts delivering new messages,
+        // so opening a chat doesn't show a blank room.
+        if (user.room_id) {
+          try {
+            const res = await api.get(`/chat/messages/${user.room_id}`);
+            if (res.data.success) setMessages(res.data.data || []);
+          } catch {
+            // Non-fatal — the room chat still works for new messages via the socket.
+          }
+        }
 
         // In real app, you might want to fetch base url from config
         newSocket = io(SOCKET_URL, {

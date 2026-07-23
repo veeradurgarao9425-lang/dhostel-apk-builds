@@ -4,6 +4,7 @@ import { requireActiveSubscription } from '../middleware/subscriptionAuth.js';
 import {
   getRooms,
   getRoomById,
+  getRoomBeds,
   createRoom,
   updateRoom,
   deleteRoom,
@@ -19,6 +20,7 @@ router.use(authMiddleware, requireActiveSubscription);
 // Room routes
 router.get('/', getRooms);
 router.get('/types', getRoomTypes);
+router.get('/:roomId/beds', getRoomBeds);
 router.get('/:roomId', getRoomById);
 router.post('/', createRoom);
 router.post('/bulk', bulkCreateRooms);

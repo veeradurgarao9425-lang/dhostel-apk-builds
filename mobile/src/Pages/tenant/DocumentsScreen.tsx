@@ -3,12 +3,14 @@ import { StyleSheet, Text, TouchableOpacity, View, ScrollView, StatusBar } from 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { FileText, FileCheck2, Receipt, IdCard, Download, File, ArrowLeft, Plus } from 'lucide-react-native';
+import * as Print from 'expo-print';
 
 import { useToast } from '../../../contexts/ToastContext';
 import { Phase3ErrorState, DocumentsSkeleton } from '../../components/tenant/UIComponents';
 import { AppHeader, EmptyState } from '../../components/tenant/ui';
 import { OfflineBanner } from '../../components/tenant/NetworkComponents';
 import { DownloadProgressSheet, FileErrorState } from '../../components/tenant/MediaComponents';
+import { downloadAndSaveFile } from '../../utils/fileDownloader';
 import api from '../../services/api';
 
 const BLUE       = '#2245D4';
@@ -59,7 +61,7 @@ export default function DocumentsScreen({ navigation }: any) {
       const docs: any[] = [];
       for (const feeRecord of feeRecords) {
         for (const payment of (feeRecord.payments ?? [])) {
-          if (payment.verification_status === 'verified') {
+          if (payment.verification_status === 'Verified') {
             docs.push({
               id: payment.payment_id.toString(),
               paymentId: payment.payment_id,
@@ -96,10 +98,42 @@ export default function DocumentsScreen({ navigation }: any) {
     }, 180);
 
     try {
-      await api.get(`/fees/receipts/${paymentId}`);
+      const res = await api.get(`/fees/receipts/${paymentId}`);
+      const r = res.data?.data;
+      if (!res.data?.success || !r) throw new Error('Receipt not found');
+
+      const amount = Number(r.amount_paid || 0).toLocaleString('en-IN');
+      const paidDate = r.payment_date ? new Date(r.payment_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : '-';
+      const tenantName = `${r.first_name || ''} ${r.last_name || ''}`.trim();
+
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
+        <style>
+          *{box-sizing:border-box;margin:0;padding:0}
+          body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;padding:32px;color:#1A1A1A}
+          .hdr{border-bottom:2px solid #2245D4;padding-bottom:16px;margin-bottom:20px}
+          .hdr h1{font-size:20px;color:#2245D4}
+          .hdr p{font-size:13px;color:#666;margin-top:4px}
+          .row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #E2E8F0;font-size:14px}
+          .row span:first-child{color:#666}
+          .row span:last-child{font-weight:700}
+          .amount{font-size:28px;font-weight:800;color:#22C55E;margin:24px 0;text-align:center}
+        </style></head><body>
+        <div class="hdr"><h1>${r.hostel_name || 'Hostel'}</h1><p>${r.address || ''}${r.city ? ', ' + r.city : ''}</p></div>
+        <div class="amount">₹${amount}</div>
+        <div class="row"><span>Receipt No.</span><span>${r.receipt_number || '-'}</span></div>
+        <div class="row"><span>Tenant</span><span>${tenantName || '-'}</span></div>
+        <div class="row"><span>Room</span><span>${r.room_number || '-'}</span></div>
+        <div class="row"><span>For month</span><span>${r.payment_for_month || '-'}</span></div>
+        <div class="row"><span>Payment date</span><span>${paidDate}</span></div>
+        <div class="row"><span>Payment mode</span><span>${r.payment_mode || '-'}</span></div>
+        <div class="row"><span>Transaction ref.</span><span>${r.transaction_reference || '-'}</span></div>
+        </body></html>`;
+
+      const { uri } = await Print.printToFileAsync({ html });
       clearInterval(progressTimer.current!);
       setDlProgress(100);
       setDlStatus('done');
+      await downloadAndSaveFile(uri, `${fileName}.pdf`, 'application/pdf', true);
     } catch (e: any) {
       clearInterval(progressTimer.current!);
       setDlProgress(100);

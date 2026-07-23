@@ -1107,20 +1107,31 @@ export const authController = {
         return res.status(403).json({ success: false, error: 'This hostel is currently inactive. Contact administration.' });
       }
 
-      // 2. Check if Tenant is Active (status = 1)
-      if (Number(tenant.status) !== 1) {
-        return res.status(403).json({ success: false, error: 'Your account is inactive or pending approval.' });
+      // 2. Reject registrations the owner has explicitly rejected or deactivated.
+      if (Number(tenant.status) === 4) {
+        return res.status(403).json({ success: false, error: 'Your registration was not approved. Contact hostel administration.' });
+      }
+      if (Number(tenant.status) === 0) {
+        return res.status(403).json({ success: false, error: 'Your account is inactive. Contact hostel administration.' });
       }
 
-      // 3. Check Room Assignment
-      if (!tenant.room_id) {
-        return res.status(403).json({ success: false, error: 'You are not assigned to any room. Contact hostel administration.' });
-      }
+      // A pending mobile self-registration (status = 3) has no room yet by definition —
+      // let them back in so the app can show the "waiting for room allocation" screen,
+      // same as tenantRegister/tenantMe. Only an allocated tenant (status = 1) needs the
+      // room-assignment checks below.
+      const isPendingRegistration = Number(tenant.status) === 3;
 
-      // 4. Check if Room is Active
-      // Assuming is_available serves as the room active flag or simply if room was deleted.
-      if (tenant.room_active === 0 || tenant.room_active === false) {
-        return res.status(403).json({ success: false, error: 'Your assigned room is currently inactive.' });
+      if (!isPendingRegistration) {
+        // 3. Check Room Assignment
+        if (!tenant.room_id) {
+          return res.status(403).json({ success: false, error: 'You are not assigned to any room. Contact hostel administration.' });
+        }
+
+        // 4. Check if Room is Active
+        // Assuming is_available serves as the room active flag or simply if room was deleted.
+        if (tenant.room_active === 0 || tenant.room_active === false) {
+          return res.status(403).json({ success: false, error: 'Your assigned room is currently inactive.' });
+        }
       }
 
       await db('otps').where('email', identifier).del();
@@ -1344,6 +1355,7 @@ export const authController = {
           is_allocated: isAllocated,
           room_id: tenant.room_id || null,
           room_number: tenant.room_number || null,
+          bed_number: tenant.bed_number || null,
           monthly_rent: tenant.monthly_rent ?? tenant.rent_per_bed ?? null,
           outstanding_due: Number(dueRow?.total_balance || 0),
           next_due_date: nextDue?.due_date || null,

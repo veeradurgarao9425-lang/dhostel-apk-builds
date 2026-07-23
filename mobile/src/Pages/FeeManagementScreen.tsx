@@ -154,7 +154,7 @@ export default function FeeManagementScreen() {
     useEffect(() => {
         const fetchModes = async () => {
             try {
-                const res = await api.get('/payment-modes');
+                const res = await api.get('/monthly-fees/payment-modes');
                 if (res.data.success) {
                     setPaymentModes(res.data.data);
                 }
