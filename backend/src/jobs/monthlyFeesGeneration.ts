@@ -228,12 +228,22 @@ export const startMonthlyFeesGenerationJob = () => {
       const results = [];
 
       for (const hostel of hostels) {
-        const result = await generateMonthlyFeesForHostel(hostel.hostel_id);
-        results.push({
-          hostel_id: hostel.hostel_id,
-          hostel_name: hostel.hostel_name,
-          ...result
-        });
+        try {
+          const result = await generateMonthlyFeesForHostel(hostel.hostel_id);
+          results.push({
+            hostel_id: hostel.hostel_id,
+            hostel_name: hostel.hostel_name,
+            ...result
+          });
+        } catch (hostelErr) {
+          console.error(`[Monthly Fees Cron] Fatal error for hostel ${hostel.hostel_id} (${hostel.hostel_name}):`, hostelErr);
+          results.push({
+            hostel_id: hostel.hostel_id,
+            hostel_name: hostel.hostel_name,
+            error: true,
+            message: hostelErr instanceof Error ? hostelErr.message : 'Unknown error'
+          });
+        }
       }
 
       const successful = results.filter(r => r.success).length;

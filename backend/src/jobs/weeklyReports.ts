@@ -41,11 +41,11 @@ export const startWeeklyReportsJob = () => {
           const availableBeds = totalCapacity - occupiedBeds;
           const occupancyPercentage = totalCapacity > 0 ? Math.round((occupiedBeds / totalCapacity) * 100) : 0;
 
-          // Collections this week
-          const [collections] = await db('student_fee_payments')
+          // Collections this week — use fee_payments (active table)
+          const [collections] = await db('fee_payments')
             .where({ hostel_id: hostel.hostel_id })
             .where('payment_date', '>=', oneWeekAgoStr)
-            .sum('amount_paid as sum');
+            .sum('amount as sum');
           const totalCollections = Number(collections?.sum || 0);
 
           // Expenses this week
@@ -69,11 +69,11 @@ export const startWeeklyReportsJob = () => {
             .count('student_id as count');
           const vacatedStudents = Number(vacatedCount?.count || 0);
 
-          // Pending Payments (All time, or specific month? The prompt just says "Pending Payments" so sum of dues)
-          const [pending] = await db('student_dues')
+          // Pending Payments — sum balance from monthly_fees (active fee table)
+          const [pending] = await db('monthly_fees')
             .where({ hostel_id: hostel.hostel_id })
-            .where('status', 'Pending')
-            .sum('due_amount as sum');
+            .whereIn('fee_status', ['Pending', 'Partially Paid', 'Overdue'])
+            .sum('balance as sum');
           const pendingPayments = Number(pending?.sum || 0);
 
           const reportData = {

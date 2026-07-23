@@ -1451,22 +1451,26 @@ export const editCurrentMonthFee = async (req: AuthRequest, res: Response) => {
           updated_at: new Date()
         });
 
-      // Log to fee_history
-      await trx('fee_history').insert({
-        fee_id: feeId,
-        student_id: fee.student_id,
-        action: 'updated',
-        old_values: JSON.stringify(oldValues),
-        new_values: JSON.stringify({
-          monthly_rent: newMonthlyRent,
-          carry_forward: newCarryForward,
-          total_due: newTotalDue,
-          balance: newBalance,
-          fee_status: newFeeStatus
-        }),
-        created_by: user?.user_id || null,
-        created_at: new Date()
-      });
+      // Log to fee_history (best-effort: skip if table doesn't exist)
+      try {
+        await trx('fee_history').insert({
+          fee_id: feeId,
+          student_id: fee.student_id,
+          action: 'updated',
+          old_values: JSON.stringify(oldValues),
+          new_values: JSON.stringify({
+            monthly_rent: newMonthlyRent,
+            carry_forward: newCarryForward,
+            total_due: newTotalDue,
+            balance: newBalance,
+            fee_status: newFeeStatus
+          }),
+          created_by: user?.user_id || null,
+          created_at: new Date()
+        });
+      } catch (historyErr: any) {
+        console.warn('[editCurrentMonthFee] fee_history insert skipped (table may not exist):', historyErr?.message);
+      }
 
       // Cascade carry_forward to future months
       await cascadeUpdateFutureMonths(fee.student_id, fee.hostel_id, fee.fee_month, trx);
@@ -1660,26 +1664,30 @@ export const recordAdjustment = async (req: AuthRequest, res: Response) => {
           updated_at: new Date()
         });
 
-      // Log to fee_history
-      await trx('fee_history').insert({
-        fee_id: feeId,
-        student_id: monthlyFee.student_id,
-        action: transaction_type.toLowerCase(),
-        old_values: JSON.stringify({
-          paid_amount: currentTotalPaid,
-          balance: monthlyFee.balance,
-          fee_status: monthlyFee.fee_status
-        }),
-        new_values: JSON.stringify({
-          paid_amount: newTotalPaid,
-          balance: newBalance,
-          fee_status: newFeeStatus,
-          adjustment_amount: finalAmount,
-          reason: reason
-        }),
-        created_by: user?.user_id || null,
-        created_at: new Date()
-      });
+      // Log to fee_history (best-effort: skip if table doesn't exist)
+      try {
+        await trx('fee_history').insert({
+          fee_id: feeId,
+          student_id: monthlyFee.student_id,
+          action: transaction_type.toLowerCase(),
+          old_values: JSON.stringify({
+            paid_amount: currentTotalPaid,
+            balance: monthlyFee.balance,
+            fee_status: monthlyFee.fee_status
+          }),
+          new_values: JSON.stringify({
+            paid_amount: newTotalPaid,
+            balance: newBalance,
+            fee_status: newFeeStatus,
+            adjustment_amount: finalAmount,
+            reason: reason
+          }),
+          created_by: user?.user_id || null,
+          created_at: new Date()
+        });
+      } catch (historyErr: any) {
+        console.warn('[recordAdjustment] fee_history insert skipped (table may not exist):', historyErr?.message);
+      }
 
       // IMPORTANT: Cascade update future months' carry_forward (inside transaction)
       const adjustedFeeMonth = monthlyFee.fee_month;

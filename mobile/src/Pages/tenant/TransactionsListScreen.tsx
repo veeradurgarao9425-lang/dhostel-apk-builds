@@ -1,28 +1,19 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ArrowLeft, Filter, Utensils, Coffee, MapPin, Receipt, RefreshCcw
 } from 'lucide-react-native';
 
-const BLUE       = '#2245D4';
-const BLUE_SOFT  = '#EEF3FF';
-const WHITE      = '#FFFFFF';
-const TEXT_DARK  = '#0D1B3E';
-const TEXT_MID   = '#4A5568';
-const TEXT_LIGHT = '#9CA3AF';
-const BG         = '#F8FAFD';
-const BORDER     = '#E8EDF5';
-
 const MOCK_GROUPS = [
   {
-    date: 'Today, 14 May 2025', total: 180,
+    date: 'Today', total: 180,
     items: [
       { id: '1', title: 'Cafe Coffee Day', time: '01:20 PM', amt: 180, Icon: Coffee }
     ]
   },
   {
-    date: 'Yesterday, 13 May 2025', total: 180,
+    date: 'Yesterday', total: 180,
     items: [
       { id: '2', title: "Domino's Pizza", time: '08:15 PM', amt: 180, Icon: Utensils }
     ]
@@ -51,117 +42,143 @@ export default function TransactionsListScreen({ navigation, route }: any) {
   const { 
     categoryName = 'Restaurants', 
     spent = 720, 
-    color = BLUE,
-    bg = BLUE_SOFT,
+    color = '#4F46E5', // Premium Indigo by default
+    bg = '#EEF2FF',
   } = route.params || {};
 
+  const insets = useSafeAreaInsets();
+
   return (
-    <SafeAreaView style={s.safe} edges={['top']}>
+    <View style={s.container}>
       {/* Header */}
-      <View style={s.header}>
+      <View style={[s.header, { paddingTop: Platform.OS === 'android' ? insets.top + 10 : insets.top }]}>
         <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()}>
-          <ArrowLeft size={24} color={TEXT_DARK} strokeWidth={2.5} />
+          <ArrowLeft size={24} color="#0F172A" strokeWidth={2.5} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={s.headerTitle}>{categoryName}</Text>
           <Text style={s.headerSub}>All transactions in May 2025</Text>
         </View>
         <TouchableOpacity style={s.filterBtn}>
-          <Filter size={18} color={color} strokeWidth={2.5} />
+          <Filter size={20} color="#0F172A" strokeWidth={2} />
         </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={s.totalLabel}>Total Spent</Text>
-        <Text style={s.totalAmt}>₹ {spent.toLocaleString('en-IN')}</Text>
+        
+        {/* Total Summary Block */}
+        <View style={s.summaryBlock}>
+          <Text style={s.totalLabel}>Total Spent</Text>
+          <Text style={s.totalAmt}>₹{spent.toLocaleString('en-IN')}</Text>
+        </View>
 
-        <View style={s.listCard}>
+        {/* Transactions List */}
+        <View style={s.listContainer}>
           {MOCK_GROUPS.map((group, gIdx) => (
-            <View key={group.date}>
+            <View key={group.date} style={s.groupWrap}>
               <View style={s.groupHeader}>
                 <Text style={s.groupDate}>{group.date}</Text>
-                <Text style={s.groupTotal}>₹ {group.total}</Text>
+                <Text style={s.groupTotal}>₹{group.total}</Text>
               </View>
-              {group.items.map((item, iIdx) => {
-                const Icon = item.Icon;
-                return (
-                  <View key={item.id} style={s.row}>
-                    <View style={[s.iconBox, { backgroundColor: bg }]}>
-                      <Icon size={16} color={color} strokeWidth={2} />
+              
+              <View style={s.groupCard}>
+                {group.items.map((item, iIdx) => {
+                  const Icon = item.Icon;
+                  const isLast = iIdx === group.items.length - 1;
+                  return (
+                    <View key={item.id} style={[s.row, !isLast && s.rowBorder]}>
+                      <View style={[s.iconBox, { backgroundColor: bg }]}>
+                        <Icon size={18} color={color} strokeWidth={2} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.rowTitle}>{item.title}</Text>
+                        <Text style={s.rowTime}>{item.time}</Text>
+                      </View>
+                      <Text style={s.rowAmt}>₹{item.amt}</Text>
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={s.rowTitle}>{item.title}</Text>
-                      <Text style={s.rowTime}>{item.time}</Text>
-                    </View>
-                    <Text style={s.rowAmt}>₹ {item.amt}</Text>
-                  </View>
-                );
-              })}
+                  );
+                })}
+              </View>
             </View>
           ))}
         </View>
 
-        {/* Footer Summary */}
-        <View style={s.footerSummary}>
-          <View style={s.footerCol}>
-            <View style={s.footerIconWrap}>
-              <RefreshCcw size={14} color={color} strokeWidth={3} />
+        {/* Footer Summary Cards */}
+        <View style={s.footerCardsRow}>
+          <View style={s.footerCard}>
+            <View style={[s.footerIconWrap, { backgroundColor: bg }]}>
+              <RefreshCcw size={16} color={color} strokeWidth={2.5} />
             </View>
-            <View>
-              <Text style={s.footerLbl}>Total Transactions</Text>
-              <Text style={s.footerVal}>8</Text>
-            </View>
+            <Text style={s.footerLbl}>Total</Text>
+            <Text style={s.footerVal}>8 txns</Text>
           </View>
-          <View style={s.footerDivider} />
-          <View style={s.footerCol}>
-            <View>
-              <Text style={s.footerLbl}>Average per transaction</Text>
-              <Text style={s.footerVal}>₹ 90</Text>
+          <View style={s.footerCard}>
+             <View style={[s.footerIconWrap, { backgroundColor: '#F3F4F6' }]}>
+              <Receipt size={16} color="#64748B" strokeWidth={2.5} />
             </View>
+            <Text style={s.footerLbl}>Avg per txn</Text>
+            <Text style={s.footerVal}>₹90</Text>
           </View>
         </View>
 
         <View style={{ height: 40 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: BG },
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
   header: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 12,
-    backgroundColor: WHITE, borderBottomWidth: 1, borderBottomColor: BORDER,
+    paddingHorizontal: 16, paddingBottom: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
   },
-  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', marginLeft: -8, marginRight: 4 },
-  headerTitle: { fontSize: 16, fontWeight: '700', color: TEXT_DARK },
-  headerSub: { fontSize: 11, color: TEXT_LIGHT, fontWeight: '500', marginTop: 1 },
-  filterBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: BLUE_SOFT, alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginLeft: -10, marginRight: 8 },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A' },
+  headerSub: { fontSize: 12, color: '#64748B', fontWeight: '500', marginTop: 2 },
+  filterBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
 
   scroll: { padding: 20 },
 
-  totalLabel: { fontSize: 12, fontWeight: '600', color: TEXT_MID, marginBottom: 4 },
-  totalAmt: { fontSize: 28, fontWeight: '800', color: TEXT_DARK, letterSpacing: -0.5, marginBottom: 24 },
+  summaryBlock: { marginBottom: 24, paddingHorizontal: 4 },
+  totalLabel: { fontSize: 13, fontWeight: '600', color: '#64748B', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 },
+  totalAmt: { fontSize: 40, fontWeight: '900', color: '#0F172A', letterSpacing: -1 },
 
-  listCard: { backgroundColor: WHITE, borderRadius: 16, borderWidth: 1, borderColor: BORDER, overflow: 'hidden', marginBottom: 20 },
-  groupHeader: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
-  groupDate: { fontSize: 11, fontWeight: '700', color: TEXT_MID },
-  groupTotal: { fontSize: 11, fontWeight: '700', color: TEXT_DARK },
+  listContainer: { gap: 24, marginBottom: 24 },
+  groupWrap: {},
+  groupHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, paddingHorizontal: 4 },
+  groupDate: { fontSize: 14, fontWeight: '800', color: '#1E293B' },
+  groupTotal: { fontSize: 13, fontWeight: '700', color: '#64748B' },
 
-  row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 16 },
-  iconBox: { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  rowTitle: { fontSize: 13, fontWeight: '600', color: TEXT_DARK, marginBottom: 2 },
-  rowTime: { fontSize: 11, color: TEXT_LIGHT, fontWeight: '500' },
-  rowAmt: { fontSize: 13, fontWeight: '700', color: TEXT_DARK },
-
-  footerSummary: {
-    flexDirection: 'row', backgroundColor: BLUE_SOFT, borderRadius: 16, padding: 16,
-    borderWidth: 1, borderColor: '#D4E0FF',
+  groupCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.04,
+    shadowRadius: 16,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(226, 232, 240, 0.8)',
   },
-  footerCol: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  footerIconWrap: { width: 28, height: 28, borderRadius: 8, backgroundColor: 'rgba(34, 69, 212, 0.1)', alignItems: 'center', justifyContent: 'center' },
-  footerLbl: { fontSize: 10, color: TEXT_MID, fontWeight: '600', marginBottom: 2 },
-  footerVal: { fontSize: 16, fontWeight: '800', color: TEXT_DARK },
-  footerDivider: { width: 1, backgroundColor: '#C7D6FF', marginHorizontal: 16 },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14 },
+  rowBorder: { borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  iconBox: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 16 },
+  rowTitle: { fontSize: 15, fontWeight: '700', color: '#0F172A', marginBottom: 4 },
+  rowTime: { fontSize: 12, color: '#64748B', fontWeight: '500' },
+  rowAmt: { fontSize: 15, fontWeight: '800', color: '#0F172A' },
+
+  footerCardsRow: { flexDirection: 'row', gap: 16 },
+  footerCard: {
+    flex: 1, backgroundColor: '#FFFFFF', padding: 16, borderRadius: 20,
+    shadowColor: '#0F172A', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.04, shadowRadius: 16, elevation: 2,
+    borderWidth: 1, borderColor: 'rgba(226, 232, 240, 0.8)',
+  },
+  footerIconWrap: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  footerLbl: { fontSize: 11, color: '#64748B', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
+  footerVal: { fontSize: 18, fontWeight: '800', color: '#0F172A' },
 });

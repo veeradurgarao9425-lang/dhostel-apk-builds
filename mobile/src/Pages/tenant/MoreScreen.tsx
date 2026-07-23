@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  FileText, PieChart, Megaphone, Wrench, User, HelpCircle, Settings, LogOut
+  FileText, PieChart, Megaphone, Wrench, User, HelpCircle, Settings, LogOut, ChevronLeft
 } from 'lucide-react-native';
 
 import { useAuth } from '../../../contexts/AuthContext';
@@ -27,8 +27,13 @@ export default function MoreScreen({ navigation }: any) {
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.greeting}>Hello, {user?.name?.split(' ')[0] || 'Tenant'}</Text>
-          <Text style={styles.subGreeting}>What do you need today?</Text>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingRight: 16 }}>
+            <ChevronLeft size={26} color={colors.text} />
+          </TouchableOpacity>
+          <View>
+            <Text style={styles.greeting}>Hello, {user?.name?.split(' ')[0] || 'Tenant'}</Text>
+            <Text style={styles.subGreeting}>What do you need today?</Text>
+          </View>
         </View>
         <Text style={{ fontSize: 28 }}>👋</Text>
       </View>
@@ -103,7 +108,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  headerLeft: {},
+  headerLeft: { flexDirection: 'row', alignItems: 'center' },
   greeting: { fontSize: 18, fontWeight: '700', color: colors.text },
   subGreeting: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
 

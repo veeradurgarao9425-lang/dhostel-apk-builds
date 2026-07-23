@@ -36,12 +36,12 @@ export const startMonthlyReportsJob = () => {
           });
           const occupancyRate = totalCapacity > 0 ? Math.round((occupiedBeds / totalCapacity) * 100) : 0;
 
-          // Revenue (Collections) last month
-          const [collections] = await db('student_fee_payments')
+          // Revenue (Collections) last month — use fee_payments (active table)
+          const [collections] = await db('fee_payments')
             .where({ hostel_id: hostel.hostel_id })
             .where('payment_date', '>=', lastMonthStr)
             .where('payment_date', '<', currentMonthStr)
-            .sum('amount_paid as sum');
+            .sum('amount as sum');
           const revenue = Number(collections?.sum || 0);
 
           // Expenses last month
@@ -70,11 +70,11 @@ export const startMonthlyReportsJob = () => {
             .count('student_id as count');
           const vacatedStudents = Number(vacatedCount?.count || 0);
 
-          // Pending Payments
-          const [pending] = await db('student_dues')
+          // Pending Payments — sum balance from monthly_fees (active fee table)
+          const [pending] = await db('monthly_fees')
             .where({ hostel_id: hostel.hostel_id })
-            .where('status', 'Pending')
-            .sum('due_amount as sum');
+            .whereIn('fee_status', ['Pending', 'Partially Paid', 'Overdue'])
+            .sum('balance as sum');
           const pendingPayments = Number(pending?.sum || 0);
 
           // Determine Performance Status
