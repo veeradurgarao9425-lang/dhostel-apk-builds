@@ -194,12 +194,8 @@ export const ExpenseScreen = ({ navigation }: any) => {
             {/* Header */}
             <AppHeader
                 title="Expenses"
-                rightComponent={
-                    <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-                        <HeaderNotification navigation={navigation} />
-                        <ProfileMenu />
-                    </View>
-                }
+                alignLeft
+                subtitle="Manage your daily hostel expenses"
             />
 
             {/* Expense Stats */}
