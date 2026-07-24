@@ -56,7 +56,12 @@ export default function PaymentVerificationScreen({ navigation }: any) {
 
     return (
         <View style={styles.container}>
-            <AppHeader title="Verify Payment Proofs" onBack={() => navigation.goBack()} />
+            <AppHeader 
+                title="Verify Payment Proofs" 
+                alignLeft
+                subtitle="Review payments submitted via tenant app"
+                onBack={() => navigation.goBack()} 
+            />
             
             {loading ? (
                 <View style={styles.center}>

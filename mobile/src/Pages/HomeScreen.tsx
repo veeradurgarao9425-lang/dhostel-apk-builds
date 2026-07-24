@@ -14,6 +14,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useToast } from '../context/ToastContext';
 import { ProfileMenu } from '../components/ProfileMenu';
+import EmptyState from '../components/ui/EmptyState';
+import SkeletonList from '../components/ui/SkeletonCard';
 import { AppHeader } from '../components/AppHeader';
 import { HeaderNotification } from '../components/HeaderNotification';
 import { toLocalDateStr } from '../utils/dateUtils';
@@ -807,9 +809,8 @@ export default function HomeScreen() {
                 {/* List of Hostels */}
                 <ScrollView contentContainerStyle={s.selectorScrollContent} showsVerticalScrollIndicator={false}>
                     {hostelsLoading ? (
-                        <View style={{ paddingVertical: 24, alignItems: 'center', gap: 8 }}>
-                            <ActivityIndicator size="small" color={theme.primary} />
-                            <Text style={{ color: theme.textSecondary, fontSize: 13, fontWeight: '600' }}>Fetching your hostels...</Text>
+                        <View style={{ padding: 16 }}>
+                            <SkeletonList count={3} />
                         </View>
                     ) : hostels.length === 0 ? (
                         <View style={{ paddingVertical: 24, alignItems: 'center', gap: 8, paddingHorizontal: 16 }}>
@@ -911,52 +912,62 @@ export default function HomeScreen() {
                     {/* Divider */}
                     <View style={[s.selectorDivider, { backgroundColor: isDark ? '#1E293B' : '#E2E8F0' }]} />
 
-                    {/* Actions at the bottom of the list */}
-                    <TouchableOpacity
-                        style={[s.selectorActionBtn, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderWidth: 1, borderColor: isDark ? '#334155' : '#E2E8F0' }]}
-                        onPress={() => {
-                            setShowHostelSelector(false);
-                            navigation.navigate('AddHostel');
-                        }}
-                        activeOpacity={0.75}
-                    >
-                        <View style={[s.selectorActionIcon, { backgroundColor: '#EDE9FE' }]}>
-                            <Ionicons name="add" size={18} color="#7C3AED" />
+                    {hostelsLoading ? (
+                        <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
+                            <SkeletonList count={2} />
                         </View>
-                        <Text style={[s.selectorActionText, { color: theme.textPrimary }]}>Add New Hostel</Text>
-                        <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} style={{ marginLeft: 'auto' }} />
-                    </TouchableOpacity>
+                    ) : (
+                        <>
+                            {/* Actions at the bottom of the list */}
+                            {hostels.length < 2 && (
+                                <TouchableOpacity
+                                    style={[s.selectorActionBtn, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderWidth: 1, borderColor: isDark ? '#334155' : '#E2E8F0' }]}
+                                    onPress={() => {
+                                        setShowHostelSelector(false);
+                                        navigation.navigate('AddHostel');
+                                    }}
+                                    activeOpacity={0.75}
+                                >
+                                    <View style={[s.selectorActionIcon, { backgroundColor: '#EDE9FE' }]}>
+                                        <Ionicons name="add" size={18} color="#7C3AED" />
+                                    </View>
+                                    <Text style={[s.selectorActionText, { color: theme.textPrimary }]}>Add New Hostel</Text>
+                                    <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} style={{ marginLeft: 'auto' }} />
+                                </TouchableOpacity>
+                            )}
 
-                    <TouchableOpacity
-                        style={[s.selectorActionBtn, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderWidth: 1, borderColor: isDark ? '#334155' : '#E2E8F0' }]}
-                        onPress={() => {
-                            setShowHostelSelector(false);
-                            navigation.navigate('Hostels');
-                        }}
-                        activeOpacity={0.75}
-                    >
-                        <View style={[s.selectorActionIcon, { backgroundColor: '#DBEAFE' }]}>
-                            <Ionicons name="list-outline" size={16} color="#2563EB" />
-                        </View>
-                        <Text style={[s.selectorActionText, { color: theme.textPrimary }]}>Manage All Hostels</Text>
-                        <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} style={{ marginLeft: 'auto' }} />
-                    </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[s.selectorActionBtn, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderWidth: 1, borderColor: isDark ? '#334155' : '#E2E8F0' }]}
+                                onPress={() => {
+                                    setShowHostelSelector(false);
+                                    navigation.navigate('Hostels');
+                                }}
+                                activeOpacity={0.75}
+                            >
+                                <View style={[s.selectorActionIcon, { backgroundColor: '#DBEAFE' }]}>
+                                    <Ionicons name="list-outline" size={16} color="#2563EB" />
+                                </View>
+                                <Text style={[s.selectorActionText, { color: theme.textPrimary }]}>Manage All Hostels</Text>
+                                <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} style={{ marginLeft: 'auto' }} />
+                            </TouchableOpacity>
 
-                    <TouchableOpacity
-                        style={[s.selectorActionBtn, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderWidth: 1, borderColor: isDark ? '#334155' : '#E2E8F0', marginTop: 8 }]}
-                        onPress={() => {
-                            setShowHostelSelector(false);
-                            setTourStep(0);
-                            setShowTour(true);
-                        }}
-                        activeOpacity={0.75}
-                    >
-                        <View style={[s.selectorActionIcon, { backgroundColor: '#FEF3C7' }]}>
-                            <Ionicons name="help-circle-outline" size={16} color="#D97706" />
-                        </View>
-                        <Text style={[s.selectorActionText, { color: theme.textPrimary }]}>Quick Tour Guide</Text>
-                        <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} style={{ marginLeft: 'auto' }} />
-                    </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[s.selectorActionBtn, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderWidth: 1, borderColor: isDark ? '#334155' : '#E2E8F0', marginTop: 8 }]}
+                                onPress={() => {
+                                    setShowHostelSelector(false);
+                                    setTourStep(0);
+                                    setShowTour(true);
+                                }}
+                                activeOpacity={0.75}
+                            >
+                                <View style={[s.selectorActionIcon, { backgroundColor: '#FEF3C7' }]}>
+                                    <Ionicons name="help-circle-outline" size={16} color="#D97706" />
+                                </View>
+                                <Text style={[s.selectorActionText, { color: theme.textPrimary }]}>Quick Tour Guide</Text>
+                                <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} style={{ marginLeft: 'auto' }} />
+                            </TouchableOpacity>
+                        </>
+                    )}
                 </ScrollView>
             </ModalSheet>
             {renderTourOverlay()}

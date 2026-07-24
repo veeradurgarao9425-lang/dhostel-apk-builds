@@ -170,7 +170,12 @@ export const HostelsScreen = () => {
 
     return (
         <View style={[styles.container, { backgroundColor: isDark ? theme.background : '#F8FAFC' }]}>
-            <AppHeader title="My Hostels" showBack={true} />
+            <AppHeader 
+                title="My Hostels" 
+                alignLeft
+                subtitle="Manage your hostel properties"
+                showBack={true} 
+            />
 
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
@@ -350,13 +355,15 @@ export const HostelsScreen = () => {
                 )}
             </ScrollView>
 
-            <TouchableOpacity
-                style={[styles.fab, { backgroundColor: theme.primary }]}
-                onPress={() => navigation.navigate('AddHostel')}
-                activeOpacity={0.85}
-            >
-                <Plus color="#FFF" size={24} strokeWidth={3} />
-            </TouchableOpacity>
+            {hostels.length < 2 && (
+                <TouchableOpacity
+                    style={[styles.fab, { backgroundColor: theme.primary }]}
+                    onPress={() => navigation.navigate('AddHostel')}
+                    activeOpacity={0.85}
+                >
+                    <Plus color="#FFF" size={24} strokeWidth={3} />
+                </TouchableOpacity>
+            )}
         </View>
     );
 };
