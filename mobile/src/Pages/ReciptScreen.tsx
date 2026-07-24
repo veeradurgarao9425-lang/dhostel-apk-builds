@@ -13,11 +13,13 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { AppHeader } from '../components/AppHeader';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import { downloadAndSaveFile } from '../utils/fileDownloader';
 
 export const ReceiptScreen = ({ navigation, route }: any) => {
     const { feeData } = route.params || {};
     const { user } = useAuth();
+    const { theme, isDark } = useTheme();
 
     if (!feeData) {
         return (
@@ -59,7 +61,7 @@ export const ReceiptScreen = ({ navigation, route }: any) => {
     const studentName = `${feeData.first_name || ''} ${feeData.last_name || ''}`.trim() || feeData.full_name || 'N/A';
     const roomNo = isStaff ? 'N/A' : (feeData.room_number || 'N/A');
     const mobileNo = feeData.phone || 'N/A';
-    const feeMonth = isStaff ? (feeData.note || 'Wage Payment') : (feeData.fee_month || 'N/A');
+    const feeMonth = isStaff ? (feeData.note || 'Wage Payment') : (feeData.fee_month || feeData.payment_for_month || 'N/A');
     const avatarInitials = getInitials(hostelName);
     const upiId = `${hostelName.toLowerCase().replace(/\s+/g, '')}@yesbank`;
 
@@ -392,113 +394,102 @@ export const ReceiptScreen = ({ navigation, route }: any) => {
     };
 
     return (
-        <View style={styles.container}>
-            <StatusBar barStyle="light-content" backgroundColor="#5f259f" />
+        <View style={[styles.container, { backgroundColor: theme.background }]}>
+            <StatusBar barStyle="light-content" />
 
             {/* Header */}
-            <AppHeader title="Transaction Details" />
+            <AppHeader 
+                title="Transaction Details" 
+                alignLeft
+                subtitle="Digital payment receipt"
+                showBack={true} 
+            />
 
-            <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+            <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40, paddingTop: 20 }}>
                 
-                {/* Status Header Block */}
-                <View style={styles.statusHeader}>
-                    <View style={styles.statusIconCircle}>
-                        <Ionicons name="checkmark-sharp" size={40} color="#FFF" />
-                    </View>
-                    <View style={styles.statusTextContainer}>
-                        <Text style={styles.statusTitle}>Payment Successful</Text>
-                        <Text style={styles.statusTime}>{transactionTime}</Text>
-                    </View>
-                </View>
-
-                {/* Main Card */}
-                <View style={styles.card}>
-                    {/* Paid To Section */}
-                    <Text style={styles.cardLabel}>Paid to</Text>
-                    <View style={styles.paidToRow}>
-                        <View style={styles.avatarInfo}>
-                            <View style={styles.avatar}>
-                                <Text style={styles.avatarText}>{avatarInitials}</Text>
-                            </View>
-                            <View style={styles.infoText}>
-                                <Text style={styles.hostelName}>{hostelName}</Text>
-                                <Text style={styles.upiId}>{upiId}</Text>
-                            </View>
+                {/* Receipt Ticket Card */}
+                <View style={[styles.ticketCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                    
+                    {/* Top Status Section */}
+                    <View style={styles.ticketTop}>
+                        <View style={styles.successIconWrap}>
+                            <Ionicons name="checkmark-circle" size={56} color="#10B981" />
                         </View>
-                        <Text style={styles.amount}>₹{amountPaid.toLocaleString('en-IN')}</Text>
-                    </View>
-
-                    {/* Thin Divider */}
-                    <View style={styles.divider} />
-
-                    {/* Transfer Details Header */}
-                    <View style={styles.transferHeader}>
-                        <Text style={styles.transferTitle}>{recipientLabel}</Text>
-                    </View>
-
-                    {/* Details List */}
-                    <View style={styles.detailsList}>
-                        <View style={styles.detailGroup}>
-                            <Text style={styles.detailLabel}>Name</Text>
-                            <Text style={styles.detailValue}>{studentName}</Text>
-                        </View>
+                        <Text style={[styles.successTitle, { color: theme.textPrimary }]}>Payment Successful</Text>
+                        <Text style={styles.transactionTime}>{transactionTime}</Text>
                         
+                        <Text style={[styles.amountBig, { color: theme.textPrimary }]}>₹{amountPaid.toLocaleString('en-IN')}</Text>
+                        <Text style={styles.amountLabel}>{amountLabel}</Text>
+                    </View>
+
+                    {/* Ticket Cutout/Dashed Line */}
+                    <View style={styles.ticketDividerWrap}>
+                        <View style={[styles.cutoutLeft, { backgroundColor: theme.background, borderColor: isDark ? '#334155' : '#E2E8F0' }]} />
+                        <View style={[styles.dashedLine, { borderColor: isDark ? '#334155' : '#E2E8F0' }]} />
+                        <View style={[styles.cutoutRight, { backgroundColor: theme.background, borderColor: isDark ? '#334155' : '#E2E8F0' }]} />
+                    </View>
+
+                    {/* Details Section */}
+                    <View style={styles.ticketBottom}>
+                        
+                        <View style={styles.infoRow}>
+                            <Text style={styles.infoLabel}>Paid To</Text>
+                            <Text style={[styles.infoValue, { color: theme.textPrimary, flex: 1, textAlign: 'right' }]}>{hostelName}</Text>
+                        </View>
+
+                        <View style={styles.infoRow}>
+                            <Text style={styles.infoLabel}>{recipientLabel}</Text>
+                            <Text style={[styles.infoValue, { color: theme.textPrimary, flex: 1, textAlign: 'right' }]}>{studentName}</Text>
+                        </View>
+
                         {!isStaff && (
-                            <View style={styles.detailGroup}>
-                                <Text style={styles.detailLabel}>Room No.</Text>
-                                <Text style={styles.detailValue}>{roomNo}</Text>
+                            <View style={styles.infoRow}>
+                                <Text style={styles.infoLabel}>Room No.</Text>
+                                <Text style={[styles.infoValue, { color: theme.textPrimary }]}>{roomNo}</Text>
                             </View>
                         )}
 
-                        <View style={styles.detailGroup}>
-                            <Text style={styles.detailLabel}>Message / Fee Month</Text>
-                            <Text style={styles.detailValue}>Rent for {feeMonth}</Text>
+                        <View style={styles.infoRow}>
+                            <Text style={styles.infoLabel}>Fee Month</Text>
+                            <Text style={[styles.infoValue, { color: theme.textPrimary }]}>{feeMonth}</Text>
                         </View>
 
-                        <View style={styles.detailGroup}>
-                            <Text style={styles.detailLabel}>Receipt / Invoice No</Text>
-                            <Text style={styles.detailValue}>{receiptNo}</Text>
+                        <View style={styles.infoRow}>
+                            <Text style={styles.infoLabel}>Payment Mode</Text>
+                            <Text style={[styles.infoValue, { color: theme.textPrimary }]}>{paymentMode}</Text>
                         </View>
 
-                        <View style={styles.detailGroup}>
-                            <Text style={styles.detailLabel}>Debited from</Text>
-                            <View style={styles.debitedRow}>
-                                <View style={styles.debitedLeft}>
-                                    <View style={styles.bankLogo}>
-                                        <Text style={styles.bankLogoText}>{paymentMode[0].toUpperCase()}</Text>
-                                    </View>
-                                    <Text style={[styles.detailValue, { fontWeight: '500' }]}>{paymentMode}</Text>
-                                </View>
-                                <Text style={[styles.amount, { fontSize: 15, fontWeight: '700' }]}>₹{amountPaid.toLocaleString('en-IN')}</Text>
+                        <View style={styles.infoRow}>
+                            <Text style={styles.infoLabel}>Receipt No.</Text>
+                            <Text style={[styles.infoValue, { color: theme.textPrimary }]}>{receiptNo}</Text>
+                        </View>
+
+                        {transactionId && transactionId !== 'N/A' && (
+                            <View style={styles.infoRow}>
+                                <Text style={styles.infoLabel}>Ref / UTR</Text>
+                                <Text style={[styles.infoValue, { color: theme.textPrimary }]}>{transactionId}</Text>
                             </View>
-                            {transactionId && transactionId !== 'N/A' && (
-                                <View style={{ marginTop: 8 }}>
-                                    <Text style={styles.detailLabel}>UTR / Reference ID</Text>
-                                    <Text style={[styles.detailValue, { fontSize: 13, color: '#475569' }]}>{transactionId}</Text>
-                                </View>
-                            )}
-                        </View>
+                        )}
+
                     </View>
                 </View>
 
                 {/* Action Buttons Row */}
-                <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
-                    {/* Share Button */}
-                    <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#E6F9F3', flex: 1, borderWidth: 1, borderColor: '#00B074' }]} onPress={sharePdf} activeOpacity={0.85}>
-                        <Ionicons name="logo-whatsapp" size={20} color="#00B074" style={{ marginRight: 8 }} />
-                        <Text style={[styles.actionBtnText, { color: '#00B074' }]}>Share Receipt</Text>
+                <View style={{ flexDirection: 'row', gap: 12, marginTop: 24 }}>
+                    <TouchableOpacity style={[styles.actionBtn, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: theme.primary, borderWidth: 1 }]} onPress={sharePdf} activeOpacity={0.85}>
+                        <Ionicons name="share-social-outline" size={20} color={theme.primary} style={{ marginRight: 8 }} />
+                        <Text style={[styles.actionBtnText, { color: theme.primary }]}>Share PDF</Text>
                     </TouchableOpacity>
 
-                    {/* Download Button */}
-                    <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#00B074', flex: 1 }]} onPress={downloadPdf} activeOpacity={0.85}>
+                    <TouchableOpacity style={[styles.actionBtn, { backgroundColor: theme.primary }]} onPress={downloadPdf} activeOpacity={0.85}>
                         <Ionicons name="download-outline" size={20} color="#FFF" style={{ marginRight: 8 }} />
                         <Text style={styles.actionBtnText}>Save PDF</Text>
                     </TouchableOpacity>
                 </View>
 
-                {/* Hostix Branding Footer */}
+                {/* Branding Footer */}
                 <View style={styles.brandingFooter}>
-                    <Text style={styles.poweredBy}>Powered by</Text>
+                    <Text style={styles.poweredBy}>Secured by</Text>
                     <Text style={styles.brandingText}>HOSTIX<Text style={styles.brandingDot}>•</Text>PG OS</Text>
                 </View>
 
@@ -510,220 +501,112 @@ export const ReceiptScreen = ({ navigation, route }: any) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F5F6F8',
     },
     content: {
         flex: 1,
-        padding: 16,
+        paddingHorizontal: 20,
     },
-    statusHeader: {
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 24,
-        marginTop: 20,
-    },
-    statusIconCircle: {
-        width: 64,
-        height: 64,
-        borderRadius: 32,
-        backgroundColor: '#10B981',
-        justifyContent: 'center',
-        alignItems: 'center',
-        elevation: 4,
-        shadowColor: '#10B981',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-    },
-    statusTextContainer: {
-        flexDirection: 'column',
-        alignItems: 'center',
-    },
-    statusTitle: {
-        fontSize: 22,
-        fontWeight: '900',
-        color: '#0F172A',
-        marginTop: 16,
-    },
-    statusTime: {
-        fontSize: 13,
-        color: '#64748B',
-        marginTop: 4,
-        fontWeight: '500',
-    },
-    card: {
-        backgroundColor: '#FFF',
-        borderRadius: 16,
-        padding: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 2,
-        marginBottom: 24,
+    ticketCard: {
+        borderRadius: 20,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        overflow: 'hidden',
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
     },
-    cardLabel: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: '#64748B',
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-        marginBottom: 14,
-    },
-    paidToRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    avatarInfo: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        flex: 1,
-    },
-    avatar: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        backgroundColor: '#00bcd4',
-        justifyContent: 'center',
+    ticketTop: {
+        padding: 24,
         alignItems: 'center',
     },
-    avatarText: {
-        color: '#FFF',
+    successIconWrap: {
+        marginBottom: 12,
+    },
+    successTitle: {
         fontSize: 18,
         fontWeight: '800',
+        marginBottom: 4,
     },
-    infoText: {
-        flexDirection: 'column',
-        flex: 1,
-    },
-    hostelName: {
-        fontSize: 15,
-        fontWeight: '800',
-        color: '#0F172A',
-        textTransform: 'uppercase',
-    },
-    upiId: {
-        fontSize: 12,
+    transactionTime: {
+        fontSize: 13,
         color: '#64748B',
-        marginTop: 4,
         fontWeight: '500',
+        marginBottom: 20,
     },
-    amount: {
-        fontSize: 20,
+    amountBig: {
+        fontSize: 36,
         fontWeight: '900',
-        color: '#0F172A',
+        marginBottom: 4,
     },
-    divider: {
-        height: 1,
-        backgroundColor: '#E2E8F0',
-        marginVertical: 16,
-    },
-    transferHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    transferTitle: {
-        fontSize: 14,
-        fontWeight: '800',
-        color: '#334155',
-    },
-    detailsList: {
-        flexDirection: 'column',
-        gap: 14,
-    },
-    detailGroup: {
-        flexDirection: 'column',
-    },
-    detailLabel: {
-        fontSize: 11,
+    amountLabel: {
+        fontSize: 13,
         color: '#94A3B8',
         textTransform: 'uppercase',
-        letterSpacing: 0.5,
-        marginBottom: 4,
+        fontWeight: '700',
+        letterSpacing: 1,
+    },
+    ticketDividerWrap: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        position: 'relative',
+        height: 30,
+    },
+    cutoutLeft: {
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        borderRightWidth: 1,
+        position: 'absolute',
+        left: -15,
+        zIndex: 2,
+    },
+    dashedLine: {
+        flex: 1,
+        height: 1,
+        borderStyle: 'dashed',
+        borderWidth: 1.5,
+        marginHorizontal: 20,
+        opacity: 0.5,
+    },
+    cutoutRight: {
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        borderLeftWidth: 1,
+        position: 'absolute',
+        right: -15,
+        zIndex: 2,
+    },
+    ticketBottom: {
+        padding: 24,
+        gap: 16,
+    },
+    infoRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+    },
+    infoLabel: {
+        fontSize: 14,
+        color: '#64748B',
         fontWeight: '600',
     },
-    detailValue: {
+    infoValue: {
         fontSize: 14,
         fontWeight: '700',
-        color: '#1E293B',
-    },
-    debitedRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    debitedLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-    },
-    bankLogo: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        backgroundColor: '#5f259f',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    bankLogoText: {
-        color: '#FFF',
-        fontSize: 10,
-        fontWeight: '800',
-    },
-    shareButton: {
-        backgroundColor: '#25D366',
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 16,
-        borderRadius: 14,
-        alignSelf: 'center',
-        width: '100%',
-        elevation: 3,
-        shadowColor: '#25D366',
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 4 },
-        marginBottom: 24,
-    },
-    shareText: {
-        color: '#FFF',
-        fontSize: 15,
-        fontWeight: '900',
-        letterSpacing: 0.5,
-    },
-    brandingFooter: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: 10,
-        gap: 6,
-    },
-    poweredBy: {
-        fontSize: 12,
-        color: '#94A3B8',
-        fontWeight: '500',
-    },
-    brandingDot: {
-        color: '#E2E8F0',
-        fontWeight: '900',
+        textAlign: 'right',
     },
     actionBtn: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         paddingVertical: 14,
-        borderRadius: 16,
+        borderRadius: 14,
+        flex: 1,
         elevation: 2,
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
+        shadowOpacity: 0.05,
         shadowRadius: 4,
     },
     actionBtnText: {
@@ -731,12 +614,29 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '800',
     },
+    brandingFooter: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 32,
+        gap: 4,
+    },
+    poweredBy: {
+        fontSize: 11,
+        color: '#94A3B8',
+        fontWeight: '600',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
     brandingText: {
         fontWeight: '900',
-        color: '#5f259f',
-        fontSize: 14,
+        color: '#94A3B8',
+        fontSize: 13,
         letterSpacing: 1,
-    }
+    },
+    brandingDot: {
+        color: '#E2E8F0',
+        fontWeight: '900',
+    },
 });
 
 export default ReceiptScreen;

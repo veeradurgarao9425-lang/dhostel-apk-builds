@@ -265,7 +265,12 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             keyboardVerticalOffset={0}
         >
-            <AppHeader title={isEdit ? 'Edit Hostel' : 'Add Hostel'} showBack={true} />
+            <AppHeader 
+                title={isEdit ? 'Edit Hostel' : 'Add Hostel'} 
+                alignLeft
+                subtitle={isEdit ? "Update your hostel's details" : "Register a new hostel property"}
+                showBack={true} 
+            />
 
             <ScrollView
                 ref={scrollViewRef}
@@ -431,41 +436,49 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
                         />
                     </View>
 
-                    <InputField
-                        label="Default Joining Fee (Non-Refundable) *"
-                        placeholder="e.g. 1000"
-                        keyboardType="numeric"
-                        value={formData.admission_fee}
-                        error={fieldErrors.admission_fee}
-                        onChangeText={(text) => {
-                            const num = text.replace(/[^0-9.]/g, '');
-                            setFormData({ ...formData, admission_fee: num });
-                            if (fieldErrors.admission_fee) setFieldErrors(prev => { const e = {...prev}; delete e.admission_fee; return e; });
-                        }}
-                        onFocus={() => {
-                            setTimeout(() => {
-                                scrollViewRef.current?.scrollToEnd({ animated: true });
-                            }, 150);
-                        }}
-                    />
+                    <View style={{ marginBottom: 16 }}>
+                        <InputField
+                            label="Admission Fee *"
+                            placeholder="e.g. 3000"
+                            keyboardType="numeric"
+                            value={formData.admission_fee}
+                            error={fieldErrors.admission_fee}
+                            containerStyle={{ marginBottom: 4 }}
+                            onChangeText={(text) => {
+                                const num = text.replace(/[^0-9.]/g, '');
+                                setFormData({ ...formData, admission_fee: num });
+                                if (fieldErrors.admission_fee) setFieldErrors(prev => { const e = {...prev}; delete e.admission_fee; return e; });
+                            }}
+                            onFocus={() => {
+                                setTimeout(() => {
+                                    scrollViewRef.current?.scrollToEnd({ animated: true });
+                                }, 150);
+                            }}
+                        />
+                        <Text style={{ fontSize: 12, color: '#64748B', marginLeft: 4 }}>One-time joining fee collected at the time of admission.</Text>
+                    </View>
 
-                    <InputField
-                        label="Default Refundable Deposit *"
-                        placeholder="e.g. 2000"
-                        keyboardType="numeric"
-                        value={formData.default_refundable_deposit}
-                        error={fieldErrors.default_refundable_deposit}
-                        onChangeText={(text) => {
-                            const num = text.replace(/[^0-9.]/g, '');
-                            setFormData({ ...formData, default_refundable_deposit: num });
-                            if (fieldErrors.default_refundable_deposit) setFieldErrors(prev => { const e = {...prev}; delete e.default_refundable_deposit; return e; });
-                        }}
-                        onFocus={() => {
-                            setTimeout(() => {
-                                scrollViewRef.current?.scrollToEnd({ animated: true });
-                            }, 150);
-                        }}
-                    />
+                    <View style={{ marginBottom: 16 }}>
+                        <InputField
+                            label="Refundable Deposit *"
+                            placeholder="e.g. 2000"
+                            keyboardType="numeric"
+                            value={formData.default_refundable_deposit}
+                            error={fieldErrors.default_refundable_deposit}
+                            containerStyle={{ marginBottom: 4 }}
+                            onChangeText={(text) => {
+                                const num = text.replace(/[^0-9.]/g, '');
+                                setFormData({ ...formData, default_refundable_deposit: num });
+                                if (fieldErrors.default_refundable_deposit) setFieldErrors(prev => { const e = {...prev}; delete e.default_refundable_deposit; return e; });
+                            }}
+                            onFocus={() => {
+                                setTimeout(() => {
+                                    scrollViewRef.current?.scrollToEnd({ animated: true });
+                                }, 150);
+                            }}
+                        />
+                        <Text style={{ fontSize: 12, color: '#64748B', marginLeft: 4 }}>Amount returned to the tenant when they vacate, after deducting any pending charges.</Text>
+                    </View>
 
                     {/* ── Duplicate Footer inside Card (only shown when keyboard is open) ── */}
                     {isKeyboardVisible && (

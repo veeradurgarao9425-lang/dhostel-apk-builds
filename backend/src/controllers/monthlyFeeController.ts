@@ -744,21 +744,46 @@ export const getMonthlyFeesSummary = async (req: AuthRequest, res: Response) => 
       return aDueDate.getTime() - bDueDate.getTime();
     });
 
-    let tab_counts = { overdue: 0, next_7_days: 0, all: filteredFees.length };
+    let tab_counts = {
+      overdue: 0,
+      next_7_days: 0,
+      all: filteredFees.length,
+      // Server-computed amounts (avoid client-side calc on paginated data)
+      overdue_amount: 0,
+      next_7_days_amount: 0,
+      all_amount: 0,
+      partial_count: 0,
+    };
     filteredFees.forEach((f: any) => {
+      const balance = parseFloat(f.balance || 0);
       const fDueDate = f.due_date ? new Date(f.due_date) : new Date();
       fDueDate.setHours(0, 0, 0, 0);
       const diff = todayDate.getTime() - fDueDate.getTime();
       const isOverdue = diff > 0 && f.fee_status !== 'Fully Paid';
+
+      // All pending
+      tab_counts.all_amount += balance;
+
+      // Partial
+      if ((f.paid_amount || 0) > 0 && f.fee_status !== 'Fully Paid') {
+        tab_counts.partial_count++;
+      }
+
       if (isOverdue) {
         tab_counts.overdue++;
+        tab_counts.overdue_amount += balance;
       } else {
         const diffForward = Math.floor((fDueDate.getTime() - todayDate.getTime()) / 86400000);
         if (diffForward >= 0 && diffForward <= 7) {
           tab_counts.next_7_days++;
+          tab_counts.next_7_days_amount += balance;
         }
       }
     });
+    // Round amounts to avoid floating point noise
+    tab_counts.overdue_amount = Math.round(tab_counts.overdue_amount);
+    tab_counts.next_7_days_amount = Math.round(tab_counts.next_7_days_amount);
+    tab_counts.all_amount = Math.round(tab_counts.all_amount);
 
     let paginatedFees = filteredFees;
     let hasMore = false;

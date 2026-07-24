@@ -75,7 +75,7 @@ export default function TenantTransactionsScreen() {
             room_number: student?.room_number || 'N/A',
             paid_amount: tx.amount,
             phone: student?.phone || 'N/A',
-            fee_month: tx.fee_month || 'N/A',
+            fee_month: tx.fee_month || tx.payment_for_month || new Date(tx.payment_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
             due_date: tx.due_date || tx.payment_date
         };
         navigation.navigate('Receipt', { feeData });
@@ -98,8 +98,16 @@ export default function TenantTransactionsScreen() {
                     <Ionicons name="card" size={20} color="#10B981" />
                 </View>
                 <View style={styles.txInfo}>
-                    <Text style={styles.txTitle}>Rent Payment • {item.fee_month || 'N/A'}</Text>
+                    <Text style={styles.txTitle}>
+                        Rent Payment • {
+                            [item.payment_for_month, item.fee_month].find(m => m && m !== 'NA' && m !== 'N/A') || 
+                            new Date(item.payment_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+                        }
+                    </Text>
                     <Text style={styles.txSub}>Mode: {item.payment_mode_name || 'Online'} • {payDate}</Text>
+                    <Text style={[styles.txSub, { marginTop: 4, fontStyle: 'italic', fontSize: 11 }]}>
+                        {item.notes ? `Note: ${item.notes}` : 'Note: Rent payment successfully recorded'}
+                    </Text>
                 </View>
                 <View style={styles.txRight}>
                     <Text style={styles.txAmount}>₹{parseFloat(item.amount as any).toLocaleString('en-IN')}</Text>
@@ -114,7 +122,11 @@ export default function TenantTransactionsScreen() {
             <StatusBar barStyle="light-content" />
 
             {/* Header */}
-            <AppHeader title="Tenant Transactions" />
+            <AppHeader 
+                title="Tenant Transactions" 
+                alignLeft 
+                subtitle="Complete payment history"
+            />
 
             {loading ? (
                 <SkeletonList count={5} />
@@ -130,9 +142,9 @@ export default function TenantTransactionsScreen() {
                         <View style={styles.summaryInfo}>
                             <Text style={styles.studentName}>{student?.first_name} {student?.last_name || ''}</Text>
                             <Text style={styles.transactionCount}>{transactions.length} transaction{transactions.length !== 1 ? 's' : ''}</Text>
-                            
+
                             <View style={styles.divider} />
-                            
+
                             <View style={styles.row}>
                                 <View style={styles.col}>
                                     <Text style={styles.lbl}>Total Paid</Text>

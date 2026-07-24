@@ -1167,6 +1167,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                                         phone: student.phone,
                                                         room_number: student.room_number,
                                                         paid_amount: payment.amount,
+                                                        fee_month: payment.payment_for_month || payment.fee_month || new Date(payment.payment_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
                                                         fee_id: payment.payment_id || payment.id
                                                     }
                                                 })}
@@ -1178,7 +1179,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                                     </View>
                                                     <View style={styles.timelineContent}>
                                                         <Text style={[styles.timelineEventTitle, { color: theme.textPrimary }]}>
-                                                            Rent Payment Recorded ({payment.fee_month || 'Payment'})
+                                                            Rent Payment Recorded ({payment.payment_for_month || payment.fee_month || new Date(payment.payment_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })})
                                                         </Text>
                                                         <Text style={[styles.timelineEventDate, { color: theme.textSecondary }]}>
                                                             {new Date(payment.payment_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -1593,6 +1594,8 @@ const styles = StyleSheet.create({
     modalTitle: { fontSize: 18, fontWeight: '700', color: '#1E293B' },
     modalBody: { gap: 8 },
     inputLabel: { fontSize: 13, fontWeight: '600', color: '#64748B', marginBottom: 4 },
+    inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', borderRadius: 10, paddingHorizontal: 14, marginBottom: 12 },
+    input: { flex: 1, paddingVertical: 14, fontSize: 14, color: '#1E293B' },
     notesInput: { backgroundColor: '#F1F5F9', borderRadius: 10, padding: 14, fontSize: 14, color: '#1E293B' },
     submitButton: { padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 16 },
     disabledButton: { backgroundColor: '#FF6B6B80' },

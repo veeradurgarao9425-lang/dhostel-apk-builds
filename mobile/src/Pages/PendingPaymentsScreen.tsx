@@ -297,14 +297,30 @@ export default function PendingPaymentsScreen() {
         room: 'All', 
         sortBy: 'Due Date - Old to New' 
     });
-    const handleApplyFilters = async (filters: any) => {
+    // Store filters in a ref so the load callback always has the latest value
+    const activeFiltersRef = useRef<any>({
+        status: 'All',
+        datePreset: route.params?.datePreset || 'All Time',
+        room: 'All',
+        sortBy: 'Due Date - Old to New'
+    });
+    const handleApplyFilters = (filters: any) => {
         setFilterModalVisible(false);
+        activeFiltersRef.current = filters;
         setActiveFilters(filters);
-        setLoading(true);
         setPage(1);
         setHasMore(true);
-        await load(1, false);
-        setLoading(false);
+        setTenants([]);
+        load(1, false);
+    };
+    const handleClearFilters = () => {
+        const cleared = { status: 'All', datePreset: 'All Time', room: 'All', sortBy: 'Due Date - Old to New' };
+        activeFiltersRef.current = cleared;
+        setActiveFilters(cleared);
+        setPage(1);
+        setHasMore(true);
+        setTenants([]);
+        load(1, false);
     };
     const [totalPending, setTotalPending] = useState(0);
     const [partialPaid, setPartialPaid] = useState(0);
@@ -314,7 +330,10 @@ export default function PendingPaymentsScreen() {
         ? route.params.tab
         : 'Overdue';
     const [activeTab, setActiveTab] = useState<'Overdue' | 'Next 7 Days' | 'All Dues'>(initialTab);
-    const [tabCounts, setTabCounts] = useState({ overdue: 0, next_7_days: 0, all: 0 });
+    const [tabCounts, setTabCounts] = useState({
+        overdue: 0, next_7_days: 0, all: 0,
+        overdue_amount: 0, next_7_days_amount: 0, all_amount: 0, partial_count: 0
+    });
 
     // Collect Drawer
     const [collectModalVisible, setCollectModalVisible] = useState(false);
@@ -636,7 +655,9 @@ export default function PendingPaymentsScreen() {
         return 0;
     });
 
-    const keyExtractor = useCallback((item: DueTenant) => `due-${item.id}`, []);
+    // Use student_id as key — studentMap deduplicates by student_id so each student
+    // appears once per page load. Stringify the id to be safe.
+    const keyExtractor = useCallback((item: DueTenant) => String(item.id), []);
     const renderItem = useCallback(({ item }: { item: DueTenant }) => (
         <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate('StudentDetails', { studentId: item.id })}>
             <TenantDueCard
@@ -699,14 +720,11 @@ export default function PendingPaymentsScreen() {
                     </View>
                 }
             />
-            {/* ── Premium Summary Cards (3-card layout) ─────────────── */}
+            {/* ── Premium Summary Cards ─────────────────────────────── */}
             <View style={s.summaryRow}>
-                {/* Card 1: Total Outstanding */}
+                {/* Card 1: Overdue amount */}
                 <TouchableOpacity
-                    style={[s.summaryCard, {
-                        backgroundColor: theme.cardBg,
-                        borderColor: isDark ? '#334155' : '#E2E8F0',
-                    }]}
+                    style={[s.summaryCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#E2E8F0' }]}
                     activeOpacity={0.85}
                     onPress={() => setActiveTab('Overdue')}
                 >
@@ -714,24 +732,21 @@ export default function PendingPaymentsScreen() {
                         <Ionicons name="alert-circle" size={18} color="#DC2626" />
                     </View>
                     <Text style={[s.summaryAmount, { color: '#DC2626', fontSize: 16 }]} numberOfLines={1}>
-                        ₹{totalPending > 1000000
-                            ? `${(totalPending / 100000).toFixed(1)}L`
-                            : totalPending > 999
-                                ? `${(totalPending / 1000).toFixed(1)}k`
-                                : totalPending.toLocaleString('en-IN')}
+                        {tabCounts.overdue_amount > 999999
+                            ? `₹${(tabCounts.overdue_amount / 100000).toFixed(1)}L`
+                            : tabCounts.overdue_amount > 999
+                                ? `₹${(tabCounts.overdue_amount / 1000).toFixed(1)}k`
+                                : `₹${tabCounts.overdue_amount}`}
                     </Text>
-                    <Text style={[s.summaryLabel, { color: theme.textSecondary, marginBottom: 0 }]}>Outstanding</Text>
+                    <Text style={[s.summaryLabel, { color: theme.textSecondary, marginBottom: 0 }]}>Overdue</Text>
                     <Text style={[s.summaryFooter, { color: isDark ? '#FCA5A5' : '#9B1C1C', fontSize: 9.5 }]}>
-                        {tabCounts.overdue} overdue
+                        {tabCounts.overdue} students
                     </Text>
                 </TouchableOpacity>
 
-                {/* Card 2: Due This Week */}
+                {/* Card 2: Due Soon amount (₹ in next 7 days) — distinct from tab bar count */}
                 <TouchableOpacity
-                    style={[s.summaryCard, {
-                        backgroundColor: theme.cardBg,
-                        borderColor: isDark ? '#334155' : '#E2E8F0',
-                    }]}
+                    style={[s.summaryCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#E2E8F0' }]}
                     activeOpacity={0.85}
                     onPress={() => setActiveTab('Next 7 Days')}
                 >
@@ -739,20 +754,21 @@ export default function PendingPaymentsScreen() {
                         <Ionicons name="time" size={18} color="#D97706" />
                     </View>
                     <Text style={[s.summaryAmount, { color: '#D97706', fontSize: 16 }]} numberOfLines={1}>
-                        {tabCounts.next_7_days}
+                        {tabCounts.next_7_days_amount > 999999
+                            ? `₹${(tabCounts.next_7_days_amount / 100000).toFixed(1)}L`
+                            : tabCounts.next_7_days_amount > 999
+                                ? `₹${(tabCounts.next_7_days_amount / 1000).toFixed(1)}k`
+                                : `₹${tabCounts.next_7_days_amount}`}
                     </Text>
                     <Text style={[s.summaryLabel, { color: theme.textSecondary, marginBottom: 0 }]}>Due Soon</Text>
                     <Text style={[s.summaryFooter, { color: isDark ? '#FCD34D' : '#92400E', fontSize: 9.5 }]}>
-                        in next 7 days
+                        {tabCounts.next_7_days} students · 7 days
                     </Text>
                 </TouchableOpacity>
 
-                {/* Card 3: Partial Paid */}
+                {/* Card 3: Partial paid amount */}
                 <TouchableOpacity
-                    style={[s.summaryCard, {
-                        backgroundColor: theme.cardBg,
-                        borderColor: isDark ? '#334155' : '#E2E8F0',
-                    }]}
+                    style={[s.summaryCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#E2E8F0' }]}
                     activeOpacity={0.85}
                     onPress={() => setActiveTab('All Dues')}
                 >
@@ -760,16 +776,17 @@ export default function PendingPaymentsScreen() {
                         <Ionicons name="hourglass" size={18} color="#0284C7" />
                     </View>
                     <Text style={[s.summaryAmount, { color: '#0284C7', fontSize: 16 }]} numberOfLines={1}>
-                        ₹{partialPaid > 999
-                            ? `${(partialPaid / 1000).toFixed(1)}k`
-                            : partialPaid.toLocaleString('en-IN')}
+                        {partialPaid > 999
+                            ? `₹${(partialPaid / 1000).toFixed(1)}k`
+                            : `₹${partialPaid.toLocaleString('en-IN')}`}
                     </Text>
-                    <Text style={[s.summaryLabel, { color: theme.textSecondary, marginBottom: 0 }]}>Partial</Text>
+                    <Text style={[s.summaryLabel, { color: theme.textSecondary, marginBottom: 0 }]}>Partial Paid</Text>
                     <Text style={[s.summaryFooter, { color: isDark ? '#7DD3FC' : '#0369A1', fontSize: 9.5 }]}>
-                        {t('pendingDues.duesCollectedPartially')}
+                        {tabCounts.partial_count} students
                     </Text>
                 </TouchableOpacity>
             </View>
+
 
             {/* ── Search & Filter ──────────────────────────────────────── */}
             <View style={s.searchRow}>
@@ -793,7 +810,9 @@ export default function PendingPaymentsScreen() {
                 </View>
 
                 {(() => {
-                    const activeFiltersCount = Object.values(activeFilters).filter(v => v !== 'All' && v !== 'All Time' && v !== 'Due Date - Old to New').length;
+                    const activeFiltersCount = Object.entries(activeFilters).filter(([k, v]) =>
+                        v && v !== 'All' && v !== 'All Time' && v !== 'Due Date - Old to New' && v !== ''
+                    ).length;
                     return (
                         <TouchableOpacity
                             style={[s.filterBtn, {
@@ -867,14 +886,43 @@ export default function PendingPaymentsScreen() {
                     )}
                 </View>
             )}
-            {/* Tabs removed to avoid redundancy with top summary cards */}
+            {/* ── Tabs: Overdue / Next 7 Days / All Dues ── */}
+            <View style={{ flexDirection: 'row', paddingHorizontal: 16, marginBottom: 8, gap: 8 }}>
+                {(['Overdue', 'Next 7 Days', 'All Dues'] as const).map(tab => {
+                    const isActive = activeTab === tab;
+                    const count = tab === 'Overdue' ? tabCounts.overdue : tab === 'Next 7 Days' ? tabCounts.next_7_days : tabCounts.all;
+                    return (
+                        <TouchableOpacity
+                            key={tab}
+                            onPress={() => setActiveTab(tab)}
+                            activeOpacity={0.8}
+                            style={[{
+                                flex: 1,
+                                paddingVertical: 8,
+                                borderRadius: 10,
+                                alignItems: 'center',
+                                borderWidth: 1.5,
+                                borderColor: isActive ? theme.primary : (isDark ? '#334155' : '#E2E8F0'),
+                                backgroundColor: isActive ? theme.primary + '15' : (isDark ? '#1E293B' : '#FFF'),
+                            }]}
+                        >
+                            <Text style={{ fontSize: 11, fontWeight: '800', color: isActive ? theme.primary : (isDark ? '#64748B' : '#94A3B8') }}>
+                                {tab}
+                            </Text>
+                            <Text style={{ fontSize: 13, fontWeight: '800', color: isActive ? theme.primary : (isDark ? '#94A3B8' : '#64748B'), marginTop: 1 }}>
+                                {count}
+                            </Text>
+                        </TouchableOpacity>
+                    );
+                })}
+            </View>
             {/* ── Count row ─────────────────────────────────────────── */}
             <View style={{ paddingHorizontal: 16, paddingBottom: 6, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Text style={{ fontSize: 13, color: isDark ? '#94A3B8' : '#64748B', fontWeight: '600' }}>
                     Showing {filteredTenants.length} student{filteredTenants.length !== 1 ? 's' : ''}
                 </Text>
-                {Object.values(activeFilters).some(v => v !== 'All' && v !== 'All Time' && v !== 'Due Date - Old to New') && (
-                    <TouchableOpacity onPress={() => setActiveFilters({ status: 'All', datePreset: 'All Time', room: 'All', sortBy: 'Due Date - Old to New' })}>
+                {Object.entries(activeFilters).some(([k, v]) => v && v !== 'All' && v !== 'All Time' && v !== 'Due Date - Old to New' && v !== '') && (
+                    <TouchableOpacity onPress={handleClearFilters}>
                         <Text style={{ fontSize: 12, color: theme.primary, fontWeight: '700' }}>Clear Filters</Text>
                     </TouchableOpacity>
                 )}

@@ -166,10 +166,26 @@ export function FilterDuesModal({ visible, onClose, onApply, initialFilters }: F
         return statusOptions.filter(o => o.toLowerCase().includes(searchQuery.toLowerCase()));
     }, [searchQuery]);
 
+    // Each entry: { key: string (for React key + filter value), label: string, isSpecial: boolean }
     const filteredRoomsList = useMemo(() => {
-        const allRooms = ['All', 'Unallocated', ...rooms.map(r => r.room_number)];
-        if (!searchQuery) return allRooms;
-        return allRooms.filter(o => o.toLowerCase().includes(searchQuery.toLowerCase()));
+        const specials = [
+            { key: 'All', label: 'All Rooms', isSpecial: true },
+            { key: 'Unallocated', label: 'Unallocated', isSpecial: true },
+        ];
+        // Use room_id as unique React key, room_number as filter value
+        const roomEntries = rooms.map(r => ({
+            key: `room-${r.room_id ?? r.room_number}`,
+            filterValue: r.room_number,
+            label: `Room ${r.room_number}`,
+            isSpecial: false,
+        }));
+        const all = [
+            ...specials.map(s => ({ key: s.key, filterValue: s.key, label: s.label, isSpecial: true })),
+            ...roomEntries,
+        ];
+        if (!searchQuery) return all;
+        const q = searchQuery.toLowerCase();
+        return all.filter(o => o.label.toLowerCase().includes(q));
     }, [rooms, searchQuery]);
 
     const RadioCircle = ({ selected }: { selected: boolean }) => (
@@ -429,17 +445,17 @@ export function FilterDuesModal({ visible, onClose, onApply, initialFilters }: F
                                     })}
 
                                     {activeCategory === 'rooms' && filteredRoomsList.map(opt => {
-                                        const isSelected = room === opt;
+                                        const isSelected = room === opt.filterValue;
                                         return (
                                             <TouchableOpacity
-                                                key={opt}
+                                                key={opt.key}
                                                 style={S.optionRow}
-                                                onPress={() => setRoom(opt)}
+                                                onPress={() => setRoom(opt.filterValue)}
                                                 activeOpacity={0.7}
                                             >
                                                 <RadioCircle selected={isSelected} />
                                                 <Text style={[S.optionText, { color: isDark ? '#E2E8F0' : '#334155' }]}>
-                                                    {opt === 'All' ? 'All Rooms' : (opt === 'Unallocated' ? 'Unallocated' : `Room ${opt}`)}
+                                                    {opt.label}
                                                 </Text>
                                             </TouchableOpacity>
                                         );
