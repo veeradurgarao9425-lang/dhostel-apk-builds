@@ -271,6 +271,7 @@ export default function RegistrationScreen({ route, navigation }: any) {
   const [customIdProofType, setCustomIdProofType] = useState('');
   const [idProofTypeOpen, setIdProofTypeOpen]     = useState(false);
   const [idProofNumber, setIdProofNumber]         = useState('');
+  const [currentAddress, setCurrentAddress]       = useState('');
   const [permanentAddress, setPermanentAddress]   = useState('');
   const [aadhaarFront, setAadhaarFront]           = useState<string | null>(null);
   const [aadhaarBack, setAadhaarBack]             = useState<string | null>(null);
@@ -309,7 +310,8 @@ export default function RegistrationScreen({ route, navigation }: any) {
       }
     }
     if (s === 3) {
-      if (!permanentAddress.trim()) newErrors.permanentAddress = 'Address is required.';
+      if (!currentAddress.trim()) newErrors.currentAddress = 'Current Address is required.';
+      if (!permanentAddress.trim()) newErrors.permanentAddress = 'Permanent Address is required.';
       if (!idProofType) {
         newErrors.idProofType = 'Please select ID Proof Type.';
       } else if (idProofType === 'Custom' && !customIdProofType.trim()) {
@@ -395,6 +397,7 @@ export default function RegistrationScreen({ route, navigation }: any) {
         date_of_birth: dateOfBirth,
         guardian_name: guardianName,
         guardian_phone: guardianPhone,
+        current_address: currentAddress,
         permanent_address: permanentAddress,
         id_proof_type: idProofType === 'Custom' ? customIdProofType : (idProofTypesList.find(t => t.name === idProofType)?.id || idProofType),
         id_proof_number: idProofNumber,
@@ -571,6 +574,7 @@ export default function RegistrationScreen({ route, navigation }: any) {
                   isVisible={showDatePicker}
                   mode="date"
                   maximumDate={new Date()}
+                  date={dateOfBirth ? new Date(dateOfBirth) : new Date(2000, 0, 1)}
                   onConfirm={(date) => {
                     setDateOfBirth(date.toISOString().split('T')[0]);
                     setShowDatePicker(false);
@@ -676,7 +680,7 @@ export default function RegistrationScreen({ route, navigation }: any) {
                           }
                         }
                       }}
-                      keyboardType={idProofType === 'Aadhaar' ? 'number-pad' : 'default'}
+                      keyboardType={idProofType === 'Aadhaar' ? 'numeric' : 'default'}
                       autoCapitalize={idProofType === 'PAN' || idProofType === 'Driving License' || idProofType === 'Voter ID' || idProofType === 'Passport' ? 'characters' : 'none'}
                       error={!!errors.idProofNumber}
                     />
@@ -709,13 +713,25 @@ export default function RegistrationScreen({ route, navigation }: any) {
               ) : null}
 
               <View style={{ marginTop: 12 }}>
-                <Field label="Address" required error={errors.permanentAddress}>
+                <Field label="Current Address" required error={errors.currentAddress}>
                   <InputRow
                     icon={MapPin}
-                    placeholder="Enter your full address"
+                    placeholder="Enter your current address"
+                    value={currentAddress}
+                    onChangeText={(t: string) => { setCurrentAddress(t); setErrors(p => ({...p, currentAddress: ''})) }}
+                    onBlur={() => { if (!currentAddress.trim()) setErrors(p => ({...p, currentAddress: 'Current Address is required.'})); }}
+                    multiline
+                    error={!!errors.currentAddress}
+                  />
+                </Field>
+                <View style={{ height: 12 }} />
+                <Field label="Permanent Address" required error={errors.permanentAddress}>
+                  <InputRow
+                    icon={MapPin}
+                    placeholder="Enter your permanent address"
                     value={permanentAddress}
                     onChangeText={(t: string) => { setPermanentAddress(t); setErrors(p => ({...p, permanentAddress: ''})) }}
-                    onBlur={() => { if (!permanentAddress.trim()) setErrors(p => ({...p, permanentAddress: 'Address is required.'})); }}
+                    onBlur={() => { if (!permanentAddress.trim()) setErrors(p => ({...p, permanentAddress: 'Permanent Address is required.'})); }}
                     multiline
                     error={!!errors.permanentAddress}
                   />

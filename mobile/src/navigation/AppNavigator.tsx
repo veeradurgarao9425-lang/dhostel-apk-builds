@@ -14,7 +14,8 @@ import MoreScreen      from '../Pages/MoreScreen';
 
 // ── Tab screens (Tenant) ──────────────────────────────────────────────────────────────
 import { TenantHomeScreen } from '../Pages/tenant/TenantHomeScreen';
-import DuesScreen from '../Pages/tenant/DuesScreen';
+import DuesScreen            from '../Pages/tenant/DuesScreen';
+import PendingApprovalScreen from '../Pages/tenant/PendingApprovalScreen';
 import ExpensesScreen from '../Pages/tenant/ExpensesScreen';
 import TenantNoticesScreen from '../Pages/tenant/NoticesScreen';
 
@@ -205,7 +206,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen name="TenantRegister" component={RegistrationScreen} />
 
                     {/* Main tab container */}
-                    <Stack.Screen name="Main" component={user?.role === 'TENANT' ? TenantTabNavigator : OwnerTabNavigator} />
+                    <Stack.Screen name="Main" component={user?.role === 'TENANT' ? (user?.status === 'Pending' ? PendingApprovalScreen : TenantTabNavigator) : OwnerTabNavigator} />
 
                     {/* Notifications */}
                     <Stack.Screen name="Notifications" component={NotificationScreen} />

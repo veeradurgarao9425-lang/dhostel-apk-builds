@@ -24,7 +24,7 @@ export default function RoleSelectScreen({ navigation }: any) {
       if (role === 'OWNER') {
         navigation.navigate('Login', { role: 'OWNER' });
       } else {
-        navigation.navigate('TenantLogin', { role: 'TENANT' });
+        navigation.navigate('TenantHostelKey', { role: 'TENANT' });
       }
     }, 150);
   };

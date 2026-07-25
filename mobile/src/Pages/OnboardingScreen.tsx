@@ -53,6 +53,21 @@ const SLIDES = [
             { icon: 'construct', label: 'Fixes', color: '#6366F1', bg: '#E0E7FF' },
             { icon: 'shield-checkmark', label: 'Secure', color: '#10B981', bg: '#ECFDF5' },
         ]
+    },
+    {
+        id: '4',
+        title: 'Experience seamless PG living',
+        titleHighlight: 'seamless',
+        subtitle: 'Tenant App Features',
+        description: 'Pay rent online, log complaints, check food menus, and stay updated with announcements.',
+        color: '#0EA5E9', // Sky Blue
+        image: require('../../assets/tenant_3d.png'),
+        features: [
+            { icon: 'card', label: 'Rent', color: '#0EA5E9', bg: '#E0F2FE' },
+            { icon: 'restaurant', label: 'Food', color: '#10B981', bg: '#ECFDF5' },
+            { icon: 'chatbubbles', label: 'Issues', color: '#F43F5E', bg: '#FFE4E6' },
+            { icon: 'newspaper', label: 'Notices', color: '#8B5CF6', bg: '#EDE9FE' },
+        ]
     }
 ];
 
