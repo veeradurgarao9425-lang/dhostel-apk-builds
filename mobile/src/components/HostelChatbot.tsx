@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,8 +9,9 @@ import {
   Modal,
   Platform,
   KeyboardAvoidingView,
-  Image,
-  DeviceEventEmitter
+  DeviceEventEmitter,
+  Animated,
+  Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,6 +21,60 @@ import * as RootNavigation from '../navigation/navigationRef';
 import { useAuth } from '../../contexts/AuthContext';
 import { COLORS } from '../theme/index';
 import { FAQItem, FAQ_DATA_EN, FAQ_DATA_TE } from '../constants/faqData';
+import * as Haptics from 'expo-haptics';
+
+const TypeWriterText = ({ text, style }: { text: string; style?: any }) => {
+  const [displayedText, setDisplayedText] = useState('');
+
+  useEffect(() => {
+    let index = 0;
+    setDisplayedText('');
+    const words = text.split(' ');
+
+    const interval = setInterval(() => {
+      setDisplayedText(words.slice(0, index + 1).join(' '));
+      index++;
+      if (index >= words.length) clearInterval(interval);
+    }, 40);
+    return () => clearInterval(interval);
+  }, [text]);
+
+  return <Text style={style}>{displayedText}</Text>;
+};
+
+const BouncingDots = () => {
+  const dot1 = useRef(new Animated.Value(0)).current;
+  const dot2 = useRef(new Animated.Value(0)).current;
+  const dot3 = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const animateDot = (dot: Animated.Value, delay: number) => {
+      return Animated.loop(
+        Animated.sequence([
+          Animated.timing(dot, { toValue: -5, duration: 300, delay, useNativeDriver: true }),
+          Animated.timing(dot, { toValue: 0, duration: 300, useNativeDriver: true })
+        ])
+      );
+    };
+
+    animateDot(dot1, 0).start();
+    animateDot(dot2, 150).start();
+    animateDot(dot3, 300).start();
+  }, []);
+
+  const dotStyle = (anim: Animated.Value) => ({
+    width: 6, height: 6, borderRadius: 3, backgroundColor: '#94A3B8', marginHorizontal: 3,
+    transform: [{ translateY: anim }]
+  });
+
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 4 }}>
+      <Animated.View style={dotStyle(dot1)} />
+      <Animated.View style={dotStyle(dot2)} />
+      <Animated.View style={dotStyle(dot3)} />
+    </View>
+  );
+};
 
 
 export const HostelChatbot: React.FC = () => {
@@ -31,6 +86,8 @@ export const HostelChatbot: React.FC = () => {
   const [currentRoute, setCurrentRoute] = useState<string | null>(null);
   const { user } = useAuth();
   const [isTourActive, setIsTourActive] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener('TOUR_STATE_CHANGE', (isActive) => {
@@ -40,9 +97,10 @@ export const HostelChatbot: React.FC = () => {
   }, []);
 
   const faqList = useMemo(() => {
-    return i18n.language === 'te' ? FAQ_DATA_TE : FAQ_DATA_EN;
-  }, [i18n.language]);
-
+    const baseList = i18n.language === 'te' ? FAQ_DATA_TE : FAQ_DATA_EN;
+    const role = user?.role === 'tenant' ? 'tenant' : 'owner';
+    return baseList.filter(faq => faq.role === 'both' || faq.role === role);
+  }, [i18n.language, user?.role]);
 
   useEffect(() => {
     const updateRouteName = () => {
@@ -52,7 +110,6 @@ export const HostelChatbot: React.FC = () => {
       }
     };
 
-    // Initialize
     const timer = setTimeout(() => {
       updateRouteName();
     }, 500);
@@ -88,28 +145,62 @@ export const HostelChatbot: React.FC = () => {
     return { bottom: 140, right: 24 };
   }, [currentRoute]);
 
-  const [chatMessages, setChatMessages] = useState<Array<{ sender: 'bot' | 'user'; text: string; link?: { path: string; label: string }; steps?: string[] }>>([]);
+  const getTimeGreeting = () => {
+    const hour = new Date().getHours();
+    const name = user?.full_name ? user.full_name.split(' ')[0] : '';
+    const greeting = name ? `, ${name}` : '';
+
+    if (hour < 12) return `Good morning${greeting}! How can I help you today?`;
+    if (hour < 18) return `Good afternoon${greeting}! Need any assistance?`;
+    return `Good evening${greeting}! How can I help you tonight?`;
+  };
+
+  const [chatMessages, setChatMessages] = useState<Array<{ sender: 'bot' | 'user'; text: string; link?: { path: string; label: string }; steps?: string[]; isNew?: boolean }>>([]);
 
   useEffect(() => {
-    setChatMessages([
-      { sender: 'bot', text: t('chatbot.welcome') }
-    ]);
-  }, [i18n.language]);
+    if (isOpen && chatMessages.length === 0) {
+      setChatMessages([
+        { sender: 'bot', text: getTimeGreeting() }
+      ]);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => { });
+    }
+  }, [isOpen]);
 
   const categories = useMemo(() => [
-    { id: 'all', label: 'All Features' },
+    { id: 'all', label: 'All Topics' },
     { id: 'dashboard', label: 'Dashboard' },
-    { id: 'rooms', label: 'Rooms & Beds' },
-    { id: 'tenants', label: 'Tenants & Staff' },
+    { id: 'rooms', label: 'Rooms' },
+    { id: 'tenants', label: 'Tenants' },
     { id: 'financials', label: 'Financials' },
-    { id: 'alerts', label: 'Settings & Alerts' }
+    { id: 'staff', label: 'Staff' },
+    { id: 'notices', label: 'Notices' },
+    { id: 'guests', label: 'Guests' },
+    { id: 'mess', label: 'Mess Menu' },
+    { id: 'complaints', label: 'Complaints' },
+    { id: 'reports', label: 'Reports' },
+    { id: 'alerts', label: 'Alerts' },
+    { id: 'profile', label: 'Profile' }
   ], []);
 
+  const quickPrompts = useMemo(() => {
+    if (user?.role === 'tenant') {
+      return ["How do I pay my rent?", "Where are my receipts?", "How do I raise a complaint?"];
+    }
+    if (currentRoute === 'Students' || currentRoute === 'AddStudent') {
+      return ["How to add a tenant?", "How to vacate a bed?", "How to collect rent?"];
+    }
+    if (currentRoute === 'Rooms' || currentRoute === 'AddRoom') {
+      return ["How to create a room?", "What is pre-booking?", "How to vacate a bed?"];
+    }
+    if (currentRoute === 'Expense' || currentRoute === 'InCome' || currentRoute === 'Reports') {
+      return ["Where are my bills?", "How do Reports work?", "What is Incomes?"];
+    }
+    return ["How to switch hostels?", "How to collect rent?", "How to add a room?"];
+  }, [currentRoute, user]);
 
-  // Perform search / category filtration
+
   const filteredFAQs = useMemo(() => {
     let result = faqList;
-
 
     if (selectedCategory !== 'all') {
       result = result.filter(item => item.category === selectedCategory);
@@ -128,31 +219,53 @@ export const HostelChatbot: React.FC = () => {
     }
 
     return result;
-  }, [selectedCategory, searchQuery]);
+  }, [selectedCategory, searchQuery, faqList]);
 
-  const handleQuestionSelect = (faq: FAQItem) => {
-    setActiveFaq(faq);
-    setChatMessages(prev => [
-      ...prev,
-      { sender: 'user', text: faq.question },
-      {
-        sender: 'bot',
-        text: faq.answer,
-        steps: faq.steps,
-        link: faq.routePath ? { path: faq.routePath, label: faq.routeLabel || 'Go to Page' } : undefined
+  const sendBotReply = (faq: FAQItem | null, fallbackText?: string) => {
+    setIsTyping(true);
+    setTimeout(() => {
+      setIsTyping(false);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => { });
+      if (faq) {
+        setChatMessages(prev => [
+          ...prev,
+          {
+            sender: 'bot',
+            text: faq.answer,
+            steps: faq.steps,
+            link: faq.routePath ? { path: faq.routePath, label: faq.routeLabel || 'Go to Page' } : undefined,
+            isNew: true
+          }
+        ]);
+        setActiveFaq(faq);
+      } else if (fallbackText) {
+        setChatMessages(prev => [
+          ...prev,
+          { sender: 'bot', text: fallbackText, isNew: true }
+        ]);
       }
-    ]);
+    }, 1200);
   };
 
-  const handleCustomQuestionSubmit = () => {
-    if (!searchQuery.trim()) return;
+  const handleQuestionSelect = (faq: FAQItem) => {
+    Haptics.selectionAsync().catch(() => { });
+    setChatMessages(prev => [
+      ...prev.map(m => ({ ...m, isNew: false })),
+      { sender: 'user', text: faq.question }
+    ]);
+    sendBotReply(faq);
+  };
 
-    const userText = searchQuery;
+  const handleCustomQuestionSubmit = (queryText?: string) => {
+    const textToSubmit = typeof queryText === 'string' ? queryText : searchQuery;
+    if (!textToSubmit.trim()) return;
+
+    Haptics.selectionAsync().catch(() => { });
     setSearchQuery('');
 
-    setChatMessages(prev => [...prev, { sender: 'user', text: userText }]);
+    setChatMessages(prev => [...prev.map(m => ({ ...m, isNew: false })), { sender: 'user', text: textToSubmit }]);
 
-    const query = userText.toLowerCase().trim();
+    const query = textToSubmit.toLowerCase().trim();
     let bestMatch: FAQItem | null = null;
     let maxMatchCount = 0;
 
@@ -160,7 +273,8 @@ export const HostelChatbot: React.FC = () => {
       let score = 0;
       if (faq.question.toLowerCase().includes(query)) score += 10;
       faq.keywords.forEach(kw => {
-        if (query.includes(kw.toLowerCase())) score += 5;
+        const kwWords = kw.toLowerCase().split(' ');
+        if (kwWords.every(word => query.includes(word))) score += 5;
       });
       if (faq.answer.toLowerCase().includes(query)) score += 2;
 
@@ -170,29 +284,7 @@ export const HostelChatbot: React.FC = () => {
       }
     });
 
-    setTimeout(() => {
-      if (bestMatch && maxMatchCount > 0) {
-        setChatMessages(prev => [
-          ...prev,
-          {
-            sender: 'bot',
-            text: bestMatch!.answer,
-            steps: bestMatch!.steps,
-            link: bestMatch!.routePath ? { path: bestMatch!.routePath, label: bestMatch!.routeLabel || 'Go to Page' } : undefined
-          }
-        ]);
-        setActiveFaq(bestMatch);
-      } else {
-        setChatMessages(prev => [
-          ...prev,
-          {
-            sender: 'bot',
-            text: t('chatbot.notFound', { query: userText })
-          }
-        ]);
-      }
-    }, 400);
-
+    sendBotReply(bestMatch, bestMatch ? undefined : t('chatbot.notFound', { query: textToSubmit }));
   };
 
   const handleLinkClick = (path: string) => {
@@ -205,27 +297,36 @@ export const HostelChatbot: React.FC = () => {
     setSelectedCategory('all');
     setActiveFaq(null);
     setChatMessages([
-      { sender: 'bot', text: t('chatbot.welcome') }
+      { sender: 'bot', text: getTimeGreeting() }
     ]);
   };
+
+  useEffect(() => {
+    if (scrollViewRef.current) {
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  }, [chatMessages, isTyping]);
 
 
   if (!user || isTourActive) return null;
 
   return (
     <>
-      {/* Floating Action Button */}
       {!isOpen && !isFormPage && (
         <TouchableOpacity
-          onPress={() => setIsOpen(true)}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => { });
+            setIsOpen(true);
+          }}
           style={[s.fab, chatbotPosition]}
           activeOpacity={0.8}
         >
-          <Ionicons name="chatbubble-ellipses" size={22} color="#FFF" />
+          <Ionicons name="chatbubble-ellipses" size={24} color="#FFF" />
         </TouchableOpacity>
       )}
 
-      {/* Chat dialog modal overlay */}
       <Modal
         visible={isOpen}
         transparent
@@ -238,20 +339,21 @@ export const HostelChatbot: React.FC = () => {
             style={s.modalWrapper}
           >
             {/* Header */}
-            <LinearGradient colors={[COLORS.gradientStart, COLORS.gradientEnd]} style={s.header}>
+            <LinearGradient colors={['#4F46E5', '#7C3AED']} style={s.header}>
               <View style={s.headerInfoRow}>
                 <View style={s.avatarContainer}>
-                  <View style={s.avatar}>
-                    <Image source={require('../../assets/durgarao-bot.jpeg')} style={s.avatarImage} />
+                  <View style={[s.avatar, { backgroundColor: 'transparent' }]}>
+                    <Image source={require('../../assets/durgarao-bot.jpeg')}
+                      style={{ width: '100%', height: '100%', transform: [{ scale: 1.8 }, { translateY: 4 }] }}
+                      resizeMode="cover" />
                   </View>
                   <View style={s.pulseDot} />
                 </View>
                 <View>
                   <View style={titleRowStyle().titleRow}>
-                    <Text style={s.headerTitle}>{t('chatbot.title')}</Text>
-                    <Ionicons name="sparkles" size={14} color="#FDE047" style={{ marginLeft: 4 }} />
+                    <Text style={s.headerTitle}>HOSTIX</Text>
                   </View>
-                  <Text style={s.headerSubtitle}>{t('chatbot.subtitle')}</Text>
+                  <Text style={s.headerSubtitle}>Always here to help</Text>
                 </View>
               </View>
 
@@ -265,19 +367,37 @@ export const HostelChatbot: React.FC = () => {
               </View>
             </LinearGradient>
 
+            {/* Quick Prompts */}
+            {!activeFaq && (
+              <View style={{ backgroundColor: '#F8FAFC', paddingVertical: 8 }}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 8 }}>
+                  {quickPrompts.map((prompt, idx) => (
+                    <TouchableOpacity
+                      key={idx}
+                      style={s.quickPromptChip}
+                      onPress={() => handleCustomQuestionSubmit(prompt)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="sparkles" size={14} color="#4F46E5" style={{ marginRight: 6 }} />
+                      <Text style={s.quickPromptText}>{prompt}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+
             {/* Search Section */}
             <View style={s.searchSection}>
               <View style={s.searchInputContainer}>
-                <Ionicons name="search" size={16} color="#94A3B8" style={{ marginRight: 6 }} />
+                <Ionicons name="search-outline" size={16} color="#94A3B8" style={{ marginRight: 6 }} />
                 <TextInput
                   style={s.searchInput}
                   value={searchQuery}
                   onChangeText={setSearchQuery}
-                  onSubmitEditing={handleCustomQuestionSubmit}
-                  placeholder={t('chatbot.placeholder')}
-
+                  onSubmitEditing={() => handleCustomQuestionSubmit()}
+                  placeholder="Search for help..."
                   placeholderTextColor="#94A3B8"
-                  returnKeyType="search"
+                  returnKeyType="send"
                 />
                 {searchQuery.length > 0 && (
                   <TouchableOpacity onPress={() => setSearchQuery('')}>
@@ -286,19 +406,18 @@ export const HostelChatbot: React.FC = () => {
                 )}
               </View>
 
-              {/* Category Pills */}
-              {/* Category Pills Grid */}
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingHorizontal: 16, paddingBottom: 10 }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingHorizontal: 4, marginTop: 10 }}>
                 {categories.map(cat => (
                   <TouchableOpacity
                     key={cat.id}
                     onPress={() => {
+                      Haptics.selectionAsync().catch(() => { });
                       setSelectedCategory(cat.id);
                       setActiveFaq(null);
                     }}
                     style={[
                       s.categoryPill,
-                      { marginBottom: 4, marginRight: 4 }, // Fallback for older react-native gap support
+                      { marginBottom: 4, marginRight: 4 },
                       selectedCategory === cat.id && s.categoryPillActive
                     ]}
                   >
@@ -317,26 +436,25 @@ export const HostelChatbot: React.FC = () => {
 
             {/* Chat conversation area */}
             <ScrollView
+              ref={scrollViewRef}
               style={s.chatArea}
               contentContainerStyle={s.chatContent}
               showsVerticalScrollIndicator={false}
             >
               {activeFaq ? (
-                // Detailed FAQ Answer View
                 <View style={s.faqDetailContainer}>
                   <TouchableOpacity
                     onPress={() => setActiveFaq(null)}
                     style={s.backBtn}
                   >
                     <Ionicons name="arrow-back" size={16} color="#4F46E5" />
-                    <Text style={s.backBtnText}>{t('chatbot.backToTopics')}</Text>
+                    <Text style={s.backBtnText}>Back to chat</Text>
                   </TouchableOpacity>
-
 
                   <View style={s.faqCard}>
                     <Text style={s.faqQuestion}>{activeFaq.question}</Text>
                     <View style={s.faqDivider} />
-                    <Text style={s.faqAnswer}>{activeFaq.answer}</Text>
+                    <TypeWriterText style={s.faqAnswer} text={activeFaq.answer} />
 
                     {activeFaq.steps && (
                       <View style={s.stepsContainer}>
@@ -350,26 +468,23 @@ export const HostelChatbot: React.FC = () => {
                     )}
 
                     {activeFaq.routePath && (
-                      <TouchableOpacity
+                      <TouchableOpacity 
+                        style={s.actionBtn} 
                         onPress={() => handleLinkClick(activeFaq.routePath!)}
-                        style={s.actionBtn}
+                        activeOpacity={0.8}
                       >
-                        <Text style={s.actionBtnText}>
-                          {activeFaq.routeLabel || 'Go to Page'}
-                        </Text>
-                        <Ionicons name="arrow-forward" size={14} color="#FFF" style={{ marginLeft: 4 }} />
+                        <Text style={s.actionBtnText}>{activeFaq.routeLabel || 'Go to Page'}</Text>
+                        <Ionicons name="arrow-forward" size={16} color="#FFF" style={{ marginLeft: 6 }} />
                       </TouchableOpacity>
                     )}
                   </View>
                 </View>
               ) : (
-                // Messages & Grouped FAQ lists
                 <View style={{ gap: 16 }}>
                   {searchQuery || selectedCategory !== 'all' ? (
-                    // Filtered FAQ lists (Matched topics list)
                     <View style={{ gap: 10 }}>
                       <Text style={s.sectionHeader}>
-                        {t('chatbot.chooseTopic', { count: filteredFAQs.length })}
+                        Suggested Topics
                       </Text>
                       {filteredFAQs.length > 0 ? (
                         filteredFAQs.map(faq => (
@@ -390,17 +505,12 @@ export const HostelChatbot: React.FC = () => {
                           <Ionicons name="help-circle-outline" size={40} color="#CBD5E1" />
                           <Text style={s.emptyStateTitle}>{t('chatbot.noResults')}</Text>
                           <Text style={s.emptyStateText}>
-                            {t('chatbot.trySearching')}
+                            Try asking something else.
                           </Text>
-                          <TouchableOpacity onPress={handleReset} style={s.resetBtn}>
-                            <Text style={s.resetBtnText}>{t('chatbot.showAll')}</Text>
-                          </TouchableOpacity>
                         </View>
                       )}
                     </View>
-
                   ) : (
-                    // Default view: Welcome message + Grouped FAQs in a single tab-less page
                     <View style={{ gap: 16 }}>
                       {chatMessages.map((msg, index) => (
                         <View
@@ -412,7 +522,7 @@ export const HostelChatbot: React.FC = () => {
                         >
                           {msg.sender === 'bot' && (
                             <View style={s.botBubbleIcon}>
-                              <Image source={require('../../assets/durgarao-bot.jpeg')} style={s.botBubbleImage} />
+                              <Image source={require('../../assets/durgarao-bot.jpeg')} style={{ width: '100%', height: '100%', transform: [{ scale: 1.8 }, { translateY: 4 }] }} resizeMode="cover" />
                             </View>
                           )}
                           <View
@@ -421,14 +531,18 @@ export const HostelChatbot: React.FC = () => {
                               msg.sender === 'user' ? s.messageUserBubble : s.messageBotBubble
                             ]}
                           >
-                            <Text
-                              style={[
-                                s.messageText,
-                                msg.sender === 'user' ? s.messageUserText : s.messageBotText
-                              ]}
-                            >
-                              {msg.text}
-                            </Text>
+                            {msg.sender === 'bot' && msg.isNew ? (
+                              <TypeWriterText style={[s.messageText, s.messageBotText]} text={msg.text} />
+                            ) : (
+                              <Text
+                                style={[
+                                  s.messageText,
+                                  msg.sender === 'user' ? s.messageUserText : s.messageBotText
+                                ]}
+                              >
+                                {msg.text}
+                              </Text>
+                            )}
 
                             {msg.steps && (
                               <View style={{ marginTop: 8, gap: 4 }}>
@@ -441,29 +555,36 @@ export const HostelChatbot: React.FC = () => {
                             )}
 
                             {msg.link && (
-                              <TouchableOpacity
+                              <TouchableOpacity 
+                                style={s.actionBtn} 
                                 onPress={() => handleLinkClick(msg.link!.path)}
-                                style={s.bubbleLink}
+                                activeOpacity={0.8}
                               >
-                                <Text style={s.bubbleLinkText}>{msg.link.label}</Text>
-                                <Ionicons name="arrow-forward" size={12} color="#4F46E5" />
+                                <Text style={s.actionBtnText}>{msg.link.label}</Text>
+                                <Ionicons name="arrow-forward" size={16} color="#FFF" style={{ marginLeft: 6 }} />
                               </TouchableOpacity>
                             )}
                           </View>
                         </View>
                       ))}
 
-
+                      {isTyping && (
+                        <View style={[s.messageBubbleRow, s.messageBotRow]}>
+                          <View style={s.botBubbleIcon}>
+                            <Image source={require('../../assets/durgarao-bot.jpeg')} style={{ width: '100%', height: '100%', transform: [{ scale: 1.8 }, { translateY: 4 }] }} resizeMode="cover" />
+                          </View>
+                          <View style={[s.messageBubble, s.messageBotBubble, { paddingVertical: 8, paddingHorizontal: 12 }]}>
+                            <BouncingDots />
+                          </View>
+                        </View>
+                      )}
                     </View>
                   )}
                 </View>
               )}
             </ScrollView>
 
-            {/* Footer */}
-            <View style={s.footer}>
-              <Text style={s.footerText}>{t('chatbot.footer')}</Text>
-            </View>
+            {/* Footer removed per request */}
 
           </KeyboardAvoidingView>
         </SafeAreaView>
@@ -472,13 +593,9 @@ export const HostelChatbot: React.FC = () => {
   );
 };
 
-// Helper function to satisfy TypeScript and keep style rules clean
 function titleRowStyle() {
   return StyleSheet.create({
-    titleRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    }
+    titleRow: { flexDirection: 'row', alignItems: 'center' }
   });
 }
 
@@ -487,17 +604,23 @@ const s = StyleSheet.create({
     position: 'absolute',
     bottom: 140,
     right: 24,
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: COLORS.primary,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#4F46E5',
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 3 },
+    elevation: 8,
+    shadowColor: '#4F46E5',
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 4 },
+    overflow: 'hidden'
+  },
+  fabGradient: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalContainer: {
     flex: 1,
@@ -505,88 +628,59 @@ const s = StyleSheet.create({
   },
   modalWrapper: {
     flex: 1,
+    backgroundColor: '#FCFCFD',
+    marginTop: 0,
+    overflow: 'hidden',
+    elevation: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: -5 }
   },
   header: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
   },
   headerInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
   },
   avatarContainer: {
     position: 'relative',
-    marginRight: 10,
   },
   avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     overflow: 'hidden',
-  },
-  avatarImage: {
-    width: 70,
-    height: 70,
-    borderRadius: 30,
-    marginTop: 20,
-  },
-  avatarText: {
-    color: '#FDE047',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  botBubbleImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginTop: 20,
-  },
-  fabImage: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    backgroundColor: '#FFF',
     borderWidth: 2,
-    borderColor: COLORS.primary,
+    borderColor: '#E0E7FF',
   },
-  fabPulseDot: {
+  pulseDot: {
     position: 'absolute',
-    bottom: 8,
-    right: 12,
-    width: 10,
-    height: 10,
+    bottom: 2,
+    right: 2,
+    width: 12,
+    height: 12,
     borderRadius: 6,
     backgroundColor: '#4ADE80',
     borderWidth: 2,
     borderColor: '#FFF',
   },
-  pulseDot: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#4ADE80',
-    borderWidth: 1.5,
-    borderColor: '#3730A3',
-  },
   headerTitle: {
     color: '#FFF',
-    fontSize: 15,
     fontWeight: 'bold',
+    fontSize: 16,
   },
   headerSubtitle: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 10,
-    marginTop: 1,
+    color: '#E0E7FF',
+    fontSize: 12,
   },
   headerActions: {
     flexDirection: 'row',
@@ -594,58 +688,64 @@ const s = StyleSheet.create({
     gap: 8,
   },
   headerIconBtn: {
-    padding: 6,
-    borderRadius: 6,
+    padding: 4,
+  },
+  quickPromptChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E0E7FF',
+  },
+  quickPromptText: {
+    fontSize: 13,
+    color: '#4F46E5',
+    fontWeight: '600',
   },
   searchSection: {
     padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
-    backgroundColor: '#F8FAFC',
-    gap: 10,
+    backgroundColor: '#FFF',
   },
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF',
+    backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    height: 40,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 44,
   },
   searchInput: {
     flex: 1,
-    fontSize: 12,
+    fontSize: 14,
     color: '#0F172A',
     paddingVertical: 0,
   },
-  categoryScroll: {
-    maxHeight: 32,
-  },
-  categoryContent: {
-    gap: 6,
-    paddingRight: 16,
-  },
   categoryPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
     borderRadius: 16,
-    backgroundColor: '#FFF',
+    backgroundColor: '#F1F5F9',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: 'transparent',
   },
   categoryPillActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
+    backgroundColor: '#EEF2FF',
+    borderColor: '#4F46E5',
   },
   categoryText: {
-    fontSize: 10,
+    fontSize: 11,
     color: '#64748B',
     fontWeight: 'bold',
   },
   categoryTextActive: {
-    color: '#FFF',
+    color: '#4F46E5',
   },
   chatArea: {
     flex: 1,
@@ -656,7 +756,7 @@ const s = StyleSheet.create({
   },
   messageBubbleRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
     alignItems: 'flex-start',
   },
   messageUserRow: {
@@ -666,39 +766,36 @@ const s = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   botBubbleIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#EEF2FF',
-    borderWidth: 1,
-    borderColor: '#E0E7FF',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     overflow: 'hidden',
-  },
-  botBubbleIconText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: COLORS.primary,
+    marginTop: 2,
+    backgroundColor: '#FFF',
   },
   messageBubble: {
-    padding: 12,
-    borderRadius: 16,
+    padding: 14,
+    borderRadius: 20,
     maxWidth: '82%',
   },
   messageUserBubble: {
-    backgroundColor: COLORS.primary,
-    borderTopRightRadius: 0,
+    backgroundColor: '#4F46E5',
+    borderTopRightRadius: 4,
   },
   messageBotBubble: {
     backgroundColor: '#FFF',
-    borderTopLeftRadius: 0,
+    borderTopLeftRadius: 4,
     borderWidth: 1,
     borderColor: '#F1F5F9',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
   },
   messageText: {
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 14,
+    lineHeight: 20,
   },
   messageUserText: {
     color: '#FFF',
@@ -707,101 +804,99 @@ const s = StyleSheet.create({
     color: '#334155',
   },
   bubbleStepText: {
-    fontSize: 11,
-    color: '#64748B',
-    lineHeight: 16,
+    fontSize: 13,
+    color: '#475569',
+    lineHeight: 18,
   },
   bubbleLink: {
-    marginTop: 10,
+    marginTop: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
     backgroundColor: '#EEF2FF',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 8,
     alignSelf: 'flex-start',
   },
   bubbleLinkText: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: COLORS.primary,
-  },
-  faqListBlock: {
-    marginTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-    paddingTop: 16,
-    gap: 20,
-  },
-  faqSection: {
-    gap: 8,
-  },
-  faqSectionHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  faqSectionTitle: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#334155',
+    color: '#4F46E5',
   },
-  commonQuestionsHeader: {
-    fontSize: 10,
+  sectionHeader: {
+    fontSize: 13,
     fontWeight: 'bold',
     color: '#94A3B8',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 4,
   },
-  quickFaqBtn: {
+  faqItemBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: '#FFF',
     borderWidth: 1,
     borderColor: '#F1F5F9',
-    borderRadius: 12,
-    padding: 12,
-  },
-  quickFaqBtnText: {
-    fontSize: 12,
-    color: '#334155',
-    fontWeight: '500',
-  },
-  faqDetailContainer: {
-    gap: 12,
-  },
-  backBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  backBtnText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: COLORS.primary,
-  },
-  faqCard: {
-    backgroundColor: '#FFF',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 16,
-    padding: 16,
-    gap: 12,
+    borderRadius: 14,
+    padding: 14,
     elevation: 1,
     shadowColor: '#000',
     shadowOpacity: 0.02,
     shadowRadius: 2,
   },
-  faqQuestion: {
+  faqItemQuestion: {
     fontSize: 14,
+    color: '#334155',
+    fontWeight: '500',
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    opacity: 0.7
+  },
+  emptyStateTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#64748B',
+    marginTop: 10
+  },
+  emptyStateText: {
+    fontSize: 13,
+    color: '#94A3B8',
+    marginTop: 4
+  },
+  faqDetailContainer: {
+    gap: 16,
+  },
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+  },
+  backBtnText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#4F46E5',
+  },
+  faqCard: {
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 20,
+    padding: 20,
+    gap: 14,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  faqQuestion: {
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#0F172A',
   },
@@ -810,111 +905,58 @@ const s = StyleSheet.create({
     backgroundColor: '#F1F5F9',
   },
   faqAnswer: {
-    fontSize: 12,
-    color: '#475569',
-    lineHeight: 18,
+    fontSize: 14,
+    color: '#334155',
+    lineHeight: 22,
   },
   stepsContainer: {
-    gap: 8,
-    paddingLeft: 4,
+    backgroundColor: '#F8FAFC',
+    padding: 16,
+    borderRadius: 14,
+    gap: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: '#4F46E5',
   },
   stepRow: {
     flexDirection: 'row',
-    gap: 6,
     alignItems: 'flex-start',
+    gap: 8,
   },
   stepNum: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: 'bold',
-    color: '#64748B',
+    color: '#4F46E5',
+    width: 20,
   },
   stepText: {
     flex: 1,
-    fontSize: 12,
-    color: '#475569',
-    lineHeight: 18,
+    fontSize: 14,
+    color: '#334155',
+    lineHeight: 22,
   },
   actionBtn: {
-    marginTop: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.primary,
-    paddingVertical: 10,
-    borderRadius: 10,
+    backgroundColor: '#4F46E5',
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 8,
   },
   actionBtnText: {
     color: '#FFF',
-    fontSize: 12,
     fontWeight: 'bold',
-  },
-  sectionHeader: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: '#94A3B8',
-    textTransform: 'uppercase',
-  },
-  faqItemBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFF',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
-    padding: 12,
-  },
-  faqItemCategory: {
-    fontSize: 9,
-    fontWeight: 'bold',
-    color: COLORS.primary,
-    marginBottom: 2,
-  },
-  faqItemQuestion: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#1E293B',
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 32,
-    gap: 6,
-  },
-  emptyStateTitle: {
     fontSize: 14,
-    fontWeight: 'bold',
-    color: '#334155',
-    marginTop: 8,
-  },
-  emptyStateText: {
-    fontSize: 12,
-    color: '#64748B',
-    textAlign: 'center',
-    paddingHorizontal: 32,
-  },
-  resetBtn: {
-    marginTop: 12,
-    backgroundColor: '#EEF2FF',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  resetBtnText: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: COLORS.primary,
   },
   footer: {
-    paddingVertical: 10,
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#FCFCFD',
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
-    backgroundColor: '#F8FAFC',
-    alignItems: 'center',
   },
   footerText: {
-    fontSize: 10,
+    fontSize: 11,
     color: '#94A3B8',
-  },
+  }
 });
-

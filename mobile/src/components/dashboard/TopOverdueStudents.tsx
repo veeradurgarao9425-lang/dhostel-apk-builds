@@ -72,13 +72,26 @@ export const TopOverdueStudents = ({ data }: TopOverdueStudentsProps) => {
                                     </Text>
                                 </View>
                                 {!!item.phone && (
-                                    <TouchableOpacity
-                                        style={[s.callBtn, { backgroundColor: isDark ? '#2D1414' : '#FEE2E2' }]}
-                                        onPress={(e) => { e.stopPropagation(); Linking.openURL(`tel:${item.phone}`); }}
-                                        activeOpacity={0.7}
-                                    >
-                                        <Ionicons name="call" size={12} color="#EF4444" />
-                                    </TouchableOpacity>
+                                    <View style={{ flexDirection: 'row', gap: 6 }}>
+                                        <TouchableOpacity
+                                            style={[s.callBtn, { backgroundColor: isDark ? '#064E3B' : '#DCFCE7' }]}
+                                            onPress={(e) => { 
+                                                e.stopPropagation(); 
+                                                const msg = `Hi ${item.name}, this is a gentle reminder for your pending hostel rent of ₹${Number(item.amount).toLocaleString('en-IN')}. Please pay at the earliest.`;
+                                                Linking.openURL(`whatsapp://send?phone=${item.phone}&text=${encodeURIComponent(msg)}`); 
+                                            }}
+                                            activeOpacity={0.7}
+                                        >
+                                            <Ionicons name="logo-whatsapp" size={12} color="#16A34A" />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            style={[s.callBtn, { backgroundColor: isDark ? '#4A1D1D' : '#FEE2E2' }]}
+                                            onPress={(e) => { e.stopPropagation(); Linking.openURL(`tel:${item.phone}`); }}
+                                            activeOpacity={0.7}
+                                        >
+                                            <Ionicons name="call" size={12} color="#EF4444" />
+                                        </TouchableOpacity>
+                                    </View>
                                 )}
                             </View>
 
@@ -119,7 +132,7 @@ const s = StyleSheet.create({
     },
     seeAll: { fontSize: 12, fontWeight: '700', color: '#7C3AED' },
     card: {
-        width: 165,
+        width: 190,
         borderRadius: 14,
         borderWidth: 1,
         padding: 12,
