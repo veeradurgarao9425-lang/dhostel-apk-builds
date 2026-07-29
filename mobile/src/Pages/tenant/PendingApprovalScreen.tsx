@@ -198,11 +198,13 @@ export default function PendingApprovalScreen({ navigation }: any) {
             <Text style={styles.pillTextContent}>Application Under Review</Text>
           </View>
 
+          {/* 
           <Image
-            source={require("../../assets/house_hourglass_3d.png")}
+            source={require("../../../assets/hostel_only_3d.png")}
             style={styles.heroImgLarge}
             resizeMode="contain"
-          />
+          /> 
+          */}
         </View>
 
         {/* Title & subtitle moved here */}

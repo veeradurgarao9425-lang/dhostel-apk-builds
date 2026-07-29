@@ -226,23 +226,27 @@ export const startMonthlyFeesGenerationJob = () => {
       console.log(`[Monthly Fees Cron] Found ${hostels.length} active hostels`);
 
       const results = [];
+      const BATCH_SIZE = 5; // Process 5 hostels at a time to avoid DB overload
 
-      for (const hostel of hostels) {
-        try {
-          const result = await generateMonthlyFeesForHostel(hostel.hostel_id);
-          results.push({
-            hostel_id: hostel.hostel_id,
-            hostel_name: hostel.hostel_name,
-            ...result
-          });
-        } catch (hostelErr) {
-          console.error(`[Monthly Fees Cron] Fatal error for hostel ${hostel.hostel_id} (${hostel.hostel_name}):`, hostelErr);
-          results.push({
-            hostel_id: hostel.hostel_id,
-            hostel_name: hostel.hostel_name,
-            error: true,
-            message: hostelErr instanceof Error ? hostelErr.message : 'Unknown error'
-          });
+      for (let i = 0; i < hostels.length; i += BATCH_SIZE) {
+        const batch = hostels.slice(i, i + BATCH_SIZE);
+        const batchResults = await Promise.allSettled(
+          batch.map(hostel => generateMonthlyFeesForHostel(hostel.hostel_id)
+            .then(result => ({ hostel_id: hostel.hostel_id, hostel_name: hostel.hostel_name, ...result }))
+            .catch(hostelErr => {
+              console.error(`[Monthly Fees Cron] Fatal error for hostel ${hostel.hostel_id} (${hostel.hostel_name}):`, hostelErr);
+              return { hostel_id: hostel.hostel_id, hostel_name: hostel.hostel_name, error: true, message: hostelErr instanceof Error ? hostelErr.message : 'Unknown error' };
+            })
+          )
+        );
+
+        for (const r of batchResults) {
+          if (r.status === 'fulfilled') results.push(r.value);
+          else results.push({ error: true, message: String(r.reason) });
+        }
+
+        if (i + BATCH_SIZE < hostels.length) {
+          console.log(`[Monthly Fees Cron] Batch ${Math.ceil((i + 1) / BATCH_SIZE)} done, processing next batch...`);
         }
       }
 

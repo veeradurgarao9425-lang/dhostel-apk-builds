@@ -216,11 +216,19 @@ const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect, isDar
                     </View>
                 </View>
 
-                {/* ── Optional: carry-forward note, only when relevant ── */}
+                {/* ── Carry-forward badge: prominent amber pill so owner notices unpaid history ── */}
                 {item.carryForward > 0 && (
-                    <Text style={[card.carryNote, { color: isDark ? '#94A3B8' : '#64748B' }]} numberOfLines={1}>
-                        Includes ₹{item.carryForward.toLocaleString('en-IN')} carried forward + ₹{item.monthlyRent.toLocaleString('en-IN')} this month
-                    </Text>
+                    <View style={{
+                        flexDirection: 'row', alignItems: 'center', gap: 5,
+                        backgroundColor: '#FEF3C7', borderRadius: 8, paddingHorizontal: 10,
+                        paddingVertical: 5, marginBottom: 8, borderWidth: 1, borderColor: '#FCD34D',
+                        alignSelf: 'flex-start',
+                    }}>
+                        <Ionicons name="warning-outline" size={12} color="#D97706" />
+                        <Text style={{ color: '#92400E', fontSize: 11, fontWeight: '700' }}>
+                            ₹{item.carryForward.toLocaleString('en-IN')} carry-forward from last month
+                        </Text>
+                    </View>
                 )}
 
                 {/* ── Divider ── */}

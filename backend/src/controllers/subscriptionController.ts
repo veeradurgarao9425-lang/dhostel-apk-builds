@@ -83,7 +83,7 @@ export const renewSubscription = async (req: AuthRequest, res: Response) => {
 
             // Send Super Admin Alert
             await sendEmail({
-                to: 'hostixhelp@gmail.com',
+                to: process.env.SUPER_ADMIN_EMAIL || 'hostixhelp@gmail.com',
                 subject: 'Hostel Subscription Renewed - Hostix',
                 html: getSuperAdminRenewalTemplate({
                     hostel_name: hostel?.hostel_name,

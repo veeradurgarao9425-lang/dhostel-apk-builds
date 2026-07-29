@@ -289,6 +289,9 @@ export const authController = {
         // Optionally create their first hostel and set it as active
         const trimmedHostelInner = (hostel_name || '').trim();
         if (trimmedHostelInner.length >= 3) {
+          const trialDays = parseInt(process.env.TRIAL_DAYS || '30', 10);
+          const trialStart = new Date();
+          const trialEnd = new Date(trialStart.getTime() + trialDays * 24 * 60 * 60 * 1000);
           [hostel_id] = await trx('hostel_master').insert({
             hostel_name: trimmedHostelInner,
             hostel_code: crypto.randomBytes(3).toString('hex'),
@@ -300,6 +303,8 @@ export const authController = {
             admission_fee: admission_fee ? parseFloat(admission_fee) : 0,
             default_refundable_deposit: default_refundable_deposit ? parseFloat(default_refundable_deposit) : 0,
             is_active: 1,
+            trial_start_date: trialStart,
+            trial_end_date: trialEnd,
             created_at: new Date(),
           });
           await trx('users').where('user_id', user_id).update({ hostel_id });
@@ -320,10 +325,11 @@ export const authController = {
         hostel_id,
       });
 
-      // Send notification to hostixhelp@gmail.com
+      // Send notification to Super Admin
       try {
+        const superAdminEmail = process.env.SUPER_ADMIN_EMAIL || 'hostixhelp@gmail.com';
         await sendEmail({
-          to: 'hostixhelp@gmail.com',
+          to: superAdminEmail,
           subject: 'New Owner Registration - Hostix',
           html: `
             <div style="font-family: Arial, sans-serif; padding: 20px;">
