@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
+import { resolveScopedHostelId } from '../utils/scope.js';
 
 export const renewSubscription = async (req: AuthRequest, res: Response) => {
     try {
@@ -123,8 +124,10 @@ export const renewSubscription = async (req: AuthRequest, res: Response) => {
 
 export const getSubscriptionStatus = async (req: AuthRequest, res: Response) => {
     try {
-        const hostel_id = req.query.hostel_id || req.user?.hostel_id;
-        
+        // Owner (role 2): always scoped to their own hostel, ?hostel_id is ignored.
+        // Admin/Super Admin (role 1): scoped to ?hostel_id if given.
+        const hostel_id = resolveScopedHostelId(req.user, req.query.hostel_id as string | undefined);
+
         if (!hostel_id) {
             return res.status(400).json({ success: false, error: 'Hostel ID is required' });
         }
@@ -158,11 +161,15 @@ export const getSubscriptionStatus = async (req: AuthRequest, res: Response) => 
 
 export const getSubscriptionHistory = async (req: AuthRequest, res: Response) => {
     try {
-        const hostel_id = req.query.hostel_id || req.user?.hostel_id;
-        
+        // Owner (role 2): always scoped to their own hostel, ?hostel_id is ignored.
+        // Admin/Super Admin (role 1): scoped to ?hostel_id if given, otherwise global.
+        const hostel_id = resolveScopedHostelId(req.user, req.query.hostel_id as string | undefined);
+
         let query = db('subscription_history').orderBy('created_at', 'desc');
         if (hostel_id) {
             query = query.where({ hostel_id });
+        } else if (req.user?.role_id === 2) {
+            return res.status(403).json({ success: false, error: 'Your account is not linked to any hostel.' });
         }
 
         const history = await query;
@@ -175,11 +182,15 @@ export const getSubscriptionHistory = async (req: AuthRequest, res: Response) =>
 
 export const getEmailLogs = async (req: AuthRequest, res: Response) => {
     try {
-        const hostel_id = req.query.hostel_id || req.user?.hostel_id;
-        
+        // Owner (role 2): always scoped to their own hostel, ?hostel_id is ignored.
+        // Admin/Super Admin (role 1): scoped to ?hostel_id if given, otherwise global.
+        const hostel_id = resolveScopedHostelId(req.user, req.query.hostel_id as string | undefined);
+
         let query = db('email_logs').orderBy('sent_time', 'desc');
-        if (hostel_id && req.user?.role_id !== 1) {
+        if (hostel_id) {
              query = query.where({ hostel_id });
+        } else if (req.user?.role_id === 2) {
+            return res.status(403).json({ success: false, error: 'Your account is not linked to any hostel.' });
         }
 
         const logs = await query.limit(100);

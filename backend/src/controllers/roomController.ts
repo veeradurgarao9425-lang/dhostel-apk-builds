@@ -2,7 +2,7 @@ import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { sendNotificationToHostelOwner } from '../utils/notification.js';
-import { resolveScopedHostelId } from '../utils/scope.js';
+import { resolveScopedHostelId, canAccessHostel } from '../utils/scope.js';
 
 // Shared helper: derive bed capacity from room_type_name / description
 const getCapacityFromRoomTypeName = (roomTypeName: string, description: string | null): number => {
@@ -223,6 +223,10 @@ export const getRoomById = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ success: false, error: 'Room not found' });
     }
 
+    if (!canAccessHostel(req.user, room.hostel_id)) {
+      return res.status(403).json({ success: false, error: 'You do not have access to this room.' });
+    }
+
     // Parse amenities
     let amenitiesArray = [];
     if (room.amenities) {
@@ -296,11 +300,15 @@ export const getRoomBeds = async (req: AuthRequest, res: Response) => {
 
     const room = await db('rooms')
       .where('room_id', roomId)
-      .select('room_id', 'room_number', 'capacity')
+      .select('room_id', 'room_number', 'capacity', 'hostel_id')
       .first();
 
     if (!room) {
       return res.status(404).json({ success: false, error: 'Room not found' });
+    }
+
+    if (!canAccessHostel(req.user, room.hostel_id)) {
+      return res.status(403).json({ success: false, error: 'You do not have access to this room.' });
     }
 
     const occupants = await db('students')
