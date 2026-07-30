@@ -121,7 +121,7 @@ export const FAQ_DATA_EN: FAQItem[] = [
     question: '💡 Where are Expenses and Bills?',
     answer: 'Use the "Bills" or "Expenses" feature to record your hostel\'s operating costs.\n\n1. Go to "Expenses" on the Home page.\n2. Tap "Add Expense" to log electricity, water, groceries, or maintenance bills.\n3. You can attach a photo of the physical bill and mark it as Paid/Pending to keep accurate records.',
     keywords: ['expenses', 'bills', 'utility bills', 'electricity', 'water bill', 'operating costs'],
-    routePath: 'Expense', routeLabel: 'Manage Expenses'
+    routePath: 'Expenses', routeLabel: 'Manage Expenses'
   },
   {
     id: 'fin-reports', category: 'financials', role: 'owner',
@@ -153,35 +153,35 @@ export const FAQ_DATA_EN: FAQItem[] = [
     question: '💳 How do I pay my rent?',
     answer: 'Paying rent is easy!\n\n1. Go to your Dashboard or Dues section.\n2. Tap on "Pay Now" next to your pending amount.\n3. You can use UPI or upload a screenshot of your payment.\n4. Your payment will be verified by the owner.',
     keywords: ['pay rent', 'rent', 'upi', 'payment', 'due', 'pay now'],
-    routePath: 'TenantPaymentScreen', routeLabel: 'Pay Rent'
+    routePath: 'Payments', routeLabel: 'Pay Rent'
   },
   {
     id: 'tenant-dues-receipt', category: 'financials', role: 'tenant',
     question: '🧾 Where can I find my payment receipts?',
     answer: 'Once your payment is verified by the owner, a digital receipt is generated.\n\nYou can find all your past receipts in the Dues screen under the "History" or "Receipts" tab.',
     keywords: ['receipt', 'payment receipt', 'download receipt', 'history'],
-    routePath: 'PaymentReceiptScreen', routeLabel: 'View Receipts'
+    routePath: 'PaymentReceipt', routeLabel: 'View Receipts'
   },
   {
     id: 'tenant-complaints', category: 'alerts', role: 'tenant',
     question: '🛠️ How do I raise a complaint?',
     answer: 'Got a broken fan or a plumbing issue?\n\n1. Go to the "Complaints" section.\n2. Tap "Raise Complaint".\n3. Describe the issue and submit.\n4. You will be notified once the owner resolves it.',
     keywords: ['complaint', 'broken', 'issue', 'repair', 'maintenance'],
-    routePath: 'TenantComplaintsScreen', routeLabel: 'Raise Complaint'
+    routePath: 'Complaints', routeLabel: 'Raise Complaint'
   },
   {
     id: 'tenant-requests-pass', category: 'alerts', role: 'tenant',
     question: '✋ How do I request a late pass or room change?',
     answer: 'You can submit requests to your hostel owner directly from the app.\n\nGo to the "Requests" screen and select the type of request (Late Pass, Room Change, etc.). The owner will approve or reject it.',
     keywords: ['late pass', 'room change', 'request pass', 'permission'],
-    routePath: 'VisitorPassScreen', routeLabel: 'Submit Request'
+    routePath: 'VisitorPass', routeLabel: 'Submit Request'
   },
   {
     id: 'tenant-menu', category: 'dashboard', role: 'tenant',
     question: '🍽️ Where can I see the food menu?',
     answer: 'You can view the daily and weekly Mess Menu right from your Home screen or the Full Menu page. You can even rate the food (1 to 5 stars) to give feedback to your owner!',
     keywords: ['food menu', 'mess menu', 'breakfast', 'dinner', 'rating'],
-    routePath: 'FullMenuScreen', routeLabel: 'View Mess Menu'
+    routePath: 'FullMenu', routeLabel: 'View Mess Menu'
   },
   
   // ==================== 🌐 GENERAL FAQs (Both) ====================
@@ -190,7 +190,7 @@ export const FAQ_DATA_EN: FAQItem[] = [
     question: '🔒 How do I Log Out?',
     answer: 'To log out of the DHostel app safely:\n\n1. Go to your Profile settings.\n2. Scroll down and tap "Sign Out". Your session will be cleared and you will be returned to the Login screen.',
     keywords: ['log out', 'sign out', 'exit', 'profile menu'],
-    routePath: 'ProfileScreen', routeLabel: 'Go to Profile'
+    routePath: 'Profile', routeLabel: 'Go to Profile'
   },
   // ==================== NEW FEATURES ====================
   {

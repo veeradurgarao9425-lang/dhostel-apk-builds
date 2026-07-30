@@ -10,7 +10,6 @@ import {
   recordAdjustment,
   recalculateFeeTotals,
   recalculateCarryForwardForMonth,
-  diagnoseCarryForward,
   getPreviousMonthsFees,
   editCurrentMonthFee,
   getAvailableMonths,
@@ -36,9 +35,6 @@ router.get('/summary', getMonthlyFeesSummary);
 
 // Get payment modes
 router.get('/payment-modes', getPaymentModes);
-
-// Diagnostic endpoint to check carry_forward calculation
-router.get('/diagnose', diagnoseCarryForward);
 
 // Get available months for a student (for dropdown/selector)
 router.get('/student/:studentId/months', getAvailableMonths);

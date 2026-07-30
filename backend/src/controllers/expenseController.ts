@@ -351,6 +351,13 @@ export const createExpense = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    if (isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'amount must be a positive number'
+      });
+    }
+
     // Determine hostel_id based on user role. Owner always uses their own
     // hostel; Admin/Super Admin must specify hostel_id explicitly (never
     // silently defaults to the admin's own possibly-stale hostel_id).
@@ -456,6 +463,13 @@ export const updateExpense = async (req: AuthRequest, res: Response) => {
           error: 'You can only update expenses for your own hostel.'
         });
       }
+    }
+
+    if (req.body.amount !== undefined && (isNaN(parseFloat(req.body.amount)) || parseFloat(req.body.amount) <= 0)) {
+      return res.status(400).json({
+        success: false,
+        error: 'amount must be a positive number'
+      });
     }
 
     const updateData: any = { updated_at: new Date() };

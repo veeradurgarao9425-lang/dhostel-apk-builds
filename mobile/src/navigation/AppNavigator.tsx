@@ -32,7 +32,6 @@ import NotesScreen from '../Pages/tenant/NotesScreen';
 import TenantHelpScreen from '../Pages/tenant/HelpScreen';
 import PaymentReceiptScreen from '../Pages/tenant/PaymentReceiptScreen';
 import RatingScreen from '../Pages/tenant/RatingScreen';
-import TenantSearchScreen from '../Pages/tenant/SearchScreen';
 import SplitHistoryScreen from '../Pages/tenant/SplitHistoryScreen';
 import SplitsScreen from '../Pages/tenant/SplitsScreen';
 import CategoryDetailScreen from '../Pages/tenant/CategoryDetailScreen';
@@ -320,7 +319,6 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen name="HelpScreen"   component={TenantHelpScreen}        />
                     <Stack.Screen name="PaymentReceipt" component={PaymentReceiptScreen}  />
                     <Stack.Screen name="Rating"       component={RatingScreen}            />
-                    <Stack.Screen name="Search"       component={TenantSearchScreen}      />
                     <Stack.Screen name="SplitHistory" component={SplitHistoryScreen}      />
                     <Stack.Screen name="Splits"       component={SplitsScreen}            />
                     <Stack.Screen name="CategoryDetail" component={CategoryDetailScreen}  />

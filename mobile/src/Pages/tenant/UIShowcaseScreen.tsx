@@ -284,11 +284,6 @@ export default function UIShowcaseScreen({ navigation }: any) {
           <TouchableOpacity style={[styles.btn, { flex: 1, minWidth: '45%' }]} onPress={() => toast.showToast({ type: 'downloading' as any, message: 'Progress: 32%', title: 'Downloading Invoice...' })}><Text style={styles.btnText}>12. Downloading (Progress)</Text></TouchableOpacity>
         </View>
 
-        <Text style={[styles.sectionTitle, { marginTop: 24 }]}>PHASE 4: SEARCH UI</Text>
-        <TouchableOpacity style={styles.btn} onPress={() => navigation.navigate('Search')} activeOpacity={0.8}>
-          <Text style={styles.btnText}>Open Full Search Experience</Text>
-        </TouchableOpacity>
-
         <Text style={[styles.sectionTitle, { marginTop: 24 }]}>PHASE 3: EMPTY STATES</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
           <TouchableOpacity style={[styles.btn, { flex: 1, minWidth: '45%' }]} onPress={() => setActiveModal('empty_dues')}><Text style={styles.btnText}>No Dues</Text></TouchableOpacity>
