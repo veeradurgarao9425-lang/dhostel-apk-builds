@@ -7,6 +7,7 @@ import jwt from 'jsonwebtoken';
 import { sendPasswordResetEmail, sendOtpEmail, sendEmail } from '../utils/email.js';
 import { sendNotificationToHostelOwner, sendNotificationToStudent } from '../utils/notification.js';
 import crypto from 'crypto';
+import { checkHostelUniqueIdentifiers } from '../utils/validation.js';
 
 export const authController = {
   // Login
@@ -1211,28 +1212,21 @@ export const authController = {
         return res.status(400).json({ success: false, error: 'Phone number is required.' });
       }
 
-      // ── Hostel-specific uniqueness checks ──────────────────────────────────
-      // Phone must be unique within the SAME hostel
-      if (finalPhone) {
-        const existingPhone = await db('students')
-          .where('phone', finalPhone)
-          .where('hostel_id', hostel_id)
-          .first();
-        if (existingPhone) {
+      // ── Hostel-specific uniqueness checks (phone, email, ID proof number) ──
+      const finalEmail = email || (identifier.includes('@') ? identifier : null);
+      const uniqueness = await checkHostelUniqueIdentifiers(hostel_id, {
+        phone: finalPhone,
+        email: finalEmail,
+        id_number: id_proof_number || null,
+      });
+      if (!uniqueness.isUnique) {
+        if (uniqueness.conflictField === 'phone') {
           return res.status(400).json({ success: false, error: 'This phone number is already registered in this hostel. Please login instead.' });
         }
-      }
-
-      // Email must be unique within the SAME hostel
-      const finalEmail = email || (identifier.includes('@') ? identifier : null);
-      if (finalEmail) {
-        const existingEmail = await db('students')
-          .where('email', finalEmail)
-          .where('hostel_id', hostel_id)
-          .first();
-        if (existingEmail) {
+        if (uniqueness.conflictField === 'email') {
           return res.status(400).json({ success: false, error: 'This email address is already registered in this hostel. Please login instead.' });
         }
+        return res.status(400).json({ success: false, error: `This ${uniqueness.conflictField} is already registered to another ${uniqueness.conflictEntity} in this hostel.` });
       }
       // ──────────────────────────────────────────────────────────────────────
 
@@ -1312,6 +1306,12 @@ export const authController = {
       });
     } catch (error: any) {
       console.error('tenantRegister error:', error);
+      // A concurrent registration can race past the pre-insert uniqueness check
+      // above and hit the DB's unique index instead — surface the same friendly
+      // message rather than a raw SQL error naming the index.
+      if (error?.code === 'ER_DUP_ENTRY') {
+        return res.status(400).json({ success: false, error: 'This phone, email, or ID proof number is already registered in this hostel. Please login instead.' });
+      }
       return res.status(500).json({ success: false, error: error?.sqlMessage || 'Internal server error' });
     }
   },

@@ -215,6 +215,38 @@ async function patchDatabaseSchema() {
       console.error('[schema-patch] Error updating students columns:', e.message);
     }
 
+    // 2.6 Hostel-scoped uniqueness on phone / ID-proof number (Aadhaar, PAN, etc.),
+    // as a DB-level backstop for the application-level checkHostelUniqueIdentifiers
+    // check — without this, two concurrent registrations for the same phone/ID
+    // could both pass the pre-insert check and both land in the DB. Scoped to
+    // (hostel_id, column) rather than global, since the same phone/ID is allowed
+    // to appear in two different hostels. MySQL unique indexes permit multiple
+    // NULLs, so rows missing phone/id_proof_number don't collide.
+    try {
+      const ensureUniqueIndex = async (table: string, indexName: string, columns: string) => {
+        const [rows] = await db.raw('SHOW INDEX FROM ?? WHERE Key_name = ?', [table, indexName]);
+        if ((rows as any[]).length === 0) {
+          console.log(`[schema-patch] adding unique index ${indexName} on ${table}(${columns})...`);
+          await db.raw(`CREATE UNIQUE INDEX ${indexName} ON ${table}(${columns})`);
+        }
+      };
+
+      if (tableNamesLower.includes('students')) {
+        await ensureUniqueIndex('students', 'idx_students_hostel_phone_uniq', 'hostel_id, phone');
+        await ensureUniqueIndex('students', 'idx_students_hostel_idproof_uniq', 'hostel_id, id_proof_number');
+      }
+      if (tableNamesLower.includes('staff')) {
+        await ensureUniqueIndex('staff', 'idx_staff_hostel_phone_uniq', 'hostel_id, phone');
+        await ensureUniqueIndex('staff', 'idx_staff_hostel_aadhaar_uniq', 'hostel_id, aadhaar_number');
+      }
+      if (tableNamesLower.includes('guests')) {
+        await ensureUniqueIndex('guests', 'idx_guests_hostel_phone_uniq', 'hostel_id, phone');
+        await ensureUniqueIndex('guests', 'idx_guests_hostel_idproof_uniq', 'hostel_id, id_proof_number');
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error adding hostel-scoped unique indexes:', e.message);
+    }
+
     // Ensure hostel_master columns exist
     try {
       if (tableNamesLower.includes('hostel_master')) {
