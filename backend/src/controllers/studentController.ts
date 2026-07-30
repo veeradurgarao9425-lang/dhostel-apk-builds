@@ -4,7 +4,7 @@ import { AuthRequest } from '../middleware/auth.js';
 import { sendNotificationToHostelOwner, sendNotificationToStudent } from '../utils/notification.js';
 import { kickUserFromRoomChat } from '../socket/index.js';
 import { checkHostelUniqueIdentifiers } from '../utils/validation.js';
-import { resolveScopedHostelId } from '../utils/scope.js';
+import { resolveScopedHostelId, canAccessHostel } from '../utils/scope.js';
 
 // Helper function to convert ISO datetime string to date-only format (YYYY-MM-DD)
 const convertToDateOnly = (dateValue: any): string | null => {
@@ -260,6 +260,13 @@ export const getStudentById = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({
         success: false,
         error: 'Student not found'
+      });
+    }
+
+    if (!canAccessHostel(req.user, student.hostel_id)) {
+      return res.status(403).json({
+        success: false,
+        error: 'You do not have access to this student.'
       });
     }
 
@@ -578,6 +585,13 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({
         success: false,
         error: 'Student not found'
+      });
+    }
+
+    if (!canAccessHostel(req.user, student.hostel_id)) {
+      return res.status(403).json({
+        success: false,
+        error: 'You do not have access to this student.'
       });
     }
 
@@ -937,6 +951,13 @@ export const deleteStudent = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    if (!canAccessHostel(req.user, student.hostel_id)) {
+      return res.status(403).json({
+        success: false,
+        error: 'You do not have access to this student.'
+      });
+    }
+
     // Only allow deletion of inactive or QR signup students
     if (student.status !== 0 && student.status !== 3 && student.status !== 'Inactive') {
       return res.status(400).json({
@@ -1006,12 +1027,26 @@ export const allocateRoom = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    if (!canAccessHostel(req.user, student.hostel_id)) {
+      return res.status(403).json({
+        success: false,
+        error: 'You do not have access to this student.'
+      });
+    }
+
     const room = await db('rooms').where({ room_id }).first();
 
     if (!room) {
       return res.status(404).json({
         success: false,
         error: 'Room not found'
+      });
+    }
+
+    if (Number(room.hostel_id) !== Number(student.hostel_id)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Room does not belong to student hostel'
       });
     }
 
@@ -1081,6 +1116,13 @@ export const rejectRegistration = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({
         success: false,
         error: 'Student not found'
+      });
+    }
+
+    if (!canAccessHostel(req.user, student.hostel_id)) {
+      return res.status(403).json({
+        success: false,
+        error: 'You do not have access to this student.'
       });
     }
 
@@ -1219,7 +1261,11 @@ export const vacateSettlement = async (req: AuthRequest, res: Response) => {
       if (!student) {
         throw new Error('Student not found');
       }
-      
+
+      if (!canAccessHostel(req.user, student.hostel_id)) {
+        throw new Error('FORBIDDEN: You do not have access to this student.');
+      }
+
       // Calculate pending rent dues
       const pendingDuesQuery = await trx('monthly_fees')
         .where({ student_id: studentId })
@@ -1304,9 +1350,10 @@ export const vacateSettlement = async (req: AuthRequest, res: Response) => {
     });
   } catch (error: any) {
     console.error('Vacate settlement error:', error);
-    res.status(500).json({
+    const isForbidden = typeof error?.message === 'string' && error.message.startsWith('FORBIDDEN:');
+    res.status(isForbidden ? 403 : 500).json({
       success: false,
-      error: error.message || 'Failed to process vacate settlement'
+      error: isForbidden ? error.message.replace('FORBIDDEN: ', '') : (error.message || 'Failed to process vacate settlement')
     });
   }
 };

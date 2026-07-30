@@ -25,3 +25,19 @@ export const resolveScopedHostelId = (
   }
   return user?.hostel_id ?? null;
 };
+
+/**
+ * Ownership check for a single resource already loaded from the DB (a student,
+ * a payment, ...). Owner (role 2) may only touch resources belonging to their
+ * own hostel_id; Super Admin (role 1) is unrestricted. Everyone else is denied —
+ * routes that need a different rule (e.g. tenants acting on their own record)
+ * must check that separately before/instead of calling this.
+ */
+export const canAccessHostel = (
+  user?: TokenPayload,
+  resourceHostelId?: number | string | null
+): boolean => {
+  if (isSuperAdmin(user)) return true;
+  if (resourceHostelId === null || resourceHostelId === undefined) return false;
+  return user?.hostel_id != null && Number(user.hostel_id) === Number(resourceHostelId);
+};

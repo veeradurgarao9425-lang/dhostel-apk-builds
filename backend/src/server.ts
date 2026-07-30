@@ -628,6 +628,8 @@ app.post('/api/public/qr-signup', qrSignupUpload.fields([
       id_proof_type:    typeId,
       id_proof_number:  String(id_proof_number).trim(),
       id_proof_status:  1, // Submitted
+      id_proof_front_url: aadhaarFrontFile ? `/uploads/${aadhaarFrontFile.filename}` : null,
+      id_proof_back_url:  aadhaarBackFile  ? `/uploads/${aadhaarBackFile.filename}`  : null,
     };
 
     const [newStudentId] = await db('students').insert(insertData);

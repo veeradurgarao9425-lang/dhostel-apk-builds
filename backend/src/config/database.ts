@@ -202,6 +202,14 @@ async function patchDatabaseSchema() {
           console.log('[schema-patch] adding bed_id to students...');
           await db.raw("ALTER TABLE students ADD COLUMN bed_id VARCHAR(50) NULL");
         }
+        if (!columnNames.includes('current_address')) {
+          console.log('[schema-patch] adding current_address to students...');
+          await db.raw("ALTER TABLE students ADD COLUMN current_address TEXT NULL AFTER permanent_address");
+        }
+        if (!columnNames.includes('profile_photo_url')) {
+          console.log('[schema-patch] adding profile_photo_url to students...');
+          await db.raw("ALTER TABLE students ADD COLUMN profile_photo_url VARCHAR(500) NULL");
+        }
       }
     } catch (e: any) {
       console.error('[schema-patch] Error updating students columns:', e.message);

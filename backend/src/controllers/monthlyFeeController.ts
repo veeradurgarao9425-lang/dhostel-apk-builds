@@ -3,7 +3,7 @@ import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { sendNotificationToHostelOwner } from '../utils/notification.js';
 import { io } from '../socket/index.js';
-import { resolveScopedHostelId } from '../utils/scope.js';
+import { resolveScopedHostelId, canAccessHostel } from '../utils/scope.js';
 
 // Version marker to verify the fix is deployed
 const FIX_VERSION = 'v2.0-carry-forward-fix-2026-01-04';
@@ -2064,6 +2064,13 @@ export const updatePayment = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    if (!canAccessHostel(req.user, currentPayment.hostel_id)) {
+      return res.status(403).json({
+        success: false,
+        error: 'You do not have access to this payment.'
+      });
+    }
+
     const feeId = currentPayment.fee_id;
     const oldAmount = currentPayment.amount;
 
@@ -2209,6 +2216,13 @@ export const deletePayment = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({
         success: false,
         error: 'Payment not found'
+      });
+    }
+
+    if (!canAccessHostel(req.user, payment.hostel_id)) {
+      return res.status(403).json({
+        success: false,
+        error: 'You do not have access to this payment.'
       });
     }
 

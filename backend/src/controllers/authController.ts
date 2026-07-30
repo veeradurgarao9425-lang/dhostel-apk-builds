@@ -1195,8 +1195,13 @@ export const authController = {
 
   async tenantRegister(req: Request, res: Response) {
     try {
-      const { identifier, hostel_id, first_name, last_name, phone, email, gender, date_of_birth, guardian_name, guardian_phone, guardian_relation, permanent_address, id_proof_type, id_proof_number } = req.body;
-      
+      const { identifier, hostel_id, first_name, last_name, phone, email, gender, date_of_birth, guardian_name, guardian_phone, guardian_relation, current_address, permanent_address, id_proof_type, id_proof_number } = req.body;
+
+      const files = req.files as { [field: string]: Express.Multer.File[] } | undefined;
+      const profilePhotoUrl = files?.profile_photo?.[0] ? `/uploads/${files.profile_photo[0].filename}` : null;
+      const idProofFrontUrl = files?.id_proof_front?.[0] ? `/uploads/${files.id_proof_front[0].filename}` : null;
+      const idProofBackUrl = files?.id_proof_back?.[0] ? `/uploads/${files.id_proof_back[0].filename}` : null;
+
       if (!identifier || !hostel_id || !first_name || !gender) {
         return res.status(400).json({ success: false, error: 'Missing required fields' });
       }
@@ -1246,9 +1251,13 @@ export const authController = {
         guardian_name: guardian_name || null,
         guardian_phone: guardian_phone || null,
         guardian_relation: guardian_relation || null,
+        current_address: current_address || null,
         permanent_address: permanent_address || null,
         id_proof_type: id_proof_type || null,
         id_proof_number: id_proof_number || null,
+        id_proof_front_url: idProofFrontUrl,
+        id_proof_back_url: idProofBackUrl,
+        profile_photo_url: profilePhotoUrl,
         date_of_birth: date_of_birth || null,
         admission_date,
         status: 3, // QR Register / Pending Status
