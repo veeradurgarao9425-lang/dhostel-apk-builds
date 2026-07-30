@@ -25,13 +25,17 @@ export const db = knex({
     user: process.env.DB_USER!,
     password: process.env.DB_PASSWORD!,
     database: process.env.DB_NAME!,
-    ssl: {
+    ssl: process.env.DB_SSL === 'false' ? false : {
       rejectUnauthorized: false
     }
   },
   pool: {
-    min: 5,
-    max: 20,
+    min: parseInt(process.env.DB_POOL_MIN || '2', 10),
+    max: parseInt(process.env.DB_POOL_MAX || '10', 10),
+    createTimeoutMillis: 5000,
+    acquireTimeoutMillis: 30000,
+    idleTimeoutMillis: 30000,
+    reapIntervalMillis: 1000,
   },
   acquireConnectionTimeout: 30000,
 });
