@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,6 +8,7 @@ import api from '../../../services/api';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { theme } from '../../../theme/tenantTheme';
 import { AnimatedProgressCircle } from '../../../components/tenant/growth/AnimatedProgressCircle';
+import { GrowthHomeSkeleton } from '../../../components/tenant/growth/GrowthSkeletons';
 
 interface DashboardData {
   level: number;
@@ -56,8 +57,8 @@ export function GrowthHomeScreen({ navigation }: any) {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.loadingScreen}>
-        <ActivityIndicator color={theme.colors.primary} size="large" />
+      <SafeAreaView style={styles.screen} edges={['top']}>
+        <GrowthHomeSkeleton />
       </SafeAreaView>
     );
   }
@@ -107,27 +108,41 @@ export function GrowthHomeScreen({ navigation }: any) {
           {data?.quote ? <Text style={styles.quote}>"{data.quote}"</Text> : null}
         </LinearGradient>
 
-        {/* Today's Challenge */}
-        <TouchableOpacity
-          activeOpacity={0.85}
-          style={styles.challengeCard}
-          onPress={() =>
-            data?.todaysChallenge.levelId
-              ? navigation.navigate('GrowthStory', { levelId: data.todaysChallenge.levelId })
-              : navigation.navigate('GrowthPaths')
-          }
-        >
-          <View style={styles.challengeIconWrap}>
-            <Ionicons name="rocket" size={22} color={theme.colors.primary} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.challengeLabel}>Today's Challenge</Text>
-            <Text style={styles.challengeTitle}>{data?.todaysChallenge.title || 'Start learning'}</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={theme.colors.textMuted} />
-        </TouchableOpacity>
+        {/* Continue: today's challenge + explore all paths */}
+        <View style={styles.continueCard}>
+          <TouchableOpacity
+            activeOpacity={0.85}
+            style={styles.challengeRow}
+            onPress={() =>
+              data?.todaysChallenge.levelId
+                ? navigation.navigate('GrowthStory', { levelId: data.todaysChallenge.levelId })
+                : navigation.navigate('GrowthPaths')
+            }
+          >
+            <View style={styles.challengeIconWrap}>
+              <Ionicons name="rocket" size={22} color={theme.colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.challengeLabel}>Today's Challenge</Text>
+              <Text style={styles.challengeTitle}>{data?.todaysChallenge.title || 'Start learning'}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.textMuted} />
+          </TouchableOpacity>
 
-        {/* Weekly / Monthly goals */}
+          <View style={styles.cardDivider} />
+
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={styles.exploreRow}
+            onPress={() => navigation.navigate('GrowthPaths')}
+          >
+            <Ionicons name="compass-outline" size={16} color={theme.colors.primary} />
+            <Text style={styles.exploreRowText}>Explore all paths</Text>
+            <Ionicons name="chevron-forward" size={14} color={theme.colors.primary} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Weekly / Monthly goals + tools */}
         <View style={styles.goalsCard}>
           <GoalBar
             label="Weekly Goal"
@@ -142,20 +157,13 @@ export function GrowthHomeScreen({ navigation }: any) {
             target={data?.monthlyGoal ?? 20}
             color={theme.colors.accent}
           />
-        </View>
 
-        <TouchableOpacity
-          activeOpacity={0.9}
-          style={styles.exploreButton}
-          onPress={() => navigation.navigate('GrowthPaths')}
-        >
-          <Ionicons name="compass" size={18} color="#FFFFFF" />
-          <Text style={styles.exploreButtonText}>Explore Learning Paths</Text>
-        </TouchableOpacity>
+          <View style={styles.cardDivider} />
 
-        <View style={styles.secondaryRow}>
-          <SecondaryLink icon="bar-chart" label="Stats" onPress={() => navigation.navigate('GrowthStats')} />
-          <SecondaryLink icon="bookmark" label="My Vocabulary" onPress={() => navigation.navigate('GrowthVocabularyList')} />
+          <View style={styles.toolsRow}>
+            <SecondaryLink icon="bar-chart" label="Stats" onPress={() => navigation.navigate('GrowthStats')} />
+            <SecondaryLink icon="bookmark" label="My Vocabulary" onPress={() => navigation.navigate('GrowthVocabularyList')} />
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -198,7 +206,6 @@ function SecondaryLink({ icon, label, onPress }: { icon: any; label: string; onP
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.colors.bg },
-  loadingScreen: { flex: 1, backgroundColor: theme.colors.bg, alignItems: 'center', justifyContent: 'center' },
   content: { padding: theme.spacing.lg, paddingBottom: theme.spacing['4xl'] },
   hero: {
     borderRadius: theme.radius['2xl'],
@@ -226,15 +233,17 @@ const styles = StyleSheet.create({
   heroStatLabel: { color: 'rgba(255,255,255,0.75)', fontSize: 12 },
   quote: { color: 'rgba(255,255,255,0.9)', fontSize: 12, fontStyle: 'italic', marginTop: theme.spacing.lg },
 
-  challengeCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.md,
+  continueCard: {
     backgroundColor: theme.colors.surface,
     borderRadius: theme.radius.xl,
     padding: theme.spacing.lg,
     marginTop: theme.spacing.lg,
     ...theme.shadow.card,
+  },
+  challengeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
   },
   challengeIconWrap: {
     width: 44, height: 44, borderRadius: 14,
@@ -243,6 +252,10 @@ const styles = StyleSheet.create({
   },
   challengeLabel: { ...theme.text.label },
   challengeTitle: { ...theme.text.cardTitle, marginTop: 2 },
+
+  cardDivider: { height: 1, backgroundColor: theme.colors.borderSoft, marginVertical: theme.spacing.md },
+  exploreRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  exploreRowText: { flex: 1, ...theme.text.body, fontWeight: '700', color: theme.colors.primary },
 
   goalsCard: {
     backgroundColor: theme.colors.surface,
@@ -257,17 +270,7 @@ const styles = StyleSheet.create({
   goalTrack: { height: 8, borderRadius: 4, backgroundColor: theme.colors.surfaceAlt, overflow: 'hidden' },
   goalFill: { height: '100%', borderRadius: 4 },
 
-  exploreButton: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.radius.pill,
-    paddingVertical: 14,
-    marginTop: theme.spacing.lg,
-    ...theme.shadow.card,
-  },
-  exploreButtonText: { color: '#FFFFFF', fontWeight: '800', fontSize: 15 },
-
-  secondaryRow: { flexDirection: 'row', gap: theme.spacing.md, marginTop: theme.spacing.lg },
+  toolsRow: { flexDirection: 'row', gap: theme.spacing.md },
   secondaryLink: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
     backgroundColor: theme.colors.primarySoft,

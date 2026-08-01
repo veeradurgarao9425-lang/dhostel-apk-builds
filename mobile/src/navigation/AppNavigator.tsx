@@ -45,7 +45,7 @@ import TenantSettingsScreen from '../Pages/tenant/SettingsScreen';
 import TenantPrivacyPolicyScreen from '../Pages/tenant/PrivacyPolicyScreen';
 import { SubscriptionExpiredScreen as TenantSubscriptionExpiredScreen } from '../Pages/tenant/SubscriptionExpiredScreen';
 
-// ── Growth Journey ("Nova AI" tab, tenant-only) ──────────────────────────────
+// ── Growth Journey (tenant-only) ──────────────────────────────
 import GrowthHomeScreen from '../Pages/tenant/growth/GrowthHomeScreen';
 import GrowthPathsScreen from '../Pages/tenant/growth/GrowthPathsScreen';
 import GrowthRoadmapScreen from '../Pages/tenant/growth/GrowthRoadmapScreen';
@@ -149,7 +149,6 @@ const TenantTabNavigator = () => (
         screenOptions={{ headerShown: false }}
     >
         <Tab.Screen name="Home"     component={TenantHomeScreen} />
-        <Tab.Screen name="NovaAI"   component={GrowthHomeScreen} />
         <Tab.Screen name="Dues"     component={DuesScreen} />
         <Tab.Screen name="Expenses" component={ExpensesScreen} />
         <Tab.Screen name="Notices"  component={TenantNoticesScreen} />
@@ -215,7 +214,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen name="TenantRegister" component={RegistrationScreen} />
 
                     {/* Main tab container */}
-                    <Stack.Screen name="Main" component={user?.role === 'TENANT' ? (user?.status === 'Pending' ? PendingApprovalScreen : TenantTabNavigator) : OwnerTabNavigator} />
+                    <Stack.Screen name="Main" component={user?.role === 'TENANT' ? (user?.is_allocated ? TenantTabNavigator : PendingApprovalScreen) : OwnerTabNavigator} />
 
                     {/* Notifications */}
                     <Stack.Screen name="Notifications" component={NotificationScreen} />
@@ -336,7 +335,8 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen name="FullMenu"     component={FullMenuScreen}          />
                     <Stack.Screen name="Payments"     component={TenantPaymentScreen}     />
 
-                    {/* Growth Journey ("Nova AI") — tenant-only, pushed on top of the shared tab bar */}
+                    {/* Growth Journey — tenant-only, pushed on top of the shared tab bar */}
+                    <Stack.Screen name="GrowthHome"             component={GrowthHomeScreen}             />
                     <Stack.Screen name="GrowthPaths"           component={GrowthPathsScreen}           />
                     <Stack.Screen name="GrowthRoadmap"          component={GrowthRoadmapScreen}         />
                     <Stack.Screen name="GrowthStory"            component={GrowthStoryScreen}           />

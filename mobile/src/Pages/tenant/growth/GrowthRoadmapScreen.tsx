@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import api from '../../../services/api';
 import { theme } from '../../../theme/tenantTheme';
+import { GrowthRoadmapSkeleton } from '../../../components/tenant/growth/GrowthSkeletons';
 
 interface Level {
   levelId: number;
@@ -135,9 +136,7 @@ export function GrowthRoadmapScreen({ navigation, route }: any) {
       </View>
 
       {loading ? (
-        <View style={styles.loading}>
-          <ActivityIndicator color={theme.colors.primary} size="large" />
-        </View>
+        <GrowthRoadmapSkeleton />
       ) : (
         <FlatList
           data={levels}

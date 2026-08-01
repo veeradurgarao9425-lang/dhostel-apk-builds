@@ -115,7 +115,7 @@ export const getDashboard = async (req: AuthRequest, res: Response) => {
 export const getPaths = async (req: AuthRequest, res: Response) => {
   try {
     const studentId = req.user!.user_id;
-    const paths = await db('growth_paths').orderBy('sort_order', 'asc');
+    const paths = await db('growth_paths').where('is_active', 1).orderBy('sort_order', 'asc');
 
     const progress = await db('growth_levels as gl')
       .join('growth_user_progress as gup', function () {
@@ -131,14 +131,18 @@ export const getPaths = async (req: AuthRequest, res: Response) => {
     const completedByPath = new Map(progress.map((p: any) => [p.path_id, Number(p.count)]));
     const totalByPath = new Map(totals.map((t: any) => [t.path_id, Number(t.count)]));
 
-    res.json({
-      success: true,
-      data: paths.map((p: any) => ({
+    // Only ever show paths that actually have seeded content — an is_active
+    // path with no levels yet (e.g. activated before its seed script ran)
+    // would otherwise render as an empty, broken-looking tile.
+    const withContent = paths
+      .map((p: any) => ({
         ...p,
         completedLevels: completedByPath.get(p.path_id) || 0,
         totalLevels: totalByPath.get(p.path_id) || 0,
-      })),
-    });
+      }))
+      .filter((p: any) => p.totalLevels > 0);
+
+    res.json({ success: true, data: withContent });
   } catch (error: any) {
     console.error('Get growth paths error:', error);
     res.status(500).json({ success: false, error: 'Failed to load learning paths' });
@@ -223,7 +227,7 @@ export const getLevelDetail = async (req: AuthRequest, res: Response) => {
     const questions = await db('growth_quiz_questions')
       .where({ story_id: story.story_id })
       .orderBy('sort_order', 'asc')
-      .select('question_id', 'question_type', 'question_text', 'options'); // correct_answer withheld from client
+      .select('question_id', 'question_type', 'question_text', 'options', 'correct_answer');
 
     res.json({
       success: true,

@@ -1,0 +1,144 @@
+{
+  "stories": [
+    {
+      "title": "Ordering Food at a Restaurant",
+      "category": "dialogue",
+      "reading_time_minutes": 2,
+      "sentences": [
+        "Waiter: Good evening! Welcome to our restaurant. How many people are with you today?",
+        "Priya: Good evening, just two of us, please.",
+        "Waiter: Right this way. Here are your menus. Can I get you something to drink first?",
+        "Priya: Yes, could we have two glasses of cold water and one lime soda?",
+        "Waiter: Of course. Have you decided what you would like to order?",
+        "Priya: We would like the paneer tikka and a plate of butter naan, please.",
+        "Waiter: Excellent choice. Would you like anything spicy or mild?",
+        "Priya: Medium spice would be perfect, thank you.",
+        "Waiter: Your order will be ready in about fifteen minutes.",
+        "Priya: That sounds great. Thank you for your help!"
+      ],
+      "vocabulary": [
+        { "word": "menu", "meaning": "a list of food items available in a restaurant", "pronunciation": "MEN-yoo", "synonyms": "food list, card", "example_sentence": "She looked at the menu before ordering." },
+        { "word": "order", "meaning": "a request for food or items", "pronunciation": "OR-der", "synonyms": "request, booking", "example_sentence": "He placed his order for lunch." },
+        { "word": "excellent", "meaning": "extremely good", "pronunciation": "EK-suh-lent", "synonyms": "outstanding, superb", "example_sentence": "The service at the hotel was excellent." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "How many people were dining together?", "options": ["Two", "Three", "Four", "One"], "correct_answer": "Two" },
+        { "question_type": "true_false", "question_text": "Priya ordered only a cold drink and nothing else.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "fill_blank", "question_text": "Priya asked for two glasses of cold ______ and one lime soda.", "options": null, "correct_answer": "water" },
+        { "question_type": "vocab", "question_text": "What does 'excellent' mean?", "options": ["extremely good", "very bad", "average", "expensive"], "correct_answer": "extremely good" },
+        { "question_type": "mcq", "question_text": "How long would the order take to prepare?", "options": ["About fifteen minutes", "About one hour", "About five minutes", "About thirty seconds"], "correct_answer": "About fifteen minutes" }
+      ]
+    },
+    {
+      "title": "Asking for Directions",
+      "category": "dialogue",
+      "reading_time_minutes": 2,
+      "sentences": [
+        "Sameer: Excuse me, could you help me find the nearest bus station?",
+        "Anita: Sure! Go straight down this road and turn left at the second signal.",
+        "Sameer: Left at the second signal, got it. Is it far from here?",
+        "Anita: Not too far, it is about a ten-minute walk from this point.",
+        "Sameer: That is helpful. Will I see any landmarks along the way?",
+        "Anita: Yes, you will pass a large park and a small bakery just before the station.",
+        "Sameer: Perfect, that makes it easy to remember. Thank you so much for your help.",
+        "Anita: You are welcome. Have a safe trip!"
+      ],
+      "vocabulary": [
+        { "word": "signal", "meaning": "a traffic light or sign giving instructions", "pronunciation": "SIG-nuhl", "synonyms": "traffic light, sign", "example_sentence": "Turn right after the next signal." },
+        { "word": "landmark", "meaning": "a notable object or feature that helps identify a location", "pronunciation": "LAND-mark", "synonyms": "marker, feature", "example_sentence": "The old clock tower is a famous landmark." },
+        { "word": "helpful", "meaning": "giving useful assistance", "pronunciation": "HELP-fuhl", "synonyms": "useful, supportive", "example_sentence": "The staff were very helpful during our stay." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "Where did Anita tell Sameer to turn left?", "options": ["At the second signal", "At the first signal", "At the bakery", "At the park"], "correct_answer": "At the second signal" },
+        { "question_type": "true_false", "question_text": "The bus station was more than an hour's walk away.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "fill_blank", "question_text": "You will pass a large park and a small ______ before the station.", "options": null, "correct_answer": "bakery" },
+        { "question_type": "vocab", "question_text": "What does 'landmark' mean?", "options": ["a notable feature that helps identify a location", "a type of vehicle", "a traffic rule", "a kind of food"], "correct_answer": "a notable feature that helps identify a location" },
+        { "question_type": "mcq", "question_text": "How did Sameer feel about Anita's directions?", "options": ["He found them helpful", "He was confused", "He ignored them", "He got lost"], "correct_answer": "He found them helpful" }
+      ]
+    },
+    {
+      "title": "A Job Interview Chat",
+      "category": "dialogue",
+      "reading_time_minutes": 3,
+      "sentences": [
+        "Interviewer: Good morning! Please have a seat. Can you tell me a little about yourself?",
+        "Kabir: Good morning. I recently completed my degree in computer science and enjoy building small apps.",
+        "Interviewer: That's great. What would you say is your biggest strength?",
+        "Kabir: I would say my ability to stay calm and solve problems under pressure.",
+        "Interviewer: Interesting. Can you share an example of that?",
+        "Kabir: During my final project, our server crashed the night before submission, and I fixed it within two hours.",
+        "Interviewer: Impressive. Why do you want to work with our company?",
+        "Kabir: I admire how your team focuses on learning and mentorship for new employees.",
+        "Interviewer: Thank you, Kabir. We will contact you soon with our decision.",
+        "Kabir: Thank you for your time. I look forward to hearing from you."
+      ],
+      "vocabulary": [
+        { "word": "strength", "meaning": "a good quality or ability someone has", "pronunciation": "STRENGKTH", "synonyms": "advantage, asset", "example_sentence": "Teamwork is one of her greatest strengths." },
+        { "word": "pressure", "meaning": "a feeling of stress caused by difficulties", "pronunciation": "PRESH-er", "synonyms": "stress, strain", "example_sentence": "He works well under pressure." },
+        { "word": "mentorship", "meaning": "guidance and support given by an experienced person", "pronunciation": "MEN-tor-ship", "synonyms": "guidance, coaching", "example_sentence": "The company offers mentorship to new employees." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "What did Kabir study?", "options": ["Computer science", "Business management", "Mechanical engineering", "Medicine"], "correct_answer": "Computer science" },
+        { "question_type": "true_false", "question_text": "Kabir said his biggest strength was public speaking.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "fill_blank", "question_text": "Kabir fixed the crashed server within two ______.", "options": null, "correct_answer": "hours" },
+        { "question_type": "vocab", "question_text": "What does 'pressure' mean in this context?", "options": ["a feeling of stress caused by difficulties", "a type of weather", "a kind of reward", "a musical instrument"], "correct_answer": "a feeling of stress caused by difficulties" },
+        { "question_type": "mcq", "question_text": "Why did Kabir want to join the company?", "options": ["Its focus on learning and mentorship", "The high salary", "The short working hours", "The free food"], "correct_answer": "Its focus on learning and mentorship" }
+      ]
+    },
+    {
+      "title": "Catching Up with an Old Friend",
+      "category": "dialogue",
+      "reading_time_minutes": 2,
+      "sentences": [
+        "Neha: Is that you, Farhan? I haven't seen you since school!",
+        "Farhan: Neha! Wow, it has been years! How have you been?",
+        "Neha: I'm doing well, working at a design studio downtown. What about you?",
+        "Farhan: I moved to the city for a job in marketing about a year ago.",
+        "Neha: That's wonderful. Do you still play the guitar like you used to?",
+        "Farhan: Actually, yes! I even joined a small band with some colleagues.",
+        "Neha: That's amazing. We should catch up properly over coffee sometime.",
+        "Farhan: Definitely. Let's exchange numbers and plan something this weekend."
+      ],
+      "vocabulary": [
+        { "word": "downtown", "meaning": "the central or main area of a city", "pronunciation": "DOWN-town", "synonyms": "city center, main area", "example_sentence": "She works at an office downtown." },
+        { "word": "colleagues", "meaning": "people one works with", "pronunciation": "KOL-eegz", "synonyms": "coworkers, teammates", "example_sentence": "He went to lunch with his colleagues." },
+        { "word": "exchange", "meaning": "to give and receive something in return", "pronunciation": "iks-CHAYNJ", "synonyms": "swap, trade", "example_sentence": "They agreed to exchange contact details." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "Where does Neha work?", "options": ["A design studio", "A hospital", "A bank", "A school"], "correct_answer": "A design studio" },
+        { "question_type": "true_false", "question_text": "Farhan stopped playing the guitar completely.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "fill_blank", "question_text": "Farhan moved to the city for a job in ______.", "options": null, "correct_answer": "marketing" },
+        { "question_type": "vocab", "question_text": "What does 'colleagues' mean?", "options": ["people one works with", "close family members", "old classmates only", "strangers"], "correct_answer": "people one works with" },
+        { "question_type": "mcq", "question_text": "What did they plan to do at the end of the conversation?", "options": ["Catch up over coffee", "Go to a concert", "Travel together", "Start a business"], "correct_answer": "Catch up over coffee" }
+      ]
+    },
+    {
+      "title": "Checking into a Hotel",
+      "category": "dialogue",
+      "reading_time_minutes": 2,
+      "sentences": [
+        "Receptionist: Good afternoon! Welcome to Sunrise Hotel. Do you have a reservation with us?",
+        "Tara: Yes, I booked a room online under the name Tara Sharma.",
+        "Receptionist: Let me check. Yes, I see it here — a single room for three nights.",
+        "Tara: That's correct. Is breakfast included with the room?",
+        "Receptionist: Yes, breakfast is served from seven to ten in the morning.",
+        "Tara: Wonderful. Could I also request a room on a higher floor?",
+        "Receptionist: Certainly, I can give you a room on the fifth floor with a nice view.",
+        "Tara: That sounds perfect, thank you very much.",
+        "Receptionist: Here is your key card. Enjoy your stay with us!"
+      ],
+      "vocabulary": [
+        { "word": "reservation", "meaning": "an arrangement to have something kept for you", "pronunciation": "rez-er-VAY-shun", "synonyms": "booking, appointment", "example_sentence": "We made a reservation at the restaurant." },
+        { "word": "included", "meaning": "made part of something as a whole", "pronunciation": "in-KLOO-did", "synonyms": "contained, covered", "example_sentence": "Breakfast is included in the hotel package." },
+        { "word": "certainly", "meaning": "used to express agreement or confirmation", "pronunciation": "SUR-tin-lee", "synonyms": "surely, definitely", "example_sentence": "Certainly, I will help you with that." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "How many nights did Tara book the room for?", "options": ["Three nights", "One night", "Five nights", "A week"], "correct_answer": "Three nights" },
+        { "question_type": "true_false", "question_text": "Breakfast was not included with Tara's room.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "fill_blank", "question_text": "Breakfast is served from seven to ten in the ______.", "options": null, "correct_answer": "morning" },
+        { "question_type": "vocab", "question_text": "What does 'reservation' mean?", "options": ["an arrangement to have something kept for you", "a type of hotel room", "a kind of meal", "a payment receipt"], "correct_answer": "an arrangement to have something kept for you" },
+        { "question_type": "mcq", "question_text": "Which floor was Tara's room on?", "options": ["The fifth floor", "The first floor", "The ground floor", "The tenth floor"], "correct_answer": "The fifth floor" }
+      ]
+    }
+  ]
+}

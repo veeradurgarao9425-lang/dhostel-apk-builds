@@ -1,11 +1,12 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import api from '../../../services/api';
 import { theme } from '../../../theme/tenantTheme';
 import { VocabularyModal, VocabWord } from '../../../components/tenant/growth/VocabularyModal';
+import { SkeletonListRow } from '../../../components/tenant/ui/SkeletonLoader';
 
 export function GrowthVocabularyListScreen({ navigation }: any) {
   const [words, setWords] = useState<VocabWord[]>([]);
@@ -33,8 +34,10 @@ export function GrowthVocabularyListScreen({ navigation }: any) {
       </View>
 
       {loading ? (
-        <View style={styles.loading}>
-          <ActivityIndicator color={theme.colors.primary} size="large" />
+        <View style={{ paddingTop: theme.spacing.sm }}>
+          {[0, 1, 2, 3, 4].map((i) => (
+            <SkeletonListRow key={i} last={i === 4} />
+          ))}
         </View>
       ) : words.length === 0 ? (
         <View style={styles.empty}>
@@ -66,7 +69,6 @@ export function GrowthVocabularyListScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.colors.bg },
-  loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: theme.spacing['3xl'], gap: theme.spacing.md },
   emptyText: { ...theme.text.body, color: theme.colors.textMuted, textAlign: 'center' },
   header: {

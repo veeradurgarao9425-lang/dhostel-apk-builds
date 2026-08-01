@@ -1300,6 +1300,33 @@ async function patchDatabaseSchema() {
       console.error('[schema-patch] Error checking/creating Growth Journey tables:', e.message);
     }
 
+    // 31. Growth Journey — activate Daily Jokes / Daily Conversations (already seeded
+    // as inactive placeholders above) and add Love Stories. Idempotent: safe to run
+    // on every boot against the shared prod DB.
+    try {
+      if (tableNamesLower.includes('growth_paths')) {
+        await db('growth_paths')
+          .whereIn('path_key', ['daily_jokes', 'daily_conversations', 'moral_stories'])
+          .update({ is_active: 1 });
+
+        const loveStories = await db('growth_paths').where({ path_key: 'love_stories' }).first();
+        if (!loveStories) {
+          console.log('[schema-patch] seeding growth_paths: love_stories...');
+          await db('growth_paths').insert({
+            path_key: 'love_stories',
+            name: 'Love Stories',
+            emoji: '💕',
+            description: 'Heartfelt stories about love and relationships',
+            sort_order: 19,
+            is_active: 1,
+            color_hex: '#F43F5E',
+          });
+        }
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error activating extra Growth Journey paths:', e.message);
+    }
+
     console.log('[schema-patch] Schema check and patch complete.');
   } catch (err: any) {
     console.error('[schema-patch] Critical error during schema patching:', err.message);

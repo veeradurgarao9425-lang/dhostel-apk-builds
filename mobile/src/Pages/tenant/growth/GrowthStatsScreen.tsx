@@ -1,10 +1,11 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import api from '../../../services/api';
 import { theme } from '../../../theme/tenantTheme';
+import { SkeletonStatCard } from '../../../components/tenant/ui/SkeletonLoader';
 
 interface Stats {
   readingMinutes: number;
@@ -45,9 +46,13 @@ export function GrowthStatsScreen({ navigation }: any) {
       </View>
 
       {loading || !data ? (
-        <View style={styles.loading}>
-          <ActivityIndicator color={theme.colors.primary} size="large" />
-        </View>
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <View style={styles.grid}>
+            {[0, 1, 2, 3, 4, 5].map((i) => (
+              <SkeletonStatCard key={i} style={{ width: '31%' }} />
+            ))}
+          </View>
+        </ScrollView>
       ) : (
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.grid}>
@@ -102,7 +107,6 @@ function ProgressRow({ label, current, target, color }: { label: string; current
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.colors.bg },
-  loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.md,

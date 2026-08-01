@@ -66,9 +66,10 @@ export function TenantHomeScreen({ navigation }: any) {
   const [budget, setBudget] = useState(0);
   const [spent, setSpent] = useState(0);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+  const [growthTeaser, setGrowthTeaser] = useState<{ streak: number; level: number } | null>(null);
   const progressAnim = useRef(new Animated.Value(0)).current;
 
-  const enterAnims = useRef([...Array(6)].map(() => new Animated.Value(0))).current;
+  const enterAnims = useRef([...Array(7)].map(() => new Animated.Value(0))).current;
 
   useEffect(() => {
     Animated.stagger(100, 
@@ -286,6 +287,19 @@ export function TenantHomeScreen({ navigation }: any) {
     }, [user?.hostel_id])
   );
 
+  useFocusEffect(
+    useCallback(() => {
+      api
+        .get("/growth/dashboard")
+        .then((res) => {
+          if (res.data?.success) {
+            setGrowthTeaser({ streak: res.data.data.currentStreak ?? 0, level: res.data.data.level ?? 1 });
+          }
+        })
+        .catch(() => {});
+    }, [])
+  );
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await refreshUser();
@@ -467,12 +481,42 @@ export function TenantHomeScreen({ navigation }: any) {
         <View style={styles.divider} />
 
         <Animated.View style={{ opacity: enterAnims[2], transform: [{ translateY: enterAnims[2].interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
-          <QuickShortcuts shortcuts={shortcuts} />
+          <TouchableOpacity
+            activeOpacity={0.88}
+            onPress={() => navigation.navigate("GrowthHome")}
+            style={styles.growthCardTouchable}
+          >
+            <LinearGradient
+              colors={["#7C3AED", "#DB2777"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.growthCard}
+            >
+              <View style={styles.growthIconWrap}>
+                <Ionicons name="sparkles" size={20} color="#FFFFFF" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.growthTitle}>Growth Journey</Text>
+                <Text style={styles.growthSubtitle}>
+                  {growthTeaser
+                    ? `🔥 ${growthTeaser.streak} day streak · Level ${growthTeaser.level}`
+                    : "Grow your English & mindset daily"}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.85)" />
+            </LinearGradient>
+          </TouchableOpacity>
         </Animated.View>
 
         <View style={styles.divider} />
 
         <Animated.View style={{ opacity: enterAnims[3], transform: [{ translateY: enterAnims[3].interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
+          <QuickShortcuts shortcuts={shortcuts} />
+        </Animated.View>
+
+        <View style={styles.divider} />
+
+        <Animated.View style={{ opacity: enterAnims[4], transform: [{ translateY: enterAnims[4].interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={() => navigation.navigate("Notices")}
@@ -509,13 +553,13 @@ export function TenantHomeScreen({ navigation }: any) {
 
         <View style={styles.divider} />
 
-        <Animated.View style={{ opacity: enterAnims[4], transform: [{ translateY: enterAnims[4].interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
+        <Animated.View style={{ opacity: enterAnims[5], transform: [{ translateY: enterAnims[5].interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
           <QuickTips />
         </Animated.View>
 
         <View style={styles.divider} />
 
-        <Animated.View style={{ opacity: enterAnims[5], transform: [{ translateY: enterAnims[5].interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
+        <Animated.View style={{ opacity: enterAnims[6], transform: [{ translateY: enterAnims[6].interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
           <RecentActivity
             recentPayments={recentPayments}
             formatDate={formatDate}
@@ -663,6 +707,41 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 14,
+  },
+  growthCardTouchable: {
+    marginHorizontal: 16,
+    borderRadius: 18,
+  },
+  growthCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderRadius: 18,
+    padding: 16,
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 14,
+    elevation: 4,
+  },
+  growthIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  growthTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#FFFFFF",
+  },
+  growthSubtitle: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.85)",
+    marginTop: 2,
   },
   noticeRow: {
     flexDirection: "row",

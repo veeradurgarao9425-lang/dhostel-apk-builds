@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -8,6 +8,7 @@ import api from '../../../services/api';
 import { theme } from '../../../theme/tenantTheme';
 import { GrowthIllustration } from '../../../components/tenant/growth/GrowthIllustration';
 import { VocabularyModal, VocabWord } from '../../../components/tenant/growth/VocabularyModal';
+import { GrowthStorySkeleton } from '../../../components/tenant/growth/GrowthSkeletons';
 
 interface Sentence {
   order: number;
@@ -34,6 +35,14 @@ function formatTime(totalSeconds: number) {
   const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
   const s = (totalSeconds % 60).toString().padStart(2, '0');
   return `${m}:${s}`;
+}
+
+const SPEAKER_LINE = /^([A-Za-z][A-Za-z\s]{0,24}):\s*(.*)$/;
+
+function parseSpeakerLine(text: string): { speaker: string | null; line: string } {
+  const m = text.match(SPEAKER_LINE);
+  if (m) return { speaker: m[1].trim(), line: m[2] };
+  return { speaker: null, line: text };
 }
 
 export function GrowthStoryScreen({ navigation, route }: any) {
@@ -75,6 +84,37 @@ export function GrowthStoryScreen({ navigation, route }: any) {
   }, [levelId]);
 
   const sentences = data?.story.sentences || [];
+  const isDialogue = data?.story.category === 'dialogue';
+
+  const speakerSides = React.useMemo(() => {
+    const map = new Map<string, 'left' | 'right'>();
+    if (!isDialogue) return map;
+    for (const s of sentences) {
+      const { speaker } = parseSpeakerLine(s.text);
+      if (speaker && !map.has(speaker)) {
+        map.set(speaker, map.size === 0 ? 'left' : 'right');
+      }
+    }
+    return map;
+  }, [sentences, isDialogue]);
+
+  const renderTokens = (text: string, keyPrefix: string, onDark = false) =>
+    text.split(/(\s+)/).map((token, ti) => {
+      const clean = token.replace(/[^a-zA-Z']/g, '').toLowerCase();
+      const vocab = clean ? vocabByWord.current.get(clean) : undefined;
+      if (vocab) {
+        return (
+          <Text
+            key={`${keyPrefix}-${ti}`}
+            style={onDark ? styles.tapWordOnDark : styles.tapWord}
+            onPress={() => setSelectedWord(vocab)}
+          >
+            {token}
+          </Text>
+        );
+      }
+      return <Text key={`${keyPrefix}-${ti}`}>{token}</Text>;
+    });
 
   const speakFrom = useCallback(
     (i: number) => {
@@ -119,8 +159,8 @@ export function GrowthStoryScreen({ navigation, route }: any) {
 
   if (loading || !data) {
     return (
-      <SafeAreaView style={styles.centeredScreen}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+      <SafeAreaView style={styles.screen} edges={['top']}>
+        <GrowthStorySkeleton />
       </SafeAreaView>
     );
   }
@@ -161,28 +201,48 @@ export function GrowthStoryScreen({ navigation, route }: any) {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.storyCard}>
-          {sentences.map((sentence, i) => (
-            <Text
-              key={sentence.order}
-              style={[styles.sentence, playing && i === activeSentence && styles.sentenceActive]}
-            >
-              {sentence.text.split(/(\s+)/).map((token, ti) => {
-                const clean = token.replace(/[^a-zA-Z']/g, '').toLowerCase();
-                const vocab = clean ? vocabByWord.current.get(clean) : undefined;
-                if (vocab) {
-                  return (
-                    <Text key={ti} style={styles.tapWord} onPress={() => setSelectedWord(vocab)}>
-                      {token}
+        {isDialogue ? (
+          <View style={styles.dialogueWrap}>
+            {sentences.map((sentence, i) => {
+              const { speaker, line } = parseSpeakerLine(sentence.text);
+              const side = (speaker && speakerSides.get(speaker)) || 'left';
+              const isRight = side === 'right';
+              return (
+                <View
+                  key={sentence.order}
+                  style={[styles.bubbleRow, isRight && styles.bubbleRowRight]}
+                >
+                  <View
+                    style={[
+                      styles.bubble,
+                      isRight ? styles.bubbleRight : styles.bubbleLeft,
+                      playing && i === activeSentence && styles.bubbleActive,
+                    ]}
+                  >
+                    {speaker && (
+                      <Text style={[styles.bubbleSpeaker, isRight && styles.bubbleSpeakerRight]}>{speaker}</Text>
+                    )}
+                    <Text style={[styles.bubbleText, isRight && styles.bubbleTextRight]}>
+                      {renderTokens(line, String(sentence.order), isRight)}
                     </Text>
-                  );
-                }
-                return <Text key={ti}>{token}</Text>;
-              })}
-              {' '}
-            </Text>
-          ))}
-        </View>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        ) : (
+          <View style={styles.storyCard}>
+            {sentences.map((sentence, i) => (
+              <Text
+                key={sentence.order}
+                style={[styles.sentence, playing && i === activeSentence && styles.sentenceActive]}
+              >
+                {renderTokens(sentence.text, String(sentence.order))}
+                {' '}
+              </Text>
+            ))}
+          </View>
+        )}
 
         <TouchableOpacity style={styles.quizButton} onPress={startQuiz} activeOpacity={0.9}>
           <Ionicons name="help-circle" size={18} color="#FFFFFF" />
@@ -197,7 +257,6 @@ export function GrowthStoryScreen({ navigation, route }: any) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.colors.bg },
-  centeredScreen: { flex: 1, backgroundColor: theme.colors.bg, alignItems: 'center', justifyContent: 'center' },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.md,
@@ -237,6 +296,30 @@ const styles = StyleSheet.create({
   sentence: { fontSize: 16, lineHeight: 26, color: theme.colors.text, borderRadius: 6 },
   sentenceActive: { backgroundColor: theme.colors.primarySoft },
   tapWord: { color: theme.colors.primary, fontWeight: '700', textDecorationLine: 'underline' },
+  tapWordOnDark: { color: '#FFFFFF', fontWeight: '700', textDecorationLine: 'underline' },
+  dialogueWrap: { width: '100%', marginTop: theme.spacing.lg, gap: theme.spacing.sm },
+  bubbleRow: { flexDirection: 'row', justifyContent: 'flex-start' },
+  bubbleRowRight: { justifyContent: 'flex-end' },
+  bubble: {
+    maxWidth: '80%',
+    borderRadius: theme.radius.xl,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    ...theme.shadow.subtle,
+  },
+  bubbleLeft: {
+    backgroundColor: theme.colors.surface,
+    borderBottomLeftRadius: 4,
+  },
+  bubbleRight: {
+    backgroundColor: theme.colors.primary,
+    borderBottomRightRadius: 4,
+  },
+  bubbleActive: { borderWidth: 2, borderColor: theme.colors.accent },
+  bubbleSpeaker: { ...theme.text.label, color: theme.colors.primary, marginBottom: 3 },
+  bubbleSpeakerRight: { color: 'rgba(255,255,255,0.85)' },
+  bubbleText: { fontSize: 15, lineHeight: 22, color: theme.colors.text },
+  bubbleTextRight: { color: '#FFFFFF' },
   quizButton: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     backgroundColor: theme.colors.accent,
