@@ -21,8 +21,8 @@ interface DashboardData {
   weeklyProgress: number;
   monthlyGoal: number;
   monthlyProgress: number;
-  todaysChallenge: { title: string; levelId: number | null };
-  recentlyAdded?: { levelId: number; title: string; readingTime: number; status: string }[];
+  todaysChallenge: { title: string; levelId: number | null; category: string | null };
+  recentlyAdded?: { levelId: number; title: string; category?: string; readingTime: number; status: string }[];
   quote: string;
 }
 
@@ -90,13 +90,11 @@ export function GrowthHomeScreen({ navigation }: any) {
     <SafeAreaView style={styles.screen} edges={['top']}>
       {/* Header bar */}
       <View style={styles.header}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.headerGreetingLabel}>Good Morning ☀️</Text>
-          <Text style={styles.headerName}>{user?.name || 'Veera Durgarao'}</Text>
-        </View>
-        <TouchableOpacity style={styles.bellButton} activeOpacity={0.7}>
-          <Ionicons name="notifications-outline" size={22} color="#1E293B" />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 4, marginRight: 12 }} hitSlop={12}>
+          <Ionicons name="arrow-back" size={24} color="#1E293B" />
         </TouchableOpacity>
+        <Text style={styles.headerTitle}>Growth Journey</Text>
+        <View style={{ width: 40 }} />
       </View>
 
       <ScrollView
@@ -118,11 +116,6 @@ export function GrowthHomeScreen({ navigation }: any) {
             <View style={{ marginLeft: 8 }}>
               <Text style={styles.streakVal}>{data?.xp ?? 0}</Text>
               <Text style={styles.streakLbl}>Total XP</Text>
-            </View>
-          </View>
-          <View style={styles.avatarWrap}>
-            <View style={styles.avatarCircle}>
-              <Text style={styles.avatarText}>{firstName.substring(0, 2).toUpperCase()}</Text>
             </View>
           </View>
         </View>
@@ -161,13 +154,13 @@ export function GrowthHomeScreen({ navigation }: any) {
           activeOpacity={0.88}
           style={styles.continueCard}
           onPress={() => {
-            if (data?.todaysChallenge.levelId) {
-              navigation.navigate('GrowthStory', { levelId: data.todaysChallenge.levelId });
-            } else if (paths.length > 0) {
+            const activeCategory = data?.todaysChallenge.category;
+            const matchedPath = paths.find((p) => p.path_key === activeCategory) || paths[0];
+            if (matchedPath) {
               navigation.navigate('GrowthRoadmap', {
-                pathKey: paths[0].path_key,
-                pathName: paths[0].name,
-                colorHex: paths[0].color_hex,
+                pathKey: matchedPath.path_key,
+                pathName: matchedPath.name,
+                colorHex: matchedPath.color_hex,
               });
             }
           }}
@@ -224,8 +217,8 @@ export function GrowthHomeScreen({ navigation }: any) {
           })}
         </View>
 
-        {/* Recently Added Section */}
-        <Text style={styles.sectionTitle}>Recently Added</Text>
+        {/* Recently Opened Section */}
+        <Text style={styles.sectionTitle}>Recently Opened</Text>
         <View style={styles.recentList}>
           {data?.recentlyAdded && data.recentlyAdded.length > 0 ? (
             data.recentlyAdded.map((story) => {
@@ -243,7 +236,13 @@ export function GrowthHomeScreen({ navigation }: any) {
                     navigation.navigate('GrowthStory', { levelId: story.levelId });
                   }}
                 >
-                  <GrowthIllustration illustrationKey={story.title} size={48} style={styles.recentThumb} />
+                  {story.category === 'conversation' ? (
+                    <View style={[styles.recentThumb, styles.convoIconWrap]}>
+                      <Ionicons name="chatbubbles" size={20} color="#5B39E0" />
+                    </View>
+                  ) : (
+                    <GrowthIllustration illustrationKey={story.title} size={48} style={styles.recentThumb} />
+                  )}
                   <View style={{ flex: 1, marginLeft: 12 }}>
                     <Text style={styles.recentTitle}>{story.title}</Text>
                     <Text style={styles.recentMeta}>{story.readingTime} min read · {story.status}</Text>
@@ -278,19 +277,7 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.sm,
     backgroundColor: '#FAF9F6',
   },
-  headerGreetingLabel: { fontSize: 13, color: '#64748B', fontWeight: '600' },
-  headerName: { fontSize: 20, fontWeight: '800', color: '#1E293B', marginTop: 2 },
-  bellButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    ...theme.shadow.subtle,
-  },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: '#1E293B' },
   content: { paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing['4xl'] },
   streakRow: {
     flexDirection: 'row',
@@ -417,6 +404,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#475569',
+  },
+  convoIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -57,7 +57,7 @@ export function GrowthStoryScreen({ navigation, route }: any) {
   const [loading, setLoading] = useState(true);
   const [activeSentence, setActiveSentence] = useState(0);
   const [playing, setPlaying] = useState(false);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(0);
   const [bookmarked, setBookmarked] = useState(false);
   const [wishlisted, setWishlisted] = useState(false);
   const [selectedWord, setSelectedWord] = useState<VocabWord | null>(null);
@@ -78,6 +78,7 @@ export function GrowthStoryScreen({ navigation, route }: any) {
       .then((res) => {
         if (res.data?.success) {
           setData(res.data.data);
+          setTimeLeft(res.data.data.story.readingTimeMinutes * 60);
           const map = new Map<string, VocabWord>();
           for (const v of res.data.data.vocabulary as VocabWord[]) {
             map.set(v.word.toLowerCase(), v);
@@ -90,7 +91,7 @@ export function GrowthStoryScreen({ navigation, route }: any) {
     AsyncStorage.getItem(`growth_bookmark_${levelId}`).then((v) => setBookmarked(v === '1'));
     AsyncStorage.getItem(`growth_wishlist_${levelId}`).then((v) => setWishlisted(v === '1'));
 
-    timerRef.current = setInterval(() => setElapsedSeconds((s) => s + 1), 1000);
+    timerRef.current = setInterval(() => setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0)), 1000);
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       Speech.stop();
@@ -220,6 +221,12 @@ export function GrowthStoryScreen({ navigation, route }: any) {
     }
   };
 
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
   if (loading || !data) {
     return (
       <SafeAreaView style={styles.screen} edges={['top']}>
@@ -257,7 +264,7 @@ export function GrowthStoryScreen({ navigation, route }: any) {
             <Text style={[styles.tagText, isNightMode && { color: '#FDA4AF' }]}>{data.story.category || 'Daily Story'}</Text>
           </View>
           <Text style={[styles.meta, isNightMode && { color: '#94A3B8' }]}>
-            ⏱️ {data.story.readingTimeMinutes} min read  |  📊 Beginner  |  📖 {data.vocabulary?.length ?? 5} new words
+            ⏱️ {formatTime(timeLeft)} remaining  |  📊 Beginner  |  📖 {data.vocabulary?.length ?? 5} new words
           </Text>
         </View>
 
@@ -350,7 +357,11 @@ export function GrowthStoryScreen({ navigation, route }: any) {
           activeOpacity={0.9}
           disabled={completing}
         >
-          <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
+          {completing ? (
+            <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 6 }} />
+          ) : (
+            <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
+          )}
           <Text style={styles.quizButtonText}>
             {completing ? 'Completing...' : 'Complete & Claim Reward'}
           </Text>

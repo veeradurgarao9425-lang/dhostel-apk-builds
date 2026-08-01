@@ -11,6 +11,7 @@ import { SkeletonListRow } from '../../../components/tenant/ui/SkeletonLoader';
 interface StoryItem {
   level_id: number;
   title: string;
+  category?: string;
   readingTime: number;
   status: string;
 }
@@ -138,6 +139,15 @@ export function GrowthSavedStoriesScreen({ navigation, route }: any) {
               activeOpacity={0.88}
               onPress={() => navigation.navigate('GrowthStory', { levelId: item.level_id })}
             >
+              {item.category === 'conversation' ? (
+                <View style={styles.convoIconWrap}>
+                  <Ionicons name="chatbubbles" size={20} color="#5B39E0" />
+                </View>
+              ) : (
+                <View style={[styles.convoIconWrap, { backgroundColor: '#F0FDF4' }]}>
+                  <Ionicons name="book" size={20} color="#16A34A" />
+                </View>
+              )}
               <View style={{ flex: 1 }}>
                 <Text style={styles.title}>{item.title}</Text>
                 <Text style={styles.meta}>⏱️ {item.readingTime} min read  ·  {item.status}</Text>
@@ -216,6 +226,15 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     textAlign: 'center',
     lineHeight: 18,
+  },
+  convoIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
   },
 });
 

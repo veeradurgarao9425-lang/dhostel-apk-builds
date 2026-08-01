@@ -89,6 +89,7 @@ export const getDashboard = async (req: AuthRequest, res: Response) => {
       .select(
         'gl.level_id',
         'gl.title',
+        'gl.category',
         'gs.reading_time_minutes as readingTime',
         'gup.status'
       )
@@ -104,6 +105,7 @@ export const getDashboard = async (req: AuthRequest, res: Response) => {
         .select(
           'gl.level_id',
           'gl.title',
+          'gl.category',
           'gs.reading_time_minutes as readingTime',
           db.raw("COALESCE(gup.status, 'locked') as status")
         )
@@ -130,11 +132,12 @@ export const getDashboard = async (req: AuthRequest, res: Response) => {
         monthlyGoal: MONTHLY_GOAL_LEVELS,
         monthlyProgress: Number(monthlyRow?.count || 0),
         todaysChallenge: nextLevel
-          ? { title: `Finish: ${nextLevel.title}`, levelId: nextLevel.level_id }
-          : { title: 'Start your next lesson!', levelId: null },
+          ? { title: `Finish: ${nextLevel.title}`, levelId: nextLevel.level_id, category: nextLevel.category }
+          : { title: 'Start your next lesson!', levelId: null, category: null },
         recentlyAdded: recentlyRead.map((r: any) => ({
           levelId: r.level_id,
           title: r.title,
+          category: r.category,
           readingTime: r.readingTime,
           status: r.status,
         })),
@@ -521,6 +524,7 @@ export const getLevelsByIds = async (req: AuthRequest, res: Response) => {
       .select(
         'gl.level_id',
         'gl.title',
+        'gl.category',
         'gs.reading_time_minutes as readingTime',
         db.raw("COALESCE(gup.status, 'locked') as status")
       );
