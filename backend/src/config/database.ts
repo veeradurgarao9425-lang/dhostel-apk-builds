@@ -1307,15 +1307,33 @@ async function patchDatabaseSchema() {
 }
 
 // Test database connection
-db.raw('SELECT 1')
-  .then(async () => {
-    console.log('✅ Database connected successfully');
-    await patchDatabaseSchema();
-  })
-  .catch((err) => {
-    console.error('❌ Database connection failed:', err.message);
-    process.exit(1);
-  });
+// Retries the initial connectivity check with backoff before giving up.
+// A transient DB hiccup (brief connection-pool pressure, momentary network
+// blip) previously crashed the process on the very first failed attempt —
+// on a host like Render that immediately restarts a crashed process, that
+// turns one transient blip into a restart-loop hammering the DB with fresh
+// connection attempts right as it's trying to recover.
+const CONNECT_RETRY_DELAYS_MS = [2000, 4000, 8000, 16000, 30000];
 
+async function connectWithRetry() {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await db.raw('SELECT 1');
+      console.log('✅ Database connected successfully');
+      await patchDatabaseSchema();
+      return;
+    } catch (err: any) {
+      if (attempt >= CONNECT_RETRY_DELAYS_MS.length) {
+        console.error(`❌ Database connection failed after ${attempt + 1} attempts:`, err.message);
+        process.exit(1);
+      }
+      const delay = CONNECT_RETRY_DELAYS_MS[attempt];
+      console.error(`⚠️  Database connection attempt ${attempt + 1} failed (${err.message}) — retrying in ${delay / 1000}s...`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+}
+
+connectWithRetry();
 
 export default db;
