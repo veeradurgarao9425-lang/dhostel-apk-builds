@@ -20,6 +20,10 @@ interface Student {
   hostel_id: number;
   monthly_rent: number;
   admission_date: Date;
+  fee_plan: number;        // 1=Monthly, 3=Quarterly, 6=Half-yearly, 12=Yearly
+  plan_start_date: Date | null;
+  plan_end_date: Date | null;
+  plan_amount: number | null;
 }
 
 // Helper to calculate the next billing cycle and when it should be generated
@@ -64,7 +68,10 @@ const generateMonthlyFeesForHostel = async (hostel_id: number) => {
       .where('s.status', 1)
       .whereNotNull('s.room_id')
       .whereNotNull('s.monthly_rent')
-      .select('s.student_id', 's.hostel_id', 's.monthly_rent', 's.admission_date');
+      .select(
+        's.student_id', 's.hostel_id', 's.monthly_rent', 's.admission_date',
+        's.fee_plan', 's.plan_start_date', 's.plan_end_date', 's.plan_amount'
+      );
 
     if (students.length === 0) {
       console.log(`[Monthly Fees Cron] No active students found for hostel ${hostel_id}`);
@@ -83,6 +90,68 @@ const generateMonthlyFeesForHostel = async (hostel_id: number) => {
       try {
         if (!student.admission_date) continue; // Safety check
 
+        const feePlan = Number(student.fee_plan) || 1;
+
+        // ── MULTI-MONTH PLAN LOGIC ─────────────────────────────────────────────
+        if (feePlan > 1 && student.plan_end_date) {
+          const planEnd = new Date(student.plan_end_date);
+          planEnd.setHours(0, 0, 0, 0);
+          const todayDate = new Date(todayStr);
+
+          // Compute when to surface the renewal: 15 days before plan_end_date
+          const renewalAlertDate = new Date(planEnd);
+          renewalAlertDate.setDate(renewalAlertDate.getDate() - 15);
+          const renewalAlertStr = renewalAlertDate.toISOString().split('T')[0];
+
+          if (todayStr < renewalAlertStr) {
+            // Student is safely inside their paid period — skip entirely
+            console.log(`[Monthly Fees Cron] Student ${student.student_id}: Multi-month plan (${feePlan}M), ${Math.ceil((planEnd.getTime() - todayDate.getTime()) / 86400000)}d remaining — skipped.`);
+            continue;
+          }
+
+          // Within 15 days of plan end (or already past): create renewal due record
+          // The renewal fee_month is the month AFTER the plan ends
+          const nextCycleStart = new Date(planEnd);
+          nextCycleStart.setDate(nextCycleStart.getDate() + 1);
+          const nextCycleEnd = new Date(nextCycleStart);
+          nextCycleEnd.setMonth(nextCycleEnd.getMonth() + feePlan);
+
+          const renewalFeeMonth = `${nextCycleStart.getFullYear()}-${String(nextCycleStart.getMonth() + 1).padStart(2, '0')}`;
+
+          const existingRenewalFee = await db('monthly_fees')
+            .where({ student_id: student.student_id, fee_month: renewalFeeMonth })
+            .first();
+
+          if (existingRenewalFee) {
+            console.log(`[Monthly Fees Cron] Renewal fee ${renewalFeeMonth} already exists for student ${student.student_id}`);
+            continue;
+          }
+
+          const planRenewalAmount = Number(student.plan_amount) || Number(student.monthly_rent) * feePlan;
+
+          feesData.push({
+            student_id: student.student_id,
+            hostel_id: student.hostel_id,
+            fee_month: renewalFeeMonth,
+            fee_date: nextCycleStart.getDate(),
+            monthly_rent: planRenewalAmount,
+            carry_forward: 0,
+            total_due: planRenewalAmount,
+            paid_amount: 0,
+            balance: planRenewalAmount,
+            fee_status: 'Pending',
+            due_date: nextCycleStart, // Due on the first day of next cycle
+            notes: `${feePlan}-Month Plan Renewal — previous period ended ${student.plan_end_date}`,
+            created_at: new Date(),
+            updated_at: new Date()
+          });
+
+          console.log(`[Monthly Fees Cron] Student ${student.student_id}: Created ${feePlan}M plan renewal for ${renewalFeeMonth}, due: ${nextCycleStart.toISOString().split('T')[0]}`);
+          totalFeesCreated++;
+          continue; // Done for this student — skip the monthly logic below
+        }
+
+        // ── STANDARD MONTHLY BILLING LOGIC (fee_plan = 1 or null) ─────────────
         // Find the LATEST fee generated for this student
         const latestFee = await db('monthly_fees')
           .where({ student_id: student.student_id })

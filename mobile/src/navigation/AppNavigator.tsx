@@ -45,6 +45,15 @@ import TenantSettingsScreen from '../Pages/tenant/SettingsScreen';
 import TenantPrivacyPolicyScreen from '../Pages/tenant/PrivacyPolicyScreen';
 import { SubscriptionExpiredScreen as TenantSubscriptionExpiredScreen } from '../Pages/tenant/SubscriptionExpiredScreen';
 
+// ── Growth Journey ("Nova AI" tab, tenant-only) ──────────────────────────────
+import GrowthHomeScreen from '../Pages/tenant/growth/GrowthHomeScreen';
+import GrowthPathsScreen from '../Pages/tenant/growth/GrowthPathsScreen';
+import GrowthRoadmapScreen from '../Pages/tenant/growth/GrowthRoadmapScreen';
+import GrowthStoryScreen from '../Pages/tenant/growth/GrowthStoryScreen';
+import GrowthQuizScreen from '../Pages/tenant/growth/GrowthQuizScreen';
+import GrowthStatsScreen from '../Pages/tenant/growth/GrowthStatsScreen';
+import GrowthVocabularyListScreen from '../Pages/tenant/growth/GrowthVocabularyListScreen';
+
 
 // ── Stack screens ─────────────────────────────────────────────────────────────
 import SplashScreen          from '../Pages/SplashScreen';
@@ -140,6 +149,7 @@ const TenantTabNavigator = () => (
         screenOptions={{ headerShown: false }}
     >
         <Tab.Screen name="Home"     component={TenantHomeScreen} />
+        <Tab.Screen name="NovaAI"   component={GrowthHomeScreen} />
         <Tab.Screen name="Dues"     component={DuesScreen} />
         <Tab.Screen name="Expenses" component={ExpensesScreen} />
         <Tab.Screen name="Notices"  component={TenantNoticesScreen} />
@@ -325,6 +335,14 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen name="AllExpenses"  component={AllExpensesScreen}       />
                     <Stack.Screen name="FullMenu"     component={FullMenuScreen}          />
                     <Stack.Screen name="Payments"     component={TenantPaymentScreen}     />
+
+                    {/* Growth Journey ("Nova AI") — tenant-only, pushed on top of the shared tab bar */}
+                    <Stack.Screen name="GrowthPaths"           component={GrowthPathsScreen}           />
+                    <Stack.Screen name="GrowthRoadmap"          component={GrowthRoadmapScreen}         />
+                    <Stack.Screen name="GrowthStory"            component={GrowthStoryScreen}           />
+                    <Stack.Screen name="GrowthQuiz"              component={GrowthQuizScreen}             options={{ gestureEnabled: false }} />
+                    <Stack.Screen name="GrowthStats"            component={GrowthStatsScreen}           />
+                    <Stack.Screen name="GrowthVocabularyList"   component={GrowthVocabularyListScreen}  />
 
                     {/* Ecosystem Management */}
                     <Stack.Screen name="ComplaintsManagement" component={ComplaintsManagementScreen} />

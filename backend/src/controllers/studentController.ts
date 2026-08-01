@@ -124,6 +124,21 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
       query = query.whereRaw('DATE(s.admission_date) >= ? AND DATE(s.admission_date) <= ?', [startDate, endDate]);
     }
 
+    // Filter: students on multi-month plans whose plan_end_date is within N days (default 15)
+    // Used by dashboard "Plan Renewals" widget and PendingPayments renewal tab
+    if (req.query.renewalDueSoon === 'true') {
+      const daysAhead = parseInt(req.query.renewalDays as string || '15', 10);
+      const today = new Date().toISOString().split('T')[0];
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + daysAhead);
+      const futureDateStr = futureDate.toISOString().split('T')[0];
+      query = query
+        .where('s.fee_plan', '>', 1)
+        .whereNotNull('s.plan_end_date')
+        .whereRaw('DATE(s.plan_end_date) <= ?', [futureDateStr])
+        .where('s.status', 1); // Only active students
+    }
+
     // Pagination
     // Hard cap: callers that omit page/limit still get at most MAX_UNBOUNDED_LIMIT
     // rows instead of an unbounded full-table scan. A `truncated` flag in the
@@ -330,7 +345,11 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
       floor_number,
       monthly_rent,
       refundable_deposit,
-      is_old_student
+      is_old_student,
+      fee_plan,
+      plan_start_date,
+      plan_end_date,
+      plan_amount
     } = req.body;
 
     // Determine hostel_id: Owner always uses their own hostel; Admin/Super Admin
@@ -430,6 +449,19 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
       roomDetails = room;
     }
 
+    // ── Fee Plan: compute plan_end_date if a multi-month plan is chosen ────────
+    const resolvedFeePlan: number = fee_plan ? Number(fee_plan) : 1;
+    const admDateObj = admission_date ? new Date(admission_date) : new Date();
+    let resolvedPlanStart: string | null = convertToDateOnly(plan_start_date || admission_date);
+    let resolvedPlanEnd: string | null = null;
+    if (resolvedFeePlan > 1) {
+      // Auto-calculate end date: start + plan months, same day of month
+      const endDate = new Date(admDateObj);
+      endDate.setMonth(endDate.getMonth() + resolvedFeePlan);
+      resolvedPlanEnd = plan_end_date ? convertToDateOnly(plan_end_date) : endDate.toISOString().split('T')[0];
+    }
+    const resolvedPlanAmount: number | null = plan_amount ? Number(plan_amount) : null;
+
     // Insert student
     // Convert boolean/status values: id_proof_status, admission_status, status are now TINYINT (0/1)
     const [student_id] = await db('students').insert({
@@ -459,6 +491,10 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
       bed_number: bed_number || null,
       monthly_rent: roomDetails ? roomDetails.rent_per_bed : (monthly_rent || 0),
       floor_number: floor_number || null,
+      fee_plan: resolvedFeePlan,
+      plan_start_date: resolvedPlanStart,
+      plan_end_date: resolvedPlanEnd,
+      plan_amount: resolvedPlanAmount,
       created_at: new Date()
     });
 
@@ -508,19 +544,27 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
             dueDate = new Date(feeYear, feeMonth + 1, 0); // last day of short month
           }
 
+          // For multi-month plans: the plan amount IS the fee for this cycle.
+          // Mark it as Fully Paid immediately since they've paid upfront.
+          const isMultiMonthPlan = resolvedFeePlan > 1;
+          const feeAmount = isMultiMonthPlan && resolvedPlanAmount ? resolvedPlanAmount : monthlyRent;
+          const isPaidUpfront = isMultiMonthPlan && resolvedPlanAmount && resolvedPlanAmount > 0;
+
           await db('monthly_fees').insert({
             student_id,
             hostel_id,
             fee_month: currentMonth,
             fee_date: now.getMonth() + 1,
-            monthly_rent: monthlyRent,
+            monthly_rent: feeAmount,
             carry_forward: 0.00,
-            total_due: monthlyRent,
-            paid_amount: 0.00,
-            balance: monthlyRent,
-            fee_status_id: 4, // 'Pending'
-            due_date: dueDate,
-            notes: 'Auto-created on student registration',
+            total_due: feeAmount,
+            paid_amount: isPaidUpfront ? feeAmount : 0.00,
+            balance: isPaidUpfront ? 0.00 : feeAmount,
+            fee_status_id: isPaidUpfront ? 2 : 4, // 2='Fully Paid', 4='Pending'
+            due_date: isMultiMonthPlan ? (resolvedPlanEnd || dueDate) : dueDate,
+            notes: isMultiMonthPlan
+              ? `${resolvedFeePlan}-Month Plan (${resolvedFeePlan === 3 ? 'Quarterly' : resolvedFeePlan === 6 ? 'Half-Yearly' : 'Yearly'}) — Auto-created on registration`
+              : 'Auto-created on student registration',
             created_at: new Date(),
             updated_at: new Date()
           });
@@ -628,7 +672,8 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
       'permanent_address', 'present_working_address',
       'id_proof_type', 'id_proof_number', 'id_proof_status',
       'admission_date', 'admission_fee', 'admission_status', 'status', 'floor_number',
-      'vacate_notice_date', 'vacate_notice_reason', 'bed_id', 'refundable_deposit', 'is_old_student'
+      'vacate_notice_date', 'vacate_notice_reason', 'bed_id', 'refundable_deposit', 'is_old_student',
+      'fee_plan', 'plan_start_date', 'plan_end_date', 'plan_amount'
     ];
 
     // Check uniqueness within the same hostel if any identifying fields are being updated

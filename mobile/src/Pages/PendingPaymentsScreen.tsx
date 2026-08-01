@@ -334,14 +334,18 @@ export default function PendingPaymentsScreen() {
     const [partialPaid, setPartialPaid] = useState(0);
     const [totalDefaulters, setTotalDefaulters] = useState(0);
 
-    const initialTab = (['Overdue', 'Next 7 Days', 'All Dues'] as const).includes(route.params?.tab)
+    const initialTab = (['Overdue', 'Next 7 Days', 'All Dues', 'Plan Renewals'] as const).includes(route.params?.tab)
         ? route.params.tab
         : 'Overdue';
-    const [activeTab, setActiveTab] = useState<'Overdue' | 'Next 7 Days' | 'All Dues'>(initialTab);
+    const [activeTab, setActiveTab] = useState<'Overdue' | 'Next 7 Days' | 'All Dues' | 'Plan Renewals'>(initialTab);
     const [tabCounts, setTabCounts] = useState({
         overdue: 0, next_7_days: 0, all: 0,
         overdue_amount: 0, next_7_days_amount: 0, all_amount: 0, partial_count: 0
     });
+
+    // Plan Renewals state
+    const [renewalStudents, setRenewalStudents] = useState<any[]>([]);
+    const [renewalsLoading, setRenewalsLoading] = useState(false);
 
     // Collect Drawer
     const [collectModalVisible, setCollectModalVisible] = useState(false);
@@ -493,6 +497,14 @@ export default function PendingPaymentsScreen() {
         setPage(1);
         setHasMore(true);
         load(1, false);
+        // Also load plan renewals
+        setRenewalsLoading(true);
+        api.get('/students', { params: { renewalDueSoon: 'true', renewalDays: '15', status: 1 } })
+            .then(res => {
+                if (res.data?.success) setRenewalStudents(res.data.data || []);
+            })
+            .catch(() => {})
+            .finally(() => setRenewalsLoading(false));
     }, [load]));
 
     // ── Handlers ─────────────────────────────────────────────────────────────
@@ -638,6 +650,8 @@ export default function PendingPaymentsScreen() {
             if (t.isOverdue || diffDays < 0 || diffDays > 7) return false;
         } else if (activeTab === 'All Dues') {
             return true;
+        } else if (activeTab === 'Plan Renewals') {
+            return false; // Renewals list is separate from the dues list
         }
 
         return true;
@@ -894,8 +908,8 @@ export default function PendingPaymentsScreen() {
                     )}
                 </View>
             )}
-            {/* ── Tabs: Overdue / Next 7 Days / All Dues ── */}
-            <View style={{ flexDirection: 'row', paddingHorizontal: 16, marginBottom: 8, gap: 8 }}>
+            {/* ── Tabs: Overdue / Next 7 Days / All Dues / Plan Renewals ── */}
+            <View style={{ flexDirection: 'row', paddingHorizontal: 16, marginBottom: 8, gap: 6 }}>
                 {(['Overdue', 'Next 7 Days', 'All Dues'] as const).map(tab => {
                     const isActive = activeTab === tab;
                     const count = tab === 'Overdue' ? tabCounts.overdue : tab === 'Next 7 Days' ? tabCounts.next_7_days : tabCounts.all;
@@ -923,6 +937,32 @@ export default function PendingPaymentsScreen() {
                         </TouchableOpacity>
                     );
                 })}
+                {/* Plan Renewals tab */}
+                {(() => {
+                    const isActive = activeTab === 'Plan Renewals';
+                    return (
+                        <TouchableOpacity
+                            onPress={() => setActiveTab('Plan Renewals')}
+                            activeOpacity={0.8}
+                            style={[{
+                                flex: 1,
+                                paddingVertical: 8,
+                                borderRadius: 10,
+                                alignItems: 'center',
+                                borderWidth: 1.5,
+                                borderColor: isActive ? '#D97706' : (isDark ? '#334155' : '#E2E8F0'),
+                                backgroundColor: isActive ? '#FEF3C7' : (isDark ? '#1E293B' : '#FFF'),
+                            }]}
+                        >
+                            <Text style={{ fontSize: 11, fontWeight: '800', color: isActive ? '#92400E' : (isDark ? '#64748B' : '#94A3B8') }}>
+                                Renewals
+                            </Text>
+                            <Text style={{ fontSize: 13, fontWeight: '800', color: isActive ? '#92400E' : (isDark ? '#94A3B8' : '#64748B'), marginTop: 1 }}>
+                                {renewalStudents.length}
+                            </Text>
+                        </TouchableOpacity>
+                    );
+                })()}
             </View>
             {/* ── Count row ─────────────────────────────────────────── */}
             <View style={{ paddingHorizontal: 16, paddingBottom: 6, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -936,6 +976,103 @@ export default function PendingPaymentsScreen() {
                 )}
             </View>
 
+            {activeTab === 'Plan Renewals' ? (
+                renewalsLoading ? (
+                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60 }}>
+                        <ActivityIndicator color={theme.primary} />
+                        <Text style={{ marginTop: 12, color: theme.textSecondary }}>Loading renewals...</Text>
+                    </View>
+                ) : renewalStudents.length === 0 ? (
+                    <EmptyState illustration="pending" title="No Renewals Due" subtitle="No plan renewals due in the next 15 days." />
+                ) : (
+                    <FlatList
+                        data={renewalStudents}
+                        keyExtractor={(item: any) => String(item.student_id)}
+                        contentContainerStyle={{ paddingBottom: 120, paddingTop: 2, paddingHorizontal: 16 }}
+                        renderItem={({ item }: any) => {
+                            const today = new Date(); today.setHours(0, 0, 0, 0);
+                            const planEnd = new Date(item.plan_end_date); planEnd.setHours(0, 0, 0, 0);
+                            const daysLeft = Math.ceil((planEnd.getTime() - today.getTime()) / 86400000);
+                            const isExpired = daysLeft < 0;
+                            const planLabels: Record<number, string> = { 3: '3-Month Plan', 6: '6-Month Plan', 12: '1-Year Plan' };
+                            const planLabel = planLabels[item.fee_plan] || `${item.fee_plan}-Month Plan`;
+                            const accentColor = isExpired ? '#DC2626' : daysLeft <= 7 ? '#EF4444' : '#D97706';
+                            const endDateStr = planEnd.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                            return (
+                                <TouchableOpacity
+                                    activeOpacity={0.85}
+                                    onPress={() => navigation.navigate('StudentDetails', { studentId: item.student_id })}
+                                    style={[{
+                                        backgroundColor: isDark ? '#1E293B' : '#FFF',
+                                        borderRadius: 14,
+                                        marginBottom: 12,
+                                        padding: 14,
+                                        borderWidth: 1.5,
+                                        borderColor: accentColor + '60',
+                                        borderLeftWidth: 4,
+                                        borderLeftColor: accentColor,
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        gap: 12,
+                                    }]}
+                                >
+                                    <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: accentColor + '20', alignItems: 'center', justifyContent: 'center' }}>
+                                        <Ionicons name="refresh-circle" size={24} color={accentColor} />
+                                    </View>
+                                    <View style={{ flex: 1 }}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                            <Text style={{ fontSize: 15, fontWeight: '800', color: isDark ? '#F8FAFC' : '#1F2937' }} numberOfLines={1}>
+                                                {item.first_name} {item.last_name || ''}
+                                            </Text>
+                                            <View style={{ backgroundColor: accentColor + '20', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 }}>
+                                                <Text style={{ fontSize: 10, fontWeight: '700', color: accentColor }}>{planLabel}</Text>
+                                            </View>
+                                        </View>
+                                        <Text style={{ fontSize: 12, color: isDark ? '#94A3B8' : '#64748B', marginTop: 2 }}>
+                                            Room {item.room_number || 'N/A'} · Ends {endDateStr}
+                                        </Text>
+                                        <Text style={{ fontSize: 12, fontWeight: '700', color: accentColor, marginTop: 3 }}>
+                                            {isExpired ? `⚠ Expired ${Math.abs(daysLeft)} days ago` : `${daysLeft} day${daysLeft === 1 ? '' : 's'} until renewal`}
+                                        </Text>
+                                    </View>
+                                    <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                                        {item.plan_amount > 0 && (
+                                            <Text style={{ fontSize: 14, fontWeight: '800', color: accentColor }}>₹{Number(item.plan_amount).toLocaleString('en-IN')}</Text>
+                                        )}
+                                        <TouchableOpacity
+                                            style={{ backgroundColor: accentColor, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 }}
+                                            onPress={() => {
+                                                setSelectedFee({
+                                                    id: item.student_id,
+                                                    name: `${item.first_name} ${item.last_name || ''}`.trim(),
+                                                    hostel_id: item.hostel_id,
+                                                    dueAmount: item.plan_amount || 0,
+                                                    paidAmount: 0,
+                                                    monthlyRent: item.monthly_rent || 0,
+                                                    carryForward: 0,
+                                                    feeMonth: new Date().toISOString().substring(0, 7),
+                                                    rawDueDate: item.plan_end_date,
+                                                    room: item.room_number || 'N/A',
+                                                    room_number: item.room_number || 'N/A',
+                                                });
+                                                setPayAmount(item.plan_amount?.toString() || '');
+                                                setPayNotes(''); setPayTransactionId('');
+                                                setPayDate(toLocalDateStr(new Date()));
+                                                setPayDueDate(item.plan_end_date?.split('T')[0] || toLocalDateStr(new Date()));
+                                                setCollectModalVisible(true);
+                                            }}
+                                            activeOpacity={0.8}
+                                        >
+                                            <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '700' }}>Collect</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </TouchableOpacity>
+                            );
+                        }}
+                        showsVerticalScrollIndicator={false}
+                    />
+                )
+            ) : (
             <FlatList
                 data={filteredTenants}
                 keyExtractor={keyExtractor}
@@ -969,6 +1106,7 @@ export default function PendingPaymentsScreen() {
                     <LoadMoreFooter loading={loadingMore} hasMore={hasMore} total={filteredTenants.length} noun="dues" />
                 }
             />
+            )}
 
             {/* ── Remind Modal ──────────────────────────────────────────────── */}
             <RemindModal

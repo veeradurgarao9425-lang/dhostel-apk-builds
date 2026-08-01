@@ -20,7 +20,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const { height } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
+const isSmall = height < 700;
+const isTiny  = height < 600;
 
 export default function LoginScreen({ navigation }: any) {
     const { signIn } = useAuth();
@@ -127,7 +129,13 @@ export default function LoginScreen({ navigation }: any) {
             <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
             {/* ── Purple gradient header ── */}
-            <View style={[styles.topSection, { height: height * 0.36 + (insets.top > 0 ? insets.top : 0) }]}>
+            <View style={[
+                styles.topSection,
+                {
+                    // Never let the header take more than 38% and min 200px — prevents overflow on small phones
+                    height: Math.max(Math.min(height * 0.36 + (insets.top > 0 ? insets.top : 0), height * 0.38), isSmall ? 185 : 220),
+                }
+            ]}>
                 <LinearGradient
                     colors={['#7C3AED', '#5F2EEA']}
                     style={[StyleSheet.absoluteFillObject, styles.topSectionContent, { paddingTop: insets.top > 0 ? insets.top + 10 : 28 }]}
@@ -139,15 +147,15 @@ export default function LoginScreen({ navigation }: any) {
                     <View style={styles.decorCircle2} />
 
                     <View style={styles.logoWrapper}>
-                        <View style={styles.logoImageContainer}>
+                        <View style={[styles.logoImageContainer, isSmall && { width: 68, height: 68, borderRadius: 16, marginBottom: 8 }]}>
                             <Image
                                 source={require('../../assets/HostixNew.jpeg')}
                                 style={styles.logoImage}
                                 resizeMode="cover"
                             />
                         </View>
-                        <Text style={styles.appName}>Host<Text style={{ color: '#FCD34D' }}>ix</Text></Text>
-                        <Text style={styles.tagline}>Smart PG Management</Text>
+                        <Text style={[styles.appName, isSmall && { fontSize: 26, marginBottom: 2 }]}>Host<Text style={{ color: '#FCD34D' }}>ix</Text></Text>
+                        {!isTiny && <Text style={[styles.tagline, isSmall && { fontSize: 12 }]}>Smart PG Management</Text>}
                     </View>
                 </LinearGradient>
             </View>
@@ -161,8 +169,8 @@ export default function LoginScreen({ navigation }: any) {
                 keyboardShouldPersistTaps="handled"
                 bounces={false}
             >
-                <Text style={styles.signInTitle}>Welcome back 👋</Text>
-                <Text style={styles.signInSubtitle}>Sign in to continue managing your PG</Text>
+                <Text style={[styles.signInTitle, isSmall && { fontSize: 20, marginBottom: 2 }]}>Welcome back 👋</Text>
+                <Text style={[styles.signInSubtitle, isSmall && { fontSize: 13, marginBottom: 16 }]}>Sign in to continue managing your PG</Text>
 
                 {/* Email */}
                 <View style={styles.inputGroup}>
@@ -356,8 +364,8 @@ const styles = StyleSheet.create({
     },
     formContent: {
         paddingHorizontal: 28,
-        paddingTop: 30,
-        paddingBottom: 200,
+        paddingTop: isSmall ? 18 : 30,
+        paddingBottom: isSmall ? 120 : 200,
         flexGrow: 1,
     },
     signInTitle: {

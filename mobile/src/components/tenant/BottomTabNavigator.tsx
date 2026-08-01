@@ -7,6 +7,7 @@ import { theme } from '../../theme/tenantTheme';
 // ── 4-tab configuration ───────────────────────────────────────────────────────
 const TABS = [
   { label: "Home", route: "Home", icon: "home" as const },
+  { label: "Nova AI", route: "NovaAI", icon: "sparkles" as const },
   { label: "Dues", route: "Dues", icon: "wallet" as const },
   { label: "Expenses", route: "Expenses", icon: "receipt" as const },
   { label: "Notices", route: "Notices", icon: "megaphone" as const },

@@ -229,7 +229,7 @@ const OptionsDrawer = ({ visible, title, data, selectedItem, onSelect, onClose }
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function RegistrationScreen({ route, navigation }: any) {
   const { identifier, hostel_id } = route.params;
-  const { updateTokenAndUser, refreshUser } = useAuth();
+  const { completeTenantRegistration } = useAuth();
   const { showError, showSuccess } = useToast();
   const isEmail = identifier.includes('@');
 
@@ -421,8 +421,7 @@ export default function RegistrationScreen({ route, navigation }: any) {
 
       if (response.data?.success) {
         const { token, tenant } = response.data.data;
-        await updateTokenAndUser(token, tenant);
-        await refreshUser();
+        await completeTenantRegistration(token, tenant);
       } else {
         showError(response.data?.error || 'Registration failed.');
       }

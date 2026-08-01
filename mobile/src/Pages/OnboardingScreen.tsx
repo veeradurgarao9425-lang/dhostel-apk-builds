@@ -8,6 +8,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 const { width, height } = Dimensions.get('window');
 export const ONBOARDING_KEY = 'hasSeenIntro';
 
+// ── Responsive breakpoints (computed once at module level) ───────────────────
+const isSmall = height < 700;  // iPhone SE, small Androids
+const isTiny  = height < 600;  // very small screens
+
+// Scale image so it never pushes content off on small phones
+const IMG_SIZE = isTiny ? width * 0.52 : isSmall ? width * 0.62 : width * 0.78;
+// Feature icon box
+const ICON_BOX = isSmall ? 38 : 44;
+// Title size
+const TITLE_SIZE = isTiny ? 22 : isSmall ? 26 : 32;
+const TITLE_LINE = isTiny ? 28 : isSmall ? 32 : 40;
+
 const SLIDES = [
     {
         id: '1',
@@ -15,7 +27,7 @@ const SLIDES = [
         titleHighlight: 'never',
         subtitle: 'Welcome to your Admin Dashboard',
         description: 'All-in-one platform to simplify rooms, tenants, collections and reports.',
-        color: '#6366F1', // Indigo
+        color: '#6366F1',
         image: require('../../assets/hostel_only_3d.png'),
         features: [
             { icon: 'business', label: 'Rooms', color: '#6366F1', bg: '#E0E7FF' },
@@ -30,7 +42,7 @@ const SLIDES = [
         titleHighlight: 'effortlessly',
         subtitle: 'Digital Collections',
         description: 'Stay on top of outstanding payments, send reminders, and collect dues faster.',
-        color: '#F43F5E', // Rose
+        color: '#F43F5E',
         image: require('../../assets/payments_3d.png'),
         features: [
             { icon: 'wallet', label: 'Dues', color: '#F43F5E', bg: '#FFE4E6' },
@@ -45,7 +57,7 @@ const SLIDES = [
         titleHighlight: 'Live',
         subtitle: 'Real-Time Alerts',
         description: 'Get instant push notifications for rent payments, complaints, and important updates.',
-        color: '#F59E0B', // Amber
+        color: '#F59E0B',
         image: require('../../assets/notices_3d.png'),
         features: [
             { icon: 'megaphone', label: 'Alerts', color: '#F59E0B', bg: '#FEF3C7' },
@@ -60,7 +72,7 @@ const SLIDES = [
         titleHighlight: 'seamless',
         subtitle: 'Tenant App Features',
         description: 'Pay rent online, log complaints, check food menus, and stay updated with announcements.',
-        color: '#0EA5E9', // Sky Blue
+        color: '#0EA5E9',
         image: require('../../assets/tenant_3d.png'),
         features: [
             { icon: 'card', label: 'Rent', color: '#0EA5E9', bg: '#E0F2FE' },
@@ -98,13 +110,12 @@ export default function OnboardingScreen() {
         }
     }).current;
 
-    const viewabilityConfig = useRef({
-        itemVisiblePercentThreshold: 50
-    }).current;
+    const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 50 }).current;
 
     return (
         <View style={styles.container}>
-            <View style={{ height: insets.top + 20 }} />
+            {/* Status bar safe area spacer — same as original */}
+            <View style={{ height: insets.top + (isSmall ? 8 : 20) }} />
 
             <View style={{ flex: 1 }}>
                 <Animated.FlatList
@@ -134,12 +145,12 @@ export default function OnboardingScreen() {
                         ];
                         const textTranslateY = scrollX.interpolate({
                             inputRange,
-                            outputRange: [100, 0, 100],
+                            outputRange: [50, 0, 50],
                             extrapolate: 'clamp'
                         });
                         const cardsTranslateY = scrollX.interpolate({
                             inputRange,
-                            outputRange: [150, 0, 150],
+                            outputRange: [80, 0, 80],
                             extrapolate: 'clamp'
                         });
                         const imageScale = scrollX.interpolate({
@@ -151,49 +162,74 @@ export default function OnboardingScreen() {
                         const titleParts = item.title.split(item.titleHighlight);
 
                         const CardsRow = (
-                            <Animated.View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: index !== 0 ? 24 : 0, marginBottom: index === 0 ? 10 : 0, transform: [{ translateY: cardsTranslateY }] }}>
+                            <Animated.View style={{
+                                flexDirection: 'row',
+                                justifyContent: 'space-between',
+                                marginTop: index !== 0 ? (isSmall ? 12 : 24) : 0,
+                                marginBottom: index === 0 ? (isSmall ? 4 : 10) : 0,
+                                transform: [{ translateY: cardsTranslateY }]
+                            }}>
                                 {item.features.map((feature, i) => (
                                     <View key={i} style={{ alignItems: 'center', flex: 1 }}>
-                                        <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: feature.bg, alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
-                                            <Ionicons name={feature.icon as any} size={20} color={feature.color} />
+                                        <View style={{
+                                            width: ICON_BOX,
+                                            height: ICON_BOX,
+                                            borderRadius: 11,
+                                            backgroundColor: feature.bg,
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            marginBottom: 6,
+                                        }}>
+                                            <Ionicons name={feature.icon as any} size={isSmall ? 17 : 20} color={feature.color} />
                                         </View>
-                                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#1E293B', textAlign: 'center' }}>{feature.label}</Text>
+                                        <Text style={{ fontSize: isSmall ? 10 : 11, fontWeight: '800', color: '#1E293B', textAlign: 'center' }}>
+                                            {feature.label}
+                                        </Text>
                                     </View>
                                 ))}
                             </Animated.View>
                         );
 
                         return (
-                            <View style={{ width, height: '100%', backgroundColor: '#F8FAFC', paddingHorizontal: 24, paddingTop: 10 }}>
+                            // Keep the same plain View structure as original — no ScrollView wrapper
+                            <View style={{ width, height: '100%', backgroundColor: '#FFFFFF', paddingHorizontal: 24, paddingTop: isSmall ? 6 : 10 }}>
                                 {/* Top Text */}
                                 <Animated.View style={{ transform: [{ translateY: textTranslateY }] }}>
-                                    <Text style={{ color: item.color, fontSize: 14, fontWeight: '800', marginBottom: 8 }}>{item.subtitle}</Text>
-                                    <Text style={{ color: '#0F172A', fontSize: 36, fontWeight: '900', lineHeight: 44 }}>
+                                    <Text style={{ color: item.color, fontSize: isSmall ? 12 : 14, fontWeight: '800', marginBottom: isSmall ? 5 : 8 }}>
+                                        {item.subtitle}
+                                    </Text>
+                                    <Text style={{ color: '#0F172A', fontSize: TITLE_SIZE, fontWeight: '900', lineHeight: TITLE_LINE }}>
                                         {titleParts[0]}
                                         <Text style={{ color: item.color, textDecorationLine: 'underline' }}>{item.titleHighlight}</Text>
                                         {titleParts[1]}
                                     </Text>
-                                    <Text style={{ color: '#64748B', fontSize: 15, fontWeight: '500', marginTop: 12, lineHeight: 24, paddingRight: 40 }}>
+                                    <Text style={{ color: '#64748B', fontSize: isSmall ? 13 : 15, fontWeight: '500', marginTop: isSmall ? 8 : 12, lineHeight: 22, paddingRight: 40 }}>
                                         {item.description}
                                     </Text>
                                 </Animated.View>
 
-                                {/* If not first slide, put cards above the image */}
+                                {/* Cards above image (slides 2-4) */}
                                 {index !== 0 && CardsRow}
 
-                                {/* 3D Image */}
-                                <Animated.View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', transform: [{ scale: imageScale }] }}>
-                                    <Image 
-                                        source={item.image} 
-                                        style={{ 
-                                            width: index === 0 ? width * 1.1 : width * 0.85, 
-                                            height: index === 0 ? width * 1.1 : width * 0.85, 
-                                            resizeMode: 'contain' 
-                                        }} 
+                                {/* 3D Image — fixed size, transparent bg, centered */}
+                                <Animated.View style={{
+                                    flex: 1,
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    backgroundColor: 'transparent', // no separate bg box
+                                    transform: [{ scale: imageScale }],
+                                }}>
+                                    <Image
+                                        source={item.image}
+                                        style={{
+                                            width: IMG_SIZE,
+                                            height: IMG_SIZE,
+                                            resizeMode: 'contain',
+                                        }}
                                     />
                                 </Animated.View>
 
-                                {/* If first slide, put cards below the image */}
+                                {/* Cards below image (slide 1 only) */}
                                 {index === 0 && CardsRow}
                             </View>
                         );
@@ -201,7 +237,7 @@ export default function OnboardingScreen() {
                 />
             </View>
 
-            {/* Bottom Container */}
+            {/* Bottom Container — same as original */}
             <View style={[styles.bottomContainer, { paddingBottom: Math.max(insets.bottom + 20, 48) }]}>
                 <View style={styles.pagination}>
                     {SLIDES.map((_, i) => {
@@ -228,9 +264,9 @@ export default function OnboardingScreen() {
                     <TouchableOpacity onPress={handleSkip} style={styles.skipBtn}>
                         <Text style={styles.skipText}>Skip</Text>
                     </TouchableOpacity>
-                    
-                    <TouchableOpacity 
-                        onPress={handleNext} 
+
+                    <TouchableOpacity
+                        onPress={handleNext}
                         activeOpacity={0.8}
                         style={[styles.nextBtn, { backgroundColor: SLIDES[currentIndex].color, shadowColor: SLIDES[currentIndex].color }]}
                     >
@@ -246,12 +282,12 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F8FAFC',
+        backgroundColor: '#FFFFFF',
     },
     bottomContainer: {
         width: '100%',
         paddingHorizontal: 24,
-        backgroundColor: '#F8FAFC',
+        backgroundColor: '#FFFFFF',
     },
     pagination: {
         flexDirection: 'row',

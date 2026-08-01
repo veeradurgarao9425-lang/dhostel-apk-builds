@@ -595,6 +595,8 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
         admission_fee: '', admission_status: 'Paid', permanent_address: '', present_working_address: '',
         room_id: '', bed_id: '', floor_number: '', monthly_rent: '',
         refundable_deposit: '', is_old_student: false,
+        fee_plan: '1',        // '1' | '3' | '6' | '12'
+        plan_amount: '',      // total amount for the plan cycle
     });
 
     const [idProofTypes, setIdProofTypes] = useState<any[]>([]);
@@ -783,6 +785,8 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 monthly_rent: student.monthly_rent ? student.monthly_rent.toString() : '',
                 refundable_deposit: student.refundable_deposit ? student.refundable_deposit.toString() : '',
                 is_old_student: student.is_old_student === 1,
+                fee_plan: student.fee_plan ? student.fee_plan.toString() : '1',
+                plan_amount: student.plan_amount ? student.plan_amount.toString() : '',
             });
             if (student.photo) setProfilePhoto(student.photo);
         }
@@ -1033,6 +1037,15 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 monthly_rent: parseFloat(formData.monthly_rent || '0'),
                 refundable_deposit: parseFloat(formData.refundable_deposit || '0'),
                 is_old_student: formData.is_old_student ? 1 : 0,
+                fee_plan: parseInt(formData.fee_plan || '1'),
+                plan_amount: formData.fee_plan !== '1' && formData.plan_amount ? parseFloat(formData.plan_amount) : null,
+                plan_start_date: formData.admission_date || null,
+                plan_end_date: (() => {
+                    if (formData.fee_plan === '1' || !formData.admission_date) return null;
+                    const end = new Date(formData.admission_date);
+                    end.setMonth(end.getMonth() + parseInt(formData.fee_plan));
+                    return end.toISOString().split('T')[0];
+                })(),
             };
             const res = isEdit ? await api.put(`/students/${student.student_id}`, payload) : await api.post('/students', payload);
             if (res.data.success) {
@@ -1070,7 +1083,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
     };
 
     const handleReset = () => {
-        setFormData({ first_name: '', last_name: '', gender: 'Male', phone: '', email: '', date_of_birth: '', id_proof_number: '', id_proof_type_id: '', guardian_name: '', guardian_phone: '', guardian_relation_id: '', admission_date: new Date().toISOString().split('T')[0], admission_fee: '', admission_status: 'Paid', permanent_address: '', present_working_address: '', room_id: '', bed_id: '', floor_number: '', monthly_rent: '' });
+        setFormData({ first_name: '', last_name: '', gender: 'Male', phone: '', email: '', date_of_birth: '', id_proof_number: '', id_proof_type_id: '', guardian_name: '', guardian_phone: '', guardian_relation_id: '', admission_date: new Date().toISOString().split('T')[0], admission_fee: '', admission_status: 'Paid', permanent_address: '', present_working_address: '', room_id: '', bed_id: '', floor_number: '', monthly_rent: '', refundable_deposit: '', is_old_student: false, fee_plan: '1', plan_amount: '' });
         setProfilePhoto(null); setAadhaarFront(null); setAadhaarBack(null); setErrors({}); setTouched({});
         setRoomModal(false); setBedModal(false); setGenderModal(false); setProofModal(false); setRelationModal(false); setShowDatePicker(false);
     };
@@ -1388,6 +1401,54 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                     )}
                     <FormInput label="Monthly Rent (₹)" icon={CreditCard} placeholder="Auto-filled from room" keyboardType="numeric" value={formData.monthly_rent}
                         onChangeText={(t: string) => up('monthly_rent', t.replace(/\D/g, ''))} />
+
+                    {/* ── Fee Plan Selector ── */}
+                    <View style={{ marginTop: 4 }}>
+                        <Selector
+                            label="Stay Duration Plan"
+                            options={['Monthly', '3 Months', '6 Months', '1 Year']}
+                            selected={formData.fee_plan === '1' ? 'Monthly' : formData.fee_plan === '3' ? '3 Months' : formData.fee_plan === '6' ? '6 Months' : '1 Year'}
+                            onSelect={(v: string) => {
+                                const planMap: Record<string, string> = { 'Monthly': '1', '3 Months': '3', '6 Months': '6', '1 Year': '12' };
+                                up('fee_plan', planMap[v] || '1');
+                            }}
+                        />
+                    </View>
+
+                    {/* Plan Amount & End Date — shown only for multi-month plans */}
+                    {formData.fee_plan !== '1' && (
+                        <View style={{ gap: 8 }}>
+                            <FormInput
+                                label={`Plan Amount (₹) — for ${formData.fee_plan === '3' ? '3 months' : formData.fee_plan === '6' ? '6 months' : '1 year'}`}
+                                icon={CreditCard}
+                                placeholder="e.g. 22000"
+                                keyboardType="numeric"
+                                value={formData.plan_amount}
+                                onChangeText={(t: string) => up('plan_amount', t.replace(/\D/g, ''))}
+                            />
+                            {/* Auto-calculated plan end date display */}
+                            {formData.admission_date ? (() => {
+                                const start = new Date(formData.admission_date);
+                                const end = new Date(start);
+                                end.setMonth(end.getMonth() + parseInt(formData.fee_plan || '1'));
+                                const endStr = end.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                                return (
+                                    <View style={{ backgroundColor: isDark ? '#1E3A5F' : '#EFF6FF', borderRadius: 10, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderColor: isDark ? '#2563EB40' : '#BFDBFE' }}>
+                                        <Info size={14} color="#2563EB" />
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={{ fontSize: 12, fontWeight: '700', color: '#2563EB' }}>Plan Period</Text>
+                                            <Text style={{ fontSize: 11, color: isDark ? '#93C5FD' : '#1D4ED8', marginTop: 2 }}>
+                                                {formData.admission_date} → {endStr}
+                                            </Text>
+                                            <Text style={{ fontSize: 10, color: isDark ? '#60A5FA' : '#3B82F6', marginTop: 2 }}>
+                                                💡 Renewal due appears 15 days before {endStr}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                );
+                            })() : null}
+                        </View>
+                    )}
                 </View>
 
                 {/* ── Address ── */}
