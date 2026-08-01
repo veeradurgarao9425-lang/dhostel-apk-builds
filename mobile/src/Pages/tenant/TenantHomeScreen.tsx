@@ -487,13 +487,13 @@ export function TenantHomeScreen({ navigation }: any) {
             style={styles.growthCardTouchable}
           >
             <LinearGradient
-              colors={["#7C3AED", "#DB2777"]}
+              colors={["#6D4AFF", "#5B39E0"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.growthCard}
             >
               <View style={styles.growthIconWrap}>
-                <Ionicons name="sparkles" size={20} color="#FFFFFF" />
+                <Ionicons name="trending-up-outline" size={22} color="#FFFFFF" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.growthTitle}>Growth Journey</Text>
@@ -718,7 +718,7 @@ const styles = StyleSheet.create({
     gap: 12,
     borderRadius: 18,
     padding: 16,
-    shadowColor: "#7C3AED",
+    shadowColor: "#6D4AFF",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
     shadowRadius: 14,

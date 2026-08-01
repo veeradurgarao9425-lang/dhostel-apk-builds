@@ -10,6 +10,7 @@ import {
   saveVocabulary,
   getSavedVocabulary,
   getStats,
+  getLevelsByIds,
 } from '../controllers/growthController.js';
 
 const router = express.Router();
@@ -22,6 +23,7 @@ router.get('/stats', getStats);
 router.get('/paths', getPaths);
 router.get('/paths/:pathKey/levels', getPathLevels);
 
+router.get('/levels/batch', getLevelsByIds);
 router.get('/levels/:levelId', getLevelDetail);
 router.post('/levels/:levelId/complete', completeLevel);
 

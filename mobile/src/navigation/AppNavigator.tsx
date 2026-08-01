@@ -53,6 +53,7 @@ import GrowthStoryScreen from '../Pages/tenant/growth/GrowthStoryScreen';
 import GrowthQuizScreen from '../Pages/tenant/growth/GrowthQuizScreen';
 import GrowthStatsScreen from '../Pages/tenant/growth/GrowthStatsScreen';
 import GrowthVocabularyListScreen from '../Pages/tenant/growth/GrowthVocabularyListScreen';
+import GrowthSavedStoriesScreen from '../Pages/tenant/growth/GrowthSavedStoriesScreen';
 
 
 // ── Stack screens ─────────────────────────────────────────────────────────────
@@ -343,6 +344,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen name="GrowthQuiz"              component={GrowthQuizScreen}             options={{ gestureEnabled: false }} />
                     <Stack.Screen name="GrowthStats"            component={GrowthStatsScreen}           />
                     <Stack.Screen name="GrowthVocabularyList"   component={GrowthVocabularyListScreen}  />
+                    <Stack.Screen name="GrowthSavedStories"     component={GrowthSavedStoriesScreen}    />
 
                     {/* Ecosystem Management */}
                     <Stack.Screen name="ComplaintsManagement" component={ComplaintsManagementScreen} />

@@ -17,77 +17,77 @@ interface Level {
   stars: number;
 }
 
-const ALIGN = ['flex-start', 'center', 'flex-end'] as const;
+const ALIGN = ['flex-start', 'center', 'flex-end', 'center'] as const;
 
-function GlowPulse() {
-  const pulse = useRef(new Animated.Value(0.6)).current;
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: 800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0.6, duration: 800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-      ])
-    ).start();
-  }, []);
-  return (
-    <Animated.View
-      style={[styles.glow, { opacity: pulse, transform: [{ scale: pulse }] }]}
-      pointerEvents="none"
-    />
-  );
-}
-
-function LevelNode({ level, align, onPress }: { level: Level; align: (typeof ALIGN)[number]; onPress: () => void }) {
+function LevelNode({ level, index, colorHex, onPress }: { level: Level; index: number; colorHex: string; onPress: () => void }) {
   const isLocked = level.status === 'locked';
   const isCompleted = level.status === 'completed';
+  const isUnlocked = level.status === 'unlocked';
+  
+  const activeColor = colorHex || theme.colors.primary;
+  const align = ALIGN[index % ALIGN.length];
 
   return (
     <View style={[styles.nodeRow, { justifyContent: align }]}>
-      <TouchableOpacity activeOpacity={isLocked ? 1 : 0.8} onPress={onPress} style={styles.nodeTouchable}>
-        {level.status === 'unlocked' && <GlowPulse />}
-        <View
-          style={[
-            styles.node,
-            isLocked && styles.nodeLocked,
-            isCompleted && styles.nodeCompleted,
-            level.status === 'unlocked' && styles.nodeUnlocked,
-          ]}
-        >
-          {isLocked ? (
-            <Ionicons name="lock-closed" size={20} color={theme.colors.textSubtle} />
-          ) : isCompleted ? (
-            <Ionicons name="checkmark" size={26} color="#FFFFFF" />
-          ) : (
-            <Ionicons name="play" size={22} color="#FFFFFF" />
+      <TouchableOpacity
+        activeOpacity={isLocked ? 1 : 0.85}
+        onPress={onPress}
+        style={styles.nodeTouchable}
+      >
+        <View style={styles.nodeInner}>
+          {isUnlocked && (
+            <View style={[styles.activeGlowRing, { borderColor: activeColor }]} />
           )}
-        </View>
-        <Text style={[styles.nodeTitle, isLocked && styles.nodeTitleLocked]} numberOfLines={2}>
-          {level.title}
-        </Text>
-        {isCompleted && (
-          <View style={styles.starsRow}>
-            {[1, 2, 3].map((i) => (
-              <Ionicons
-                key={i}
-                name={i <= level.stars ? 'star' : 'star-outline'}
-                size={12}
-                color={i <= level.stars ? '#F59E0B' : theme.colors.textSubtle}
-              />
-            ))}
+          <View
+            style={[
+              styles.nodeCircle,
+              isLocked && styles.nodeLocked,
+              isCompleted && styles.nodeCompleted,
+              isUnlocked && { backgroundColor: activeColor },
+            ]}
+          >
+            {isLocked ? (
+              <Ionicons name="lock-closed" size={20} color={theme.colors.textSubtle} />
+            ) : isCompleted ? (
+              <Ionicons name="checkmark" size={24} color="#FFFFFF" />
+            ) : (
+              <Ionicons name="play" size={20} color="#FFFFFF" style={{ marginLeft: 2 }} />
+            )}
           </View>
-        )}
+
+          {isCompleted && (
+            <View style={styles.starsRow}>
+              {[1, 2, 3].map((i) => (
+                <Ionicons
+                  key={i}
+                  name={i <= level.stars ? 'star' : 'star-outline'}
+                  size={11}
+                  color={i <= level.stars ? '#F59E0B' : '#CBD5E1'}
+                />
+              ))}
+            </View>
+          )}
+
+          <Text style={[styles.nodeTitle, isLocked && styles.nodeTitleLocked]} numberOfLines={2}>
+            {level.title}
+          </Text>
+        </View>
       </TouchableOpacity>
     </View>
   );
 }
 
 export function GrowthRoadmapScreen({ navigation, route }: any) {
-  const { pathKey, pathName } = route.params;
+  const { pathKey, pathName, colorHex } = route.params;
+  const activeColor = colorHex || theme.colors.primary;
+
   const [levels, setLevels] = useState<Level[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+
+  const isFirstLoad = useRef(true);
 
   const fetchPage = useCallback(
     async (pageNum: number, replace = false) => {
@@ -102,7 +102,10 @@ export function GrowthRoadmapScreen({ navigation, route }: any) {
 
   useFocusEffect(
     useCallback(() => {
-      setLoading(true);
+      if (isFirstLoad.current) {
+        setLoading(true);
+        isFirstLoad.current = false;
+      }
       fetchPage(1, true).finally(() => setLoading(false));
       setPage(1);
     }, [fetchPage])
@@ -147,10 +150,10 @@ export function GrowthRoadmapScreen({ navigation, route }: any) {
           onEndReached={loadMore}
           ListFooterComponent={
             loadingMore ? (
-              <ActivityIndicator style={{ marginVertical: theme.spacing.lg }} color={theme.colors.primary} />
+              <ActivityIndicator style={{ marginVertical: theme.spacing.lg }} color={activeColor} />
             ) : !hasMore ? (
               <View style={styles.endCard}>
-                <Ionicons name="sparkles" size={20} color={theme.colors.primary} />
+                <Ionicons name="sparkles" size={20} color={activeColor} />
                 <Text style={styles.endCardText}>More levels coming soon! Your journey never really ends.</Text>
               </View>
             ) : null
@@ -161,11 +164,16 @@ export function GrowthRoadmapScreen({ navigation, route }: any) {
             return (
               <View>
                 {showSection && (
-                  <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionHeaderText}>{item.sectionTitle}</Text>
+                  <View style={[styles.sectionHeader, { backgroundColor: activeColor + '15' }]}>
+                    <Text style={[styles.sectionHeaderText, { color: activeColor }]}>{item.sectionTitle}</Text>
                   </View>
                 )}
-                <LevelNode level={item} align={ALIGN[index % 3]} onPress={() => onPressLevel(item)} />
+                <LevelNode
+                  level={item}
+                  index={index}
+                  colorHex={activeColor}
+                  onPress={() => onPressLevel(item)}
+                />
               </View>
             );
           }}
@@ -177,44 +185,86 @@ export function GrowthRoadmapScreen({ navigation, route }: any) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.colors.bg },
-  loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
   },
-  headerTitle: { ...theme.text.sectionTitle, flex: 1, textAlign: 'center' },
-  list: { paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing['4xl'] },
+  headerTitle: { ...theme.text.sectionTitle, fontWeight: '800', flex: 1, textAlign: 'center' },
+  list: { paddingHorizontal: theme.spacing.lg, paddingTop: theme.spacing.md, paddingBottom: theme.spacing['4xl'] },
   sectionHeader: {
     alignSelf: 'center',
-    backgroundColor: theme.colors.primary,
     paddingHorizontal: theme.spacing.lg,
-    paddingVertical: 8,
+    paddingVertical: 6,
     borderRadius: theme.radius.pill,
-    marginVertical: theme.spacing.lg,
+    marginVertical: theme.spacing.md,
   },
-  sectionHeaderText: { color: '#FFFFFF', fontWeight: '800', fontSize: 12 },
-  nodeRow: { flexDirection: 'row', marginVertical: theme.spacing.sm },
-  nodeTouchable: { alignItems: 'center', width: 100 },
-  glow: {
+  sectionHeaderText: { fontWeight: '800', fontSize: 11 },
+  nodeRow: {
+    flexDirection: 'row',
+    width: '100%',
+    marginVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.xl,
+  },
+  nodeTouchable: {
+    width: 120,
+    alignItems: 'center',
+  },
+  nodeInner: {
+    alignItems: 'center',
+    width: 120,
+  },
+  activeGlowRing: {
     position: 'absolute',
-    top: 0,
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: theme.colors.primarySoft,
+    top: -6,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 3,
+    opacity: 0.6,
   },
-  node: {
-    width: 60, height: 60, borderRadius: 30,
-    alignItems: 'center', justifyContent: 'center',
+  nodeCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: theme.colors.primaryLight,
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
     ...theme.shadow.card,
+    zIndex: 2,
   },
-  nodeLocked: { backgroundColor: theme.colors.surfaceAlt },
-  nodeUnlocked: { backgroundColor: theme.colors.primary },
-  nodeCompleted: { backgroundColor: theme.colors.success },
-  nodeTitle: { fontSize: 11, fontWeight: '700', color: theme.colors.text, textAlign: 'center', marginTop: 6 },
-  nodeTitleLocked: { color: theme.colors.textSubtle },
-  starsRow: { flexDirection: 'row', gap: 2, marginTop: 4 },
+  nodeNumber: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  nodeLocked: {
+    backgroundColor: '#E2E8F0',
+    borderColor: '#CBD5E1',
+  },
+  nodeCompleted: {
+    backgroundColor: theme.colors.success,
+  },
+  nodeTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: theme.colors.text,
+    textAlign: 'center',
+    marginTop: 6,
+    width: 120,
+  },
+  nodeTitleLocked: {
+    color: theme.colors.textSubtle,
+  },
+  starsRow: {
+    flexDirection: 'row',
+    gap: 3,
+    marginTop: 4,
+  },
   endCard: {
     alignItems: 'center', gap: 6,
     padding: theme.spacing.xl,

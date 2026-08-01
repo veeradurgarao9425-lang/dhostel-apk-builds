@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Image } from 'react-native';
 import Svg, { Defs, LinearGradient, Stop, Circle, Path } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -23,6 +23,18 @@ function resolveStyle(key?: string | null) {
   return CATEGORY_STYLES[key] || CATEGORY_STYLES[base] || CATEGORY_STYLES.general;
 }
 
+function getIllustrationSource(key?: string | null) {
+  if (!key) return require('../../../../assets/growth/general_cover.png');
+  const k = key.toLowerCase();
+  if (k.includes('cook') || k.includes('disaster') || k.includes('kitchen') || k.includes('pasta')) {
+    return require('../../../../assets/growth/cooking_disaster.png');
+  }
+  if (k.includes('bus') || k.includes('missed') || k.includes('run')) {
+    return require('../../../../assets/growth/missed_bus.png');
+  }
+  return require('../../../../assets/growth/general_cover.png');
+}
+
 interface Props {
   illustrationKey?: string | null;
   size?: number;
@@ -30,6 +42,15 @@ interface Props {
 }
 
 export function GrowthIllustration({ illustrationKey, size = 160, style }: Props) {
+  const source = getIllustrationSource(illustrationKey);
+  if (source) {
+    return (
+      <View style={[{ width: size, height: size, borderRadius: 12, overflow: 'hidden' }, style]}>
+        <Image source={source} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+      </View>
+    );
+  }
+
   const { colors, icon } = resolveStyle(illustrationKey);
   const gradId = `grad-${colors[0].replace('#', '')}`;
 

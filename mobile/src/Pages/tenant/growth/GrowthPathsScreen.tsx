@@ -62,7 +62,7 @@ export function GrowthPathsScreen({ navigation }: any) {
               <TouchableOpacity
                 activeOpacity={0.85}
                 style={styles.card}
-                onPress={() => navigation.navigate('GrowthRoadmap', { pathKey: item.path_key, pathName: item.name })}
+                onPress={() => navigation.navigate('GrowthRoadmap', { pathKey: item.path_key, pathName: item.name, colorHex: item.color_hex })}
               >
                 <View style={[styles.iconBadge, { backgroundColor: item.color_hex + '22' }]}>
                   <Text style={styles.iconEmoji}>{item.emoji}</Text>

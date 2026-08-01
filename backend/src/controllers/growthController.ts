@@ -81,6 +81,36 @@ export const getDashboard = async (req: AuthRequest, res: Response) => {
       .orderBy('gl.sort_order', 'asc')
       .first('gl.title', 'gl.level_id');
 
+    let recentlyRead = await db('growth_user_progress as gup')
+      .join('growth_levels as gl', 'gup.level_id', 'gl.level_id')
+      .join('growth_stories as gs', 'gl.level_id', 'gs.level_id')
+      .where('gup.student_id', studentId)
+      .whereIn('gup.status', ['unlocked', 'completed'])
+      .select(
+        'gl.level_id',
+        'gl.title',
+        'gs.reading_time_minutes as readingTime',
+        'gup.status'
+      )
+      .orderBy('gup.updated_at', 'desc')
+      .limit(3);
+
+    if (!recentlyRead.length) {
+      recentlyRead = await db('growth_levels as gl')
+        .join('growth_stories as gs', 'gl.level_id', 'gs.level_id')
+        .leftJoin('growth_user_progress as gup', function () {
+          this.on('gup.level_id', '=', 'gl.level_id').andOn('gup.student_id', '=', db.raw('?', [studentId]));
+        })
+        .select(
+          'gl.level_id',
+          'gl.title',
+          'gs.reading_time_minutes as readingTime',
+          db.raw("COALESCE(gup.status, 'locked') as status")
+        )
+        .orderBy('gl.level_id', 'asc')
+        .limit(3);
+    }
+
     const dayOfYear = Math.floor(
       (now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000
     );
@@ -102,6 +132,12 @@ export const getDashboard = async (req: AuthRequest, res: Response) => {
         todaysChallenge: nextLevel
           ? { title: `Finish: ${nextLevel.title}`, levelId: nextLevel.level_id }
           : { title: 'Start your next lesson!', levelId: null },
+        recentlyAdded: recentlyRead.map((r: any) => ({
+          levelId: r.level_id,
+          title: r.title,
+          readingTime: r.readingTime,
+          status: r.status,
+        })),
         quote: QUOTES[dayOfYear % QUOTES.length],
       },
     });
@@ -261,7 +297,7 @@ export const completeLevel = async (req: AuthRequest, res: Response) => {
   try {
     const studentId = req.user!.user_id;
     const { levelId } = req.params;
-    const { answers } = req.body as { answers: Record<string, string> };
+    const { answers, direct } = req.body as { answers?: Record<string, string>; direct?: boolean };
 
     const level = await db('growth_levels').where({ level_id: levelId }).first();
     if (!level) return res.status(404).json({ success: false, error: 'Level not found' });
@@ -269,14 +305,19 @@ export const completeLevel = async (req: AuthRequest, res: Response) => {
     const story = await db('growth_stories').where({ level_id: levelId }).first();
     const questions = await db('growth_quiz_questions').where({ story_id: story.story_id });
 
-    let correctCount = 0;
-    for (const q of questions) {
-      const given = String(answers?.[q.question_id] ?? '').trim().toLowerCase();
-      const correct = String(q.correct_answer ?? '').trim().toLowerCase();
-      if (given && given === correct) correctCount += 1;
+    let scorePct = 100;
+    let correctCount = questions.length;
+
+    if (!direct) {
+      correctCount = 0;
+      for (const q of questions) {
+        const given = String(answers?.[q.question_id] ?? '').trim().toLowerCase();
+        const correct = String(q.correct_answer ?? '').trim().toLowerCase();
+        if (given && given === correct) correctCount += 1;
+      }
+      scorePct = questions.length ? Math.round((correctCount / questions.length) * 100) : 0;
     }
-    const scorePct = questions.length ? Math.round((correctCount / questions.length) * 100) : 0;
-    const stars = starsForScore(scorePct);
+    const stars = direct ? 3 : starsForScore(scorePct);
 
     const existing = await db('growth_user_progress').where({ student_id: studentId, level_id: levelId }).first();
     const now = new Date();
@@ -461,5 +502,30 @@ export const getStats = async (req: AuthRequest, res: Response) => {
   } catch (error: any) {
     console.error('Get growth stats error:', error);
     res.status(500).json({ success: false, error: 'Failed to load stats' });
+  }
+};
+
+export const getLevelsByIds = async (req: AuthRequest, res: Response) => {
+  try {
+    const studentId = req.user!.user_id;
+    const ids = req.query.ids ? String(req.query.ids).split(',').map(Number).filter(Boolean) : [];
+    if (!ids.length) {
+      return res.json({ success: true, data: [] });
+    }
+    const levels = await db('growth_levels as gl')
+      .join('growth_stories as gs', 'gl.level_id', 'gs.level_id')
+      .leftJoin('growth_user_progress as gup', function () {
+        this.on('gup.level_id', '=', 'gl.level_id').andOn('gup.student_id', '=', db.raw('?', [studentId]));
+      })
+      .whereIn('gl.level_id', ids)
+      .select(
+        'gl.level_id',
+        'gl.title',
+        'gs.reading_time_minutes as readingTime',
+        db.raw("COALESCE(gup.status, 'locked') as status")
+      );
+    res.json({ success: true, data: levels });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
   }
 };
