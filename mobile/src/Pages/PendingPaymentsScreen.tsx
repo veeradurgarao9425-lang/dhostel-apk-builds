@@ -810,104 +810,6 @@ export default function PendingPaymentsScreen() {
             </View>
 
 
-            {/* ── Search & Filter ──────────────────────────────────────── */}
-            <View style={s.searchRow}>
-                <View style={[s.searchBox, {
-                    backgroundColor: isDark ? '#1E293B' : '#FFF',
-                    borderColor: isDark ? '#334155' : '#ECECEC',
-                }]}>
-                    <Ionicons name="search-outline" size={18} color={isDark ? '#64748B' : '#94A3B8'} />
-                    <TextInput
-                        style={[s.searchInput, { color: isDark ? '#F8FAFC' : '#1F2937' }]}
-                        placeholder="Search tenant or room..."
-                        placeholderTextColor={isDark ? '#475569' : '#94A3B8'}
-                        value={searchQuery}
-                        onChangeText={setSearchQuery}
-                    />
-                    {searchQuery.length > 0 && (
-                        <TouchableOpacity onPress={() => setSearchQuery('')} style={{ padding: 4 }}>
-                            <Ionicons name="close-circle" size={18} color={isDark ? '#475569' : '#94A3B8'} />
-                        </TouchableOpacity>
-                    )}
-                </View>
-
-                {(() => {
-                    const activeFiltersCount = Object.entries(activeFilters).filter(([k, v]) =>
-                        v && v !== 'All' && v !== 'All Time' && v !== 'Due Date - Old to New' && v !== ''
-                    ).length;
-                    return (
-                        <TouchableOpacity
-                            style={[s.filterBtn, {
-                                backgroundColor: isDark ? '#1E293B' : '#FFF',
-                                borderColor: filterModalVisible || activeFiltersCount > 0 ? theme.primary : (isDark ? '#334155' : '#ECECEC'),
-                                borderWidth: filterModalVisible || activeFiltersCount > 0 ? 1.5 : 1,
-                                shadowColor: 'transparent',
-                                elevation: 0
-                            }]}
-                            activeOpacity={0.7}
-                            onPress={() => setFilterModalVisible(true)}
-                        >
-                            <Ionicons name="filter" size={16} color={theme.primary} />
-                            <Text style={[s.filterTxt, { color: theme.primary }]}>Filter</Text>
-                            {activeFiltersCount > 0 && (
-                                <View style={[s.filterBadge, { backgroundColor: theme.primary }]}>
-                                    <Text style={s.filterBadgeText}>{activeFiltersCount}</Text>
-                                </View>
-                            )}
-                        </TouchableOpacity>
-                    );
-                })()}
-            </View>
-
-            {/* ── Active Filters Chips ── */}
-            {(activeFilters.status !== 'All' || activeFilters.datePreset !== 'All Time' || activeFilters.room !== 'All' || (activeFilters.sortBy && activeFilters.sortBy !== 'Due Date - Old to New')) && (
-                <View style={{ paddingHorizontal: 16, paddingBottom: 8, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                    {activeFilters.status !== 'All' && (
-                        <TouchableOpacity
-                            style={[s.filterChip, { backgroundColor: isDark ? theme.primary + '30' : theme.primary + '15', flexDirection: 'row', alignItems: 'center', gap: 4 }]}
-                            onPress={() => setActiveFilters((prev: any) => ({ ...prev, status: 'All' }))}
-                            activeOpacity={0.7}
-                        >
-                            <Text style={[s.filterChipText, { color: theme.primary }]}>{activeFilters.status}</Text>
-                            <Ionicons name="close-circle" size={14} color={theme.primary} />
-                        </TouchableOpacity>
-                    )}
-                    {activeFilters.datePreset !== 'All Time' && (
-                        <TouchableOpacity
-                            style={[s.filterChip, { backgroundColor: isDark ? theme.primary + '30' : theme.primary + '15', flexDirection: 'row', alignItems: 'center', gap: 4 }]}
-                            onPress={() => setActiveFilters((prev: any) => ({ ...prev, datePreset: 'All Time', customStartDate: '', customEndDate: '' }))}
-                            activeOpacity={0.7}
-                        >
-                            <Text style={[s.filterChipText, { color: theme.primary }]}>
-                                {activeFilters.datePreset === 'Custom Date Range'
-                                    ? `${activeFilters.customStartDate} to ${activeFilters.customEndDate}`
-                                    : activeFilters.datePreset}
-                            </Text>
-                            <Ionicons name="close-circle" size={14} color={theme.primary} />
-                        </TouchableOpacity>
-                    )}
-                    {activeFilters.room !== 'All' && (
-                        <TouchableOpacity
-                            style={[s.filterChip, { backgroundColor: isDark ? theme.primary + '30' : theme.primary + '15', flexDirection: 'row', alignItems: 'center', gap: 4 }]}
-                            onPress={() => setActiveFilters((prev: any) => ({ ...prev, room: 'All' }))}
-                            activeOpacity={0.7}
-                        >
-                            <Text style={[s.filterChipText, { color: theme.primary }]}>Room {activeFilters.room}</Text>
-                            <Ionicons name="close-circle" size={14} color={theme.primary} />
-                        </TouchableOpacity>
-                    )}
-                    {activeFilters.sortBy && activeFilters.sortBy !== 'Due Date - Old to New' && (
-                        <TouchableOpacity
-                            style={[s.filterChip, { backgroundColor: isDark ? theme.primary + '30' : theme.primary + '15', flexDirection: 'row', alignItems: 'center', gap: 4 }]}
-                            onPress={() => setActiveFilters((prev: any) => ({ ...prev, sortBy: 'Due Date - Old to New' }))}
-                            activeOpacity={0.7}
-                        >
-                            <Text style={[s.filterChipText, { color: theme.primary }]}>Sorted: {activeFilters.sortBy}</Text>
-                            <Ionicons name="close-circle" size={14} color={theme.primary} />
-                        </TouchableOpacity>
-                    )}
-                </View>
-            )}
             {/* ── Tabs: Overdue / Next 7 Days / All Dues / Plan Renewals ── */}
             <View style={{ flexDirection: 'row', paddingHorizontal: 16, marginBottom: 8, gap: 6 }}>
                 {(['Overdue', 'Next 7 Days', 'All Dues'] as const).map(tab => {
@@ -964,17 +866,127 @@ export default function PendingPaymentsScreen() {
                     );
                 })()}
             </View>
-            {/* ── Count row ─────────────────────────────────────────── */}
-            <View style={{ paddingHorizontal: 16, paddingBottom: 6, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text style={{ fontSize: 13, color: isDark ? '#94A3B8' : '#64748B', fontWeight: '600' }}>
-                    Showing {filteredTenants.length} student{filteredTenants.length !== 1 ? 's' : ''}
-                </Text>
-                {Object.entries(activeFilters).some(([k, v]) => v && v !== 'All' && v !== 'All Time' && v !== 'Due Date - Old to New' && v !== '') && (
-                    <TouchableOpacity onPress={handleClearFilters}>
-                        <Text style={{ fontSize: 12, color: theme.primary, fontWeight: '700' }}>Clear Filters</Text>
-                    </TouchableOpacity>
-                )}
-            </View>
+
+            {activeTab !== 'Plan Renewals' ? (
+                <>
+                    {/* ── Search & Filter ──────────────────────────────────────── */}
+                    <View style={s.searchRow}>
+                        <View style={[s.searchBox, {
+                            backgroundColor: isDark ? '#1E293B' : '#FFF',
+                            borderColor: isDark ? '#334155' : '#ECECEC',
+                        }]}>
+                            <Ionicons name="search-outline" size={18} color={isDark ? '#64748B' : '#94A3B8'} />
+                            <TextInput
+                                style={[s.searchInput, { color: isDark ? '#F8FAFC' : '#1F2937' }]}
+                                placeholder="Search tenant or room..."
+                                placeholderTextColor={isDark ? '#475569' : '#94A3B8'}
+                                value={searchQuery}
+                                onChangeText={setSearchQuery}
+                            />
+                            {searchQuery.length > 0 && (
+                                <TouchableOpacity onPress={() => setSearchQuery('')} style={{ padding: 4 }}>
+                                    <Ionicons name="close-circle" size={18} color={isDark ? '#475569' : '#94A3B8'} />
+                                </TouchableOpacity>
+                            )}
+                        </View>
+
+                        {(() => {
+                            const activeFiltersCount = Object.entries(activeFilters).filter(([k, v]) =>
+                                v && v !== 'All' && v !== 'All Time' && v !== 'Due Date - Old to New' && v !== ''
+                            ).length;
+                            return (
+                                <TouchableOpacity
+                                    style={[s.filterBtn, {
+                                        backgroundColor: isDark ? '#1E293B' : '#FFF',
+                                        borderColor: filterModalVisible || activeFiltersCount > 0 ? theme.primary : (isDark ? '#334155' : '#ECECEC'),
+                                        borderWidth: filterModalVisible || activeFiltersCount > 0 ? 1.5 : 1,
+                                        shadowColor: 'transparent',
+                                        elevation: 0
+                                    }]}
+                                    activeOpacity={0.7}
+                                    onPress={() => setFilterModalVisible(true)}
+                                >
+                                    <Ionicons name="filter" size={16} color={theme.primary} />
+                                    <Text style={[s.filterTxt, { color: theme.primary }]}>Filter</Text>
+                                    {activeFiltersCount > 0 && (
+                                        <View style={[s.filterBadge, { backgroundColor: theme.primary }]}>
+                                            <Text style={s.filterBadgeText}>{activeFiltersCount}</Text>
+                                        </View>
+                                    )}
+                                </TouchableOpacity>
+                            );
+                        })()}
+                    </View>
+
+                    {/* ── Active Filters Chips ── */}
+                    {(activeFilters.status !== 'All' || activeFilters.datePreset !== 'All Time' || activeFilters.room !== 'All' || (activeFilters.sortBy && activeFilters.sortBy !== 'Due Date - Old to New')) && (
+                        <View style={{ paddingHorizontal: 16, paddingBottom: 8, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                            {activeFilters.status !== 'All' && (
+                                <TouchableOpacity
+                                    style={[s.filterChip, { backgroundColor: isDark ? theme.primary + '30' : theme.primary + '15', flexDirection: 'row', alignItems: 'center', gap: 4 }]}
+                                    onPress={() => setActiveFilters((prev: any) => ({ ...prev, status: 'All' }))}
+                                    activeOpacity={0.7}
+                                >
+                                    <Text style={[s.filterChipText, { color: theme.primary }]}>{activeFilters.status}</Text>
+                                    <Ionicons name="close-circle" size={14} color={theme.primary} />
+                                </TouchableOpacity>
+                            )}
+                            {activeFilters.datePreset !== 'All Time' && (
+                                <TouchableOpacity
+                                    style={[s.filterChip, { backgroundColor: isDark ? theme.primary + '30' : theme.primary + '15', flexDirection: 'row', alignItems: 'center', gap: 4 }]}
+                                    onPress={() => setActiveFilters((prev: any) => ({ ...prev, datePreset: 'All Time', customStartDate: '', customEndDate: '' }))}
+                                    activeOpacity={0.7}
+                                >
+                                    <Text style={[s.filterChipText, { color: theme.primary }]}>
+                                        {activeFilters.datePreset === 'Custom Date Range'
+                                            ? `${activeFilters.customStartDate} to ${activeFilters.customEndDate}`
+                                            : activeFilters.datePreset}
+                                    </Text>
+                                    <Ionicons name="close-circle" size={14} color={theme.primary} />
+                                </TouchableOpacity>
+                            )}
+                            {activeFilters.room !== 'All' && (
+                                <TouchableOpacity
+                                    style={[s.filterChip, { backgroundColor: isDark ? theme.primary + '30' : theme.primary + '15', flexDirection: 'row', alignItems: 'center', gap: 4 }]}
+                                    onPress={() => setActiveFilters((prev: any) => ({ ...prev, room: 'All' }))}
+                                    activeOpacity={0.7}
+                                >
+                                    <Text style={[s.filterChipText, { color: theme.primary }]}>Room {activeFilters.room}</Text>
+                                    <Ionicons name="close-circle" size={14} color={theme.primary} />
+                                </TouchableOpacity>
+                            )}
+                            {activeFilters.sortBy && activeFilters.sortBy !== 'Due Date - Old to New' && (
+                                <TouchableOpacity
+                                    style={[s.filterChip, { backgroundColor: isDark ? theme.primary + '30' : theme.primary + '15', flexDirection: 'row', alignItems: 'center', gap: 4 }]}
+                                    onPress={() => setActiveFilters((prev: any) => ({ ...prev, sortBy: 'Due Date - Old to New' }))}
+                                    activeOpacity={0.7}
+                                >
+                                    <Text style={[s.filterChipText, { color: theme.primary }]}>Sorted: {activeFilters.sortBy}</Text>
+                                    <Ionicons name="close-circle" size={14} color={theme.primary} />
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    )}
+
+                    {/* ── Count row ── */}
+                    <View style={{ paddingHorizontal: 16, paddingBottom: 6, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text style={{ fontSize: 13, color: isDark ? '#94A3B8' : '#64748B', fontWeight: '600' }}>
+                            Showing {filteredTenants.length} student{filteredTenants.length !== 1 ? 's' : ''}
+                        </Text>
+                        {Object.entries(activeFilters).some(([k, v]) => v && v !== 'All' && v !== 'All Time' && v !== 'Due Date - Old to New' && v !== '') && (
+                            <TouchableOpacity onPress={handleClearFilters}>
+                                <Text style={{ fontSize: 12, color: theme.primary, fontWeight: '700' }}>Clear Filters</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                </>
+            ) : (
+                <View style={{ paddingHorizontal: 16, paddingBottom: 6, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={{ fontSize: 13, color: isDark ? '#94A3B8' : '#64748B', fontWeight: '600' }}>
+                        Showing {renewalStudents.length} student{renewalStudents.length !== 1 ? 's' : ''}
+                    </Text>
+                </View>
+            )}
 
             {activeTab === 'Plan Renewals' ? (
                 renewalsLoading ? (
