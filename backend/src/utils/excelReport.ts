@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
 import db from '../config/database.js';
-import { sendEmail } from './email.js';
+import { sendEmail, EmailAttachment } from './email.js';
 
 export const sendDailyOwnerReportEmail = async (userId: number, hostelId: number): Promise<void> => {
   try {

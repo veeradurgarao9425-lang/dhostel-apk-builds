@@ -508,6 +508,15 @@ export default function MoreScreen() {
             {/* Header */}
             <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={s.header}>
                 <View style={s.headerContent}>
+                    {navigation.canGoBack() && (
+                        <TouchableOpacity
+                            onPress={() => navigation.goBack()}
+                            style={{ marginRight: 4, padding: 4 }}
+                            activeOpacity={0.7}
+                        >
+                            <Ionicons name="arrow-back" size={24} color="#FFF" />
+                        </TouchableOpacity>
+                    )}
                     <TouchableOpacity onPress={() => navigation.navigate('Profile')} activeOpacity={0.9} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
                         <View style={s.avatarCircle}>
                             <Text style={s.avatarText}>
