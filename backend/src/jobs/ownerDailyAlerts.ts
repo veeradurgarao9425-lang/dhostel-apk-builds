@@ -63,10 +63,54 @@ export const runOwnerDailyAlerts = async () => {
       reminderNotified++;
     }
 
-    if (vacancyNotified > 0 || reminderNotified > 0) {
-      console.log(`[ownerDailyAlerts] Notified ${vacancyNotified} upcoming vacancies, ${reminderNotified} reminders`);
+    // 3. Daily dues and overdues summary for owners
+    const hostels = await db('hostel_master').where('is_active', 1);
+    let duesSummariesNotified = 0;
+    for (const h of hostels) {
+      try {
+        const overdueStats = await db('monthly_fees')
+          .where('hostel_id', h.hostel_id)
+          .whereNot('fee_status', 'Fully Paid')
+          .whereRaw('due_date < CURDATE()')
+          .count('fee_id as count')
+          .first();
+        
+        const dueTodayStats = await db('monthly_fees')
+          .where('hostel_id', h.hostel_id)
+          .whereNot('fee_status', 'Fully Paid')
+          .whereRaw('due_date = CURDATE()')
+          .count('fee_id as count')
+          .first();
+
+        const totalPendingStats = await db('monthly_fees')
+          .where('hostel_id', h.hostel_id)
+          .whereNot('fee_status', 'Fully Paid')
+          .sum('balance as total')
+          .first();
+
+        const overdueCount = Number(overdueStats?.count || 0);
+        const dueTodayCount = Number(dueTodayStats?.count || 0);
+        const pendingAmount = Number(totalPendingStats?.total || 0);
+
+        if (overdueCount > 0 || dueTodayCount > 0) {
+          await sendNotificationToHostelOwner(
+            h.hostel_id,
+            'System Alert',
+            'Daily Dues Summary',
+            `Dues summary: ${dueTodayCount} due today, ${overdueCount} overdue. Total pending: ₹${pendingAmount.toLocaleString('en-IN')}.`,
+            'High'
+          );
+          duesSummariesNotified++;
+        }
+      } catch (err: any) {
+        console.error(`[ownerDailyAlerts] dues summary notify failed for hostel ${h.hostel_id}:`, err?.message);
+      }
     }
-    return { success: true, vacancyNotified, reminderNotified };
+
+    if (vacancyNotified > 0 || reminderNotified > 0 || duesSummariesNotified > 0) {
+      console.log(`[ownerDailyAlerts] Notified ${vacancyNotified} upcoming vacancies, ${reminderNotified} reminders, ${duesSummariesNotified} dues summaries`);
+    }
+    return { success: true, vacancyNotified, reminderNotified, duesSummariesNotified };
   } catch (error: any) {
     console.error('[ownerDailyAlerts] Error:', error?.message);
     return { success: false, error: error?.message };

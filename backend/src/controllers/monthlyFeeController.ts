@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
-import { sendNotificationToHostelOwner } from '../utils/notification.js';
+import { sendNotificationToHostelOwner, sendNotificationToStudent } from '../utils/notification.js';
 import { io } from '../socket/index.js';
 import { resolveScopedHostelId, canAccessHostel } from '../utils/scope.js';
 
@@ -1139,6 +1139,15 @@ export const recordPayment = async (req: AuthRequest, res: Response) => {
         'Medium',
         { payment_id: paymentId, student_id }
       ).catch(err => console.error('Failed to send payment collection notification:', err));
+
+      sendNotificationToStudent(
+        student_id,
+        'General',
+        'Payment Recorded',
+        `A payment of ₹${amount} has been recorded for your rent.`,
+        'Medium',
+        { payment_id: paymentId }
+      ).catch(err => console.error('Failed to send payment recording notification to student:', err));
 
       res.status(201).json({
         success: true,

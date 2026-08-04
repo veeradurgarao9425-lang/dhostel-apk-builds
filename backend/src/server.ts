@@ -49,6 +49,7 @@ import { startWeeklyReportsJob } from './jobs/weeklyReports.js';
 import { startMonthlyReportsJob } from './jobs/monthlyReports.js';
 import { startFeeRemindersJob } from './jobs/feeReminders.js';
 import { startOwnerDailyAlertsJob } from './jobs/ownerDailyAlerts.js';
+import { startDailyExcelReportsJob } from './jobs/dailyExcelReports.js';
 import { sendNotificationToHostelOwner } from './utils/notification.js';
 import { checkHostelUniqueIdentifiers } from './utils/validation.js';
 
@@ -62,6 +63,7 @@ startWeeklyReportsJob();
 startMonthlyReportsJob();
 startFeeRemindersJob();
 startOwnerDailyAlertsJob();
+startDailyExcelReportsJob();
 
 
 const app = express();

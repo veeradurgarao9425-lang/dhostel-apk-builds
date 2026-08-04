@@ -13,7 +13,7 @@ import { sendNotificationToStudent } from '../utils/notification.js';
  */
 
 const DUE_SOON_DAYS = [7, 3, 1, 0];
-const OVERDUE_RENAG_DAYS = 3;
+const OVERDUE_RENAG_DAYS = 1;
 
 const todayStr = () => new Date().toISOString().split('T')[0];
 

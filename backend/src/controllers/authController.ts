@@ -8,6 +8,7 @@ import { sendPasswordResetEmail, sendOtpEmail, sendEmail } from '../utils/email.
 import { sendNotificationToHostelOwner, sendNotificationToStudent } from '../utils/notification.js';
 import crypto from 'crypto';
 import { checkHostelUniqueIdentifiers } from '../utils/validation.js';
+import { sendDailyOwnerReportEmail } from '../utils/excelReport.js';
 
 export const authController = {
   // Login
@@ -86,6 +87,13 @@ export const authController = {
         role_id: user.role_id,
         hostel_id: activeHostelId, // Include hostel_id in JWT token
       });
+
+      // Trigger daily business summary Excel report email to owner upon login
+      if (activeHostelId && (user.role_id === 2 || user.role_id === 1)) {
+        sendDailyOwnerReportEmail(user.user_id, activeHostelId).catch(err => {
+          console.error('[LoginReport] Failed to send login daily owner report:', err);
+        });
+      }
 
       // Return response
       return res.json({
