@@ -1,5 +1,5 @@
 import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getSecureItem, multiRemoveSecureItems } from './secureStore';
 import { navigate } from '../navigation/navigationRef';
 
 // ─── Base URL ─────────────────────────────────────────────────────────────────
@@ -24,12 +24,12 @@ export const api = axios.create({
 api.interceptors.request.use(
   async (config) => {
     try {
-      const token = await AsyncStorage.getItem('token');
+      const token = await getSecureItem('token');
       if (token) {
         config.headers['Authorization'] = `Bearer ${token}`;
       }
     } catch {
-      // AsyncStorage read failed — proceed without token
+      // Token read failed — proceed without token
     }
     return config;
   },
@@ -48,7 +48,7 @@ api.interceptors.response.use(
     if (status === 401 && !isHandling401) {
       isHandling401 = true;
       try {
-        await AsyncStorage.multiRemove(['token', 'user']);
+        await multiRemoveSecureItems(['token', 'user']);
         delete api.defaults.headers.common['Authorization'];
         navigate('Login');
       } finally {

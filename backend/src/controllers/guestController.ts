@@ -228,13 +228,34 @@ export const checkoutGuest = async (req: AuthRequest, res: Response) => {
     }
 
     const today = new Date().toISOString().split('T')[0];
+
+    // Compute auto bill: days × per_day_amount
+    const days = Number(existing.days) || 1;
+    const perDay = Number(existing.per_day_amount) || 0;
+    const autoBill = days * perDay;
+
+    // If caller provides final_amount, use it; otherwise keep existing amount_paid
+    const finalAmount = req.body?.final_amount !== undefined
+      ? Number(req.body.final_amount)
+      : Number(existing.amount_paid) || 0;
+
     await db('guests').where('guest_id', guestId).update({
       status: 'checked_out',
       checked_out_at: req.body?.checked_out_at || today,
+      amount_paid: finalAmount,
       updated_at: new Date(),
     });
 
-    res.json({ success: true, message: 'Guest checked out successfully' });
+    res.json({
+      success: true,
+      message: 'Guest checked out successfully',
+      data: {
+        total_bill: autoBill,
+        amount_collected: finalAmount,
+        days,
+        per_day_amount: perDay,
+      }
+    });
   } catch (error: any) {
     console.error('Checkout guest error:', error);
     res.status(500).json({ success: false, error: error?.sqlMessage || error?.message || 'Failed to check out guest' });

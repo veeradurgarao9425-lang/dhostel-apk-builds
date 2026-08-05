@@ -13,6 +13,9 @@ module.exports = function (api) {
         plugins.push(['transform-remove-console', { exclude: ['error', 'warn'] }]);
     }
 
+    // react-native-worklets' plugin (Reanimated 4's worklet compiler) must be listed last.
+    plugins.push('react-native-worklets/plugin');
+
     return {
         presets: ['babel-preset-expo'],
         plugins,

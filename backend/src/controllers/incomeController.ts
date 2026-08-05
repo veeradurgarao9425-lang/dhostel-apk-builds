@@ -169,6 +169,13 @@ export const createIncome = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    if (isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'amount must be a positive number'
+      });
+    }
+
     // Determine hostel_id based on user role. Owner always uses their own
     // hostel; Admin/Super Admin must specify hostel_id explicitly (never
     // silently defaults to the admin's own possibly-stale hostel_id).
@@ -240,6 +247,13 @@ export const updateIncome = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({
         success: false,
         error: 'Income record not found'
+      });
+    }
+
+    if (amount !== undefined && (isNaN(parseFloat(amount)) || parseFloat(amount) <= 0)) {
+      return res.status(400).json({
+        success: false,
+        error: 'amount must be a positive number'
       });
     }
 

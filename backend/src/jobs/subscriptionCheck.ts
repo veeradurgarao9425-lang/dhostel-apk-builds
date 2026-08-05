@@ -69,7 +69,7 @@ export const startSubscriptionCheckJob = () => {
 
           // Email Super Admin
           await sendEmail({
-            to: 'hostixhelp@gmail.com',
+            to: process.env.SUPER_ADMIN_EMAIL || 'hostixhelp@gmail.com',
             subject: 'Hostel Subscription Expired Alert - Hostix',
             html: getSuperAdminExpiryTemplate({ hostel_name: hostel.hostel_name, email: hostel.email }),
             emailType: 'Super Admin Alert',

@@ -32,10 +32,11 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
     // Admin/Super Admin (role 1): scoped to ?hostelId if given, otherwise global
     // (hostelIds stays empty, which every query below already treats as "no filter").
     let hostelIds: number[] = [];
+    const requestedHostelId = req.query.hostelId && !isNaN(Number(req.query.hostelId)) && Number(req.query.hostelId) > 0
+      ? Number(req.query.hostelId)
+      : null;
 
-    if (req.query.hostelId && !isNaN(Number(req.query.hostelId)) && Number(req.query.hostelId) > 0) {
-      hostelIds = [Number(req.query.hostelId)];
-    } else if (user?.user_id && (user?.role_id === 2 || user?.role_id === 1)) {
+    if (user?.user_id && (user?.role_id === 2 || user?.role_id === 1)) {
       const ownerHostels = await db('hostel_master')
         .where('owner_id', user.user_id)
         .select('hostel_id');
@@ -43,7 +44,23 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
       if (user?.hostel_id && !ids.includes(Number(user.hostel_id))) {
         ids.push(Number(user.hostel_id));
       }
-      hostelIds = ids;
+
+      if (requestedHostelId !== null) {
+        // Admin/Super Admin may drill into any hostel; an Owner may only
+        // drill into a hostel they actually own — otherwise ?hostelId=<other>
+        // would leak another hostel's financials.
+        if (user.role_id === 1) {
+          hostelIds = [requestedHostelId];
+        } else if (ids.includes(requestedHostelId)) {
+          hostelIds = [requestedHostelId];
+        } else {
+          return res.status(403).json({ success: false, error: 'You do not have access to this hostel.' });
+        }
+      } else {
+        hostelIds = ids;
+      }
+    } else if (requestedHostelId !== null) {
+      hostelIds = [requestedHostelId];
     } else if (user?.hostel_id) {
       hostelIds = [Number(user.hostel_id)];
     }
@@ -1075,9 +1092,11 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
     // Owner: always scoped to their own hostel. Admin/Super Admin: scoped to
     // ?hostelId if given, otherwise global (no filter) across all hostels.
     let hostelIds: number[] = [];
-    if (hostelId && !isNaN(Number(hostelId)) && Number(hostelId) > 0) {
-      hostelIds = [Number(hostelId)];
-    } else if (user?.user_id && (user?.role_id === 2 || user?.role_id === 1)) {
+    const requestedHostelId = hostelId && !isNaN(Number(hostelId)) && Number(hostelId) > 0
+      ? Number(hostelId)
+      : null;
+
+    if (user?.user_id && (user?.role_id === 2 || user?.role_id === 1)) {
       const ownerHostels = await db('hostel_master')
         .where('owner_id', user.user_id)
         .select('hostel_id');
@@ -1085,7 +1104,23 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
       if (user?.hostel_id && !ids.includes(Number(user.hostel_id))) {
         ids.push(Number(user.hostel_id));
       }
-      hostelIds = ids;
+
+      if (requestedHostelId !== null) {
+        // Admin/Super Admin may drill into any hostel; an Owner may only
+        // drill into a hostel they actually own — otherwise ?hostelId=<other>
+        // would leak another hostel's financials.
+        if (user.role_id === 1) {
+          hostelIds = [requestedHostelId];
+        } else if (ids.includes(requestedHostelId)) {
+          hostelIds = [requestedHostelId];
+        } else {
+          return res.status(403).json({ success: false, error: 'You do not have access to this hostel.' });
+        }
+      } else {
+        hostelIds = ids;
+      }
+    } else if (requestedHostelId !== null) {
+      hostelIds = [requestedHostelId];
     } else if (user?.hostel_id) {
       hostelIds = [Number(user.hostel_id)];
     }

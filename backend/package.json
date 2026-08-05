@@ -10,9 +10,12 @@
     "migrate": "knex migrate:latest",
     "seed": "knex seed:run",
     "init:relations": "tsx scripts/initializeRelationsTable.ts",
-    "init:id-proof-types": "tsx scripts/initializeIdProofTypes.ts"
+    "init:id-proof-types": "tsx scripts/initializeIdProofTypes.ts",
+    "generate:growth-content": "tsx scripts/generateGrowthContent.ts",
+    "seed:growth-stories": "tsx scripts/seedGrowthStories.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.115.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",

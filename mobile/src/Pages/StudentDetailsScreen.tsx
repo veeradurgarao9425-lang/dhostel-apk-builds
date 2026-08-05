@@ -796,6 +796,64 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                             </View>
                         </Card>
 
+                        {/* ── Stay Plan Card (multi-month plans only) ── */}
+                        {student?.fee_plan && student.fee_plan > 1 && student.plan_end_date && (() => {
+                            const planLabels: Record<number, string> = { 3: 'Quarterly (3-Month)', 6: 'Half-Yearly (6-Month)', 12: 'Yearly (1-Year)' };
+                            const planLabel = planLabels[student.fee_plan] || `${student.fee_plan}-Month Plan`;
+                            const today = new Date(); today.setHours(0, 0, 0, 0);
+                            const planEnd = new Date(student.plan_end_date); planEnd.setHours(0, 0, 0, 0);
+                            const daysLeft = Math.ceil((planEnd.getTime() - today.getTime()) / 86400000);
+                            const isExpired = daysLeft < 0;
+                            const isUrgent = daysLeft >= 0 && daysLeft <= 15;
+                            const isWarning = daysLeft > 15 && daysLeft <= 30;
+                            const statusColor = isExpired || isUrgent ? '#DC2626' : isWarning ? '#D97706' : '#059669';
+                            const statusBg = isExpired || isUrgent ? (isDark ? '#450A0A' : '#FEF2F2') : isWarning ? (isDark ? '#44200C' : '#FFFBEB') : (isDark ? '#052E16' : '#ECFDF5');
+                            const statusBorder = isExpired || isUrgent ? '#FCA5A5' : isWarning ? '#FDE68A' : '#A7F3D0';
+                            const endDateStr = planEnd.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                            const startDateStr = student.plan_start_date ? new Date(student.plan_start_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+                            return (
+                                <Card style={[styles.actionCard, { backgroundColor: statusBg, borderColor: statusBorder, borderWidth: 1.5 }]}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                                        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: statusColor + '20', alignItems: 'center', justifyContent: 'center' }}>
+                                            <Calendar size={18} color={statusColor} />
+                                        </View>
+                                        <View style={{ flex: 1 }}>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                                <Text style={{ fontSize: 14, fontWeight: '800', color: statusColor }}>{planLabel}</Text>
+                                            </View>
+                                            {startDateStr ? (
+                                                <Text style={{ fontSize: 11, color: isDark ? '#CBD5E1' : '#64748B', marginTop: 2 }}>
+                                                    {startDateStr} → {endDateStr}
+                                                </Text>
+                                            ) : (
+                                                <Text style={{ fontSize: 11, color: isDark ? '#CBD5E1' : '#64748B', marginTop: 2 }}>
+                                                    Ends: {endDateStr}
+                                                </Text>
+                                            )}
+                                            <Text style={{ fontSize: 12, fontWeight: '700', color: statusColor, marginTop: 3 }}>
+                                                {isExpired ? `⚠ Plan expired ${Math.abs(daysLeft)} days ago` : `${daysLeft} day${daysLeft === 1 ? '' : 's'} remaining`}
+                                            </Text>
+                                        </View>
+                                        {(isUrgent || isExpired) && (
+                                            <TouchableOpacity
+                                                style={{ backgroundColor: statusColor, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 }}
+                                                onPress={() => navigation.navigate('AddStudent', { student, isEdit: true })}
+                                                activeOpacity={0.8}
+                                            >
+                                                <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>Renew</Text>
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
+                                    {student.plan_amount > 0 && (
+                                        <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: statusBorder, flexDirection: 'row', justifyContent: 'space-between' }}>
+                                            <Text style={{ fontSize: 12, color: isDark ? '#94A3B8' : '#64748B' }}>Plan Amount</Text>
+                                            <Text style={{ fontSize: 13, fontWeight: '800', color: statusColor }}>₹{Number(student.plan_amount).toLocaleString('en-IN')}</Text>
+                                        </View>
+                                    )}
+                                </Card>
+                            );
+                        })()}
+
                         {/* ── Active / Inactive Status Card ── */}
                         <Card style={[styles.actionCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
                             <View style={styles.actionCardRow}>

@@ -72,23 +72,30 @@ export const getExpenses = async (req: AuthRequest, res: Response) => {
               .whereBetween('expense_date', [startDatePrev, endDatePrev]);
 
             if (prevExpenses && prevExpenses.length > 0) {
-              // Clone expenses to the 1st of the current month
-              const clonedDate = `${currentMonthStr}-01`;
-              const newExpenses = prevExpenses.map(exp => ({
-                hostel_id: exp.hostel_id,
-                category_id: exp.category_id,
-                expense_date: clonedDate,
-                amount: exp.amount,
-                payment_mode_id: exp.payment_mode_id,
-                vendor_name: exp.vendor_name,
-                description: exp.description,
-                bill_number: exp.bill_number,
-                created_by: exp.created_by,
-                created_at: new Date()
-              }));
+              // Clone expenses to the current month, preserving original day of month.
+              // If the day doesn't exist in the current month (e.g. Jan 31 → Feb), clamp to last valid day.
+              const lastDayCurrent = new Date(currentYear, currentMonthNum, 0).getDate();
+              const newExpenses = prevExpenses.map(exp => {
+                const origDate = new Date(exp.expense_date);
+                const origDay = origDate.getDate();
+                const clampedDay = Math.min(origDay, lastDayCurrent);
+                const clonedDate = `${currentMonthStr}-${String(clampedDay).padStart(2, '0')}`;
+                return {
+                  hostel_id: exp.hostel_id,
+                  category_id: exp.category_id,
+                  expense_date: clonedDate,
+                  amount: exp.amount,
+                  payment_mode_id: exp.payment_mode_id,
+                  vendor_name: exp.vendor_name,
+                  description: exp.description ? `${exp.description} (auto-cloned)` : 'Auto-cloned from previous month',
+                  bill_number: exp.bill_number,
+                  created_by: exp.created_by,
+                  created_at: new Date()
+                };
+              });
 
               await db('expenses').insert(newExpenses);
-              console.log(`Auto-cloned ${newExpenses.length} expenses for hostel ${hostel_id} from ${prevMonthStr} to ${currentMonthStr}`);
+              console.log(`Auto-cloned ${newExpenses.length} expenses for hostel ${hostel_id} from ${prevMonthStr} to ${currentMonthStr} (preserving original days)`);
             }
           }
         }
@@ -344,6 +351,13 @@ export const createExpense = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    if (isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'amount must be a positive number'
+      });
+    }
+
     // Determine hostel_id based on user role. Owner always uses their own
     // hostel; Admin/Super Admin must specify hostel_id explicitly (never
     // silently defaults to the admin's own possibly-stale hostel_id).
@@ -449,6 +463,13 @@ export const updateExpense = async (req: AuthRequest, res: Response) => {
           error: 'You can only update expenses for your own hostel.'
         });
       }
+    }
+
+    if (req.body.amount !== undefined && (isNaN(parseFloat(req.body.amount)) || parseFloat(req.body.amount) <= 0)) {
+      return res.status(400).json({
+        success: false,
+        error: 'amount must be a positive number'
+      });
     }
 
     const updateData: any = { updated_at: new Date() };

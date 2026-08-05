@@ -1,0 +1,134 @@
+{
+  "stories": [
+    {
+      "title": "The Scarecrow's Award",
+      "category": "jokes",
+      "reading_time_minutes": 2,
+      "sentences": [
+        "Ravi walked into the hostel mess carrying a large bag of stale bread.",
+        "His roommate asked why he needed so much bread so early in the morning.",
+        "Ravi said he was feeding the old scarecrow that stood in the field behind the hostel.",
+        "His roommate laughed and asked if the scarecrow was actually hungry.",
+        "Ravi grinned and said the scarecrow had just won an award for being outstanding in its field.",
+        "Everyone at the table groaned and then burst out laughing at the pun.",
+        "From that day, Ravi was known as the hostel's official joke-teller."
+      ],
+      "vocabulary": [
+        { "word": "stale", "meaning": "no longer fresh", "pronunciation": "STAYL", "synonyms": "old, dry, hard", "example_sentence": "The bread had gone stale after three days." },
+        { "word": "outstanding", "meaning": "extremely good or a play on 'standing out'", "pronunciation": "owt-STAN-ding", "synonyms": "excellent, remarkable, notable", "example_sentence": "Her exam result was outstanding." },
+        { "word": "pun", "meaning": "a joke using words with double meanings", "pronunciation": "PUHN", "synonyms": "wordplay, quip", "example_sentence": "The comedian's speech was full of clever puns." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "Why did Ravi need bread?", "options": ["To feed the scarecrow", "To eat for breakfast", "To sell in the market", "To feed birds"], "correct_answer": "To feed the scarecrow" },
+        { "question_type": "true_false", "question_text": "The scarecrow really won an award in real life.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "fill_blank", "question_text": "The scarecrow won an award for being outstanding in its ______.", "options": null, "correct_answer": "field" },
+        { "question_type": "vocab", "question_text": "What does 'pun' mean?", "options": ["a joke using double meanings", "a type of bread", "a sad story", "an award"], "correct_answer": "a joke using double meanings" },
+        { "question_type": "mcq", "question_text": "What was Ravi known as after telling the joke?", "options": ["The hostel's official joke-teller", "The best cook", "The laziest student", "The class topper"], "correct_answer": "The hostel's official joke-teller" }
+      ]
+    },
+    {
+      "title": "The Clever Student",
+      "category": "jokes",
+      "reading_time_minutes": 2,
+      "sentences": [
+        "Rahul was famous in his class for never finishing his homework on time.",
+        "One afternoon, the teacher asked him directly why he never submitted his assignments.",
+        "Rahul stood up confidently and said he believed in learning from mistakes.",
+        "He added that he simply let his friends make the mistakes first.",
+        "The whole class burst into laughter at his clever excuse.",
+        "Even the teacher could not stop smiling, though she still asked for his homework the next day.",
+        "Rahul learned that being funny did not replace being responsible."
+      ],
+      "vocabulary": [
+        { "word": "assignment", "meaning": "a task or piece of work given to someone", "pronunciation": "uh-SYN-ment", "synonyms": "task, homework, project", "example_sentence": "She submitted her assignment before the deadline." },
+        { "word": "confidently", "meaning": "in a self-assured manner", "pronunciation": "KON-fi-dent-lee", "synonyms": "boldly, assuredly", "example_sentence": "He answered the question confidently." },
+        { "word": "excuse", "meaning": "a reason given to justify a fault", "pronunciation": "ik-SKYOOS", "synonyms": "justification, explanation, reason", "example_sentence": "His excuse for being late was not convincing." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "Why did Rahul say he never did his homework?", "options": ["He let his friends make mistakes first", "He forgot every time", "He was always sick", "He had no time"], "correct_answer": "He let his friends make mistakes first" },
+        { "question_type": "true_false", "question_text": "Rahul was known for always submitting homework on time.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "fill_blank", "question_text": "The teacher asked him why he never submitted his ______.", "options": null, "correct_answer": "assignments" },
+        { "question_type": "vocab", "question_text": "What does 'confidently' mean?", "options": ["in a self-assured manner", "very sadly", "quietly and shyly", "angrily"], "correct_answer": "in a self-assured manner" },
+        { "question_type": "mcq", "question_text": "How did the class react to Rahul's answer?", "options": ["They laughed", "They complained to the principal", "They ignored him", "They left the room"], "correct_answer": "They laughed" }
+      ]
+    },
+    {
+      "title": "The Broken Clock",
+      "category": "jokes",
+      "reading_time_minutes": 2,
+      "sentences": [
+        "Meera noticed that the old clock in the hostel common room had stopped working.",
+        "She mentioned to her friend that the clock was right twice a day, even though it was broken.",
+        "Her friend looked puzzled and asked how a broken clock could ever be right.",
+        "Meera explained that the stopped hands still matched the correct time twice every day.",
+        "Her friend paused, thought about it, and then laughed at how true it was.",
+        "They decided to leave the broken clock as a fun reminder in the common room.",
+        "Every student who noticed it later smiled at the little joke on the wall."
+      ],
+      "vocabulary": [
+        { "word": "puzzled", "meaning": "confused or unable to understand", "pronunciation": "PUHZ-uld", "synonyms": "confused, baffled, perplexed", "example_sentence": "She looked puzzled at the strange question." },
+        { "word": "paused", "meaning": "stopped briefly", "pronunciation": "PAWZD", "synonyms": "halted, hesitated", "example_sentence": "He paused before answering the question." },
+        { "word": "reminder", "meaning": "something that helps you remember", "pronunciation": "ri-MYN-der", "synonyms": "prompt, note, cue", "example_sentence": "She left a reminder on the fridge." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "What was wrong with the clock?", "options": ["It had stopped working", "It was too loud", "It was missing", "It was too fast"], "correct_answer": "It had stopped working" },
+        { "question_type": "true_false", "question_text": "A broken clock can never show the correct time.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "fill_blank", "question_text": "A broken clock is right ______ a day.", "options": null, "correct_answer": "twice" },
+        { "question_type": "vocab", "question_text": "What does 'puzzled' mean?", "options": ["confused", "very happy", "angry", "tired"], "correct_answer": "confused" },
+        { "question_type": "mcq", "question_text": "What did the students do with the clock?", "options": ["Left it as a fun reminder", "Threw it away", "Sold it", "Fixed it immediately"], "correct_answer": "Left it as a fun reminder" }
+      ]
+    },
+    {
+      "title": "The Hungry Ghost",
+      "category": "jokes",
+      "reading_time_minutes": 2,
+      "sentences": [
+        "During a late-night study session, Arjun told his roommates a spooky joke.",
+        "He asked them what a ghost's favorite dessert was at midnight.",
+        "Nobody in the room could guess the answer, so they all waited eagerly.",
+        "Arjun grinned and said the answer was 'boo-berry pie'.",
+        "The room fell silent for a second before everyone groaned and laughed together.",
+        "The joke became a running gag whenever anyone felt sleepy while studying.",
+        "It turned their tiring study nights into something a little more fun."
+      ],
+      "vocabulary": [
+        { "word": "spooky", "meaning": "frightening in a slightly fun way", "pronunciation": "SPOO-kee", "synonyms": "eerie, creepy, ghostly", "example_sentence": "The old house looked spooky at night." },
+        { "word": "eagerly", "meaning": "with great enthusiasm", "pronunciation": "EE-ger-lee", "synonyms": "keenly, enthusiastically", "example_sentence": "The children waited eagerly for the show to start." },
+        { "word": "gag", "meaning": "a joke, especially a running one shared by a group", "pronunciation": "GAG", "synonyms": "joke, prank", "example_sentence": "It became a running gag among the friends." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "What did Arjun ask his roommates?", "options": ["A ghost's favorite dessert", "A ghost's favorite color", "A ghost's favorite song", "A ghost's favorite game"], "correct_answer": "A ghost's favorite dessert" },
+        { "question_type": "true_false", "question_text": "The joke's answer was 'boo-berry pie'.", "options": ["True", "False"], "correct_answer": "True" },
+        { "question_type": "fill_blank", "question_text": "The joke became a running ______ during study nights.", "options": null, "correct_answer": "gag" },
+        { "question_type": "vocab", "question_text": "What does 'eagerly' mean?", "options": ["with great enthusiasm", "very slowly", "with fear", "quietly"], "correct_answer": "with great enthusiasm" },
+        { "question_type": "mcq", "question_text": "How did the joke affect their study nights?", "options": ["Made them more fun", "Made everyone sleepy", "Ended the study session", "Made them angry"], "correct_answer": "Made them more fun" }
+      ]
+    },
+    {
+      "title": "The Math Teacher's Joke",
+      "category": "jokes",
+      "reading_time_minutes": 2,
+      "sentences": [
+        "The math teacher walked into class and asked why the number six was afraid.",
+        "Students exchanged confused glances, unsure what the question meant.",
+        "The teacher smiled and said it was because seven ate nine.",
+        "It took a moment before the class understood the wordplay between 'ate' and 'eight'.",
+        "Once they understood, laughter spread across the entire classroom.",
+        "The teacher said a little humor made numbers easier to remember.",
+        "From then on, students looked forward to math class a little more."
+      ],
+      "vocabulary": [
+        { "word": "glances", "meaning": "quick looks", "pronunciation": "GLAN-siz", "synonyms": "looks, peeks", "example_sentence": "They exchanged glances across the room." },
+        { "word": "wordplay", "meaning": "a clever or humorous use of words", "pronunciation": "WURD-play", "synonyms": "pun, play on words", "example_sentence": "The comedian's script was full of wordplay." },
+        { "word": "humor", "meaning": "the quality of being funny", "pronunciation": "HYOO-mer", "synonyms": "comedy, wit", "example_sentence": "Her humor made the lecture enjoyable." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "Why was the number six afraid, according to the joke?", "options": ["Because seven ate nine", "Because it was small", "Because it was odd", "Because it failed a test"], "correct_answer": "Because seven ate nine" },
+        { "question_type": "true_false", "question_text": "The students understood the joke immediately without any pause.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "fill_blank", "question_text": "A little ______ made numbers easier to remember.", "options": null, "correct_answer": "humor" },
+        { "question_type": "vocab", "question_text": "What does 'wordplay' mean?", "options": ["a clever or humorous use of words", "a type of math problem", "a slow walk", "a loud argument"], "correct_answer": "a clever or humorous use of words" },
+        { "question_type": "mcq", "question_text": "How did students feel about math class afterward?", "options": ["They looked forward to it more", "They started skipping it", "They found it more boring", "They stopped asking questions"], "correct_answer": "They looked forward to it more" }
+      ]
+    }
+  ]
+}

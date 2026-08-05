@@ -20,6 +20,10 @@ interface Student {
   hostel_id: number;
   monthly_rent: number;
   admission_date: Date;
+  fee_plan: number;        // 1=Monthly, 3=Quarterly, 6=Half-yearly, 12=Yearly
+  plan_start_date: Date | null;
+  plan_end_date: Date | null;
+  plan_amount: number | null;
 }
 
 // Helper to calculate the next billing cycle and when it should be generated
@@ -64,7 +68,10 @@ const generateMonthlyFeesForHostel = async (hostel_id: number) => {
       .where('s.status', 1)
       .whereNotNull('s.room_id')
       .whereNotNull('s.monthly_rent')
-      .select('s.student_id', 's.hostel_id', 's.monthly_rent', 's.admission_date');
+      .select(
+        's.student_id', 's.hostel_id', 's.monthly_rent', 's.admission_date',
+        's.fee_plan', 's.plan_start_date', 's.plan_end_date', 's.plan_amount'
+      );
 
     if (students.length === 0) {
       console.log(`[Monthly Fees Cron] No active students found for hostel ${hostel_id}`);
@@ -83,6 +90,68 @@ const generateMonthlyFeesForHostel = async (hostel_id: number) => {
       try {
         if (!student.admission_date) continue; // Safety check
 
+        const feePlan = Number(student.fee_plan) || 1;
+
+        // ── MULTI-MONTH PLAN LOGIC ─────────────────────────────────────────────
+        if (feePlan > 1 && student.plan_end_date) {
+          const planEnd = new Date(student.plan_end_date);
+          planEnd.setHours(0, 0, 0, 0);
+          const todayDate = new Date(todayStr);
+
+          // Compute when to surface the renewal: 15 days before plan_end_date
+          const renewalAlertDate = new Date(planEnd);
+          renewalAlertDate.setDate(renewalAlertDate.getDate() - 15);
+          const renewalAlertStr = renewalAlertDate.toISOString().split('T')[0];
+
+          if (todayStr < renewalAlertStr) {
+            // Student is safely inside their paid period — skip entirely
+            console.log(`[Monthly Fees Cron] Student ${student.student_id}: Multi-month plan (${feePlan}M), ${Math.ceil((planEnd.getTime() - todayDate.getTime()) / 86400000)}d remaining — skipped.`);
+            continue;
+          }
+
+          // Within 15 days of plan end (or already past): create renewal due record
+          // The renewal fee_month is the month AFTER the plan ends
+          const nextCycleStart = new Date(planEnd);
+          nextCycleStart.setDate(nextCycleStart.getDate() + 1);
+          const nextCycleEnd = new Date(nextCycleStart);
+          nextCycleEnd.setMonth(nextCycleEnd.getMonth() + feePlan);
+
+          const renewalFeeMonth = `${nextCycleStart.getFullYear()}-${String(nextCycleStart.getMonth() + 1).padStart(2, '0')}`;
+
+          const existingRenewalFee = await db('monthly_fees')
+            .where({ student_id: student.student_id, fee_month: renewalFeeMonth })
+            .first();
+
+          if (existingRenewalFee) {
+            console.log(`[Monthly Fees Cron] Renewal fee ${renewalFeeMonth} already exists for student ${student.student_id}`);
+            continue;
+          }
+
+          const planRenewalAmount = Number(student.plan_amount) || Number(student.monthly_rent) * feePlan;
+
+          feesData.push({
+            student_id: student.student_id,
+            hostel_id: student.hostel_id,
+            fee_month: renewalFeeMonth,
+            fee_date: nextCycleStart.getDate(),
+            monthly_rent: planRenewalAmount,
+            carry_forward: 0,
+            total_due: planRenewalAmount,
+            paid_amount: 0,
+            balance: planRenewalAmount,
+            fee_status: 'Pending',
+            due_date: nextCycleStart, // Due on the first day of next cycle
+            notes: `${feePlan}-Month Plan Renewal — previous period ended ${student.plan_end_date}`,
+            created_at: new Date(),
+            updated_at: new Date()
+          });
+
+          console.log(`[Monthly Fees Cron] Student ${student.student_id}: Created ${feePlan}M plan renewal for ${renewalFeeMonth}, due: ${nextCycleStart.toISOString().split('T')[0]}`);
+          totalFeesCreated++;
+          continue; // Done for this student — skip the monthly logic below
+        }
+
+        // ── STANDARD MONTHLY BILLING LOGIC (fee_plan = 1 or null) ─────────────
         // Find the LATEST fee generated for this student
         const latestFee = await db('monthly_fees')
           .where({ student_id: student.student_id })
@@ -226,23 +295,27 @@ export const startMonthlyFeesGenerationJob = () => {
       console.log(`[Monthly Fees Cron] Found ${hostels.length} active hostels`);
 
       const results = [];
+      const BATCH_SIZE = 5; // Process 5 hostels at a time to avoid DB overload
 
-      for (const hostel of hostels) {
-        try {
-          const result = await generateMonthlyFeesForHostel(hostel.hostel_id);
-          results.push({
-            hostel_id: hostel.hostel_id,
-            hostel_name: hostel.hostel_name,
-            ...result
-          });
-        } catch (hostelErr) {
-          console.error(`[Monthly Fees Cron] Fatal error for hostel ${hostel.hostel_id} (${hostel.hostel_name}):`, hostelErr);
-          results.push({
-            hostel_id: hostel.hostel_id,
-            hostel_name: hostel.hostel_name,
-            error: true,
-            message: hostelErr instanceof Error ? hostelErr.message : 'Unknown error'
-          });
+      for (let i = 0; i < hostels.length; i += BATCH_SIZE) {
+        const batch = hostels.slice(i, i + BATCH_SIZE);
+        const batchResults = await Promise.allSettled(
+          batch.map(hostel => generateMonthlyFeesForHostel(hostel.hostel_id)
+            .then(result => ({ hostel_id: hostel.hostel_id, hostel_name: hostel.hostel_name, ...result }))
+            .catch(hostelErr => {
+              console.error(`[Monthly Fees Cron] Fatal error for hostel ${hostel.hostel_id} (${hostel.hostel_name}):`, hostelErr);
+              return { hostel_id: hostel.hostel_id, hostel_name: hostel.hostel_name, error: true, message: hostelErr instanceof Error ? hostelErr.message : 'Unknown error' };
+            })
+          )
+        );
+
+        for (const r of batchResults) {
+          if (r.status === 'fulfilled') results.push(r.value);
+          else results.push({ error: true, message: String(r.reason) });
+        }
+
+        if (i + BATCH_SIZE < hostels.length) {
+          console.log(`[Monthly Fees Cron] Batch ${Math.ceil((i + 1) / BATCH_SIZE)} done, processing next batch...`);
         }
       }
 

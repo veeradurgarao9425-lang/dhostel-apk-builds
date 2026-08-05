@@ -108,6 +108,7 @@ export function TenantLoginScreen({ navigation }: any) {
   const [generalError, setGeneralError] = useState<string | null>(null);
   const [otpError, setOtpError]         = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
+  const [isPhoneWarning, setIsPhoneWarning] = useState(false);
 
   const inputRefs = useRef<Array<TextInput | null>>([]);
 
@@ -121,6 +122,16 @@ export function TenantLoginScreen({ navigation }: any) {
   const handleSendOtp = async () => {
     const val = email.trim();
     if (!val) { setEmailError('Please enter your email address'); return; }
+
+    // Detect phone number input — SMS OTP is not yet available
+    const isPhone = /^[6-9]\d{9}$/.test(val.replace(/\s/g, '')) || /^\+?\d{10,13}$/.test(val.replace(/\s/g, ''));
+    if (isPhone) {
+      setIsPhoneWarning(true);
+      setEmailError('');
+      return;
+    }
+    setIsPhoneWarning(false);
+
     const isEmail = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(val);
     if (!isEmail) { setEmailError('Please enter a valid email address'); return; }
     setEmailError('');
@@ -268,7 +279,20 @@ export function TenantLoginScreen({ navigation }: any) {
             </TouchableOpacity>
           )}
 
-          <Text style={s.subtitle}>Enter your registered email to receive a 6-digit verification code.</Text>
+          <Text style={s.subtitle}>Enter your <Text style={{ fontWeight: '700', color: PURPLE }}>registered email</Text> to receive a 6-digit OTP verification code.</Text>
+
+          {/* Phone number warning banner */}
+          {isPhoneWarning && (
+            <View style={{ backgroundColor: '#FEF3C7', borderRadius: 12, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: '#FCD34D', flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+              <Text style={{ fontSize: 18 }}>📱</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: '#92400E', fontWeight: '700', fontSize: 14, marginBottom: 3 }}>Phone Login Not Available Yet</Text>
+                <Text style={{ color: '#92400E', fontSize: 13, lineHeight: 18 }}>
+                  SMS OTP is coming soon! For now, please use your <Text style={{ fontWeight: '700' }}>registered email address</Text> to log in.{"\n"}Contact your hostel owner if you haven't registered an email.
+                </Text>
+              </View>
+            </View>
+          )}
 
           {generalError && (
             <View style={s.errorBox}>
@@ -285,7 +309,7 @@ export function TenantLoginScreen({ navigation }: any) {
                   placeholder="example@gmail.com"
                   placeholderTextColor={HINT_COLOR}
                   value={email}
-                  onChangeText={t => { setEmail(t); setEmailError(''); }}
+                  onChangeText={t => { setEmail(t); setEmailError(''); setIsPhoneWarning(false); }}
                   onFocus={() => setEmailFocused(true)}
                   onBlur={() => setEmailFocused(false)}
                   keyboardType="email-address"

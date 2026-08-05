@@ -41,6 +41,15 @@ export const updateOwner = async (req: Request, res: Response) => {
       });
     }
 
+    // Only an Admin, or the owner editing their own record, may update it.
+    const isSelf = reqUser?.user_id != null && String(reqUser.user_id) === String(targetUserId);
+    if (reqUser?.role_id !== 1 && !isSelf) {
+      return res.status(403).json({
+        success: false,
+        error: 'You do not have permission to update this owner.'
+      });
+    }
+
     // Check if owner exists
     const existingOwner = await db('users')
       .where({ user_id: targetUserId })

@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.js';
 import db from '../config/database.js';
+import { sendNotificationToAllHostelStudents } from '../utils/notification.js';
 
 export const createOrUpdateMenu = async (req: AuthRequest, res: Response) => {
   try {
@@ -35,6 +36,15 @@ export const createOrUpdateMenu = async (req: AuthRequest, res: Response) => {
         timing: timing || null
       });
     }
+
+    // Notify all active tenants that the menu has been updated
+    sendNotificationToAllHostelStudents(
+      Number(hostelId),
+      'Notice',
+      '🍽️ Mess Menu Updated',
+      `The ${meal_type} menu for ${day_of_week} has been updated. Check the latest menu in the app.`,
+      'Low'
+    ).catch(err => console.error('Failed to send mess menu notification:', err));
 
     res.status(200).json({ success: true, message: 'Menu updated successfully' });
   } catch (error: any) {

@@ -1,0 +1,339 @@
+{
+  "stories": [
+    {
+      "title": "The Day I Missed My Bus",
+      "category": "daily-life",
+      "reading_time_minutes": 2,
+      "sentences": [
+        "Last Monday, I woke up late for college.",
+        "My alarm did not ring, and I panicked.",
+        "I rushed to get ready in just ten minutes.",
+        "I grabbed my bag and ran to the bus stop.",
+        "But the bus had already left without me.",
+        "I felt so disappointed and worried about being late.",
+        "I decided to take an auto-rickshaw instead.",
+        "The auto driver drove through busy morning traffic.",
+        "We reached college just as the first class began.",
+        "My friend saved a seat for me near the window.",
+        "I explained what happened, and she laughed kindly.",
+        "That day taught me to always set two alarms.",
+        "Now I never miss the bus again."
+      ],
+      "vocabulary": [
+        { "word": "panicked", "meaning": "felt sudden fear or worry", "pronunciation": "PAN-ikt", "synonyms": "worried, alarmed, freaked out", "example_sentence": "She panicked when she lost her wallet at the station." },
+        { "word": "rushed", "meaning": "moved or acted very quickly", "pronunciation": "RUHSHT", "synonyms": "hurried, hastened, dashed", "example_sentence": "He rushed home when he heard the news." },
+        { "word": "disappointed", "meaning": "feeling sad because something did not happen as hoped", "pronunciation": "dis-uh-POYN-tid", "synonyms": "let down, unhappy, discouraged", "example_sentence": "She felt disappointed when the trip got cancelled." },
+        { "word": "traffic", "meaning": "vehicles moving on a road", "pronunciation": "TRAF-ik", "synonyms": "vehicles, congestion, road traffic", "example_sentence": "The traffic was heavy near the market this morning." },
+        { "word": "kindly", "meaning": "in a warm and friendly way", "pronunciation": "KYND-lee", "synonyms": "gently, warmly, sweetly", "example_sentence": "The teacher kindly explained the lesson again." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "Why did the narrator wake up late?", "options": ["The alarm did not ring", "The bus broke down", "She overslept on purpose", "Her friend woke her too early"], "correct_answer": "The alarm did not ring" },
+        { "question_type": "true_false", "question_text": "The narrator reached college by walking.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "fill_blank", "question_text": "I grabbed my bag and ____ to the bus stop.", "options": null, "correct_answer": "ran" },
+        { "question_type": "vocab", "question_text": "What does 'panicked' mean?", "options": ["felt suddenly worried or scared", "felt very happy", "walked slowly", "fell asleep again"], "correct_answer": "felt suddenly worried or scared" },
+        { "question_type": "mcq", "question_text": "Who saved a seat for the narrator in class?", "options": ["Her friend", "Her teacher", "Her brother", "A stranger"], "correct_answer": "Her friend" }
+      ]
+    },
+    {
+      "title": "My First Cooking Disaster",
+      "category": "daily-life",
+      "reading_time_minutes": 3,
+      "sentences": [
+        "Last month, I decided to cook dinner for my hostel friends.",
+        "I chose a simple recipe for vegetable pasta.",
+        "I bought fresh tomatoes, onions, and pasta from the market.",
+        "In the kitchen, I chopped the vegetables carefully.",
+        "I forgot to add salt because I was distracted.",
+        "The pasta turned out bland and a little burnt.",
+        "My friends tasted it and tried not to laugh.",
+        "One friend honestly said it needed more flavor.",
+        "I felt embarrassed but also amused by the situation.",
+        "We ordered pizza instead and ate together happily.",
+        "I saved the recipe and promised to try again.",
+        "The next week, my second attempt was much tastier.",
+        "Now cooking is one of my favorite hobbies."
+      ],
+      "vocabulary": [
+        { "word": "recipe", "meaning": "a set of instructions to prepare a dish", "pronunciation": "RES-uh-pee", "synonyms": "formula, method, instructions", "example_sentence": "She shared her grandmother's recipe for pickles." },
+        { "word": "distracted", "meaning": "unable to focus because attention was elsewhere", "pronunciation": "dis-TRAK-tid", "synonyms": "unfocused, sidetracked, absent-minded", "example_sentence": "He was distracted by his phone during the meeting." },
+        { "word": "bland", "meaning": "having little or no flavor", "pronunciation": "BLAND", "synonyms": "tasteless, plain, flavorless", "example_sentence": "The soup tasted bland without any spices." },
+        { "word": "honestly", "meaning": "in a truthful and sincere way", "pronunciation": "ON-ist-lee", "synonyms": "truthfully, sincerely, frankly", "example_sentence": "Honestly, I did not expect to win the prize." },
+        { "word": "embarrassed", "meaning": "feeling awkward or ashamed", "pronunciation": "em-BAR-uhst", "synonyms": "ashamed, awkward, self-conscious", "example_sentence": "He felt embarrassed after tripping in front of everyone." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "What dish did the narrator try to cook?", "options": ["Vegetable pasta", "Chicken curry", "Fried rice", "Paneer tikka"], "correct_answer": "Vegetable pasta" },
+        { "question_type": "true_false", "question_text": "The pasta turned out delicious on the first try.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "fill_blank", "question_text": "I forgot to add ____ because I was distracted.", "options": null, "correct_answer": "salt" },
+        { "question_type": "vocab", "question_text": "What does 'bland' mean?", "options": ["having little or no flavor", "extremely spicy", "very sweet", "perfectly cooked"], "correct_answer": "having little or no flavor" },
+        { "question_type": "true_false", "question_text": "The narrator's second attempt at cooking was tastier.", "options": ["True", "False"], "correct_answer": "True" }
+      ]
+    },
+    {
+      "title": "The Surprise Power Cut",
+      "category": "daily-life",
+      "reading_time_minutes": 4,
+      "sentences": [
+        "One hot evening, the electricity suddenly went off in our hostel.",
+        "Everyone groaned because the fans stopped working immediately.",
+        "I searched for a candle in my study table drawer.",
+        "My roommate found an old torch that still worked.",
+        "We sat together in the dim light and talked.",
+        "Somebody suggested we tell funny stories to pass the time.",
+        "We laughed about old memories from our childhood.",
+        "Outside, other students gathered in the corridor with candles too.",
+        "Someone started singing softly, and others joined in.",
+        "After an hour, the power finally returned with a click.",
+        "Everyone cheered loudly when the lights came back on.",
+        "That unexpected evening became a cherished memory for all of us."
+      ],
+      "vocabulary": [
+        { "word": "groaned", "meaning": "made a low sound showing pain or annoyance", "pronunciation": "GROHND", "synonyms": "moaned, complained, grumbled", "example_sentence": "He groaned when he saw the long queue." },
+        { "word": "immediately", "meaning": "at once, without delay", "pronunciation": "ih-MEE-dee-it-lee", "synonyms": "instantly, right away, promptly", "example_sentence": "She called the doctor immediately after the accident." },
+        { "word": "dim", "meaning": "not bright, having little light", "pronunciation": "DIM", "synonyms": "faint, weak, low-lit", "example_sentence": "The room looked dim with just one small lamp." },
+        { "word": "gathered", "meaning": "came together in one place", "pronunciation": "GATH-erd", "synonyms": "assembled, collected, grouped", "example_sentence": "Students gathered near the notice board to see the results." },
+        { "word": "cherished", "meaning": "held dear and loved deeply", "pronunciation": "CHER-isht", "synonyms": "treasured, valued, adored", "example_sentence": "She cherished the letters her father wrote her." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "What did the narrator search for first?", "options": ["A candle", "A torch", "A phone", "A book"], "correct_answer": "A candle" },
+        { "question_type": "fill_blank", "question_text": "My roommate found an old ____ that still worked.", "options": null, "correct_answer": "torch" },
+        { "question_type": "true_false", "question_text": "The power returned after ten minutes.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "vocab", "question_text": "What does 'cherished' mean?", "options": ["held dear and loved", "forgotten quickly", "annoying", "expensive"], "correct_answer": "held dear and loved" },
+        { "question_type": "mcq", "question_text": "Where did other students gather during the power cut?", "options": ["In the corridor", "In the classroom", "In the garden", "In the canteen"], "correct_answer": "In the corridor" }
+      ]
+    },
+    {
+      "title": "A Walk in the Rain",
+      "category": "daily-life",
+      "reading_time_minutes": 3,
+      "sentences": [
+        "Yesterday, dark clouds covered the sky in the afternoon.",
+        "I decided to take a walk before the rain started.",
+        "Suddenly, heavy drops began to fall on the road.",
+        "I had no umbrella, so I kept walking anyway.",
+        "The cool rain felt refreshing on my tired face.",
+        "I passed a small tea stall near the college gate.",
+        "The owner offered me a hot cup of tea.",
+        "I stood under his shed and sipped the warm tea.",
+        "Two strangers joined us, laughing about the sudden rain.",
+        "We shared stories while raindrops splashed on the tin roof.",
+        "When the rain slowed, I thanked the owner and left.",
+        "I walked home slowly, feeling calm and grateful.",
+        "That simple evening turned into a memory I still treasure."
+      ],
+      "vocabulary": [
+        { "word": "refreshing", "meaning": "pleasantly new or energizing", "pronunciation": "ree-FRESH-ing", "synonyms": "invigorating, cooling, revitalizing", "example_sentence": "A refreshing glass of lemonade helped him beat the heat." },
+        { "word": "stall", "meaning": "a small stand for selling goods", "pronunciation": "STAWL", "synonyms": "stand, booth, kiosk", "example_sentence": "We bought fresh fruit from a roadside stall." },
+        { "word": "sipped", "meaning": "drank slowly in small amounts", "pronunciation": "SIPT", "synonyms": "tasted, drank slowly, sampled", "example_sentence": "She sipped her coffee while reading the newspaper." },
+        { "word": "strangers", "meaning": "people you do not know", "pronunciation": "STRAYN-jerz", "synonyms": "unknown people, outsiders, newcomers", "example_sentence": "Two strangers helped push our car out of the mud." },
+        { "word": "grateful", "meaning": "feeling thankful", "pronunciation": "GRAYT-fuhl", "synonyms": "thankful, appreciative, obliged", "example_sentence": "I am grateful for my friends' support during exams." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "Where did the narrator stop during the rain?", "options": ["A tea stall", "A bus stop", "A friend's house", "A library"], "correct_answer": "A tea stall" },
+        { "question_type": "true_false", "question_text": "The narrator was carrying an umbrella.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "fill_blank", "question_text": "The cool rain felt ____ on my tired face.", "options": null, "correct_answer": "refreshing" },
+        { "question_type": "vocab", "question_text": "What does 'grateful' mean?", "options": ["feeling thankful", "feeling angry", "feeling bored", "feeling sleepy"], "correct_answer": "feeling thankful" },
+        { "question_type": "mcq", "question_text": "What did the tea stall owner give the narrator?", "options": ["A hot cup of tea", "A cold drink", "An umbrella", "A snack"], "correct_answer": "A hot cup of tea" }
+      ]
+    },
+    {
+      "title": "The Lost Library Book",
+      "category": "daily-life",
+      "reading_time_minutes": 5,
+      "sentences": [
+        "Two weeks ago, I borrowed a novel from the college library.",
+        "I read it every night before falling asleep.",
+        "One morning, I could not find the book anywhere.",
+        "I searched my whole room, but it had vanished.",
+        "I worried about paying a fine for the lost book.",
+        "I asked my roommate if she had seen it.",
+        "She remembered I had lent it to another friend.",
+        "I called that friend, and she apologized immediately.",
+        "She had left it in the canteen by mistake.",
+        "Luckily, the canteen staff had kept it safely aside.",
+        "I felt relieved when I finally got the book back.",
+        "I returned it to the library the very next day.",
+        "The librarian smiled and said everything was fine."
+      ],
+      "vocabulary": [
+        { "word": "borrowed", "meaning": "took something to use and return later", "pronunciation": "BOR-ohd", "synonyms": "loaned, took temporarily, rented", "example_sentence": "He borrowed a pen from his classmate during the test." },
+        { "word": "vanished", "meaning": "disappeared suddenly", "pronunciation": "VAN-isht", "synonyms": "disappeared, evaporated, vanished away", "example_sentence": "The keys vanished from the table without a trace." },
+        { "word": "fine", "meaning": "money paid as a penalty", "pronunciation": "FYNE", "synonyms": "penalty, charge, fee", "example_sentence": "He paid a fine for returning the book late." },
+        { "word": "apologized", "meaning": "said sorry for a mistake", "pronunciation": "uh-POL-uh-jyzd", "synonyms": "said sorry, expressed regret, atoned", "example_sentence": "She apologized for arriving late to the meeting." },
+        { "word": "relieved", "meaning": "no longer worried after a problem is solved", "pronunciation": "ri-LEEVD", "synonyms": "reassured, comforted, at ease", "example_sentence": "He felt relieved when the exam results were good." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "Where did the narrator borrow the book from?", "options": ["The college library", "A bookstore", "A friend's shelf", "The internet"], "correct_answer": "The college library" },
+        { "question_type": "fill_blank", "question_text": "One morning, I could not find the book ____.", "options": null, "correct_answer": "anywhere" },
+        { "question_type": "true_false", "question_text": "The book was found in the canteen.", "options": ["True", "False"], "correct_answer": "True" },
+        { "question_type": "vocab", "question_text": "What does 'relieved' mean?", "options": ["no longer worried", "very angry", "extremely tired", "confused"], "correct_answer": "no longer worried" },
+        { "question_type": "mcq", "question_text": "Who had left the book in the canteen?", "options": ["The friend the narrator lent it to", "The librarian", "The roommate", "The canteen staff"], "correct_answer": "The friend the narrator lent it to" }
+      ]
+    },
+    {
+      "title": "The Mess Food Mystery",
+      "category": "friends",
+      "reading_time_minutes": 2,
+      "sentences": [
+        "Every Wednesday, our hostel mess serves a mysterious orange curry.",
+        "Nobody knows exactly what vegetables are inside it.",
+        "My roommate Aisha calls it the mystery curry.",
+        "We always guess the ingredients before taking a bite.",
+        "Last week, we decided to ask the cook directly.",
+        "The cook laughed and revealed his secret recipe.",
+        "It was actually pumpkin, carrot, and a special spice mix.",
+        "We were surprised because it tasted better than we expected.",
+        "Now our whole floor requests the curry every single week.",
+        "The cook feels proud that we enjoy his dish so much.",
+        "Aisha still jokingly calls it the mystery curry anyway.",
+        "Mess food brings our hostel friends together every day."
+      ],
+      "vocabulary": [
+        { "word": "mysterious", "meaning": "difficult to understand or explain", "pronunciation": "mi-STEER-ee-uhs", "synonyms": "puzzling, unclear, mystifying", "example_sentence": "A mysterious noise came from the old building at night." },
+        { "word": "ingredients", "meaning": "items used to prepare a dish", "pronunciation": "in-GREE-dee-uhnts", "synonyms": "components, elements, items", "example_sentence": "She listed all the ingredients needed for the cake." },
+        { "word": "revealed", "meaning": "made something known that was hidden", "pronunciation": "ri-VEELD", "synonyms": "disclosed, exposed, uncovered", "example_sentence": "The magician revealed his trick at the end of the show." },
+        { "word": "surprised", "meaning": "feeling mild shock or wonder", "pronunciation": "ser-PRYZD", "synonyms": "amazed, astonished, startled", "example_sentence": "We were surprised to see snow in April." },
+        { "word": "proud", "meaning": "feeling pleased about an achievement", "pronunciation": "PROWD", "synonyms": "pleased, satisfied, gratified", "example_sentence": "Her parents felt proud when she won the award." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "What day does the mess serve the orange curry?", "options": ["Wednesday", "Monday", "Friday", "Sunday"], "correct_answer": "Wednesday" },
+        { "question_type": "true_false", "question_text": "The curry ingredients include pumpkin and carrot.", "options": ["True", "False"], "correct_answer": "True" },
+        { "question_type": "fill_blank", "question_text": "The cook laughed and ____ his secret recipe.", "options": null, "correct_answer": "revealed" },
+        { "question_type": "vocab", "question_text": "What does 'ingredients' mean?", "options": ["the items used to make a dish", "the plates used for serving", "the cooks in a kitchen", "the smell of food"], "correct_answer": "the items used to make a dish" },
+        { "question_type": "mcq", "question_text": "Who calls the curry 'mystery curry'?", "options": ["Aisha", "The cook", "The narrator's teacher", "The warden"], "correct_answer": "Aisha" }
+      ]
+    },
+    {
+      "title": "Roommates for Life",
+      "category": "friends",
+      "reading_time_minutes": 3,
+      "sentences": [
+        "When I first moved into the hostel, I was very nervous.",
+        "My roommate Priya greeted me with a warm smile.",
+        "She helped me arrange my books and clothes neatly.",
+        "At first, we were complete strangers sharing one small room.",
+        "Slowly, we started sharing snacks and late-night conversations.",
+        "We supported each other during difficult exam weeks.",
+        "Priya always listened patiently whenever I felt homesick.",
+        "I helped her practice for her college presentations too.",
+        "Within a few months, we became inseparable friends.",
+        "Other students often said we behaved like sisters.",
+        "Even during arguments, we always made up quickly.",
+        "Today, Priya is one of my closest friends in life.",
+        "I am thankful the hostel paired us together that year."
+      ],
+      "vocabulary": [
+        { "word": "nervous", "meaning": "feeling anxious or uneasy", "pronunciation": "NUR-vuhs", "synonyms": "anxious, uneasy, tense", "example_sentence": "He felt nervous before his first job interview." },
+        { "word": "arrange", "meaning": "to put things in a neat or organized order", "pronunciation": "uh-RAYNJ", "synonyms": "organize, set up, sort", "example_sentence": "She helped arrange the chairs before the meeting." },
+        { "word": "homesick", "meaning": "missing home and family", "pronunciation": "HOHM-sik", "synonyms": "missing home, longing, wistful", "example_sentence": "During his first week abroad, he felt homesick." },
+        { "word": "inseparable", "meaning": "unable to be separated, always together", "pronunciation": "in-SEP-er-uh-buhl", "synonyms": "close, devoted, tight-knit", "example_sentence": "The two cousins have been inseparable since childhood." },
+        { "word": "thankful", "meaning": "feeling grateful", "pronunciation": "THANK-fuhl", "synonyms": "grateful, appreciative, obliged", "example_sentence": "She was thankful for her teacher's guidance." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "How did the narrator feel on the first day at the hostel?", "options": ["Nervous", "Excited only", "Bored", "Angry"], "correct_answer": "Nervous" },
+        { "question_type": "true_false", "question_text": "Priya and the narrator never argued.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "fill_blank", "question_text": "Priya always listened patiently whenever I felt ____.", "options": null, "correct_answer": "homesick" },
+        { "question_type": "vocab", "question_text": "What does 'inseparable' mean?", "options": ["always together and close", "living far apart", "rarely speaking", "strict and serious"], "correct_answer": "always together and close" },
+        { "question_type": "mcq", "question_text": "Who helped the narrator arrange books and clothes?", "options": ["Priya", "The warden", "Her mother", "A senior student"], "correct_answer": "Priya" }
+      ]
+    },
+    {
+      "title": "The Midnight Maggi Party",
+      "category": "friends",
+      "reading_time_minutes": 4,
+      "sentences": [
+        "It was exam week, and everyone in our hostel wing felt stressed.",
+        "Around midnight, my friend Rohan knocked softly on my door.",
+        "He held a packet of Maggi noodles and a small stove.",
+        "Four of us quietly gathered in the common room.",
+        "Rohan cooked the noodles while we whispered so nobody would wake up.",
+        "The delicious smell of masala filled the whole room.",
+        "We ate together, sharing one big bowl with four spoons.",
+        "Someone cracked a joke, and we all burst into laughter.",
+        "The warden almost caught us, but we hid just in time.",
+        "That risky midnight snack broke all our exam stress.",
+        "We studied better the next morning, feeling refreshed and happy.",
+        "Even now, we remember that night as pure fun."
+      ],
+      "vocabulary": [
+        { "word": "stressed", "meaning": "feeling mental or emotional strain", "pronunciation": "STREST", "synonyms": "anxious, tense, overwhelmed", "example_sentence": "She felt stressed before her final exams." },
+        { "word": "whispered", "meaning": "spoke very softly and quietly", "pronunciation": "WIS-perd", "synonyms": "murmured, muttered, spoke softly", "example_sentence": "He whispered the secret so no one else could hear." },
+        { "word": "delicious", "meaning": "very pleasant to taste", "pronunciation": "dih-LISH-uhs", "synonyms": "tasty, flavorful, scrumptious", "example_sentence": "The homemade cake was absolutely delicious." },
+        { "word": "burst", "meaning": "to suddenly start doing something with force", "pronunciation": "BURST", "synonyms": "erupted, exploded, broke out", "example_sentence": "The whole class burst into applause after the performance." },
+        { "word": "risky", "meaning": "involving a chance of danger or trouble", "pronunciation": "RIS-kee", "synonyms": "dangerous, uncertain, chancy", "example_sentence": "Climbing the wall at night was a risky idea." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "Who brought the Maggi noodles?", "options": ["Rohan", "The warden", "The narrator", "A senior"], "correct_answer": "Rohan" },
+        { "question_type": "fill_blank", "question_text": "The delicious smell of ____ filled the whole room.", "options": null, "correct_answer": "masala" },
+        { "question_type": "true_false", "question_text": "The warden caught the friends eating Maggi.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "vocab", "question_text": "What does 'risky' mean?", "options": ["involving a chance of danger or trouble", "completely safe", "boring", "expensive"], "correct_answer": "involving a chance of danger or trouble" },
+        { "question_type": "mcq", "question_text": "How many friends gathered to eat the noodles?", "options": ["Four", "Two", "Six", "Ten"], "correct_answer": "Four" }
+      ]
+    },
+    {
+      "title": "Two Left Shoes",
+      "category": "friends",
+      "reading_time_minutes": 3,
+      "sentences": [
+        "On sports day, I woke up in a rush and grabbed my shoes.",
+        "I ran to the ground where the race was about to start.",
+        "Just before my race, I looked down and gasped.",
+        "Both shoes were the left one from two different pairs.",
+        "My friend Meera noticed and started giggling uncontrollably.",
+        "She quickly offered me her spare pair of sports shoes.",
+        "Her shoes were a size too big, but I had no choice.",
+        "I ran the race with loose shoes, wobbling at every step.",
+        "Somehow, I still finished third in the race.",
+        "Everyone in our group laughed about the mismatched shoes for weeks.",
+        "Meera still teases me whenever we talk about sports day.",
+        "That embarrassing moment became one of our funniest hostel memories."
+      ],
+      "vocabulary": [
+        { "word": "gasped", "meaning": "took a quick breath in shock or surprise", "pronunciation": "GASPT", "synonyms": "gulped, caught one's breath, choked", "example_sentence": "She gasped when she saw the surprise party." },
+        { "word": "giggling", "meaning": "laughing in a light, silly way", "pronunciation": "GIG-ling", "synonyms": "chuckling, tittering, sniggering", "example_sentence": "The children were giggling at the funny cartoon." },
+        { "word": "spare", "meaning": "extra, kept for use when needed", "pronunciation": "SPAIR", "synonyms": "extra, backup, additional", "example_sentence": "He always carries a spare pen in his bag." },
+        { "word": "wobbling", "meaning": "moving unsteadily from side to side", "pronunciation": "WOB-ling", "synonyms": "swaying, tottering, shaking", "example_sentence": "The old table kept wobbling on the uneven floor." },
+        { "word": "teases", "meaning": "makes fun of someone playfully", "pronunciation": "TEEZ-iz", "synonyms": "mocks playfully, jokes with, ribs", "example_sentence": "My brother always teases me about my cooking." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "What mistake did the narrator make on sports day?", "options": ["Wore two left shoes", "Forgot the race time", "Lost the race number", "Wore no shoes"], "correct_answer": "Wore two left shoes" },
+        { "question_type": "true_false", "question_text": "Meera's spare shoes fit perfectly.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "fill_blank", "question_text": "She quickly offered me her ____ pair of sports shoes.", "options": null, "correct_answer": "spare" },
+        { "question_type": "vocab", "question_text": "What does 'wobbling' mean?", "options": ["moving unsteadily from side to side", "running very fast", "standing perfectly still", "jumping high"], "correct_answer": "moving unsteadily from side to side" },
+        { "question_type": "mcq", "question_text": "What position did the narrator finish in the race?", "options": ["Third", "First", "Last", "Second"], "correct_answer": "Third" }
+      ]
+    },
+    {
+      "title": "The Best Farewell Gift",
+      "category": "friends",
+      "reading_time_minutes": 5,
+      "sentences": [
+        "At the end of final year, our hostel planned a farewell party.",
+        "My roommates secretly planned a surprise gift for me.",
+        "On the last evening, they called me to the terrace.",
+        "I found fairy lights and a handmade photo album waiting there.",
+        "The album had pictures from four years of hostel life.",
+        "Each photo had a funny handwritten caption beside it.",
+        "I felt tears of joy as I turned every page.",
+        "My friends had also written heartfelt letters inside the cover.",
+        "Priya said the hostel would feel empty without me.",
+        "We hugged tightly, promising to stay in touch forever.",
+        "That night, we sat under the stars, sharing old memories.",
+        "The photo album remains my most precious keepsake today."
+      ],
+      "vocabulary": [
+        { "word": "secretly", "meaning": "in a way that is hidden from others", "pronunciation": "SEE-krit-lee", "synonyms": "privately, quietly, covertly", "example_sentence": "They secretly planned a birthday surprise for her." },
+        { "word": "handmade", "meaning": "made by hand, not by machine", "pronunciation": "HAND-mayd", "synonyms": "handcrafted, homemade, crafted", "example_sentence": "She gave him a handmade card for his birthday." },
+        { "word": "heartfelt", "meaning": "deeply sincere and emotional", "pronunciation": "HART-felt", "synonyms": "sincere, genuine, deeply felt", "example_sentence": "He gave a heartfelt speech at the farewell event." },
+        { "word": "empty", "meaning": "containing nothing, with no people or things", "pronunciation": "EMP-tee", "synonyms": "vacant, bare, hollow", "example_sentence": "The classroom felt empty during the holidays." },
+        { "word": "keepsake", "meaning": "an item kept to remember someone or something", "pronunciation": "KEEP-sayk", "synonyms": "memento, souvenir, remembrance", "example_sentence": "She kept the ticket stub as a keepsake from their trip." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "What did the roommates give as a farewell gift?", "options": ["A handmade photo album", "A new phone", "A watch", "A suitcase"], "correct_answer": "A handmade photo album" },
+        { "question_type": "fill_blank", "question_text": "My roommates ____ planned a surprise gift for me.", "options": null, "correct_answer": "secretly" },
+        { "question_type": "true_false", "question_text": "The photo album covered pictures from one year of hostel life.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "vocab", "question_text": "What does 'keepsake' mean?", "options": ["an item kept to remember someone or something", "a type of food", "a hostel rule", "a farewell speech"], "correct_answer": "an item kept to remember someone or something" },
+        { "question_type": "mcq", "question_text": "Where did the roommates call the narrator on the last evening?", "options": ["To the terrace", "To the mess hall", "To the library", "To the garden"], "correct_answer": "To the terrace" }
+      ]
+    }
+  ]
+}

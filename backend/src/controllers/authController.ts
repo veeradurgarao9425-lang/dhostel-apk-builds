@@ -7,6 +7,8 @@ import jwt from 'jsonwebtoken';
 import { sendPasswordResetEmail, sendOtpEmail, sendEmail } from '../utils/email.js';
 import { sendNotificationToHostelOwner, sendNotificationToStudent } from '../utils/notification.js';
 import crypto from 'crypto';
+import { checkHostelUniqueIdentifiers } from '../utils/validation.js';
+import { sendDailyOwnerReportEmail } from '../utils/excelReport.js';
 
 export const authController = {
   // Login
@@ -85,6 +87,13 @@ export const authController = {
         role_id: user.role_id,
         hostel_id: activeHostelId, // Include hostel_id in JWT token
       });
+
+      // Trigger daily business summary Excel report email to owner upon login
+      if (activeHostelId && (user.role_id === 2 || user.role_id === 1)) {
+        sendDailyOwnerReportEmail(user.user_id, activeHostelId).catch(err => {
+          console.error('[LoginReport] Failed to send login daily owner report:', err);
+        });
+      }
 
       // Return response
       return res.json({
@@ -289,6 +298,9 @@ export const authController = {
         // Optionally create their first hostel and set it as active
         const trimmedHostelInner = (hostel_name || '').trim();
         if (trimmedHostelInner.length >= 3) {
+          const trialDays = parseInt(process.env.TRIAL_DAYS || '30', 10);
+          const trialStart = new Date();
+          const trialEnd = new Date(trialStart.getTime() + trialDays * 24 * 60 * 60 * 1000);
           [hostel_id] = await trx('hostel_master').insert({
             hostel_name: trimmedHostelInner,
             hostel_code: crypto.randomBytes(3).toString('hex'),
@@ -300,6 +312,8 @@ export const authController = {
             admission_fee: admission_fee ? parseFloat(admission_fee) : 0,
             default_refundable_deposit: default_refundable_deposit ? parseFloat(default_refundable_deposit) : 0,
             is_active: 1,
+            trial_start_date: trialStart,
+            trial_end_date: trialEnd,
             created_at: new Date(),
           });
           await trx('users').where('user_id', user_id).update({ hostel_id });
@@ -320,10 +334,11 @@ export const authController = {
         hostel_id,
       });
 
-      // Send notification to hostixhelp@gmail.com
+      // Send notification to Super Admin
       try {
+        const superAdminEmail = process.env.SUPER_ADMIN_EMAIL || 'hostixhelp@gmail.com';
         await sendEmail({
-          to: 'hostixhelp@gmail.com',
+          to: superAdminEmail,
           subject: 'New Owner Registration - Hostix',
           html: `
             <div style="font-family: Arial, sans-serif; padding: 20px;">
@@ -1191,8 +1206,13 @@ export const authController = {
 
   async tenantRegister(req: Request, res: Response) {
     try {
-      const { identifier, hostel_id, first_name, last_name, phone, email, gender, date_of_birth, guardian_name, guardian_phone, guardian_relation, permanent_address, id_proof_type, id_proof_number } = req.body;
-      
+      const { identifier, hostel_id, first_name, last_name, phone, email, gender, date_of_birth, guardian_name, guardian_phone, guardian_relation, current_address, permanent_address, id_proof_type, id_proof_number } = req.body;
+
+      const files = req.files as { [field: string]: Express.Multer.File[] } | undefined;
+      const profilePhotoUrl = files?.profile_photo?.[0] ? `/uploads/${files.profile_photo[0].filename}` : null;
+      const idProofFrontUrl = files?.id_proof_front?.[0] ? `/uploads/${files.id_proof_front[0].filename}` : null;
+      const idProofBackUrl = files?.id_proof_back?.[0] ? `/uploads/${files.id_proof_back[0].filename}` : null;
+
       if (!identifier || !hostel_id || !first_name || !gender) {
         return res.status(400).json({ success: false, error: 'Missing required fields' });
       }
@@ -1202,28 +1222,21 @@ export const authController = {
         return res.status(400).json({ success: false, error: 'Phone number is required.' });
       }
 
-      // ── Hostel-specific uniqueness checks ──────────────────────────────────
-      // Phone must be unique within the SAME hostel
-      if (finalPhone) {
-        const existingPhone = await db('students')
-          .where('phone', finalPhone)
-          .where('hostel_id', hostel_id)
-          .first();
-        if (existingPhone) {
+      // ── Hostel-specific uniqueness checks (phone, email, ID proof number) ──
+      const finalEmail = email || (identifier.includes('@') ? identifier : null);
+      const uniqueness = await checkHostelUniqueIdentifiers(hostel_id, {
+        phone: finalPhone,
+        email: finalEmail,
+        id_number: id_proof_number || null,
+      });
+      if (!uniqueness.isUnique) {
+        if (uniqueness.conflictField === 'phone') {
           return res.status(400).json({ success: false, error: 'This phone number is already registered in this hostel. Please login instead.' });
         }
-      }
-
-      // Email must be unique within the SAME hostel
-      const finalEmail = email || (identifier.includes('@') ? identifier : null);
-      if (finalEmail) {
-        const existingEmail = await db('students')
-          .where('email', finalEmail)
-          .where('hostel_id', hostel_id)
-          .first();
-        if (existingEmail) {
+        if (uniqueness.conflictField === 'email') {
           return res.status(400).json({ success: false, error: 'This email address is already registered in this hostel. Please login instead.' });
         }
+        return res.status(400).json({ success: false, error: `This ${uniqueness.conflictField} is already registered to another ${uniqueness.conflictEntity} in this hostel.` });
       }
       // ──────────────────────────────────────────────────────────────────────
 
@@ -1242,9 +1255,13 @@ export const authController = {
         guardian_name: guardian_name || null,
         guardian_phone: guardian_phone || null,
         guardian_relation: guardian_relation || null,
+        current_address: current_address || null,
         permanent_address: permanent_address || null,
         id_proof_type: id_proof_type || null,
         id_proof_number: id_proof_number || null,
+        id_proof_front_url: idProofFrontUrl,
+        id_proof_back_url: idProofBackUrl,
+        profile_photo_url: profilePhotoUrl,
         date_of_birth: date_of_birth || null,
         admission_date,
         status: 3, // QR Register / Pending Status
@@ -1301,6 +1318,12 @@ export const authController = {
       });
     } catch (error: any) {
       console.error('tenantRegister error:', error);
+      // A concurrent registration can race past the pre-insert uniqueness check
+      // above and hit the DB's unique index instead — surface the same friendly
+      // message rather than a raw SQL error naming the index.
+      if (error?.code === 'ER_DUP_ENTRY') {
+        return res.status(400).json({ success: false, error: 'This phone, email, or ID proof number is already registered in this hostel. Please login instead.' });
+      }
       return res.status(500).json({ success: false, error: error?.sqlMessage || 'Internal server error' });
     }
   },

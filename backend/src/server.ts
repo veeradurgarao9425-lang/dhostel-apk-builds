@@ -37,6 +37,7 @@ import leaveVisitorRoutes from './routes/leaveVisitorRoutes.js';
 import messMenuRoutes from './routes/messMenuRoutes.js';
 import tenantExpenseRoutes from './routes/tenantExpenseRoutes.js';
 import splitsRoutes from './routes/splitsRoutes.js';
+import growthRoutes from './routes/growthRoutes.js';
 import messSkipRoutes from './routes/messSkipRoutes.js';
 import ratingRoutes from './routes/ratingRoutes.js';
 import subscriptionRoutes from './routes/subscriptionRoutes.js';
@@ -48,7 +49,9 @@ import { startWeeklyReportsJob } from './jobs/weeklyReports.js';
 import { startMonthlyReportsJob } from './jobs/monthlyReports.js';
 import { startFeeRemindersJob } from './jobs/feeReminders.js';
 import { startOwnerDailyAlertsJob } from './jobs/ownerDailyAlerts.js';
+import { startDailyExcelReportsJob } from './jobs/dailyExcelReports.js';
 import { sendNotificationToHostelOwner } from './utils/notification.js';
+import { checkHostelUniqueIdentifiers } from './utils/validation.js';
 
 
 // Start Background Jobs
@@ -60,9 +63,18 @@ startWeeklyReportsJob();
 startMonthlyReportsJob();
 startFeeRemindersJob();
 startOwnerDailyAlertsJob();
+startDailyExcelReportsJob();
 
 
 const app = express();
+
+// Trust the first hop (Render/Railway/nginx etc. sit in front of this process).
+// Without this, express-rate-limit keys every request off the proxy's IP
+// instead of the real client IP, so ALL users share one rate-limit bucket —
+// a handful of logins/OTP sends across the whole user base would lock
+// everyone out simultaneously.
+app.set('trust proxy', 1);
+
 const httpServer = createServer(app);
 setupSocket(httpServer);
 
@@ -96,7 +108,12 @@ const authLimiter = rateLimit({
 
 const otpLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 3,              // max 3 OTP requests per minute (prevents SMS bombing)
+  // Many tenants of the same hostel share one public IP (hostel WiFi/NAT), so
+  // this bucket is per-building, not per-person — keep enough headroom that a
+  // handful of tenants requesting an OTP in the same minute (e.g. right after
+  // a payment reminder push) don't lock each other out, while still bounding
+  // SMS-bombing abuse from a single source.
+  max: 10,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, error: 'Too many OTP requests, please wait before trying again.' },
@@ -167,6 +184,7 @@ app.use('/api/requests', leaveVisitorRoutes);
 app.use('/api/mess-menu', messMenuRoutes);
 app.use('/api/tenant-expenses', tenantExpenseRoutes);
 app.use('/api/splits', splitsRoutes);
+app.use('/api/growth', growthRoutes);
 app.use('/api/mess', messSkipRoutes);
 app.use('/api/ratings', ratingRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
@@ -603,8 +621,16 @@ app.post('/api/public/qr-signup', qrSignupUpload.fields([
     const hostelExists = await db('hostel_master').where('hostel_id', numHostelId).first();
     if (!hostelExists) return sendError('This hostel link is no longer valid');
 
-    const existingAadhaar = await db('students').where({ hostel_id: numHostelId, id_proof_number: String(id_proof_number).trim() }).first();
-    if (existingAadhaar) return sendError('This Aadhaar number is already registered in this hostel.');
+    const uniqueness = await checkHostelUniqueIdentifiers(numHostelId, {
+      phone: String(phone).trim(),
+      email: email ? String(email).trim() : null,
+      id_number: cleanId,
+    });
+    if (!uniqueness.isUnique) {
+      if (uniqueness.conflictField === 'phone') return sendError('This phone number is already registered in this hostel.');
+      if (uniqueness.conflictField === 'email') return sendError('This email address is already registered in this hostel.');
+      return sendError('This ID proof number is already registered in this hostel.');
+    }
 
     const now = new Date();
     const insertData: any = {
@@ -628,6 +654,8 @@ app.post('/api/public/qr-signup', qrSignupUpload.fields([
       id_proof_type:    typeId,
       id_proof_number:  String(id_proof_number).trim(),
       id_proof_status:  1, // Submitted
+      id_proof_front_url: aadhaarFrontFile ? `/uploads/${aadhaarFrontFile.filename}` : null,
+      id_proof_back_url:  aadhaarBackFile  ? `/uploads/${aadhaarBackFile.filename}`  : null,
     };
 
     const [newStudentId] = await db('students').insert(insertData);

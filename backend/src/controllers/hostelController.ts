@@ -209,7 +209,7 @@ export const createHostel = async (req: AuthRequest, res: Response) => {
       };
 
       await sendEmail({
-        to: 'hostixhelp@gmail.com', // Replace with actual Super Admin email if dynamic
+        to: process.env.SUPER_ADMIN_EMAIL || 'hostixhelp@gmail.com',
         subject: 'New Hostel Registration Alert - Hostix',
         html: getSuperAdminNewRegistrationTemplate(superAdminInfo),
         emailType: 'Super Admin Alert',

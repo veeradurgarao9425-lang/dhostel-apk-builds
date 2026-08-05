@@ -1,166 +1,9 @@
 import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
-import { sendNotificationToHostelOwner } from '../utils/notification.js';
+import { sendNotificationToHostelOwner, sendNotificationToStudent } from '../utils/notification.js';
 import { io } from '../socket/index.js';
-import { resolveScopedHostelId } from '../utils/scope.js';
-
-// Version marker to verify the fix is deployed
-const FIX_VERSION = 'v2.0-carry-forward-fix-2026-01-04';
-console.log(`[monthlyFeeController] Loaded with fix version: ${FIX_VERSION}`);
-
-// Diagnostic endpoint to check carry_forward calculation for a student
-export const diagnoseCarryForward = async (req: AuthRequest, res: Response) => {
-  console.log(`\n${'='.repeat(60)}`);
-  console.log(`[DIAGNOSTIC] Fix Version: ${FIX_VERSION}`);
-  console.log(`${'='.repeat(60)}`);
-
-  try {
-    const { student_id, fee_month } = req.query;
-
-    if (!student_id || !fee_month) {
-      return res.status(400).json({
-        success: false,
-        error: 'Required: student_id and fee_month (format: YYYY-MM)'
-      });
-    }
-
-    const studentId = parseInt(student_id as string);
-    const [year, month] = (fee_month as string).split('-');
-
-    // Get previous month
-    const prevMonthDate = new Date(parseInt(year), parseInt(month) - 2, 1);
-    const prevMonth = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}`;
-
-    console.log(`[DIAGNOSTIC] Student ID: ${studentId}`);
-    console.log(`[DIAGNOSTIC] Target Month: ${fee_month}`);
-    console.log(`[DIAGNOSTIC] Previous Month: ${prevMonth}`);
-
-    // Get student info
-    const student = await db('students').where('student_id', studentId).first();
-    console.log(`[DIAGNOSTIC] Student: ${student?.first_name} ${student?.last_name}`);
-
-    // Get previous month's fee record
-    const prevMonthFee = await db('monthly_fees')
-      .where({ student_id: studentId, fee_month: prevMonth })
-      .first();
-
-    console.log(`\n[DIAGNOSTIC] Previous Month (${prevMonth}) Fee Record:`);
-    if (prevMonthFee) {
-      console.log(`  - fee_id: ${prevMonthFee.fee_id}`);
-      console.log(`  - monthly_rent: ${prevMonthFee.monthly_rent}`);
-      console.log(`  - carry_forward: ${prevMonthFee.carry_forward}`);
-      console.log(`  - total_due: ${prevMonthFee.total_due}`);
-      console.log(`  - paid_amount: ${prevMonthFee.paid_amount}`);
-      console.log(`  - balance: ${prevMonthFee.balance}`);
-      console.log(`  - fee_status: ${prevMonthFee.fee_status}`);
-
-      // Get payments from fee_payments table
-      const payments = await db('fee_payments')
-        .where('fee_id', prevMonthFee.fee_id)
-        .select('*');
-
-      console.log(`\n[DIAGNOSTIC] Payments in fee_payments table for fee_id ${prevMonthFee.fee_id}:`);
-      if (payments.length === 0) {
-        console.log(`  - NO PAYMENTS FOUND IN fee_payments TABLE!`);
-        console.log(`  - This means paid_amount was set directly in monthly_fees`);
-      } else {
-        for (const p of payments) {
-          console.log(`  - payment_id: ${p.payment_id}, amount: ${p.amount}, date: ${p.payment_date}`);
-        }
-      }
-
-      // Calculate what carry_forward SHOULD be
-      const paymentsSum = await db('fee_payments')
-        .where('fee_id', prevMonthFee.fee_id)
-        .sum('amount as total');
-      const paymentsSumValue = parseFloat(paymentsSum[0]?.total || 0);
-      const storedPaidAmount = parseFloat(prevMonthFee.paid_amount || 0);
-      const actualPaid = paymentsSumValue > 0 ? paymentsSumValue : storedPaidAmount;
-      const totalDue = parseFloat(prevMonthFee.total_due || 0);
-      const correctCarryForward = totalDue - actualPaid;
-
-      console.log(`\n[DIAGNOSTIC] Carry Forward Calculation:`);
-      console.log(`  - fee_payments SUM: ${paymentsSumValue}`);
-      console.log(`  - monthly_fees.paid_amount: ${storedPaidAmount}`);
-      console.log(`  - Using actualPaid: ${actualPaid} (${paymentsSumValue > 0 ? 'from fee_payments' : 'from monthly_fees.paid_amount'})`);
-      console.log(`  - total_due: ${totalDue}`);
-      console.log(`  - CORRECT carry_forward = max(0, ${totalDue} - ${actualPaid}) = ${correctCarryForward}`);
-    } else {
-      console.log(`  - NO FEE RECORD FOUND FOR ${prevMonth}`);
-    }
-
-    // Get current month's fee record
-    const currentMonthFee = await db('monthly_fees')
-      .where({ student_id: studentId, fee_month: fee_month })
-      .first();
-
-    console.log(`\n[DIAGNOSTIC] Current Month (${fee_month}) Fee Record:`);
-    if (currentMonthFee) {
-      console.log(`  - fee_id: ${currentMonthFee.fee_id}`);
-      console.log(`  - monthly_rent: ${currentMonthFee.monthly_rent}`);
-      console.log(`  - carry_forward: ${currentMonthFee.carry_forward} ${currentMonthFee.carry_forward != (prevMonthFee ? (parseFloat(prevMonthFee.total_due || 0) - parseFloat(prevMonthFee.paid_amount || 0)) : 0) ? '❌ WRONG!' : '✓ CORRECT'}`);
-      console.log(`  - total_due: ${currentMonthFee.total_due}`);
-      console.log(`  - paid_amount: ${currentMonthFee.paid_amount}`);
-      console.log(`  - balance: ${currentMonthFee.balance}`);
-      console.log(`  - fee_status: ${currentMonthFee.fee_status}`);
-    } else {
-      console.log(`  - NO FEE RECORD FOUND FOR ${fee_month}`);
-    }
-
-    console.log(`\n${'='.repeat(60)}\n`);
-
-    // Return diagnostic info
-    res.json({
-      success: true,
-      fix_version: FIX_VERSION,
-      student: {
-        student_id: studentId,
-        name: student ? `${student.first_name} ${student.last_name}` : 'Not found'
-      },
-      previous_month: {
-        month: prevMonth,
-        fee_record: prevMonthFee ? {
-          fee_id: prevMonthFee.fee_id,
-          monthly_rent: parseFloat(prevMonthFee.monthly_rent || 0),
-          carry_forward: parseFloat(prevMonthFee.carry_forward || 0),
-          total_due: parseFloat(prevMonthFee.total_due || 0),
-          paid_amount: parseFloat(prevMonthFee.paid_amount || 0),
-          balance: parseFloat(prevMonthFee.balance || 0),
-          fee_status: prevMonthFee.fee_status
-        } : null,
-        payments_in_fee_payments_table: prevMonthFee ? await db('fee_payments').where('fee_id', prevMonthFee.fee_id).select('payment_id', 'amount', 'payment_date') : []
-      },
-      current_month: {
-        month: fee_month,
-        fee_record: currentMonthFee ? {
-          fee_id: currentMonthFee.fee_id,
-          monthly_rent: parseFloat(currentMonthFee.monthly_rent || 0),
-          carry_forward: parseFloat(currentMonthFee.carry_forward || 0),
-          total_due: parseFloat(currentMonthFee.total_due || 0),
-          paid_amount: parseFloat(currentMonthFee.paid_amount || 0),
-          balance: parseFloat(currentMonthFee.balance || 0),
-          fee_status: currentMonthFee.fee_status
-        } : null
-      },
-      calculation: prevMonthFee ? {
-        fee_payments_sum: parseFloat((await db('fee_payments').where('fee_id', prevMonthFee.fee_id).sum('amount as total'))[0]?.total || 0),
-        stored_paid_amount: parseFloat(prevMonthFee.paid_amount || 0),
-        total_due: parseFloat(prevMonthFee.total_due || 0),
-        correct_carry_forward: parseFloat(prevMonthFee.total_due || 0) - Math.max(
-          parseFloat((await db('fee_payments').where('fee_id', prevMonthFee.fee_id).sum('amount as total'))[0]?.total || 0),
-          parseFloat(prevMonthFee.paid_amount || 0)
-        )
-      } : null
-    });
-  } catch (error: any) {
-    console.error('[diagnoseCarryForward] Error:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-};
+import { resolveScopedHostelId, canAccessHostel } from '../utils/scope.js';
 
 // Helper function to cascade update future months' carry_forward when a payment is made
 // This ensures that paying a previous month correctly updates all subsequent months
@@ -1297,6 +1140,15 @@ export const recordPayment = async (req: AuthRequest, res: Response) => {
         { payment_id: paymentId, student_id }
       ).catch(err => console.error('Failed to send payment collection notification:', err));
 
+      sendNotificationToStudent(
+        student_id,
+        'General',
+        'Payment Recorded',
+        `A payment of ₹${amount} has been recorded for your rent.`,
+        'Medium',
+        { payment_id: paymentId }
+      ).catch(err => console.error('Failed to send payment recording notification to student:', err));
+
       res.status(201).json({
         success: true,
         message: 'Payment recorded successfully',
@@ -2064,6 +1916,13 @@ export const updatePayment = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    if (!canAccessHostel(req.user, currentPayment.hostel_id)) {
+      return res.status(403).json({
+        success: false,
+        error: 'You do not have access to this payment.'
+      });
+    }
+
     const feeId = currentPayment.fee_id;
     const oldAmount = currentPayment.amount;
 
@@ -2209,6 +2068,13 @@ export const deletePayment = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({
         success: false,
         error: 'Payment not found'
+      });
+    }
+
+    if (!canAccessHostel(req.user, payment.hostel_id)) {
+      return res.status(403).json({
+        success: false,
+        error: 'You do not have access to this payment.'
       });
     }
 
@@ -2373,43 +2239,3 @@ export const getPaymentModes = async (req: AuthRequest, res: Response) => {
   }
 };
 
-// Debug database columns and tables
-export const debugDatabase = async (req: any, res: any) => {
-  try {
-    const tables = await db.raw("SHOW TABLES");
-    
-    let feePaymentsColumns = [];
-    try {
-      feePaymentsColumns = await db.raw("DESCRIBE fee_payments");
-    } catch (e: any) {
-      feePaymentsColumns = [{ error: e.message }];
-    }
-    
-    let monthlyFeesColumns = [];
-    try {
-      monthlyFeesColumns = await db.raw("DESCRIBE monthly_fees");
-    } catch (e: any) {
-      monthlyFeesColumns = [{ error: e.message }];
-    }
-
-    let feeHistoryColumns = [];
-    try {
-      feeHistoryColumns = await db.raw("DESCRIBE fee_history");
-    } catch (e: any) {
-      feeHistoryColumns = [{ error: e.message }];
-    }
-
-    res.json({
-      success: true,
-      tables: tables[0],
-      fee_payments: feePaymentsColumns[0],
-      monthly_fees: monthlyFeesColumns[0],
-      fee_history: feeHistoryColumns[0]
-    });
-  } catch (error: any) {
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-};

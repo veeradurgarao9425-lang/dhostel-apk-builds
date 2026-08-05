@@ -16,6 +16,8 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState } from '../components/ui/ErrorState';
 import { SkeletonList } from '../components/ui/SkeletonCard';
 import { StatCard } from '../components/ui/StatCard';
+import { ModalSheet } from '../components/FormComponents';
+
 
 const MiniStatCard = ({ title, value, icon, color }: any) => {
     return (
@@ -63,13 +65,19 @@ export default function GuestsScreen() {
         visible: false, guest: null, mode: 'delete'
     });
 
+    // Auto-bill checkout sheet state
+    const [checkoutSheet, setCheckoutSheet] = useState<{ visible: boolean; guest: any | null; totalBill: number; finalAmount: string }>({
+        visible: false, guest: null, totalBill: 0, finalAmount: ''
+    });
+    const [checkoutLoading, setCheckoutLoading] = useState(false);
+
     const fetchGuests = useCallback(async (silent = false) => {
         try {
             if (!silent) setLoading(true);
             setError(false);
             const params: Record<string, any> = {};
             if (dateFilter) {
-                params.date = toLocalDateStr(dateFilter);
+                params.date = toLocalDateStr(new Date(dateFilter));
             }
             const res = await api.get('/guests', { params });
             if (res.data?.success) {
@@ -103,11 +111,38 @@ export default function GuestsScreen() {
     }, [dateFilter, fetchGuests]);
 
     const handleCheckout = (guest: any) => {
-        setDangerModal({ visible: true, guest, mode: 'checkout' });
+        // Compute auto bill preview: days × per_day_amount
+        const days = Number(guest.days) || 1;
+        const perDay = Number(guest.per_day_amount) || 0;
+        const totalBill = days * perDay;
+        setCheckoutSheet({ visible: true, guest, totalBill, finalAmount: totalBill.toString() });
     };
 
     const handleDelete = (guest: any) => {
         setDangerModal({ visible: true, guest, mode: 'delete' });
+    };
+
+    const handleConfirmCheckout = async () => {
+        if (!checkoutSheet.guest) return;
+        setCheckoutLoading(true);
+        try {
+            const res = await api.post(`/guests/${checkoutSheet.guest.guest_id}/checkout`, {
+                final_amount: parseFloat(checkoutSheet.finalAmount) || 0,
+                checked_out_at: new Date().toISOString().split('T')[0],
+            });
+            if (res.data?.success) {
+                showSuccess(
+                    `Guest checked out. Collected: ₹${Number(checkoutSheet.finalAmount || 0).toLocaleString('en-IN')}`,
+                    'Checkout Complete'
+                );
+                setCheckoutSheet(p => ({ ...p, visible: false }));
+                fetchGuests(true);
+            }
+        } catch (e) {
+            showApiError(e, 'Failed to check out guest');
+        } finally {
+            setCheckoutLoading(false);
+        }
     };
 
     const handleDangerConfirm = async () => {
@@ -115,16 +150,13 @@ export default function GuestsScreen() {
         setDangerModal(p => ({ ...p, visible: false }));
         if (!guest) return;
         try {
-            if (mode === 'checkout') {
-                await api.post(`/guests/${guest.guest_id}/checkout`);
-                showSuccess('Guest checked out successfully.');
-            } else {
+            if (mode === 'delete') {
                 await api.delete(`/guests/${guest.guest_id}`);
                 showSuccess('Guest record deleted.');
             }
             fetchGuests(true);
         } catch (e) {
-            showApiError(e, mode === 'checkout' ? 'Failed to check out guest' : 'Failed to delete guest');
+            showApiError(e, 'Failed to delete guest');
         }
     };
 
@@ -350,23 +382,92 @@ export default function GuestsScreen() {
             <DateTimePickerModal
                 isVisible={showDatePicker}
                 mode="date"
-                date={dateFilter || new Date()}
-                onConfirm={(d) => { setDateFilter(d); setShowDatePicker(false); }}
+                date={dateFilter ? new Date(dateFilter) : new Date()}
+                onConfirm={(d: Date) => { setDateFilter(d.toISOString()); setShowDatePicker(false); }}
                 onCancel={() => setShowDatePicker(false)}
             />
 
             <DangerModal
                 visible={dangerModal.visible}
-                title={dangerModal.mode === 'checkout' ? 'Check Out Guest?' : 'Delete Guest?'}
-                message={
-                    dangerModal.mode === 'checkout'
-                        ? `Mark ${dangerModal.guest?.full_name || 'this guest'} as checked out?`
-                        : `Remove ${dangerModal.guest?.full_name || 'this guest'}'s record? This cannot be undone.`
-                }
-                confirmText={dangerModal.mode === 'checkout' ? 'Check Out' : 'Delete'}
+                title={'Delete Guest?'}
+                message={`Remove ${dangerModal.guest?.full_name || 'this guest'}'s record? This cannot be undone.`}
+                confirmText={'Delete'}
                 onCancel={() => setDangerModal(p => ({ ...p, visible: false }))}
                 onConfirm={handleDangerConfirm}
             />
+
+            {/* ── Auto-Bill Checkout Sheet ── */}
+            <ModalSheet
+                visible={checkoutSheet.visible}
+                onClose={() => setCheckoutSheet(p => ({ ...p, visible: false }))}
+                maxHeight="55%"
+            >
+                <View style={{ padding: 20, gap: 16 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                        <View style={{ width: 42, height: 42, borderRadius: 14, backgroundColor: '#FEF3C7', alignItems: 'center', justifyContent: 'center' }}>
+                            <Ionicons name="log-out-outline" size={22} color="#D97706" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 16, fontWeight: '800', color: '#1F2937' }}>
+                                Check Out — {checkoutSheet.guest?.full_name || 'Guest'}
+                            </Text>
+                            <Text style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+                                {Number(checkoutSheet.guest?.days) || 1} day(s) × ₹{Number(checkoutSheet.guest?.per_day_amount) || 0}/day
+                            </Text>
+                        </View>
+                    </View>
+
+                    {/* Bill Summary */}
+                    <View style={{ backgroundColor: '#F0FDF4', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#BBF7D0', gap: 8 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                            <Text style={{ fontSize: 13, color: '#374151' }}>Computed Bill</Text>
+                            <Text style={{ fontSize: 14, fontWeight: '800', color: '#059669' }}>₹{checkoutSheet.totalBill.toLocaleString('en-IN')}</Text>
+                        </View>
+                        <View style={{ height: 1, backgroundColor: '#BBF7D0' }} />
+                        <Text style={{ fontSize: 11, color: '#6B7280' }}>
+                            💡 You can adjust the amount below if there are additional charges or discounts.
+                        </Text>
+                    </View>
+
+                    {/* Editable final amount */}
+                    <View>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#374151', marginBottom: 6 }}>Final Amount to Collect (₹)</Text>
+                        <TextInput
+                            style={{
+                                borderWidth: 1.5, borderColor: '#D1D5DB', borderRadius: 10,
+                                paddingHorizontal: 14, paddingVertical: 10,
+                                fontSize: 18, fontWeight: '800', color: '#1F2937',
+                                backgroundColor: '#FFF',
+                            }}
+                            keyboardType="numeric"
+                            value={checkoutSheet.finalAmount}
+                            onChangeText={(v) => setCheckoutSheet(p => ({ ...p, finalAmount: v.replace(/[^0-9.]/g, '') }))}
+                            placeholder="0"
+                        />
+                    </View>
+
+                    {/* Action Buttons */}
+                    <View style={{ flexDirection: 'row', gap: 12 }}>
+                        <TouchableOpacity
+                            style={{ flex: 1, paddingVertical: 13, borderRadius: 12, backgroundColor: '#F1F5F9', alignItems: 'center' }}
+                            onPress={() => setCheckoutSheet(p => ({ ...p, visible: false }))}
+                            activeOpacity={0.8}
+                        >
+                            <Text style={{ fontSize: 14, fontWeight: '700', color: '#64748B' }}>Cancel</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={{ flex: 2, paddingVertical: 13, borderRadius: 12, backgroundColor: '#059669', alignItems: 'center', opacity: checkoutLoading ? 0.7 : 1 }}
+                            onPress={handleConfirmCheckout}
+                            disabled={checkoutLoading}
+                            activeOpacity={0.85}
+                        >
+                            <Text style={{ fontSize: 14, fontWeight: '800', color: '#FFF' }}>
+                                {checkoutLoading ? 'Processing...' : `Checkout & Collect ₹${Number(checkoutSheet.finalAmount || 0).toLocaleString('en-IN')}`}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </ModalSheet>
         </View>
     );
 }
@@ -401,6 +502,9 @@ const s = StyleSheet.create({
     checkedOutText: { color: '#64748B', fontSize: 9, fontWeight: '900', letterSpacing: 0.3 },
     checkoutBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#16A34A', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
     checkoutBtnText: { color: '#FFF', fontSize: 11, fontWeight: '700' },
+    cardActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    btn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
+    btnText: { fontSize: 11, fontWeight: '700' },
     fab: {
         position: 'absolute', bottom: 45, right: 24, width: 50, height: 50, borderRadius: 25,
         justifyContent: 'center', alignItems: 'center', elevation: 5,

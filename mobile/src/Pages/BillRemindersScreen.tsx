@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity,
-    StatusBar, ActivityIndicator, Linking, RefreshControl
+    StatusBar, ActivityIndicator, Linking, RefreshControl, ScrollView
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';

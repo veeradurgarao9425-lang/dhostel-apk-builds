@@ -173,6 +173,24 @@ export const recordPayment = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    if (isNaN(parseFloat(amount_paid)) || parseFloat(amount_paid) <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'amount_paid must be a positive number'
+      });
+    }
+
+    const user = req.user;
+
+    // Only Owner (role 2) is restricted to their own hostel; Admin/Super Admin (role 1)
+    // bypasses and may record a payment for any hostel_id they specify.
+    if (user?.role_id === 2 && Number(hostel_id) !== Number(user.hostel_id)) {
+      return res.status(403).json({
+        success: false,
+        error: 'You do not have permission to record payments for this hostel.'
+      });
+    }
+
     // Generate receipt number
     const receiptNumber = `RCP${Date.now()}${Math.floor(Math.random() * 1000)}`;
 

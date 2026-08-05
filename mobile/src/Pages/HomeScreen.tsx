@@ -14,8 +14,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useToast } from '../context/ToastContext';
 import { ProfileMenu } from '../components/ProfileMenu';
-import EmptyState from '../components/ui/EmptyState';
-import SkeletonList from '../components/ui/SkeletonCard';
+import { EmptyState } from '../components/ui/EmptyState';
+import { SkeletonList } from '../components/ui/SkeletonCard';
 import { AppHeader } from '../components/AppHeader';
 import { HeaderNotification } from '../components/HeaderNotification';
 import { toLocalDateStr } from '../utils/dateUtils';
@@ -135,6 +135,7 @@ export default function HomeScreen() {
     const [switchingHostelId, setSwitchingHostelId] = useState<number | null>(null);
     const [showTour, setShowTour] = useState(false);
     const [tourStep, setTourStep] = useState(0);
+    const [renewalStudents, setRenewalStudents] = useState<any[]>([]);
 
     useEffect(() => {
         DeviceEventEmitter.emit('TOUR_STATE_CHANGE', showTour);
@@ -200,7 +201,7 @@ export default function HomeScreen() {
             }
             setHasError(false);
 
-            const [statsRes, summaryRes, hostelRes, noticeRes, overviewRes, studentsRes, complaintsRes]: any = await Promise.all([
+            const [statsRes, summaryRes, hostelRes, noticeRes, overviewRes, studentsRes, complaintsRes, renewalsRes]: any = await Promise.all([
                 api.get('/reports/dashboard-stats').catch(() => ({ data: { success: false } })),
                 api.get('/monthly-fees/summary').catch(() => ({ data: { success: false } })),
                 user?.hostel_id
@@ -211,8 +212,14 @@ export default function HomeScreen() {
                 api.get('/students?limit=250').catch(() => ({ data: { success: false } })),
                 user?.hostel_id
                     ? api.get(`/complaints/hostel/${user.hostel_id}`).catch(() => ({ data: { success: false } }))
-                    : Promise.resolve({ data: { success: false } })
+                    : Promise.resolve({ data: { success: false } }),
+                api.get('/students', { params: { renewalDueSoon: 'true', renewalDays: '15', status: 1 } }).catch(() => ({ data: { success: false } }))
             ]);
+
+            // Update renewal students if the request succeeded
+            if (renewalsRes?.data?.success) {
+                setRenewalStudents(renewalsRes.data.data || []);
+            }
 
             if (!statsRes.data?.success && !summaryRes.data?.success && !studentsRes.data?.success && !overviewRes.data?.success) {
                 setHasError(true);
@@ -775,7 +782,7 @@ export default function HomeScreen() {
                     </View>
                     <TopOverdueStudents data={data} />
                     <View collapsable={false}>
-                        <UpcomingDues data={data} />
+                        <UpcomingDues data={data} renewalStudents={renewalStudents} />
                     </View>
                     <View collapsable={false}>
                         <UpcomingCheckoutSchedules data={data} />

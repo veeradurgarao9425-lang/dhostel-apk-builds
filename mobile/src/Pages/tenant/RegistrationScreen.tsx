@@ -229,7 +229,7 @@ const OptionsDrawer = ({ visible, title, data, selectedItem, onSelect, onClose }
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function RegistrationScreen({ route, navigation }: any) {
   const { identifier, hostel_id } = route.params;
-  const { updateTokenAndUser, refreshUser } = useAuth();
+  const { completeTenantRegistration } = useAuth();
   const { showError, showSuccess } = useToast();
   const isEmail = identifier.includes('@');
 
@@ -386,27 +386,42 @@ export default function RegistrationScreen({ route, navigation }: any) {
     setErrors({});
 
     try {
-      const response = await api.post('/auth/tenant/register', {
-        identifier,
-        hostel_id,
-        first_name: firstName,
-        last_name: lastName,
-        phone,
-        email: emailAddress,
-        gender,
-        date_of_birth: dateOfBirth,
-        guardian_name: guardianName,
-        guardian_phone: guardianPhone,
-        current_address: currentAddress,
-        permanent_address: permanentAddress,
-        id_proof_type: idProofType === 'Custom' ? customIdProofType : (idProofTypesList.find(t => t.name === idProofType)?.id || idProofType),
-        id_proof_number: idProofNumber,
+      const formData = new FormData();
+      formData.append('identifier', identifier);
+      formData.append('hostel_id', String(hostel_id));
+      formData.append('first_name', firstName);
+      if (lastName) formData.append('last_name', lastName);
+      formData.append('phone', phone);
+      formData.append('email', emailAddress);
+      formData.append('gender', gender);
+      formData.append('date_of_birth', dateOfBirth);
+      if (guardianName) formData.append('guardian_name', guardianName);
+      if (guardianPhone) formData.append('guardian_phone', guardianPhone);
+      formData.append('current_address', currentAddress);
+      formData.append('permanent_address', permanentAddress);
+      formData.append('id_proof_type', String(idProofType === 'Custom' ? customIdProofType : (idProofTypesList.find(t => t.name === idProofType)?.id || idProofType)));
+      formData.append('id_proof_number', idProofNumber);
+
+      const appendImage = (field: string, uri: string | null) => {
+        if (!uri) return;
+        const ext = uri.split('.').pop() || 'jpg';
+        formData.append(field, {
+          uri,
+          name: `${field}.${ext}`,
+          type: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
+        } as any);
+      };
+      appendImage('profile_photo', profilePhoto);
+      appendImage('id_proof_front', aadhaarFront);
+      appendImage('id_proof_back', aadhaarBack);
+
+      const response = await api.post('/auth/tenant/register', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
       if (response.data?.success) {
         const { token, tenant } = response.data.data;
-        await updateTokenAndUser(token, tenant);
-        await refreshUser();
+        await completeTenantRegistration(token, tenant);
       } else {
         showError(response.data?.error || 'Registration failed.');
       }

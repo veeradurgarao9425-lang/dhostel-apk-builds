@@ -25,13 +25,17 @@ export const db = knex({
     user: process.env.DB_USER!,
     password: process.env.DB_PASSWORD!,
     database: process.env.DB_NAME!,
-    ssl: {
+    ssl: process.env.DB_SSL === 'false' ? false : {
       rejectUnauthorized: false
     }
   },
   pool: {
-    min: 5,
-    max: 20,
+    min: parseInt(process.env.DB_POOL_MIN || '2', 10),
+    max: parseInt(process.env.DB_POOL_MAX || '10', 10),
+    createTimeoutMillis: 5000,
+    acquireTimeoutMillis: 30000,
+    idleTimeoutMillis: 30000,
+    reapIntervalMillis: 1000,
   },
   acquireConnectionTimeout: 30000,
 });
@@ -202,9 +206,66 @@ async function patchDatabaseSchema() {
           console.log('[schema-patch] adding bed_id to students...');
           await db.raw("ALTER TABLE students ADD COLUMN bed_id VARCHAR(50) NULL");
         }
+        if (!columnNames.includes('current_address')) {
+          console.log('[schema-patch] adding current_address to students...');
+          await db.raw("ALTER TABLE students ADD COLUMN current_address TEXT NULL AFTER permanent_address");
+        }
+        if (!columnNames.includes('profile_photo_url')) {
+          console.log('[schema-patch] adding profile_photo_url to students...');
+          await db.raw("ALTER TABLE students ADD COLUMN profile_photo_url VARCHAR(500) NULL");
+        }
+        // ── Fee Plan columns (lump-sum billing cycle support) ──────────────────
+        if (!columnNames.includes('fee_plan')) {
+          console.log('[schema-patch] adding fee_plan to students...');
+          await db.raw("ALTER TABLE students ADD COLUMN fee_plan TINYINT NOT NULL DEFAULT 1 COMMENT '1=Monthly,3=Quarterly,6=Half-yearly,12=Yearly'");
+        }
+        if (!columnNames.includes('plan_start_date')) {
+          console.log('[schema-patch] adding plan_start_date to students...');
+          await db.raw("ALTER TABLE students ADD COLUMN plan_start_date DATE NULL COMMENT 'Start of current paid plan cycle'");
+        }
+        if (!columnNames.includes('plan_end_date')) {
+          console.log('[schema-patch] adding plan_end_date to students...');
+          await db.raw("ALTER TABLE students ADD COLUMN plan_end_date DATE NULL COMMENT 'End of current paid plan cycle'");
+        }
+        if (!columnNames.includes('plan_amount')) {
+          console.log('[schema-patch] adding plan_amount to students...');
+          await db.raw("ALTER TABLE students ADD COLUMN plan_amount DECIMAL(10,2) NULL COMMENT 'Total amount collected for current plan cycle'");
+        }
       }
     } catch (e: any) {
       console.error('[schema-patch] Error updating students columns:', e.message);
+    }
+
+    // 2.6 Hostel-scoped uniqueness on phone / ID-proof number (Aadhaar, PAN, etc.),
+    // as a DB-level backstop for the application-level checkHostelUniqueIdentifiers
+    // check — without this, two concurrent registrations for the same phone/ID
+    // could both pass the pre-insert check and both land in the DB. Scoped to
+    // (hostel_id, column) rather than global, since the same phone/ID is allowed
+    // to appear in two different hostels. MySQL unique indexes permit multiple
+    // NULLs, so rows missing phone/id_proof_number don't collide.
+    try {
+      const ensureUniqueIndex = async (table: string, indexName: string, columns: string) => {
+        const [rows] = await db.raw('SHOW INDEX FROM ?? WHERE Key_name = ?', [table, indexName]);
+        if ((rows as any[]).length === 0) {
+          console.log(`[schema-patch] adding unique index ${indexName} on ${table}(${columns})...`);
+          await db.raw(`CREATE UNIQUE INDEX ${indexName} ON ${table}(${columns})`);
+        }
+      };
+
+      if (tableNamesLower.includes('students')) {
+        await ensureUniqueIndex('students', 'idx_students_hostel_phone_uniq', 'hostel_id, phone');
+        await ensureUniqueIndex('students', 'idx_students_hostel_idproof_uniq', 'hostel_id, id_proof_number');
+      }
+      if (tableNamesLower.includes('staff')) {
+        await ensureUniqueIndex('staff', 'idx_staff_hostel_phone_uniq', 'hostel_id, phone');
+        await ensureUniqueIndex('staff', 'idx_staff_hostel_aadhaar_uniq', 'hostel_id, aadhaar_number');
+      }
+      if (tableNamesLower.includes('guests')) {
+        await ensureUniqueIndex('guests', 'idx_guests_hostel_phone_uniq', 'hostel_id, phone');
+        await ensureUniqueIndex('guests', 'idx_guests_hostel_idproof_uniq', 'hostel_id, id_proof_number');
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error adding hostel-scoped unique indexes:', e.message);
     }
 
     // Ensure hostel_master columns exist
@@ -1047,6 +1108,225 @@ async function patchDatabaseSchema() {
       console.error('[schema-patch] Error checking/adding columns to students:', e.message);
     }
 
+    // 30. Growth Journey feature ("Nova AI" tenant tab) — gamified learning tables.
+    // All content tables (paths/levels/stories/vocabulary/quiz_questions) are GLOBAL,
+    // no hostel_id — every tenant across every hostel shares the same curriculum.
+    // Only per-student state (profiles/progress/activity_log/user_vocabulary) is scoped.
+    try {
+      if (!tableNamesLower.includes('growth_profiles')) {
+        console.log('[schema-patch] creating missing growth_profiles table...');
+        await db.raw(`
+          CREATE TABLE growth_profiles (
+            student_id INT PRIMARY KEY,
+            level INT NOT NULL DEFAULT 1,
+            xp INT NOT NULL DEFAULT 0,
+            coins INT NOT NULL DEFAULT 0,
+            current_streak INT NOT NULL DEFAULT 0,
+            longest_streak INT NOT NULL DEFAULT 0,
+            last_activity_date DATE NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+      }
+
+      if (!tableNamesLower.includes('growth_paths')) {
+        console.log('[schema-patch] creating missing growth_paths table...');
+        await db.raw(`
+          CREATE TABLE growth_paths (
+            path_id INT AUTO_INCREMENT PRIMARY KEY,
+            path_key VARCHAR(50) NOT NULL UNIQUE,
+            name VARCHAR(150) NOT NULL,
+            emoji VARCHAR(10) NULL,
+            description VARCHAR(255) NULL,
+            color_hex VARCHAR(20) DEFAULT '#6D4AFF',
+            sort_order INT DEFAULT 0,
+            is_active TINYINT(1) NOT NULL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+
+        console.log('[schema-patch] seeding growth_paths (18 learning paths, english_stories active)...');
+        const paths = [
+          ['english_stories', 'English Stories', '📖', 'Easy, engaging stories in simple English', 1, 1, '#6D4AFF'],
+          ['daily_jokes', 'Daily Jokes', '😂', 'Short, family-friendly jokes to enjoy English', 2, 0, '#F59E0B'],
+          ['daily_conversations', 'Daily Conversations', '💬', 'Real conversations for everyday situations', 3, 0, '#3B82F6'],
+          ['vocabulary_builder', 'Vocabulary Builder', '🧠', 'Grow your word power every day', 4, 0, '#8B5CF6'],
+          ['speaking_practice', 'Speaking Practice', '🎤', 'Practice speaking with confidence', 5, 0, '#EC4899'],
+          ['moral_stories', 'Moral Stories', '❤️', 'Timeless lessons in simple English', 6, 0, '#EF4444'],
+          ['world_facts', 'World Facts', '🌎', 'Interesting facts from around the world', 7, 0, '#0EA5E9'],
+          ['workplace_english', 'Workplace English', '💼', 'English for the office and career', 8, 0, '#16A34A'],
+          ['travel_english', 'Travel English', '✈️', 'English for travel and adventure', 9, 0, '#06B6D4'],
+          ['interview_english', 'Interview English', '🎓', 'Ace your next interview in English', 10, 0, '#F97316'],
+          ['grammar_journey', 'Grammar Journey', '📚', 'Grammar taught naturally, not like school', 11, 0, '#6366F1'],
+          ['daily_challenge', 'Daily Challenge', '🔥', 'A fresh challenge every day', 12, 0, '#DC2626'],
+          ['brain_teasers', 'Brain Teasers', '🧩', 'Puzzles to sharpen your thinking', 13, 0, '#7C3AED'],
+          ['inspirational_stories', 'Inspirational Stories', '✨', 'Stories that motivate and uplift', 14, 0, '#DB2777'],
+          ['communication_skills', 'Communication Skills', '🎯', 'Speak and connect with confidence', 15, 0, '#059669'],
+          ['memory_challenge', 'Memory Challenge', '🧠', 'Train your memory, one round at a time', 16, 0, '#4F46E5'],
+          ['life_lessons', 'Life Lessons', '💡', 'Small lessons for a better life', 17, 0, '#D97706'],
+          ['success_stories', 'Success Stories', '🚀', 'Real stories of grit and success', 18, 0, '#0891B2'],
+        ];
+        for (const [path_key, name, emoji, description, sort_order, is_active, color_hex] of paths) {
+          await db('growth_paths').insert({ path_key, name, emoji, description, sort_order, is_active, color_hex });
+        }
+      }
+
+      if (!tableNamesLower.includes('growth_levels')) {
+        console.log('[schema-patch] creating missing growth_levels table...');
+        await db.raw(`
+          CREATE TABLE growth_levels (
+            level_id INT AUTO_INCREMENT PRIMARY KEY,
+            path_id INT NOT NULL,
+            section_title VARCHAR(255) NOT NULL,
+            level_number INT NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            xp_reward INT NOT NULL DEFAULT 20,
+            sort_order INT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (path_id) REFERENCES growth_paths(path_id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        await db.raw("CREATE UNIQUE INDEX idx_growth_levels_path_number ON growth_levels(path_id, level_number)");
+        await db.raw("CREATE INDEX idx_growth_levels_sort ON growth_levels(path_id, sort_order)");
+      }
+
+      if (!tableNamesLower.includes('growth_stories')) {
+        console.log('[schema-patch] creating missing growth_stories table...');
+        await db.raw(`
+          CREATE TABLE growth_stories (
+            story_id INT AUTO_INCREMENT PRIMARY KEY,
+            level_id INT NOT NULL UNIQUE,
+            title VARCHAR(255) NOT NULL,
+            category VARCHAR(100) NULL,
+            reading_time_minutes INT NOT NULL DEFAULT 3,
+            sentences JSON NOT NULL,
+            illustration_key VARCHAR(100) NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (level_id) REFERENCES growth_levels(level_id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+      }
+
+      if (!tableNamesLower.includes('growth_vocabulary')) {
+        console.log('[schema-patch] creating missing growth_vocabulary table...');
+        await db.raw(`
+          CREATE TABLE growth_vocabulary (
+            vocab_id INT AUTO_INCREMENT PRIMARY KEY,
+            story_id INT NOT NULL,
+            word VARCHAR(100) NOT NULL,
+            meaning VARCHAR(500) NOT NULL,
+            pronunciation VARCHAR(150) NULL,
+            synonyms VARCHAR(255) NULL,
+            example_sentence VARCHAR(500) NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (story_id) REFERENCES growth_stories(story_id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        await db.raw("CREATE INDEX idx_growth_vocabulary_story ON growth_vocabulary(story_id)");
+      }
+
+      if (!tableNamesLower.includes('growth_quiz_questions')) {
+        console.log('[schema-patch] creating missing growth_quiz_questions table...');
+        await db.raw(`
+          CREATE TABLE growth_quiz_questions (
+            question_id INT AUTO_INCREMENT PRIMARY KEY,
+            story_id INT NOT NULL,
+            question_type VARCHAR(30) NOT NULL DEFAULT 'mcq',
+            question_text VARCHAR(500) NOT NULL,
+            options JSON NULL,
+            correct_answer VARCHAR(255) NOT NULL,
+            sort_order INT NOT NULL DEFAULT 0,
+            FOREIGN KEY (story_id) REFERENCES growth_stories(story_id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        await db.raw("CREATE INDEX idx_growth_quiz_story ON growth_quiz_questions(story_id)");
+      }
+
+      if (!tableNamesLower.includes('growth_user_progress')) {
+        console.log('[schema-patch] creating missing growth_user_progress table...');
+        await db.raw(`
+          CREATE TABLE growth_user_progress (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            student_id INT NOT NULL,
+            level_id INT NOT NULL,
+            status VARCHAR(20) NOT NULL DEFAULT 'locked',
+            stars TINYINT NOT NULL DEFAULT 0,
+            best_score INT NULL,
+            attempts INT NOT NULL DEFAULT 0,
+            completed_at TIMESTAMP NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE,
+            FOREIGN KEY (level_id) REFERENCES growth_levels(level_id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        await db.raw("CREATE UNIQUE INDEX idx_growth_progress_uniq ON growth_user_progress(student_id, level_id)");
+      }
+
+      if (!tableNamesLower.includes('growth_activity_log')) {
+        console.log('[schema-patch] creating missing growth_activity_log table...');
+        await db.raw(`
+          CREATE TABLE growth_activity_log (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            student_id INT NOT NULL,
+            level_id INT NOT NULL,
+            xp_earned INT NOT NULL DEFAULT 0,
+            score INT NOT NULL DEFAULT 0,
+            completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE,
+            FOREIGN KEY (level_id) REFERENCES growth_levels(level_id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        await db.raw("CREATE INDEX idx_growth_activity_student_date ON growth_activity_log(student_id, completed_at)");
+      }
+
+      if (!tableNamesLower.includes('growth_user_vocabulary')) {
+        console.log('[schema-patch] creating missing growth_user_vocabulary table...');
+        await db.raw(`
+          CREATE TABLE growth_user_vocabulary (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            student_id INT NOT NULL,
+            vocab_id INT NOT NULL,
+            saved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE,
+            FOREIGN KEY (vocab_id) REFERENCES growth_vocabulary(vocab_id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        await db.raw("CREATE UNIQUE INDEX idx_growth_user_vocab_uniq ON growth_user_vocabulary(student_id, vocab_id)");
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error checking/creating Growth Journey tables:', e.message);
+    }
+
+    // 31. Growth Journey — activate Daily Jokes / Daily Conversations (already seeded
+    // as inactive placeholders above) and add Love Stories. Idempotent: safe to run
+    // on every boot against the shared prod DB.
+    try {
+      if (tableNamesLower.includes('growth_paths')) {
+        await db('growth_paths')
+          .whereIn('path_key', ['daily_jokes', 'daily_conversations', 'moral_stories'])
+          .update({ is_active: 1 });
+
+        const loveStories = await db('growth_paths').where({ path_key: 'love_stories' }).first();
+        if (!loveStories) {
+          console.log('[schema-patch] seeding growth_paths: love_stories...');
+          await db('growth_paths').insert({
+            path_key: 'love_stories',
+            name: 'Love Stories',
+            emoji: '💕',
+            description: 'Heartfelt stories about love and relationships',
+            sort_order: 19,
+            is_active: 1,
+            color_hex: '#F43F5E',
+          });
+        }
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error activating extra Growth Journey paths:', e.message);
+    }
+
     console.log('[schema-patch] Schema check and patch complete.');
   } catch (err: any) {
     console.error('[schema-patch] Critical error during schema patching:', err.message);
@@ -1054,15 +1334,33 @@ async function patchDatabaseSchema() {
 }
 
 // Test database connection
-db.raw('SELECT 1')
-  .then(async () => {
-    console.log('✅ Database connected successfully');
-    await patchDatabaseSchema();
-  })
-  .catch((err) => {
-    console.error('❌ Database connection failed:', err.message);
-    process.exit(1);
-  });
+// Retries the initial connectivity check with backoff before giving up.
+// A transient DB hiccup (brief connection-pool pressure, momentary network
+// blip) previously crashed the process on the very first failed attempt —
+// on a host like Render that immediately restarts a crashed process, that
+// turns one transient blip into a restart-loop hammering the DB with fresh
+// connection attempts right as it's trying to recover.
+const CONNECT_RETRY_DELAYS_MS = [2000, 4000, 8000, 16000, 30000];
 
+async function connectWithRetry() {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await db.raw('SELECT 1');
+      console.log('✅ Database connected successfully');
+      await patchDatabaseSchema();
+      return;
+    } catch (err: any) {
+      if (attempt >= CONNECT_RETRY_DELAYS_MS.length) {
+        console.error(`❌ Database connection failed after ${attempt + 1} attempts:`, err.message);
+        process.exit(1);
+      }
+      const delay = CONNECT_RETRY_DELAYS_MS[attempt];
+      console.error(`⚠️  Database connection attempt ${attempt + 1} failed (${err.message}) — retrying in ${delay / 1000}s...`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+}
+
+connectWithRetry();
 
 export default db;

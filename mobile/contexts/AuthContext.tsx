@@ -50,6 +50,7 @@ type AuthContextType = {
   connectHostel: (code: string) => Promise<{ error: any; data?: ConnectedHostel }>;
   signInOtp: (emailOrPhone: string) => Promise<{ error: any; message?: string }>;
   verifyOtp: (emailOrPhone: string, otp: string) => Promise<{ error: any; user?: User; isNewUser?: boolean; data?: any }>;
+  completeTenantRegistration: (token: string, tenantData: Partial<User>) => Promise<void>;
   disconnectHostel: () => Promise<void>;
   refreshUser: () => Promise<void>;
   // Common
@@ -71,6 +72,7 @@ const AuthContext = createContext<AuthContextType>({
   connectHostel: async () => ({ error: null }),
   signInOtp: async () => ({ error: null }),
   verifyOtp: async () => ({ error: null }),
+  completeTenantRegistration: async () => { },
   disconnectHostel: async () => { },
   refreshUser: async () => { },
   signOut: async () => { },
@@ -359,6 +361,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  // Establishes a session for a brand-new tenant right after tenantRegister
+  // succeeds. Deliberately mirrors verifyOtp's success block (setUser directly,
+  // not a merge-into-prev) — updateTokenAndUser's merge is a no-op when there
+  // was no prior logged-in user, which previously left `user` stuck at null
+  // with no forward navigation and no visible error after "Create Account".
+  const completeTenantRegistration = async (token: string, tenantData: Partial<User>) => {
+    const finalUser: User = { ...tenantData, role: 'TENANT' } as User;
+    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    setUser(finalUser);
+    await AsyncStorage.setItem('token', token);
+    await AsyncStorage.setItem('user', JSON.stringify(finalUser));
+
+    try {
+      const pushToken = await notificationService.registerForPushNotificationsAsync();
+      if (pushToken) await notificationService.sendTokenToBackend(pushToken);
+    } catch (e) {
+      if (__DEV__) console.error('Notification setup failed:', e);
+    }
+  };
+
   const disconnectHostel = async () => {
     try {
       await signOut();
@@ -467,6 +489,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     connectHostel,
     signInOtp,
     verifyOtp,
+    completeTenantRegistration,
     disconnectHostel,
     refreshUser,
     signOut,

@@ -77,10 +77,15 @@ export const EditHostelModal: React.FC<EditHostelModalProps> = ({ isOpen, onClos
 
   useEffect(() => {
     if (isOpen) {
-      fetchOwners();
+      // The owner dropdown is admin-only (owners see their own hostel's owner
+      // as read-only text below) — skip the admin-only /users/owners lookup
+      // entirely when an owner has this modal open.
+      if (!isOwner) {
+        fetchOwners();
+      }
       fetchAmenities();
     }
-  }, [isOpen]);
+  }, [isOpen, isOwner]);
 
   const fetchOwners = async () => {
     try {

@@ -1,0 +1,343 @@
+{
+  "stories": [
+    {
+      "title": "The Midnight Express Ticket",
+      "category": "travel",
+      "reading_time_minutes": 3,
+      "sentences": [
+        "Arjun had never taken an overnight train before.",
+        "He packed his bag and reached the station early.",
+        "The platform was noisy and full of people.",
+        "A vendor sold hot tea in small clay cups.",
+        "Arjun found his berth and sat by the window.",
+        "The train began to move with a gentle jerk.",
+        "Outside, the fields turned dark and quiet.",
+        "An old man across from him shared his snacks.",
+        "They talked about cricket and their hometowns for hours.",
+        "Arjun climbed to the upper berth and lay down.",
+        "The rhythm of the wheels felt like a lullaby.",
+        "He woke up as the sun rose over green hills.",
+        "The train reached his college town by morning.",
+        "Arjun smiled, already missing the journey."
+      ],
+      "vocabulary": [
+        { "word": "berth", "meaning": "a sleeping space on a train or ship", "pronunciation": "burth", "synonyms": "bunk, bed, sleeping space", "example_sentence": "She booked a lower berth so she could look outside easily." },
+        { "word": "vendor", "meaning": "a person who sells things", "pronunciation": "VEN-dor", "synonyms": "seller, hawker, trader", "example_sentence": "The vendor near the gate sold fresh oranges every morning." },
+        { "word": "platform", "meaning": "the raised area where you wait for a train", "pronunciation": "PLAT-form", "synonyms": "station area, deck, stand", "example_sentence": "We waited on the platform for almost twenty minutes." },
+        { "word": "jerk", "meaning": "a sudden, quick movement", "pronunciation": "jurk", "synonyms": "jolt, tug, lurch", "example_sentence": "The bus stopped with a sudden jerk that woke everyone up." },
+        { "word": "lullaby", "meaning": "a soft song sung to help someone sleep", "pronunciation": "LUH-luh-bye", "synonyms": "cradle song, soothing tune", "example_sentence": "Her grandmother used to sing a lullaby every night." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "Where did Arjun sit on the train?", "options": ["By the window", "Near the door", "In the dining car", "On the roof"], "correct_answer": "By the window" },
+        { "question_type": "true_false", "question_text": "Arjun had taken an overnight train many times before.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "fill_blank", "question_text": "The train began to move with a gentle ____.", "options": null, "correct_answer": "jerk" },
+        { "question_type": "vocab", "question_text": "What does 'vendor' mean?", "options": ["A person who sells things", "A train conductor", "A type of ticket", "A sleeping berth"], "correct_answer": "A person who sells things" },
+        { "question_type": "mcq", "question_text": "What did Arjun and the old man talk about?", "options": ["Cricket and hometowns", "Politics and weather", "Movies and music", "Food recipes"], "correct_answer": "Cricket and hometowns" }
+      ]
+    },
+    {
+      "title": "Wings for the First Time",
+      "category": "travel",
+      "reading_time_minutes": 2,
+      "sentences": [
+        "Priya had never been on a plane before.",
+        "Her hands were cold as she walked into the airport.",
+        "The airport looked huge and shiny like a palace.",
+        "A friendly staff member helped her find the gate.",
+        "Priya buckled her seatbelt and gripped the armrest.",
+        "The engines roared and the plane raced down the runway.",
+        "Her stomach dropped as the plane lifted into the sky.",
+        "Soon the clouds looked like soft cotton below her.",
+        "Priya pressed her face against the small window.",
+        "The city below looked like a tiny toy model.",
+        "A cheerful announcement said they would land in an hour.",
+        "Priya breathed out slowly and finally relaxed.",
+        "She decided flying was her new favorite thing."
+      ],
+      "vocabulary": [
+        { "word": "airport", "meaning": "a place where planes take off and land", "pronunciation": "AIR-port", "synonyms": "airfield, terminal", "example_sentence": "We reached the airport two hours before the flight." },
+        { "word": "gate", "meaning": "the door area where passengers board a plane", "pronunciation": "gayt", "synonyms": "boarding door, entrance", "example_sentence": "Passengers for flight 202 must go to gate number five." },
+        { "word": "runway", "meaning": "the long road planes use to take off", "pronunciation": "RUN-way", "synonyms": "airstrip, tarmac", "example_sentence": "The plane sped down the runway before lifting off." },
+        { "word": "armrest", "meaning": "the padded part where you rest your arm", "pronunciation": "ARM-rest", "synonyms": "arm support", "example_sentence": "He gripped the armrest tightly during the takeoff." },
+        { "word": "announcement", "meaning": "a message spoken to inform people", "pronunciation": "uh-NOWNCE-ment", "synonyms": "notice, statement", "example_sentence": "The announcement told us our train was delayed." }
+      ],
+      "quiz": [
+        { "question_type": "true_false", "question_text": "Priya had flown on a plane many times before.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "mcq", "question_text": "What did the clouds look like from above?", "options": ["Soft cotton", "Grey mountains", "Blue ocean", "Sharp rocks"], "correct_answer": "Soft cotton" },
+        { "question_type": "fill_blank", "question_text": "Priya buckled her seatbelt and gripped the ____.", "options": null, "correct_answer": "armrest" },
+        { "question_type": "vocab", "question_text": "What does 'runway' mean?", "options": ["The long road planes use to take off", "A type of airplane seat", "A place to buy tickets", "A kind of cloud"], "correct_answer": "The long road planes use to take off" },
+        { "question_type": "mcq", "question_text": "How did Priya feel at the end of the story?", "options": ["She decided flying was her new favorite thing", "She never wanted to fly again", "She felt sick the whole time", "She missed her flight"], "correct_answer": "She decided flying was her new favorite thing" }
+      ]
+    },
+    {
+      "title": "Lost in the Blue City",
+      "category": "travel",
+      "reading_time_minutes": 4,
+      "sentences": [
+        "Rohan visited Jodhpur for the first time during his break.",
+        "The old city was painted in shades of blue.",
+        "He wandered into the narrow lanes without a map.",
+        "Every turn looked exactly like the last one.",
+        "Rohan realized he was completely lost.",
+        "His phone had no signal in the maze of alleys.",
+        "A shopkeeper noticed his confused face and waved him over.",
+        "She offered him a cup of sweet, spiced chai.",
+        "The shopkeeper drew a rough map on a paper napkin.",
+        "Rohan thanked her and followed the little map carefully.",
+        "He passed a colorful market selling bangles and spices.",
+        "Finally, the tall fort appeared above the blue rooftops.",
+        "Rohan felt proud that he had found his way alone.",
+        "Getting lost, he decided, was the best part of the trip."
+      ],
+      "vocabulary": [
+        { "word": "wandered", "meaning": "walked around without a clear direction", "pronunciation": "WON-durd", "synonyms": "roamed, strolled, drifted", "example_sentence": "The puppy wandered around the park chasing leaves." },
+        { "word": "alleys", "meaning": "narrow lanes between buildings", "pronunciation": "AL-eez", "synonyms": "lanes, passages", "example_sentence": "Cats often hide in the quiet alleys behind shops." },
+        { "word": "shopkeeper", "meaning": "a person who owns or runs a small shop", "pronunciation": "SHOP-kee-per", "synonyms": "store owner, trader", "example_sentence": "The shopkeeper gave the children extra candy for free." },
+        { "word": "napkin", "meaning": "a small piece of paper or cloth used for wiping", "pronunciation": "NAP-kin", "synonyms": "tissue, serviette", "example_sentence": "He wrote his phone number on a napkin." },
+        { "word": "fort", "meaning": "a strong building built for defense", "pronunciation": "fort", "synonyms": "fortress, castle", "example_sentence": "Tourists climbed the hill to see the ancient fort." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "What color was the old city painted?", "options": ["Blue", "Pink", "White", "Yellow"], "correct_answer": "Blue" },
+        { "question_type": "true_false", "question_text": "Rohan used a map app on his phone to find his way.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "fill_blank", "question_text": "The shopkeeper drew a rough map on a paper ____.", "options": null, "correct_answer": "napkin" },
+        { "question_type": "vocab", "question_text": "What does 'alleys' mean?", "options": ["Narrow lanes between buildings", "A large open market", "A type of blue paint", "A tall fort"], "correct_answer": "Narrow lanes between buildings" },
+        { "question_type": "mcq", "question_text": "What finally appeared above the blue rooftops?", "options": ["The tall fort", "A railway station", "An airport", "A river"], "correct_answer": "The tall fort" }
+      ]
+    },
+    {
+      "title": "The Wrong Turn in Kochi",
+      "category": "travel",
+      "reading_time_minutes": 3,
+      "sentences": [
+        "Meera stepped off the ferry in Kochi feeling excited.",
+        "She wanted to find the famous fishing nets by herself.",
+        "Meera turned left instead of right at a busy junction.",
+        "Soon the streets felt unfamiliar and a little scary.",
+        "She asked a fruit seller for directions in broken Malayalam.",
+        "He smiled and pointed her toward the seaside road.",
+        "Meera followed the smell of salty sea air.",
+        "She passed old churches with bright red roofs.",
+        "A group of tourists were taking photos nearby.",
+        "Meera finally spotted the giant Chinese fishing nets.",
+        "She felt great relief as she reached the shore.",
+        "She laughed at herself for getting lost so easily.",
+        "The wrong turn had shown her a beautiful hidden street."
+      ],
+      "vocabulary": [
+        { "word": "ferry", "meaning": "a boat that carries people across water", "pronunciation": "FEH-ree", "synonyms": "boat, water taxi", "example_sentence": "We took the ferry across the river to save time." },
+        { "word": "junction", "meaning": "a place where roads or paths meet", "pronunciation": "JUNK-shun", "synonyms": "crossroads, intersection", "example_sentence": "Turn left at the next junction to reach the market." },
+        { "word": "unfamiliar", "meaning": "not known or recognized", "pronunciation": "un-fuh-MIL-yur", "synonyms": "strange, unknown", "example_sentence": "The unfamiliar streets made him nervous at night." },
+        { "word": "directions", "meaning": "instructions on how to reach a place", "pronunciation": "dih-REK-shunz", "synonyms": "guidance, instructions", "example_sentence": "He asked a guard for directions to the museum." },
+        { "word": "relief", "meaning": "a feeling of comfort after worry ends", "pronunciation": "rih-LEEF", "synonyms": "comfort, ease", "example_sentence": "She felt relief when the lost puppy was found safe." }
+      ],
+      "quiz": [
+        { "question_type": "true_false", "question_text": "Meera arrived in Kochi by ferry.", "options": ["True", "False"], "correct_answer": "True" },
+        { "question_type": "mcq", "question_text": "Who did Meera ask for directions?", "options": ["A fruit seller", "A police officer", "A hotel manager", "A ferry driver"], "correct_answer": "A fruit seller" },
+        { "question_type": "fill_blank", "question_text": "Soon the streets felt ____ and a little scary.", "options": null, "correct_answer": "unfamiliar" },
+        { "question_type": "vocab", "question_text": "What does 'junction' mean?", "options": ["A place where roads or paths meet", "A type of boat", "A red-roofed church", "A fishing net"], "correct_answer": "A place where roads or paths meet" },
+        { "question_type": "mcq", "question_text": "What did Meera finally find?", "options": ["The giant Chinese fishing nets", "A famous temple", "A shopping mall", "Her lost bag"], "correct_answer": "The giant Chinese fishing nets" }
+      ]
+    },
+    {
+      "title": "Four Friends, One Highway",
+      "category": "travel",
+      "reading_time_minutes": 5,
+      "sentences": [
+        "Four hostel friends planned a road trip during their long weekend.",
+        "They packed one old car with bags, snacks, and music.",
+        "Kabir was chosen to drive the first stretch of highway.",
+        "They rolled down the windows and sang loudly to old songs.",
+        "Near noon, the car began making a strange rattling sound.",
+        "They pulled over at a small roadside dhaba to check it.",
+        "A friendly mechanic there fixed a loose part in ten minutes.",
+        "The friends ate hot parathas while they waited.",
+        "Back on the highway, the mountains slowly came into view.",
+        "They stopped often to take photos at every viewpoint.",
+        "By evening, thick fog rolled across the winding road.",
+        "Kabir slowed down and drove carefully through the mist.",
+        "They finally reached their guesthouse just after sunset.",
+        "Tired and happy, they agreed it was the best trip yet."
+      ],
+      "vocabulary": [
+        { "word": "highway", "meaning": "a main road for long-distance travel", "pronunciation": "HY-way", "synonyms": "motorway, main road", "example_sentence": "Traffic on the highway was light early in the morning." },
+        { "word": "rattling", "meaning": "making a series of quick knocking sounds", "pronunciation": "RAT-ling", "synonyms": "clattering, shaking", "example_sentence": "The old fan kept rattling until someone fixed the screw." },
+        { "word": "dhaba", "meaning": "a small roadside restaurant common in India", "pronunciation": "DHAH-bah", "synonyms": "roadside eatery, small restaurant", "example_sentence": "Truck drivers often stop at a dhaba for cheap, tasty food." },
+        { "word": "mechanic", "meaning": "a person who repairs vehicles or machines", "pronunciation": "muh-KAN-ik", "synonyms": "repairman, technician", "example_sentence": "The mechanic checked the engine and changed the oil." },
+        { "word": "viewpoint", "meaning": "a place with a good view", "pronunciation": "VYOO-point", "synonyms": "lookout, vantage point", "example_sentence": "Tourists gathered at the viewpoint to watch the sunset." },
+        { "word": "fog", "meaning": "thick mist that makes it hard to see", "pronunciation": "fog", "synonyms": "mist, haze", "example_sentence": "Thick fog covered the valley early in the morning." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "Who drove the first stretch of the highway?", "options": ["Kabir", "Meera", "Rohan", "Priya"], "correct_answer": "Kabir" },
+        { "question_type": "true_false", "question_text": "The friends never stopped during their road trip.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "fill_blank", "question_text": "Near noon, the car began making a strange ____ sound.", "options": null, "correct_answer": "rattling" },
+        { "question_type": "vocab", "question_text": "What is a 'dhaba'?", "options": ["A small roadside restaurant", "A type of car engine", "A mountain viewpoint", "A thick fog"], "correct_answer": "A small roadside restaurant" },
+        { "question_type": "mcq", "question_text": "What weather did the friends face in the evening?", "options": ["Thick fog", "Heavy rain", "Strong wind", "Snow"], "correct_answer": "Thick fog" }
+      ]
+    },
+    {
+      "title": "The Phone That Almost Broke",
+      "category": "technology",
+      "reading_time_minutes": 2,
+      "sentences": [
+        "Aisha's phone slipped from her hand on the hostel stairs.",
+        "The screen cracked into a spider web of lines.",
+        "Her heart sank as she picked up the broken phone.",
+        "All her photos and notes felt suddenly at risk.",
+        "She rushed to a small repair shop near the campus.",
+        "A kind technician checked the phone right away.",
+        "Only the screen was damaged, he said, not the memory.",
+        "He replaced the screen in less than an hour.",
+        "Aisha promised herself she would buy a strong cover.",
+        "She backed up her photos to the cloud that same night.",
+        "The little accident taught her a useful lesson."
+      ],
+      "vocabulary": [
+        { "word": "cracked", "meaning": "broken with lines but not into separate pieces", "pronunciation": "krakt", "synonyms": "split, fractured", "example_sentence": "The old mug had a cracked handle but still worked fine." },
+        { "word": "technician", "meaning": "a person skilled in repairing machines or devices", "pronunciation": "tek-NISH-un", "synonyms": "repair expert, engineer", "example_sentence": "The technician fixed the laptop's broken keyboard quickly." },
+        { "word": "damaged", "meaning": "harmed or broken in some way", "pronunciation": "DAM-ijd", "synonyms": "broken, harmed", "example_sentence": "The damaged charger stopped working after it got wet." },
+        { "word": "backed up", "meaning": "copied files somewhere safe as protection", "pronunciation": "bakt up", "synonyms": "saved, duplicated", "example_sentence": "Always back up your work before your laptop updates." },
+        { "word": "cloud", "meaning": "online storage for files, not the sky", "pronunciation": "klowd", "synonyms": "online storage, server storage", "example_sentence": "She saved her essay to the cloud so she wouldn't lose it." }
+      ],
+      "quiz": [
+        { "question_type": "true_false", "question_text": "Aisha's phone screen cracked when it fell.", "options": ["True", "False"], "correct_answer": "True" },
+        { "question_type": "mcq", "question_text": "Where did Aisha take her broken phone?", "options": ["A small repair shop", "Her hostel warden", "An online store", "Her college library"], "correct_answer": "A small repair shop" },
+        { "question_type": "fill_blank", "question_text": "The screen ____ into a spider web of lines.", "options": null, "correct_answer": "cracked" },
+        { "question_type": "vocab", "question_text": "What does 'technician' mean?", "options": ["A person skilled in repairing machines", "A type of phone screen", "A hostel staff member", "A cloud storage app"], "correct_answer": "A person skilled in repairing machines" },
+        { "question_type": "mcq", "question_text": "What was actually damaged on Aisha's phone?", "options": ["Only the screen", "The battery", "The camera", "The memory"], "correct_answer": "Only the screen" }
+      ]
+    },
+    {
+      "title": "My Friend, The Chatbot",
+      "category": "technology",
+      "reading_time_minutes": 3,
+      "sentences": [
+        "Dev was stuck on a tricky assignment late at night.",
+        "He decided to ask an AI chatbot for help.",
+        "He typed his question carefully into the chat box.",
+        "The chatbot replied in seconds with a clear explanation.",
+        "Dev asked follow-up questions until the idea made sense.",
+        "He still checked the answer against his textbook.",
+        "The chatbot was fast, but it sometimes made mistakes.",
+        "Dev learned to double-check every important fact.",
+        "He used the tool to practice grammar before exams too.",
+        "Slowly, his confidence in writing English improved.",
+        "Dev told his roommate about this helpful new habit.",
+        "His roommate started using the chatbot for coding doubts.",
+        "Together, they treated it as a study partner, not a shortcut."
+      ],
+      "vocabulary": [
+        { "word": "chatbot", "meaning": "a computer program that can chat like a person", "pronunciation": "CHAT-bot", "synonyms": "AI assistant, virtual assistant", "example_sentence": "The chatbot on the website answered customer questions instantly." },
+        { "word": "assignment", "meaning": "a task given to a student to complete", "pronunciation": "uh-SYN-ment", "synonyms": "homework, task", "example_sentence": "She submitted her assignment just before the deadline." },
+        { "word": "explanation", "meaning": "a description that makes something clear", "pronunciation": "ek-spluh-NAY-shun", "synonyms": "clarification, description", "example_sentence": "The teacher gave a simple explanation of the difficult topic." },
+        { "word": "confidence", "meaning": "a feeling of trust in one's own abilities", "pronunciation": "KON-fih-dens", "synonyms": "self-assurance, belief", "example_sentence": "Practicing every day gave her more confidence on stage." },
+        { "word": "shortcut", "meaning": "a quicker way of doing something", "pronunciation": "SHORT-cut", "synonyms": "quick method, easy route", "example_sentence": "Copying answers is a shortcut that stops real learning." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "Why did Dev first talk to the chatbot?", "options": ["He was stuck on a tricky assignment", "He wanted to make a new friend", "He was bored at night", "His roommate told him to"], "correct_answer": "He was stuck on a tricky assignment" },
+        { "question_type": "true_false", "question_text": "Dev believed everything the chatbot said without checking it.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "fill_blank", "question_text": "The chatbot replied in seconds with a clear ____.", "options": null, "correct_answer": "explanation" },
+        { "question_type": "vocab", "question_text": "What does 'shortcut' mean?", "options": ["A quicker way of doing something", "A broken computer program", "A difficult assignment", "A type of textbook"], "correct_answer": "A quicker way of doing something" },
+        { "question_type": "mcq", "question_text": "What did Dev's roommate start using the chatbot for?", "options": ["Coding doubts", "Cooking recipes", "Travel bookings", "Music lessons"], "correct_answer": "Coding doubts" }
+      ]
+    },
+    {
+      "title": "Too Many Likes",
+      "category": "technology",
+      "reading_time_minutes": 3,
+      "sentences": [
+        "Sanya posted a new photo and watched the likes appear.",
+        "She checked her phone every few minutes for updates.",
+        "One evening, a post got fewer likes than she hoped.",
+        "Sanya felt oddly upset for the rest of the night.",
+        "Her roommate noticed she seemed quiet and distracted.",
+        "They talked about how social media could affect moods.",
+        "Sanya decided to try a small experiment for a week.",
+        "She turned off notifications and hid her like counts.",
+        "Without the constant numbers, she felt calmer almost immediately.",
+        "She spent more evenings reading and calling old friends.",
+        "Sanya still used social media, just with new limits.",
+        "She realized her worth was not measured in likes."
+      ],
+      "vocabulary": [
+        { "word": "notifications", "meaning": "alerts sent by an app to get your attention", "pronunciation": "no-tih-fih-KAY-shuns", "synonyms": "alerts, pop-ups", "example_sentence": "He turned off notifications so he could study without interruption." },
+        { "word": "distracted", "meaning": "unable to focus because attention is elsewhere", "pronunciation": "dis-TRAK-ted", "synonyms": "unfocused, sidetracked", "example_sentence": "The loud music left him distracted during the meeting." },
+        { "word": "experiment", "meaning": "a trial done to test an idea", "pronunciation": "ek-SPER-ih-ment", "synonyms": "trial, test", "example_sentence": "The class ran an experiment to see how plants grow." },
+        { "word": "moods", "meaning": "feelings a person has at a certain time", "pronunciation": "moodz", "synonyms": "feelings, states of mind", "example_sentence": "Rainy days always seem to change my moods." },
+        { "word": "worth", "meaning": "the value or importance of something", "pronunciation": "wurth", "synonyms": "value, importance", "example_sentence": "He finally understood his own worth beyond his grades." }
+      ],
+      "quiz": [
+        { "question_type": "true_false", "question_text": "Sanya's roommate did not notice any change in her.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "mcq", "question_text": "What did Sanya turn off during her experiment?", "options": ["Notifications", "Her phone data", "Her camera app", "Her alarm clock"], "correct_answer": "Notifications" },
+        { "question_type": "fill_blank", "question_text": "Sanya decided to try a small ____ for a week.", "options": null, "correct_answer": "experiment" },
+        { "question_type": "vocab", "question_text": "What does 'distracted' mean?", "options": ["Unable to focus because attention is elsewhere", "Very happy and cheerful", "Fully concentrated on a task", "Feeling tired and sleepy"], "correct_answer": "Unable to focus because attention is elsewhere" },
+        { "question_type": "mcq", "question_text": "What did Sanya realize by the end of the story?", "options": ["Her worth was not measured in likes", "She needed more followers", "Social media was completely bad", "She should delete all her apps"], "correct_answer": "Her worth was not measured in likes" }
+      ]
+    },
+    {
+      "title": "Class From My Bed",
+      "category": "technology",
+      "reading_time_minutes": 4,
+      "sentences": [
+        "Vikram had a fever and could not go to college.",
+        "Luckily, his professor was streaming the lecture online.",
+        "He propped his laptop on a pillow beside him.",
+        "The video connection froze twice during the first ten minutes.",
+        "Vikram typed his doubt into the chat window instead.",
+        "A classmate quickly explained the missed part in the chat.",
+        "The professor shared her screen to show diagrams clearly.",
+        "Vikram took notes slowly between sips of warm water.",
+        "Midway through, his internet dropped for a full minute.",
+        "He rejoined the online class just before it ended.",
+        "The recording was uploaded later for anyone who missed parts.",
+        "Vikram watched it again that night to fill the gaps.",
+        "He was grateful that being sick did not mean falling behind."
+      ],
+      "vocabulary": [
+        { "word": "streaming", "meaning": "sending video or audio over the internet live", "pronunciation": "STREE-ming", "synonyms": "broadcasting, live-casting", "example_sentence": "The concert was streaming live for fans around the world." },
+        { "word": "froze", "meaning": "stopped moving or working suddenly", "pronunciation": "frohz", "synonyms": "stalled, jammed", "example_sentence": "The screen froze right in the middle of the movie." },
+        { "word": "connection", "meaning": "a link that allows communication or data flow", "pronunciation": "kuh-NEK-shun", "synonyms": "link, network link", "example_sentence": "A weak connection made the video call very choppy." },
+        { "word": "diagrams", "meaning": "simple drawings that explain an idea", "pronunciation": "DY-uh-gramz", "synonyms": "charts, sketches", "example_sentence": "The book used diagrams to explain how the heart works." },
+        { "word": "recording", "meaning": "a saved copy of video or audio", "pronunciation": "rih-KOR-ding", "synonyms": "video copy, saved clip", "example_sentence": "She watched the recording of the meeting she had missed." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "Why couldn't Vikram go to college?", "options": ["He had a fever", "He missed the bus", "His laptop broke", "He overslept"], "correct_answer": "He had a fever" },
+        { "question_type": "true_false", "question_text": "The video connection never had any problems during the class.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "fill_blank", "question_text": "The professor shared her screen to show ____ clearly.", "options": null, "correct_answer": "diagrams" },
+        { "question_type": "vocab", "question_text": "What does 'streaming' mean?", "options": ["Sending video or audio over the internet live", "Writing notes by hand", "Fixing a broken laptop", "Sleeping during class"], "correct_answer": "Sending video or audio over the internet live" },
+        { "question_type": "mcq", "question_text": "What did Vikram do that night to fill the gaps?", "options": ["Watched the recording again", "Called his professor", "Skipped the topic entirely", "Borrowed a friend's notes only"], "correct_answer": "Watched the recording again" }
+      ]
+    },
+    {
+      "title": "The Smartwatch Surprise",
+      "category": "technology",
+      "reading_time_minutes": 2,
+      "sentences": [
+        "Neha's brother sent her a smartwatch for her birthday.",
+        "She strapped it on and explored its many features.",
+        "It buzzed gently every hour to remind her to stretch.",
+        "The watch also tracked her steps around the hostel.",
+        "One night, it noticed her heart rate was unusually high.",
+        "A quiet alert suggested she rest and drink some water.",
+        "Neha realized she had forgotten to drink water all day.",
+        "She felt thankful for the small, timely reminder.",
+        "Soon she used the watch to track her sleep too.",
+        "Neha started going to bed earlier because of the data.",
+        "The tiny gadget quietly helped her build healthier habits."
+      ],
+      "vocabulary": [
+        { "word": "smartwatch", "meaning": "a wearable device that connects to a phone and tracks activity", "pronunciation": "SMART-wach", "synonyms": "wearable device, fitness watch", "example_sentence": "His smartwatch showed his messages without taking out his phone." },
+        { "word": "buzzed", "meaning": "made a short vibrating or humming sound", "pronunciation": "buzd", "synonyms": "vibrated, hummed", "example_sentence": "Her phone buzzed twice with new messages." },
+        { "word": "tracked", "meaning": "followed and recorded information over time", "pronunciation": "trakt", "synonyms": "monitored, recorded", "example_sentence": "The app tracked how many hours he studied each day." },
+        { "word": "alert", "meaning": "a short warning or notice", "pronunciation": "uh-LURT", "synonyms": "warning, notice", "example_sentence": "An alert popped up reminding her about the meeting." },
+        { "word": "gadget", "meaning": "a small useful device or tool", "pronunciation": "GAJ-it", "synonyms": "device, tool", "example_sentence": "The tiny gadget could charge three phones at once." }
+      ],
+      "quiz": [
+        { "question_type": "true_false", "question_text": "Neha's smartwatch was a birthday gift from her brother.", "options": ["True", "False"], "correct_answer": "True" },
+        { "question_type": "mcq", "question_text": "What did the smartwatch notice one night?", "options": ["Her heart rate was unusually high", "Her phone was low on battery", "She was walking too slowly", "She missed a class"], "correct_answer": "Her heart rate was unusually high" },
+        { "question_type": "fill_blank", "question_text": "It ____ gently every hour to remind her to stretch.", "options": null, "correct_answer": "buzzed" },
+        { "question_type": "vocab", "question_text": "What does 'gadget' mean?", "options": ["A small useful device or tool", "A type of exercise", "A warning sound", "A sleeping habit"], "correct_answer": "A small useful device or tool" },
+        { "question_type": "mcq", "question_text": "What new habit did Neha start because of the watch's data?", "options": ["Going to bed earlier", "Skipping breakfast", "Avoiding water", "Ignoring her phone completely"], "correct_answer": "Going to bed earlier" }
+      ]
+    }
+  ]
+}
