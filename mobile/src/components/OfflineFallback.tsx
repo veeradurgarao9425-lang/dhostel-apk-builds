@@ -4,8 +4,6 @@ import NetInfo from '@react-native-community/netinfo';
 import { COLORS } from '../theme/index';
 import { Ionicons } from '@expo/vector-icons';
 
-const fallbackImage = require('../../assets/signalfallbackimage.jpeg');
-
 const { width, height } = Dimensions.get('window');
 
 export const OfflineFallback = ({ children }: { children: React.ReactNode }) => {

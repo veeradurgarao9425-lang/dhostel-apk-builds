@@ -199,7 +199,7 @@ export default function PendingApprovalScreen({ navigation }: any) {
           </View>
 
           <Image
-            source={require("../../assets/house_hourglass_3d.png")}
+            source={require("../../../assets/house_hourglass_3d.png")}
             style={styles.heroImgLarge}
             resizeMode="contain"
           />

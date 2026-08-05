@@ -80,7 +80,7 @@ export default function SplashScreenView({ isReady, onPainted }: Props) {
       <Animated.View style={[styles.content, { opacity: contentOpacity }]}>
         <View style={styles.logoWrap}>
           <Image
-            source={require('../../assets/icon.png')}
+            source={require('../../../assets/icon.png')}
             style={styles.logo}
             resizeMode="contain"
           />

@@ -206,7 +206,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen name="TenantRegister" component={RegistrationScreen} />
 
                     {/* Main tab container */}
-                    <Stack.Screen name="Main" component={user?.role === 'TENANT' ? (user?.status === 'Pending' ? PendingApprovalScreen : TenantTabNavigator) : OwnerTabNavigator} />
+                    <Stack.Screen name="Main" component={user?.role === 'TENANT' ? (((user?.status as any) === 'Pending' || user?.status === 3 || !user?.room_id || !user?.is_allocated) ? PendingApprovalScreen : TenantTabNavigator) : OwnerTabNavigator} />
 
                     {/* Notifications */}
                     <Stack.Screen name="Notifications" component={NotificationScreen} />
