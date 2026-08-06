@@ -266,7 +266,7 @@ export default function AddExpenseScreen({ navigation, route }: any) {
     }
   };
   const handlePickReceipt = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, quality: 0.8 });
+    let result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: false, quality: 0.8 });
     if (!result.canceled) setReceiptUri(result.assets[0].uri);
   };
 

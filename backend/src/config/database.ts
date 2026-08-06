@@ -920,6 +920,20 @@ async function patchDatabaseSchema() {
       console.error('[schema-patch] Error checking/creating tenant_expenses table:', e.message);
     }
 
+    // Ensure tenant_expenses has category column
+    try {
+      if (tableNamesLower.includes('tenant_expenses')) {
+        const [columns] = await db.raw("SHOW COLUMNS FROM tenant_expenses");
+        const columnNames = (columns as any[]).map(col => col.Field.toLowerCase());
+        if (!columnNames.includes('category')) {
+          console.log('[schema-patch] Adding missing category column to tenant_expenses...');
+          await db.raw("ALTER TABLE tenant_expenses ADD COLUMN category VARCHAR(100) NOT NULL DEFAULT 'Others'");
+        }
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error adding category column to tenant_expenses:', e.message);
+    }
+
     // 20. Ensure splits_members table exists
     try {
       if (!tableNamesLower.includes('splits_members')) {

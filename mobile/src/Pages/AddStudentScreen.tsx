@@ -1348,13 +1348,13 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                             <Text style={{ fontSize: 12, color: theme.textSecondary, marginBottom: 4 }}>
                                 Enter the deposit amount they paid previously, so they can get it back when vacating.
                             </Text>
-                            <FormInput label="Refundable Deposit" icon={CreditCard} placeholder="0" keyboardType="numeric" value={formData.refundable_deposit} editable={!isAdmissionPaid} onChangeText={(t: string) => up('refundable_deposit', t.replace(/\D/g, ''))} error={getFieldError('refundable_deposit')} />
+                            <FormInput label="Refundable Deposit (Refunded after deducting maintenance charges)" icon={CreditCard} placeholder="e.g. 1000" keyboardType="numeric" value={formData.refundable_deposit} editable={!isAdmissionPaid} onChangeText={(t: string) => up('refundable_deposit', t.replace(/\D/g, ''))} error={getFieldError('refundable_deposit')} />
                         </View>
                     ) : (
                         <>
-                            <FormInput label="Admission Fee (Non-Refundable) *" icon={CreditCard} placeholder="0" keyboardType="numeric" value={formData.admission_fee} editable={!isAdmissionPaid} onChangeText={(t: string) => up('admission_fee', t.replace(/\D/g, ''))} error={getFieldError('admission_fee')} />
+                            <FormInput label="Joining Fee *" icon={CreditCard} placeholder="e.g. 3000" keyboardType="numeric" value={formData.admission_fee} editable={!isAdmissionPaid} onChangeText={(t: string) => up('admission_fee', t.replace(/\D/g, ''))} error={getFieldError('admission_fee')} />
                             {isEdit && (
-                                <FormInput label="Refundable Deposit *" icon={CreditCard} placeholder="0" keyboardType="numeric" value={formData.refundable_deposit} editable={!isAdmissionPaid} onChangeText={(t: string) => up('refundable_deposit', t.replace(/\D/g, ''))} error={getFieldError('refundable_deposit')} />
+                                <FormInput label="Refundable Deposit (Refunded after deducting maintenance charges) *" icon={CreditCard} placeholder="e.g. 1000" keyboardType="numeric" value={formData.refundable_deposit} editable={!isAdmissionPaid} onChangeText={(t: string) => up('refundable_deposit', t.replace(/\D/g, ''))} error={getFieldError('refundable_deposit')} />
                             )}
                             <Selector label="Payment Status" options={['Paid', 'Unpaid']} selected={formData.admission_status} disabled={isAdmissionPaid} onSelect={(v: string) => up('admission_status', v)} />
                         </>

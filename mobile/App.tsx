@@ -70,16 +70,28 @@ export default function App() {
 
   React.useEffect(() => {
     if (fontsLoaded) {
-      SplashScreen.hideAsync();
+      SplashScreen.hideAsync().catch(() => {});
       
       // Global font override
-      const TextAny = Text as any;
-      if (!TextAny.defaultProps) TextAny.defaultProps = {};
-      TextAny.defaultProps.style = [{ fontFamily: 'Inter_500Medium' }, TextAny.defaultProps.style];
+      try {
+        const TextAny = Text as any;
+        if (!TextAny.defaultProps) {
+          TextAny.defaultProps = {};
+        }
+        TextAny.defaultProps.style = [{ fontFamily: 'Inter_500Medium' }, TextAny.defaultProps.style];
+      } catch (e) {
+        console.warn('Failed to override Text.defaultProps:', e);
+      }
 
-      const TextInputAny = TextInput as any;
-      if (!TextInputAny.defaultProps) TextInputAny.defaultProps = {};
-      TextInputAny.defaultProps.style = [{ fontFamily: 'Inter_500Medium' }, TextInputAny.defaultProps.style];
+      try {
+        const TextInputAny = TextInput as any;
+        if (!TextInputAny.defaultProps) {
+          TextInputAny.defaultProps = {};
+        }
+        TextInputAny.defaultProps.style = [{ fontFamily: 'Inter_500Medium' }, TextInputAny.defaultProps.style];
+      } catch (e) {
+        console.warn('Failed to override TextInput.defaultProps:', e);
+      }
     }
   }, [fontsLoaded]);
 

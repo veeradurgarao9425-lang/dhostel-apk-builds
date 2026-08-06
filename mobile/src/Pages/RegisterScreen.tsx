@@ -593,11 +593,11 @@ export default function RegisterScreen({ navigation }: any) {
                 </Field>
 
                 {/* Joining Fee */}
-                <Field label="Joining Fee (Non-Refundable)" error={getFieldError('admissionFee', admissionFee)}>
+                <Field label="Joining Fee" error={getFieldError('admissionFee', admissionFee)}>
                     <Ionicons name="card-outline" size={18} color="#7C3AED" style={styles.icon} />
                     <TextInput
                         style={styles.input}
-                        placeholder="e.g. 1000"
+                        placeholder="e.g. 3000"
                         placeholderTextColor="#B8B8B8"
                         keyboardType="numeric"
                         value={admissionFee}
@@ -607,11 +607,11 @@ export default function RegisterScreen({ navigation }: any) {
                 </Field>
 
                 {/* Refundable Deposit */}
-                <Field label="Default Refundable Deposit" error={getFieldError('defaultDeposit', defaultDeposit)}>
+                <Field label="Refundable Deposit (Refunded after deducting maintenance charges)" error={getFieldError('defaultDeposit', defaultDeposit)}>
                     <Ionicons name="cash-outline" size={18} color="#7C3AED" style={styles.icon} />
                     <TextInput
                         style={styles.input}
-                        placeholder="e.g. 5000"
+                        placeholder="e.g. 1000"
                         placeholderTextColor="#B8B8B8"
                         keyboardType="numeric"
                         value={defaultDeposit}

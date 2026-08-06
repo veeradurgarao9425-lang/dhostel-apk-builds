@@ -11,9 +11,11 @@ import {
   Dimensions,
   ScrollView,
   StatusBar,
+  Image,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../../contexts/AuthContext';
 import {
   Svg,
@@ -147,8 +149,8 @@ export function TenantHostelKeyScreen() {
       >
         <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
           <View style={styles.topRow}>
-            <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-              <Text style={{ color: WHITE, fontWeight: '700' }}>← Back</Text>
+            <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
+              <Ionicons name="arrow-back" size={22} color={WHITE} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.helpBtn} activeOpacity={0.7} onPress={() => navigation.navigate('ComingSoon')}>
               <Text style={styles.helpText}>Need help?</Text>
@@ -159,9 +161,13 @@ export function TenantHostelKeyScreen() {
 
         <View style={styles.logoSection}>
           <View style={styles.logoGlowRing}>
-            <HostixLogo />
+            <Image
+              source={require('../../../assets/HostixNew.jpeg')}
+              style={{ width: '100%', height: '100%', borderRadius: 55 }}
+              resizeMode="cover"
+            />
           </View>
-          <Text style={styles.brandName}>DHOSTEL</Text>
+          <Text style={styles.brandName}>HOSTIX</Text>
           <View style={styles.taglineRow}>
             <View style={styles.taglineLine} />
             <Text style={styles.tagline}>TENANT PORTAL</Text>
@@ -253,19 +259,10 @@ export function TenantHostelKeyScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: WHITE },
   headerSection: { paddingBottom: 0 },
-  topRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 4,
-  },
+  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 4 },
   backBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    padding: 8,
+    marginLeft: -8, // offsets padding to align icon with edge
   },
   helpBtn: {
     flexDirection: 'row',

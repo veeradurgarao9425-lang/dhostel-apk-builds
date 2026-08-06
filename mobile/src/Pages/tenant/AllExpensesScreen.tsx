@@ -9,7 +9,7 @@ import {
   Utensils, Car, ShoppingBag, Receipt,
   Film, HeartPulse, MoreHorizontal, Coffee,
   Home, Plane, Zap, Gift, BookOpen,
-  Calendar, Check, X,
+  Calendar, Check, X, Wallet, Dumbbell, Dog, Users, Fuel
 } from 'lucide-react-native';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -30,21 +30,26 @@ const BORDER    = '#E8EDF5';
 
 const CATS: Record<string, { color: string; bg: string; Icon: any }> = {
   Food:          { color: '#EF5350', bg: '#FDEAEA', Icon: Utensils },
+  Rent:          { color: '#546E7A', bg: '#ECEFF1', Icon: Home },
   Transport:     { color: BLUE,      bg: BLUE_SOFT, Icon: Car },
   Shopping:      { color: '#43A047', bg: '#EAF5EA', Icon: ShoppingBag },
-  Bills:         { color: '#FB8C00', bg: '#FFF3E0', Icon: Receipt },
-  Entertainment: { color: '#8E24AA', bg: '#F4E5FA', Icon: Film },
   Health:        { color: '#E53935', bg: '#FDEAEA', Icon: HeartPulse },
-  Coffee:        { color: '#795548', bg: '#EFEBE9', Icon: Coffee },
+  Entertainment: { color: '#8E24AA', bg: '#F4E5FA', Icon: Film },
   Travel:        { color: '#0288D1', bg: '#E1F5FE', Icon: Plane },
-  Rent:          { color: '#546E7A', bg: '#ECEFF1', Icon: Home },
+  Education:     { color: '#3949AB', bg: '#E8EAF6', Icon: BookOpen },
+  Coffee:        { color: '#795548', bg: '#EFEBE9', Icon: Coffee },
+  Gym:           { color: '#0D9488', bg: '#CCFBF1', Icon: Dumbbell },
   Utilities:     { color: '#F9A825', bg: '#FFFDE7', Icon: Zap },
   Gifts:         { color: '#00897B', bg: '#E0F2F1', Icon: Gift },
-  Education:     { color: '#3949AB', bg: '#E8EAF6', Icon: BookOpen },
+  Pets:          { color: '#D97706', bg: '#FEF3C7', Icon: Dog },
+  Bills:         { color: '#FB8C00', bg: '#FFF3E0', Icon: Receipt },
+  Family:        { color: '#8B5CF6', bg: '#EDE9FE', Icon: Users },
+  Fuel:          { color: '#F59E0B', bg: '#FEF3C7', Icon: Fuel },
+  Payment:       { color: '#16A34A', bg: '#DCFCE7', Icon: Wallet },
   Others:        { color: '#546E7A', bg: '#ECEFF1', Icon: MoreHorizontal },
 };
 
-const FILTER_CATS = ['All', 'Food', 'Transport', 'Shopping', 'Bills', 'Entertainment', 'Health', 'Coffee', 'Education', 'Others'];
+const FILTER_CATS = ['All', 'Food', 'Rent', 'Transport', 'Shopping', 'Health', 'Entertainment', 'Travel', 'Education', 'Coffee', 'Gym', 'Utilities', 'Gifts', 'Pets', 'Bills', 'Family', 'Fuel', 'Payment', 'Others'];
 const GROUP_COLORS = ['#EEF3FF', '#FFF3E0', '#EAF5EA', '#E8EAF6', '#E0F2F1'];
 
 export default function AllExpensesScreen({ navigation }: any) {
@@ -61,22 +66,49 @@ export default function AllExpensesScreen({ navigation }: any) {
 
   const fetchExpenses = useCallback(async () => {
     try {
-      const res = await api.get('/tenant-expenses');
-      if (res.data?.success) {
-        const fetched = res.data.data;
-        const formatted = fetched.map((e: any) => ({
-          id: e.expense_id,
-          title: e.title,
-          cat: e.category,
+      const [expRes, feesRes] = await Promise.allSettled([
+        api.get('/tenant-expenses'),
+        api.get('/fees/my-fees'),
+      ]);
+
+      let combinedData: any[] = [];
+
+      if (feesRes.status === 'fulfilled' && feesRes.value?.data?.success) {
+        const fees = feesRes.value.data.data;
+        fees.forEach((f: any) => {
+          if (f.payments && Array.isArray(f.payments)) {
+            f.payments.forEach((p: any) => {
+              combinedData.push({
+                id: "pay_" + p.payment_id,
+                title: `Rent Payment: ${p.payment_mode || "Online"}`,
+                cat: "Payment",
+                time: new Date(p.payment_date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+                amt: Number(p.amount),
+                date: new Date(p.payment_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+                rawDate: p.payment_date,
+              });
+            });
+          }
+        });
+      }
+
+      if (expRes.status === 'fulfilled' && expRes.value?.data?.success) {
+        const fetched = expRes.value.data.data;
+        const formattedExp = fetched.map((e: any) => ({
+          id: "exp_" + e.expense_id,
+          title: e.title || e.category,
+          cat: e.category ? e.category.trim().charAt(0).toUpperCase() + e.category.trim().slice(1).toLowerCase() : "Others",
           time: new Date(e.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
           amt: Number(e.amount),
           date: new Date(e.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
           rawDate: e.date,
         }));
-        setAllData(formatted);
+        combinedData = [...combinedData, ...formattedExp];
       }
+
+      setAllData(combinedData);
     } catch {
-      showError('Could not load expenses.');
+      showError('Could not load expenses and payments.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -143,7 +175,7 @@ export default function AllExpensesScreen({ navigation }: any) {
                 <ChevronLeft size={28} color={WHITE} strokeWidth={2.5} />
               </TouchableOpacity>
               <View>
-                <Text style={{ fontSize: 18, fontWeight: '700', color: WHITE }}>All Expenses</Text>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: WHITE }}>Expenses & Payments</Text>
                 <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 2 }}>
                   Track and review transactions
                 </Text>

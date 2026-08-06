@@ -24,15 +24,7 @@ function resolveStyle(key?: string | null) {
 }
 
 function getIllustrationSource(key?: string | null) {
-  if (!key) return require('../../../../assets/growth/general_cover.png');
-  const k = key.toLowerCase();
-  if (k.includes('cook') || k.includes('disaster') || k.includes('kitchen') || k.includes('pasta')) {
-    return require('../../../../assets/growth/cooking_disaster.png');
-  }
-  if (k.includes('bus') || k.includes('missed') || k.includes('run')) {
-    return require('../../../../assets/growth/missed_bus.png');
-  }
-  return require('../../../../assets/growth/general_cover.png');
+  return null;
 }
 
 interface Props {

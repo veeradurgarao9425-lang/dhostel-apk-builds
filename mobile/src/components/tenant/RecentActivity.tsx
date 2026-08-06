@@ -38,7 +38,7 @@ export const RecentActivity = ({ recentPayments, formatDate }: RecentActivityPro
             <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Recent Transactions</Text>
                 <TouchableOpacity
-                    onPress={() => navigation.navigate('TenantExpenses')}
+                    onPress={() => navigation.navigate('AllExpenses')}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     style={styles.viewAllBtn}
                 >

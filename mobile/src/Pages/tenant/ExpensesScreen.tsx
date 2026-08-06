@@ -4,9 +4,9 @@ import {
   Dimensions, Animated, StatusBar, TextInput, Modal,
   Share, Image, ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import Svg, { Circle, Path, Polyline, Polygon, Line, G } from 'react-native-svg';
+import Svg, { Circle, Path, Polyline, Polygon, Line, G, Rect } from 'react-native-svg';
 import {
   BarChart2, Plus, TrendingUp, TrendingDown,
   Utensils, Car, ShoppingBag, Receipt,
@@ -244,7 +244,7 @@ function SetGoalModal({ visible, currentName, currentTarget, onSave, onClose }: 
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
+      allowsEditing: false,
       aspect: [16, 9],
       quality: 0.8,
     });
@@ -256,22 +256,22 @@ function SetGoalModal({ visible, currentName, currentTarget, onSave, onClose }: 
   const daysRemaining = targetDate ? Math.max(1, Math.ceil((targetDate.getTime() - new Date().getTime()) / (1000 * 3600 * 24))) : 0;
   const dailyTarget = target && daysRemaining > 0 ? Math.ceil(Number(target) / daysRemaining) : 0;
 
-  const headerImageUrl = activeIcon === 'Custom' && customImage 
-    ? customImage 
+  const headerImageUrl = activeIcon === 'Custom' && customImage
+    ? customImage
     : imageOptions.find(o => o.id === activeIcon)?.url.replace('&w=200', '&w=800') || imageOptions[0].url;
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
-        
+
         {/* Dynamic Image Header */}
         <View style={{ height: 220, position: 'relative' }}>
-          <Image 
-            source={{ uri: headerImageUrl }} 
+          <Image
+            source={{ uri: headerImageUrl }}
             style={{ width: '100%', height: '100%' }}
           />
           <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)' }} />
-          
+
           <SafeAreaView edges={['top']} style={{ position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 20, paddingTop: 16 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <TouchableOpacity onPress={onClose} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}>
@@ -302,8 +302,8 @@ function SetGoalModal({ visible, currentName, currentTarget, onSave, onClose }: 
                 style={{ alignItems: 'center', opacity: activeIcon === item.id ? 1 : 0.6 }}
                 activeOpacity={0.8}
               >
-                <View style={{ 
-                  width: 80, height: 80, borderRadius: 20, overflow: 'hidden', 
+                <View style={{
+                  width: 80, height: 80, borderRadius: 20, overflow: 'hidden',
                   borderWidth: 3, borderColor: activeIcon === item.id ? '#4F46E5' : 'transparent',
                   shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: activeIcon === item.id ? 0.2 : 0, shadowRadius: 8, elevation: activeIcon === item.id ? 4 : 0,
                   marginBottom: 8
@@ -383,7 +383,7 @@ function SetGoalModal({ visible, currentName, currentTarget, onSave, onClose }: 
                   <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>{daysRemaining} Days Left</Text>
                 </View>
               </View>
-              
+
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', backgroundColor: 'rgba(0,0,0,0.15)', borderRadius: 16, padding: 16 }}>
                 <View>
                   <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', fontWeight: '600', marginBottom: 4 }}>Daily Target</Text>
@@ -547,6 +547,7 @@ type TabKey = 'Overview' | 'Categories' | 'Analytics';
 // MAIN SCREEN
 // ══════════════════════════════════════════════════════════════════════════════
 export default function ExpensesScreen({ navigation }: any) {
+  const insets = useSafeAreaInsets();
   const [expenses, setExpenses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
@@ -567,7 +568,9 @@ export default function ExpensesScreen({ navigation }: any) {
       try {
         const res = await api.get('/tenant-expenses/budget');
         if (res.data?.success) {
-          setBudget(Number(res.data.data.amount));
+          const amt = Number(res.data.data.amount);
+          setBudget(amt);
+          AsyncStorage.setItem('tenant_budget', amt.toString()).catch(() => {});
         }
       } catch (e) {
         console.error('Failed to load budget', e);
@@ -702,9 +705,11 @@ export default function ExpensesScreen({ navigation }: any) {
           api.get('/tenant-expenses/goal').catch(() => ({ data: { success: false } }))
         ]);
         if (budgetRes.data?.success) {
-          const amt = Number(budgetRes.data.data.amount);
-          setBudget(amt);
-          if (amt === 0) {
+          const amt = Number(budgetRes.data.data?.amount || 0);
+          const cleanAmt = isNaN(amt) ? 0 : amt;
+          setBudget(cleanAmt);
+          AsyncStorage.setItem('tenant_budget', cleanAmt.toString()).catch(() => {});
+          if (cleanAmt === 0) {
             setShowBudget(true);
           }
         }
@@ -746,7 +751,7 @@ export default function ExpensesScreen({ navigation }: any) {
     <View style={{ flex: 1, backgroundColor: BG }}>
       <StatusBar barStyle="light-content" backgroundColor={BLUE} />
       <AppHeader
-        title="My Expenses"
+        title="Expenses & Payments"
         subtitle="Track and manage your spending"
         showBack={false}
         rightComponent={
@@ -812,31 +817,37 @@ export default function ExpensesScreen({ navigation }: any) {
       </ScrollView>
 
       {tab !== 'Analytics' && (
-        <TouchableOpacity style={s.fab} onPress={() => navigation.navigate('AddExpense')} activeOpacity={0.85}>
+        <TouchableOpacity
+          style={[s.fab, { right: 24, bottom: 190 }]}
+          onPress={() => navigation.navigate('AddExpense')}
+          activeOpacity={0.85}
+        >
           <Plus size={26} color={WHITE} strokeWidth={3} />
         </TouchableOpacity>
       )}
+
 
       <SetBudgetModal visible={showBudget} currentBudget={budget} onSave={async (val) => {
         setBudget(val);
         setShowBudget(false);
         try {
+          await AsyncStorage.setItem('tenant_budget', val.toString());
           await api.post('/tenant-expenses/budget', { amount: val });
         } catch (e) {
           console.error('Failed to save budget', e);
         }
       }} onClose={() => setShowBudget(false)} />
-      <SetGoalModal visible={showGoal} currentName={goalName} currentTarget={goalTarget} onSave={async (name, target) => { 
-        setGoalName(name); 
-        setGoalTarget(target); 
-        setShowGoal(false); 
+      <SetGoalModal visible={showGoal} currentName={goalName} currentTarget={goalTarget} onSave={async (name, target) => {
+        setGoalName(name);
+        setGoalTarget(target);
+        setShowGoal(false);
         try {
           await api.post('/tenant-expenses/goal', { name, amount: target });
         } catch (e) {
           console.error('Failed to save goal', e);
         }
       }} onClose={() => setShowGoal(false)} />
-      
+
       <AddSavingsModal visible={showAddSavings} currentSaved={goalSaved} onSave={async (val) => {
         const newSaved = goalSaved + val;
         setGoalSaved(newSaved);
@@ -854,10 +865,10 @@ export default function ExpensesScreen({ navigation }: any) {
           setGoalTarget(0);
           setGoalSaved(0);
           showSuccess('Goal achieved! 🎉 You saved ₹' + goalTarget.toLocaleString('en-IN'));
-          
+
           try {
             await api.post('/tenant-expenses/goal', { amount: 0, name: 'Set Goal', saved_amount: 0 });
-          } catch(e) {}
+          } catch (e) { }
         }
       }} onClose={() => setShowAddSavings(false)} />
       <ConfirmationDialog
@@ -926,6 +937,29 @@ function MiniSparkline({ data, color = BLUE, height = 40 }: { data: any[]; color
   );
 }
 
+const SavingsJarSVG = ({ progress }: { progress: number }) => {
+  const fillHeight = Math.min(Math.max(progress, 0), 100);
+  return (
+    <Svg width={50} height={60} viewBox="0 0 60 70">
+      <Rect x={18} y={2} width={24} height={6} rx={2} fill="#15803D" />
+      <Rect x={22} y={8} width={16} height={6} fill="#22C55E" opacity={0.6} />
+      <Path
+        d="M20 14 C12 14, 8 20, 8 32 C8 50, 10 64, 20 66 L40 66 C50 66, 52 50, 52 32 C52 20, 48 14, 40 14 Z"
+        fill="rgba(34, 197, 94, 0.08)"
+        stroke="#22C55E"
+        strokeWidth={3}
+      />
+      <Path
+        d={`M20 ${66 - (fillHeight * 0.48)} C${12 + (100 - fillHeight) * 0.08} ${66 - (fillHeight * 0.48)}, 8 ${66 - (fillHeight * 0.48)}, 8 32 C8 50, 10 64, 20 66 L40 66 C50 66, 52 50, 52 32 C52 ${66 - (fillHeight * 0.48)}, ${48 - (100 - fillHeight) * 0.08} ${66 - (fillHeight * 0.48)}, 40 ${66 - (fillHeight * 0.48)} Z`}
+        fill="#22C55E"
+        opacity={0.45}
+      />
+      <Circle cx={30} cy={38} r={10} fill="#F59E0B" opacity={fillHeight > 50 ? 0.85 : 0.25} />
+      <Path d="M30 31 L30 45 M23 38 L37 38" stroke="#FFFFFF" strokeWidth={2} opacity={fillHeight > 50 ? 0.9 : 0.3} />
+    </Svg>
+  );
+};
+
 function OverviewTab({
   expenses, monthTotal, breakdown, navigation, activeCategory, onToggleCategory, onSettleUp, onReceiptOpen, budget, onEditBudget,
   goalName, goalTarget, goalProgress, goalSaved, onEditGoal, onAddSavings, completedGoals, selectedDate, todaySpent = 0, monthlyData = [], globalRecent = []
@@ -972,7 +1006,7 @@ function OverviewTab({
       {/* ── 1. Financial Health Dashboard Card ── */}
       <FadeSlideIn delay={0}>
         <View style={{ backgroundColor: WHITE, borderRadius: 20, marginBottom: 12, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#94A3B8', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 3, overflow: 'hidden' }}>
-          
+
           <View style={{ backgroundColor: '#F8FAFC', padding: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <View>
@@ -982,8 +1016,7 @@ function OverviewTab({
                   {budget > 0 && <Text style={{ fontSize: 14, fontWeight: '700', color: '#94A3B8', marginLeft: 4 }}>/ {budget}</Text>}
                 </View>
               </View>
-              
-              {budget > 0 && isCurrentMonth && (
+              {!isNaN(Number(budget)) && Number(budget) > 0 && isCurrentMonth && (
                 <View style={{ alignItems: 'flex-end', backgroundColor: todaySaved >= 0 ? '#ECFDF5' : '#FEF2F2', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, borderWidth: 1, borderColor: todaySaved >= 0 ? '#D1FAE5' : '#FEE2E2' }}>
                   <Text style={{ fontSize: 10, fontWeight: '700', color: todaySaved >= 0 ? '#059669' : '#DC2626', textTransform: 'uppercase', letterSpacing: 0.5 }}>Today's Save</Text>
                   <Text style={{ fontSize: 16, fontWeight: '800', color: todaySaved >= 0 ? '#10B981' : '#EF4444', marginTop: 0 }}>
@@ -991,8 +1024,8 @@ function OverviewTab({
                   </Text>
                 </View>
               )}
-              
-              {!budget && (
+
+              {(isNaN(Number(budget)) || Number(budget) <= 0) && (
                 <TouchableOpacity onPress={onEditBudget} style={{ backgroundColor: '#EEF2FF', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 }}>
                   <Text style={{ fontSize: 12, fontWeight: '700', color: '#4F46E5' }}>Set Budget</Text>
                 </TouchableOpacity>
@@ -1000,24 +1033,24 @@ function OverviewTab({
             </View>
           </View>
 
-          {budget > 0 && (
-             <View style={{ padding: 16 }}>
-               {/* Mini Progress Bar */}
-               <View style={{ height: 6, backgroundColor: '#F1F5F9', borderRadius: 3, marginBottom: 12, overflow: 'hidden' }}>
-                  <View style={{ width: `${Math.min(budgetPct, 100)}%`, height: '100%', backgroundColor: budgetPct >= 100 ? '#EF4444' : '#10B981', borderRadius: 3 }} />
-               </View>
+          {!isNaN(Number(budget)) && Number(budget) > 0 && (
+            <View style={{ padding: 16 }}>
+              {/* Mini Progress Bar */}
+              <View style={{ height: 6, backgroundColor: '#F1F5F9', borderRadius: 3, marginBottom: 12, overflow: 'hidden' }}>
+                <View style={{ width: `${Math.min(budgetPct, 100)}%`, height: '100%', backgroundColor: budgetPct >= 100 ? '#EF4444' : '#10B981', borderRadius: 3 }} />
+              </View>
 
-               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                   <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#94A3B8' }} />
-                   <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '600' }}>Daily Limit: <Text style={{ fontWeight: '800', color: '#0F172A' }}>₹{dailyLimit}</Text></Text>
-                 </View>
-                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                   <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#3B82F6' }} />
-                   <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '600' }}>Spent Today: <Text style={{ fontWeight: '800', color: '#0F172A' }}>₹{todaySpent}</Text></Text>
-                 </View>
-               </View>
-             </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#94A3B8' }} />
+                  <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '600' }}>Daily Limit: <Text style={{ fontWeight: '800', color: '#0F172A' }}>₹{dailyLimit}</Text></Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#3B82F6' }} />
+                  <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '600' }}>Spent Today: <Text style={{ fontWeight: '800', color: '#0F172A' }}>₹{todaySpent}</Text></Text>
+                </View>
+              </View>
+            </View>
           )}
         </View>
       </FadeSlideIn>
@@ -1056,7 +1089,7 @@ function OverviewTab({
       <FadeSlideIn delay={140}>
         {goalTarget === 0 ? (
           <TouchableOpacity
-            style={[s.card, { backgroundColor: '#F8FAFC', borderColor: '#E2E8F0', paddingVertical: 18, paddingHorizontal: 20, borderRadius: 16, flexDirection: 'row', alignItems: 'center', borderWidth: 1 }]}
+            style={[s.card, { backgroundColor: WHITE, borderColor: '#E2E8F0', paddingVertical: 18, paddingHorizontal: 20, borderRadius: 16, flexDirection: 'row', alignItems: 'center', borderWidth: 1 }]}
             activeOpacity={0.8}
             onPress={onEditGoal}
           >
@@ -1074,13 +1107,13 @@ function OverviewTab({
                 <ArrowRight size={14} color="#10B981" strokeWidth={3} />
               </View>
             </View>
-            <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: '#ECFDF5', justifyContent: 'center', alignItems: 'center', borderWidth: 4, borderColor: '#FFFFFF', shadowColor: '#10B981', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 4 }}>
-              <Target size={36} color="#10B981" strokeWidth={1.5} />
+            <View style={{ width: 110, height: 110, borderRadius: 12, overflow: 'hidden', marginRight: 4 }}>
+              <Image source={require('../../../assets/savings_jar.jpeg')} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
             </View>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
-            style={[s.card, { backgroundColor: '#F0FDF4', borderColor: '#DCFCE7', padding: 16 }]}
+            style={[s.card, { backgroundColor: WHITE, padding: 16 }]}
             activeOpacity={0.8}
             onPress={onEditGoal}
           >
@@ -1095,10 +1128,13 @@ function OverviewTab({
                 <Text style={{ fontSize: 11, fontWeight: '800', color: '#16A34A' }}>{goalName}</Text>
               </View>
             </View>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 12 }}>
-              <View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 12 }}>
+              <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 18, fontWeight: '800', color: TEXT_DARK, marginBottom: 2 }}>You're {goalProgress}% there!</Text>
                 <Text style={{ fontSize: 12, color: '#16A34A' }}>Saved ₹{goalSaved} out of ₹{goalTarget}.</Text>
+              </View>
+              <View style={{ width: 90, height: 90, borderRadius: 12, overflow: 'hidden', marginRight: 4 }}>
+                <Image source={require('../../../assets/savings_jar.jpeg')} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
               </View>
             </View>
             <View style={{ height: 8, backgroundColor: '#DCFCE7', borderRadius: 4, overflow: 'hidden' }}>
@@ -1163,81 +1199,75 @@ function OverviewTab({
       </FadeSlideIn>
 
       {/* ── 5. Recent Transactions ── */}
-      <FadeSlideIn delay={320}>
-        <View style={s.sectionRow}>
-          <Text style={s.sectionTitle}>Recent</Text>
-          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-            <TouchableOpacity style={s.iconPill} onPress={() => setShowSearch(v => !v)} activeOpacity={0.7}>
-              {showSearch ? <X size={14} color={BLUE} strokeWidth={3} /> : <Search size={14} color={BLUE} strokeWidth={2} />}
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => navigation.navigate('AllExpenses')} activeOpacity={0.7}>
-              <Text style={s.viewAll}>View All</Text>
-            </TouchableOpacity>
+      {globalRecent.length > 0 && (
+        <FadeSlideIn delay={320}>
+          <View style={s.sectionRow}>
+            <Text style={s.sectionTitle}>Recent</Text>
+            <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+              <TouchableOpacity style={s.iconPill} onPress={() => setShowSearch(v => !v)} activeOpacity={0.7}>
+                {showSearch ? <X size={14} color={BLUE} strokeWidth={3} /> : <Search size={14} color={BLUE} strokeWidth={2} />}
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate('AllExpenses')} activeOpacity={0.7}>
+                <Text style={s.viewAll}>View All</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
 
-        {/* Search input */}
-        {showSearch && (
-          <View style={s.searchBox}>
-            <Search size={15} color={TEXT_LIGHT} strokeWidth={2} />
-            <TextInput
-              style={s.searchInput} value={searchQ} onChangeText={setSearchQ}
-              placeholder="Search transactions…" placeholderTextColor={TEXT_LIGHT} autoFocus
-            />
-            {searchQ.length > 0 && <TouchableOpacity onPress={() => setSearchQ('')}><X size={14} color={TEXT_LIGHT} strokeWidth={3} /></TouchableOpacity>}
-          </View>
-        )}
+          {/* Search input */}
+          {showSearch && (
+            <View style={s.searchBox}>
+              <Search size={15} color={TEXT_LIGHT} strokeWidth={2} />
+              <TextInput
+                style={s.searchInput} value={searchQ} onChangeText={setSearchQ}
+                placeholder="Search transactions…" placeholderTextColor={TEXT_LIGHT} autoFocus
+              />
+              {searchQ.length > 0 && <TouchableOpacity onPress={() => setSearchQ('')}><X size={14} color={TEXT_LIGHT} strokeWidth={3} /></TouchableOpacity>}
+            </View>
+          )}
 
-        {/* Category filter chips - REMOVED since recent has no filters */}
-
-        {/* Transaction list */}
-        {filteredRecent.length > 0 ? (
-          <View style={{ gap: 8 }}>
-            {filteredRecent.slice(0, 5).map((item: any, i: number) => {
-              const itemTheme = getCategoryTheme(item.cat);
-              const IconComp = itemTheme.Icon;
-              return (
-                <View key={item.id} style={[s.txnCard, { marginBottom: 0, paddingVertical: 8, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 14 }]}>
-                  <View style={{ width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: itemTheme.bg }}>
-                    <IconComp size={20} color={itemTheme.color} strokeWidth={2.2} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
-                      <Text style={[s.txnTitle, { fontSize: 13, marginBottom: 0 }]}>{item.title}</Text>
-                      {item.shared && <View style={s.sharedBadge}><Users size={8} color={BLUE} strokeWidth={2.5} /><Text style={[s.sharedTxt, { fontSize: 8 }]}>Shared</Text></View>}
-                      {item.recurring && <View style={s.recurBadge}><RefreshCw size={8} color={SUCCESS} strokeWidth={2.5} /><Text style={[s.recurTxt, { fontSize: 8 }]}>Monthly</Text></View>}
+          {/* Transaction list */}
+          {filteredRecent.length > 0 ? (
+            <View style={{ gap: 8 }}>
+              {filteredRecent.slice(0, 5).map((item: any, i: number) => {
+                const itemTheme = getCategoryTheme(item.cat);
+                const IconComp = itemTheme.Icon;
+                return (
+                  <View key={item.id} style={[s.txnCard, { marginBottom: 0, paddingVertical: 8, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 14 }]}>
+                    <View style={{ width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: itemTheme.bg }}>
+                      <IconComp size={20} color={itemTheme.color} strokeWidth={2.2} />
                     </View>
-                    <Text style={[s.txnTime, { fontSize: 10, marginTop: 1 }]}>{item.time}</Text>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
+                        <Text style={[s.txnTitle, { fontSize: 13, marginBottom: 0 }]}>{item.title}</Text>
+                        {item.shared && <View style={s.sharedBadge}><Users size={8} color={BLUE} strokeWidth={2.5} /><Text style={[s.sharedTxt, { fontSize: 8 }]}>Shared</Text></View>}
+                        {item.recurring && <View style={s.recurBadge}><RefreshCw size={8} color={SUCCESS} strokeWidth={2.5} /><Text style={[s.recurTxt, { fontSize: 8 }]}>Monthly</Text></View>}
+                      </View>
+                      <Text style={[s.txnTime, { fontSize: 10, marginTop: 1 }]}>{item.time}</Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end', gap: 2 }}>
+                      <Text style={[s.txnAmt, { fontSize: 13 }]}>₹ {item.amt.toLocaleString('en-IN')}</Text>
+                      {item.hasReceipt && (
+                        <TouchableOpacity style={s.receiptTag} onPress={() => item.receiptUri && onReceiptOpen(item.receiptUri)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                          <ImageIcon size={10} color={BLUE} strokeWidth={2} />
+                          <Text style={[s.receiptTxt, { fontSize: 9 }]}>Receipt</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
                   </View>
-                  <View style={{ alignItems: 'flex-end', gap: 2 }}>
-                    <Text style={[s.txnAmt, { fontSize: 13 }]}>₹ {item.amt.toLocaleString('en-IN')}</Text>
-                    {item.hasReceipt && (
-                      <TouchableOpacity style={s.receiptTag} onPress={() => item.receiptUri && onReceiptOpen(item.receiptUri)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                        <ImageIcon size={10} color={BLUE} strokeWidth={2} />
-                        <Text style={[s.receiptTxt, { fontSize: 9 }]}>Receipt</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-        ) : (
-          <Phase3EmptyState variant="search" />
-        )}
-      </FadeSlideIn>
-
-      {/* ── Completed Goals History ── */}
-      <FadeSlideIn delay={380}>
-        <View style={{ marginTop: 24, marginBottom: 16 }}>
-          <Text style={[s.sectionTitle, { paddingHorizontal: 0, marginBottom: 12 }]}>Past Achievements</Text>
-          {completedGoals.length === 0 ? (
-            <View style={{ paddingVertical: 24, alignItems: 'center' }}>
-              <CheckCircle2 size={36} color="#CBD5E1" strokeWidth={1.5} />
-              <Text style={{ fontSize: 15, fontWeight: '700', color: TEXT_MID, marginTop: 12 }}>No completed goals yet</Text>
-              <Text style={{ fontSize: 12, color: TEXT_LIGHT, marginTop: 4, textAlign: 'center' }}>Complete your first savings goal to unlock achievements!</Text>
+                );
+              })}
             </View>
           ) : (
+            <Phase3EmptyState variant="search" />
+          )}
+        </FadeSlideIn>
+      )}
+
+      {/* ── Completed Goals History ── */}
+      {completedGoals.length > 0 && (
+        <FadeSlideIn delay={380}>
+          <View style={{ marginTop: 24, marginBottom: 16 }}>
+            <Text style={[s.sectionTitle, { paddingHorizontal: 0, marginBottom: 12 }]}>Past Achievements</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 90 }}>
               {completedGoals.map((goal: { id: number; name: string; amt: number; date: string }, index: number) => (
                 <View key={goal.id} style={[s.card, { width: 140, padding: 12, backgroundColor: '#F8FAFC', borderColor: '#E2E8F0' }]}>
@@ -1253,9 +1283,9 @@ function OverviewTab({
                 </View>
               ))}
             </ScrollView>
-          )}
-        </View>
-      </FadeSlideIn>
+          </View>
+        </FadeSlideIn>
+      )}
       <FilterSheet visible={showFilter} onClose={() => setShowFilter(false)} />
     </>
   );
@@ -1501,11 +1531,11 @@ function AnalyticsTab({ expenses, monthTotal, monthlyData, maxAmt, breakdown }: 
                     <IconComp size={18} color={itemTheme.color} strokeWidth={2.2} />
                   </View>
                   <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '700', color: TEXT_DARK }}>{cat.name}</Text>
-                  <Text style={{ fontSize: 11, color: TEXT_LIGHT, marginTop: 2 }}>{cat.pct}% of total</Text>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: TEXT_DARK }}>{cat.name}</Text>
+                    <Text style={{ fontSize: 11, color: TEXT_LIGHT, marginTop: 2 }}>{cat.pct}% of total</Text>
+                  </View>
+                  <Text style={{ fontSize: 14, fontWeight: '800', color: TEXT_DARK }}>₹{cat.amount.toLocaleString('en-IN')}</Text>
                 </View>
-                <Text style={{ fontSize: 14, fontWeight: '800', color: TEXT_DARK }}>₹{cat.amount.toLocaleString('en-IN')}</Text>
-              </View>
               );
             })}
           </View>

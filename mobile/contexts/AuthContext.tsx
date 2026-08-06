@@ -135,13 +135,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 const fresh = res.data.data;
                 const merged = { ...parsedUser, ...fresh, role: 'TENANT' };
                 setUser(merged);
-                AsyncStorage.setItem('user', JSON.stringify(merged)).catch(() => {});
+                await AsyncStorage.setItem('user', JSON.stringify(merged));
               }
             } catch (e) {
               if (__DEV__) console.warn('Background tenant refresh failed:', e);
             }
           } else {
-            void enrichUserInBackground(parsedUser);
+            await enrichUserInBackground(parsedUser);
           }
         }
       } catch (error) {
@@ -341,10 +341,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const userData = body?.data?.tenant;
 
       if (token && userData) {
-        const finalUser: User = { ...userData, role: 'TENANT' };
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        setUser(finalUser);
         await AsyncStorage.setItem('token', token);
+
+        let finalUser: User = { ...userData, role: 'TENANT' };
+        try {
+          const res = await api.get('/auth/tenant/me');
+          if (res.data?.data) {
+            finalUser = { ...finalUser, ...res.data.data, role: 'TENANT' };
+          }
+        } catch (e) {
+          if (__DEV__) console.warn('Failed to fetch full tenant profile in verifyOtp:', e);
+        }
+
+        setUser(finalUser);
         await AsyncStorage.setItem('user', JSON.stringify(finalUser));
 
         try {

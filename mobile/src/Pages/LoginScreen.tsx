@@ -142,6 +142,15 @@ export default function LoginScreen({ navigation }: any) {
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                 >
+                    {/* Back Button */}
+                    <TouchableOpacity
+                        activeOpacity={0.8}
+                        onPress={() => navigation.goBack()}
+                        style={[styles.backBtn, { top: insets.top > 0 ? insets.top + 10 : 20 }]}
+                    >
+                        <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+                    </TouchableOpacity>
+
                     {/* Decorative background circles */}
                     <View style={styles.decorCircle1} />
                     <View style={styles.decorCircle2} />
@@ -494,5 +503,11 @@ const styles = StyleSheet.create({
         marginTop: 4,
         marginLeft: 4,
         fontWeight: '600',
+    },
+    backBtn: {
+        position: 'absolute',
+        left: 16,
+        padding: 8,
+        zIndex: 50,
     },
 });

@@ -1,7 +1,7 @@
 import {
   Utensils, Car, ShoppingBag, Receipt, Film, MoreHorizontal,
   HeartPulse, Coffee, Plane, Home, Zap, Gift, BookOpen, Dumbbell, Dog,
-  Users, Fuel
+  Users, Fuel, Wallet
 } from 'lucide-react-native';
 
 export interface CategoryTheme {
@@ -94,6 +94,11 @@ export const CATEGORY_THEME: Record<string, CategoryTheme> = {
     Icon: Fuel, color: '#F59E0B', bg: '#FEF3C7',
     gradient: ['#FBBF24', '#F59E0B'],
     glowColor: '#FBBF24',
+  },
+  Payment: {
+    Icon: Wallet, color: '#16A34A', bg: '#DCFCE7',
+    gradient: ['#4ADE80', '#16A34A'],
+    glowColor: '#4ADE80',
   },
   Others: {
     Icon: MoreHorizontal, color: '#6B7280', bg: '#F3F4F6',

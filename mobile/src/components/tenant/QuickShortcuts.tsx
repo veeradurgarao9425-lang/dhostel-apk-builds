@@ -27,7 +27,7 @@ function chunk<T>(arr: T[], size: number): T[][] {
 }
 
 const NAV_MAP: Record<string, string> = {
-    Dues: 'TenantDues',
+    Dues: 'Dues',
     Splits: 'TenantSplits',
     Complaints: 'TenantComplaints',
     RoomInfo: 'TenantRoomInfo',

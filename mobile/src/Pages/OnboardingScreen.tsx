@@ -192,7 +192,7 @@ export default function OnboardingScreen() {
 
                         return (
                             // Keep the same plain View structure as original — no ScrollView wrapper
-                            <View style={{ width, height: '100%', backgroundColor: '#FFFFFF', paddingHorizontal: 24, paddingTop: isSmall ? 6 : 10 }}>
+                            <View style={{ width, height: '100%', backgroundColor: 'transparent', paddingHorizontal: 24, paddingTop: isSmall ? 6 : 10 }}>
                                 {/* Top Text */}
                                 <Animated.View style={{ transform: [{ translateY: textTranslateY }] }}>
                                     <Text style={{ color: item.color, fontSize: isSmall ? 12 : 14, fontWeight: '800', marginBottom: isSmall ? 5 : 8 }}>

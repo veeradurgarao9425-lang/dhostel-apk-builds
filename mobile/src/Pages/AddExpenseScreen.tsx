@@ -473,7 +473,7 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
                         }
                         const result = await ImagePicker.launchCameraAsync({
                             quality: 0.7,
-                            allowsEditing: true,
+                            allowsEditing: false,
                         });
                         if (!result.canceled && result.assets && result.assets.length > 0) {
                             setAttachment(result.assets[0]);
@@ -490,7 +490,7 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
                         }
                         const result = await ImagePicker.launchImageLibraryAsync({
                             quality: 0.7,
-                            allowsEditing: true,
+                            allowsEditing: false,
                             mediaTypes: ImagePicker.MediaTypeOptions.Images,
                         });
                         if (!result.canceled && result.assets && result.assets.length > 0) {

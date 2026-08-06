@@ -11,11 +11,13 @@ import {
   ScrollView,
   StatusBar,
   Dimensions,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../../contexts/AuthContext';
 import Svg, { Path, Rect, Circle, Line, Polyline } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
 
@@ -212,8 +214,8 @@ export function TenantLoginScreen({ navigation }: any) {
       >
         <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
           <View style={s.topRow}>
-            <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()}>
-              <Text style={{ color: WHITE, fontWeight: '700' }}>← Back</Text>
+            <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
+              <Ionicons name="arrow-back" size={22} color={WHITE} />
             </TouchableOpacity>
             <TouchableOpacity style={s.helpBtn} activeOpacity={0.7} onPress={() => navigation.navigate('ComingSoon')}>
               <Text style={s.helpText}>Need help?</Text>
@@ -224,9 +226,13 @@ export function TenantLoginScreen({ navigation }: any) {
 
         <View style={s.logoSection}>
           <View style={s.logoGlowRing}>
-            <HostixLogo />
+            <Image
+              source={require('../../../assets/HostixNew.jpeg')}
+              style={{ width: '100%', height: '100%', borderRadius: 55 }}
+              resizeMode="cover"
+            />
           </View>
-          <Text style={s.brandName}>DHOSTEL</Text>
+          <Text style={s.brandName}>HOSTIX</Text>
           <View style={s.taglineRow}>
             <View style={s.taglineLine} />
             <Text style={s.tagline}>TENANT LOGIN</Text>
@@ -417,7 +423,10 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: WHITE },
   headerSection: {},
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 4 },
-  backBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)' },
+  backBtn: {
+    padding: 8,
+    marginLeft: -8, // offsets padding to align icon with edge
+  },
   helpBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
   helpText: { color: WHITE, fontSize: 13, fontWeight: '600' },
   logoSection: { alignItems: 'center', paddingTop: 16, paddingBottom: 28 },

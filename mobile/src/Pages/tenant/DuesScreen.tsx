@@ -85,6 +85,28 @@ const statusConfig: Record<string, { color: string; bg: string; label: string }>
   'Overdue':        { color: colors.danger,  bg: colors.dangerSoft,  label: 'Overdue' },
 };
 
+const getPillStyle = (status?: string) => {
+  if (status === 'Pending') {
+    return {
+      bg: '#FEF3C7',
+      color: '#D97706',
+      label: 'Pending'
+    };
+  }
+  if (status === 'Rejected') {
+    return {
+      bg: '#FEE2E2',
+      color: '#EF4444',
+      label: 'Rejected'
+    };
+  }
+  return {
+    bg: colors.successSoft,
+    color: colors.success,
+    label: 'Paid'
+  };
+};
+
 // Payment mode icon/color mapping (GPay / PhonePe / Paytm style)
 const modeStyle: Record<string, { color: string; bg: string; label: string }> = {
   'upi':         { color: '#5F35B8', bg: '#EDE9FE', label: 'UPI' },
@@ -208,14 +230,14 @@ export default function DuesScreen({ route, navigation }: any) {
       return (
         <LinearGradient
           colors={['#FFFFFF', '#F8FAFC']}
-          style={{ borderRadius: 24, marginHorizontal: 20, marginTop: 16, marginBottom: 4, padding: 24, borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#2952F3', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.1, shadowRadius: 16, elevation: 4, flexDirection: 'row', alignItems: 'center' }}
+          style={{ borderRadius: 20, marginHorizontal: 20, marginTop: 16, marginBottom: 4, padding: 16, borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#2952F3', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2, flexDirection: 'row', alignItems: 'center' }}
         >
-          <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center' }}>
-            <ShieldCheck size={28} color="#2952F3" strokeWidth={2.5} />
+          <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center' }}>
+            <ShieldCheck size={20} color="#2952F3" strokeWidth={2.5} />
           </View>
-          <View style={{ flex: 1, marginLeft: 16 }}>
-            <Text style={{ fontSize: 20, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5, marginBottom: 4 }}>No Dues Yet</Text>
-            <Text style={{ fontSize: 13, color: '#64748B', fontWeight: '600' }}>Your rent and fees will appear here.</Text>
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={{ fontSize: 16, fontWeight: '800', color: '#0F172A', letterSpacing: -0.3, marginBottom: 2 }}>No Dues Yet</Text>
+            <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '600' }}>Your rent and fees will appear here.</Text>
           </View>
         </LinearGradient>
       );
@@ -225,14 +247,14 @@ export default function DuesScreen({ route, navigation }: any) {
       return (
         <LinearGradient
           colors={['#F0FDF4', '#DCFCE7']}
-          style={{ borderRadius: 24, marginHorizontal: 20, marginTop: 16, marginBottom: 4, padding: 24, borderWidth: 1, borderColor: '#BBF7D0', shadowColor: '#16A34A', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.12, shadowRadius: 16, elevation: 4, flexDirection: 'row', alignItems: 'center' }}
+          style={{ borderRadius: 20, marginHorizontal: 20, marginTop: 16, marginBottom: 4, padding: 16, borderWidth: 1, borderColor: '#BBF7D0', shadowColor: '#16A34A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2, flexDirection: 'row', alignItems: 'center' }}
         >
-          <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: '#BBF7D0', alignItems: 'center', justifyContent: 'center' }}>
-            <Check size={30} color="#15803D" strokeWidth={3} />
+          <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#BBF7D0', alignItems: 'center', justifyContent: 'center' }}>
+            <Check size={20} color="#15803D" strokeWidth={3} />
           </View>
-          <View style={{ flex: 1, marginLeft: 16 }}>
-            <Text style={{ fontSize: 20, fontWeight: '800', color: '#14532D', letterSpacing: -0.5, marginBottom: 4 }}>All Dues Cleared! 🎉</Text>
-            <Text style={{ fontSize: 13, color: '#166534', fontWeight: '600' }}>You're completely up to date.</Text>
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={{ fontSize: 16, fontWeight: '800', color: '#14532D', letterSpacing: -0.3, marginBottom: 2 }}>All Dues Cleared! 🎉</Text>
+            <Text style={{ fontSize: 12, color: '#166534', fontWeight: '600' }}>You're completely up to date.</Text>
           </View>
         </LinearGradient>
       );
@@ -457,41 +479,37 @@ export default function DuesScreen({ route, navigation }: any) {
                   })}
                 </View>
               </>
-            ) : (!thisMonthFee || thisMonthFee.balance <= 0) ? (
-              <View style={{ marginTop: 20, marginBottom: 20, paddingHorizontal: 20 }}>
-                <Phase3EmptyState variant="dues" onAction={() => setActiveTab('Payment History')} />
-              </View>
             ) : null}
 
             {/* Recently paid (preview, max 5) */}
             {allPayments.length > 0 && (
               <>
                 <Text style={styles.groupLabel}>Recently Paid</Text>
-                <View style={styles.listCard}>
+                <View style={{ paddingHorizontal: 20, gap: 10 }}>
                   {allPayments.slice(0, 5).map((p: any, i: number) => (
                     <TouchableOpacity
                       key={p.payment_id}
                       activeOpacity={0.7}
                       onPress={() => navigation.navigate('PaymentReceipt', { fee: { ...p, payments: [p] }, isPaid: true })}
-                      style={[
-                        styles.listRow,
-                        i < Math.min(allPayments.length, 5) - 1 && styles.listRowDivider,
-                        { alignItems: 'flex-start' },
-                      ]}
+                      style={styles.txCard}
                     >
-                      <View style={[styles.listIconWrap, { backgroundColor: colors.successSoft, marginTop: 2 }]}>
-                        <CheckCircle2 size={16} color={colors.success} strokeWidth={1.5} />
+                      <View style={[styles.txIconCircle, { backgroundColor: getPillStyle(p.verification_status).bg }]}>
+                        <ArrowDownLeft size={20} color={getPillStyle(p.verification_status).color} strokeWidth={2} />
                       </View>
-                      <View style={{ flex: 1, minWidth: 0, paddingRight: 8 }}>
-                        <Text style={styles.listTitle}>{formatMonth(p.fee_month)}</Text>
-                        <Text style={styles.listSub}>
+                      <View style={{ flex: 1, minWidth: 0, paddingHorizontal: 12 }}>
+                        <Text style={styles.txTitle}>{formatMonth(p.fee_month)}</Text>
+                        <Text style={styles.txDate}>
                           {'Paid on ' + formatDateStr(p.payment_date)}
                           {p.payment_mode ? ` · ${p.payment_mode}` : ''}
                         </Text>
                       </View>
                       <View style={{ alignItems: 'flex-end', flexShrink: 0 }}>
-                        <Text style={[styles.listAmount, { color: colors.success }]}>{formatCurrency(p.amount)}</Text>
-                        <View style={styles.paidPill}><Text style={styles.paidPillText}>Paid</Text></View>
+                        <Text style={[styles.txAmount, { color: getPillStyle(p.verification_status).color }]}>{formatCurrency(p.amount)}</Text>
+                        <View style={[styles.paidPill, { backgroundColor: getPillStyle(p.verification_status).bg }]}>
+                          <Text style={[styles.paidPillText, { color: getPillStyle(p.verification_status).color }]}>
+                            {getPillStyle(p.verification_status).label}
+                          </Text>
+                        </View>
                       </View>
                     </TouchableOpacity>
                   ))}
@@ -566,6 +584,7 @@ export default function DuesScreen({ route, navigation }: any) {
                   const cfg = statusConfig[p.verification_status || 'Verified'] || statusConfig['Pending'];
                   const isPaid = true;
                   const awaitingVerification = p.verification_status === 'Pending';
+                  const isRejected = p.verification_status === 'Rejected';
                   const modeS = getModeStyle(p.payment_mode);
 
                   return (
@@ -576,8 +595,8 @@ export default function DuesScreen({ route, navigation }: any) {
                       onPress={() => navigation.navigate('PaymentReceipt', { fee: { ...p, payments: [p] }, isPaid: true })}
                     >
                       {/* Left icon circle */}
-                      <View style={[styles.txIconCircle, { backgroundColor: awaitingVerification ? cfg.bg : colors.successSoft }]}>
-                        <ArrowDownLeft size={20} color={awaitingVerification ? cfg.color : colors.success} strokeWidth={2} />
+                      <View style={[styles.txIconCircle, { backgroundColor: getPillStyle(p.verification_status).bg }]}>
+                        <ArrowDownLeft size={20} color={getPillStyle(p.verification_status).color} strokeWidth={2} />
                       </View>
 
                       {/* Center: details */}
@@ -598,6 +617,9 @@ export default function DuesScreen({ route, navigation }: any) {
                         {awaitingVerification && (
                           <Text style={styles.txVerify}>⏳ Awaiting verification</Text>
                         )}
+                        {isRejected && (
+                          <Text style={[styles.txVerify, { color: '#EF4444' }]}>❌ Payment Rejected</Text>
+                        )}
                         {p.transaction_id ? (
                           <Text style={styles.txId} numberOfLines={1}>
                             {'Txn: ' + p.transaction_id}
@@ -607,11 +629,13 @@ export default function DuesScreen({ route, navigation }: any) {
 
                       {/* Right: amount + status */}
                       <View style={{ alignItems: 'flex-end', flexShrink: 0 }}>
-                        <Text style={[styles.txAmount, { color: awaitingVerification ? cfg.color : colors.success }]}>
+                        <Text style={[styles.txAmount, { color: getPillStyle(p.verification_status).color }]}>
                           {formatCurrency(p.amount)}
                         </Text>
-                        <View style={styles.paidPill}>
-                          <Text style={styles.paidPillText}>Paid</Text>
+                        <View style={[styles.paidPill, { backgroundColor: getPillStyle(p.verification_status).bg }]}>
+                          <Text style={[styles.paidPillText, { color: getPillStyle(p.verification_status).color }]}>
+                            {getPillStyle(p.verification_status).label}
+                          </Text>
                         </View>
                       </View>
                     </TouchableOpacity>
@@ -753,7 +777,7 @@ const styles = StyleSheet.create({
   // ── Payment History summary ───────────────────────────────────────────────
   tlSummaryRow:  { flexDirection: 'row', gap: 12, paddingHorizontal: spacing.xl, marginTop: spacing.lg, marginBottom: spacing.sm },
   tlSummaryCard: {
-    flex: 1, backgroundColor: WHITE, borderRadius: 16, padding: 14,
+    flex: 1, backgroundColor: WHITE, borderRadius: 20, padding: 14,
     flexDirection: 'row', alignItems: 'center', gap: 12,
     borderWidth: 1, borderColor: BORDER,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
@@ -776,7 +800,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: WHITE,
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 14,
     borderWidth: 1,
     borderColor: BORDER,

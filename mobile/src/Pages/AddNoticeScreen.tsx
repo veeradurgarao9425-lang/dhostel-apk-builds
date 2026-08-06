@@ -228,7 +228,7 @@ export const AddNoticeScreen = ({ navigation, route }: any) => {
     const handlePickImage = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
+            allowsEditing: false,
             quality: 0.7,
         });
         if (!result.canceled && result.assets && result.assets.length > 0) {

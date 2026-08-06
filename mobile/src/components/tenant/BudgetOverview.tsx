@@ -39,7 +39,7 @@ export const BudgetOverview = ({
             {/* CARD 1 — RENT STATUS */}
             <TouchableOpacity
                 activeOpacity={isRentDue ? 0.88 : 1}
-                onPress={() => isRentDue && navigation.navigate('TenantDues')}
+                onPress={() => isRentDue && navigation.navigate('Dues')}
                 style={styles.card}
             >
                 <View style={[styles.accentStrip, {
@@ -73,7 +73,7 @@ export const BudgetOverview = ({
                 {isRentDue ? (
                     <TouchableOpacity
                         style={styles.payBtn}
-                        onPress={() => navigation.navigate('TenantDues')}
+                        onPress={() => navigation.navigate('Dues')}
                         activeOpacity={0.85}
                     >
                         <Text style={styles.payBtnText}>Pay Now</Text>
@@ -90,7 +90,7 @@ export const BudgetOverview = ({
             {/* CARD 2 — THIS MONTH'S EXPENSES */}
             <TouchableOpacity
                 activeOpacity={0.85}
-                onPress={() => navigation.navigate('TenantExpenses')}
+                onPress={() => navigation.navigate('Expenses')}
                 style={styles.card}
             >
                 <View style={[styles.accentStrip, {
