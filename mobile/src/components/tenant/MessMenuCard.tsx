@@ -87,7 +87,7 @@ export const MessMenuCard = ({ meals }: MessMenuCardProps) => {
                     </View>
                     <TouchableOpacity
                         style={styles.fullMenuBtn}
-                        onPress={() => navigation.navigate('TenantFullMenu')}
+                        onPress={() => navigation.navigate('FullMenu')}
                         activeOpacity={0.75}
                     >
                         <Text style={styles.fullMenuText}>Full Menu</Text>
@@ -127,7 +127,7 @@ export const MessMenuCard = ({ meals }: MessMenuCardProps) => {
                     {isPlaceholder ? (
                         <TouchableOpacity
                             style={styles.emptyMenuBtn}
-                            onPress={() => navigation.navigate('TenantFullMenu')}
+                            onPress={() => navigation.navigate('FullMenu')}
                             activeOpacity={0.8}
                         >
                             <Ionicons name="calendar-outline" size={14} color="#7C3AED" />
