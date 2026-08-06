@@ -107,7 +107,7 @@ export default function HowItWorksScreen({ navigation }: any) {
           <View style={styles.introContent}>
             <View style={styles.logoWrap}>
               <Image 
-                source={require('../../assets/HostixNew.jpeg')} 
+                source={require('../../../assets/HostixNew.jpeg')} 
                 style={styles.logoImg}
                 resizeMode="contain"
               />

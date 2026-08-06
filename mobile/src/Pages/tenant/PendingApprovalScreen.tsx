@@ -36,12 +36,12 @@ import IconGlowBadge from '../../components/tenant/ui/IconGlowBadge';
 
 const { width } = Dimensions.get("window");
 
-const BLUE      = "#2245D4";
+const BLUE = "#2245D4";
 const BLUE_DARK = "#1A35A8";
-const WHITE     = "#FFFFFF";
+const WHITE = "#FFFFFF";
 const TEXT_DARK = "#1A1A1A";
-const TEXT_MID  = "#6B7280";
-const PAGE_BG   = "#F0F4FF";
+const TEXT_MID = "#6B7280";
+const PAGE_BG = "#F0F4FF";
 
 export default function PendingApprovalScreen({ navigation }: any) {
   const { user, refreshUser } = useAuth();
@@ -71,12 +71,12 @@ export default function PendingApprovalScreen({ navigation }: any) {
   ];
 
   const [budget, setBudget] = useState(0);
-  const [spent,  setSpent]  = useState(0);
+  const [spent, setSpent] = useState(0);
   const progressAnim = useRef(new Animated.Value(0)).current;
 
   const percentage = budget > 0 ? Math.min((spent / budget) * 100, 100) : 0;
-  const isOver     = spent > budget && budget > 0;
-  const remaining  = budget - spent;
+  const isOver = spent > budget && budget > 0;
+  const remaining = budget - spent;
 
   useEffect(() => {
     Animated.timing(progressAnim, {
@@ -92,7 +92,7 @@ export default function PendingApprovalScreen({ navigation }: any) {
         try {
           const budgetRes = await api.get("/tenant-expenses/budget");
           if (budgetRes.data?.success) setBudget(Number(budgetRes.data.data.amount));
-        } catch {}
+        } catch { }
         try {
           const res = await api.get("/tenant-expenses");
           if (res.data?.success) {
@@ -103,7 +103,7 @@ export default function PendingApprovalScreen({ navigation }: any) {
             });
             setSpent(monthly.reduce((s: number, e: any) => s + Number(e.amount), 0));
           }
-        } catch {}
+        } catch { }
       };
       load();
     }, [])
@@ -200,7 +200,7 @@ export default function PendingApprovalScreen({ navigation }: any) {
 
           {/* 
           <Image
-            source={require("../../../assets/hostel_only_3d.png")}
+            source={require("../../../assets/house_hourglass_3d.png")}
             style={styles.heroImgLarge}
             resizeMode="contain"
           /> 
@@ -296,9 +296,9 @@ export default function PendingApprovalScreen({ navigation }: any) {
       </ScrollView>
 
       {/* ── Fixed Bottom Tab Bar (Only Home and Expenses) ── */}
-      <View 
+      <View
         style={[
-          styles.bottomTabBar, 
+          styles.bottomTabBar,
           { paddingBottom: Math.max(insets.bottom, 8) }
         ]}
       >
@@ -306,7 +306,7 @@ export default function PendingApprovalScreen({ navigation }: any) {
           style={styles.tabItem}
           activeOpacity={0.8}
           // Do nothing on tap because we are already on the PendingApproval "Home"
-          onPress={() => {}} 
+          onPress={() => { }}
         >
           <View style={[styles.iconWrap, styles.iconWrapActive]}>
             <HomeIcon size={24} color={BLUE} strokeWidth={2.5} />
@@ -351,8 +351,8 @@ const styles = StyleSheet.create({
     paddingTop: 4,
     paddingBottom: 12,
   },
-  greeting:  { fontSize: 18, fontWeight: "800", color: WHITE },
-  subLabel:  { fontSize: 12, color: "rgba(255,255,255,0.7)", marginTop: 2 },
+  greeting: { fontSize: 18, fontWeight: "800", color: WHITE },
+  subLabel: { fontSize: 12, color: "rgba(255,255,255,0.7)", marginTop: 2 },
   avatar: {
     width: 38, height: 38, borderRadius: 19,
     backgroundColor: "rgba(255,255,255,0.18)",
@@ -386,7 +386,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     zIndex: 10,
   },
-  pillDotContent:  { width: 7, height: 7, borderRadius: 4, backgroundColor: "#16A34A" },
+  pillDotContent: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#16A34A" },
   pillTextContent: { fontSize: 10, fontWeight: "700", color: "#16A34A" },
 
   title: {
@@ -439,13 +439,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center',
   },
   state1Title: { fontSize: 15, fontWeight: '700', color: TEXT_DARK },
-  state1Sub:   { fontSize: 12, color: TEXT_MID, marginTop: 2 },
-  
-  state2LabelLeft:  { fontSize: 13, fontWeight: '800', color: TEXT_DARK },
+  state1Sub: { fontSize: 12, color: TEXT_MID, marginTop: 2 },
+
+  state2LabelLeft: { fontSize: 13, fontWeight: '800', color: TEXT_DARK },
   state2LabelRight: { fontSize: 12, fontWeight: '600', color: TEXT_MID },
   barTrack: {
     height: 8, backgroundColor: '#F1F5F9', // light neutral gray
-    borderRadius: 4, overflow: 'hidden', 
+    borderRadius: 4, overflow: 'hidden',
     marginBottom: 6,
   },
   barFill: { height: '100%', borderRadius: 4 },
@@ -453,7 +453,7 @@ const styles = StyleSheet.create({
 
   // ── Stepper ──────────────────────────────────────────────────
   stepsRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "center" },
-  step:     { alignItems: "center", width: 80 },
+  step: { alignItems: "center", width: 80 },
   stepCircle: {
     width: 44, height: 44, borderRadius: 22,
     alignItems: "center", justifyContent: "center", marginBottom: 6,

@@ -1192,7 +1192,9 @@ export const authController = {
             phone: tenant.phone,
             room: tenant.room_number || 'N/A',
             room_id: tenant.room_id || null,
-            hostel_id: tenant.hostel_id
+            hostel_id: tenant.hostel_id,
+            status: Number(tenant.status),
+            is_allocated: tenant.room_id != null && Number(tenant.status) === 1 && tenant.room_active !== 0
           }
         }
       });
@@ -1308,7 +1310,9 @@ export const authController = {
             phone: finalPhone,
             room: 'Pending',
             room_id: null,
-            hostel_id
+            hostel_id,
+            status: 3,
+            is_allocated: false
           }
         }
       });
