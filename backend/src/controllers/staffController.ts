@@ -2,7 +2,7 @@ import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { checkHostelUniqueIdentifiers } from '../utils/validation.js';
-import { resolveScopedHostelId } from '../utils/scope.js';
+import { resolveScopedHostelId, resolveOwnerHostelId } from '../utils/scope.js';
 
 // Get all staff (Owner sees only their hostel staff)
 export const getStaff = async (req: AuthRequest, res: Response) => {
@@ -12,15 +12,12 @@ export const getStaff = async (req: AuthRequest, res: Response) => {
 
     let query = db('staff').select('*');
 
-    // Owner (role 2): always scoped to their own hostel. Admin/Super Admin
-    // (role 1): scoped to ?hostelId if given, otherwise global across all hostels.
-    if (user?.role_id === 2 && !user.hostel_id) {
-      return res.status(403).json({
-        success: false,
-        error: 'Your account is not linked to any hostel.'
-      });
+    // Owner (role 2): validate BOTH user_id AND hostel_id together in DB.
+    // Admin/Super Admin (role 1): scoped to ?hostelId if given, otherwise global.
+    const { hostelId: scopedHostelId, error: hostelError } = await resolveOwnerHostelId(user, hostelId as string | undefined);
+    if (hostelError) {
+      return res.status(403).json({ success: false, error: hostelError });
     }
-    const scopedHostelId = resolveScopedHostelId(user, hostelId as string | undefined);
     if (scopedHostelId) {
       query = query.where('hostel_id', scopedHostelId);
     }

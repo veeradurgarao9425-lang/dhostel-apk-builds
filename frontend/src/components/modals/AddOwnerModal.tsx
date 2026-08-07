@@ -23,6 +23,41 @@ export const AddOwnerModal: React.FC<AddOwnerModalProps> = ({ isOpen, onClose, o
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const getPasswordStrength = (pass: string) => {
+    if (!pass) return { score: 0, label: '', color: 'bg-slate-200' };
+    let score = 0;
+    if (pass.length >= 6) score += 1;
+    if (pass.length >= 10) score += 1;
+    if (/[A-Z]/.test(pass)) score += 1;
+    if (/[0-9]/.test(pass)) score += 1;
+    if (/[^A-Za-z0-9]/.test(pass)) score += 1;
+
+    if (score <= 2) return { score, label: 'Weak', color: 'bg-rose-500', textColor: 'text-rose-500' };
+    if (score <= 4) return { score, label: 'Medium', color: 'bg-amber-500', textColor: 'text-amber-500' };
+    return { score, label: 'Strong', color: 'bg-emerald-500', textColor: 'text-emerald-500' };
+  };
+
+  const generatePassword = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+';
+    let newPass = '';
+    for (let i = 0; i < 12; i++) {
+      newPass += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setFormData(prev => ({
+      ...prev,
+      password: newPass,
+      confirm_password: newPass
+    }));
+    setShowPassword(true);
+    setShowConfirmPassword(true);
+    setErrors(prev => ({
+      ...prev,
+      password: '',
+      confirm_password: ''
+    }));
+    toast.success('Strong password auto-generated!');
+  };
+
   const validate = () => {
     const newErrors: Record<string, string> = {};
 
@@ -184,9 +219,18 @@ export const AddOwnerModal: React.FC<AddOwnerModalProps> = ({ isOpen, onClose, o
 
           {/* Password */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-              Password <span className="text-rose-500">*</span>
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Password <span className="text-rose-500">*</span>
+              </label>
+              <button
+                type="button"
+                onClick={generatePassword}
+                className="text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:text-cyan-705 transition-colors"
+              >
+                Auto-Generate Password
+              </button>
+            </div>
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -201,11 +245,31 @@ export const AddOwnerModal: React.FC<AddOwnerModalProps> = ({ isOpen, onClose, o
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                className="absolute right-3.5 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-655 dark:hover:text-slate-300"
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
+            {formData.password && (
+              <div className="mt-2 space-y-1">
+                <div className="flex h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-300 ${
+                      getPasswordStrength(formData.password).color
+                    }`}
+                    style={{
+                      width: `${(getPasswordStrength(formData.password).score / 5) * 100}%`,
+                    }}
+                  />
+                </div>
+                <div className="flex justify-between items-center text-[10px]">
+                  <span className="text-slate-400 dark:text-slate-500">Strength:</span>
+                  <span className={`font-bold ${getPasswordStrength(formData.password).textColor}`}>
+                    {getPasswordStrength(formData.password).label}
+                  </span>
+                </div>
+              </div>
+            )}
             {errors.password && (
               <p className="mt-1 text-sm text-rose-500">{errors.password}</p>
             )}
@@ -230,7 +294,7 @@ export const AddOwnerModal: React.FC<AddOwnerModalProps> = ({ isOpen, onClose, o
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3.5 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                className="absolute right-3.5 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-655 dark:hover:text-slate-300"
               >
                 {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>

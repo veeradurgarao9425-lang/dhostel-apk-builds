@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { FileSpreadsheet, Download, RefreshCw, BarChart2, Shield, Calendar, Users, Home, Phone, Mail } from 'lucide-react';
-import { useAuthStore } from '../store/authStore';
+import { useAuthStore, getStoredHostelId } from '../store/authStore';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import { Card } from '../components/ui/Card';
@@ -29,6 +29,17 @@ export const ReportsPage: React.FC = () => {
   const [downloading, setDownloading] = useState(false);
   const [loadingStats, setLoadingStats] = useState(false);
   const [adminReportData, setAdminReportData] = useState<ReportStats[]>([]);
+  const [activeHostelId, setActiveHostelId] = useState<string>(getStoredHostelId() || '');
+
+  // Listen for hostel switches from dashboard or other pages
+  useEffect(() => {
+    const handleHostelChange = (e: Event) => {
+      const hostelId = (e as CustomEvent<{ hostelId: string }>).detail.hostelId;
+      if (hostelId) setActiveHostelId(hostelId);
+    };
+    window.addEventListener('hostelChanged', handleHostelChange);
+    return () => window.removeEventListener('hostelChanged', handleHostelChange);
+  }, []);
 
   useEffect(() => {
     if (!isOwnerReports) {
@@ -77,7 +88,7 @@ export const ReportsPage: React.FC = () => {
     try {
       setDownloading(true);
       const response = await api.get('/reports/download/excel', {
-        params: { month: selectedMonth },
+        params: { month: selectedMonth, hostelId: activeHostelId || undefined },
         responseType: 'blob',
       });
 

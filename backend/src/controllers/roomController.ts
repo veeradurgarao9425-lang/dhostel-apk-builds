@@ -2,7 +2,7 @@ import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { sendNotificationToHostelOwner } from '../utils/notification.js';
-import { resolveScopedHostelId, canAccessHostel } from '../utils/scope.js';
+import { resolveScopedHostelId, resolveOwnerHostelId, canAccessHostel } from '../utils/scope.js';
 
 // Shared helper: derive bed capacity from room_type_name / description
 const getCapacityFromRoomTypeName = (roomTypeName: string, description: string | null): number => {
@@ -119,15 +119,12 @@ export const getRooms = async (req: AuthRequest, res: Response) => {
 
 
 
-    // Owner (role 2): always scoped to their own hostel. Admin/Super Admin
-    // (role 1): scoped to ?hostelId if given, otherwise global across all hostels.
-    if (user?.role_id === 2 && !user.hostel_id) {
-      return res.status(403).json({
-        success: false,
-        error: 'Your account is not linked to any hostel. Please contact administrator.'
-      });
+    // Owner (role 2): validate BOTH user_id AND hostel_id together in DB.
+    // Admin/Super Admin (role 1): scoped to ?hostelId if given, otherwise global.
+    const { hostelId: scopedHostelId, error: hostelError } = await resolveOwnerHostelId(user, hostelId as string | undefined);
+    if (hostelError) {
+      return res.status(403).json({ success: false, error: hostelError });
     }
-    const scopedHostelId = resolveScopedHostelId(user, hostelId as string | undefined);
     if (scopedHostelId) {
       query = query.where('r.hostel_id', scopedHostelId);
     }

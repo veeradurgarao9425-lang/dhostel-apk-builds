@@ -16,7 +16,7 @@ import { Button } from "../components/ui/Button";
 import { Modal } from "../components/ui/Modal";
 import api from "../services/api";
 import toast from "react-hot-toast";
-import { useAuthStore } from "../store/authStore";
+import { useAuthStore, getStoredHostelId, setStoredHostelId } from "../store/authStore";
 
 interface MonthlySummary {
   total_students: number;
@@ -121,7 +121,9 @@ export const MonthlyFeeManagementPage: React.FC = () => {
 
   // Super Admin states
   const [hostels, setHostels] = useState<Hostel[]>([]);
-  const [selectedHostelId, setSelectedHostelId] = useState<string>("");
+  const [selectedHostelId, setSelectedHostelId] = useState<string>(
+    getStoredHostelId() || user?.hostel_id?.toString() || ''
+  );
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -177,6 +179,16 @@ export const MonthlyFeeManagementPage: React.FC = () => {
     }
   }, [selectedHostelId]);
 
+  // Listen for hostel switches from dashboard or other pages
+  useEffect(() => {
+    const handleHostelChange = (e: Event) => {
+      const hostelId = (e as CustomEvent<{ hostelId: string }>).detail.hostelId;
+      if (hostelId) setSelectedHostelId(hostelId);
+    };
+    window.addEventListener('hostelChanged', handleHostelChange);
+    return () => window.removeEventListener('hostelChanged', handleHostelChange);
+  }, []);
+
   // Reset pagination when filters change
   useEffect(() => {
     setCurrentPage(1);
@@ -188,7 +200,9 @@ export const MonthlyFeeManagementPage: React.FC = () => {
       const data: Hostel[] = response.data.data || [];
       setHostels(data);
       if (data.length > 0 && !selectedHostelId) {
-        setSelectedHostelId(data[0].hostel_id.toString());
+        const firstId = data[0].hostel_id.toString();
+        setSelectedHostelId(firstId);
+        setStoredHostelId(firstId);
       }
     } catch (error) {
       console.error('Failed to fetch hostels:', error);

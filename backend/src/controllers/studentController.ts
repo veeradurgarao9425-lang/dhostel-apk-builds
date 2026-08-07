@@ -4,7 +4,7 @@ import { AuthRequest } from '../middleware/auth.js';
 import { sendNotificationToHostelOwner, sendNotificationToStudent } from '../utils/notification.js';
 import { kickUserFromRoomChat } from '../socket/index.js';
 import { checkHostelUniqueIdentifiers } from '../utils/validation.js';
-import { resolveScopedHostelId, canAccessHostel } from '../utils/scope.js';
+import { resolveScopedHostelId, resolveOwnerHostelId, canAccessHostel } from '../utils/scope.js';
 
 // Helper function to convert ISO datetime string to date-only format (YYYY-MM-DD)
 const convertToDateOnly = (dateValue: any): string | null => {
@@ -77,15 +77,12 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
         's.admission_date as check_in_date'
       );
 
-    // Owner (role 2): always scoped to their own hostel. Admin/Super Admin
-    // (role 1): scoped to ?hostelId if given, otherwise global across all hostels.
-    if (user?.role_id === 2 && !user.hostel_id) {
-      return res.status(403).json({
-        success: false,
-        error: 'Your account is not linked to any hostel. Please contact administrator.'
-      });
+    // Owner (role 2): validate BOTH user_id AND hostel_id together in DB.
+    // Admin/Super Admin (role 1): scoped to ?hostelId if given, otherwise global.
+    const { hostelId: scopedHostelId, error: hostelError } = await resolveOwnerHostelId(user, hostelId as string | undefined);
+    if (hostelError) {
+      return res.status(403).json({ success: false, error: hostelError });
     }
-    const scopedHostelId = resolveScopedHostelId(user, hostelId as string | undefined);
     if (scopedHostelId) {
       query = query.where('s.hostel_id', scopedHostelId);
     }
@@ -205,15 +202,11 @@ export const getStudentStats = async (req: AuthRequest, res: Response) => {
     const user = req.user;
     const { hostelId } = req.query;
 
-    // Owner: always scoped to their own hostel. Admin/Super Admin: scoped to
-    // ?hostelId if given, otherwise global (aggregated across all hostels).
-    const scopedHostelId = resolveScopedHostelId(user, hostelId as string | undefined);
-
-    if (user?.role_id === 2 && !scopedHostelId) {
-      return res.status(403).json({
-        success: false,
-        error: 'Your account is not linked to any hostel.'
-      });
+    // Owner: validate BOTH user_id AND hostel_id together in DB.
+    // Admin/Super Admin: scoped to ?hostelId if given, otherwise global.
+    const { hostelId: scopedHostelId, error: hostelError } = await resolveOwnerHostelId(user, hostelId as string | undefined);
+    if (hostelError) {
+      return res.status(403).json({ success: false, error: hostelError });
     }
 
     let statsQuery = db('students');
@@ -1217,9 +1210,23 @@ export const getPendingRegistrations = async (req: AuthRequest, res: Response) =
       return res.status(403).json({ success: false, error: 'Account not linked to hostel' });
     }
 
+    const requestedHostelId = req.query.hostelId ? Number(req.query.hostelId) : null;
+    let targetHostelId = user.hostel_id;
+    if (user.role_id === 1 && requestedHostelId) {
+      targetHostelId = requestedHostelId;
+    } else if (user.role_id === 2 && requestedHostelId) {
+      const ownerHostels = await db('hostel_master')
+        .where('owner_id', user.user_id)
+        .select('hostel_id');
+      const ids = ownerHostels.map(h => Number(h.hostel_id));
+      if (ids.includes(requestedHostelId)) {
+        targetHostelId = requestedHostelId;
+      }
+    }
+
     const pending = await db('students as s')
       .leftJoin('rooms as r', 's.room_id', 'r.room_id')
-      .where('s.hostel_id', user.hostel_id)
+      .where('s.hostel_id', targetHostelId)
       .where('s.status', 3) // status 3 = QR/Mobile registered, awaiting owner activation
       .select(
         's.student_id',

@@ -3,7 +3,7 @@ import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
 import ExcelJS from 'exceljs';
 import { sendEmail } from '../utils/email.js';
-import { resolveScopedHostelId } from '../utils/scope.js';
+import { resolveScopedHostelId, resolveOwnerHostelId } from '../utils/scope.js';
 
 // Get all income records
 export const getAllIncome = async (req: AuthRequest, res: Response) => {
@@ -11,14 +11,11 @@ export const getAllIncome = async (req: AuthRequest, res: Response) => {
     const { startDate, endDate, hostelId } = req.query;
     const user = req.user;
 
-    // Owner (role 2): always scoped to their own hostel. Admin/Super Admin
-    // (role 1): scoped to ?hostelId if given, otherwise global across all hostels.
-    const scopedHostelId = resolveScopedHostelId(user, hostelId as string | undefined);
-    if (user?.role_id === 2 && !scopedHostelId) {
-      return res.status(403).json({
-        success: false,
-        error: 'Your account is not linked to any hostel.'
-      });
+    // Owner (role 2): validate BOTH user_id AND hostel_id together in DB.
+    // Admin/Super Admin (role 1): scoped to ?hostelId if given, otherwise global.
+    const { hostelId: scopedHostelId, error: hostelError } = await resolveOwnerHostelId(user, hostelId as string | undefined);
+    if (hostelError) {
+      return res.status(403).json({ success: false, error: hostelError });
     }
 
     let query = db('income as i')

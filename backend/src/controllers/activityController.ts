@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
-import { resolveScopedHostelId } from '../utils/scope.js';
+import { resolveScopedHostelId, resolveOwnerHostelId } from '../utils/scope.js';
 
 // Get recent activity for dashboard
 export const getRecentActivity = async (req: AuthRequest, res: Response) => {
@@ -9,15 +9,12 @@ export const getRecentActivity = async (req: AuthRequest, res: Response) => {
     const user = req.user;
     const limit = parseInt(req.query.limit as string) || 10;
 
-    // Determine hostel filtering based on user role
-    if (user?.role_id === 2 && !user.hostel_id) {
-      return res.status(403).json({
-        success: false,
-        error: 'Your account is not linked to any hostel.'
-      });
+    // Owner (role 2): validate BOTH user_id AND hostel_id together in DB.
+    // Admin/Super Admin (role 1): scoped to ?hostelId if given, otherwise global.
+    const { hostelId: scopedHostelId, error: hostelError } = await resolveOwnerHostelId(user, req.query.hostelId as string);
+    if (hostelError) {
+      return res.status(403).json({ success: false, error: hostelError });
     }
-
-    const scopedHostelId = resolveScopedHostelId(user, req.query.hostelId as string);
     const hostelIds = scopedHostelId ? [scopedHostelId] : [];
 
     const activities: any[] = [];

@@ -2,7 +2,7 @@ import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { sendNotificationToHostelOwner, sendNotificationToAllHostelStudents } from '../utils/notification.js';
-import { resolveScopedHostelId } from '../utils/scope.js';
+import { resolveScopedHostelId, resolveOwnerHostelId } from '../utils/scope.js';
 
 // Get all notices for a hostel
 export const getNotices = async (req: AuthRequest, res: Response) => {
@@ -12,11 +12,12 @@ export const getNotices = async (req: AuthRequest, res: Response) => {
     if (!user || (user.role_id !== 1 && user.role_id !== 2 && user.role_id !== 3)) {
       return res.status(403).json({ success: false, error: 'Unauthorized access.' });
     }
-    if (user.role_id === 2 && !user.hostel_id) {
-      return res.status(403).json({ success: false, error: 'Your account is not linked to any hostel.' });
+    // Owner (role 2): validate BOTH user_id AND hostel_id together in DB.
+    // Admin/Super Admin (role 1): scoped to ?hostelId if given, otherwise global.
+    const { hostelId: scopedHostelId, error: hostelError } = await resolveOwnerHostelId(user, req.query.hostelId as string);
+    if (hostelError) {
+      return res.status(403).json({ success: false, error: hostelError });
     }
-
-    const scopedHostelId = resolveScopedHostelId(user, req.query.hostelId as string);
     let query = db('notices');
     if (scopedHostelId) {
       query = query.where('hostel_id', scopedHostelId);

@@ -3,6 +3,20 @@ import { X } from 'lucide-react';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 
+const INDIAN_STATES_AND_CITIES: Record<string, string[]> = {
+  'Andhra Pradesh': ['Visakhapatnam', 'Vijayawada', 'Guntur', 'Nellore', 'Tirupati', 'Kurnool', 'Rajahmundry', 'Kakinada', 'Kadapa', 'Anantapur'],
+  'Telangana': ['Hyderabad', 'Warangal', 'Nizamabad', 'Karimnagar', 'Ramagundam', 'Khammam', 'Mahbubnagar', 'Nalgonda', 'Adilabad'],
+  'Karnataka': ['Bengaluru', 'Mysuru', 'Hubli', 'Mangaluru', 'Belagavi', 'Davanagere', 'Ballari', 'Tumakuru', 'Shivamogga'],
+  'Tamil Nadu': ['Chennai', 'Coimbatore', 'Madurai', 'Tiruchirappalli', 'Salem', 'Tirunelveli', 'Tiruppur', 'Vellore', 'Erode', 'Thoothukudi'],
+  'Maharashtra': ['Mumbai', 'Pune', 'Nagpur', 'Thane', 'Pimpri-Chinchwad', 'Nashik', 'Kalyan-Dombivli', 'Vasai-Virar', 'Aurangabad', 'Navi Mumbai', 'Solapur', 'Kolhapur'],
+  'Delhi': ['New Delhi', 'Delhi Cantt', 'Dwarka', 'Rohini', 'Vasant Kunj'],
+  'Kerala': ['Thiruvananthapuram', 'Kochi', 'Kozhikode', 'Kollam', 'Thrissur', 'Alappuzha', 'Palakkad'],
+  'Gujarat': ['Ahmedabad', 'Surat', 'Vadodara', 'Rajkot', 'Bhavnagar', 'Jamnagar', 'Gandhinagar', 'Junagadh'],
+  'Rajasthan': ['Jaipur', 'Jodhpur', 'Kota', 'Bikaner', 'Ajmer', 'Udaipur', 'Bhilwara', 'Alwar'],
+  'Madhya Pradesh': ['Indore', 'Bhopal', 'Jabalpur', 'Gwalior', 'Ujjain', 'Sagar', 'Dewas', 'Satna'],
+  'Uttar Pradesh': ['Lucknow', 'Kanpur', 'Ghaziabad', 'Agra', 'Meerut', 'Varanasi', 'Allahabad', 'Amroha', 'Moradabad', 'Aligarh', 'Bareilly', 'Noida']
+};
+
 interface Hostel {
   hostel_id: number;
   hostel_name: string;
@@ -198,10 +212,19 @@ export const EditHostelModal: React.FC<EditHostelModalProps> = ({ isOpen, onClos
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    // Clear error for this field
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
+    if (name === 'state') {
+      setFormData(prev => ({ ...prev, state: value, city: '' }));
+      if (errors.state) {
+        setErrors(prev => ({ ...prev, state: '' }));
+      }
+      if (errors.city) {
+        setErrors(prev => ({ ...prev, city: '' }));
+      }
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+      if (errors[name]) {
+        setErrors(prev => ({ ...prev, [name]: '' }));
+      }
     }
   };
 
@@ -275,45 +298,61 @@ export const EditHostelModal: React.FC<EditHostelModalProps> = ({ isOpen, onClos
           {/* City, State, PIN */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                City <span className="text-red-500">*</span>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                State
               </label>
-              <input
-                type="text"
+              <select
+                name="state"
+                value={formData.state}
+                onChange={handleChange}
+                className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all"
+              >
+                <option value="">Select State</option>
+                {Object.keys(INDIAN_STATES_AND_CITIES).map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                City <span className="text-rose-500">*</span>
+              </label>
+              <select
                 name="city"
                 value={formData.city}
                 onChange={handleChange}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
-                  errors.city ? 'border-red-500' : 'border-gray-300'
+                disabled={!formData.state}
+                className={`w-full px-4 py-2.5 border rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all disabled:opacity-50 ${
+                  errors.city ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'
                 }`}
-                placeholder="Hyderabad"
-              />
+              >
+                <option value="">
+                  {formData.state ? 'Select City' : 'Select State First'}
+                </option>
+                {formData.state &&
+                  INDIAN_STATES_AND_CITIES[formData.state]?.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+              </select>
               {errors.city && (
-                <p className="mt-1 text-sm text-red-600">{errors.city}</p>
+                <p className="mt-1 text-sm text-rose-500">{errors.city}</p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
-              <input
-                type="text"
-                name="state"
-                value={formData.state}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                placeholder="Telangana"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">PIN Code</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">PIN Code</label>
               <input
                 type="text"
                 name="pincode"
                 value={formData.pincode}
                 onChange={handleChange}
                 maxLength={6}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all"
                 placeholder="500032"
               />
             </div>

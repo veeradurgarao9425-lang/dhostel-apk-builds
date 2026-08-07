@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
+import { getStoredHostelId } from '../store/authStore';
 
 interface ExpenseCategory {
   category_id: number;
@@ -87,16 +88,29 @@ export const FinancialOverviewPage: React.FC = () => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
+  const [activeHostelId, setActiveHostelId] = useState<string>(
+    getStoredHostelId() || ''
+  );
+
+  // Listen for hostel switches from dashboard or other pages
+  useEffect(() => {
+    const handleHostelChange = (e: Event) => {
+      const hostelId = (e as CustomEvent<{ hostelId: string }>).detail.hostelId;
+      if (hostelId) setActiveHostelId(hostelId);
+    };
+    window.addEventListener('hostelChanged', handleHostelChange);
+    return () => window.removeEventListener('hostelChanged', handleHostelChange);
+  }, []);
 
   useEffect(() => {
     fetchOverview();
-  }, [selectedMonth]);
+  }, [selectedMonth, activeHostelId]);
 
   const fetchOverview = async () => {
     try {
       setLoading(true);
       const response = await api.get('/reports/monthly-overview', {
-        params: { month: selectedMonth }
+        params: { month: selectedMonth, hostelId: activeHostelId || undefined }
       });
       if (response.data.success) {
         setData(response.data.data);

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { Plus, TrendingUp, Edit, Trash2, ChevronDown, ChevronUp, Search, X, Building2 } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { useAuthStore } from '../store/authStore';
+import { useAuthStore, getStoredHostelId, setStoredHostelId } from '../store/authStore';
 
 interface Income {
   income_id: number;
@@ -73,7 +73,9 @@ export const IncomePage: React.FC = () => {
 
   // Super Admin states
   const [hostels, setHostels] = useState<Hostel[]>([]);
-  const [selectedHostelId, setSelectedHostelId] = useState<string>("");
+  const [selectedHostelId, setSelectedHostelId] = useState<string>(
+    getStoredHostelId() || user?.hostel_id?.toString() || ''
+  );
 
   useEffect(() => {
     if (user?.role_id === 1) {
@@ -90,13 +92,25 @@ export const IncomePage: React.FC = () => {
     }
   }, [selectedHostelId]);
 
+  // Listen for hostel switches from dashboard or other pages
+  useEffect(() => {
+    const handleHostelChange = (e: Event) => {
+      const hostelId = (e as CustomEvent<{ hostelId: string }>).detail.hostelId;
+      if (hostelId) setSelectedHostelId(hostelId);
+    };
+    window.addEventListener('hostelChanged', handleHostelChange);
+    return () => window.removeEventListener('hostelChanged', handleHostelChange);
+  }, []);
+
   const fetchHostels = async () => {
     try {
       const response = await api.get('/hostels');
       const data: Hostel[] = response.data.data || [];
       setHostels(data);
       if (data.length > 0 && !selectedHostelId) {
-        setSelectedHostelId(data[0].hostel_id.toString());
+        const firstId = data[0].hostel_id.toString();
+        setSelectedHostelId(firstId);
+        setStoredHostelId(firstId);
       }
     } catch (error) {
       console.error('Failed to fetch hostels:', error);

@@ -6,10 +6,15 @@ interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  /** The currently-active hostel for owners who manage multiple hostels.
+   *  Stored in localStorage so it persists across all pages. */
+  selectedHostelId: string | null;
   login: (identifier: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   setUser: (user: User | null) => void;
   initializeAuth: () => Promise<void>;
+  /** Update the active hostel. Pass null to clear (falls back to JWT primary). */
+  setSelectedHostelId: (hostelId: string | null) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -18,6 +23,7 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       isAuthenticated: false,
       isLoading: true,
+      selectedHostelId: null,
 
       login: async (identifier: string, password: string) => {
         try {
@@ -26,6 +32,8 @@ export const useAuthStore = create<AuthState>()(
             user: response.data.user,
             isAuthenticated: true,
             isLoading: false,
+            // Reset hostel selection on new login
+            selectedHostelId: null,
           });
         } catch (error) {
           set({ user: null, isAuthenticated: false });
@@ -35,7 +43,7 @@ export const useAuthStore = create<AuthState>()(
 
       logout: async () => {
         await authService.logout();
-        set({ user: null, isAuthenticated: false });
+        set({ user: null, isAuthenticated: false, selectedHostelId: null });
       },
 
       setUser: (user: User | null) => {
@@ -43,6 +51,10 @@ export const useAuthStore = create<AuthState>()(
           user,
           isAuthenticated: !!user,
         });
+      },
+
+      setSelectedHostelId: (hostelId: string | null) => {
+        set({ selectedHostelId: hostelId });
       },
 
       initializeAuth: async () => {
@@ -79,6 +91,7 @@ export const useAuthStore = create<AuthState>()(
               user: null,
               isAuthenticated: false,
               isLoading: false,
+              selectedHostelId: null,
             });
           }
         } catch (error) {
@@ -88,13 +101,14 @@ export const useAuthStore = create<AuthState>()(
             user: null,
             isAuthenticated: false,
             isLoading: false,
+            selectedHostelId: null,
           });
         }
       },
     }),
     {
       name: 'hostel-auth-storage',
-      // Use sessionStorage instead of localStorage for tab-independent sessions
+      // Use sessionStorage for auth session, but localStorage for hostel selection (cross-page)
       storage: createJSONStorage(() => sessionStorage),
       partialize: (state) => ({
         user: state.user,
@@ -104,4 +118,19 @@ export const useAuthStore = create<AuthState>()(
   )
 );
 
+// Separate localStorage-based store for active hostel selection (persists across all pages)
+const HOSTEL_STORAGE_KEY = 'dhostel_selected_hostel_id';
+
+export const getStoredHostelId = (): string | null => {
+  try { return localStorage.getItem(HOSTEL_STORAGE_KEY); } catch { return null; }
+};
+
+export const setStoredHostelId = (hostelId: string | null): void => {
+  try {
+    if (hostelId) localStorage.setItem(HOSTEL_STORAGE_KEY, hostelId);
+    else localStorage.removeItem(HOSTEL_STORAGE_KEY);
+  } catch { /* noop */ }
+};
+
 // No cross-tab sync listener - each tab maintains its own independent session
+

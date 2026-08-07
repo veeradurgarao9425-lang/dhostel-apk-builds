@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
-import { resolveScopedHostelId } from '../utils/scope.js';
+import { resolveScopedHostelId, resolveOwnerHostelId } from '../utils/scope.js';
 
 // Get all expenses
 export const getExpenses = async (req: AuthRequest, res: Response) => {
@@ -9,14 +9,11 @@ export const getExpenses = async (req: AuthRequest, res: Response) => {
     const { hostelId, categoryId, startDate, endDate, page, limit, search } = req.query;
     const user = req.user;
 
-    // Owner (role 2): always scoped to their own hostel. Admin/Super Admin
-    // (role 1): scoped to ?hostelId if given, otherwise global across all hostels.
-    const scopedHostelId = resolveScopedHostelId(user, hostelId as string | undefined);
-    if (user?.role_id === 2 && !scopedHostelId) {
-      return res.status(403).json({
-        success: false,
-        error: 'Your account is not linked to any hostel.'
-      });
+    // Owner (role 2): validate BOTH user_id AND hostel_id together in DB.
+    // Admin/Super Admin (role 1): scoped to ?hostelId if given, otherwise global.
+    const { hostelId: scopedHostelId, error: hostelError } = await resolveOwnerHostelId(user, hostelId as string | undefined);
+    if (hostelError) {
+      return res.status(403).json({ success: false, error: hostelError });
     }
     // Auto-carry forward only applies to a single, specific hostel — skipped
     // when Admin is viewing globally (no hostel resolved).
@@ -655,14 +652,11 @@ export const getExpenseSummary = async (req: AuthRequest, res: Response) => {
       .count('e.expense_id as count')
       .groupBy('ec.category_id', 'ec.category_name');
 
-    // Owner (role 2): always scoped to their own hostel. Admin/Super Admin
-    // (role 1): scoped to ?hostelId if given, otherwise global across all hostels.
-    const scopedHostelId = resolveScopedHostelId(user, hostelId as string | undefined);
-    if (user?.role_id === 2 && !scopedHostelId) {
-      return res.status(403).json({
-        success: false,
-        error: 'Your account is not linked to any hostel.'
-      });
+    // Owner (role 2): validate BOTH user_id AND hostel_id together in DB.
+    // Admin/Super Admin (role 1): scoped to ?hostelId if given, otherwise global.
+    const { hostelId: scopedHostelId, error: hostelError } = await resolveOwnerHostelId(user, hostelId as string | undefined);
+    if (hostelError) {
+      return res.status(403).json({ success: false, error: hostelError });
     }
     if (scopedHostelId) {
       query = query.where('e.hostel_id', scopedHostelId);

@@ -2,7 +2,7 @@
 import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
-import { resolveScopedHostelId } from '../utils/scope.js';
+import { resolveScopedHostelId, resolveOwnerHostelId } from '../utils/scope.js';
 
 const tableExists = async (tableName: string): Promise<boolean> => {
   try {
@@ -459,16 +459,14 @@ export const getIncomeReport = async (req: AuthRequest, res: Response) => {
       .groupBy('month', 'pm.payment_mode_name')
       .orderBy('month', 'desc');
 
-    // Owner: always scoped to their own hostel. Admin/Super Admin: scoped to
-    // ?hostelId if given, otherwise global (no filter) across all hostels.
-    const scopedHostelId = resolveScopedHostelId(user, hostelId as string | undefined);
+    // Owner: validate BOTH user_id AND hostel_id together in DB.
+    // Admin/Super Admin: scoped to ?hostelId if given, otherwise global (no filter).
+    const { hostelId: scopedHostelId, error: hostelError } = await resolveOwnerHostelId(user, hostelId as string | undefined);
+    if (hostelError) {
+      return res.status(403).json({ success: false, error: hostelError });
+    }
     if (scopedHostelId) {
       query = query.where('fp.hostel_id', scopedHostelId);
-    } else if (user?.role_id === 2) {
-      return res.status(403).json({
-        success: false,
-        error: 'Your account is not linked to any hostel.'
-      });
     }
 
     if (startDate && endDate) {
@@ -517,16 +515,14 @@ export const getExpenseReport = async (req: AuthRequest, res: Response) => {
       .groupBy('month', 'ec.category_name')
       .orderBy('month', 'desc');
 
-    // Owner: always scoped to their own hostel. Admin/Super Admin: scoped to
-    // ?hostelId if given, otherwise global (no filter) across all hostels.
-    const scopedHostelId = resolveScopedHostelId(user, hostelId as string | undefined);
+    // Owner: validate BOTH user_id AND hostel_id together in DB.
+    // Admin/Super Admin: scoped to ?hostelId if given, otherwise global (no filter).
+    const { hostelId: scopedHostelId, error: hostelError } = await resolveOwnerHostelId(user, hostelId as string | undefined);
+    if (hostelError) {
+      return res.status(403).json({ success: false, error: hostelError });
+    }
     if (scopedHostelId) {
       query = query.where('e.hostel_id', scopedHostelId);
-    } else if (user?.role_id === 2) {
-      return res.status(403).json({
-        success: false,
-        error: 'Your account is not linked to any hostel.'
-      });
     }
 
     if (startDate && endDate) {

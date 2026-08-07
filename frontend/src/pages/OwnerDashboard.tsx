@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Users, DollarSign, FileText, TrendingUp, AlertCircle, CreditCard, UserCheck } from 'lucide-react';
+import { Building2, Users, DollarSign, FileText, TrendingUp, AlertCircle, CreditCard, UserCheck, Building } from 'lucide-react';
 import { StatCard } from '../components/ui/StatCard';
 import { Card } from '../components/ui/Card';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import { formatDistanceToNow } from 'date-fns';
 import clsx from 'clsx';
+import { useAuthStore, setStoredHostelId, getStoredHostelId } from '../store/authStore';
 
 interface DashboardStats {
   totalRooms: number;
@@ -48,20 +49,47 @@ interface PendingRegistration {
 
 export const OwnerDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [pendingRegistrations, setPendingRegistrations] = useState<PendingRegistration[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hostels, setHostels] = useState<any[]>([]);
+  const [selectedHostelId, setSelectedHostelId] = useState<string>(
+    getStoredHostelId() || user?.hostel_id?.toString() || ''
+  );
+
+  const fetchHostels = async () => {
+    try {
+      const response = await api.get('/hostels');
+      const data = response.data.data || [];
+      setHostels(data);
+      if (data.length > 0 && !selectedHostelId) {
+        const firstId = data[0].hostel_id.toString();
+        setSelectedHostelId(firstId);
+        setStoredHostelId(firstId);
+        window.dispatchEvent(new CustomEvent('hostelChanged', { detail: { hostelId: firstId } }));
+      }
+    } catch (error) {
+      console.error('Failed to fetch hostels:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchHostels();
+  }, []);
 
   useEffect(() => {
     fetchDashboardStats();
     fetchRecentActivity();
     fetchPendingRegistrations();
-  }, []);
+  }, [selectedHostelId]);
 
   const fetchDashboardStats = async () => {
     try {
-      const response = await api.get('/analytics/dashboard-stats');
+      setLoading(true);
+      const params = selectedHostelId ? { hostelId: selectedHostelId } : {};
+      const response = await api.get('/analytics/dashboard-stats', { params });
       setStats(response.data.data);
     } catch (error: any) {
       toast.error('Failed to fetch dashboard statistics');
@@ -73,7 +101,8 @@ export const OwnerDashboard: React.FC = () => {
 
   const fetchRecentActivity = async () => {
     try {
-      const response = await api.get('/activity/recent?limit=5');
+      const params = selectedHostelId ? { limit: 5, hostelId: selectedHostelId } : { limit: 5 };
+      const response = await api.get('/activity/recent', { params });
       setActivities(response.data.data);
     } catch (error: any) {
       console.error('Failed to fetch recent activity:', error);
@@ -82,7 +111,8 @@ export const OwnerDashboard: React.FC = () => {
 
   const fetchPendingRegistrations = async () => {
     try {
-      const response = await api.get('/students/pending-registrations');
+      const params = selectedHostelId ? { hostelId: selectedHostelId } : {};
+      const response = await api.get('/students/pending-registrations', { params });
       if (response.data?.success) {
         setPendingRegistrations(response.data.data);
       }
@@ -162,6 +192,36 @@ export const OwnerDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6 w-full animate-fade-in pb-8">
+      {/* Hostel Selector */}
+      {hostels.length > 1 && (
+        <div className="bg-white dark:bg-slate-900 p-4.5 rounded-2xl shadow-sm border border-slate-200/80 dark:border-slate-800/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Building className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
+            <div>
+              <h2 className="text-sm font-extrabold text-slate-900 dark:text-white">Active Hostel</h2>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">Switch between your hostels to see stats</p>
+            </div>
+          </div>
+          <select
+            value={selectedHostelId}
+            onChange={(e) => {
+              const newId = e.target.value;
+              setSelectedHostelId(newId);
+              setStoredHostelId(newId);
+              // Notify all other open pages immediately
+              window.dispatchEvent(new CustomEvent('hostelChanged', { detail: { hostelId: newId } }));
+            }}
+            className="px-4 py-2.5 border border-slate-250 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-bold text-xs uppercase tracking-wider min-w-[280px] shadow-sm outline-none"
+          >
+            {hostels.map((h) => (
+              <option key={h.hostel_id} value={h.hostel_id.toString()}>
+                {h.hostel_name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* Banner / Greeting block */}
       <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-tr from-slate-900 via-slate-900 to-indigo-950 p-8 md:p-10 text-white shadow-2xl border border-slate-800/80">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(6,182,212,0.15),transparent)] pointer-events-none" />
