@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Plus, Edit, Search, Users, X, Building2 } from "lucide-react";
 import api from "../services/api";
 import toast from "react-hot-toast";
@@ -81,9 +82,13 @@ interface StudentFormData {
   room_id: string;
   floor_number: string;
   monthly_rent: string;
+  stay_duration?: string;          // '1' | '3' | '6' | '12'
+  calculated_total_rent?: string;  // Auto calculated (monthly_rent * duration)
+  final_total_rent?: string;       // User adjustable final total
 }
 
 export const StudentsPage: React.FC = () => {
+  const location = useLocation();
   const user = useAuthStore((state) => state.user);
   const [students, setStudents] = useState<Student[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
@@ -156,6 +161,9 @@ export const StudentsPage: React.FC = () => {
     room_id: "",
     floor_number: "",
     monthly_rent: "",
+    stay_duration: "1",
+    calculated_total_rent: "",
+    final_total_rent: "",
   });
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -180,6 +188,16 @@ export const StudentsPage: React.FC = () => {
       fetchHostelStats();
     }
   }, [selectedHostelId]);
+
+  // Check location.state for openAddModal / roomId passed from Dashboard or Room Creation
+  useEffect(() => {
+    if (location.state?.openAddModal) {
+      setShowModal(true);
+      if (location.state?.roomId) {
+        setFormData((prev) => ({ ...prev, room_id: location.state.roomId.toString() }));
+      }
+    }
+  }, [location.state]);
 
   // Listen for hostel switches from dashboard or other pages
   useEffect(() => {
@@ -552,7 +570,10 @@ export const StudentsPage: React.FC = () => {
           const selectedRoom = rooms.find((r) => r.room_id === parseInt(value));
           if (selectedRoom) {
             updated.floor_number = selectedRoom.floor_number?.toString() || "";
-            updated.monthly_rent = selectedRoom.rent_per_bed.toString();
+            const duration = parseInt(updated.stay_duration || "1");
+            const calcTotal = selectedRoom.rent_per_bed * duration;
+            updated.calculated_total_rent = calcTotal.toString();
+            updated.final_total_rent = calcTotal.toString();
 
             // Show warning if room is full
             if (selectedRoom.occupied_beds >= selectedRoom.capacity) {
@@ -565,7 +586,17 @@ export const StudentsPage: React.FC = () => {
           // Clear floor and rent if no room selected
           updated.floor_number = "";
           updated.monthly_rent = "";
+          updated.calculated_total_rent = "";
+          updated.final_total_rent = "";
         }
+      }
+
+      if (name === "monthly_rent") {
+        const duration = parseInt(updated.stay_duration || "1");
+        const rentVal = parseFloat(value) || 0;
+        const calcTotal = rentVal * duration;
+        updated.calculated_total_rent = calcTotal.toString();
+        updated.final_total_rent = calcTotal.toString();
       }
 
       // Clear ID Proof Number when ID Proof Type changes
@@ -1866,6 +1897,91 @@ export const StudentsPage: React.FC = () => {
                       />
                     </div>
                   </div>
+
+                  {/* Stay Duration & Rent Calculation (Mobile Form) */}
+                  {formData.monthly_rent && parseFloat(formData.monthly_rent) > 0 && (
+                    <div className="mt-3 p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                      <label className="block text-xs font-bold text-slate-800">
+                        🗓️ Stay Duration / Plan
+                      </label>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {[
+                          { label: '1 Month', months: '1' },
+                          { label: '3 Months', months: '3' },
+                          { label: '6 Months', months: '6' },
+                          { label: '1 Year', months: '12' },
+                        ].map((plan) => {
+                          const isSel = (formData.stay_duration || '1') === plan.months;
+                          return (
+                            <button
+                              key={plan.months}
+                              type="button"
+                              onClick={() => {
+                                const mult = parseInt(plan.months);
+                                const rentNum = parseFloat(formData.monthly_rent || '0');
+                                const calc = rentNum * mult;
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  stay_duration: plan.months,
+                                  calculated_total_rent: calc.toString(),
+                                  final_total_rent: calc.toString(),
+                                }));
+                              }}
+                              className={`py-1.5 px-1 rounded text-xs font-bold border text-center ${
+                                isSel
+                                  ? 'bg-cyan-600 text-white border-cyan-600'
+                                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                              }`}
+                            >
+                              {plan.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-xs">
+                        <div>
+                          <p className="font-bold text-slate-900">
+                            Base Total: ₹{(parseFloat(formData.monthly_rent || '0') * parseInt(formData.stay_duration || '1')).toLocaleString('en-IN')}
+                          </p>
+                          <p className="text-[10px] text-slate-500">
+                            {formData.stay_duration || '1'} Month(s) × ₹{parseFloat(formData.monthly_rent).toLocaleString('en-IN')}/mo
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-slate-700">Final (₹):</span>
+                          <input
+                            type="number"
+                            name="final_total_rent"
+                            value={formData.final_total_rent || (parseFloat(formData.monthly_rent || '0') * parseInt(formData.stay_duration || '1')).toString()}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, final_total_rent: e.target.value }))}
+                            className="w-24 px-2 py-1 text-xs font-bold border border-cyan-500 rounded bg-white text-slate-900"
+                          />
+                        </div>
+                      </div>
+
+                      {(() => {
+                        const baseCalc = parseFloat(formData.monthly_rent || '0') * parseInt(formData.stay_duration || '1');
+                        const finalAmt = parseFloat(formData.final_total_rent || '0');
+                        const diff = baseCalc - finalAmt;
+                        if (diff > 0) {
+                          return (
+                            <p className="text-[11px] font-bold text-emerald-700 bg-emerald-50 p-1.5 rounded border border-emerald-200">
+                              🎉 ₹{diff.toLocaleString('en-IN')} Discount Applied! (Base ₹{baseCalc.toLocaleString('en-IN')} → Final ₹{finalAmt.toLocaleString('en-IN')})
+                            </p>
+                          );
+                        } else if (diff < 0) {
+                          return (
+                            <p className="text-[11px] font-bold text-amber-700 bg-amber-50 p-1.5 rounded border border-amber-200">
+                              ℹ️ Adjustment: Base ₹{baseCalc.toLocaleString('en-IN')} → Final ₹{finalAmt.toLocaleString('en-IN')}
+                            </p>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
+                  )}
                 </div>
 
                 {/* Action Buttons */}
@@ -2328,6 +2444,95 @@ export const StudentsPage: React.FC = () => {
                       />
                     </div>
                   </div>
+
+                  {/* Stay Duration & Rent Calculation (Desktop Form) */}
+                  {formData.monthly_rent && parseFloat(formData.monthly_rent) > 0 && (
+                    <div className="mt-3 p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2.5">
+                      <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                        <span>🗓️</span> Stay Duration / Payment Plan
+                      </label>
+                      <div className="grid grid-cols-4 gap-2">
+                        {[
+                          { label: '1 Month (Monthly)', months: '1' },
+                          { label: '3 Months (Quarterly)', months: '3' },
+                          { label: '6 Months (Half-Yearly)', months: '6' },
+                          { label: '1 Year (12 Months)', months: '12' },
+                        ].map((plan) => {
+                          const isSel = (formData.stay_duration || '1') === plan.months;
+                          return (
+                            <button
+                              key={plan.months}
+                              type="button"
+                              onClick={() => {
+                                const mult = parseInt(plan.months);
+                                const rentNum = parseFloat(formData.monthly_rent || '0');
+                                const calc = rentNum * mult;
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  stay_duration: plan.months,
+                                  calculated_total_rent: calc.toString(),
+                                  final_total_rent: calc.toString(),
+                                }));
+                              }}
+                              className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all border text-center ${
+                                isSel
+                                  ? 'bg-cyan-600 text-white border-cyan-600 shadow-sm'
+                                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                              }`}
+                            >
+                              {plan.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
+                        <div>
+                          <p className="font-extrabold text-slate-900 dark:text-white">
+                            Base Total Rent: <span className="text-cyan-600 dark:text-cyan-400 font-black">
+                              ₹{(parseFloat(formData.monthly_rent || '0') * parseInt(formData.stay_duration || '1')).toLocaleString('en-IN')}
+                            </span>
+                          </p>
+                          <p className="text-[11px] text-slate-500">
+                            {formData.stay_duration || '1'} Month(s) × ₹{parseFloat(formData.monthly_rent).toLocaleString('en-IN')}/mo
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <label className="text-xs font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                            Final Total Rent (₹):
+                          </label>
+                          <input
+                            type="number"
+                            name="final_total_rent"
+                            value={formData.final_total_rent || (parseFloat(formData.monthly_rent || '0') * parseInt(formData.stay_duration || '1')).toString()}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, final_total_rent: e.target.value }))}
+                            className="w-28 px-2.5 py-1 text-xs font-bold border border-cyan-500 rounded-lg bg-white text-slate-900"
+                          />
+                        </div>
+                      </div>
+
+                      {(() => {
+                        const baseCalc = parseFloat(formData.monthly_rent || '0') * parseInt(formData.stay_duration || '1');
+                        const finalAmt = parseFloat(formData.final_total_rent || '0');
+                        const diff = baseCalc - finalAmt;
+                        if (diff > 0) {
+                          return (
+                            <p className="text-[11px] font-bold text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 p-2 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                              🎉 ₹{diff.toLocaleString('en-IN')} Discount Applied! (Base: ₹{baseCalc.toLocaleString('en-IN')} → Final: ₹{finalAmt.toLocaleString('en-IN')})
+                            </p>
+                          );
+                        } else if (diff < 0) {
+                          return (
+                            <p className="text-[11px] font-bold text-amber-700 bg-amber-50 dark:bg-amber-950/40 p-2 rounded-lg border border-amber-200 dark:border-amber-800">
+                              ℹ️ Custom Adjustment: Base ₹{baseCalc.toLocaleString('en-IN')} → Final ₹{finalAmt.toLocaleString('en-IN')}
+                            </p>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
+                  )}
                 </div>
 
                 {/* Action Buttons */}

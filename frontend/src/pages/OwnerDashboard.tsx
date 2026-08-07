@@ -256,6 +256,102 @@ export const OwnerDashboard: React.FC = () => {
         </div>
       </div>
 
+      {/* Setup Progress Checklist (Shown when setup is incomplete) */}
+      {stats && (stats.totalRooms === 0 || stats.totalStudents === 0) && (
+        <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-cyan-500/10 border border-amber-500/30 dark:border-amber-500/20 p-6 rounded-3xl shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                🚀 Setup Progress Checklist
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                Complete these 3 steps to set up your hostel and start adding tenants.
+              </p>
+            </div>
+            <span className="text-xs font-bold px-3 py-1 bg-amber-500/20 text-amber-700 dark:text-amber-300 rounded-full">
+              {stats.totalRooms > 0 && stats.totalStudents > 0 ? '3/3 Done' : stats.totalRooms > 0 ? 'Step 2/3 Complete' : 'Step 1/3 Complete'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+            {/* Step 1: Create Hostel */}
+            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs">
+                  ✓
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white">Step 1: Hostel Created</h4>
+                  <p className="text-[11px] text-slate-500">Hostel active</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 2: Create Rooms */}
+            <div className={`p-4 rounded-2xl border flex items-center justify-between ${
+              stats.totalRooms > 0
+                ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
+                : 'bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800/50'
+            }`}>
+              <div className="flex items-center gap-3">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${
+                  stats.totalRooms > 0
+                    ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400'
+                    : 'bg-amber-500 text-white'
+                }`}>
+                  {stats.totalRooms > 0 ? '✓' : '2'}
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white">Step 2: Add Rooms</h4>
+                  <p className="text-[11px] text-slate-500">
+                    {stats.totalRooms > 0 ? `${stats.totalRooms} Rooms Added` : 'No rooms created yet'}
+                  </p>
+                </div>
+              </div>
+              {stats.totalRooms === 0 && (
+                <button
+                  onClick={() => navigate('/owner/rooms')}
+                  className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm"
+                >
+                  + Add Rooms
+                </button>
+              )}
+            </div>
+
+            {/* Step 3: Add Students */}
+            <div className={`p-4 rounded-2xl border flex items-center justify-between ${
+              stats.totalStudents > 0
+                ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
+                : 'bg-cyan-50 dark:bg-cyan-950/30 border-cyan-300 dark:border-cyan-800/50'
+            }`}>
+              <div className="flex items-center gap-3">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${
+                  stats.totalStudents > 0
+                    ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400'
+                    : 'bg-cyan-600 text-white'
+                }`}>
+                  {stats.totalStudents > 0 ? '✓' : '3'}
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white">Step 3: Add Students</h4>
+                  <p className="text-[11px] text-slate-500">
+                    {stats.totalStudents > 0 ? `${stats.totalStudents} Active Students` : 'No students added yet'}
+                  </p>
+                </div>
+              </div>
+              {stats.totalStudents === 0 && (
+                <button
+                  onClick={() => navigate('/owner/students', { state: { openAddModal: true } })}
+                  className="px-3.5 py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm"
+                >
+                  + Add Student
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Stats Grid */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5">
         <div onClick={() => navigate('/owner/rooms')} className="cursor-pointer">

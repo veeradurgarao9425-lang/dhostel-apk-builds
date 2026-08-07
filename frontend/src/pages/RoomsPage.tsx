@@ -11,7 +11,9 @@ import {
   BedDouble,
   DollarSign,
   Wifi,
+  Users,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import toast from "react-hot-toast";
 import { useAuthStore, getStoredHostelId, setStoredHostelId } from "../store/authStore";
@@ -49,6 +51,7 @@ interface RoomFormData {
 }
 
 export const RoomsPage: React.FC = () => {
+  const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([]);
@@ -69,6 +72,14 @@ export const RoomsPage: React.FC = () => {
     roomId: null,
     roomNumber: "",
   });
+
+  // Prompt modal shown right after creating a new room
+  const [createdRoomPrompt, setCreatedRoomPrompt] = useState<{
+    isOpen: boolean;
+    roomId?: number;
+    roomNumber?: string;
+  }>({ isOpen: false });
+
   const [isDeleting, setIsDeleting] = useState(false);
   const [formData, setFormData] = useState<RoomFormData>({
     room_number: "",
@@ -408,12 +419,21 @@ export const RoomsPage: React.FC = () => {
       if (editingRoom) {
         await api.put(`/rooms/${editingRoom.room_id}`, payload);
         toast.success("Room updated successfully");
+        fetchRooms();
+        handleCloseModal();
       } else {
-        await api.post("/rooms", payload);
-        toast.success("Room created successfully");
+        const response = await api.post("/rooms", payload);
+        const createdRoom = response.data?.data;
+        toast.success("Room created successfully!");
+        fetchRooms();
+        handleCloseModal();
+        // Open the Next Step: Add Students prompt modal
+        setCreatedRoomPrompt({
+          isOpen: true,
+          roomId: createdRoom?.room_id,
+          roomNumber: formData.room_number,
+        });
       }
-      fetchRooms();
-      handleCloseModal();
     } catch (error: any) {
       toast.error(error.response?.data?.error || "Failed to save room");
       console.error("Save room error:", error);
@@ -1429,6 +1449,58 @@ export const RoomsPage: React.FC = () => {
         itemName={`Room ${deleteConfirmModal.roomNumber}`}
         loading={isDeleting}
       />
+
+      {/* Post-Room Creation Step 3 Prompt Modal */}
+      {createdRoomPrompt.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-md w-full p-6 text-center border border-slate-200 dark:border-slate-800 space-y-5">
+            <div className="mx-auto w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-3xl font-extrabold shadow-inner">
+              ✓
+            </div>
+            <div>
+              <span className="inline-block px-3 py-1 bg-cyan-100 dark:bg-cyan-950 text-cyan-700 dark:text-cyan-300 font-bold text-xs rounded-full uppercase tracking-wider mb-2">
+                Step 2 Completed
+              </span>
+              <h3 className="text-xl font-black text-slate-900 dark:text-white">
+                Room {createdRoomPrompt.roomNumber} Created!
+              </h3>
+              <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
+                Next Step 3: Would you like to add students to this room now?
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => {
+                  const rId = createdRoomPrompt.roomId;
+                  setCreatedRoomPrompt({ isOpen: false });
+                  navigate('/owner/students', { state: { openAddModal: true, roomId: rId } });
+                }}
+                className="w-full py-3 bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white rounded-xl font-extrabold text-sm shadow-md transition-all flex items-center justify-center gap-2"
+              >
+                <Users className="h-4 w-4" /> Add Students to this Room
+              </button>
+
+              <button
+                onClick={() => {
+                  setCreatedRoomPrompt({ isOpen: false });
+                  setShowModal(true);
+                }}
+                className="w-full py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs uppercase tracking-wider transition-all"
+              >
+                + Add Another Room
+              </button>
+
+              <button
+                onClick={() => setCreatedRoomPrompt({ isOpen: false })}
+                className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 underline pt-1"
+              >
+                I'll do this later
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

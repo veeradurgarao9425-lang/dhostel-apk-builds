@@ -758,8 +758,8 @@ export default function HomeScreen() {
                 }
             >
                 <View style={s.body}>
-                    {/* Setup guide for first-time owners: only show when data is loaded and setup is incomplete */}
-                    {!loading && (data.totalBeds === 0 && data.totalRooms === 0) ? (
+                    {/* Setup guide for first-time owners: show whenever setup is incomplete (missing rooms OR missing tenants) */}
+                    {!loading && (data.totalStudentsCount === 0 || (data.totalBeds === 0 && data.totalRooms === 0)) ? (
                         <View collapsable={false}>
                             <SetupGuideCard
                                 hasHostel={Boolean(user?.hostel_id || data.hostelName)}

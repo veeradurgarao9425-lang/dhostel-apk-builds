@@ -1400,7 +1400,15 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                         </TouchableOpacity>
                     )}
                     <FormInput label="Monthly Rent (₹)" icon={CreditCard} placeholder="Auto-filled from room" keyboardType="numeric" value={formData.monthly_rent}
-                        onChangeText={(t: string) => up('monthly_rent', t.replace(/\D/g, ''))} />
+                        onChangeText={(t: string) => {
+                            const rentVal = t.replace(/\D/g, '');
+                            up('monthly_rent', rentVal);
+                            if (formData.fee_plan !== '1') {
+                                const months = parseInt(formData.fee_plan || '1');
+                                const calcAmt = (parseFloat(rentVal) || 0) * months;
+                                up('plan_amount', calcAmt > 0 ? String(calcAmt) : '');
+                            }
+                        }} />
 
                     {/* ── Fee Plan Selector ── */}
                     <View style={{ marginTop: 4 }}>
@@ -1410,7 +1418,14 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                             selected={formData.fee_plan === '1' ? 'Monthly' : formData.fee_plan === '3' ? '3 Months' : formData.fee_plan === '6' ? '6 Months' : '1 Year'}
                             onSelect={(v: string) => {
                                 const planMap: Record<string, string> = { 'Monthly': '1', '3 Months': '3', '6 Months': '6', '1 Year': '12' };
-                                up('fee_plan', planMap[v] || '1');
+                                const planVal = planMap[v] || '1';
+                                const rentNum = parseFloat(formData.monthly_rent || '0');
+                                const months = parseInt(planVal);
+                                const calcAmt = rentNum * months;
+                                up('fee_plan', planVal);
+                                if (planVal !== '1') {
+                                    up('plan_amount', calcAmt > 0 ? String(calcAmt) : '');
+                                }
                             }}
                         />
                     </View>
@@ -1419,13 +1434,46 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                     {formData.fee_plan !== '1' && (
                         <View style={{ gap: 8 }}>
                             <FormInput
-                                label={`Plan Amount (₹) — for ${formData.fee_plan === '3' ? '3 months' : formData.fee_plan === '6' ? '6 months' : '1 year'}`}
+                                label={`Total Plan Rent (₹) — editable (${formData.fee_plan === '3' ? '3 months' : formData.fee_plan === '6' ? '6 months' : '1 year'})`}
                                 icon={CreditCard}
-                                placeholder="e.g. 22000"
+                                placeholder="e.g. 15000"
                                 keyboardType="numeric"
-                                value={formData.plan_amount}
+                                value={formData.plan_amount || String((parseFloat(formData.monthly_rent || '0') * parseInt(formData.fee_plan || '1')))}
                                 onChangeText={(t: string) => up('plan_amount', t.replace(/\D/g, ''))}
                             />
+
+                            {/* Live Calculation & Discount Feedback */}
+                            {formData.monthly_rent ? (() => {
+                                const rentNum = parseFloat(formData.monthly_rent || '0');
+                                const months = parseInt(formData.fee_plan || '1');
+                                const baseCalc = rentNum * months;
+                                const finalAmt = parseFloat(formData.plan_amount || String(baseCalc));
+                                const diff = baseCalc - finalAmt;
+                                return (
+                                    <View style={{ gap: 6 }}>
+                                        <View style={{ backgroundColor: isDark ? '#1E293B' : '#F8FAFC', padding: 10, borderRadius: 10, borderWidth: 1, borderColor: isDark ? '#334155' : '#E2E8F0', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <Text style={{ fontSize: 11, color: theme.textSecondary, fontWeight: '600' }}>Base Calculation ({months} Mo):</Text>
+                                            <Text style={{ fontSize: 12, fontWeight: '800', color: theme.primary }}>{months} × ₹{rentNum.toLocaleString('en-IN')} = ₹{baseCalc.toLocaleString('en-IN')}</Text>
+                                        </View>
+
+                                        {diff > 0 && (
+                                            <View style={{ backgroundColor: isDark ? '#064E3B' : '#ECFDF5', padding: 10, borderRadius: 10, borderWidth: 1, borderColor: isDark ? '#059669' : '#A7F3D0' }}>
+                                                <Text style={{ fontSize: 11, fontWeight: '700', color: isDark ? '#A7F3D0' : '#047857' }}>
+                                                    🎉 ₹{diff.toLocaleString('en-IN')} Discount Applied! (Base ₹{baseCalc.toLocaleString('en-IN')} → Final ₹{finalAmt.toLocaleString('en-IN')})
+                                                </Text>
+                                            </View>
+                                        )}
+                                        {diff < 0 && (
+                                            <View style={{ backgroundColor: isDark ? '#78350F' : '#FFFBEB', padding: 10, borderRadius: 10, borderWidth: 1, borderColor: isDark ? '#D97706' : '#FDE68A' }}>
+                                                <Text style={{ fontSize: 11, fontWeight: '700', color: isDark ? '#FDE68A' : '#B45309' }}>
+                                                    ℹ️ Custom Adjustment: Base ₹{baseCalc.toLocaleString('en-IN')} → Final ₹{finalAmt.toLocaleString('en-IN')}
+                                                </Text>
+                                            </View>
+                                        )}
+                                    </View>
+                                );
+                            })() : null}
+
                             {/* Auto-calculated plan end date display */}
                             {formData.admission_date ? (() => {
                                 const start = new Date(formData.admission_date);

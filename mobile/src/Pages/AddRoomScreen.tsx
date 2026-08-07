@@ -12,6 +12,7 @@ import {
     Modal,
     FlatList,
     Keyboard,
+    Alert,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { AppHeader } from '../components/AppHeader';
@@ -308,7 +309,34 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
                 Toast.show({ type: 'success', text1: 'Success', text2: `Room ${isEdit ? 'updated' : 'added'} successfully!` });
                 const savedRoom = response.data?.data;
                 triggerRefresh({ lastCreatedRoomId: savedRoom?.room_id });
-                navigation.goBack();
+
+                if (!isEdit) {
+                    Alert.alert(
+                        "🎉 Step 2 Completed!",
+                        `Room ${formData.room_number} added successfully.\n\nStep 3: Would you like to register students for this room now?`,
+                        [
+                            {
+                                text: "+ Add Student Now",
+                                onPress: () => {
+                                    navigation.replace('AddStudent', { roomId: savedRoom?.room_id });
+                                }
+                            },
+                            {
+                                text: "Add Another Room",
+                                onPress: () => {
+                                    handleReset();
+                                }
+                            },
+                            {
+                                text: "Back to Dashboard",
+                                onPress: () => navigation.goBack(),
+                                style: "cancel"
+                            }
+                        ]
+                    );
+                } else {
+                    navigation.goBack();
+                }
             }
         } catch (error: any) {
             Toast.show({ type: 'error', text1: 'Error', text2: error.response?.data?.error || 'Failed to save room' });
