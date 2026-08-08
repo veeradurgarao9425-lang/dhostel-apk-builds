@@ -162,7 +162,17 @@ const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect, isDar
     const accentColor = item.isOverdue ? '#DC2626' : '#D97706';
     let tagLabel = '';
     if (item.isOverdue) {
-        tagLabel = `${item.daysOverdue}d overdue`;
+        if (item.daysOverdue > 0) {
+            tagLabel = `${item.daysOverdue}d overdue`;
+        } else if (item.effectiveCarryForward > 0 || item.carryForward > 0) {
+            const dueObj = new Date(item.rawDueDate);
+            const now = new Date(); now.setHours(0, 0, 0, 0);
+            const lastMonthDue = new Date(now.getFullYear(), now.getMonth() - 1, dueObj.getDate());
+            const carryDays = Math.max(1, Math.floor((now.getTime() - lastMonthDue.getTime()) / 86400000));
+            tagLabel = `${carryDays}d overdue`;
+        } else {
+            tagLabel = 'Overdue';
+        }
     } else {
         const dueObj = new Date(item.rawDueDate);
         dueObj.setHours(0, 0, 0, 0);
@@ -234,26 +244,39 @@ const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect, isDar
                 {/* ── Divider ── */}
                 <View style={[card.divider, { backgroundColor: isDark ? '#334155' : '#ECECEC' }]} />
 
-                {/* ── Actions: full-width labeled buttons ── */}
-                <View style={card.actionsRow}>
-                    <TouchableOpacity
-                        style={[card.actionBtn, { borderColor: theme.primary, borderWidth: 1.5, backgroundColor: 'transparent' }]}
-                        onPress={() => onRemind(item)}
-                        activeOpacity={0.75}
-                    >
-                        <Ionicons name="notifications-outline" size={16} color={theme.primary} />
-                        <Text style={[card.actionBtnText, { color: theme.primary }]}>Remind</Text>
-                    </TouchableOpacity>
+                {/* ── Actions / Paid status badge ── */}
+                {item.dueAmount <= 0 ? (
+                    <View style={{
+                        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+                        backgroundColor: '#DCFCE7', borderRadius: 8, paddingVertical: 8,
+                        borderWidth: 1, borderColor: '#86EFAC'
+                    }}>
+                        <Ionicons name="checkmark-circle" size={16} color="#059669" />
+                        <Text style={{ color: '#047857', fontSize: 13, fontWeight: '700' }}>
+                            Paid in Full (₹{item.paidAmount.toLocaleString('en-IN')})
+                        </Text>
+                    </View>
+                ) : (
+                    <View style={card.actionsRow}>
+                        <TouchableOpacity
+                            style={[card.actionBtn, { borderColor: theme.primary, borderWidth: 1.5, backgroundColor: 'transparent' }]}
+                            onPress={() => onRemind(item)}
+                            activeOpacity={0.75}
+                        >
+                            <Ionicons name="notifications-outline" size={16} color={theme.primary} />
+                            <Text style={[card.actionBtnText, { color: theme.primary }]}>Remind</Text>
+                        </TouchableOpacity>
 
-                    <TouchableOpacity
-                        style={[card.actionBtn, { backgroundColor: theme.primary }]}
-                        onPress={() => onCollect(item)}
-                        activeOpacity={0.75}
-                    >
-                        <MaterialCommunityIcons name="currency-inr" size={16} color="#FFFFFF" />
-                        <Text style={[card.actionBtnText, { color: '#FFFFFF' }]}>Collect</Text>
-                    </TouchableOpacity>
-                </View>
+                        <TouchableOpacity
+                            style={[card.actionBtn, { backgroundColor: theme.primary }]}
+                            onPress={() => onCollect(item)}
+                            activeOpacity={0.75}
+                        >
+                            <MaterialCommunityIcons name="currency-inr" size={16} color="#FFFFFF" />
+                            <Text style={[card.actionBtnText, { color: '#FFFFFF' }]}>Collect</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
             </View>
         </View>
     );
@@ -334,10 +357,10 @@ export default function PendingPaymentsScreen() {
     const [partialPaid, setPartialPaid] = useState(0);
     const [totalDefaulters, setTotalDefaulters] = useState(0);
 
-    const initialTab = (['Overdue', 'Next 7 Days', 'All Dues', 'Plan Renewals'] as const).includes(route.params?.tab)
+    const initialTab = (['Overdue', 'Next 7 Days', 'Partially Paid', 'Fully Paid', 'All Dues', 'Plan Renewals'] as const).includes(route.params?.tab)
         ? route.params.tab
         : 'Overdue';
-    const [activeTab, setActiveTab] = useState<'Overdue' | 'Next 7 Days' | 'All Dues' | 'Plan Renewals'>(initialTab);
+    const [activeTab, setActiveTab] = useState<'Overdue' | 'Next 7 Days' | 'Partially Paid' | 'Fully Paid' | 'All Dues' | 'Plan Renewals'>(initialTab);
     const [tabCounts, setTabCounts] = useState({
         overdue: 0, next_7_days: 0, all: 0,
         overdue_amount: 0, next_7_days_amount: 0, all_amount: 0, partial_count: 0
@@ -386,13 +409,9 @@ export default function PendingPaymentsScreen() {
             }
 
             const res: any = await api.get('/monthly-fees/summary', {
-                params: { onlyPending: 'true', page: pageNum, limit: 10 },
+                params: { page: pageNum, limit: 100 },
             });
             if (!res.data.success) throw new Error(res.data?.error || 'Failed to load dues');
-
-            if (res.data.data?.tab_counts) {
-                setTabCounts(res.data.data.tab_counts);
-            }
 
             const fees: any[] = res.data.data?.fees || [];
             const now = new Date(); now.setHours(0, 0, 0, 0);
@@ -400,12 +419,10 @@ export default function PendingPaymentsScreen() {
             const studentMap = new Map();
 
             fees.forEach(f => {
-                // balance = total actually owed (current month + all unpaid carry_forward)
-                // This is the REAL amount the student owes total
                 const balance = sf(f.balance || 0);
                 const paid = sf(f.paid_amount || f.amount_paid || 0);
-                const totalDue = sf(f.total_due || 0); // current month fee only
-                const carryForward = sf(f.carry_forward || 0); // from past unpaid months
+                const totalDue = sf(f.total_due || 0);
+                const carryForward = sf(f.carry_forward || 0);
                 const monthlyRent = sf(f.monthly_rent || f.fee_monthly_rent || f.student_monthly_rent || 0);
 
                 const dueDateObj = f.due_date ? new Date(f.due_date) : new Date();
@@ -414,9 +431,10 @@ export default function PendingPaymentsScreen() {
 
                 const dueMonth = f.fee_month || f.month || '';
                 const dueDateStr = f.due_date ? new Date(f.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '';
+                const effectiveCarryForward = Math.max(0, carryForward - paid);
 
-                // Skip students with nothing owed
-                if (balance <= 0) return;
+                // Student is overdue if due date passed OR if they have unpaid carry forward from past months!
+                const isOverdue = diffDays > 0 || effectiveCarryForward > 0;
 
                 if (!studentMap.has(f.student_id)) {
                     studentMap.set(f.student_id, {
@@ -428,16 +446,17 @@ export default function PendingPaymentsScreen() {
                         room: f.room_number || 'N/A',
                         room_number: f.room_number || 'N/A',
                         hostel_id: f.hostel_id,
-                        totalAmount: balance + paid,  // Total billed (Due + Paid)
-                        paidAmount: paid,             // amount paid so far
-                        dueAmount: balance,           // TOTAL actually owed (includes ALL past unpaid)
+                        totalAmount: balance + paid,
+                        paidAmount: paid,
+                        dueAmount: balance,
                         feeMonth: dueMonth,
                         dueDate: dueDateStr,
                         rawDueDate: f.due_date || new Date().toISOString(),
                         daysOverdue: Math.max(0, diffDays),
-                        isOverdue: diffDays > 0,
+                        isOverdue: isOverdue,
                         status: f.fee_status || 'pending',
                         carryForward: carryForward,
+                        effectiveCarryForward: effectiveCarryForward,
                         monthlyRent: monthlyRent,
                         breakdown: []
                     });
@@ -445,11 +464,10 @@ export default function PendingPaymentsScreen() {
 
                 const s = studentMap.get(f.student_id);
 
-                // Build breakdown: if there's carry_forward, show it as past months
-                if (carryForward > 0) {
+                if (effectiveCarryForward > 0) {
                     s.breakdown.push({
                         month: 'Past unpaid months',
-                        amount: carryForward,
+                        amount: effectiveCarryForward,
                         dueDate: null,
                         isPast: true
                     });
@@ -469,7 +487,26 @@ export default function PendingPaymentsScreen() {
                 return s;
             });
 
-            setHasMore(res.data.data?.hasMore ?? (pending.length === 10));
+            // Compute dynamic live tab counts from students
+            const overdueCount = pending.filter(s => s.isOverdue).length;
+            const overdueAmount = pending.filter(s => s.isOverdue).reduce((sum, s) => sum + s.dueAmount, 0);
+            const next7Count = pending.filter(s => !s.isOverdue && s.dueAmount > 0).length;
+            const next7Amount = pending.filter(s => !s.isOverdue && s.dueAmount > 0).reduce((sum, s) => sum + s.dueAmount, 0);
+            const partialCount = pending.filter(s => s.paidAmount > 0 && s.dueAmount > 0).length;
+            const fullyPaidCount = pending.filter(s => s.dueAmount <= 0 && s.paidAmount > 0).length;
+
+            setTabCounts({
+                overdue: overdueCount,
+                next_7_days: next7Count,
+                all: pending.length,
+                overdue_amount: overdueAmount,
+                next_7_days_amount: next7Amount,
+                all_amount: pending.reduce((sum, s) => sum + s.dueAmount, 0),
+                partial_count: partialCount,
+                fully_paid_count: fullyPaidCount
+            } as any);
+
+            setHasMore(res.data.data?.hasMore ?? false);
             setTenants(prev => {
                 if (pageNum === 1) return pending;
                 const existingIds = new Set(prev.map(t => t.id));
@@ -648,6 +685,10 @@ export default function PendingPaymentsScreen() {
             if (!t.isOverdue) return false;
         } else if (activeTab === 'Next 7 Days') {
             if (t.isOverdue || diffDays < 0 || diffDays > 7) return false;
+        } else if (activeTab === 'Partially Paid') {
+            if (t.paidAmount <= 0 || t.dueAmount <= 0) return false;
+        } else if (activeTab === 'Fully Paid') {
+            if (t.dueAmount > 0) return false;
         } else if (activeTab === 'All Dues') {
             return true;
         } else if (activeTab === 'Plan Renewals') {
@@ -810,61 +851,56 @@ export default function PendingPaymentsScreen() {
             </View>
 
 
-            {/* ── Tabs: Overdue / Next 7 Days / All Dues / Plan Renewals ── */}
-            <View style={{ flexDirection: 'row', paddingHorizontal: 16, marginBottom: 8, gap: 6 }}>
-                {(['Overdue', 'Next 7 Days', 'All Dues'] as const).map(tab => {
-                    const isActive = activeTab === tab;
-                    const count = tab === 'Overdue' ? tabCounts.overdue : tab === 'Next 7 Days' ? tabCounts.next_7_days : tabCounts.all;
-                    return (
-                        <TouchableOpacity
-                            key={tab}
-                            onPress={() => setActiveTab(tab)}
-                            activeOpacity={0.8}
-                            style={[{
-                                flex: 1,
-                                paddingVertical: 8,
-                                borderRadius: 10,
-                                alignItems: 'center',
-                                borderWidth: 1.5,
-                                borderColor: isActive ? theme.primary : (isDark ? '#334155' : '#E2E8F0'),
-                                backgroundColor: isActive ? theme.primary + '15' : (isDark ? '#1E293B' : '#FFF'),
-                            }]}
-                        >
-                            <Text style={{ fontSize: 11, fontWeight: '800', color: isActive ? theme.primary : (isDark ? '#64748B' : '#94A3B8') }}>
-                                {tab}
-                            </Text>
-                            <Text style={{ fontSize: 13, fontWeight: '800', color: isActive ? theme.primary : (isDark ? '#94A3B8' : '#64748B'), marginTop: 1 }}>
-                                {count}
-                            </Text>
-                        </TouchableOpacity>
-                    );
-                })}
-                {/* Plan Renewals tab */}
-                {(() => {
-                    const isActive = activeTab === 'Plan Renewals';
-                    return (
-                        <TouchableOpacity
-                            onPress={() => setActiveTab('Plan Renewals')}
-                            activeOpacity={0.8}
-                            style={[{
-                                flex: 1,
-                                paddingVertical: 8,
-                                borderRadius: 10,
-                                alignItems: 'center',
-                                borderWidth: 1.5,
-                                borderColor: isActive ? '#D97706' : (isDark ? '#334155' : '#E2E8F0'),
-                                backgroundColor: isActive ? '#FEF3C7' : (isDark ? '#1E293B' : '#FFF'),
-                            }]}
-                        >
-                            <Text style={{ fontSize: 11, fontWeight: '800', color: isActive ? '#92400E' : (isDark ? '#64748B' : '#94A3B8') }}>
-                                Renewals
-                            </Text>
-                            <Text style={{ fontSize: 13, fontWeight: '800', color: isActive ? '#92400E' : (isDark ? '#94A3B8' : '#64748B'), marginTop: 1 }}>
-                                {renewalStudents.length}
-                            </Text>
-                        </TouchableOpacity>
-                    );
-                })()}
+            {/* ── Scrollable Tabs Bar ── */}
+            <View style={{ marginBottom: 12 }}>
+                <FlatList
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
+                    data={[
+                        { id: 'Overdue', label: 'Overdue', count: tabCounts.overdue, color: '#DC2626', bg: isDark ? '#450A0A' : '#FEE2E2' },
+                        { id: 'Next 7 Days', label: 'Next 7 Days', count: tabCounts.next_7_days, color: '#D97706', bg: isDark ? '#451A03' : '#FEF3C7' },
+                        { id: 'Partially Paid', label: 'Partial Paid', count: tabCounts.partial_count, color: '#0284C7', bg: isDark ? '#0C2A4A' : '#E0F2FE' },
+                        { id: 'Fully Paid', label: 'Paid', count: (tabCounts as any).fully_paid_count || 0, color: '#059669', bg: isDark ? '#064E3B' : '#DCFCE7' },
+                        { id: 'All Dues', label: 'All Dues', count: tabCounts.all, color: theme.primary, bg: theme.primary + '15' },
+                        { id: 'Plan Renewals', label: 'Renewals', count: renewalStudents.length, color: '#7C3AED', bg: isDark ? '#2E1065' : '#F3E8FF' }
+                    ]}
+                    keyExtractor={item => item.id}
+                    renderItem={({ item }) => {
+                        const isActive = activeTab === item.id;
+                        return (
+                            <TouchableOpacity
+                                onPress={() => setActiveTab(item.id as any)}
+                                activeOpacity={0.8}
+                                style={{
+                                    paddingHorizontal: 14,
+                                    paddingVertical: 8,
+                                    borderRadius: 20,
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    gap: 6,
+                                    borderWidth: 1.5,
+                                    borderColor: isActive ? item.color : (isDark ? '#334155' : '#E2E8F0'),
+                                    backgroundColor: isActive ? item.bg : (isDark ? '#1E293B' : '#FFF'),
+                                }}
+                            >
+                                <Text style={{ fontSize: 12, fontWeight: '700', color: isActive ? item.color : (isDark ? '#94A3B8' : '#64748B') }}>
+                                    {item.label}
+                                </Text>
+                                <View style={{
+                                    backgroundColor: isActive ? item.color : (isDark ? '#334155' : '#E2E8F0'),
+                                    paddingHorizontal: 6,
+                                    paddingVertical: 1,
+                                    borderRadius: 10
+                                }}>
+                                    <Text style={{ fontSize: 11, fontWeight: '800', color: isActive ? '#FFF' : (isDark ? '#94A3B8' : '#475569') }}>
+                                        {item.count}
+                                    </Text>
+                                </View>
+                            </TouchableOpacity>
+                        );
+                    }}
+                />
             </View>
 
             {activeTab !== 'Plan Renewals' ? (

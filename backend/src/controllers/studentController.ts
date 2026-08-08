@@ -289,7 +289,7 @@ export const getStudentById = async (req: AuthRequest, res: Response) => {
     // Get pending dues from monthly_fees
     const dues = await db('monthly_fees')
       .where({ student_id: studentId })
-      .whereIn('fee_status_id', [3, 4])
+      .where('balance', '>', 0)
       .select('*');
 
     res.json({

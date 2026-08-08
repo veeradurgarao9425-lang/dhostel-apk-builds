@@ -42,20 +42,21 @@ export const notificationService = {
       }
       
       try {
-        // Retrieve projectId for Expo push token
+        // Retrieve projectId for Expo push token safely
         const projectId =
           Constants?.expoConfig?.extra?.eas?.projectId ??
           Constants?.easConfig?.projectId;
           
-        const tokenResponse = await Notifications.getExpoPushTokenAsync({ projectId });
+        const tokenOptions = projectId ? { projectId } : undefined;
+        const tokenResponse = await Notifications.getExpoPushTokenAsync(tokenOptions);
         token = tokenResponse.data;
         console.log('Expo Push Token retrieved:', token);
         
         if (token) {
           await this.sendTokenToBackend(token);
         }
-      } catch (error) {
-        console.error('Error fetching Expo push token:', error);
+      } catch (error: any) {
+        console.warn('Push token retrieval skipped:', error?.message || error);
       }
     } else {
       console.log('Must use physical device for Push Notifications');

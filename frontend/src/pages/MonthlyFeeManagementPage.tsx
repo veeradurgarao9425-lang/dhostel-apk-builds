@@ -110,7 +110,7 @@ export const MonthlyFeeManagementPage: React.FC = () => {
   const [paymentModes, setPaymentModes] = useState<PaymentMode[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<
-    "ALL" | "FULLY_PAID" | "PARTIALLY_PAID" | "PENDING"
+    "ALL" | "FULLY_PAID" | "PARTIALLY_PAID" | "PENDING" | "OVERDUE"
   >("ALL");
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedCardId, setExpandedCardId] = useState<number | null>(null);
@@ -464,12 +464,17 @@ export const MonthlyFeeManagementPage: React.FC = () => {
     .filter((fee) => {
       // Apply status filter
       if (statusFilter !== "ALL") {
-        const statusMap: Record<string, string> = {
-          FULLY_PAID: "Fully Paid",
-          PARTIALLY_PAID: "Partially Paid",
-          PENDING: "Pending",
-        };
-        if (fee.fee_status !== statusMap[statusFilter]) return false;
+        if (statusFilter === "OVERDUE") {
+          const isOverdue = fee.fee_status === "Overdue" || (fee.balance > 0 && fee.due_date && new Date(fee.due_date) < new Date());
+          if (!isOverdue) return false;
+        } else {
+          const statusMap: Record<string, string> = {
+            FULLY_PAID: "Fully Paid",
+            PARTIALLY_PAID: "Partially Paid",
+            PENDING: "Pending",
+          };
+          if (fee.fee_status !== statusMap[statusFilter]) return false;
+        }
       }
 
       // Apply search filter
@@ -655,14 +660,16 @@ export const MonthlyFeeManagementPage: React.FC = () => {
                     | "FULLY_PAID"
                     | "PARTIALLY_PAID"
                     | "PENDING"
+                    | "OVERDUE"
                 )
               }
               className="border border-gray-300 rounded-lg px-2 md:px-3 py-1.5 md:py-2 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 bg-white"
             >
-              <option value="ALL">All</option>
-              <option value="FULLY_PAID">Fully Paid</option>
-              <option value="PARTIALLY_PAID">Partially Paid</option>
-              <option value="PENDING">Pending</option>
+              <option value="ALL">All ({summary ? summary.total_students : fees.length})</option>
+              <option value="PENDING">Pending ({summary ? summary.pending : fees.filter(f => f.fee_status === 'Pending').length})</option>
+              <option value="PARTIALLY_PAID">Partially Paid ({summary ? summary.partially_paid : fees.filter(f => f.fee_status === 'Partially Paid').length})</option>
+              <option value="FULLY_PAID">Fully Paid ({summary ? summary.fully_paid : fees.filter(f => f.fee_status === 'Fully Paid').length})</option>
+              <option value="OVERDUE">Overdue ({fees.filter(f => f.fee_status === 'Overdue' || (f.balance > 0 && f.due_date && new Date(f.due_date) < new Date())).length})</option>
             </select>
           </div>
 
@@ -682,7 +689,64 @@ export const MonthlyFeeManagementPage: React.FC = () => {
         </div>
       </div>
 
-
+      {/* Status Filter Tabs Bar */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-4">
+        <button
+          type="button"
+          onClick={() => setStatusFilter("ALL")}
+          className={`px-3.5 py-1.5 rounded-full text-xs md:text-sm font-medium whitespace-nowrap transition-all ${
+            statusFilter === "ALL"
+              ? "bg-slate-900 text-white shadow-sm"
+              : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
+          }`}
+        >
+          All Students ({summary ? summary.total_students : fees.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setStatusFilter("PENDING")}
+          className={`px-3.5 py-1.5 rounded-full text-xs md:text-sm font-medium whitespace-nowrap transition-all ${
+            statusFilter === "PENDING"
+              ? "bg-amber-600 text-white shadow-sm"
+              : "bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200"
+          }`}
+        >
+          Pending ({summary ? summary.pending : fees.filter(f => f.fee_status === 'Pending').length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setStatusFilter("PARTIALLY_PAID")}
+          className={`px-3.5 py-1.5 rounded-full text-xs md:text-sm font-medium whitespace-nowrap transition-all ${
+            statusFilter === "PARTIALLY_PAID"
+              ? "bg-blue-600 text-white shadow-sm"
+              : "bg-blue-50 text-blue-800 hover:bg-blue-100 border border-blue-200"
+          }`}
+        >
+          Partially Paid ({summary ? summary.partially_paid : fees.filter(f => f.fee_status === 'Partially Paid').length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setStatusFilter("FULLY_PAID")}
+          className={`px-3.5 py-1.5 rounded-full text-xs md:text-sm font-medium whitespace-nowrap transition-all ${
+            statusFilter === "FULLY_PAID"
+              ? "bg-emerald-600 text-white shadow-sm"
+              : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200"
+          }`}
+        >
+          Fully Paid ({summary ? summary.fully_paid : fees.filter(f => f.fee_status === 'Fully Paid').length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setStatusFilter("OVERDUE")}
+          className={`px-3.5 py-1.5 rounded-full text-xs md:text-sm font-medium whitespace-nowrap transition-all ${
+            statusFilter === "OVERDUE"
+              ? "bg-rose-600 text-white shadow-sm"
+              : "bg-rose-50 text-rose-800 hover:bg-rose-100 border border-rose-200"
+          }`}
+        >
+          Overdue ({fees.filter(f => f.fee_status === 'Overdue' || (f.balance > 0 && f.due_date && new Date(f.due_date) < new Date())).length})
+        </button>
+      </div>
 
       {/* Mobile Card View */}
       <div className="block md:hidden space-y-3">
@@ -801,9 +865,12 @@ export const MonthlyFeeManagementPage: React.FC = () => {
                             Carry Forward
                           </p>
                           <p className="text-sm font-medium text-gray-900">
-                            {fee.carry_forward > 0
-                              ? `₹${Math.floor(fee.carry_forward)}`
-                              : "-"}
+                            {(() => {
+                              const effectiveCarry = Math.max(0, (fee.carry_forward || 0) - (fee.paid_amount || 0));
+                              if (effectiveCarry > 0) return <span className="text-orange-600 font-semibold">₹{Math.floor(effectiveCarry)}</span>;
+                              if (fee.carry_forward > 0) return <span className="text-emerald-600 text-xs">Paid</span>;
+                              return "-";
+                            })()}
                           </p>
                         </div>
                         <div>
@@ -961,13 +1028,12 @@ export const MonthlyFeeManagementPage: React.FC = () => {
                     ₹{Math.floor(fee.monthly_rent)}
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap text-xs text-right">
-                    {fee.carry_forward > 0 ? (
-                      <span className="text-orange-600">
-                        ₹{Math.floor(fee.carry_forward)}
-                      </span>
-                    ) : (
-                      <span className="text-gray-500">-</span>
-                    )}
+                    {(() => {
+                      const effectiveCarry = Math.max(0, (fee.carry_forward || 0) - (fee.paid_amount || 0));
+                      if (effectiveCarry > 0) return <span className="text-orange-600 font-medium">₹{Math.floor(effectiveCarry)}</span>;
+                      if (fee.carry_forward > 0) return <span className="text-emerald-600 font-semibold text-xs">Paid</span>;
+                      return <span className="text-gray-500">-</span>;
+                    })()}
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900 text-right font-medium">
                     ₹{Math.floor(fee.total_due)}

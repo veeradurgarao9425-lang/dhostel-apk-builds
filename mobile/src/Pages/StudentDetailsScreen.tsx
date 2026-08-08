@@ -625,31 +625,39 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
 
                                                 if (!latestDue) return null;
 
-                                                const carryForward = parseFloat(latestDue.carry_forward || 0);
+                                                const rawCarryForward = parseFloat(latestDue.carry_forward || 0);
                                                 const monthlyRent = parseFloat(latestDue.monthly_rent || latestDue.student_monthly_rent || 0);
                                                 const paidAmount = parseFloat(latestDue.paid_amount || 0);
 
+                                                // Dynamic allocation: payments clear carry_forward first
+                                                const effectiveCarryForward = Math.max(0, rawCarryForward - paidAmount);
+                                                const effectivePaidRent = Math.max(0, paidAmount - rawCarryForward);
+
                                                 return (
                                                     <View>
-                                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 }}>
-                                                            <Text style={{ fontSize: 13, color: '#EF4444', fontWeight: '700' }}>Previous Overdue</Text>
-                                                            <Text style={{ fontSize: 13, fontWeight: '800', color: '#EF4444' }}>
-                                                                ₹{carryForward.toLocaleString('en-IN')}
-                                                            </Text>
-                                                        </View>
+                                                        {effectiveCarryForward > 0 && (
+                                                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 }}>
+                                                                <Text style={{ fontSize: 13, color: '#EF4444', fontWeight: '700' }}>
+                                                                    Previous Overdue
+                                                                </Text>
+                                                                <Text style={{ fontSize: 13, fontWeight: '800', color: '#EF4444' }}>
+                                                                    ₹{effectiveCarryForward.toLocaleString('en-IN')}
+                                                                </Text>
+                                                            </View>
+                                                        )}
                                                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 }}>
                                                             <Text style={{ fontSize: 13, color: textColor }}>This Month Rent</Text>
                                                             <Text style={{ fontSize: 13, fontWeight: '700', color: textColor }}>
                                                                 ₹{monthlyRent.toLocaleString('en-IN')}
                                                             </Text>
                                                         </View>
-                                                        {paidAmount > 0 && (
+                                                        {effectivePaidRent > 0 && (
                                                             <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3, alignItems: 'center' }}>
                                                                 <View style={[styles.feeStatusBadge, { backgroundColor: '#E6F9F3', marginRight: 6 }]}>
-                                                                    <Text style={[styles.feeStatusBadgeText, { color: '#00B074' }]}>Paid</Text>
+                                                                    <Text style={[styles.feeStatusBadgeText, { color: '#00B074' }]}>Paid Rent</Text>
                                                                 </View>
                                                                 <Text style={{ fontSize: 13, fontWeight: '700', color: '#10B981' }}>
-                                                                    - ₹{paidAmount.toLocaleString('en-IN')}
+                                                                    - ₹{effectivePaidRent.toLocaleString('en-IN')}
                                                                 </Text>
                                                             </View>
                                                         )}
@@ -938,10 +946,10 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                         </Text>
                                     </TouchableOpacity>
                                 </View>
-                                
+
                                 {student.vacate_notice_date && (
                                     <View style={{ marginTop: 8, alignItems: 'flex-end' }}>
-                                        <TouchableOpacity 
+                                        <TouchableOpacity
                                             style={{ paddingHorizontal: 12, paddingVertical: 6 }}
                                             onPress={handleClearVacancyNotice}
                                             activeOpacity={0.7}
