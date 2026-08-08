@@ -99,7 +99,19 @@ export function PaymentDrawer({
 
                         {/* Header */}
                         <View style={S.drawerHeader}>
-                            <Text style={S.drawerTitle}>Pay Due Amount</Text>
+                            <View style={{ flex: 1 }}>
+                                <Text style={S.drawerTitle}>Collect Payment</Text>
+                                {(() => {
+                                    const sName = selectedFee?.name || (selectedFee?.first_name ? `${selectedFee.first_name} ${selectedFee.last_name || ''}`.trim() : '');
+                                    const rNum = selectedFee?.room || selectedFee?.room_number || '';
+                                    if (!sName) return null;
+                                    return (
+                                        <Text style={{ fontSize: 13, fontWeight: '700', color: themeColor, marginTop: 2 }}>
+                                            👤 {sName} {rNum ? `(Room ${rNum})` : ''}
+                                        </Text>
+                                    );
+                                })()}
+                            </View>
                             <TouchableOpacity
                                 onPress={onClose}
                                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -128,136 +140,105 @@ export function PaymentDrawer({
                             showsVerticalScrollIndicator={false}
                             keyboardShouldPersistTaps="handled"
                         >
-                            {/* Amount */}
+                            {/* Amount Input with restriction warning */}
                             <Text style={S.label}>Amount (₹) <Text style={{ color: '#EF4444' }}>*</Text></Text>
                             <TextInput
-                                style={S.inputField}
+                                style={[
+                                    S.inputField,
+                                    (() => {
+                                        const rawDue = selectedFee?.dueAmount ?? selectedFee?.balance ?? selectedFee?.total_due ?? selectedFee?.due ?? 0;
+                                        const maxDue = parseFloat(rawDue.toString()) || 0;
+                                        const amt = parseFloat(payAmount || '0');
+                                        return maxDue > 0 && amt > maxDue ? { borderColor: '#EF4444', borderWidth: 1.5 } : {};
+                                    })()
+                                ]}
                                 keyboardType="numeric"
                                 value={payAmount}
-                                onChangeText={setPayAmount}
+                                onChangeText={(text) => {
+                                    const rawDue = selectedFee?.dueAmount ?? selectedFee?.balance ?? selectedFee?.total_due ?? selectedFee?.due ?? 0;
+                                    const maxDue = parseFloat(rawDue.toString()) || 0;
+                                    const val = parseFloat(text || '0');
+                                    // If text exceeds maxDue, cap or allow with warning
+                                    if (maxDue > 0 && val > maxDue) {
+                                        setPayAmount(maxDue.toString());
+                                    } else {
+                                        setPayAmount(text);
+                                    }
+                                }}
                                 placeholder="Enter amount"
                                 placeholderTextColor="#CBD5E1"
                             />
 
-                            {/* Dynamic Payment Breakdown */}
+                            {/* Dynamic Payment Breakdown & Allocation (ALWAYS VISIBLE!) */}
                             {(() => {
+                                const rawDueAmt = selectedFee?.dueAmount ?? selectedFee?.balance ?? selectedFee?.total_due ?? selectedFee?.due ?? 0;
+                                const maxDue = parseFloat(rawDueAmt.toString()) || 0;
                                 const amount = parseFloat(payAmount || '0');
-                                if (amount > 0 && selectedFee?.pending_dues?.length > 0) {
-                                    const now = new Date();
-                                    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-                                    // 1. Calculate actual outstanding amount for each month (Newest to Oldest to find specific monthly debt)
-                                    const duesDesc = [...selectedFee.pending_dues]
-                                        .filter((d: any) => !d.fee_month || d.fee_month <= currentMonth)
-                                        .sort((a: any, b: any) => b.fee_month.localeCompare(a.fee_month));
+                                const carryForward = parseFloat(selectedFee?.carryForward || selectedFee?.effectiveCarryForward || selectedFee?.carry_forward || 0);
+                                const monthlyRent = parseFloat(selectedFee?.monthlyRent || selectedFee?.monthly_rent || selectedFee?.fee_monthly_rent || 0);
 
-                                    let outstandingBalance = duesDesc.length > 0 ? parseFloat(duesDesc[0].balance || 0) : 0;
-                                    let remainingTotal = outstandingBalance;
+                                const prevOverdue = Math.max(0, carryForward);
+                                const currRent = monthlyRent > 0 ? monthlyRent : Math.max(0, maxDue - prevOverdue);
 
-                                    const actualOwedByMonth = [];
-                                    for (const d of duesDesc) {
-                                        if (remainingTotal <= 0) break;
-                                        const baseRent = parseFloat(d.monthly_rent || d.student_monthly_rent || 0);
-                                        const rent = baseRent > 0 ? baseRent : Math.max(0, parseFloat(d.total_due || 0) - parseFloat(d.carry_forward || 0));
-                                        const actualRent = rent > 0 ? rent : parseFloat(d.balance || 0);
-                                        const allocated = Math.min(actualRent, remainingTotal);
-                                        if (allocated > 0) {
-                                            actualOwedByMonth.unshift({ month: d.fee_month, owed: allocated });
-                                            remainingTotal -= allocated;
-                                        }
-                                    }
-                                    if (remainingTotal > 0.01) {
-                                        actualOwedByMonth.unshift({ month: 'Previous Arrears', owed: remainingTotal });
-                                    }
+                                // Allocation calculation
+                                const prevAllocated = Math.min(amount, prevOverdue);
+                                const prevPending = Math.max(0, prevOverdue - prevAllocated);
 
-                                    if (actualOwedByMonth.length === 0) return null;
+                                const remAfterPrev = Math.max(0, amount - prevAllocated);
+                                const currAllocated = Math.min(remAfterPrev, currRent);
+                                const currPending = Math.max(0, currRent - currAllocated);
 
-                                    // 2. Allocate payment from Oldest to Newest
-                                    let remainingPayment = amount;
-                                    const covers = [];
+                                const remainingBal = Math.max(0, maxDue - amount);
+                                const isExceeding = maxDue > 0 && amount > maxDue;
 
-                                    for (const d of actualOwedByMonth) {
-                                        if (remainingPayment <= 0) {
-                                            // Optional: If we want to show unpaid months that didn't get any payment, we could, 
-                                            // but standard UX is to just show what the payment covers.
-                                            break;
-                                        }
-                                        const deduct = Math.min(remainingPayment, d.owed);
-                                        covers.push({ month: d.month, amount: deduct, stillOwed: d.owed - deduct });
-                                        remainingPayment -= deduct;
-                                    }
+                                const allocationBg = isDark ? '#1E293B' : '#F8FAFC';
+                                const allocationBorder = isExceeding ? '#EF4444' : (isDark ? '#334155' : '#E2E8F0');
 
-                                    const remaining = remainingPayment;
+                                return (
+                                    <View style={{ backgroundColor: allocationBg, padding: 12, borderRadius: 10, marginTop: 8, marginBottom: 14, borderWidth: 1, borderColor: allocationBorder }}>
+                                        <Text style={{ fontSize: 13, fontWeight: '800', color: isDark ? '#F8FAFC' : '#1F2937', marginBottom: 8 }}>
+                                            💳 Payment Breakdown & Allocation
+                                        </Text>
 
-                                    const collapsedCovers = [];
-                                    let prevAmount = 0;
-                                    let prevStillOwed = 0;
-                                    let currentAmount = 0;
-                                    let currentStillOwed = 0;
-
-                                    for (const c of covers) {
-                                        const isArrears = c.month === 'Previous Arrears' || (c.month && c.month < currentMonth);
-                                        if (isArrears) {
-                                            prevAmount += c.amount;
-                                            prevStillOwed += c.stillOwed;
-                                        } else {
-                                            currentAmount += c.amount;
-                                            currentStillOwed += c.stillOwed;
-                                        }
-                                    }
-
-                                    if (prevAmount > 0 || prevStillOwed > 0) {
-                                        collapsedCovers.push({
-                                            displayMonth: 'Previous Overdue',
-                                            amount: prevAmount,
-                                            stillOwed: prevStillOwed,
-                                            isArrears: true
-                                        });
-                                    }
-                                    if (currentAmount > 0 || currentStillOwed > 0) {
-                                        collapsedCovers.push({
-                                            displayMonth: 'This Month Rent',
-                                            amount: currentAmount,
-                                            stillOwed: currentStillOwed,
-                                            isArrears: false
-                                        });
-                                    }
-
-                                    const hasArrears = collapsedCovers.some(c => c.isArrears);
-                                    const allocationBg = isDark ? 'rgba(239, 68, 68, 0.1)' : '#FEF2F2';
-                                    const allocationBorder = '#EF4444';
-
-                                    return (
-                                        <View style={{ backgroundColor: allocationBg, padding: 12, borderRadius: 8, marginTop: 4, marginBottom: 12, borderWidth: 1, borderColor: allocationBorder }}>
-                                            <Text style={{ fontSize: 13, fontWeight: '700', color: isDark ? '#FCA5A5' : '#DC2626', marginBottom: 8 }}>Payment Allocation:</Text>
-                                            {collapsedCovers.map((c, i) => {
-                                                const rowTextColor = c.isArrears ? '#EF4444' : '#64748B';
-                                                const valTextColor = c.isArrears ? '#EF4444' : '#334155';
-
-                                                return (
-                                                    <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                                                        <Text style={{ fontSize: 12, color: rowTextColor, fontWeight: c.isArrears ? '700' : '400' }}>• {c.displayMonth}:</Text>
-                                                        <Text style={{ fontSize: 12, fontWeight: '600', color: valTextColor }}>
-                                                            - ₹{c.amount.toLocaleString('en-IN')}
-                                                            {c.stillOwed > 0 && <Text style={{ color: '#EF4444', fontWeight: '400' }}> (₹{c.stillOwed.toLocaleString('en-IN')} pending)</Text>}
-                                                        </Text>
-                                                    </View>
-                                                );
-                                            })}
-                                            {remaining > 0 && (
-                                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4, paddingTop: 4, borderTopWidth: 1, borderTopColor: '#E2E8F0' }}>
-                                                    <Text style={{ fontSize: 12, color: '#10B981', fontWeight: '600' }}>Advance / Credit:</Text>
-                                                    <Text style={{ fontSize: 12, color: '#10B981', fontWeight: '700' }}>+ ₹{remaining.toLocaleString('en-IN')}</Text>
-                                                </View>
-                                            )}
-                                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#CBD5E1' }}>
-                                                <Text style={{ fontSize: 13, color: '#1E293B', fontWeight: '800' }}>Total Paid:</Text>
-                                                <Text style={{ fontSize: 13, color: '#1E293B', fontWeight: '800' }}>₹{amount.toLocaleString('en-IN')}</Text>
+                                        {prevOverdue > 0 && (
+                                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+                                                <Text style={{ fontSize: 12, color: prevPending > 0 ? '#EF4444' : '#10B981', fontWeight: '700' }}>
+                                                    • Previous Overdue (Past Rent):
+                                                </Text>
+                                                <Text style={{ fontSize: 12, fontWeight: '700', color: prevPending > 0 ? '#EF4444' : '#10B981' }}>
+                                                    - ₹{prevAllocated.toLocaleString('en-IN')} {prevPending > 0 ? `(₹${prevPending.toLocaleString('en-IN')} pending)` : '(Cleared)'}
+                                                </Text>
                                             </View>
+                                        )}
+
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+                                            <Text style={{ fontSize: 12, color: currPending > 0 ? '#D97706' : '#10B981', fontWeight: '700' }}>
+                                                • This Month Rent:
+                                            </Text>
+                                            <Text style={{ fontSize: 12, fontWeight: '700', color: currPending > 0 ? '#D97706' : '#10B981' }}>
+                                                - ₹{currAllocated.toLocaleString('en-IN')} {currPending > 0 ? `(₹${currPending.toLocaleString('en-IN')} pending)` : '(Cleared)'}
+                                            </Text>
                                         </View>
-                                    );
-                                }
-                                return null;
+
+                                        <View style={{ borderTopWidth: 1, borderTopColor: isDark ? '#334155' : '#E2E8F0', marginTop: 6, paddingTop: 6, flexDirection: 'row', justifyContent: 'space-between' }}>
+                                            <Text style={{ fontSize: 13, fontWeight: '800', color: themeColor }}>
+                                                Remaining Balance Due:
+                                            </Text>
+                                            <Text style={{ fontSize: 13, fontWeight: '800', color: remainingBal === 0 ? '#10B981' : '#EF4444' }}>
+                                                {remainingBal === 0 ? '₹0 (Fully Paid)' : `₹${remainingBal.toLocaleString('en-IN')}`}
+                                            </Text>
+                                        </View>
+
+                                        {isExceeding && (
+                                            <View style={{ backgroundColor: '#FEF2F2', borderColor: '#FCA5A5', borderWidth: 1, padding: 8, borderRadius: 6, marginTop: 8 }}>
+                                                <Text style={{ color: '#DC2626', fontSize: 12, fontWeight: '700' }}>
+                                                    ⚠️ Cannot enter more than total due of ₹{maxDue.toLocaleString('en-IN')}!
+                                                </Text>
+                                            </View>
+                                        )}
+                                    </View>
+                                );
                             })()}
 
                             {/* Date row */}

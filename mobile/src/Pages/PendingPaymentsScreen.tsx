@@ -159,20 +159,30 @@ const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect, isDar
     fontSize: number;
 }) => {
     const palette = avatarPalette(item.name);
-    const accentColor = item.isOverdue ? '#DC2626' : '#D97706';
+    const effectiveUnpaidCarry = Math.max(0, (item.carryForward || 0) - (item.paidAmount || 0));
+    const isFullyPaid = item.dueAmount <= 0;
+    const isPartialPaid = item.paidAmount > 0 && item.dueAmount > 0;
+
+    let accentColor = '#D97706';
     let tagLabel = '';
-    if (item.isOverdue) {
+
+    if (isFullyPaid) {
+        accentColor = '#059669';
+        tagLabel = 'Fully Paid';
+    } else if (item.isOverdue && effectiveUnpaidCarry > 0) {
+        accentColor = '#DC2626';
         if (item.daysOverdue > 0) {
             tagLabel = `${item.daysOverdue}d overdue`;
-        } else if (item.effectiveCarryForward > 0 || item.carryForward > 0) {
+        } else {
             const dueObj = new Date(item.rawDueDate);
             const now = new Date(); now.setHours(0, 0, 0, 0);
             const lastMonthDue = new Date(now.getFullYear(), now.getMonth() - 1, dueObj.getDate());
             const carryDays = Math.max(1, Math.floor((now.getTime() - lastMonthDue.getTime()) / 86400000));
             tagLabel = `${carryDays}d overdue`;
-        } else {
-            tagLabel = 'Overdue';
         }
+    } else if (isPartialPaid) {
+        accentColor = '#0284C7';
+        tagLabel = 'Partially Paid';
     } else {
         const dueObj = new Date(item.rawDueDate);
         dueObj.setHours(0, 0, 0, 0);
@@ -191,12 +201,12 @@ const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect, isDar
     return (
         <View style={[card.wrap, {
             backgroundColor: isDarkBg,
-            borderColor: item.isOverdue ? '#FECACA' : (isDark ? '#334155' : '#ECECEC'),
-            borderWidth: item.isOverdue ? 1.5 : 1,
+            borderColor: isFullyPaid ? '#86EFAC' : (item.isOverdue && effectiveUnpaidCarry > 0 ? '#FECACA' : (isDark ? '#334155' : '#ECECEC')),
+            borderWidth: (item.isOverdue && effectiveUnpaidCarry > 0) || isFullyPaid ? 1.5 : 1,
             shadowColor: '#000',
         }]}>
-            {/* Left accent bar */}
-            <View style={[card.accentBar, { backgroundColor: accentColor }]} />
+            {/* Left accent bar (only for unpaid/due cards) */}
+            {!isFullyPaid && <View style={[card.accentBar, { backgroundColor: accentColor }]} />}
 
             <View style={card.body}>
                 {/* ── Top row: Avatar | Name+Room · Status | Amount ── */}
@@ -217,17 +227,30 @@ const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect, isDar
                     </View>
 
                     <View style={{ alignItems: 'flex-end' }}>
-                        <Text style={[card.amountBig, { color: accentColor, fontSize: fontSize + 3 }]} numberOfLines={1}>
+                        <Text style={[card.amountBig, { color: accentColor, fontSize: fontSize + 3, fontWeight: '800' }]} numberOfLines={1}>
                             ₹{item.dueAmount.toLocaleString('en-IN')}
                         </Text>
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: accentColor, marginTop: -1 }}>
+                            {isFullyPaid ? 'Fully Paid' : 'Pending Due'}
+                        </Text>
+
                         {item.paidAmount > 0 && (
-                            <Text style={{ fontSize: 10, color: '#10B981', marginTop: 2, fontWeight: '600' }}>Paid ₹{item.paidAmount}</Text>
+                            <View style={{ marginTop: 3, alignItems: 'flex-end' }}>
+                                <Text style={{ fontSize: 11, color: '#059669', fontWeight: '700' }}>
+                                    Paid: ₹{item.paidAmount.toLocaleString('en-IN')}
+                                </Text>
+                                {!isFullyPaid && item.totalAmount > item.dueAmount && (
+                                    <Text style={{ fontSize: 10, color: isDark ? '#94A3B8' : '#64748B', fontWeight: '500' }}>
+                                        Total: ₹{item.totalAmount.toLocaleString('en-IN')}
+                                    </Text>
+                                )}
+                            </View>
                         )}
                     </View>
                 </View>
 
-                {/* ── Carry-forward badge: prominent amber pill so owner notices unpaid history ── */}
-                {item.carryForward > 0 && (
+                {/* ── Carry-forward badge: ONLY show if unpaid carry forward > 0 ── */}
+                {effectiveUnpaidCarry > 0 && (
                     <View style={{
                         flexDirection: 'row', alignItems: 'center', gap: 5,
                         backgroundColor: '#FEF3C7', borderRadius: 8, paddingHorizontal: 10,
@@ -236,13 +259,13 @@ const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect, isDar
                     }}>
                         <Ionicons name="warning-outline" size={12} color="#D97706" />
                         <Text style={{ color: '#92400E', fontSize: 11, fontWeight: '700' }}>
-                            ₹{item.carryForward.toLocaleString('en-IN')} carry-forward from last month
+                            ₹{effectiveUnpaidCarry.toLocaleString('en-IN')} carry-forward from last month
                         </Text>
                     </View>
                 )}
 
-                {/* ── Divider ── */}
-                <View style={[card.divider, { backgroundColor: isDark ? '#334155' : '#ECECEC' }]} />
+                {/* ── Divider (only for unpaid/due cards) ── */}
+                {!isFullyPaid && <View style={[card.divider, { backgroundColor: isDark ? '#334155' : '#ECECEC' }]} />}
 
                 {/* ── Actions / Paid status badge ── */}
                 {item.dueAmount <= 0 ? (
@@ -490,9 +513,9 @@ export default function PendingPaymentsScreen() {
             // Compute dynamic live tab counts from students
             const overdueCount = pending.filter(s => s.isOverdue).length;
             const overdueAmount = pending.filter(s => s.isOverdue).reduce((sum, s) => sum + s.dueAmount, 0);
-            const next7Count = pending.filter(s => !s.isOverdue && s.dueAmount > 0).length;
-            const next7Amount = pending.filter(s => !s.isOverdue && s.dueAmount > 0).reduce((sum, s) => sum + s.dueAmount, 0);
-            const partialCount = pending.filter(s => s.paidAmount > 0 && s.dueAmount > 0).length;
+            const next7Count = pending.filter(s => !s.isOverdue && s.dueAmount > 0 && s.paidAmount === 0).length;
+            const next7Amount = pending.filter(s => !s.isOverdue && s.dueAmount > 0 && s.paidAmount === 0).reduce((sum, s) => sum + s.dueAmount, 0);
+            const partialCount = pending.filter(s => s.paidAmount > 0 && s.dueAmount > 0 && !s.isOverdue).length;
             const fullyPaidCount = pending.filter(s => s.dueAmount <= 0 && s.paidAmount > 0).length;
 
             setTabCounts({
@@ -684,15 +707,15 @@ export default function PendingPaymentsScreen() {
         if (activeTab === 'Overdue') {
             if (!t.isOverdue) return false;
         } else if (activeTab === 'Next 7 Days') {
-            if (t.isOverdue || diffDays < 0 || diffDays > 7) return false;
+            if (t.isOverdue || diffDays < 0 || diffDays > 7 || t.paidAmount > 0) return false;
         } else if (activeTab === 'Partially Paid') {
-            if (t.paidAmount <= 0 || t.dueAmount <= 0) return false;
+            if (t.paidAmount <= 0 || t.dueAmount <= 0 || t.isOverdue) return false;
         } else if (activeTab === 'Fully Paid') {
-            if (t.dueAmount > 0) return false;
+            if (t.dueAmount > 0 || t.paidAmount <= 0) return false;
         } else if (activeTab === 'All Dues') {
             return true;
         } else if (activeTab === 'Plan Renewals') {
-            return false; // Renewals list is separate from the dues list
+            return false;
         }
 
         return true;
