@@ -122,7 +122,7 @@ export default function RoomsScreen({ navigation, route }: any) {
                 setBackgroundLoading(false);
             }
         }
-    }, [rooms]);
+    }, [user?.hostel_id]);
 
     useEffect(() => {
         isMountedRef.current = true;
@@ -133,6 +133,14 @@ export default function RoomsScreen({ navigation, route }: any) {
         const unsubscribe = navigation.addListener('focus', () => fetchRooms(true));
         return unsubscribe;
     }, [navigation, fetchRooms]);
+
+    // Re-fetch rooms whenever active hostel changes
+    useEffect(() => {
+        if (user?.hostel_id) {
+            setRooms([]);
+            fetchRooms(true);
+        }
+    }, [user?.hostel_id]);
 
     // Update activeTab if passed via params
     useEffect(() => {
@@ -300,7 +308,6 @@ export default function RoomsScreen({ navigation, route }: any) {
                 showBack={navigation.canGoBack()}
                 rightComponent={
                     <View style={styles.headerActions}>
-                        <HeaderNotification navigation={navigation} />
                         <ProfileMenu />
                     </View>
                 }

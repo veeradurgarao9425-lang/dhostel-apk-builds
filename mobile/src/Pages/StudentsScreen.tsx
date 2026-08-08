@@ -625,9 +625,7 @@ export default function StudentsScreen({ navigation, route }: any) {
                 subtitle={subtitleText}
                 showBack={navigation.canGoBack()}
                 rightComponent={
-
                     <View style={styles.headerActions}>
-                        <HeaderNotification navigation={navigation} />
                         <ProfileMenu />
                     </View>
                 }

@@ -32,11 +32,18 @@ const getCapacityFromRoomTypeName = (roomTypeName: string, description: string |
 };
 
 // Shared helper: resolve which hostel_id a create/update should target based on the caller's role
-const resolveHostelId = (
+const resolveHostelId = async (
   user: AuthRequest['user'],
-  hostel_id?: number
-): { hostelId: number } | { status: number; error: string } => {
+  hostel_id?: number | string
+): Promise<{ hostelId: number } | { status: number; error: string }> => {
   if (user?.role_id === 2) {
+    if (hostel_id !== undefined && hostel_id !== null && hostel_id !== '') {
+      const { hostelId, error } = await resolveOwnerHostelId(user, hostel_id);
+      if (error || !hostelId) {
+        return { status: 403, error: error || 'Access denied to the specified hostel.' };
+      }
+      return { hostelId };
+    }
     if (!user.hostel_id) {
       return { status: 403, error: 'Your account is not linked to any hostel. Please contact administrator.' };
     }
@@ -45,7 +52,7 @@ const resolveHostelId = (
     if (!hostel_id) {
       return { status: 400, error: 'Admin must specify hostel_id' };
     }
-    return { hostelId: hostel_id };
+    return { hostelId: Number(hostel_id) };
   }
   return { status: 403, error: 'Unauthorized to create rooms' };
 };
@@ -351,7 +358,7 @@ export const createRoom = async (req: AuthRequest, res: Response) => {
     } = req.body;
 
     // Determine the hostel_id to use
-    const hostelResult = resolveHostelId(user, hostel_id);
+    const hostelResult = await resolveHostelId(user, hostel_id);
     if ('error' in hostelResult) {
       return res.status(hostelResult.status).json({ success: false, error: hostelResult.error });
     }
@@ -572,7 +579,7 @@ export const bulkCreateRooms = async (req: AuthRequest, res: Response) => {
     const user = req.user;
     const { hostel_id, floor_number, rooms } = req.body;
 
-    const hostelResult = resolveHostelId(user, hostel_id);
+    const hostelResult = await resolveHostelId(user, hostel_id);
     if ('error' in hostelResult) {
       return res.status(hostelResult.status).json({ success: false, error: hostelResult.error });
     }

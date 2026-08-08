@@ -348,7 +348,6 @@ export default function FeeManagementScreen() {
                 showBack={navigation.canGoBack()}
                 rightComponent={
                     <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-                        <HeaderNotification navigation={navigation} />
                         <ProfileMenu />
                     </View>
                 }

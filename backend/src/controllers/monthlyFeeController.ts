@@ -4,6 +4,7 @@ import { AuthRequest } from '../middleware/auth.js';
 import { sendNotificationToHostelOwner, sendNotificationToStudent } from '../utils/notification.js';
 import { io } from '../socket/index.js';
 import { resolveScopedHostelId, resolveOwnerHostelId, canAccessHostel } from '../utils/scope.js';
+import { whatsappService } from '../services/whatsappClientService.js';
 
 // Helper function to cascade update future months' carry_forward when a payment is made
 // This ensures that paying a previous month correctly updates all subsequent months
@@ -2226,6 +2227,76 @@ export const getPaymentModes = async (req: AuthRequest, res: Response) => {
       success: false,
       error: 'Failed to fetch payment modes'
     });
+  }
+};
+
+// Send 100% Direct FREE WhatsApp Reminders in Background
+export const sendBulkWhatsAppDirect = async (req: AuthRequest, res: Response) => {
+  try {
+    const { hostel_id, student_ids } = req.body;
+    const hostelId = hostel_id || req.user?.hostel_id || 45;
+
+    let query = db('monthly_fees as mf')
+      .join('students as s', 'mf.student_id', '=', 's.student_id')
+      .leftJoin('rooms as r', 's.room_id', '=', 'r.room_id')
+      .where('mf.hostel_id', hostelId)
+      .where('mf.balance', '>', 0)
+      .select(
+        's.student_id',
+        's.first_name',
+        's.last_name',
+        's.phone',
+        'r.room_number',
+        'mf.balance'
+      );
+
+    if (Array.isArray(student_ids) && student_ids.length > 0) {
+      query = query.whereIn('s.student_id', student_ids);
+    }
+
+    const defaulters = await query;
+
+    if (!defaulters || defaulters.length === 0) {
+      return res.json({ success: true, message: 'No defaulters found to send reminders.', sentCount: 0 });
+    }
+
+    let successCount = 0;
+    const errors: string[] = [];
+
+    for (const s of defaulters) {
+      try {
+        const name = `${s.first_name || ''} ${s.last_name || ''}`.trim();
+        const room = s.room_number || 'N/A';
+        const due = Number(s.balance || 0).toLocaleString('en-IN');
+
+        const msg = `Hi *${name}*,\n\nThis is a friendly rent reminder from *Durgarao Mens Hostel*.\n• *Room Number:* ${room}\n• *Pending Amount Due:* ₹${due}\n\nPlease clear your pending rent at your earliest convenience via Google Pay / PhonePe / Cash.\n\nThank you!`;
+
+        await whatsappService.sendDirectMessage(s.phone, msg);
+        successCount++;
+      } catch (err: any) {
+        errors.push(`${s.first_name}: ${err?.message || err}`);
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: `Sent direct WhatsApp reminders to ${successCount} of ${defaulters.length} students!`,
+      sentCount: successCount,
+      errors
+    });
+  } catch (error: any) {
+    console.error('Error in sendBulkWhatsAppDirect:', error);
+    return res.status(500).json({ success: false, error: error?.message || 'Failed to send bulk WhatsApp' });
+  }
+};
+
+// Get WhatsApp QR code & linkage status
+export const getWhatsAppStatus = async (req: AuthRequest, res: Response) => {
+  try {
+    const status = whatsappService.getStatus();
+    return res.json({ success: true, data: status });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error?.message || 'Failed to get WhatsApp status' });
   }
 };
 

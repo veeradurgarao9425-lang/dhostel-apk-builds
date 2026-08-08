@@ -749,7 +749,6 @@ export default function FeeCollectionScreen({ navigation, route }: any) {
                         <ChevronLeft color="#FFFFFF" size={26} />
                     </TouchableOpacity>
                     <View style={styles.headerActions}>
-                        <HeaderNotification navigation={navigation} />
                         <ProfileMenu />
                     </View>
                 </View>

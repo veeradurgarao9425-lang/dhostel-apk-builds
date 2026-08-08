@@ -152,9 +152,12 @@ export const RoomsPage: React.FC = () => {
       const data = response.data.data || [];
       setHostels(data);
       if (data.length > 0 && !selectedHostelId) {
-        const firstId = data[0].hostel_id.toString();
-        setSelectedHostelId(firstId);
-        setStoredHostelId(firstId);
+        const stored = getStoredHostelId();
+        const validId = (stored && data.some((h: any) => h.hostel_id.toString() === stored))
+          ? stored
+          : data[0].hostel_id.toString();
+        setSelectedHostelId(validId);
+        setStoredHostelId(validId);
       }
     } catch (error) {
       console.error('Failed to fetch hostels:', error);

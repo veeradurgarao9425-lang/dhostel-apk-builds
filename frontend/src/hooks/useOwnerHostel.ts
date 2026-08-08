@@ -54,9 +54,17 @@ export const useOwnerHostel = () => {
   }, [activeHostelId]);
 
   /** Call this when the user picks a hostel from a dropdown */
-  const switchHostel = useCallback((hostelId: string) => {
+  const switchHostel = useCallback(async (hostelId: string) => {
     setActiveHostelId(hostelId);
     setStoredHostelId(hostelId);
+    try {
+      const res = await api.put('/auth/active-hostel', { hostel_id: Number(hostelId) });
+      if (res.data?.success && res.data?.data?.token) {
+        sessionStorage.setItem('authToken', res.data.data.token);
+      }
+    } catch (err) {
+      console.error('Failed to switch active hostel on backend:', err);
+    }
     window.dispatchEvent(new CustomEvent('hostelChanged', { detail: { hostelId } }));
   }, []);
 

@@ -326,14 +326,20 @@ const WaveDecoration = ({ color }: { color: string }) => (
 );
 
 // ─── Bulk WhatsApp Modal Component ──────────────────────────────────────────
-const BulkWhatsappModal = ({ visible, onClose, tenants, isDark }: any) => {
+const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab }: any) => {
     const defaulters = React.useMemo(() => {
         return tenants.filter((t: any) => {
             const due = parseFloat((t.dueAmount || 0).toString());
             const isPaid = t.status === 'Fully Paid' || t.status === 'paid' || t.fee_status === 'Fully Paid';
-            return due > 0 && !isPaid;
+            if (due <= 0 || isPaid) return false;
+
+            if (activeTab === 'Overdue') return t.isOverdue;
+            if (activeTab === 'Next 7 Days') return !t.isOverdue && due > 0 && t.paidAmount === 0;
+            if (activeTab === 'Partially Paid') return t.paidAmount > 0 && due > 0 && !t.isOverdue;
+
+            return true; // All Dues
         });
-    }, [tenants]);
+    }, [tenants, activeTab]);
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
     React.useEffect(() => {
@@ -361,6 +367,47 @@ const BulkWhatsappModal = ({ visible, onClose, tenants, isDark }: any) => {
 
     const selectedTenants = defaulters.filter((d: any) => selectedIds.has(d.id));
     const totalSelectedDues = selectedTenants.reduce((sum: number, d: any) => sum + d.dueAmount, 0);
+
+    const [sendingDirect, setSendingDirect] = useState(false);
+
+    const handleDirectSendBulk = async () => {
+        if (selectedTenants.length === 0) {
+            Alert.alert('No Students Selected', 'Please select at least one student.');
+            return;
+        }
+
+        setSendingDirect(true);
+        try {
+            const studentIds = selectedTenants.map((t: any) => t.id);
+            const res = await api.post('/monthly-fees/send-bulk-whatsapp-direct', {
+                student_ids: studentIds
+            });
+
+            if (res.data.success) {
+                Alert.alert(
+                    '⚡ Direct WhatsApp Sent!',
+                    res.data.message || `Successfully sent WhatsApp reminders directly to ${res.data.sentCount} students in background!`
+                );
+                onClose();
+            } else {
+                Alert.alert('Notice', res.data.error || 'Direct sending requires backend WhatsApp linking.');
+            }
+        } catch (err: any) {
+            // Fallback to manual queue if backend WhatsApp is initializing/unlinked
+            Alert.alert(
+                '📱 Opening WhatsApp App',
+                'Starting automated dispatch sequence in WhatsApp...',
+                [
+                    {
+                        text: 'Continue',
+                        onPress: () => handleSendBulk()
+                    }
+                ]
+            );
+        } finally {
+            setSendingDirect(false);
+        }
+    };
 
     const handleSendBulk = async () => {
         if (selectedTenants.length === 0) {
@@ -403,7 +450,7 @@ const BulkWhatsappModal = ({ visible, onClose, tenants, isDark }: any) => {
                                     Bulk WhatsApp Reminders
                                 </Text>
                                 <Text style={{ fontSize: 11, color: '#64748B' }}>
-                                    Select defaulters & dispatch reminders
+                                    100% FREE Direct Background Sending
                                 </Text>
                             </View>
                         </View>
@@ -463,22 +510,46 @@ const BulkWhatsappModal = ({ visible, onClose, tenants, isDark }: any) => {
                         }}
                     />
 
-                    {/* Submit Action */}
-                    <TouchableOpacity
-                        onPress={handleSendBulk}
-                        disabled={selectedTenants.length === 0}
-                        activeOpacity={0.85}
-                        style={{
-                            backgroundColor: selectedTenants.length > 0 ? '#25D366' : '#94A3B8',
-                            paddingVertical: 14, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
-                            flexDirection: 'row', gap: 8, marginTop: 14
-                        }}
-                    >
-                        <Ionicons name="logo-whatsapp" size={18} color="#FFF" />
-                        <Text style={{ color: '#FFF', fontSize: 15, fontWeight: '800' }}>
-                            Send Bulk WhatsApp ({selectedTenants.length})
-                        </Text>
-                    </TouchableOpacity>
+                    {/* Action Buttons */}
+                    <View style={{ gap: 8, marginTop: 14 }}>
+                        <TouchableOpacity
+                            onPress={handleDirectSendBulk}
+                            disabled={selectedTenants.length === 0 || sendingDirect}
+                            activeOpacity={0.85}
+                            style={{
+                                backgroundColor: selectedTenants.length > 0 ? '#25D366' : '#94A3B8',
+                                paddingVertical: 14, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+                                flexDirection: 'row', gap: 8
+                            }}
+                        >
+                            {sendingDirect ? (
+                                <ActivityIndicator color="#FFF" size="small" />
+                            ) : (
+                                <Ionicons name="flash" size={18} color="#FFF" />
+                            )}
+                            <Text style={{ color: '#FFF', fontSize: 15, fontWeight: '800' }}>
+                                {sendingDirect ? 'Sending Direct WhatsApp...' : `⚡ Send Direct WhatsApp (${selectedTenants.length})`}
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            onPress={handleSendBulk}
+                            disabled={selectedTenants.length === 0}
+                            activeOpacity={0.85}
+                            style={{
+                                backgroundColor: 'transparent',
+                                borderWidth: 1.5,
+                                borderColor: isDark ? '#334155' : '#E2E8F0',
+                                paddingVertical: 10, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+                                flexDirection: 'row', gap: 6
+                            }}
+                        >
+                            <Ionicons name="logo-whatsapp" size={16} color="#25D366" />
+                            <Text style={{ color: isDark ? '#F8FAFC' : '#475569', fontSize: 13, fontWeight: '700' }}>
+                                Open WhatsApp App (Manual)
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </View>
         </Modal>
@@ -1114,7 +1185,15 @@ export default function PendingPaymentsScreen() {
                             const activeFiltersCount = Object.entries(activeFilters).filter(([k, v]) =>
                                 v && v !== 'All' && v !== 'All Time' && v !== 'Due Date - Old to New' && v !== ''
                             ).length;
-                            const pendingCount = tenants.filter(t => parseFloat((t.dueAmount || 0).toString()) > 0 && t.status !== 'Fully Paid' && t.status !== 'paid').length;
+                            const pendingCount = tenants.filter(t => {
+                                const due = parseFloat((t.dueAmount || 0).toString());
+                                const isPaid = t.status === 'Fully Paid' || t.status === 'paid' || t.fee_status === 'Fully Paid';
+                                if (due <= 0 || isPaid) return false;
+                                if (activeTab === 'Overdue') return t.isOverdue;
+                                if (activeTab === 'Next 7 Days') return !t.isOverdue && due > 0 && t.paidAmount === 0;
+                                if (activeTab === 'Partially Paid') return t.paidAmount > 0 && due > 0 && !t.isOverdue;
+                                return true;
+                            }).length;
 
                             return (
                                 <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
@@ -1138,27 +1217,42 @@ export default function PendingPaymentsScreen() {
                                         )}
                                     </TouchableOpacity>
 
-                                    <TouchableOpacity
-                                        style={{
-                                            backgroundColor: '#25D366',
-                                            flexDirection: 'row',
-                                            alignItems: 'center',
-                                            gap: 5,
-                                            paddingHorizontal: 10,
-                                            height: 40,
-                                            borderRadius: 12
-                                        }}
-                                        activeOpacity={0.8}
-                                        onPress={() => setBulkWhatsappModalVisible(true)}
-                                    >
-                                        <Ionicons name="logo-whatsapp" size={16} color="#FFF" />
-                                        <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 12 }}>Bulk WA</Text>
-                                        {pendingCount > 0 && (
-                                            <View style={{ backgroundColor: 'rgba(255,255,255,0.3)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 8 }}>
-                                                <Text style={{ color: '#FFF', fontSize: 10, fontWeight: '800' }}>{pendingCount}</Text>
-                                            </View>
-                                        )}
-                                    </TouchableOpacity>
+                                    {/* Icon-Only WhatsApp Button (Hidden on Fully Paid tab) */}
+                                    {activeTab !== 'Fully Paid' && (
+                                        <TouchableOpacity
+                                            style={{
+                                                backgroundColor: '#25D366',
+                                                width: 40,
+                                                height: 40,
+                                                borderRadius: 12,
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                position: 'relative'
+                                            }}
+                                            activeOpacity={0.8}
+                                            onPress={() => setBulkWhatsappModalVisible(true)}
+                                        >
+                                            <Ionicons name="logo-whatsapp" size={22} color="#FFF" />
+                                            {pendingCount > 0 && (
+                                                <View style={{
+                                                    position: 'absolute',
+                                                    top: -4,
+                                                    right: -4,
+                                                    backgroundColor: '#DC2626',
+                                                    borderRadius: 9,
+                                                    minWidth: 18,
+                                                    height: 18,
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    paddingHorizontal: 4,
+                                                    borderWidth: 1.5,
+                                                    borderColor: isDark ? '#1E293B' : '#FFF'
+                                                }}>
+                                                    <Text style={{ color: '#FFF', fontSize: 10, fontWeight: '900' }}>{pendingCount}</Text>
+                                                </View>
+                                            )}
+                                        </TouchableOpacity>
+                                    )}
                                 </View>
                             );
                         })()}
@@ -1413,6 +1507,7 @@ export default function PendingPaymentsScreen() {
                 onClose={() => setBulkWhatsappModalVisible(false)}
                 tenants={tenants}
                 isDark={isDark}
+                activeTab={activeTab}
             />
         </View>
     );
