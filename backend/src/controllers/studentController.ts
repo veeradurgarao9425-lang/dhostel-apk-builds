@@ -537,11 +537,10 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
             dueDate = new Date(feeYear, feeMonth + 1, 0); // last day of short month
           }
 
-          // For multi-month plans: the plan amount IS the fee for this cycle.
-          // Mark it as Fully Paid immediately since they've paid upfront.
+          // For multi-month plans: set total_due to the full plan amount (e.g. ₹25,500),
+          // but paid_amount is 0.00 and status is 4 ('Pending') until an actual payment is recorded.
           const isMultiMonthPlan = resolvedFeePlan > 1;
           const feeAmount = isMultiMonthPlan && resolvedPlanAmount ? resolvedPlanAmount : monthlyRent;
-          const isPaidUpfront = isMultiMonthPlan && resolvedPlanAmount && resolvedPlanAmount > 0;
 
           await db('monthly_fees').insert({
             student_id,
@@ -551,9 +550,9 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
             monthly_rent: feeAmount,
             carry_forward: 0.00,
             total_due: feeAmount,
-            paid_amount: isPaidUpfront ? feeAmount : 0.00,
-            balance: isPaidUpfront ? 0.00 : feeAmount,
-            fee_status_id: isPaidUpfront ? 2 : 4, // 2='Fully Paid', 4='Pending'
+            paid_amount: 0.00,
+            balance: feeAmount,
+            fee_status_id: 4, // 4='Pending'
             due_date: isMultiMonthPlan ? (resolvedPlanEnd || dueDate) : dueDate,
             notes: isMultiMonthPlan
               ? `${resolvedFeePlan}-Month Plan (${resolvedFeePlan === 3 ? 'Quarterly' : resolvedFeePlan === 6 ? 'Half-Yearly' : 'Yearly'}) — Auto-created on registration`
