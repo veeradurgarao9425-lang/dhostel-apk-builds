@@ -325,6 +325,166 @@ const WaveDecoration = ({ color }: { color: string }) => (
     </View>
 );
 
+// ─── Bulk WhatsApp Modal Component ──────────────────────────────────────────
+const BulkWhatsappModal = ({ visible, onClose, tenants, isDark }: any) => {
+    const defaulters = React.useMemo(() => {
+        return tenants.filter((t: any) => {
+            const due = parseFloat((t.dueAmount || 0).toString());
+            const isPaid = t.status === 'Fully Paid' || t.status === 'paid' || t.fee_status === 'Fully Paid';
+            return due > 0 && !isPaid;
+        });
+    }, [tenants]);
+    const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
+    React.useEffect(() => {
+        if (visible) {
+            setSelectedIds(new Set(defaulters.map((d: any) => d.id)));
+        }
+    }, [visible, defaulters]);
+
+    const toggleSelect = (id: number) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const toggleAll = () => {
+        if (selectedIds.size === defaulters.length) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(defaulters.map((d: any) => d.id)));
+        }
+    };
+
+    const selectedTenants = defaulters.filter((d: any) => selectedIds.has(d.id));
+    const totalSelectedDues = selectedTenants.reduce((sum: number, d: any) => sum + d.dueAmount, 0);
+
+    const handleSendBulk = async () => {
+        if (selectedTenants.length === 0) {
+            Alert.alert('No Students Selected', 'Please select at least one student.');
+            return;
+        }
+
+        onClose();
+
+        for (let i = 0; i < selectedTenants.length; i++) {
+            const t = selectedTenants[i];
+            const msg = `Hi *${t.name}*,\n\nThis is a friendly rent reminder from *Durgarao Mens Hostel*.\n• *Room Number:* ${t.room}\n• *Pending Amount Due:* ₹${t.dueAmount.toLocaleString('en-IN')}\n\nPlease clear your pending rent at your earliest convenience via Google Pay / PhonePe / Cash.\n\nThank you!`;
+            
+            const url = `whatsapp://send?phone=91${t.phone}&text=${encodeURIComponent(msg)}`;
+            await Linking.openURL(url).catch(() => {
+                Alert.alert('Error', `Could not open WhatsApp for ${t.name}`);
+            });
+
+            if (i < selectedTenants.length - 1) {
+                await new Promise(resolve => setTimeout(resolve, 1500));
+            }
+        }
+    };
+
+    return (
+        <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+            <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
+                <View style={{
+                    backgroundColor: isDark ? '#1E293B' : '#FFF',
+                    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+                    maxHeight: '85%', padding: 20
+                }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                            <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: '#DCFCE7', alignItems: 'center', justifyContent: 'center' }}>
+                                <Ionicons name="logo-whatsapp" size={22} color="#25D366" />
+                            </View>
+                            <View>
+                                <Text style={{ fontSize: 16, fontWeight: '800', color: isDark ? '#F8FAFC' : '#1F2937' }}>
+                                    Bulk WhatsApp Reminders
+                                </Text>
+                                <Text style={{ fontSize: 11, color: '#64748B' }}>
+                                    Select defaulters & dispatch reminders
+                                </Text>
+                            </View>
+                        </View>
+                        <TouchableOpacity onPress={onClose} style={{ padding: 6 }}>
+                            <Ionicons name="close" size={22} color="#64748B" />
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Select All Row */}
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: isDark ? '#0F172A' : '#F8FAFC', padding: 12, borderRadius: 12, marginBottom: 12 }}>
+                        <TouchableOpacity onPress={toggleAll} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Ionicons name={selectedIds.size === defaulters.length ? 'checkbox' : 'square-outline'} size={20} color="#25D366" />
+                            <Text style={{ fontSize: 13, fontWeight: '700', color: isDark ? '#F8FAFC' : '#1F2937' }}>
+                                {selectedIds.size === defaulters.length ? 'Deselect All' : 'Select All'} ({defaulters.length} Defaulters)
+                            </Text>
+                        </TouchableOpacity>
+                        <Text style={{ fontSize: 13, fontWeight: '800', color: '#DC2626' }}>
+                            Total: ₹{totalSelectedDues.toLocaleString('en-IN')}
+                        </Text>
+                    </View>
+
+                    {/* Defaulters List */}
+                    <FlatList
+                        data={defaulters}
+                        keyExtractor={(item: any) => item.id.toString()}
+                        style={{ maxHeight: 320 }}
+                        renderItem={({ item }: any) => {
+                            const isSelected = selectedIds.has(item.id);
+                            return (
+                                <TouchableOpacity
+                                    onPress={() => toggleSelect(item.id)}
+                                    activeOpacity={0.8}
+                                    style={{
+                                        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                                        paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10,
+                                        backgroundColor: isSelected ? (isDark ? '#0C2A4A' : '#F0FDF4') : (isDark ? '#1E293B' : '#FFF'),
+                                        borderWidth: 1, borderColor: isSelected ? '#25D366' : (isDark ? '#334155' : '#E2E8F0'),
+                                        marginBottom: 8
+                                    }}
+                                >
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                                        <Ionicons name={isSelected ? 'checkbox' : 'square-outline'} size={20} color={isSelected ? '#25D366' : '#94A3B8'} />
+                                        <View>
+                                            <Text style={{ fontSize: 14, fontWeight: '700', color: isDark ? '#F8FAFC' : '#1F2937' }}>
+                                                {item.name}
+                                            </Text>
+                                            <Text style={{ fontSize: 11, color: '#64748B' }}>
+                                                Room {item.room} · {item.phone}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <Text style={{ fontSize: 14, fontWeight: '800', color: '#DC2626' }}>
+                                        ₹{item.dueAmount.toLocaleString('en-IN')}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        }}
+                    />
+
+                    {/* Submit Action */}
+                    <TouchableOpacity
+                        onPress={handleSendBulk}
+                        disabled={selectedTenants.length === 0}
+                        activeOpacity={0.85}
+                        style={{
+                            backgroundColor: selectedTenants.length > 0 ? '#25D366' : '#94A3B8',
+                            paddingVertical: 14, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+                            flexDirection: 'row', gap: 8, marginTop: 14
+                        }}
+                    >
+                        <Ionicons name="logo-whatsapp" size={18} color="#FFF" />
+                        <Text style={{ color: '#FFF', fontSize: 15, fontWeight: '800' }}>
+                            Send Bulk WhatsApp ({selectedTenants.length})
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </Modal>
+    );
+};
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function PendingPaymentsScreen() {
     const navigation = useNavigation<any>();
@@ -407,6 +567,7 @@ export default function PendingPaymentsScreen() {
     const [payModeId, setPayModeId] = useState('1');
     const [payLoading, setPayLoading] = useState(false);
 
+    const [bulkWhatsappModalVisible, setBulkWhatsappModalVisible] = useState(false);
     const modesLoadedRef = useRef(false);
     const isFirstLoadRef = useRef(true);
 
@@ -953,26 +1114,52 @@ export default function PendingPaymentsScreen() {
                             const activeFiltersCount = Object.entries(activeFilters).filter(([k, v]) =>
                                 v && v !== 'All' && v !== 'All Time' && v !== 'Due Date - Old to New' && v !== ''
                             ).length;
+                            const pendingCount = tenants.filter(t => parseFloat((t.dueAmount || 0).toString()) > 0 && t.status !== 'Fully Paid' && t.status !== 'paid').length;
+
                             return (
-                                <TouchableOpacity
-                                    style={[s.filterBtn, {
-                                        backgroundColor: isDark ? '#1E293B' : '#FFF',
-                                        borderColor: filterModalVisible || activeFiltersCount > 0 ? theme.primary : (isDark ? '#334155' : '#ECECEC'),
-                                        borderWidth: filterModalVisible || activeFiltersCount > 0 ? 1.5 : 1,
-                                        shadowColor: 'transparent',
-                                        elevation: 0
-                                    }]}
-                                    activeOpacity={0.7}
-                                    onPress={() => setFilterModalVisible(true)}
-                                >
-                                    <Ionicons name="filter" size={16} color={theme.primary} />
-                                    <Text style={[s.filterTxt, { color: theme.primary }]}>Filter</Text>
-                                    {activeFiltersCount > 0 && (
-                                        <View style={[s.filterBadge, { backgroundColor: theme.primary }]}>
-                                            <Text style={s.filterBadgeText}>{activeFiltersCount}</Text>
-                                        </View>
-                                    )}
-                                </TouchableOpacity>
+                                <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+                                    <TouchableOpacity
+                                        style={[s.filterBtn, {
+                                            backgroundColor: isDark ? '#1E293B' : '#FFF',
+                                            borderColor: filterModalVisible || activeFiltersCount > 0 ? theme.primary : (isDark ? '#334155' : '#ECECEC'),
+                                            borderWidth: filterModalVisible || activeFiltersCount > 0 ? 1.5 : 1,
+                                            shadowColor: 'transparent',
+                                            elevation: 0
+                                        }]}
+                                        activeOpacity={0.7}
+                                        onPress={() => setFilterModalVisible(true)}
+                                    >
+                                        <Ionicons name="filter" size={16} color={theme.primary} />
+                                        <Text style={[s.filterTxt, { color: theme.primary }]}>Filter</Text>
+                                        {activeFiltersCount > 0 && (
+                                            <View style={[s.filterBadge, { backgroundColor: theme.primary }]}>
+                                                <Text style={s.filterBadgeText}>{activeFiltersCount}</Text>
+                                            </View>
+                                        )}
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity
+                                        style={{
+                                            backgroundColor: '#25D366',
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                            gap: 5,
+                                            paddingHorizontal: 10,
+                                            height: 40,
+                                            borderRadius: 12
+                                        }}
+                                        activeOpacity={0.8}
+                                        onPress={() => setBulkWhatsappModalVisible(true)}
+                                    >
+                                        <Ionicons name="logo-whatsapp" size={16} color="#FFF" />
+                                        <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 12 }}>Bulk WA</Text>
+                                        {pendingCount > 0 && (
+                                            <View style={{ backgroundColor: 'rgba(255,255,255,0.3)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 8 }}>
+                                                <Text style={{ color: '#FFF', fontSize: 10, fontWeight: '800' }}>{pendingCount}</Text>
+                                            </View>
+                                        )}
+                                    </TouchableOpacity>
+                                </View>
                             );
                         })()}
                     </View>
@@ -1219,6 +1406,13 @@ export default function PendingPaymentsScreen() {
                 onClose={() => setFilterModalVisible(false)}
                 onApply={handleApplyFilters}
                 initialFilters={activeFilters}
+            />
+
+            <BulkWhatsappModal
+                visible={bulkWhatsappModalVisible}
+                onClose={() => setBulkWhatsappModalVisible(false)}
+                tenants={tenants}
+                isDark={isDark}
             />
         </View>
     );
