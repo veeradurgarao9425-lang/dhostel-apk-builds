@@ -73,9 +73,17 @@ export const useNotifications = () => {
         fetchNotifications();
 
         // Listen for foreground notifications to auto-refresh the count and list
-        const subscription = require('expo-notifications').addNotificationReceivedListener(() => {
-            fetchNotifications();
-        });
+        let subscription: any;
+        try {
+            const Notifications = require('expo-notifications');
+            if (Notifications && Notifications.addNotificationReceivedListener) {
+                subscription = Notifications.addNotificationReceivedListener(() => {
+                    fetchNotifications();
+                });
+            }
+        } catch (e) {
+            // Non-fatal fallback for Expo Go
+        }
 
         // Listen for internal events to sync across components
         const eventSubscription = require('react-native').DeviceEventEmitter.addListener('REFRESH_NOTIFICATIONS', () => {
@@ -83,7 +91,7 @@ export const useNotifications = () => {
         });
 
         return () => {
-            subscription.remove();
+            subscription?.remove?.();
             eventSubscription.remove();
         };
     }, [fetchNotifications]);

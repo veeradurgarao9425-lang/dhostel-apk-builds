@@ -7,14 +7,18 @@ import api from './api';
 // Configure how notifications are handled when the app is open (foreground).
 // SDK 54 API (expo-notifications 0.32): handler must return shouldShowBanner/shouldShowList,
 // not the deprecated shouldShowAlert — otherwise foreground pushes play a sound but show no banner.
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
+try {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
+} catch (e) {
+  console.log('Expo Go notification handler initialized with fallback.');
+}
 
 export const notificationService = {
   async registerForPushNotificationsAsync() {

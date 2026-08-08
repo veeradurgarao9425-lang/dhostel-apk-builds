@@ -4,7 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClientProvider } from '@tanstack/react-query';
 import AppNavigator from './src/navigation/AppNavigator';
 import Toast, { BaseToast, ErrorToast } from 'react-native-toast-message';
-import { HostelChatbot } from './src/components/HostelChatbot';
+import { OwnerAssistant } from './src/components/assistant/OwnerAssistant';
 import { ToastProvider } from './src/context/ToastContext';
 import { NetworkManager } from './src/components/ui/NetworkManager';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
@@ -123,7 +123,7 @@ export default function App() {
                     onRouteChange={(routeName: string) => setCurrentRoute(routeName)}
                   />
                 </NetworkManager>
-                {showChatbot && <HostelChatbot />}
+                {showChatbot && <OwnerAssistant />}
                 <ThemedToast />
               </ToastProvider>
               </ConfirmationProvider>
