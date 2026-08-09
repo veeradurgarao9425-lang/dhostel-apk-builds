@@ -10,7 +10,7 @@ export const ONBOARDING_KEY = 'hasSeenIntro';
 
 // ── Responsive breakpoints (computed once at module level) ───────────────────
 const isSmall = height < 700;  // iPhone SE, small Androids
-const isTiny  = height < 600;  // very small screens
+const isTiny = height < 600;  // very small screens
 
 // Scale image so it never pushes content off on small phones
 const IMG_SIZE = isTiny ? width * 0.52 : isSmall ? width * 0.62 : width * 0.78;

@@ -87,7 +87,35 @@ export const HostelChatbot: React.FC = () => {
   const { user } = useAuth();
   const [isTourActive, setIsTourActive] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
+
+  const isOwner = useMemo(() => {
+    return user?.role !== 'TENANT' && user?.role?.toLowerCase() !== 'tenant';
+  }, [user?.role]);
+
+  const menuItems = useMemo(() => {
+    const isTenant = user?.role?.toLowerCase() === 'tenant';
+    if (isTenant) {
+      return [
+        { label: 'Pay Rent', path: 'Payments', icon: 'cash-outline', color: '#16A34A', bg: '#F0FDF4' },
+        { label: 'My Expenses', path: 'Expenses', icon: 'receipt-outline', color: '#DC2626', bg: '#FEF2F2' },
+        { label: 'Raise Complaint', path: 'Complaints', icon: 'alert-circle-outline', color: '#EA580C', bg: '#FFF7ED' },
+        { label: 'Room Info', path: 'RoomInfo', icon: 'bed-outline', color: '#059669', bg: '#ECFDF5' },
+        { label: 'Visitor Pass', path: 'VisitorPass', icon: 'card-outline', color: '#4F46E5', bg: '#EEF2FF' },
+        { label: 'Growth Journey', path: 'GrowthHome', icon: 'trending-up-outline', color: '#DB2777', bg: '#FDF2F8' },
+      ];
+    }
+    
+    return [
+      { label: 'Add Student', path: 'AddStudent', icon: 'person-add-outline', color: '#4F46E5', bg: '#EEF2FF' },
+      { label: 'Add Room', path: 'AddRoom', icon: 'bed-outline', color: '#059669', bg: '#ECFDF5' },
+      { label: 'Add Staff', path: 'AddStaff', icon: 'people-outline', color: '#DB2777', bg: '#FDF2F8' },
+      { label: 'Add Expense', path: 'AddExpense', icon: 'receipt-outline', color: '#DC2626', bg: '#FEF2F2' },
+      { label: 'Add Income', path: 'AddIncome', icon: 'cash-outline', color: '#16A34A', bg: '#F0FDF4' },
+      { label: 'Add Notice', path: 'AddNotice', icon: 'megaphone-outline', color: '#EA580C', bg: '#FFF7ED' },
+    ];
+  }, [user]);
 
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener('TOUR_STATE_CHANGE', (isActive) => {
@@ -98,7 +126,7 @@ export const HostelChatbot: React.FC = () => {
 
   const faqList = useMemo(() => {
     const baseList = i18n.language === 'te' ? FAQ_DATA_TE : FAQ_DATA_EN;
-    const role = user?.role === 'tenant' ? 'tenant' : 'owner';
+    const role = user?.role?.toLowerCase() === 'tenant' ? 'tenant' : 'owner';
     return baseList.filter(faq => faq.role === 'both' || faq.role === role);
   }, [i18n.language, user?.role]);
 
@@ -249,11 +277,7 @@ export const HostelChatbot: React.FC = () => {
 
   const handleQuestionSelect = (faq: FAQItem) => {
     Haptics.selectionAsync().catch(() => { });
-    setChatMessages(prev => [
-      ...prev.map(m => ({ ...m, isNew: false })),
-      { sender: 'user', text: faq.question }
-    ]);
-    sendBotReply(faq);
+    setActiveFaq(faq);
   };
 
   const handleCustomQuestionSubmit = (queryText?: string) => {
@@ -262,8 +286,6 @@ export const HostelChatbot: React.FC = () => {
 
     Haptics.selectionAsync().catch(() => { });
     setSearchQuery('');
-
-    setChatMessages(prev => [...prev.map(m => ({ ...m, isNew: false })), { sender: 'user', text: textToSubmit }]);
 
     const query = textToSubmit.toLowerCase().trim();
     let bestMatch: FAQItem | null = null;
@@ -280,11 +302,19 @@ export const HostelChatbot: React.FC = () => {
 
       if (score > maxMatchCount) {
         maxMatchCount = score;
-        bestMatch = faq;
+        bestMatch = score >= 5 ? faq : null;
       }
     });
 
-    sendBotReply(bestMatch, bestMatch ? undefined : t('chatbot.notFound', { query: textToSubmit }));
+    if (bestMatch) {
+      setActiveFaq(bestMatch);
+    } else {
+      setChatMessages(prev => [
+        ...prev.map(m => ({ ...m, isNew: false })),
+        { sender: 'user', text: textToSubmit },
+        { sender: 'bot', text: t('chatbot.notFound', { query: textToSubmit }), isNew: true }
+      ]);
+    }
   };
 
   const handleLinkClick = (path: string) => {
@@ -388,25 +418,38 @@ export const HostelChatbot: React.FC = () => {
 
             {/* Search Section */}
             <View style={s.searchSection}>
-              <View style={s.searchInputContainer}>
-                <Ionicons name="search-outline" size={16} color="#94A3B8" style={{ marginRight: 6 }} />
-                <TextInput
-                  style={s.searchInput}
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  onSubmitEditing={() => handleCustomQuestionSubmit()}
-                  placeholder="Search for help..."
-                  placeholderTextColor="#94A3B8"
-                  returnKeyType="send"
-                />
-                {searchQuery.length > 0 && (
-                  <TouchableOpacity onPress={() => setSearchQuery('')}>
-                    <Ionicons name="close-circle" size={16} color="#94A3B8" />
-                  </TouchableOpacity>
-                )}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <TouchableOpacity 
+                  onPress={() => setIsAddMenuOpen(true)}
+                  style={s.addMenuBtn}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="menu-outline" size={28} color="#4F46E5" />
+                </TouchableOpacity>
+                <View style={[s.searchInputContainer, { flex: 1 }]}>
+                  <Ionicons name="search-outline" size={16} color="#94A3B8" style={{ marginRight: 6 }} />
+                  <TextInput
+                    style={s.searchInput}
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    onSubmitEditing={() => handleCustomQuestionSubmit()}
+                    placeholder="Search for help..."
+                    placeholderTextColor="#94A3B8"
+                    returnKeyType="send"
+                  />
+                  {searchQuery.length > 0 && (
+                    <TouchableOpacity onPress={() => setSearchQuery('')}>
+                      <Ionicons name="close-circle" size={16} color="#94A3B8" />
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
 
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingHorizontal: 4, marginTop: 10 }}>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false} 
+                contentContainerStyle={{ flexDirection: 'row', gap: 8, paddingHorizontal: 4, marginTop: 10, paddingBottom: 4 }}
+              >
                 {categories.map(cat => (
                   <TouchableOpacity
                     key={cat.id}
@@ -417,9 +460,9 @@ export const HostelChatbot: React.FC = () => {
                     }}
                     style={[
                       s.categoryPill,
-                      { marginBottom: 4, marginRight: 4 },
                       selectedCategory === cat.id && s.categoryPillActive
                     ]}
+                    activeOpacity={0.7}
                   >
                     <Text
                       style={[
@@ -431,7 +474,7 @@ export const HostelChatbot: React.FC = () => {
                     </Text>
                   </TouchableOpacity>
                 ))}
-              </View>
+              </ScrollView>
             </View>
 
             {/* Chat conversation area */}
@@ -512,6 +555,62 @@ export const HostelChatbot: React.FC = () => {
                     </View>
                   ) : (
                     <View style={{ gap: 16 }}>
+                      {/* Welcome banner card at the top of the chat area */}
+                      <View style={s.welcomeCard}>
+                        <LinearGradient colors={['#4F46E5', '#7C3AED']} style={s.welcomeBanner}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <View style={{ flex: 1 }}>
+                              <Text style={s.welcomeTitle}>Hostix AI Assistant</Text>
+                              <Text style={s.welcomeSubtitle}>{getTimeGreeting()}</Text>
+                            </View>
+                            <Image 
+                              source={require('../../assets/durgarao-bot.jpeg')} 
+                              style={s.welcomeBotImg} 
+                              resizeMode="cover" 
+                            />
+                          </View>
+                        </LinearGradient>
+                        <View style={s.welcomeContent}>
+                          <Text style={s.welcomeContentText}>
+                            Here is the information you are looking for. Select one of the regular options below or type in the search bar:
+                          </Text>
+                          
+                          <View style={s.welcomeButtonsContainer}>
+                            <TouchableOpacity 
+                              style={s.outlinePillBtn}
+                              onPress={() => handleCustomQuestionSubmit("How to collect rent?")}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={s.outlinePillBtnText}>How to collect rent?</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity 
+                              style={s.outlinePillBtn}
+                              onPress={() => handleCustomQuestionSubmit("How to add a tenant?")}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={s.outlinePillBtnText}>How to add a tenant?</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity 
+                              style={s.outlinePillBtn}
+                              onPress={() => handleCustomQuestionSubmit("How to create a room?")}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={s.outlinePillBtnText}>How to create a room?</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity 
+                              style={s.outlinePillBtn}
+                              onPress={() => handleCustomQuestionSubmit("How to vacate a bed?")}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={s.outlinePillBtnText}>How to vacate a bed?</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      </View>
+
                       {chatMessages.map((msg, index) => (
                         <View
                           key={index}
@@ -520,11 +619,6 @@ export const HostelChatbot: React.FC = () => {
                             msg.sender === 'user' ? s.messageUserRow : s.messageBotRow
                           ]}
                         >
-                          {msg.sender === 'bot' && (
-                            <View style={s.botBubbleIcon}>
-                              <Image source={require('../../assets/durgarao-bot.jpeg')} style={{ width: '100%', height: '100%', transform: [{ scale: 1.8 }, { translateY: 4 }] }} resizeMode="cover" />
-                            </View>
-                          )}
                           <View
                             style={[
                               s.messageBubble,
@@ -570,9 +664,6 @@ export const HostelChatbot: React.FC = () => {
 
                       {isTyping && (
                         <View style={[s.messageBubbleRow, s.messageBotRow]}>
-                          <View style={s.botBubbleIcon}>
-                            <Image source={require('../../assets/durgarao-bot.jpeg')} style={{ width: '100%', height: '100%', transform: [{ scale: 1.8 }, { translateY: 4 }] }} resizeMode="cover" />
-                          </View>
                           <View style={[s.messageBubble, s.messageBotBubble, { paddingVertical: 8, paddingHorizontal: 12 }]}>
                             <BouncingDots />
                           </View>
@@ -587,6 +678,45 @@ export const HostelChatbot: React.FC = () => {
             {/* Footer removed per request */}
 
           </KeyboardAvoidingView>
+
+          {/* Add Menu Pop-up Overlay */}
+          {isAddMenuOpen && (
+            <TouchableOpacity
+              style={s.overlayBackground}
+              activeOpacity={1}
+              onPress={() => setIsAddMenuOpen(false)}
+            >
+              <View style={s.popupMenuCard}>
+                <Text style={s.popupMenuTitle}>Quick Actions</Text>
+                <View style={s.popupMenuGrid}>
+                  {menuItems.map((item, idx) => (
+                    <TouchableOpacity
+                      key={idx}
+                      style={s.popupMenuItem}
+                      onPress={() => {
+                        setIsAddMenuOpen(false);
+                        handleLinkClick(item.path);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <View style={[s.popupMenuIconContainer, { backgroundColor: item.bg }]}>
+                        <Ionicons name={item.icon as any} size={22} color={item.color} />
+                      </View>
+                      <Text style={s.popupMenuItemText}>{item.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <TouchableOpacity
+                  style={s.popupMenuCloseBtn}
+                  onPress={() => setIsAddMenuOpen(false)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={s.popupMenuCloseText}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          )}
+
         </SafeAreaView>
       </Modal>
     </>
@@ -958,5 +1088,135 @@ const s = StyleSheet.create({
   footerText: {
     fontSize: 11,
     color: '#94A3B8',
+  },
+  addMenuBtn: {
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  overlayBackground: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  popupMenuCard: {
+    width: '85%',
+    backgroundColor: '#FFF',
+    borderRadius: 24,
+    padding: 20,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  popupMenuTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#0F172A',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  popupMenuGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  popupMenuItem: {
+    width: '47%',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  popupMenuIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  popupMenuItemText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  popupMenuCloseBtn: {
+    marginTop: 20,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+  },
+  popupMenuCloseText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#64748B',
+  },
+  welcomeCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 16,
+  },
+  welcomeBanner: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+  },
+  welcomeTitle: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  welcomeSubtitle: {
+    color: '#E0E7FF',
+    fontSize: 13,
+    marginTop: 6,
+    lineHeight: 18,
+  },
+  welcomeBotImg: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 2,
+    borderColor: '#FFF',
+    marginLeft: 12,
+  },
+  welcomeContent: {
+    padding: 16,
+    backgroundColor: '#FCFCFD',
+  },
+  welcomeContentText: {
+    fontSize: 13,
+    color: '#64748B',
+    lineHeight: 18,
+    marginBottom: 14,
+  },
+  welcomeButtonsContainer: {
+    gap: 8,
+  },
+  outlinePillBtn: {
+    width: '100%',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#4F46E5',
+    backgroundColor: '#FFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  outlinePillBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#4F46E5',
   }
 });

@@ -22,7 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width, height } = Dimensions.get('window');
 const isSmall = height < 700;
-const isTiny  = height < 600;
+const isTiny = height < 600;
 
 export default function LoginScreen({ navigation }: any) {
     const { signIn } = useAuth();
@@ -248,7 +248,7 @@ export default function LoginScreen({ navigation }: any) {
                 </View>
 
                 {/* Forgot Password */}
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={{ alignSelf: 'flex-end', marginBottom: 20, marginTop: -4 }}
                     onPress={() => navigation.navigate('ForgotPassword')}
                 >

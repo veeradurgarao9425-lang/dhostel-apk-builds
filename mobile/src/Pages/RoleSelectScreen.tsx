@@ -32,7 +32,7 @@ export default function RoleSelectScreen({ navigation }: any) {
   return (
     <SafeAreaView style={styles.safeContainer}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
-      
+
       {/* Background Ambient Glow Accents */}
       <View style={styles.ambientGlowTop} pointerEvents="none" />
       <View style={styles.ambientGlowBottom} pointerEvents="none" />
@@ -77,7 +77,7 @@ export default function RoleSelectScreen({ navigation }: any) {
 
         {/* Option Cards */}
         <View style={styles.cardsContainer}>
-          
+
           {/* Hostel Owner Card */}
           <TouchableOpacity
             activeOpacity={0.88}

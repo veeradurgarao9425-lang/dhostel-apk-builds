@@ -106,7 +106,7 @@ export const SettingsScreen = ({ navigation }: any) => {
 
                 {/* ── SECURITY SECTION ── */}
                 <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>{t('settings.security', 'Security')}</Text>
-                
+
                 <Card style={[styles.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
                     <SettingRow
                         icon={<Lock size={20} color={theme.primary} />}
