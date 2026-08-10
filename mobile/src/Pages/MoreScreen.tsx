@@ -14,7 +14,6 @@ import { useTranslation } from 'react-i18next';
 import { useConfirmation } from '../../contexts/ConfirmationContext';
 import { useToast } from '../context/ToastContext';
 import * as Clipboard from 'expo-clipboard';
-import { TestUIModal } from '../components/TestUIModal';
 import { TenantAppCard } from '../components/TenantAppCard';
 
 // ─── Menu item definition ─────────────────────────────────────────────────────
@@ -35,7 +34,6 @@ export default function MoreScreen() {
     const navigation = useNavigation<any>();
     const { user, signOut, updateTokenAndUser, hostels: authHostels, loadHostels } = useAuth();
     const confirm = useConfirmation();
-    const [testUiVisible, setTestUiVisible] = useState(false);
 
     const borderAnim = React.useRef(new Animated.Value(0)).current;
 
@@ -441,11 +439,6 @@ export default function MoreScreen() {
             return;
         }
 
-        if (item.route === 'TestUI') {
-            setTestUiVisible(true);
-            return;
-        }
-
         if (item.route) {
             navigation.navigate(item.route, item.routeParams);
         }
@@ -807,8 +800,6 @@ export default function MoreScreen() {
                     </View>
                 </View>
             </Modal>
-
-            <TestUIModal visible={testUiVisible} onClose={() => setTestUiVisible(false)} />
         </View>
     );
 }

@@ -45,3 +45,18 @@ backend/uploads/*
 # Misc
 .cache/
 coverage/
+*.zip
+.wwebjs_auth/
+inspect_dues.*
+test_*.js
+test_*.ts
+test_*.cjs
+patch_*.js
+update_*.js
+update_*.py
+update_*.sql
+old_*
+qr_signup_*
+restore_qr.js
+server_test.js
+

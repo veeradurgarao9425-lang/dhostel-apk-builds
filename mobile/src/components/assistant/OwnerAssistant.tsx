@@ -27,6 +27,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   Modal, Platform, KeyboardAvoidingView, TextInput,
   Animated, Image, DeviceEventEmitter, Dimensions, Keyboard,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -41,7 +42,8 @@ import {
 } from './intentEngine';
 import {
   fetchDashboardSnapshot, fetchDuesSummary, fetchFinancialOverview,
-  fetchOccupancy, fetchStudents, fetchExpenseSummary,
+  fetchOccupancy, fetchStudents, fetchExpenseSummary, fetchMyHostels,
+  switchActiveHostel, fetchStaffList, fetchGuestsList, fetchStudentStats,
   DashboardSnapshot,
 } from './assistantApi';
 
@@ -116,11 +118,11 @@ const HomeContent: React.FC<HomeProps> = ({ snap, loading, onQuestion, onIntent 
     >
       {/* Greeting */}
       <Text style={hc.greeting}>{getGreeting(user?.full_name || user?.name)}</Text>
-      <Text style={hc.sub}>{user?.hostel_name || 'Your Hostel'} · How can I help you today?</Text>
+      <Text style={hc.sub}>{user?.hostel_name || 'Your Hostel'}</Text>
 
       {/* Rounded outline guide options */}
       <View style={{ gap: 10, marginBottom: 12 }}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={hc.outlinePillBtn}
           onPress={() => onQuestion("How do I collect rent?")}
           activeOpacity={0.7}
@@ -128,7 +130,7 @@ const HomeContent: React.FC<HomeProps> = ({ snap, loading, onQuestion, onIntent 
           <Text style={hc.outlinePillBtnText}>How to collect rent?</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={hc.outlinePillBtn}
           onPress={() => onQuestion("How do I add a student?")}
           activeOpacity={0.7}
@@ -136,7 +138,7 @@ const HomeContent: React.FC<HomeProps> = ({ snap, loading, onQuestion, onIntent 
           <Text style={hc.outlinePillBtnText}>How to add a student?</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={hc.outlinePillBtn}
           onPress={() => onQuestion("How do I create a room?")}
           activeOpacity={0.7}
@@ -144,12 +146,61 @@ const HomeContent: React.FC<HomeProps> = ({ snap, loading, onQuestion, onIntent 
           <Text style={hc.outlinePillBtnText}>How to create a room?</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={hc.outlinePillBtn}
           onPress={() => onQuestion("How do I vacate a bed?")}
           activeOpacity={0.7}
         >
           <Text style={hc.outlinePillBtnText}>How to vacate a bed?</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Suggested Topics / Shortcuts Section */}
+      <Text style={hc.sectionLabel}>Suggested Shortcuts</Text>
+      <View style={{ gap: 10 }}>
+        <TouchableOpacity
+          style={hc.shortcutCard}
+          onPress={() => onQuestion("What is my hostel occupancy?")}
+          activeOpacity={0.7}
+        >
+          <View style={[hc.shortcutIconBg, { backgroundColor: '#ECFDF5' }]}>
+            <Ionicons name="business-outline" size={16} color="#059669" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={hc.shortcutTitle}>Check Hostel Occupancy</Text>
+            <Text style={hc.shortcutDesc}>See how many beds are occupied or available</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color="#94A3B8" />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={hc.shortcutCard}
+          onPress={() => onQuestion("What are my this month's expenses?")}
+          activeOpacity={0.7}
+        >
+          <View style={[hc.shortcutIconBg, { backgroundColor: '#FDF2F8' }]}>
+            <Ionicons name="receipt-outline" size={16} color="#DB2777" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={hc.shortcutTitle}>Analyze Expenses</Text>
+            <Text style={hc.shortcutDesc}>View total spent and expense categories this month</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color="#94A3B8" />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={hc.shortcutCard}
+          onPress={() => onQuestion("Who hasn't paid this month?")}
+          activeOpacity={0.7}
+        >
+          <View style={[hc.shortcutIconBg, { backgroundColor: '#FEF2F2' }]}>
+            <Ionicons name="alert-circle-outline" size={16} color="#DC2626" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={hc.shortcutTitle}>Review Pending Payments</Text>
+            <Text style={hc.shortcutDesc}>See which students still owe monthly rent</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color="#94A3B8" />
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -163,7 +214,7 @@ const hc = StyleSheet.create({
   sectionLabel: { fontSize: 11, fontWeight: '800', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10, marginTop: 10 },
   qChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12 },
   qText: { flex: 1, fontSize: 13, color: '#334155', fontWeight: '500' },
-  
+
   horizontalChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -180,53 +231,59 @@ const hc = StyleSheet.create({
     color: '#4F46E5',
     fontWeight: '600',
   },
-  welcomeCard: {
+  profileCard: {
     backgroundColor: '#FFF',
-    borderRadius: 20,
-    overflow: 'hidden',
+    borderRadius: 24,
     borderWidth: 1,
     borderColor: '#E2E8F0',
+    padding: 20,
+    elevation: 2,
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
     marginBottom: 8,
   },
-  welcomeBanner: {
-    paddingVertical: 12,
+  profileCardHeader: {
+    alignItems: 'center',
+    paddingBottom: 12,
+    marginBottom: 12,
   },
-  welcomeTitle: {
-    color: '#FFF',
-    fontSize: 20,
-    fontWeight: 'bold',
+  profileImg: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    borderWidth: 3,
+    borderColor: '#EEF2FF',
+    marginBottom: 8,
   },
-  welcomeSubtitle: {
-    color: '#E0E7FF',
+  profileAppName: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1E293B',
+  },
+  profileAppSub: {
     fontSize: 12,
+    color: '#94A3B8',
+    fontWeight: '500',
     marginTop: 2,
   },
-  welcomeBotImg: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    borderWidth: 2,
-    borderColor: '#FFF',
+  profileCardContent: {
+    width: '100%',
   },
-  welcomeContent: {
-    padding: 16,
-    backgroundColor: '#FCFCFD',
-  },
-  welcomeContentText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1E293B',
-    lineHeight: 20,
-    marginBottom: 6,
-  },
-  welcomeInstructionText: {
-    fontSize: 12,
-    color: '#64748B',
+  profileContentText: {
+    fontSize: 13,
+    color: '#334155',
     lineHeight: 18,
-    marginBottom: 16,
+    textAlign: 'center',
+    fontWeight: '500',
+    marginBottom: 8,
   },
-  welcomeButtonsContainer: {
-    gap: 8,
+  profileInstructionText: {
+    fontSize: 11,
+    color: '#64748B',
+    lineHeight: 16,
+    textAlign: 'center',
   },
   outlinePillBtn: {
     width: '100%',
@@ -244,11 +301,38 @@ const hc = StyleSheet.create({
     fontWeight: '600',
     color: '#4F46E5',
   },
+  shortcutCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 12,
+    gap: 12,
+  },
+  shortcutIconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shortcutTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  shortcutDesc: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+  },
 });
 
 // ─── Main Component ────────────────────────────────────────────────────────
 export const OwnerAssistant: React.FC = () => {
-  const { user } = useAuth();
+  const { user, updateTokenAndUser } = useAuth();
   const insets = useSafeAreaInsets();
   const [isOpen, setIsOpen] = useState(false);
   const [isTourActive, setIsTourActive] = useState(false);
@@ -260,6 +344,8 @@ export const OwnerAssistant: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [inputText, setInputText] = useState('');
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const [isKeyboardActive, setIsKeyboardActive] = useState(false);
 
   // Snapshot data for home screen
   const [snap, setSnap] = useState<DashboardSnapshot | null>(null);
@@ -271,12 +357,14 @@ export const OwnerAssistant: React.FC = () => {
 
   const menuItems = useMemo(() => {
     return [
-      { label: 'Add Student', path: 'AddStudent', icon: 'person-add-outline', color: '#4F46E5', bg: '#EEF2FF' },
-      { label: 'Add Room', path: 'AddRoom', icon: 'bed-outline', color: '#059669', bg: '#ECFDF5' },
-      { label: 'Add Staff', path: 'AddStaff', icon: 'people-outline', color: '#DB2777', bg: '#FDF2F8' },
-      { label: 'Add Expense', path: 'AddExpense', icon: 'receipt-outline', color: '#DC2626', bg: '#FEF2F2' },
-      { label: 'Add Income', path: 'AddIncome', icon: 'cash-outline', color: '#16A34A', bg: '#F0FDF4' },
-      { label: 'Add Notice', path: 'AddNotice', icon: 'megaphone-outline', color: '#EA580C', bg: '#FFF7ED' },
+      { label: 'Pending Dues', intent: { type: 'SHOW_DUES', filter: 'pending' } as AssistantIntent, icon: 'alert-circle-outline', color: '#EF4444', bg: '#FEE2E2' },
+      { label: 'Students', intent: { type: 'SHOW_STUDENTS' } as AssistantIntent, icon: 'people-outline', color: '#6366F1', bg: '#EEF2FF' },
+      { label: 'Reports', intent: { type: 'SHOW_REPORTS' } as AssistantIntent, icon: 'bar-chart-outline', color: '#10B981', bg: '#ECFDF5' },
+      { label: 'Expenses', intent: { type: 'SHOW_EXPENSES' } as AssistantIntent, icon: 'receipt-outline', color: '#F43F5E', bg: '#FFE4E6' },
+      { label: 'Rooms', intent: { type: 'SHOW_ROOMS' } as AssistantIntent, icon: 'business-outline', color: '#F59E0B', bg: '#FEF3C7' },
+      { label: 'Hostels', intent: { type: 'SHOW_HOSTELS' } as AssistantIntent, icon: 'swap-horizontal-outline', color: '#0EA5E9', bg: '#E0F2FE' },
+      { label: 'Guests', intent: { type: 'SHOW_GUESTS' } as AssistantIntent, icon: 'walk-outline', color: '#8B5CF6', bg: '#F5F3FF' },
+      { label: 'Staff', intent: { type: 'SHOW_STAFF' } as AssistantIntent, icon: 'briefcase-outline', color: '#14B8A6', bg: '#E6FFFA' },
     ];
   }, []);
 
@@ -285,10 +373,57 @@ export const OwnerAssistant: React.FC = () => {
     setIsOpen(false);
   };
 
+  const handleSwitchHostel = async (hostelId: number, hostelName: string) => {
+    addBot([{ type: 'loading' }]);
+    try {
+      const data = await switchActiveHostel(hostelId);
+      removeLoadingBlock();
+      if (data?.success) {
+        const { token } = data.data;
+        await updateTokenAndUser(token, { hostel_id: hostelId, hostel_name: hostelName });
+        addBot([
+          { type: 'text', text: `Successfully switched active hostel PG to: **${hostelName}** 🎉` },
+          {
+            type: 'action_buttons', buttons: [
+              { label: 'Check Occupancy', icon: 'business-outline', onPress: () => handleIntent({ type: 'SHOW_ROOMS' }), variant: 'primary' },
+              { label: 'Check Dues', icon: 'alert-circle-outline', onPress: () => handleIntent({ type: 'SHOW_DUES', filter: 'all' }), variant: 'outline' },
+            ]
+          }
+        ]);
+      } else {
+        addBot([{ type: 'text', text: `Failed to switch active hostel: ${data?.error || 'Unknown error'}` }]);
+      }
+    } catch (err) {
+      removeLoadingBlock();
+      addBot([{ type: 'text', text: 'Error switching active hostel context. Please try again.' }]);
+    }
+  };
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setIsKeyboardActive(true)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setIsKeyboardActive(false)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
   // ── Lifecycle ──────────────────────────────────────────────────────────
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener('TOUR_STATE_CHANGE', setIsTourActive);
-    return () => sub.remove();
+    const closeSub = DeviceEventEmitter.addListener('CLOSE_ASSISTANT', () => {
+      setIsOpen(false);
+    });
+    return () => {
+      sub.remove();
+      closeSub.remove();
+    };
   }, []);
 
   useEffect(() => {
@@ -373,27 +508,47 @@ export const OwnerAssistant: React.FC = () => {
 
       case 'SHOW_STUDENTS': {
         addBot([{ type: 'loading' }]);
-        const students = await fetchStudents(10);
-        removeLoadingBlock();
-        if (!students.length) {
-          addBot([{ type: 'empty_state', icon: 'people-outline', message: 'No Students Yet', subMessage: 'Add your first student to get started.', action: { label: 'Add Student', screen: 'AddStudent' } }]);
-        } else {
+        try {
+          const [stats, dues] = await Promise.all([
+            fetchStudentStats(),
+            fetchDuesSummary()
+          ]);
+          removeLoadingBlock();
+          
+          const activeCount = stats.active || snap?.activeTenants || 0;
+          const leftCount = stats.inactive || 0;
+          const prebookedCount = stats.prebooked || 0;
+          const qrCount = stats.qrRegister || 0;
+
+          const paidCount = dues?.paidCount ?? 0;
+          const unpaidCount = dues?.pendingStudents ?? 0;
+
           addBot([
-            { type: 'text', text: `You have ${snap?.activeTenants ?? students.length} active students.` },
+            {
+              type: 'student_stats_donut',
+              active: activeCount,
+              inactive: leftCount,
+              prebooked: prebookedCount,
+              qrRegister: qrCount
+            },
             {
               type: 'stat_cards', cards: [
-                { label: 'Active', value: String(snap?.activeTenants ?? students.length), icon: 'people-outline', color: '#4F46E5', bg: '#EEF2FF' },
-                { label: 'Available Beds', value: String(snap?.availableBeds ?? 0), icon: 'bed-outline', color: '#10B981', bg: '#ECFDF5' },
+                { label: 'Total Left', value: String(leftCount), icon: 'exit-outline', color: '#94A3B8', bg: '#F8FAFC' },
+                { label: 'Pre-Booked', value: String(prebookedCount), icon: 'calendar-outline', color: '#F59E0B', bg: '#FFFBEB' },
+                { label: 'Paid Rent', value: String(paidCount), icon: 'checkmark-circle-outline', color: '#10B981', bg: '#ECFDF5' },
+                { label: 'Unpaid Rent', value: String(unpaidCount), icon: 'alert-circle-outline', color: '#EF4444', bg: '#FEF2F2' },
               ]
             },
             {
               type: 'action_buttons', buttons: [
-                { label: 'View Students', icon: 'people-outline', screen: 'Students', variant: 'primary' },
-                { label: 'Add Student', icon: 'person-add-outline', screen: 'AddStudent', variant: 'outline' },
+                { label: 'View Students List', icon: 'list-outline', screen: 'Students', variant: 'primary' },
                 { label: 'Pending Dues', icon: 'alert-circle-outline', screen: 'PendingPayments', variant: 'outline' },
               ]
             },
           ]);
+        } catch (err) {
+          removeLoadingBlock();
+          addBot([{ type: 'text', text: 'Failed to load students statistics. Please try again.' }]);
         }
         break;
       }
@@ -403,30 +558,36 @@ export const OwnerAssistant: React.FC = () => {
         const dues = await fetchDuesSummary();
         removeLoadingBlock();
         if (!dues || dues.totalPending === 0) {
-          addBot([{ type: 'empty_state', icon: 'checkmark-circle-outline', message: 'No Pending Dues 🎉', subMessage: 'All students are up to date.', action: { label: 'View Payment History', screen: 'CollectedPayments' } }]);
+          addBot([
+            { type: 'text', text: 'No pending dues found. All student payments are up to date! 🎉' },
+            {
+              type: 'action_buttons', buttons: [
+                { label: 'View Payment History', icon: 'checkmark-circle-outline', screen: 'CollectedPayments', variant: 'primary' },
+              ]
+            }
+          ]);
         } else {
-          const list = intent.filter === 'overdue'
-            ? dues.topDefaulters.filter(d => d.status === 'overdue')
-            : dues.topDefaulters;
           addBot([
             {
-              type: 'text', text: intent.filter === 'overdue'
-                ? `${dues.overdueCount} overdue — ${INR(dues.overdueAmount)} total.`
-                : `${dues.pendingStudents} students owe a total of ${INR(dues.totalPending)}.`
+              type: 'dues_donut',
+              paidCount: dues.paidCount,
+              partialCount: dues.partialCount,
+              unpaidCount: dues.unpaidCount,
+              totalPaidAmount: dues.totalPaidAmount,
+              totalPending: dues.totalPending
             },
             {
               type: 'stat_cards', cards: [
                 { label: 'Total Pending', value: INR(dues.totalPending), icon: 'alert-circle-outline', color: '#EF4444', bg: '#FEF2F2' },
-                { label: 'Students', value: String(dues.pendingStudents), icon: 'people-outline', color: '#F59E0B', bg: '#FFFBEB' },
                 { label: 'Overdue', value: String(dues.overdueCount), icon: 'time-outline', color: '#DC2626', bg: '#FFF1F2' },
-                { label: 'Paid', value: String(dues.paidCount), icon: 'checkmark-circle-outline', color: '#10B981', bg: '#ECFDF5' },
+                { label: 'Paid Rent', value: INR(dues.totalPaidAmount), icon: 'cash-outline', color: '#10B981', bg: '#ECFDF5' },
+                { label: 'Partial Paid', value: String(dues.partialCount), icon: 'cash-outline', color: '#F59E0B', bg: '#FFFBEB' },
+                { label: 'Fully Paid', value: String(dues.paidCount), icon: 'checkmark-circle-outline', color: '#10B981', bg: '#ECFDF5' },
               ]
             },
-            ...(list.length ? [{ type: 'due_list' as const, dues: list }] : []),
             {
               type: 'action_buttons', buttons: [
-                { label: 'View All Dues', icon: 'list-outline', screen: 'PendingPayments', variant: 'primary' },
-                { label: 'Collect Payment', icon: 'cash-outline', screen: 'FeeManagement', variant: 'outline' },
+                { label: 'Collect Payment', icon: 'cash-outline', screen: 'FeeManagement', variant: 'primary' },
                 { label: 'Send Reminders', icon: 'notifications-outline', screen: 'Reminders', variant: 'outline' },
               ]
             },
@@ -440,10 +601,15 @@ export const OwnerAssistant: React.FC = () => {
         const occ = await fetchOccupancy();
         removeLoadingBlock();
         if (!occ || occ.total === 0) {
-          addBot([{ type: 'empty_state', icon: 'business-outline', message: 'No Rooms Found', subMessage: 'Add your first room.', action: { label: 'Add Room', screen: 'AddRoom' } }]);
+          addBot([{ type: 'text', text: 'No rooms registered in this hostel yet.' }]);
         } else {
           addBot([
-            { type: 'occupancy_bar', occupied: occ.occupied, available: occ.available, total: occ.total, rate: occ.rate },
+            {
+              type: 'occupancy_donut',
+              occupied: occ.occupied,
+              available: occ.available,
+              total: occ.total
+            },
             {
               type: 'stat_cards', cards: [
                 { label: 'Occupied', value: String(occ.occupied), icon: 'people-outline', color: '#4F46E5', bg: '#EEF2FF' },
@@ -507,9 +673,25 @@ export const OwnerAssistant: React.FC = () => {
         const exp = await fetchExpenseSummary();
         removeLoadingBlock();
         if (!exp || exp.count === 0) {
-          addBot([{ type: 'empty_state', icon: 'card-outline', message: 'No Expenses This Month', subMessage: 'Start recording your hostel expenses.', action: { label: 'Add Expense', screen: 'AddExpense' } }]);
+          addBot([
+            { type: 'text', text: 'No expenses recorded for this month.' },
+            {
+              type: 'action_buttons', buttons: [
+                { label: 'Add Expense', icon: 'add-circle-outline', screen: 'AddExpense', variant: 'primary' },
+              ]
+            }
+          ]);
         } else {
           addBot([
+            {
+              type: 'expense_donut',
+              totalThisMonth: exp.totalThisMonth,
+              breakdown: exp.breakdown
+            },
+            {
+              type: 'expense_list',
+              items: exp.items
+            },
             {
               type: 'stat_cards', cards: [
                 { label: 'Total Spent', value: INR(exp.totalThisMonth), icon: 'card-outline', color: '#EC4899', bg: '#FDF2F8' },
@@ -518,8 +700,7 @@ export const OwnerAssistant: React.FC = () => {
             },
             {
               type: 'action_buttons', buttons: [
-                { label: 'View Expenses', icon: 'card-outline', screen: 'Expenses', variant: 'primary' },
-                { label: 'Add Expense', icon: 'add-circle-outline', screen: 'AddExpense', variant: 'outline' },
+                { label: 'Add Expense', icon: 'add-circle-outline', screen: 'AddExpense', variant: 'primary' },
                 { label: 'Bill Reminders', icon: 'document-text-outline', screen: 'BillReminders', variant: 'outline' },
               ]
             },
@@ -539,18 +720,70 @@ export const OwnerAssistant: React.FC = () => {
         ]);
         break;
 
-      case 'SHOW_STAFF':
-        typingThen([
-          { type: 'text', text: 'Manage your hostel staff — wardens, cleaners, and security.' },
-          {
-            type: 'action_buttons', buttons: [
-              { label: 'View Staff', icon: 'briefcase-outline', screen: 'Staff', variant: 'primary' },
-              { label: 'Add Staff', icon: 'person-add-outline', screen: 'AddStaff', variant: 'outline' },
-              { label: 'Staff Payments', icon: 'wallet-outline', screen: 'StaffPayments', variant: 'outline' },
-            ]
-          },
-        ]);
+      case 'SHOW_HOSTELS': {
+        addBot([{ type: 'loading' }]);
+        const hostelsList = await fetchMyHostels();
+        removeLoadingBlock();
+        if (!hostelsList || hostelsList.length === 0) {
+          addBot([{ type: 'text', text: 'No hostels registered under your account.' }]);
+        } else {
+          addBot([
+            {
+              type: 'stat_cards', cards: [
+                { label: 'Total Hostels', value: String(hostelsList.length), icon: 'business-outline', color: '#6366F1', bg: '#EEF2FF' },
+                { label: 'Active PG Context', value: user?.hostel_name || 'Active PG', icon: 'checkmark-circle-outline', color: '#10B981', bg: '#ECFDF5' },
+              ]
+            },
+            {
+              type: 'hostel_list',
+              hostels: hostelsList,
+              activeHostelId: user?.hostel_id || 0,
+              onSwitch: handleSwitchHostel
+            }
+          ]);
+        }
         break;
+      }
+
+      case 'SHOW_STAFF': {
+        addBot([{ type: 'loading' }]);
+        const staff = await fetchStaffList();
+        removeLoadingBlock();
+        if (!staff || staff.length === 0) {
+          addBot([
+            { type: 'text', text: 'No staff members registered yet.' },
+            {
+              type: 'action_buttons', buttons: [
+                { label: 'Add Staff Member', icon: 'person-add-outline', screen: 'AddStaff', variant: 'primary' },
+              ]
+            }
+          ]);
+        } else {
+          const activeStaff = staff.filter((s: any) => s.status === 1);
+          const totalSalary = activeStaff.reduce((sum: number, s: any) => sum + parseFloat(s.salary || 0), 0);
+          
+          addBot([
+            {
+              type: 'stat_cards', cards: [
+                { label: 'Total Staff', value: String(staff.length), icon: 'briefcase-outline', color: '#4F46E5', bg: '#EEF2FF' },
+                { label: 'Active Staff', value: String(activeStaff.length), icon: 'checkmark-circle-outline', color: '#10B981', bg: '#ECFDF5' },
+                { label: 'Monthly Salary', value: INR(totalSalary), icon: 'wallet-outline', color: '#F59E0B', bg: '#FEF3C7' },
+              ]
+            },
+            {
+              type: 'staff_list',
+              staff: staff
+            },
+            {
+              type: 'action_buttons', buttons: [
+                { label: 'View Staff Details', icon: 'briefcase-outline', screen: 'Staff', variant: 'primary' },
+                { label: 'Add Staff Member', icon: 'person-add-outline', screen: 'AddStaff', variant: 'outline' },
+              ]
+            },
+          ]);
+        }
+        break;
+      }
 
       case 'SHOW_BILLS':
         typingThen([
@@ -563,16 +796,43 @@ export const OwnerAssistant: React.FC = () => {
         ]);
         break;
 
-      case 'SHOW_GUESTS':
-        typingThen([
-          {
-            type: 'action_buttons', buttons: [
-              { label: 'View Guests', icon: 'person-outline', screen: 'Guests', variant: 'primary' },
-              { label: 'Add Guest', icon: 'person-add-outline', screen: 'AddGuest', variant: 'outline' },
-            ]
-          },
-        ]);
+      case 'SHOW_GUESTS': {
+        addBot([{ type: 'loading' }]);
+        const guestData = await fetchGuestsList();
+        removeLoadingBlock();
+        if (!guestData || !guestData.guests || guestData.guests.length === 0) {
+          addBot([
+            { type: 'text', text: 'No guests checked in recently.' },
+            {
+              type: 'action_buttons', buttons: [
+                { label: 'Add Guest', icon: 'person-add-outline', screen: 'AddGuest', variant: 'primary' },
+              ]
+            }
+          ]);
+        } else {
+          const activeGuests = guestData.guests.filter((g: any) => !g.checkout_time);
+          addBot([
+            {
+              type: 'stat_cards', cards: [
+                { label: 'Total Guests', value: String(guestData.guests.length), icon: 'person-outline', color: '#8B5CF6', bg: '#F5F3FF' },
+                { label: 'Currently in PG', value: String(activeGuests.length), icon: 'home-outline', color: '#10B981', bg: '#ECFDF5' },
+                { label: 'Collected Fee', value: INR(guestData.summary.totalCollected), icon: 'cash-outline', color: '#F59E0B', bg: '#FEF3C7' },
+              ]
+            },
+            {
+              type: 'guest_list',
+              guests: guestData.guests
+            },
+            {
+              type: 'action_buttons', buttons: [
+                { label: 'View Guests List', icon: 'people-outline', screen: 'Guests', variant: 'primary' },
+                { label: 'Add Guest', icon: 'person-add-outline', screen: 'AddGuest', variant: 'outline' },
+              ]
+            },
+          ]);
+        }
         break;
+      }
 
       case 'SHOW_NOTICES':
         typingThen([
@@ -617,6 +877,12 @@ export const OwnerAssistant: React.FC = () => {
     handleIntent(resolveIntent(text));
   }, [handleIntent]);
 
+  const triggerMenuAction = useCallback((label: string, intent: AssistantIntent) => {
+    addUser(label);
+    setInputText('');
+    handleIntent(intent);
+  }, [handleIntent]);
+
   // ── Reset ──────────────────────────────────────────────────────────────
   const handleReset = () => {
     setMessages([]);
@@ -645,7 +911,11 @@ export const OwnerAssistant: React.FC = () => {
 
       <Modal visible={isOpen} transparent={false} animationType="slide" onRequestClose={() => setIsOpen(false)}>
         <SafeAreaView style={s.safe} edges={['top']}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <KeyboardAvoidingView 
+            behavior={isKeyboardActive ? 'padding' : undefined} 
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : (StatusBar.currentHeight || 24)}
+            style={{ flex: 1, backgroundColor: '#FFF' }}
+          >
 
             {/* ── Header ── */}
             <LinearGradient colors={['#312E81', '#4338CA']} style={s.header} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
@@ -665,9 +935,14 @@ export const OwnerAssistant: React.FC = () => {
               </View>
               <View style={{ flexDirection: 'row', gap: 4 }}>
                 {view === 'conversation' && (
-                  <TouchableOpacity style={s.iconBtn} onPress={handleReset}>
-                    <Ionicons name="home-outline" size={20} color="#C7D2FE" />
-                  </TouchableOpacity>
+                  <>
+                    <TouchableOpacity style={s.iconBtn} onPress={() => setMessages([])}>
+                      <Ionicons name="trash-outline" size={20} color="#C7D2FE" />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={s.iconBtn} onPress={handleReset}>
+                      <Ionicons name="home-outline" size={20} color="#C7D2FE" />
+                    </TouchableOpacity>
+                  </>
                 )}
                 <TouchableOpacity style={s.iconBtn} onPress={() => setIsOpen(false)}>
                   <Ionicons name="close" size={22} color="#FFF" />
@@ -721,9 +996,9 @@ export const OwnerAssistant: React.FC = () => {
 
             {/* ── Quick questions scrolling tabs above input bar ── */}
             <View style={{ backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingVertical: 8 }}>
-              <ScrollView 
-                horizontal 
-                showsHorizontalScrollIndicator={false} 
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
                 contentContainerStyle={{ flexDirection: 'row', gap: 8, paddingHorizontal: 12 }}
               >
                 {QUICK_QUESTIONS.map((q, i) => (
@@ -741,14 +1016,22 @@ export const OwnerAssistant: React.FC = () => {
             </View>
 
             {/* ── Bottom input bar ── */}
-            <View style={[s.inputBar, { paddingBottom: Math.max(insets.bottom, 10), gap: 8, borderTopWidth: 0 }]}>
-              {/* Hamburger Menu Button */}
-              <TouchableOpacity 
-                onPress={() => setIsAddMenuOpen(true)}
+            <View style={[s.inputBar, { 
+              paddingBottom: (isAddMenuOpen || isFocused || isKeyboardActive) ? 8 : (Platform.OS === 'ios' ? Math.max(insets.bottom, 10) : 10), 
+              gap: 8, 
+              borderTopWidth: 1, 
+              borderTopColor: '#E2E8F0' 
+            }]}>
+              {/* Hamburger Menu Button with Keyboard Dismiss handling */}
+              <TouchableOpacity
+                onPress={() => {
+                  Keyboard.dismiss();
+                  setIsAddMenuOpen(!isAddMenuOpen);
+                }}
                 style={{ padding: 4 }}
                 activeOpacity={0.7}
               >
-                <Ionicons name="menu-outline" size={28} color="#4338CA" />
+                <Ionicons name={isAddMenuOpen ? "close-outline" : "menu-outline"} size={28} color="#4338CA" />
               </TouchableOpacity>
 
               {/* Search / input */}
@@ -763,6 +1046,11 @@ export const OwnerAssistant: React.FC = () => {
                   returnKeyType="send"
                   onSubmitEditing={() => handleQuery(inputText)}
                   multiline={false}
+                  onFocus={() => {
+                    setIsAddMenuOpen(false);
+                    setIsFocused(true);
+                  }}
+                  onBlur={() => setIsFocused(false)}
                 />
               </View>
 
@@ -777,45 +1065,38 @@ export const OwnerAssistant: React.FC = () => {
               </TouchableOpacity>
             </View>
 
-          </KeyboardAvoidingView>
-
-          {/* Add Menu Pop-up Overlay */}
-          {isAddMenuOpen && (
-            <TouchableOpacity
-              style={s.overlayBackground}
-              activeOpacity={1}
-              onPress={() => setIsAddMenuOpen(false)}
-            >
-              <View style={s.popupMenuCard}>
-                <Text style={s.popupMenuTitle}>Quick Actions</Text>
-                <View style={s.popupMenuGrid}>
+            {/* Inline 4x2 Grid Menu below input bar */}
+            {isAddMenuOpen && (
+              <View style={[s.inlineMenuContainer, { 
+                height: 160 + (Platform.OS === 'ios' ? Math.max(insets.bottom, 10) : 10), 
+                paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 10) : 10 
+              }]}>
+                <View style={s.inlineMenuGrid}>
                   {menuItems.map((item, idx) => (
                     <TouchableOpacity
                       key={idx}
-                      style={s.popupMenuItem}
+                      style={s.inlineMenuItem}
                       onPress={() => {
                         setIsAddMenuOpen(false);
-                        handleLinkClick(item.path);
+                        if (item.intent) {
+                          triggerMenuAction(item.label, item.intent);
+                        }
                       }}
                       activeOpacity={0.7}
                     >
-                      <View style={[s.popupMenuIconContainer, { backgroundColor: item.bg }]}>
-                        <Ionicons name={item.icon as any} size={22} color={item.color} />
+                      <View style={[s.inlineMenuIconContainer, { backgroundColor: item.bg }]}>
+                        <Ionicons name={item.icon as any} size={20} color={item.color} />
                       </View>
-                      <Text style={s.popupMenuItemText}>{item.label}</Text>
+                      <Text style={s.inlineMenuItemText} numberOfLines={2}>
+                        {item.label}
+                      </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
-                <TouchableOpacity
-                  style={s.popupMenuCloseBtn}
-                  onPress={() => setIsAddMenuOpen(false)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={s.popupMenuCloseText}>Close</Text>
-                </TouchableOpacity>
               </View>
-            </TouchableOpacity>
-          )}
+            )}
+
+          </KeyboardAvoidingView>
 
         </SafeAreaView>
       </Modal>
@@ -911,70 +1192,36 @@ const s = StyleSheet.create({
     color: '#4338CA',
     fontWeight: '600',
   },
-  overlayBackground: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(15, 23, 42, 0.4)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 9999,
-  },
-  popupMenuCard: {
-    width: '85%',
+  inlineMenuContainer: {
     backgroundColor: '#FFF',
-    borderRadius: 24,
-    padding: 20,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
   },
-  popupMenuTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#0F172A',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  popupMenuGrid: {
+  inlineMenuGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 12,
   },
-  popupMenuItem: {
-    width: '47%',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 16,
-    paddingVertical: 14,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-  },
-  popupMenuIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  inlineMenuItem: {
+    width: '25%',
+    height: 80,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    padding: 4,
   },
-  popupMenuItemText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#334155',
-  },
-  popupMenuCloseBtn: {
-    marginTop: 20,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: '#F1F5F9',
+  inlineMenuIconContainer: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
   },
-  popupMenuCloseText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#64748B',
+  inlineMenuItemText: {
+    fontSize: 9.5,
+    fontWeight: '600',
+    color: '#475569',
+    textAlign: 'center',
+    lineHeight: 12,
   },
 });
 

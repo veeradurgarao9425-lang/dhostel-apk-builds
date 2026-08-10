@@ -7,7 +7,7 @@
 import React, { useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  ActivityIndicator, Animated, Dimensions
+  ActivityIndicator, Animated, Dimensions, DeviceEventEmitter
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Rect, Circle, Line } from 'react-native-svg';
@@ -57,6 +57,14 @@ export type ContentBlock =
   | { type: 'stat_cards'; cards: StatCard[] }
   | { type: 'action_buttons'; buttons: ActionButton[] }
   | { type: 'due_list'; dues: DueRecord[]; onCollect?: (id: string | number) => void }
+  | { type: 'dues_donut'; paidCount: number; partialCount: number; unpaidCount: number; totalPaidAmount: number; totalPending: number }
+  | { type: 'occupancy_donut'; occupied: number; available: number; total: number }
+  | { type: 'expense_donut'; totalThisMonth: number; breakdown: { category: string; amount: number }[] }
+  | { type: 'student_stats_donut'; active: number; inactive: number; prebooked: number; qrRegister: number }
+  | { type: 'staff_list'; staff: any[] }
+  | { type: 'guest_list'; guests: any[] }
+  | { type: 'expense_list'; items: any[] }
+  | { type: 'hostel_list'; hostels: any[]; activeHostelId: number; onSwitch?: (id: number, name: string) => void }
   | { type: 'financial_summary'; income: number; expenses: number; net: number; pending: number; collectionRate: number }
   | { type: 'trend_chart'; data: TrendPoint[] }
   | { type: 'occupancy_bar'; occupied: number; available: number; total: number; rate: number }
@@ -88,6 +96,446 @@ const SkeletonBlock = () => {
           style={{ height: 14, width: `${w}%`, borderRadius: 7, backgroundColor: '#E2E8F0', opacity: anim }}
         />
       ))}
+    </View>
+  );
+};
+
+// ─── Dues Donut Chart ──────────────────────────────────────────────────────────
+const DuesDonutBlock = ({ paidCount, partialCount, unpaidCount, totalPaidAmount, totalPending }: {
+  paidCount: number; partialCount: number; unpaidCount: number; totalPaidAmount: number; totalPending: number;
+}) => {
+  const total = (paidCount + partialCount + unpaidCount) || 1;
+  const paidPct = Math.round((paidCount / total) * 100);
+  const partialPct = Math.round((partialCount / total) * 100);
+  const unpaidPct = Math.round((unpaidCount / total) * 100);
+
+  const radius = 35;
+  const strokeWidth = 10;
+  const circumference = 2 * Math.PI * radius;
+  const amberLengthPct = unpaidPct + partialPct;
+  const amberOffset = circumference - (amberLengthPct / 100) * circumference;
+  const redOffset = circumference - (unpaidPct / 100) * circumference;
+
+  return (
+    <View style={{ gap: 6 }}>
+      <View style={st.donutContainer}>
+        <View style={st.donutChartWrap}>
+          <Svg width={100} height={100} style={{ transform: [{ rotate: '-90deg' }] }}>
+            {/* Base Paid Segment (Green) */}
+            <Circle
+              cx={50}
+              cy={50}
+              r={radius}
+              stroke="#10B981"
+              strokeWidth={strokeWidth}
+              fill="transparent"
+            />
+            {/* Partially Paid Segment (Amber) */}
+            {amberLengthPct > 0 && (
+              <Circle
+                cx={50}
+                cy={50}
+                r={radius}
+                stroke="#F59E0B"
+                strokeWidth={strokeWidth}
+                fill="transparent"
+                strokeDasharray={circumference}
+                strokeDashoffset={amberOffset}
+              />
+            )}
+            {/* Unpaid Segment (Red) */}
+            {unpaidPct > 0 && (
+              <Circle
+                cx={50}
+                cy={50}
+                r={radius}
+                stroke="#EF4444"
+                strokeWidth={strokeWidth}
+                fill="transparent"
+                strokeDasharray={circumference}
+                strokeDashoffset={redOffset}
+                strokeLinecap="round"
+              />
+            )}
+          </Svg>
+          <View style={st.donutCenterLabel}>
+            <Text style={st.donutCenterPct}>{unpaidPct}%</Text>
+            <Text style={st.donutCenterSub}>Unpaid</Text>
+          </View>
+        </View>
+
+        <View style={st.donutLegendWrap}>
+          <Text style={st.donutTitle}>Rent Collection Status</Text>
+          <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
+            <Text style={st.donutTotalAmount}>Dues: {INR(totalPending)}</Text>
+            <Text style={st.donutPaidAmount}>Paid: {INR(totalPaidAmount)}</Text>
+          </View>
+          
+          <View style={{ gap: 4 }}>
+            <View style={st.legendItem}>
+              <View style={[st.legendDot, { backgroundColor: '#10B981' }]} />
+              <Text style={st.legendLabel}>Paid: {paidCount} ({paidPct}%)</Text>
+            </View>
+            <View style={st.legendItem}>
+              <View style={[st.legendDot, { backgroundColor: '#F59E0B' }]} />
+              <Text style={st.legendLabel}>Partial: {partialCount} ({partialPct}%)</Text>
+            </View>
+            <View style={st.legendItem}>
+              <View style={[st.legendDot, { backgroundColor: '#EF4444' }]} />
+              <Text style={st.legendLabel}>Unpaid: {unpaidCount} ({unpaidPct}%)</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+      <Text style={st.donutExplainText}>
+        💡 Tip: Unpaid and partially paid counts reflect students with outstanding balances. Tap Collect Payment to record payments.
+      </Text>
+    </View>
+  );
+};
+
+// ─── Occupancy Donut Chart ───────────────────────────────────────────────────
+const OccupancyDonutBlock = ({ occupied, available, total }: {
+  occupied: number; available: number; total: number;
+}) => {
+  const totalBeds = total || 1;
+  const occupiedPct = Math.round((occupied / totalBeds) * 100);
+  const availablePct = Math.round((available / totalBeds) * 100);
+
+  const radius = 35;
+  const strokeWidth = 10;
+  const circumference = 2 * Math.PI * radius;
+  const strokeOffset = circumference - (occupiedPct / 100) * circumference;
+
+  return (
+    <View style={{ gap: 6 }}>
+      <View style={st.donutContainer}>
+        <View style={st.donutChartWrap}>
+          <Svg width={100} height={100} style={{ transform: [{ rotate: '-90deg' }] }}>
+            {/* Base Available Segment (Sky Blue) */}
+            <Circle
+              cx={50}
+              cy={50}
+              r={radius}
+              stroke="#38BDF8"
+              strokeWidth={strokeWidth}
+              fill="transparent"
+            />
+            {/* Occupied Segment (Indigo) */}
+            {occupiedPct > 0 && (
+              <Circle
+                cx={50}
+                cy={50}
+                r={radius}
+                stroke="#6366F1"
+                strokeWidth={strokeWidth}
+                fill="transparent"
+                strokeDasharray={circumference}
+                strokeDashoffset={strokeOffset}
+                strokeLinecap="round"
+              />
+            )}
+          </Svg>
+          <View style={st.donutCenterLabel}>
+            <Text style={st.donutCenterPct}>{occupiedPct}%</Text>
+            <Text style={st.donutCenterSub}>Occupied</Text>
+          </View>
+        </View>
+
+        <View style={st.donutLegendWrap}>
+          <Text style={st.donutTitle}>Hostel Bed Occupancy</Text>
+          <Text style={[st.donutTotalAmount, { color: '#6366F1' }]}>Total Beds: {totalBeds}</Text>
+          
+          <View style={{ gap: 4, marginTop: 4 }}>
+            <View style={st.legendItem}>
+              <View style={[st.legendDot, { backgroundColor: '#6366F1' }]} />
+              <Text style={st.legendLabel}>Occupied: {occupied} ({occupiedPct}%)</Text>
+            </View>
+            <View style={[st.legendItem, { flexWrap: 'wrap' }]}>
+              <View style={[st.legendDot, { backgroundColor: '#38BDF8' }]} />
+              <Text style={st.legendLabel}>Available: {available} ({availablePct}%)</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+      <Text style={st.donutExplainText}>
+        💡 Occupancy metrics are calculated based on registered students and allocated hostel room beds.
+      </Text>
+    </View>
+  );
+};
+
+// ─── Expense Donut Chart ───────────────────────────────────────────────────────
+const ExpenseDonutBlock = ({ totalThisMonth, breakdown }: {
+  totalThisMonth: number; breakdown: { category: string; amount: number }[];
+}) => {
+  const total = totalThisMonth || 1;
+  
+  const items = breakdown.slice(0, 3);
+  const sumTop = items.reduce((sum, item) => sum + item.amount, 0);
+  const hasOthers = total > sumTop;
+  if (hasOthers) {
+    items.push({ category: 'Others', amount: total - sumTop });
+  }
+
+  const radius = 35;
+  const strokeWidth = 10;
+  const circumference = 2 * Math.PI * radius;
+
+  const colors = ['#6366F1', '#38BDF8', '#F59E0B', '#94A3B8'];
+
+  const cumulativePctList: number[] = [];
+  let runningSum = 0;
+  items.forEach(item => {
+    runningSum += item.amount;
+    cumulativePctList.push((runningSum / total) * 100);
+  });
+
+  const reversedPcts = [...cumulativePctList].reverse();
+
+  return (
+    <View style={{ gap: 6 }}>
+      <View style={st.donutContainer}>
+        <View style={st.donutChartWrap}>
+          <Svg width={100} height={100} style={{ transform: [{ rotate: '-90deg' }] }}>
+            <Circle cx={50} cy={50} r={radius} stroke="#E2E8F0" strokeWidth={strokeWidth} fill="transparent" />
+            {reversedPcts.map((pct, idx) => {
+              const color = colors[items.length - 1 - idx] || '#64748B';
+              const offset = circumference - (pct / 100) * circumference;
+              return (
+                <Circle
+                  key={idx}
+                  cx={50}
+                  cy={50}
+                  r={radius}
+                  stroke={color}
+                  strokeWidth={strokeWidth}
+                  fill="transparent"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={offset}
+                  strokeLinecap="round"
+                />
+              );
+            })}
+          </Svg>
+          <View style={st.donutCenterLabel}>
+            <Text style={st.donutCenterPct}>Spent</Text>
+            <Text style={[st.donutCenterSub, { fontSize: 7 }]}>{INR(total)}</Text>
+          </View>
+        </View>
+
+        <View style={st.donutLegendWrap}>
+          <Text style={st.donutTitle}>Expenses Breakdown</Text>
+          <Text style={[st.donutTotalAmount, { color: '#EF4444' }]}>Total: {INR(total)}</Text>
+          
+          <View style={{ gap: 4, marginTop: 4 }}>
+            {items.map((item, idx) => {
+              const pct = Math.round((item.amount / total) * 100);
+              const color = colors[idx] || '#64748B';
+              return (
+                <View key={idx} style={st.legendItem}>
+                  <View style={[st.legendDot, { backgroundColor: color }]} />
+                  <Text style={st.legendLabel} numberOfLines={1}>{item.category}: {INR(item.amount)} ({pct}%)</Text>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+};
+
+// ─── Student Stats Donut Chart ───────────────────────────────────────────────
+const StudentStatsDonutBlock = ({ active, inactive, prebooked, qrRegister }: {
+  active: number; inactive: number; prebooked: number; qrRegister: number;
+}) => {
+  const total = (active + inactive + prebooked + qrRegister) || 1;
+  const activePct = Math.round((active / total) * 100);
+  const inactivePct = Math.round((inactive / total) * 100);
+  const prebookedPct = Math.round((prebooked / total) * 100);
+  const qrPct = Math.round((qrRegister / total) * 100);
+
+  const radius = 35;
+  const strokeWidth = 10;
+  const circumference = 2 * Math.PI * radius;
+
+  const colors = ['#6366F1', '#10B981', '#F59E0B', '#94A3B8'];
+  
+  const items = [
+    { label: 'Active', count: active, pct: activePct, color: '#6366F1' },
+    { label: 'Pending QR', count: qrRegister, pct: qrPct, color: '#10B981' },
+    { label: 'Pre-Booked', count: prebooked, pct: prebookedPct, color: '#F59E0B' },
+    { label: 'Vacated (Left)', count: inactive, pct: inactivePct, color: '#94A3B8' },
+  ];
+
+  const cumulativePctList: number[] = [];
+  let runningSum = 0;
+  items.forEach(item => {
+    runningSum += item.count;
+    cumulativePctList.push((runningSum / total) * 100);
+  });
+
+  const reversedPcts = [...cumulativePctList].reverse();
+
+  return (
+    <View style={{ gap: 6 }}>
+      <View style={st.donutContainer}>
+        <View style={st.donutChartWrap}>
+          <Svg width={100} height={100} style={{ transform: [{ rotate: '-90deg' }] }}>
+            <Circle cx={50} cy={50} r={radius} stroke="#E2E8F0" strokeWidth={strokeWidth} fill="transparent" />
+            {reversedPcts.map((pct, idx) => {
+              const color = colors[colors.length - 1 - idx] || '#64748B';
+              const offset = circumference - (pct / 100) * circumference;
+              return (
+                <Circle
+                  key={idx}
+                  cx={50}
+                  cy={50}
+                  r={radius}
+                  stroke={color}
+                  strokeWidth={strokeWidth}
+                  fill="transparent"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={offset}
+                  strokeLinecap="round"
+                />
+              );
+            })}
+          </Svg>
+          <View style={st.donutCenterLabel}>
+            <Text style={st.donutCenterPct}>{active}</Text>
+            <Text style={st.donutCenterSub}>Active</Text>
+          </View>
+        </View>
+
+        <View style={st.donutLegendWrap}>
+          <Text style={st.donutTitle}>Student Distribution</Text>
+          
+          <View style={{ gap: 4, marginTop: 4 }}>
+            {items.map((item, idx) => (
+              <View key={idx} style={st.legendItem}>
+                <View style={[st.legendDot, { backgroundColor: item.color }]} />
+                <Text style={st.legendLabel}>{item.label}: {item.count} ({item.pct}%)</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+};
+
+// ─── Staff List Card Block ───────────────────────────────────────────────────
+const StaffListBlock = ({ staff }: { staff: any[] }) => {
+  return (
+    <View style={st.listContainer}>
+      <Text style={st.listHeader}>Staff Directory</Text>
+      <View style={{ gap: 8 }}>
+        {staff.slice(0, 5).map((s, idx) => (
+          <View key={idx} style={st.listItem}>
+            <View style={{ flex: 1 }}>
+              <Text style={st.listItemName}>{s.full_name || `${s.first_name || ''} ${s.last_name || ''}`.trim()}</Text>
+              <Text style={st.listItemSub}>{s.role || 'Staff'} • Salary: {INR(s.salary || 0)}</Text>
+            </View>
+            <View style={[st.listItemBadge, { backgroundColor: s.status === 1 ? '#ECFDF5' : '#F1F5F9' }]}>
+              <Text style={[st.listItemBadgeText, { color: s.status === 1 ? '#10B981' : '#64748B' }]}>
+                {s.status === 1 ? 'Active' : 'Inactive'}
+              </Text>
+            </View>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+};
+
+// ─── Guest List Card Block ────────────────────────────────────────────────────
+const GuestListBlock = ({ guests }: { guests: any[] }) => {
+  return (
+    <View style={st.listContainer}>
+      <Text style={st.listHeader}>Recent Guests</Text>
+      <View style={{ gap: 8 }}>
+        {guests.slice(0, 5).map((g, idx) => (
+          <View key={idx} style={st.listItem}>
+            <View style={{ flex: 1 }}>
+              <Text style={st.listItemName}>{g.name || 'Guest'}</Text>
+              <Text style={st.listItemSub}>Room: {g.room_number || 'N/A'} • Check-in: {g.check_in_date ? new Date(g.check_in_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'N/A'}</Text>
+            </View>
+            <View style={[st.listItemBadge, { backgroundColor: g.checkout_time ? '#F1F5F9' : '#ECFDF5' }]}>
+              <Text style={[st.listItemBadgeText, { color: g.checkout_time ? '#64748B' : '#10B981' }]}>
+                {g.checkout_time ? 'Checked Out' : 'Active'}
+              </Text>
+            </View>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+};
+
+// ─── Expense List Card Block ──────────────────────────────────────────────────
+const ExpenseListBlock = ({ items }: { items: any[] }) => {
+  return (
+    <View style={st.listContainer}>
+      <Text style={st.listHeader}>Recent Expenses</Text>
+      <View style={{ gap: 8 }}>
+        {items.slice(0, 5).map((e, idx) => (
+          <View key={idx} style={st.listItem}>
+            <View style={{ flex: 1 }}>
+              <Text style={st.listItemName}>{e.title || 'Expense'}</Text>
+              <Text style={st.listItemSub}>{e.category || 'Other'} • {e.date ? new Date(e.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : ''}</Text>
+            </View>
+            <Text style={[st.listItemBadgeText, { fontSize: 13, color: '#EF4444', fontWeight: '800' }]}>
+              -{INR(e.amount)}
+            </Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+};
+
+// ─── Hostel List Card Block ───────────────────────────────────────────────────
+const HostelListBlock = ({ hostels, activeHostelId, onSwitch }: {
+  hostels: any[]; activeHostelId: number; onSwitch?: (id: number, name: string) => void;
+}) => {
+  return (
+    <View style={st.listContainer}>
+      <Text style={st.listHeader}>Your Hostels</Text>
+      <View style={{ gap: 8 }}>
+        {hostels.map((h, idx) => {
+          const isActive = Number(h.hostel_id) === Number(activeHostelId);
+          return (
+            <View key={idx} style={st.listItem}>
+              <View style={{ flex: 1 }}>
+                <Text style={st.listItemName}>{h.hostel_name || h.name || 'Hostel'}</Text>
+                <Text style={st.listItemSub}>{isActive ? 'Currently Active Context' : 'Tap Switch to select PG context'}</Text>
+              </View>
+              {isActive ? (
+                <View style={[st.listItemBadge, { backgroundColor: '#ECFDF5' }]}>
+                  <Text style={[st.listItemBadgeText, { color: '#10B981' }]}>Active</Text>
+                </View>
+              ) : (
+                <TouchableOpacity 
+                  style={{
+                    backgroundColor: '#EEF2FF',
+                    paddingHorizontal: 10,
+                    paddingVertical: 5,
+                    borderRadius: 6,
+                    borderWidth: 1,
+                    borderColor: '#C7D2FE',
+                  }}
+                  activeOpacity={0.7}
+                  onPress={() => onSwitch?.(h.hostel_id, h.name)}
+                >
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#4F46E5' }}>Switch</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          );
+        })}
+      </View>
     </View>
   );
 };
@@ -126,7 +574,10 @@ const ActionButtonsBlock = ({ buttons }: { buttons: ActionButton[] }) => (
           onPress={() => {
             Haptics.selectionAsync().catch(() => {});
             if (btn.onPress) { btn.onPress(); return; }
-            if (btn.screen) { RootNavigation.navigate(btn.screen); }
+            if (btn.screen) { 
+              RootNavigation.navigate(btn.screen); 
+              DeviceEventEmitter.emit('CLOSE_ASSISTANT');
+            }
           }}
           activeOpacity={0.75}
         >
@@ -170,6 +621,7 @@ const DueListBlock = ({ dues, onCollect }: { dues: DueRecord[]; onCollect?: (id:
           onPress={() => {
             if (due.studentId) {
               RootNavigation.navigate('StudentDetails', { studentId: due.studentId });
+              DeviceEventEmitter.emit('CLOSE_ASSISTANT');
             }
           }}
           activeOpacity={0.7}
@@ -325,7 +777,11 @@ const StepsBlock = ({ title, steps, screen, screenLabel }: {
     {screen && (
       <TouchableOpacity
         style={[st.actionBtn, st.actionBtnPrimary, { marginTop: 16, alignSelf: 'flex-start' }]}
-        onPress={() => { Haptics.selectionAsync().catch(() => {}); RootNavigation.navigate(screen); }}
+        onPress={() => { 
+          Haptics.selectionAsync().catch(() => {}); 
+          RootNavigation.navigate(screen); 
+          DeviceEventEmitter.emit('CLOSE_ASSISTANT');
+        }}
         activeOpacity={0.8}
       >
         <Text style={[st.actionBtnText, { color: '#FFF' }]}>{screenLabel || 'Open Screen'}</Text>
@@ -348,7 +804,14 @@ const EmptyStateBlock = ({ icon, message, subMessage, action }: {
     {action && (
       <TouchableOpacity
         style={[st.actionBtn, st.actionBtnOutline, { marginTop: 12 }]}
-        onPress={() => { if (action.onPress) action.onPress(); else if (action.screen) RootNavigation.navigate(action.screen); }}
+        onPress={() => { 
+          if (action.onPress) {
+            action.onPress(); 
+          } else if (action.screen) {
+            RootNavigation.navigate(action.screen); 
+            DeviceEventEmitter.emit('CLOSE_ASSISTANT');
+          }
+        }}
       >
         <Text style={[st.actionBtnText, { color: '#4F46E5' }]}>{action.label}</Text>
       </TouchableOpacity>
@@ -389,6 +852,67 @@ export const AssistantResponse: React.FC<AssistantResponseProps> = ({ blocks }) 
 
         case 'due_list':
           return <DueListBlock key={i} dues={block.dues} onCollect={block.onCollect} />;
+
+        case 'dues_donut':
+          return (
+            <DuesDonutBlock
+              key={i}
+              paidCount={block.paidCount}
+              partialCount={block.partialCount}
+              unpaidCount={block.unpaidCount}
+              totalPaidAmount={block.totalPaidAmount}
+              totalPending={block.totalPending}
+            />
+          );
+
+        case 'occupancy_donut':
+          return (
+            <OccupancyDonutBlock
+              key={i}
+              occupied={block.occupied}
+              available={block.available}
+              total={block.total}
+            />
+          );
+
+        case 'expense_donut':
+          return (
+            <ExpenseDonutBlock
+              key={i}
+              totalThisMonth={block.totalThisMonth}
+              breakdown={block.breakdown}
+            />
+          );
+
+        case 'student_stats_donut':
+          return (
+            <StudentStatsDonutBlock
+              key={i}
+              active={block.active}
+              inactive={block.inactive}
+              prebooked={block.prebooked}
+              qrRegister={block.qrRegister}
+            />
+          );
+
+        case 'staff_list':
+          return <StaffListBlock key={i} staff={block.staff} />;
+
+        case 'guest_list':
+          return <GuestListBlock key={i} guests={block.guests} />;
+
+        case 'expense_list':
+          return <ExpenseListBlock key={i} items={block.items} />;
+
+        case 'hostel_list':
+          return (
+            <HostelListBlock
+              key={i}
+              hostels={block.hostels}
+              activeHostelId={block.activeHostelId}
+              onSwitch={block.onSwitch}
+            />
+          );
 
         case 'financial_summary':
           return (
@@ -455,6 +979,129 @@ const st = StyleSheet.create({
     lineHeight: 22,
     color: '#334155',
     letterSpacing: 0.1,
+  },
+
+  // Donut chart
+  donutContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1.5,
+    borderColor: '#F1F5F9',
+    gap: 16,
+  },
+  donutChartWrap: {
+    position: 'relative',
+    width: 100,
+    height: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  donutCenterLabel: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  donutCenterPct: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  donutCenterSub: {
+    fontSize: 8,
+    fontWeight: '700',
+    color: '#64748B',
+    textTransform: 'uppercase',
+  },
+  donutLegendWrap: {
+    flex: 1,
+  },
+  donutTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 2,
+  },
+  donutTotalAmount: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#EF4444',
+    marginBottom: 4,
+  },
+  donutPaidAmount: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#10B981',
+    marginBottom: 4,
+  },
+  donutExplainText: {
+    fontSize: 10,
+    color: '#64748B',
+    fontStyle: 'italic',
+    paddingHorizontal: 6,
+    lineHeight: 14,
+  },
+
+  // Lists visual block cards style
+  listContainer: {
+    backgroundColor: '#FFF',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1.5,
+    borderColor: '#F1F5F9',
+  },
+  listHeader: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748B',
+    textTransform: 'uppercase',
+    marginBottom: 8,
+  },
+  listItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  listItemName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  listItemSub: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  listItemBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  listItemBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  legendLabel: {
+    fontSize: 11,
+    color: '#475569',
+    fontWeight: '600',
   },
 
   // Stat Cards
@@ -615,16 +1262,6 @@ const st = StyleSheet.create({
     color: '#64748B',
     fontWeight: '600',
     marginBottom: 4,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
   },
   legendText: {
     fontSize: 11,

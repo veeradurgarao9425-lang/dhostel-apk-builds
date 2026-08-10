@@ -40,6 +40,9 @@ export interface DueSummary {
   overdueAmount: number;
   overdueCount: number;
   paidCount: number;
+  partialCount: number;
+  unpaidCount: number;
+  totalPaidAmount: number;
   tenantsCount: number;
   topDefaulters: DueRecord[];
 }
@@ -92,6 +95,7 @@ export interface ExpenseSummary {
   totalThisMonth: number;
   count: number;
   breakdown: { category: string; amount: number }[];
+  items: any[];
 }
 
 // ─── Dashboard Snapshot ───────────────────────────────────────────────────────
@@ -162,21 +166,44 @@ export async function fetchDuesSummary(): Promise<DueSummary | null> {
   let pendingStudents = 0;
   let overdueAmount = 0;
   let overdueCount = 0;
-  let paidCount = 0;
+  let paidCount = 0;      // Fully Paid
+  let partialCount = 0;   // Partially Paid
+  let unpaidCount = 0;    // Fully Unpaid
+  let totalPaidAmount = 0;
 
   const pendingFees: any[] = [];
 
   fees.forEach((f) => {
     const balance = parseFloat(f.balance || 0);
+    const paid = parseFloat(f.paid_amount || f.amount_paid || 0);
+    totalPaidAmount += paid;
+
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    const dueDateObj = f.due_date ? new Date(f.due_date) : new Date();
+    dueDateObj.setHours(0, 0, 0, 0);
+    const diffDays = Math.floor((now.getTime() - dueDateObj.getTime()) / 86400000);
+
+    const carryForward = parseFloat(f.carry_forward || 0);
+    const effectiveCarryForward = Math.max(0, carryForward - paid);
+
+    const isOverdue = diffDays > 0 || effectiveCarryForward > 0;
+
     if (balance > 0) {
       totalPending += balance;
       pendingStudents++;
       pendingFees.push(f);
 
-      const due = f.due_date ? new Date(f.due_date).getTime() : nowMs;
-      if (due < nowMs) {
+      if (isOverdue) {
         overdueCount++;
         overdueAmount += balance;
+      }
+
+      if (paid > 0) {
+        partialCount++;
+      } else {
+        unpaidCount++;
       }
     } else {
       paidCount++;
@@ -205,6 +232,9 @@ export async function fetchDuesSummary(): Promise<DueSummary | null> {
     overdueAmount,
     overdueCount,
     paidCount,
+    partialCount,
+    unpaidCount,
+    totalPaidAmount,
     tenantsCount: fees.length,
     topDefaulters,
   };
@@ -312,5 +342,45 @@ export async function fetchExpenseSummary(): Promise<ExpenseSummary | null> {
     .slice(0, 5)
     .map(([category, amount]) => ({ category, amount }));
 
-  return { totalThisMonth, count: items.length, breakdown };
+  const expenseItems = items.slice(0, 5).map((e: any) => ({
+    title: e.description || e.expense_name || e.category || 'Expense',
+    amount: Number(e.amount ?? 0),
+    category: e.category || 'Other',
+    date: e.expense_date || e.created_at || ''
+  }));
+
+  return { totalThisMonth, count: items.length, breakdown, items: expenseItems };
+}
+
+export async function fetchMyHostels(): Promise<any[]> {
+  const data = await safeGet('/hostels', { my_hostels: true });
+  return data?.data || [];
+}
+
+export async function switchActiveHostel(hostelId: number): Promise<any> {
+  try {
+    const res = await api.put('/auth/active-hostel', { hostel_id: hostelId });
+    return res.data;
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchStaffList(): Promise<any[]> {
+  const data = await safeGet('/staff');
+  return data?.data || [];
+}
+
+export async function fetchGuestsList(): Promise<{ guests: any[]; summary: { count: number; totalCollected: number } } | null> {
+  const data = await safeGet('/guests');
+  if (!data) return null;
+  return {
+    guests: data.data || [],
+    summary: data.summary || { count: 0, totalCollected: 0 }
+  };
+}
+
+export async function fetchStudentStats(): Promise<any> {
+  const data = await safeGet('/students/stats');
+  return data?.data || { active: 0, inactive: 0, prebooked: 0, qrRegister: 0, total: 0, unallocated: 0, pendingAdmissions: 0 };
 }

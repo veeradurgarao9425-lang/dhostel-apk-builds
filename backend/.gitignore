@@ -4,3 +4,9 @@ dist/
 *.log
 scripts/test-mysql.cjs
 scripts/test-analytics.cjs
+.wwebjs_auth/
+*.zip
+inspect_dues.*
+test_*.ts
+test_*.js
+

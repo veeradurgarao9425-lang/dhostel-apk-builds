@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../src/services/api';
+import { setSecureItem, removeSecureItem } from '../src/services/secureStore';
 import { notificationService } from '../src/services/notificationService';
 
 export type User = {
@@ -210,6 +211,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
         
         setUser(finalUser);
+        await setSecureItem('token', token);
         await AsyncStorage.setItem('token', token);
         await AsyncStorage.setItem('user', JSON.stringify(finalUser));
 
@@ -254,6 +256,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const finalUser: User = { ...userData, role: 'OWNER' };
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         setUser(finalUser);
+        await setSecureItem('token', token);
         await AsyncStorage.setItem('token', token);
         await AsyncStorage.setItem('user', JSON.stringify(finalUser));
 
@@ -342,6 +345,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (token && userData) {
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        await setSecureItem('token', token);
         await AsyncStorage.setItem('token', token);
 
         let finalUser: User = { ...userData, role: 'TENANT' };
@@ -380,6 +384,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const finalUser: User = { ...tenantData, role: 'TENANT' } as User;
     api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     setUser(finalUser);
+    await setSecureItem('token', token);
     await AsyncStorage.setItem('token', token);
     await AsyncStorage.setItem('user', JSON.stringify(finalUser));
 
@@ -422,6 +427,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       delete api.defaults.headers.common['Authorization'];
       setUser(null);
       setHostels([]);
+      await removeSecureItem('token');
       await AsyncStorage.multiRemove(['token', 'user']);
     } catch (e) {
       console.error('Error signing out', e);
@@ -434,6 +440,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       if (token) {
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        await setSecureItem('token', token);
         await AsyncStorage.setItem('token', token);
       }
       setUser(prev => {

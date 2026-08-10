@@ -19,6 +19,7 @@ export type AssistantIntent =
   | { type: 'SHOW_BILLS' }
   | { type: 'SHOW_GUESTS' }
   | { type: 'SHOW_NOTICES' }
+  | { type: 'SHOW_HOSTELS' }
   | { type: 'UNKNOWN'; query: string };
 
 export type HowToAction =
@@ -201,6 +202,13 @@ const RULES: Rule[] = [
     keywords: ['notice', 'notices', 'announcement', 'broadcast', 'message'],
     intent: { type: 'SHOW_NOTICES' },
     priority: 5,
+  },
+  
+  // ── Hostels ────────────────────────────────────────────────────────────────
+  {
+    keywords: ['switch pg', 'switch hostel', 'change pg', 'change hostel', 'my hostels', 'show hostels', 'list hostels', 'pg list', 'hostel list'],
+    intent: { type: 'SHOW_HOSTELS' },
+    priority: 8,
   },
 ];
 
