@@ -327,6 +327,7 @@ const WaveDecoration = ({ color }: { color: string }) => (
 
 // ─── Bulk WhatsApp Modal Component ──────────────────────────────────────────
 const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab }: any) => {
+    const insets = useSafeAreaInsets();
     const [modalFilter, setModalFilter] = useState<'All' | 'Overdue' | 'Partial'>('All');
 
     const defaulters = React.useMemo(() => {
@@ -436,11 +437,14 @@ const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab }: any
 
     return (
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-            <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
-                <View style={{
+            <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }} activeOpacity={1} onPress={onClose}>
+                <TouchableOpacity activeOpacity={1} style={{
                     backgroundColor: isDark ? '#1E293B' : '#FFF',
                     borderTopLeftRadius: 24, borderTopRightRadius: 24,
-                    maxHeight: '85%', padding: 20
+                    maxHeight: '88%',
+                    paddingHorizontal: 20,
+                    paddingTop: 20,
+                    paddingBottom: Math.max(insets.bottom, 20)
                 }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
@@ -517,7 +521,7 @@ const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab }: any
                     <FlatList
                         data={defaulters}
                         keyExtractor={(item: any) => item.id.toString()}
-                        style={{ maxHeight: 320 }}
+                        style={{ flexShrink: 1, maxHeight: 240 }}
                         renderItem={({ item }: any) => {
                             const isSelected = selectedIds.has(item.id);
                             return (
@@ -591,8 +595,8 @@ const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab }: any
                             </Text>
                         </TouchableOpacity>
                     </View>
-                </View>
-            </View>
+                </TouchableOpacity>
+            </TouchableOpacity>
         </Modal>
     );
 };

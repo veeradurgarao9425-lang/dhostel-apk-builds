@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, TextInput, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, TextInput, ActivityIndicator, Image } from 'react-native';
 import { AppHeader } from '../components/AppHeader';
 import { Card } from '../components/Card';
-import { Bell, Shield, ChevronRight, ChevronDown, Lock, Eye, EyeOff } from 'lucide-react-native';
+import { Bell, Shield, ChevronRight, ChevronDown, Lock, Eye, EyeOff, MessageSquare, RefreshCw, CheckCircle2 } from 'lucide-react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useToast } from '../context/ToastContext';
 import { useTranslation } from 'react-i18next';
@@ -29,6 +29,107 @@ export const SettingsScreen = ({ navigation }: any) => {
     const [showCurrentPassword, setShowCurrentPassword] = useState(false);
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+    // WhatsApp Automation state
+    const [waStatus, setWaStatus] = useState<{ isReady: boolean; isInitializing: boolean; qrCodeDataUrl: string | null } | null>(null);
+    const [waLoading, setWaLoading] = useState(false);
+    const [showWaDetails, setShowWaDetails] = useState(false);
+
+    const fetchWaStatus = async (isSilent = false) => {
+        try {
+            if (!isSilent) setWaLoading(true);
+            const res = await api.get('/monthly-fees/whatsapp-status');
+            if (res.data.success) {
+                setWaStatus(res.data.data);
+            }
+        } catch (err) {
+            console.error('WhatsApp status fetch error:', err);
+        } finally {
+            if (!isSilent) setWaLoading(false);
+        }
+    };
+
+    const handleRestartWa = async () => {
+        try {
+            setWaLoading(true);
+            const res = await api.post('/monthly-fees/whatsapp-restart');
+            if (res.data.success && res.data.data) {
+                setWaStatus(res.data.data);
+            } else {
+                fetchWaStatus();
+            }
+        } catch (err) {
+            console.error('WhatsApp restart error:', err);
+            fetchWaStatus();
+        } finally {
+            setWaLoading(false);
+        }
+    };
+
+    const renderWaContent = () => {
+        if (waLoading) {
+            return (
+                <View style={{ alignItems: 'center', gap: 8, paddingVertical: 12 }}>
+                    <ActivityIndicator size="small" color="#25D366" />
+                    <Text style={{ fontSize: 12, color: theme.textSecondary, fontWeight: '600' }}>
+                        Connecting to WhatsApp Web... (Generating QR Code)
+                    </Text>
+                </View>
+            );
+        }
+        if (waStatus?.isReady) {
+            return (
+                <View style={{ alignItems: 'center', gap: 8, paddingVertical: 10 }}>
+                    <CheckCircle2 size={36} color="#16A34A" />
+                    <Text style={{ fontSize: 15, fontWeight: '800', color: isDark ? '#F8FAFC' : '#1E293B', textAlign: 'center' }}>
+                        WhatsApp Bot is Linked & Active! 🎉
+                    </Text>
+                    <Text style={{ fontSize: 12, color: theme.textSecondary, textAlign: 'center', lineHeight: 18 }}>
+                        You can now send direct 1-click background reminders to all unpaid students without opening WhatsApp app manually.
+                    </Text>
+                </View>
+            );
+        }
+        if (waStatus?.qrCodeDataUrl) {
+            return (
+                <View style={{ alignItems: 'center', gap: 10 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: isDark ? '#F8FAFC' : '#1E293B', textAlign: 'center' }}>
+                        Scan QR Code with your Hostel WhatsApp
+                    </Text>
+                    <View style={{ backgroundColor: '#FFF', padding: 10, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                        <Image source={{ uri: waStatus.qrCodeDataUrl }} style={{ width: 200, height: 200 }} resizeMode="contain" />
+                    </View>
+                    <View style={{ backgroundColor: isDark ? '#0F172A' : '#F8FAFC', padding: 12, borderRadius: 12, width: '100%' }}>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: theme.textPrimary, marginBottom: 4 }}>
+                            How to Link:
+                        </Text>
+                        <Text style={{ fontSize: 11, color: theme.textSecondary, lineHeight: 16 }}>
+                            1. Open WhatsApp on your phone.{'\n'}
+                            2. Tap Settings ➔ Linked Devices ➔ Link a Device.{'\n'}
+                            3. Point your camera at this QR code to complete pairing.
+                        </Text>
+                    </View>
+                </View>
+            );
+        }
+        return (
+            <View style={{ alignItems: 'center', gap: 10, paddingVertical: 12 }}>
+                <Text style={{ fontSize: 13, color: theme.textSecondary, textAlign: 'center', lineHeight: 18 }}>
+                    WhatsApp QR Code is ready to initialize. Tap below to generate your pairing QR code!
+                </Text>
+            </View>
+        );
+    };
+
+    useEffect(() => {
+        let interval: any;
+        if (showWaDetails && waStatus && !waStatus.isReady) {
+            interval = setInterval(() => {
+                fetchWaStatus(true);
+            }, 3000);
+        }
+        return () => { if (interval) clearInterval(interval); };
+    }, [showWaDetails, waStatus]);
 
     const SettingRow = ({ icon, label, value, type = 'chevron', onPress, rightElement }: any) => (
         <TouchableOpacity
@@ -202,6 +303,51 @@ export const SettingsScreen = ({ navigation }: any) => {
                                 ) : (
                                     <Text style={styles.saveBtnText}>{t('settings.updatePassword', 'Update Password')}</Text>
                                 )}
+                            </TouchableOpacity>
+                        </View>
+                    )}
+                </Card>
+
+                {/* ── AUTOMATED WHATSAPP REMINDERS ── */}
+                <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>Automated WhatsApp Reminders</Text>
+
+                <Card style={[styles.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
+                    <SettingRow
+                        icon={<MessageSquare size={20} color="#25D366" />}
+                        label="Direct WhatsApp Link"
+                        type="custom"
+                        rightElement={
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <Text style={{ fontSize: 12, fontWeight: '700', color: waStatus?.isReady ? '#16A34A' : '#DC2626' }}>
+                                    {waStatus?.isReady ? '✅ Linked' : 'Link Device'}
+                                </Text>
+                                {showWaDetails ? (
+                                    <ChevronDown size={20} color={isDark ? '#475569' : '#CBD5E1'} />
+                                ) : (
+                                    <ChevronRight size={20} color={isDark ? '#475569' : '#CBD5E1'} />
+                                )}
+                            </View>
+                        }
+                        onPress={() => { setShowWaDetails(!showWaDetails); fetchWaStatus(); }}
+                    />
+
+                    {showWaDetails && (
+                        <View style={{ padding: 16, borderTopWidth: 1, borderTopColor: isDark ? '#334155' : '#F1F5F9', alignItems: 'center' }}>
+                            {renderWaContent()}
+
+                            <TouchableOpacity
+                                onPress={handleRestartWa}
+                                activeOpacity={0.85}
+                                style={{
+                                    flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12,
+                                    paddingVertical: 10, paddingHorizontal: 18,
+                                    backgroundColor: '#25D366', borderRadius: 20
+                                }}
+                            >
+                                <RefreshCw size={16} color="#FFF" />
+                                <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFF' }}>
+                                    {waLoading ? 'Generating QR Code...' : (waStatus?.qrCodeDataUrl ? 'Refresh QR Code' : 'Generate Pairing QR Code')}
+                                </Text>
                             </TouchableOpacity>
                         </View>
                     )}

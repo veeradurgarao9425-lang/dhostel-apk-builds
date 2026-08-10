@@ -2300,3 +2300,14 @@ export const getWhatsAppStatus = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// Restart / Reset WhatsApp Bot & Generate Fresh QR Code
+export const restartWhatsApp = async (req: AuthRequest, res: Response) => {
+  try {
+    await whatsappService.restart();
+    const status = whatsappService.getStatus();
+    return res.json({ success: true, message: 'WhatsApp bot reset successfully. Generating fresh QR code...', data: status });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error?.message || 'Failed to restart WhatsApp bot' });
+  }
+};
+

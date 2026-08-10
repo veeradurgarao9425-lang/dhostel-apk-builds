@@ -56,8 +56,12 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
         } else {
           return res.status(403).json({ success: false, error: 'You do not have access to this hostel.' });
         }
+      } else if (user?.hostel_id && ids.includes(Number(user.hostel_id))) {
+        hostelIds = [Number(user.hostel_id)];
+      } else if (ids.length > 0) {
+        hostelIds = [ids[0]];
       } else {
-        hostelIds = ids;
+        hostelIds = [];
       }
     } else if (requestedHostelId !== null) {
       hostelIds = [requestedHostelId];
@@ -1112,8 +1116,12 @@ export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
         } else {
           return res.status(403).json({ success: false, error: 'You do not have access to this hostel.' });
         }
+      } else if (user?.hostel_id && ids.includes(Number(user.hostel_id))) {
+        hostelIds = [Number(user.hostel_id)];
+      } else if (ids.length > 0) {
+        hostelIds = [ids[0]];
       } else {
-        hostelIds = ids;
+        hostelIds = [];
       }
     } else if (requestedHostelId !== null) {
       hostelIds = [requestedHostelId];

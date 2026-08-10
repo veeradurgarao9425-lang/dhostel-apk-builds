@@ -18,7 +18,8 @@ import {
   getCollections,
   getPaymentModes,
   sendBulkWhatsAppDirect,
-  getWhatsAppStatus
+  getWhatsAppStatus,
+  restartWhatsApp
 } from '../controllers/monthlyFeeController.js';
 
 const router = express.Router();
@@ -75,5 +76,6 @@ router.put('/:feeId', editCurrentMonthFee);
 // 100% Direct FREE WhatsApp Reminders routes
 router.post('/send-bulk-whatsapp-direct', sendBulkWhatsAppDirect);
 router.get('/whatsapp-status', getWhatsAppStatus);
+router.post('/whatsapp-restart', restartWhatsApp);
 
 export default router;
