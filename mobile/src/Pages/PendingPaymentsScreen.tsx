@@ -327,19 +327,21 @@ const WaveDecoration = ({ color }: { color: string }) => (
 
 // ─── Bulk WhatsApp Modal Component ──────────────────────────────────────────
 const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab }: any) => {
+    const [modalFilter, setModalFilter] = useState<'All' | 'Overdue' | 'Partial'>('All');
+
     const defaulters = React.useMemo(() => {
         return tenants.filter((t: any) => {
             const due = parseFloat((t.dueAmount || 0).toString());
             const isPaid = t.status === 'Fully Paid' || t.status === 'paid' || t.fee_status === 'Fully Paid';
             if (due <= 0 || isPaid) return false;
 
-            if (activeTab === 'Overdue') return t.isOverdue;
-            if (activeTab === 'Next 7 Days') return !t.isOverdue && due > 0 && t.paidAmount === 0;
-            if (activeTab === 'Partially Paid') return t.paidAmount > 0 && due > 0 && !t.isOverdue;
+            if (modalFilter === 'Overdue') return t.isOverdue;
+            if (modalFilter === 'Partial') return t.paidAmount > 0 && due > 0 && !t.isOverdue;
 
             return true; // All Dues
         });
-    }, [tenants, activeTab]);
+    }, [tenants, modalFilter]);
+
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
     React.useEffect(() => {
@@ -395,11 +397,11 @@ const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab }: any
         } catch (err: any) {
             // Fallback to manual queue if backend WhatsApp is initializing/unlinked
             Alert.alert(
-                '📱 Opening WhatsApp App',
-                'Starting automated dispatch sequence in WhatsApp...',
+                '📱 Direct Sending Unlinked',
+                'Backend WhatsApp is not linked. Opening WhatsApp app dispatch sequence for selected students.',
                 [
                     {
-                        text: 'Continue',
+                        text: 'Open WhatsApp',
                         onPress: () => handleSendBulk()
                     }
                 ]
@@ -419,8 +421,8 @@ const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab }: any
 
         for (let i = 0; i < selectedTenants.length; i++) {
             const t = selectedTenants[i];
-            const msg = `Hi *${t.name}*,\n\nThis is a friendly rent reminder from *Durgarao Mens Hostel*.\n• *Room Number:* ${t.room}\n• *Pending Amount Due:* ₹${t.dueAmount.toLocaleString('en-IN')}\n\nPlease clear your pending rent at your earliest convenience via Google Pay / PhonePe / Cash.\n\nThank you!`;
-            
+            const msg = `Hi *${t.name}*,\n\nThis is a friendly rent reminder from *Hostel Management*.\n• *Room Number:* ${t.room}\n• *Pending Amount Due:* ₹${t.dueAmount.toLocaleString('en-IN')}\n\nPlease clear your pending rent at your earliest convenience via Google Pay / PhonePe / Cash.\n\nThank you!`;
+
             const url = `whatsapp://send?phone=91${t.phone}&text=${encodeURIComponent(msg)}`;
             await Linking.openURL(url).catch(() => {
                 Alert.alert('Error', `Could not open WhatsApp for ${t.name}`);
@@ -450,12 +452,51 @@ const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab }: any
                                     Bulk WhatsApp Reminders
                                 </Text>
                                 <Text style={{ fontSize: 11, color: '#64748B' }}>
-                                    100% FREE Direct Background Sending
+                                    Send payment reminders to unpaid students
                                 </Text>
                             </View>
                         </View>
                         <TouchableOpacity onPress={onClose} style={{ padding: 6 }}>
                             <Ionicons name="close" size={22} color="#64748B" />
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Modal Filter Tabs */}
+                    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                        <TouchableOpacity
+                            onPress={() => setModalFilter('All')}
+                            style={{
+                                paddingVertical: 6, paddingHorizontal: 12, borderRadius: 16,
+                                backgroundColor: modalFilter === 'All' ? '#25D366' : (isDark ? '#0F172A' : '#F1F5F9')
+                            }}
+                        >
+                            <Text style={{ fontSize: 12, fontWeight: '700', color: modalFilter === 'All' ? '#FFF' : (isDark ? '#94A3B8' : '#475569') }}>
+                                All Pending ({tenants.filter((t: any) => parseFloat((t.dueAmount || 0).toString()) > 0).length})
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            onPress={() => setModalFilter('Overdue')}
+                            style={{
+                                paddingVertical: 6, paddingHorizontal: 12, borderRadius: 16,
+                                backgroundColor: modalFilter === 'Overdue' ? '#DC2626' : (isDark ? '#0F172A' : '#F1F5F9')
+                            }}
+                        >
+                            <Text style={{ fontSize: 12, fontWeight: '700', color: modalFilter === 'Overdue' ? '#FFF' : (isDark ? '#94A3B8' : '#475569') }}>
+                                Overdue Only ({tenants.filter((t: any) => t.isOverdue && parseFloat((t.dueAmount || 0).toString()) > 0).length})
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            onPress={() => setModalFilter('Partial')}
+                            style={{
+                                paddingVertical: 6, paddingHorizontal: 12, borderRadius: 16,
+                                backgroundColor: modalFilter === 'Partial' ? '#D97706' : (isDark ? '#0F172A' : '#F1F5F9')
+                            }}
+                        >
+                            <Text style={{ fontSize: 12, fontWeight: '700', color: modalFilter === 'Partial' ? '#FFF' : (isDark ? '#94A3B8' : '#475569') }}>
+                                Partially Paid
+                            </Text>
                         </TouchableOpacity>
                     </View>
 

@@ -167,9 +167,7 @@ export const IncomeScreen = ({ navigation }: any) => {
                 {sortedDays.length === 0 && (
                     <EmptyState illustration="income"
                         title="No Collections Yet"
-                        subtitle="Tap the + button to record your first income entry."
-                        actionLabel="Add Income"
-                        onAction={() => navigation.navigate('AddIncome')}
+                        subtitle="Your rent collections and payments will appear here."
                     />
                 )}
                 {sortedDays.map((day: any) => (
@@ -280,9 +278,7 @@ export const IncomeScreen = ({ navigation }: any) => {
                 </View>
             )}
 
-            <TouchableOpacity style={[styles.fab, { backgroundColor: theme.primary }]} onPress={() => navigation.navigate('AddIncome')} activeOpacity={0.85}>
-                <Plus color="#FFFFFF" size={28} />
-            </TouchableOpacity>
+
 
             <Modal visible={showEmailModal} animationType="slide" transparent={true}>
                 <View style={styles.modalOverlay}>

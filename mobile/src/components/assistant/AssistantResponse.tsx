@@ -447,7 +447,7 @@ const StaffListBlock = ({ staff }: { staff: any[] }) => {
           <View key={idx} style={st.listItem}>
             <View style={{ flex: 1 }}>
               <Text style={st.listItemName}>{s.full_name || `${s.first_name || ''} ${s.last_name || ''}`.trim()}</Text>
-              <Text style={st.listItemSub}>{s.role || 'Staff'} • Salary: {INR(s.salary || 0)}</Text>
+              <Text style={st.listItemSub}>{s.role || 'Staff'} • Salary: {INR(s.monthly_salary ?? s.salary ?? 0)}</Text>
             </View>
             <View style={[st.listItemBadge, { backgroundColor: s.status === 1 ? '#ECFDF5' : '#F1F5F9' }]}>
               <Text style={[st.listItemBadgeText, { color: s.status === 1 ? '#10B981' : '#64748B' }]}>
@@ -952,7 +952,7 @@ const StudentDetailCardBlock = ({ student }: { student: any }) => {
         <TouchableOpacity
           style={[st.actionBtn, st.actionBtnOutline, { flex: 1, justifyContent: 'center' }]}
           onPress={() => {
-            RootNavigation.navigate('FeeManagement');
+            RootNavigation.navigate('PendingPayments');
             DeviceEventEmitter.emit('CLOSE_ASSISTANT');
           }}
         >

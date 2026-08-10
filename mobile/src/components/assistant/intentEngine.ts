@@ -59,7 +59,10 @@ export type HowToAction =
   | 'qr_registration'
   | 'vacate_bed'
   | 'send_reminder'
-  | 'mark_vacated';
+  | 'mark_vacated'
+  | 'verify_rent'
+  | 'view_payments_guide';
+
 
 // ─── Conversation Context ─────────────────────────────────────────────────────
 // Tracks last resolved intent category so follow-up questions work correctly.
@@ -77,28 +80,50 @@ export function setLastContext(t: AssistantIntent['type'] | null) { _lastContext
  */
 const TYPO_MAP: [RegExp, string][] = [
   // Common hostel/PG typing mistakes
+  [/\bdeativiate\b/g, 'deactivate'],
+  [/\bdeactive\b/g, 'deactivate'],
+  [/\bdeactivat\b/g, 'deactivate'],
+  [/\bdeactivet\b/g, 'deactivate'],
+  [/\bdiplicate\b/g, 'deactivate'],
+  [/\bde-activate\b/g, 'deactivate'],
+  [/\bdeactivating\b/g, 'deactivate'],
+  [/\bstduents?\b/g, 'student'],
   [/\bstudnts?\b/g, 'student'],
   [/\bstudents?\b/g, 'student'],       // already correct, keep normalised
   [/\bstudnt\b/g, 'student'],
   [/\bstudant\b/g, 'student'],
+  [/\bstuden\b/g, 'student'],
+  [/\bstunt\b/g, 'student'],
+  [/\bstudet\b/g, 'student'],
   [/\btenent\b/g, 'tenant'],
   [/\btenat\b/g, 'tenant'],
+  [/\bvacat\b/g, 'vacate'],
+  [/\bvakate\b/g, 'vacate'],
+  [/\bvacatte\b/g, 'vacate'],
+  [/\bvacating\b/g, 'vacate'],
+  [/\bvacated\b/g, 'vacate'],
+  [/\bvacent\b/g, 'vacate'],
+  [/\bvacante\b/g, 'vacate'],
+  [/\bvakant\b/g, 'vacate'],
+  [/\bcolect\b/g, 'collect'],
+  [/\bcollectes?\b/g, 'collect'],
+  [/\bcolecting\b/g, 'collect'],
+  [/\bcollecting\b/g, 'collect'],
+  [/\bcolection\b/g, 'collection'],
+  [/\bcolecton\b/g, 'collection'],
+  [/\brnt\b/g, 'rent'],
+  [/\brente\b/g, 'rent'],
   [/\bhostle\b/g, 'hostel'],
   [/\bhostl\b/g, 'hostel'],
   [/\bpaymnt\b/g, 'payment'],
   [/\bpaymant\b/g, 'payment'],
   [/\brecipt\b/g, 'receipt'],
   [/\brecpt\b/g, 'receipt'],
-  [/\bvakant\b/g, 'vacant'],
-  [/\bvacante\b/g, 'vacant'],
-  [/\bvacent\b/g, 'vacant'],
   [/\bavailble\b/g, 'available'],
   [/\bavaialble\b/g, 'available'],
-  [/\bavailble\b/g, 'available'],
   [/\bexpnse\b/g, 'expense'],
   [/\bexpenes\b/g, 'expense'],
   [/\bsalry\b/g, 'salary'],
-  [/\bsalary\b/g, 'salary'],
   [/\bremnder\b/g, 'reminder'],
   [/\bremider\b/g, 'reminder'],
   [/\bregistartion\b/g, 'registration'],
@@ -109,8 +134,6 @@ const TYPO_MAP: [RegExp, string][] = [
   [/\brom\b/g, 'room'],
   [/\bflor\b/g, 'floor'],
   [/\boccupid\b/g, 'occupied'],
-  [/\bcolecton\b/g, 'collection'],
-  [/\bcolection\b/g, 'collection'],
   [/\bpendng\b/g, 'pending'],
   [/\binactve\b/g, 'inactive'],
   [/\bprebook\b/g, 'prebooked'],
@@ -122,7 +145,7 @@ const TYPO_MAP: [RegExp, string][] = [
   [/\bwarden\b/g, 'warden'],
   [/\breceipt\b/g, 'receipt'],
   // Indian English / PG slang
-  [/\bpg\b/g, 'hostel'],
+  [/\bpgs?\b/g, 'hostel'],
   [/\bpaying guest\b/g, 'hostel'],
   [/\bproperty\b/g, 'hostel'],
   [/\bproperties\b/g, 'hostel'],
@@ -147,10 +170,8 @@ const TYPO_MAP: [RegExp, string][] = [
   // Short/sloppy forms
   [/\bstaying\b/g, 'stay'],
   [/\bstays\b/g, 'stay'],
-  [/\bcollect\b/g, 'collection'],
-  [/\bcollected\b/g, 'collection'],
-  [/\bcollecting\b/g, 'collection'],
   [/\bhow much did i collect\b/g, 'total collection'],
+
   [/\bhow much have i collected\b/g, 'total collection'],
   [/\bwhat did i collect\b/g, 'total collection'],
   [/\bwho hasn.?t paid\b/g, 'unpaid student'],
@@ -185,6 +206,15 @@ export function normalizeQuery(raw: string): string {
   for (const [pattern, replacement] of TYPO_MAP) {
     q = q.replace(pattern, replacement);
   }
+  // Normalize filler words inside common how-to / query phrases
+  q = q.replace(/\bhow to vacate (a|the) bed\b/g, 'how to vacate bed');
+  q = q.replace(/\bhow to vacate (a|the) room\b/g, 'how to vacate room');
+  q = q.replace(/\bhow to vacate (a|the) student\b/g, 'how to vacate student');
+  q = q.replace(/\bhow to deactivate (a|the) student\b/g, 'how to deactivate student');
+  q = q.replace(/\bhow to collect (a|the) rent\b/g, 'how to collect rent');
+  q = q.replace(/\bhow to add (a|the) student\b/g, 'how to add student');
+  q = q.replace(/\bhow to add (a|the) room\b/g, 'how to add room');
+  q = q.replace(/\bhow to assign (a|the) bed\b/g, 'how to assign bed');
   return q;
 }
 
@@ -227,10 +257,10 @@ const RULES: Rule[] = [
     keywords: [
       'how to add student', 'how do i add student', 'how can i add student',
       'how to add a student', 'how do i add a student', 'add new student',
-      'steps to add student', 'where can i add student', 'student adding',
-      'how to register student', 'student registration steps',
+      'add student', 'add a student', 'steps to add student', 'where can i add student',
+      'student adding', 'how to register student', 'student registration steps',
       'how to create student', 'how to enroll student', 'admit student',
-      'add a tenant', 'how to add tenant', 'new student steps',
+      'add a tenant', 'add tenant', 'how to add tenant', 'new student steps',
       'student admission steps', 'process to add student',
     ],
     intent: { type: 'SHOW_HOW_TO', action: 'add_student' },
@@ -241,10 +271,11 @@ const RULES: Rule[] = [
   {
     keywords: [
       'how to add room', 'how do i add room', 'how can i add room',
-      'add new room', 'create room', 'room creation steps',
-      'where do i add room', 'how to create a room', 'new room steps',
-      'steps to create room', 'process to add room',
-      'how to make room', 'add a room',
+      'how to add a room', 'how do i add a room', 'add new room',
+      'add room', 'add a room', 'create room', 'create a room',
+      'room creation steps', 'where do i add room', 'how to create a room',
+      'new room steps', 'steps to create room', 'process to add room',
+      'how to make room',
     ],
     intent: { type: 'SHOW_HOW_TO', action: 'add_room' },
     priority: 12,
@@ -253,12 +284,15 @@ const RULES: Rule[] = [
   // Collect Rent
   {
     keywords: [
-      'how to collect rent', 'how do i collect rent', 'collect rent',
-      'how to collect fees', 'record payment', 'record rent',
+      'how to collect rent', 'how do i collect rent', 'how can i collect rent',
+      'how to collect a rent', 'how do i collect a rent', 'collect rent',
+      'collect a rent', 'how to collect fee', 'how to collect fees',
+      'how to collect payment', 'record payment', 'record rent',
       'how to receive payment', 'mark student as paid',
       'payment collection steps', 'how to collect payment',
       'how do i take payment', 'receive rent', 'collect fee steps',
-      'fee collection process', 'how to mark paid',
+      'fee collection process', 'how to mark paid', 'rent collection',
+      'how to collect',
     ],
     intent: { type: 'SHOW_HOW_TO', action: 'collect_rent' },
     priority: 12,
@@ -267,9 +301,10 @@ const RULES: Rule[] = [
   // Assign Bed
   {
     keywords: [
-      'how to assign bed', 'how do i assign bed', 'assign student bed',
-      'allocate bed', 'allocate room', 'assign room to student',
-      'move student to room', 'how to allocate student',
+      'how to assign bed', 'how to assign a bed', 'how do i assign bed',
+      'how do i assign a bed', 'assign student bed', 'assign bed',
+      'assign a bed', 'allocate bed', 'allocate a bed', 'allocate room',
+      'assign room to student', 'move student to room', 'how to allocate student',
       'bed assignment steps', 'room assignment steps',
       'how to give bed to student', 'bed allotment',
     ],
@@ -399,11 +434,14 @@ const RULES: Rule[] = [
   // Deactivate Student (NEW)
   {
     keywords: [
-      'how to deactivate student', 'deactivate student', 'disable student',
+      'how to deactivate student', 'how to deactivate a student',
+      'how do i deactivate student', 'how do i deactivate a student',
+      'deactivate student', 'deactivate a student', 'disable student',
       'make student inactive', 'remove student from active list',
-      'how to mark student inactive', 'deactivate tenant',
+      'how to mark student inactive', 'deactivate tenant', 'deactivate a tenant',
       'how to deactivate tenant', 'student deactivation steps',
-      'mark as left', 'how to mark student as left',
+      'mark as left', 'how to mark student as left', 'deactivate student steps',
+      'how to disable student', 'deactivate', 'deactivating student', 'make inactive',
     ],
     intent: { type: 'SHOW_HOW_TO', action: 'deactivate_student' },
     priority: 12,
@@ -426,11 +464,14 @@ const RULES: Rule[] = [
   // Vacate Bed (NEW)
   {
     keywords: [
-      'how to vacate bed', 'vacate room steps', 'free a bed',
+      'how to vacate bed', 'how to vacate a bed', 'how do i vacate bed',
+      'how do i vacate a bed', 'how can i vacate bed', 'how can i vacate a bed',
+      'vacate bed', 'vacate a bed', 'vacate room steps', 'free a bed', 'free bed',
       'release bed', 'remove student from bed', 'how to make bed vacant',
-      'mark bed vacant', 'student checkout process',
-      'how to checkout student', 'checkout process', 'bed vacate steps',
-      'how to vacate student', 'how to remove student from room',
+      'mark bed vacant', 'student checkout process', 'how to checkout student',
+      'checkout process', 'bed vacate steps', 'how to vacate student',
+      'how to vacate room', 'vacate room', 'how to remove student from room',
+      'vacating a bed', 'vacating bed', 'vacate student',
     ],
     intent: { type: 'SHOW_HOW_TO', action: 'vacate_bed' },
     priority: 12,
@@ -460,6 +501,44 @@ const RULES: Rule[] = [
     priority: 12,
   },
 
+  // Verify Rent Payment (NEW)
+  {
+    keywords: [
+      'how to verify rent', 'rent payment verification', 'how to approve rent',
+      'verify payment request', 'how to verify payment', 'reject rent payment',
+      'how rent verification works', 'payment verification steps',
+      'how to approve payment', 'verify rent',
+    ],
+    intent: { type: 'SHOW_HOW_TO', action: 'verify_rent' },
+    priority: 12,
+  },
+
+  // View Payments Guide (NEW)
+  {
+    keywords: [
+      'how to view payments', 'how to check payments', 'view payment history steps',
+      'how to see collected payments', 'how to view collected rent',
+    ],
+    intent: { type: 'SHOW_HOW_TO', action: 'view_payments_guide' },
+    priority: 12,
+  },
+
+  // Priority 11 — Direct Room / Bed / Floor counts (beats generic keywords)
+  {
+    keywords: [
+      'how many rooms', 'how many room', 'total rooms', 'room count',
+      'how many beds', 'how many bed', 'total beds', 'bed count',
+      'how many floors', 'how many floor', 'total floors', 'floor count',
+      'how many beds are there', 'how many rooms are there', 'how many floors are there',
+      'how many vacant beds', 'how many empty beds', 'how many filled beds',
+      'single sharing rooms', 'double sharing rooms', 'triple sharing rooms',
+      'vacant rooms', 'full rooms',
+    ],
+    intent: { type: 'SHOW_ROOMS' },
+    priority: 11,
+  },
+
+
   // ═══════════════════════════════════════════════════════════════════════════
   // PRIORITY 10 — OVERDUE (specific filter — must beat generic 'dues')
   // ═══════════════════════════════════════════════════════════════════════════
@@ -482,10 +561,11 @@ const RULES: Rule[] = [
   {
     keywords: [
       'switch pg', 'switch hostel', 'change pg', 'change hostel',
-      'my hostel', 'show hostel', 'list hostel', 'pg list',
-      'hostel list', 'all hostel', 'all my hostel',
-      'how many hostel', 'total hostel', 'number of hostel',
-      'how many pg', 'how many properties', 'list properties',
+      'my hostel', 'show hostel', 'list hostel', 'pg list', 'pgs list', 'list pgs',
+      'hostel list', 'all hostel', 'all my hostel', 'all pgs', 'all pg',
+      'how many hostel', 'how many hostels', 'total hostel', 'total hostels',
+      'number of hostel', 'number of hostels', 'number of pgs', 'pg count', 'pgs count',
+      'how many pg', 'how many pgs', 'how many properties', 'list properties',
       'which hostel', 'which pg', 'active hostel', 'active pg',
       'current hostel', 'current pg', 'selected hostel', 'selected pg',
       'hostel name', 'pg name', 'my hostel name', 'my pg name',
@@ -824,8 +904,7 @@ const RULES: Rule[] = [
     keywords: [
       'staff', 'employee', 'workers', 'total staff', 'staff count',
       'active staff', 'inactive staff', 'staff list', 'show staff',
-      'employee list', 'total employee', 'warden', 'who is warden',
-      'warden name', 'show warden', 'staff roles', 'staff details',
+      'employee list', 'total employee', 'staff roles', 'staff details',
       'employee details', 'staff salary', 'salary this month',
       'total salary', 'monthly salary', 'payroll',
       'salary expense', 'how many staff', 'staff members',
@@ -911,14 +990,13 @@ const RULES: Rule[] = [
   },
 ];
 
-/** Extract student search name from a query like "give student durgarao details" or "what is durgarao room" */
+/** Extract student search name from a query like "give student durgarao details" or "who is durgarao" */
 export function extractStudentSearchName(rawQuery: string): string | null {
   const q = rawQuery.trim();
   const patterns = [
     /(?:student|tenant)\s+([a-zA-Z]{3,20})\s+(?:details|info|profile|list|room|bed|joining|phone|mobile|rent)/i,
-    /what\s+is\s+([a-zA-Z]{3,20})\s+(?:room|bed|joining|phone|mobile|rent|details|date|status)/i,
+    /what\s+is\s+([a-zA-Z]{3,20})\s+student\s+(?:details|info|room|bed|joining|phone|mobile|rent|status)/i,
     /give\s+(?:me\s+)?(?:student|tenant\s+)?([a-zA-Z]{3,20})\s+(?:details|info|room|phone|joining)/i,
-    /([a-zA-Z]{3,20})\s+(?:room|bed|joining|phone|mobile|rent|details|date|status)/i,
     /who\s+is\s+([a-zA-Z]{3,20})/i,
     /search\s+(?:student|tenant\s+)?([a-zA-Z]{3,20})/i,
     /find\s+(?:student|tenant\s+)?([a-zA-Z]{3,20})/i,
@@ -926,11 +1004,14 @@ export function extractStudentSearchName(rawQuery: string): string | null {
   ];
 
   const nonNames = [
-    'room', 'floor', 'bed', 'hostel', 'dues', 'active', 'left', 'vacated',
-    'paid', 'unpaid', 'income', 'expense', 'staff', 'guest', 'notice', 'list',
-    'stats', 'all', 'prebooked', 'joining', 'admission', 'overdue', 'today',
-    'this', 'main', 'goal', 'owner', 'developer', 'founder', 'hostix', 'app',
-    'what', 'where', 'when', 'how', 'who', 'why', 'give', 'show', 'tell'
+    'room', 'rooms', 'floor', 'floors', 'bed', 'beds', 'hostel', 'dues', 'active', 'left', 'vacated',
+    'vacate', 'vacating', 'deactivate', 'deactivating', 'deactive', 'assign', 'allocate',
+    'collect', 'colect', 'paid', 'unpaid', 'income', 'expense', 'staff', 'guest',
+    'notice', 'list', 'stats', 'all', 'prebooked', 'joining', 'admission', 'overdue',
+    'today', 'this', 'main', 'goal', 'owner', 'developer', 'founder', 'hostix', 'app',
+    'what', 'where', 'when', 'how', 'who', 'why', 'give', 'show', 'tell', 'available',
+    'vacant', 'occupied', 'empty', 'free', 'single', 'double', 'triple', 'sharing',
+    'total', 'count', 'number', 'pending', 'check', 'checkout', 'receipt', 'payment'
   ];
 
   for (const p of patterns) {
@@ -950,11 +1031,12 @@ export function extractStudentSearchName(rawQuery: string): string | null {
 
 /**
  * resolveIntent — main public API.
- * 1. Check for specific room / floor / student search queries first.
+ * 1. Check for specific room / floor / student list queries first.
  * 2. Normalize input (typos + synonyms).
  * 3. Apply context for follow-up questions.
  * 4. Score all rules against normalized query.
- * 5. Return highest-scoring intent.
+ * 5. If rules match, return highest-scoring intent.
+ * 6. Fall back to student name search if no rule matches.
  */
 export function resolveIntent(rawQuery: string): AssistantIntent {
   if (!rawQuery.trim()) return { type: 'SHOW_HOME' };
@@ -973,18 +1055,10 @@ export function resolveIntent(rawQuery: string): AssistantIntent {
     return { type: 'SHOW_FLOOR_DETAIL', floorNumber: floorNum };
   }
 
-  // ── 3. Student Search by Name (e.g. "give student durgarao details", "who is durgarao") ──
-  const studentSearchName = extractStudentSearchName(rawQuery);
-  if (studentSearchName) {
-    return { type: 'SHOW_STUDENT_SEARCH', name: studentSearchName };
-  }
-
-  // ── 4. Paid Students List Specifically (e.g. "paid student list give to me") ──
+  // ── 3. Paid / Joined / Vacated Lists Specifically ──
   if (rawLower.includes('paid student list') || rawLower.includes('list of paid student') || rawLower.includes('who paid this month')) {
     return { type: 'SHOW_PAID_STUDENTS' };
   }
-
-  // ── 5. Students Joined / Vacated This Month Specifically ──
   if (rawLower.includes('joined this month') || rawLower.includes('joined in this month') || rawLower.includes('new admission this month')) {
     return { type: 'SHOW_STUDENTS', filter: 'joined_this_month' };
   }
@@ -1021,7 +1095,7 @@ export function resolveIntent(rawQuery: string): AssistantIntent {
     }
   }
 
-  // ── Scoring ──────────────────────────────────────────────────────────────
+  // ── 4. Scoring RULES ──
   let best: { intent: AssistantIntent; score: number } = {
     intent: { type: 'UNKNOWN', query: rawQuery },
     score: 0,
@@ -1043,8 +1117,15 @@ export function resolveIntent(rawQuery: string): AssistantIntent {
     }
   }
 
-  if (best.intent.type !== 'UNKNOWN') {
+  if (best.intent.type !== 'UNKNOWN' && best.score >= 6) {
     _lastContext = best.intent.type;
+    return best.intent;
+  }
+
+  // ── 5. Student Search by Name (Fallback if no rule matched) ──
+  const studentSearchName = extractStudentSearchName(rawQuery);
+  if (studentSearchName) {
+    return { type: 'SHOW_STUDENT_SEARCH', name: studentSearchName };
   }
 
   return best.intent;
@@ -1145,7 +1226,6 @@ export const INFO_QUESTIONS: string[] = [
   'How many staff?',
   'Staff list',
   'Monthly salary total',
-  'Who is the warden?',
   // Guests
   'How many guests?',
   'Guest list',
@@ -1174,7 +1254,6 @@ export const GUIDE_QUESTIONS: string[] = [
   'How to send a reminder?',
   'How to download a receipt?',
   'How to add an expense?',
-  'How to add income?',
   'How to add staff?',
   'How to switch hostel?',
   'How to post a notice?',
@@ -1421,8 +1500,8 @@ export const HOW_TO_STEPS: Record<HowToAction, { title: string; steps: string[];
   mark_vacated: {
     title: 'How to Mark a Student as Vacated',
     steps: [
-      'Go to the Students screen.',
-      "Tap the student's name.",
+      'Go to the Students screen (3rd tab in bottom menu).',
+      "Tap the student's name to view profile.",
       'Tap Edit and set Status to "Vacated".',
       'Enter the date they left.',
       'Tap Save — the record is updated and the bed is freed.',
@@ -1431,4 +1510,29 @@ export const HOW_TO_STEPS: Record<HowToAction, { title: string; steps: string[];
     screen: 'Students',
     screenLabel: 'Go to Students',
   },
+  verify_rent: {
+    title: 'How Rent Payment Verification Works',
+    steps: [
+      'When a student pays online or uploads payment proof, a request is sent to your dashboard.',
+      'Tap "Quick Actions (+)" on Home OR open Pending Payments (Money Tab).',
+      'Tap "Payment Verification Requests" to see all pending student payment proofs.',
+      'Review transaction details, student name, and screenshot.',
+      'Tap "Approve / Verify" to credit rent — a receipt is instantly generated.',
+      'Or tap "Reject" with a reason. The student is notified and can resend the payment proof!',
+    ],
+    screen: 'PendingPayments',
+    screenLabel: 'View Payment Requests',
+  },
+  view_payments_guide: {
+    title: 'How to View Collected Payments',
+    steps: [
+      'Go to Payments or Financial Reports from the menu.',
+      'Tap "Collected Payments" to view all completed rent receipts.',
+      'Filter payments by date range, month, or payment mode (UPI, Cash, Bank).',
+      'Tap any payment row to view or download PDF receipt.',
+    ],
+    screen: 'CollectedPayments',
+    screenLabel: 'Go to Collected Payments',
+  },
 };
+

@@ -112,7 +112,6 @@ export const HostelChatbot: React.FC = () => {
       { label: 'Add Room', path: 'AddRoom', icon: 'bed-outline', color: '#059669', bg: '#ECFDF5' },
       { label: 'Add Staff', path: 'AddStaff', icon: 'people-outline', color: '#DB2777', bg: '#FDF2F8' },
       { label: 'Add Expense', path: 'AddExpense', icon: 'receipt-outline', color: '#DC2626', bg: '#FEF2F2' },
-      { label: 'Add Income', path: 'AddIncome', icon: 'cash-outline', color: '#16A34A', bg: '#F0FDF4' },
       { label: 'Add Notice', path: 'AddNotice', icon: 'megaphone-outline', color: '#EA580C', bg: '#FFF7ED' },
     ];
   }, [user]);

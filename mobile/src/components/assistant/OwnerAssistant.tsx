@@ -46,8 +46,9 @@ import {
   switchActiveHostel, fetchStaffList, fetchGuestsList, fetchStudentStats,
   fetchStudentByName, fetchRoomByNumber, fetchRoomsByFloor, fetchPaidStudents,
   fetchStudentsJoinedThisMonth, fetchStudentsVacatedThisMonth, fetchDetailedIncomeBreakdown,
-  DashboardSnapshot,
+  fetchNoticesCount, DashboardSnapshot,
 } from './assistantApi';
+
 
 
 const INR = (n: number) => `₹${Number(n).toLocaleString('en-IN')}`;
@@ -175,12 +176,9 @@ const HomeContent: React.FC<HomeProps> = ({ snap, loading, onQuestion, onIntent 
         </TouchableOpacity>
       </View>
 
-
-
-
       {/* Suggested Topics / Shortcuts Section */}
       <Text style={hc.sectionLabel}>Suggested Shortcuts</Text>
-      <View style={{ gap: 10 }}>
+      <View style={{ gap: 10, marginBottom: 12 }}>
         <TouchableOpacity
           style={hc.shortcutCard}
           onPress={() => onQuestion("What is my hostel occupancy?")}
@@ -912,7 +910,7 @@ export const OwnerAssistant: React.FC = () => {
             },
             {
               type: 'action_buttons', buttons: [
-                { label: 'Collect Payment', icon: 'cash-outline', screen: 'FeeManagement', variant: 'primary' },
+                { label: 'Collect Payment', icon: 'cash-outline', screen: 'PendingPayments', variant: 'primary' },
                 { label: 'Send Reminders', icon: 'notifications-outline', screen: 'Reminders', variant: 'outline' },
               ]
             },
@@ -927,11 +925,15 @@ export const OwnerAssistant: React.FC = () => {
         const occ = await fetchOccupancy();
         removeLoadingBlock();
         if (!occ || occ.total === 0) {
-          addBot([{ type: 'text', text: 'No rooms registered in this hostel yet.' }]);
+          addBot([
+            { type: 'info_tip', text: 'As of now, no rooms or beds are registered in this hostel.', icon: 'business-outline', color: '#64748B' },
+            { type: 'text', text: 'No room records found. Tap "Add Room" to create your first room and set bed capacities.' },
+            { type: 'action_buttons', buttons: [{ label: 'Add Room Now', icon: 'add-circle-outline', screen: 'AddRoom', variant: 'primary' }] }
+          ]);
         } else {
           const pct = occ.total > 0 ? Math.round((occ.occupied / occ.total) * 100) : 0;
           addBot([
-            { type: 'info_tip', text: `Your hostel is ${pct}% occupied. ${occ.available} bed${occ.available !== 1 ? 's' : ''} available right now.`, icon: 'business-outline', color: '#4F46E5' },
+            { type: 'info_tip', text: `Rooms Overview: ${occ.totalRooms} Rooms, ${occ.totalFloors} Floors, ${occ.total} Total Beds (${occ.available} Available Beds).`, icon: 'business-outline', color: '#4F46E5' },
             {
               type: 'occupancy_donut',
               occupied: occ.occupied,
@@ -940,30 +942,35 @@ export const OwnerAssistant: React.FC = () => {
             },
             {
               type: 'stat_cards', cards: [
-                { label: 'Occupied', value: String(occ.occupied), icon: 'people-outline', color: '#4F46E5', bg: '#EEF2FF' },
-                { label: 'Available', value: String(occ.available), icon: 'bed-outline', color: '#10B981', bg: '#ECFDF5' },
-                { label: 'Total Beds', value: String(occ.total), icon: 'grid-outline', color: '#64748B', bg: '#F8FAFC' },
+                { label: 'Total Rooms', value: String(occ.totalRooms), icon: 'home-outline', color: '#4F46E5', bg: '#EEF2FF' },
+                { label: 'Single Share', value: `${occ.singleRooms} Rooms`, icon: 'person-outline', color: '#0284C7', bg: '#E0F2FE' },
+                { label: 'Double Share', value: `${occ.doubleRooms} Rooms`, icon: 'people-outline', color: '#7C3AED', bg: '#F3E8FF' },
+                { label: 'Triple Share', value: `${occ.tripleRooms} Rooms`, icon: 'people-circle-outline', color: '#D97706', bg: '#FEF3C7' },
+                { label: '4 Share', value: `${occ.fourRooms} Rooms`, icon: 'grid-outline', color: '#059669', bg: '#ECFDF5' },
+                { label: 'Total Beds', value: String(occ.total), icon: 'business-outline', color: '#64748B', bg: '#F8FAFC' },
+                { label: 'Occupied Beds', value: String(occ.occupied), icon: 'people-outline', color: '#8B5CF6', bg: '#F3E8FF' },
+                { label: 'Available Beds', value: String(occ.available), icon: 'bed-outline', color: '#10B981', bg: '#ECFDF5' },
               ]
             },
             {
-              type: 'follow_up_chips', label: 'Explore:', chips: [
+              type: 'follow_up_chips', label: 'Explore Details:', chips: [
                 { label: 'Available Beds', icon: 'bed-outline', onPress: () => handleQuery('how many vacant beds') },
-                { label: 'Occupancy %', icon: 'stats-chart-outline', onPress: () => handleQuery('occupancy rate') },
-                { label: 'Single Rooms', icon: 'person-outline', onPress: () => handleQuery('how many single sharing') },
-                { label: 'Double Rooms', icon: 'people-outline', onPress: () => handleQuery('how many double sharing') },
-                { label: 'Students', icon: 'people-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENTS' }) },
+                { label: 'Floor 1 Rooms', icon: 'layers-outline', onPress: () => handleQuery('floor 1 how many rooms') },
+                { label: 'Room 101 Details', icon: 'home-outline', onPress: () => handleQuery('room 101') },
+                { label: 'Occupancy Rate', icon: 'stats-chart-outline', onPress: () => handleQuery('occupancy rate') },
               ]
             },
             {
               type: 'action_buttons', buttons: [
-                { label: 'View Rooms', icon: 'business-outline', screen: 'Rooms', variant: 'primary' },
-                { label: 'Add Room', icon: 'add-circle-outline', screen: 'AddRoom', variant: 'outline' },
+                { label: 'View All Rooms', icon: 'business-outline', screen: 'Rooms', variant: 'primary' },
+                { label: 'Add Room (+)', icon: 'add-circle-outline', screen: 'AddRoom', variant: 'outline' },
               ]
             },
           ]);
         }
         break;
       }
+
 
 
       case 'SHOW_PAYMENTS':
@@ -1056,8 +1063,8 @@ export const OwnerAssistant: React.FC = () => {
             { type: 'info_tip', text: 'Complete breakdown of all revenue sources for your hostel this month.', icon: 'trending-up-outline', color: '#10B981' },
             { type: 'income_breakdown_card', data: incData },
             { type: 'action_buttons', buttons: [
-              { label: 'Add Income Entry', icon: 'add-circle-outline', screen: 'AddIncome', variant: 'primary' },
-              { label: 'View Financial Report', icon: 'bar-chart-outline', screen: 'Reports', variant: 'outline' }
+              { label: 'View Financial Report', icon: 'bar-chart-outline', screen: 'Reports', variant: 'primary' },
+              { label: 'View Payments', icon: 'cash-outline', screen: 'CollectedPayments', variant: 'outline' }
             ]}
           ]);
         } catch {
@@ -1108,7 +1115,7 @@ export const OwnerAssistant: React.FC = () => {
           ]);
         } else {
           const activeStaff = staff.filter((s: any) => s.status === 1);
-          const totalSalary = activeStaff.reduce((sum: number, s: any) => sum + parseFloat(s.salary || 0), 0);
+          const totalSalary = activeStaff.reduce((sum: number, s: any) => sum + parseFloat(s.monthly_salary ?? s.salary ?? 0), 0);
           
           addBot([
             {
@@ -1182,16 +1189,42 @@ export const OwnerAssistant: React.FC = () => {
         break;
       }
 
-      case 'SHOW_NOTICES':
-        typingThen([
-          {
-            type: 'action_buttons', buttons: [
-              { label: 'Manage Notices', icon: 'megaphone-outline', screen: 'NoticesManagement', variant: 'primary' },
-              { label: 'Add Notice', icon: 'add-circle-outline', screen: 'AddNotice', variant: 'outline' },
-            ]
-          },
-        ]);
+      case 'SHOW_NOTICES': {
+        addBot([{ type: 'loading' }]);
+        try {
+          const count = await fetchNoticesCount();
+          removeLoadingBlock();
+          if (count === 0) {
+            addBot([
+              { type: 'info_tip', text: 'No notices posted for your hostel as of now.', icon: 'megaphone-outline', color: '#64748B' },
+              { type: 'text', text: 'As of now, no records/notices have been published. Tap "Add Notice" to post a new announcement for tenants.' },
+              { type: 'action_buttons', buttons: [
+                { label: 'Add Notice Now', icon: 'add-circle-outline', screen: 'AddNotice', variant: 'primary' },
+                { label: 'Manage Notices', icon: 'megaphone-outline', screen: 'NoticesManagement', variant: 'outline' },
+              ]}
+            ]);
+          } else {
+            addBot([
+              { type: 'info_tip', text: `Showing ${count} active notice(s) published for your hostel.`, icon: 'megaphone-outline', color: '#4F46E5' },
+              { type: 'action_buttons', buttons: [
+                { label: 'Manage Notices', icon: 'megaphone-outline', screen: 'NoticesManagement', variant: 'primary' },
+                { label: 'Add Notice (+)', icon: 'add-circle-outline', screen: 'AddNotice', variant: 'outline' },
+              ]}
+            ]);
+          }
+        } catch {
+          removeLoadingBlock();
+          addBot([
+            { type: 'info_tip', text: 'As of now, no notice records are available.', icon: 'megaphone-outline', color: '#64748B' },
+            { type: 'action_buttons', buttons: [
+              { label: 'Post Notice Now', icon: 'add-circle-outline', screen: 'AddNotice', variant: 'primary' }
+            ]}
+          ]);
+        }
         break;
+      }
+
+
 
       case 'SHOW_HOW_TO': {
         const guide = HOW_TO_STEPS[intent.action];

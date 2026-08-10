@@ -79,6 +79,11 @@ export interface OccupancyData {
   total: number;
   rate: number;
   totalRooms: number;
+  totalFloors: number;
+  singleRooms: number;
+  doubleRooms: number;
+  tripleRooms: number;
+  fourRooms: number;
 }
 
 export interface StudentRecord {
@@ -288,16 +293,57 @@ export async function fetchFinancialOverview(): Promise<FinancialOverview | null
 
 // ─── Occupancy ────────────────────────────────────────────────────────────────
 export async function fetchOccupancy(): Promise<OccupancyData | null> {
-  const data = await safeGet('/reports/dashboard-stats');
-  if (!data?.data) return null;
+  const [statsRes, roomsRes] = await Promise.all([
+    safeGet('/reports/dashboard-stats'),
+    safeGet('/rooms', { limit: 200 }),
+  ]);
 
-  const d = data.data;
+  const d = statsRes?.data || {};
+  const rooms: any[] = Array.isArray(roomsRes?.data) ? roomsRes.data : [];
+
+  let calcTotalBeds = 0;
+  let calcOccupied = 0;
+  let calcAvailable = 0;
+  let singleRooms = 0;
+  let doubleRooms = 0;
+  let tripleRooms = 0;
+  let fourRooms = 0;
+  const floorSet = new Set<number>();
+
+  rooms.forEach((r) => {
+    const cap = Number(r.total_capacity || r.capacity || 0);
+    const occ = Number(r.occupied_beds || 0);
+    const avail = Number(r.available_beds || (cap - occ));
+    calcTotalBeds += cap;
+    calcOccupied += occ;
+    calcAvailable += Math.max(0, avail);
+
+    if (cap === 1) singleRooms++;
+    else if (cap === 2) doubleRooms++;
+    else if (cap === 3) tripleRooms++;
+    else if (cap >= 4) fourRooms++;
+
+    if (r.floor_number !== undefined && r.floor_number !== null) {
+      floorSet.add(Number(r.floor_number));
+    }
+  });
+
+  const total = calcTotalBeds || Number(d.totalBeds ?? 0);
+  const occupied = calcOccupied || Number(d.occupiedBeds ?? 0);
+  const available = calcAvailable || Number(d.availableBeds ?? 0);
+  const rate = total > 0 ? Math.round((occupied / total) * 100) : Number(d.occupancyRate ?? 0);
+
   return {
-    occupied: Number(d.occupiedBeds ?? 0),
-    available: Number(d.availableBeds ?? 0),
-    total: Number(d.totalBeds ?? 0),
-    rate: Number(d.occupancyRate ?? 0),
-    totalRooms: Number(d.totalRooms ?? 0),
+    occupied,
+    available,
+    total,
+    rate,
+    totalRooms: rooms.length || Number(d.totalRooms ?? 0),
+    totalFloors: floorSet.size || 1,
+    singleRooms,
+    doubleRooms,
+    tripleRooms,
+    fourRooms,
   };
 }
 
@@ -398,7 +444,13 @@ export async function fetchStudentByName(nameQuery: string): Promise<any[]> {
   });
 }
 
+export async function fetchNoticesCount(): Promise<number> {
+  const res = await safeGet('/notices');
+  return res?.data && Array.isArray(res.data) ? res.data.length : 0;
+}
+
 // ─── Room Details by Room Number ──────────────────────────────────────────────
+
 export async function fetchRoomByNumber(roomNum: number): Promise<any | null> {
   const data = await safeGet('/rooms', { limit: 200 });
   if (!data?.data || !Array.isArray(data.data)) return null;

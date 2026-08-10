@@ -89,12 +89,7 @@ export const IncomeTab = ({ navigation }: any) => {
                 />
             )}
 
-            <TouchableOpacity
-                style={styles.fab}
-                onPress={() => navigation.navigate('AddIncome')}
-            >
-                <Plus color="#FFFFFF" size={28} />
-            </TouchableOpacity>
+
         </View>
     );
 };
