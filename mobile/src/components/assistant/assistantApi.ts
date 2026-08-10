@@ -384,3 +384,133 @@ export async function fetchStudentStats(): Promise<any> {
   const data = await safeGet('/students/stats');
   return data?.data || { active: 0, inactive: 0, prebooked: 0, qrRegister: 0, total: 0, unallocated: 0, pendingAdmissions: 0 };
 }
+
+// ─── Student Search by Name ───────────────────────────────────────────────────
+export async function fetchStudentByName(nameQuery: string): Promise<any[]> {
+  const q = nameQuery.toLowerCase().trim();
+  const data = await safeGet('/students', { limit: 250 });
+  if (!data?.data || !Array.isArray(data.data)) return [];
+
+  return data.data.filter((s: any) => {
+    const fullName = `${s.first_name || ''} ${s.last_name || ''}`.toLowerCase();
+    const phone = (s.phone || '').toLowerCase();
+    return fullName.includes(q) || phone.includes(q);
+  });
+}
+
+// ─── Room Details by Room Number ──────────────────────────────────────────────
+export async function fetchRoomByNumber(roomNum: number): Promise<any | null> {
+  const data = await safeGet('/rooms', { limit: 200 });
+  if (!data?.data || !Array.isArray(data.data)) return null;
+
+  const foundRoom = data.data.find((r: any) => Number(r.room_number) === Number(roomNum));
+  if (!foundRoom) return null;
+
+  // Fetch full details including occupants
+  const roomDetail = await safeGet(`/rooms/${foundRoom.room_id}`);
+  return roomDetail?.data || foundRoom;
+}
+
+// ─── Floor Details by Floor Number ───────────────────────────────────────────
+export async function fetchRoomsByFloor(floorNum: number): Promise<{ floorNumber: number; totalRooms: number; totalBeds: number; occupiedBeds: number; availableBeds: number; rooms: any[] } | null> {
+  const data = await safeGet('/rooms', { limit: 200 });
+  if (!data?.data || !Array.isArray(data.data)) return null;
+
+  const floorRooms = data.data.filter((r: any) => Number(r.floor_number) === Number(floorNum));
+  if (floorRooms.length === 0) return null;
+
+  let totalBeds = 0;
+  let occupiedBeds = 0;
+  let availableBeds = 0;
+
+  floorRooms.forEach((r: any) => {
+    totalBeds += Number(r.total_capacity || r.capacity || 0);
+    occupiedBeds += Number(r.occupied_beds || 0);
+    availableBeds += Number(r.available_beds || 0);
+  });
+
+  return {
+    floorNumber: floorNum,
+    totalRooms: floorRooms.length,
+    totalBeds,
+    occupiedBeds,
+    availableBeds,
+    rooms: floorRooms,
+  };
+}
+
+// ─── Paid Students List ──────────────────────────────────────────────────────
+export async function fetchPaidStudents(): Promise<any[]> {
+  const data = await safeGet('/monthly-fees/summary');
+  if (!data?.data?.fees || !Array.isArray(data.data.fees)) return [];
+
+  const paid = data.data.fees.filter((f: any) => {
+    const balance = parseFloat(f.balance || 0);
+    const amountPaid = parseFloat(f.paid_amount || f.amount_paid || 0);
+    return balance <= 0 || (amountPaid > 0 && balance === 0);
+  });
+
+  return paid.map((f: any) => ({
+    name: `${f.first_name || ''} ${f.last_name || ''}`.trim() || 'Student',
+    roomNumber: f.room_number || 'N/A',
+    paidAmount: parseFloat(f.paid_amount || f.amount_paid || f.monthly_rent || 0),
+    paidDate: f.updated_at || f.paid_date || 'This Month',
+    phone: f.phone || '',
+  }));
+}
+
+// ─── Students Joined This Month ───────────────────────────────────────────────
+export async function fetchStudentsJoinedThisMonth(): Promise<any[]> {
+  const data = await safeGet('/students', { limit: 250, status: 1 });
+  if (!data?.data || !Array.isArray(data.data)) return [];
+
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  return data.data.filter((s: any) => {
+    const dStr = s.joining_date || s.created_at;
+    if (!dStr) return true; // fallback to include active if date missing
+    const d = new Date(dStr);
+    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+  });
+}
+
+// ─── Students Vacated This Month ──────────────────────────────────────────────
+export async function fetchStudentsVacatedThisMonth(): Promise<any[]> {
+  const data = await safeGet('/students', { limit: 250, status: 0 });
+  if (!data?.data || !Array.isArray(data.data)) return [];
+
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  return data.data.filter((s: any) => {
+    const dStr = s.vacated_date || s.updated_at;
+    if (!dStr) return true;
+    const d = new Date(dStr);
+    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+  });
+}
+
+// ─── Detailed Income Breakdown ───────────────────────────────────────────────
+export async function fetchDetailedIncomeBreakdown(): Promise<any> {
+  const [overviewData, guestsData] = await Promise.all([
+    safeGet('/reports/monthly-overview'),
+    safeGet('/guests'),
+  ]);
+
+  const cm = overviewData?.data?.currentMonth || {};
+  const rentCollected = Number(cm.rentCollected ?? cm.feeCollection ?? 0);
+  const guestFees = Number(guestsData?.summary?.totalCollected ?? cm.guestIncome ?? 0);
+  const otherIncome = Number(cm.otherIncome ?? 0);
+  const totalIncome = rentCollected + guestFees + otherIncome;
+
+  return {
+    totalIncome: totalIncome || rentCollected,
+    rentCollected,
+    guestFees,
+    otherIncome,
+  };
+}
+

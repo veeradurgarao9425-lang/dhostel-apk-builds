@@ -17,7 +17,11 @@
 // ─── Intent Type ─────────────────────────────────────────────────────────────
 export type AssistantIntent =
   | { type: 'SHOW_HOME' }
-  | { type: 'SHOW_STUDENTS'; filter?: 'active' | 'inactive' | 'prebooked' | 'qr' | 'pending' | 'unallocated' | 'all' }
+  | { type: 'SHOW_STUDENTS'; filter?: 'active' | 'inactive' | 'prebooked' | 'qr' | 'pending' | 'unallocated' | 'joined_this_month' | 'vacated_this_month' | 'all' }
+  | { type: 'SHOW_STUDENT_SEARCH'; name: string }
+  | { type: 'SHOW_ROOM_DETAIL'; roomNumber: number }
+  | { type: 'SHOW_FLOOR_DETAIL'; floorNumber: number }
+  | { type: 'SHOW_PAID_STUDENTS' }
   | { type: 'SHOW_DUES'; filter?: 'overdue' | 'pending' | 'all' }
   | { type: 'SHOW_ROOMS' }
   | { type: 'SHOW_PAYMENTS' }
@@ -31,7 +35,10 @@ export type AssistantIntent =
   | { type: 'SHOW_GUESTS' }
   | { type: 'SHOW_NOTICES' }
   | { type: 'SHOW_HOSTELS' }
+  | { type: 'SHOW_APP_INFO'; topic: 'owner' | 'goal' | 'usage' }
   | { type: 'UNKNOWN'; query: string };
+
+
 
 export type HowToAction =
   | 'add_student'
@@ -868,25 +875,127 @@ const RULES: Rule[] = [
     intent: { type: 'SHOW_NOTICES' },
     priority: 6,
   },
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PRIORITY 9 — APP INFO & OWNER / FOUNDER
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  {
+    keywords: [
+      'who is owner', 'who is the owner', 'owner of this app', 'who built this app',
+      'who created this app', 'who is developer', 'who is the developer',
+      'who is founder', 'veeradurgarao', 'goriparthi', 'durgarao goriparthi',
+      'contact developer', 'about owner', 'about developer', 'developer details',
+      'owner details', 'app owner', 'app creator', 'who made this app',
+    ],
+    intent: { type: 'SHOW_APP_INFO', topic: 'owner' },
+    priority: 9,
+  },
+  {
+    keywords: [
+      'main goal', 'main goal of app', 'main goal of this app', 'goal of this app',
+      'purpose of app', 'purpose of this app', 'what is goal', 'why this app',
+      'what is hostix', 'about hostix', 'app goal', 'app purpose',
+      'what is the main goal', 'what is the goal',
+    ],
+    intent: { type: 'SHOW_APP_INFO', topic: 'goal' },
+    priority: 9,
+  },
+  {
+    keywords: [
+      'how to use this app', 'how app works', 'how does this app work',
+      'how to use hostix', 'app guide', 'getting started with app',
+      'how to start', 'guide for app', 'how to run app',
+    ],
+    intent: { type: 'SHOW_APP_INFO', topic: 'usage' },
+    priority: 9,
+  },
 ];
+
+/** Extract student search name from a query like "give student durgarao details" or "what is durgarao room" */
+export function extractStudentSearchName(rawQuery: string): string | null {
+  const q = rawQuery.trim();
+  const patterns = [
+    /(?:student|tenant)\s+([a-zA-Z]{3,20})\s+(?:details|info|profile|list|room|bed|joining|phone|mobile|rent)/i,
+    /what\s+is\s+([a-zA-Z]{3,20})\s+(?:room|bed|joining|phone|mobile|rent|details|date|status)/i,
+    /give\s+(?:me\s+)?(?:student|tenant\s+)?([a-zA-Z]{3,20})\s+(?:details|info|room|phone|joining)/i,
+    /([a-zA-Z]{3,20})\s+(?:room|bed|joining|phone|mobile|rent|details|date|status)/i,
+    /who\s+is\s+([a-zA-Z]{3,20})/i,
+    /search\s+(?:student|tenant\s+)?([a-zA-Z]{3,20})/i,
+    /find\s+(?:student|tenant\s+)?([a-zA-Z]{3,20})/i,
+    /where\s+is\s+([a-zA-Z]{3,20})/i,
+  ];
+
+  const nonNames = [
+    'room', 'floor', 'bed', 'hostel', 'dues', 'active', 'left', 'vacated',
+    'paid', 'unpaid', 'income', 'expense', 'staff', 'guest', 'notice', 'list',
+    'stats', 'all', 'prebooked', 'joining', 'admission', 'overdue', 'today',
+    'this', 'main', 'goal', 'owner', 'developer', 'founder', 'hostix', 'app',
+    'what', 'where', 'when', 'how', 'who', 'why', 'give', 'show', 'tell'
+  ];
+
+  for (const p of patterns) {
+    const m = q.match(p);
+    if (m && m[1]) {
+      const name = m[1].toLowerCase();
+      if (!nonNames.includes(name)) {
+        return m[1];
+      }
+    }
+  }
+  return null;
+}
+
 
 // ─── Core Resolve Function ────────────────────────────────────────────────────
 
 /**
  * resolveIntent — main public API.
- * 1. Normalize input (typos + synonyms)
- * 2. Apply context for follow-up questions
- * 3. Score all rules against normalized query
- * 4. Return highest-scoring intent
+ * 1. Check for specific room / floor / student search queries first.
+ * 2. Normalize input (typos + synonyms).
+ * 3. Apply context for follow-up questions.
+ * 4. Score all rules against normalized query.
+ * 5. Return highest-scoring intent.
  */
 export function resolveIntent(rawQuery: string): AssistantIntent {
   if (!rawQuery.trim()) return { type: 'SHOW_HOME' };
+
+  const rawLower = rawQuery.toLowerCase().trim();
+
+  // ── 1. Specific Room Detail Query (e.g. "room 101", "show me 101 room", "beds in room 101") ──
+  const roomNum = extractRoomNumber(rawQuery);
+  if (roomNum !== null && (rawLower.includes('room') || rawQuery.match(/\b\d{3,4}\b/))) {
+    return { type: 'SHOW_ROOM_DETAIL', roomNumber: roomNum };
+  }
+
+  // ── 2. Specific Floor Detail Query (e.g. "floor 1 how many rooms", "2nd floor rooms") ──
+  const floorNum = extractFloorNumber(rawQuery);
+  if (floorNum !== null && rawLower.includes('floor')) {
+    return { type: 'SHOW_FLOOR_DETAIL', floorNumber: floorNum };
+  }
+
+  // ── 3. Student Search by Name (e.g. "give student durgarao details", "who is durgarao") ──
+  const studentSearchName = extractStudentSearchName(rawQuery);
+  if (studentSearchName) {
+    return { type: 'SHOW_STUDENT_SEARCH', name: studentSearchName };
+  }
+
+  // ── 4. Paid Students List Specifically (e.g. "paid student list give to me") ──
+  if (rawLower.includes('paid student list') || rawLower.includes('list of paid student') || rawLower.includes('who paid this month')) {
+    return { type: 'SHOW_PAID_STUDENTS' };
+  }
+
+  // ── 5. Students Joined / Vacated This Month Specifically ──
+  if (rawLower.includes('joined this month') || rawLower.includes('joined in this month') || rawLower.includes('new admission this month')) {
+    return { type: 'SHOW_STUDENTS', filter: 'joined_this_month' };
+  }
+  if (rawLower.includes('vacate this month') || rawLower.includes('vacated this month') || rawLower.includes('left this month')) {
+    return { type: 'SHOW_STUDENTS', filter: 'vacated_this_month' };
+  }
 
   const q = normalizeQuery(rawQuery);
   if (!q) return { type: 'SHOW_HOME' };
 
   // ── Context-aware follow-ups ────────────────────────────────────────────
-  // If the query is very short and ambiguous, use last context to help.
   const SHORT_THRESHOLD = 20;
   if (q.length <= SHORT_THRESHOLD && _lastContext) {
     const CONTEXT_CLUES: Record<string, string[]> = {
@@ -925,7 +1034,6 @@ export function resolveIntent(rawQuery: string): AssistantIntent {
     for (const kw of rule.keywords) {
       if (q.includes(kw)) {
         const wordCount = kw.split(' ').length;
-        // Phrase matches (multi-word) score double their base priority
         score += wordCount > 1 ? basePriority * 2 : basePriority;
       }
     }
@@ -935,13 +1043,13 @@ export function resolveIntent(rawQuery: string): AssistantIntent {
     }
   }
 
-  // Save context for follow-up
   if (best.intent.type !== 'UNKNOWN') {
     _lastContext = best.intent.type;
   }
 
   return best.intent;
 }
+
 
 // ─── Sidebar Categories ───────────────────────────────────────────────────────
 export const SIDEBAR_CATEGORIES = [

@@ -7,8 +7,9 @@
 import React, { useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  ActivityIndicator, Animated, Dimensions, DeviceEventEmitter
+  ActivityIndicator, Animated, Dimensions, DeviceEventEmitter, Linking
 } from 'react-native';
+
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Rect, Circle, Line } from 'react-native-svg';
 import * as RootNavigation from '../../navigation/navigationRef';
@@ -73,7 +74,15 @@ export type ContentBlock =
   | { type: 'error_state'; message: string; onRetry?: () => void }
   | { type: 'follow_up_chips'; label?: string; chips: Array<{ label: string; icon?: string; onPress: () => void }> }
   | { type: 'info_tip'; text: string; icon?: string; color?: string }
+  | { type: 'student_detail_card'; student: any }
+  | { type: 'room_detail_card'; room: any }
+  | { type: 'floor_detail_card'; floor: any }
+  | { type: 'student_list_card'; title: string; students: any[] }
+  | { type: 'income_breakdown_card'; data: any }
+  | { type: 'app_info_card'; topic: 'owner' | 'goal' | 'usage' }
   | { type: 'loading' };
+
+
 
 interface AssistantResponseProps {
   blocks: ContentBlock[];
@@ -876,6 +885,392 @@ const InfoTipBlock = ({ text, icon, color }: { text: string; icon?: string; colo
   );
 };
 
+// ─── Student Detail Card Block ───────────────────────────────────────────────
+const StudentDetailCardBlock = ({ student }: { student: any }) => {
+  const name = `${student.first_name || ''} ${student.last_name || ''}`.trim() || student.name || 'Student';
+  const initial = name.charAt(0).toUpperCase();
+  const room = student.room_number || student.roomNumber || 'Unassigned';
+  const bed = student.bed_number || student.bedNumber || 'N/A';
+  const phone = student.phone || student.mobile || 'No phone recorded';
+  const rent = student.monthly_rent || student.rent || 0;
+  const status = student.status === 1 ? 'Active' : student.status === 0 ? 'Left / Vacated' : student.status === 2 ? 'Pre-Booked' : 'Pending';
+  const statusColor = student.status === 1 ? '#10B981' : student.status === 0 ? '#64748B' : '#F59E0B';
+
+  const rawJoiningDate = student.joining_date || student.created_at;
+  const joiningDateStr = rawJoiningDate ? new Date(rawJoiningDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A';
+
+  return (
+    <View style={st.detailCardContainer}>
+      <View style={st.detailCardHeader}>
+        <View style={[st.avatarCircle, { backgroundColor: '#EEF2FF' }]}>
+          <Text style={{ fontSize: 18, fontWeight: '800', color: '#4F46E5' }}>{initial}</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={st.detailCardName}>{name}</Text>
+          <Text style={st.detailCardSub}>Phone: {phone}</Text>
+        </View>
+        <View style={[st.listItemBadge, { backgroundColor: statusColor + '18' }]}>
+          <Text style={[st.listItemBadgeText, { color: statusColor }]}>{status}</Text>
+        </View>
+      </View>
+
+      <View style={st.detailGrid}>
+        <View style={st.detailGridItem}>
+          <Text style={st.detailGridLabel}>Room / Bed</Text>
+          <Text style={st.detailGridVal}>Rm {room} • Bed {bed}</Text>
+        </View>
+        <View style={st.detailGridItem}>
+          <Text style={st.detailGridLabel}>Joined Date</Text>
+          <Text style={st.detailGridVal}>{joiningDateStr}</Text>
+        </View>
+        <View style={st.detailGridItem}>
+          <Text style={st.detailGridLabel}>Monthly Rent</Text>
+          <Text style={[st.detailGridVal, { color: '#10B981' }]}>{INR(rent)}</Text>
+        </View>
+      </View>
+
+      <View style={{ flexDirection: 'row', gap: 6, marginTop: 10 }}>
+        {phone !== 'No phone recorded' && (
+          <TouchableOpacity
+            style={[st.actionBtn, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0', borderWidth: 1, flex: 1, justifyContent: 'center' }]}
+            onPress={() => Linking.openURL(`tel:${phone}`)}
+          >
+            <Ionicons name="call-outline" size={14} color="#10B981" style={{ marginRight: 4 }} />
+            <Text style={[st.actionBtnText, { color: '#10B981' }]}>Call</Text>
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity
+          style={[st.actionBtn, st.actionBtnPrimary, { flex: 1, justifyContent: 'center' }]}
+          onPress={() => {
+            RootNavigation.navigate('Students');
+            DeviceEventEmitter.emit('CLOSE_ASSISTANT');
+          }}
+        >
+          <Ionicons name="person-outline" size={14} color="#FFF" style={{ marginRight: 4 }} />
+          <Text style={[st.actionBtnText, { color: '#FFF' }]}>Profile</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[st.actionBtn, st.actionBtnOutline, { flex: 1, justifyContent: 'center' }]}
+          onPress={() => {
+            RootNavigation.navigate('FeeManagement');
+            DeviceEventEmitter.emit('CLOSE_ASSISTANT');
+          }}
+        >
+          <Ionicons name="cash-outline" size={14} color="#4F46E5" style={{ marginRight: 4 }} />
+          <Text style={[st.actionBtnText, { color: '#4F46E5' }]}>Collect Rent</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+};
+
+// ─── App Info & Owner Card Block ─────────────────────────────────────────────
+const AppInfoCardBlock = ({ topic }: { topic: 'owner' | 'goal' | 'usage' }) => {
+  if (topic === 'owner') {
+    return (
+      <View style={st.detailCardContainer}>
+        <View style={st.detailCardHeader}>
+          <View style={[st.avatarCircle, { backgroundColor: '#EEF2FF', width: 48, height: 48, borderRadius: 24 }]}>
+            <Text style={{ fontSize: 18, fontWeight: '800', color: '#4F46E5' }}>VG</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={st.detailCardName}>VeeraDurgarao Goriparthi</Text>
+            <Text style={st.detailCardSub}>Owner & Developer • Hyderabad</Text>
+          </View>
+        </View>
+
+        <View style={{ backgroundColor: '#F8FAFC', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#F1F5F9', gap: 6, marginBottom: 10 }}>
+          <Text style={{ fontSize: 12, color: '#334155', lineHeight: 18, fontWeight: '500' }}>
+            👨‍💻 <Text style={{ fontWeight: '700' }}>About Owner:</Text> VeeraDurgarao Goriparthi is a software engineer and technology entrepreneur based in <Text style={{ fontWeight: '700', color: '#4F46E5' }}>Hyderabad, Telangana</Text>.
+          </Text>
+          <Text style={{ fontSize: 11, color: '#64748B', lineHeight: 16 }}>
+            He built <Text style={{ fontWeight: '700', color: '#1E293B' }}>HOSTIX</Text> to streamline Hostel & PG management — automating room allocations, rent collection, QR admissions, and daily financial tracking.
+          </Text>
+        </View>
+
+        <View style={{ gap: 6 }}>
+          <TouchableOpacity
+            style={[st.actionBtn, { backgroundColor: '#EEF2FF', borderColor: '#C7D2FE', borderWidth: 1, justifyContent: 'center' }]}
+            onPress={() => Linking.openURL('tel:6303359425')}
+          >
+            <Ionicons name="call-outline" size={14} color="#4F46E5" style={{ marginRight: 6 }} />
+            <Text style={[st.actionBtnText, { color: '#4F46E5' }]}>Call: +91 6303359425</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[st.actionBtn, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0', borderWidth: 1, justifyContent: 'center' }]}
+            onPress={() => Linking.openURL('mailto:veeradurgarao840@gmail.com')}
+          >
+            <Ionicons name="mail-outline" size={14} color="#16A34A" style={{ marginRight: 6 }} />
+            <Text style={[st.actionBtnText, { color: '#15803D' }]}>Email: veeradurgarao840@gmail.com</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  if (topic === 'goal') {
+    return (
+      <View style={st.detailCardContainer}>
+        <View style={st.detailCardHeader}>
+          <View style={[st.avatarCircle, { backgroundColor: '#FEF3C7', width: 44, height: 44, borderRadius: 22 }]}>
+            <Ionicons name="rocket-outline" size={22} color="#D97706" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={st.detailCardName}>Main Goal of HOSTIX App</Text>
+            <Text style={st.detailCardSub}>Smart Digital Hostel & PG Management</Text>
+          </View>
+        </View>
+
+        <View style={{ backgroundColor: '#FFFBEB', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#FDE68A', gap: 6 }}>
+          <Text style={{ fontSize: 12, color: '#92400E', lineHeight: 18, fontWeight: '600' }}>
+            🎯 <Text style={{ fontWeight: '800' }}>Mission:</Text> To simplify and automate daily hostel operations for PG and hostel owners across India.
+          </Text>
+          <View style={{ gap: 4, marginTop: 2 }}>
+            <Text style={{ fontSize: 11, color: '#B45309' }}>• 📊 <Text style={{ fontWeight: '700' }}>Real-time Occupancy:</Text> Instant bed & room availability tracking.</Text>
+            <Text style={{ fontSize: 11, color: '#B45309' }}>• 💰 <Text style={{ fontWeight: '700' }}>Zero Dues Delay:</Text> Automated rent tracking & payment reminders.</Text>
+            <Text style={{ fontSize: 11, color: '#B45309' }}>• 📷 <Text style={{ fontWeight: '700' }}>Self Registration:</Text> Student onboarding via QR codes.</Text>
+            <Text style={{ fontSize: 11, color: '#B45309' }}>• 📈 <Text style={{ fontWeight: '700' }}>Financial Clarity:</Text> Income vs. Expense reports in 1 tap.</Text>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  // usage
+  return (
+    <View style={st.detailCardContainer}>
+      <View style={st.detailCardHeader}>
+        <View style={[st.avatarCircle, { backgroundColor: '#ECFDF5', width: 44, height: 44, borderRadius: 22 }]}>
+          <Ionicons name="help-circle-outline" size={22} color="#10B981" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={st.detailCardName}>How to Use HOSTIX</Text>
+          <Text style={st.detailCardSub}>Quick Getting Started Steps</Text>
+        </View>
+      </View>
+
+      <View style={{ gap: 6 }}>
+        <View style={st.listItem}>
+          <Text style={{ fontSize: 13, fontWeight: '800', color: '#4F46E5', width: 20 }}>1.</Text>
+          <Text style={{ flex: 1, fontSize: 12, color: '#334155', fontWeight: '500' }}>Setup your Rooms & Beds in Rooms module.</Text>
+        </View>
+        <View style={st.listItem}>
+          <Text style={{ fontSize: 13, fontWeight: '800', color: '#4F46E5', width: 20 }}>2.</Text>
+          <Text style={{ flex: 1, fontSize: 12, color: '#334155', fontWeight: '500' }}>Add Students or share Hostel QR Code link.</Text>
+        </View>
+        <View style={st.listItem}>
+          <Text style={{ fontSize: 13, fontWeight: '800', color: '#4F46E5', width: 20 }}>3.</Text>
+          <Text style={{ flex: 1, fontSize: 12, color: '#334155', fontWeight: '500' }}>Record Rent payments & send reminders.</Text>
+        </View>
+        <View style={st.listItem}>
+          <Text style={{ fontSize: 13, fontWeight: '800', color: '#4F46E5', width: 20 }}>4.</Text>
+          <Text style={{ flex: 1, fontSize: 12, color: '#334155', fontWeight: '500' }}>Track Monthly Income & Expenses in Reports.</Text>
+        </View>
+      </View>
+    </View>
+  );
+};
+
+
+// ─── Room Detail Card Block ──────────────────────────────────────────────────
+const RoomDetailCardBlock = ({ room }: { room: any }) => {
+  const roomNum = room.room_number || 'N/A';
+  const floor = room.floor_number !== undefined ? `Floor ${room.floor_number}` : 'N/A';
+  const roomType = room.room_type_name || 'Standard Room';
+  const capacity = room.total_capacity || room.capacity || 0;
+  const occupied = room.occupied_beds || 0;
+  const available = room.available_beds || (capacity - occupied);
+  const occupants: any[] = room.occupants || room.students || [];
+
+  return (
+    <View style={st.detailCardContainer}>
+      <View style={st.detailCardHeader}>
+        <View style={[st.avatarCircle, { backgroundColor: '#F0FDF4' }]}>
+          <Ionicons name="business-outline" size={20} color="#10B981" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={st.detailCardName}>Room {roomNum}</Text>
+          <Text style={st.detailCardSub}>{floor} • {roomType}</Text>
+        </View>
+        <View style={[st.listItemBadge, { backgroundColor: available > 0 ? '#ECFDF5' : '#FEF2F2' }]}>
+          <Text style={[st.listItemBadgeText, { color: available > 0 ? '#10B981' : '#EF4444' }]}>
+            {available > 0 ? `${available} Free` : 'Full'}
+          </Text>
+        </View>
+      </View>
+
+      <View style={st.detailGrid}>
+        <View style={st.detailGridItem}>
+          <Text style={st.detailGridLabel}>Total Beds</Text>
+          <Text style={st.detailGridVal}>{capacity}</Text>
+        </View>
+        <View style={st.detailGridItem}>
+          <Text style={st.detailGridLabel}>Occupied</Text>
+          <Text style={[st.detailGridVal, { color: '#4F46E5' }]}>{occupied}</Text>
+        </View>
+        <View style={st.detailGridItem}>
+          <Text style={st.detailGridLabel}>Available</Text>
+          <Text style={[st.detailGridVal, { color: '#10B981' }]}>{available}</Text>
+        </View>
+      </View>
+
+      {/* Occupants list */}
+      <View style={{ marginTop: 10 }}>
+        <Text style={st.listHeader}>Current Occupants ({occupants.length})</Text>
+        {occupants.length === 0 ? (
+          <Text style={{ fontSize: 12, color: '#94A3B8', fontStyle: 'italic' }}>No students currently living in this room.</Text>
+        ) : (
+          <View style={{ gap: 6 }}>
+            {occupants.map((occ, idx) => (
+              <View key={idx} style={st.listItem}>
+                <View style={{ flex: 1 }}>
+                  <Text style={st.listItemName}>{occ.first_name || occ.name} {occ.last_name || ''}</Text>
+                  <Text style={st.listItemSub}>Phone: {occ.phone || 'N/A'} {occ.bed_number ? `• Bed ${occ.bed_number}` : ''}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
+
+      <View style={{ marginTop: 12 }}>
+        <TouchableOpacity
+          style={[st.actionBtn, st.actionBtnPrimary, { justifyContent: 'center' }]}
+          onPress={() => {
+            RootNavigation.navigate('Rooms');
+            DeviceEventEmitter.emit('CLOSE_ASSISTANT');
+          }}
+        >
+          <Ionicons name="business-outline" size={14} color="#FFF" style={{ marginRight: 4 }} />
+          <Text style={[st.actionBtnText, { color: '#FFF' }]}>Go to Rooms Management</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+};
+
+// ─── Floor Detail Card Block ─────────────────────────────────────────────────
+const FloorDetailCardBlock = ({ floor }: { floor: any }) => {
+  const floorNum = floor.floorNumber;
+  const rooms: any[] = floor.rooms || [];
+
+  return (
+    <View style={st.detailCardContainer}>
+      <View style={st.detailCardHeader}>
+        <View style={[st.avatarCircle, { backgroundColor: '#FEF3C7' }]}>
+          <Ionicons name="layers-outline" size={20} color="#D97706" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={st.detailCardName}>Floor {floorNum} Overview</Text>
+          <Text style={st.detailCardSub}>{floor.totalRooms} Rooms • {floor.totalBeds} Total Beds</Text>
+        </View>
+      </View>
+
+      <View style={st.detailGrid}>
+        <View style={st.detailGridItem}>
+          <Text style={st.detailGridLabel}>Occupied Beds</Text>
+          <Text style={[st.detailGridVal, { color: '#4F46E5' }]}>{floor.occupiedBeds}</Text>
+        </View>
+        <View style={st.detailGridItem}>
+          <Text style={st.detailGridLabel}>Available Beds</Text>
+          <Text style={[st.detailGridVal, { color: '#10B981' }]}>{floor.availableBeds}</Text>
+        </View>
+      </View>
+
+      <View style={{ marginTop: 10 }}>
+        <Text style={st.listHeader}>Rooms on Floor {floorNum}</Text>
+        <View style={{ gap: 6 }}>
+          {rooms.slice(0, 8).map((r, idx) => (
+            <View key={idx} style={st.listItem}>
+              <View style={{ flex: 1 }}>
+                <Text style={st.listItemName}>Room {r.room_number}</Text>
+                <Text style={st.listItemSub}>{r.room_type_name || 'Standard'} • {r.occupied_beds || 0}/{r.total_capacity || r.capacity || 0} Beds Occupied</Text>
+              </View>
+              <View style={[st.listItemBadge, { backgroundColor: (r.available_beds || 0) > 0 ? '#ECFDF5' : '#FEF2F2' }]}>
+                <Text style={[st.listItemBadgeText, { color: (r.available_beds || 0) > 0 ? '#10B981' : '#EF4444' }]}>
+                  {(r.available_beds || 0) > 0 ? `${r.available_beds} Free` : 'Full'}
+                </Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      </View>
+    </View>
+  );
+};
+
+// ─── Student List Card Block ────────────────────────────────────────────────
+const StudentListCardBlock = ({ title, students }: { title: string; students: any[] }) => {
+  return (
+    <View style={st.listContainer}>
+      <Text style={st.listHeader}>{title} ({students.length})</Text>
+      {students.length === 0 ? (
+        <Text style={{ fontSize: 12, color: '#94A3B8', fontStyle: 'italic', paddingVertical: 6 }}>No records found for this category.</Text>
+      ) : (
+        <View style={{ gap: 8 }}>
+          {students.slice(0, 6).map((s, idx) => (
+            <View key={idx} style={st.listItem}>
+              <View style={{ flex: 1 }}>
+                <Text style={st.listItemName}>{s.name || `${s.first_name || ''} ${s.last_name || ''}`.trim()}</Text>
+                <Text style={st.listItemSub}>
+                  Room: {s.roomNumber || s.room_number || 'N/A'} {s.paidAmount ? `• Paid: ${INR(s.paidAmount)}` : ''} {s.phone ? `• ${s.phone}` : ''}
+                </Text>
+              </View>
+              {s.badgeText ? (
+                <View style={[st.listItemBadge, { backgroundColor: s.badgeColor || '#EEF2FF' }]}>
+                  <Text style={[st.listItemBadgeText, { color: s.badgeTextColor || '#4F46E5' }]}>{s.badgeText}</Text>
+                </View>
+              ) : null}
+            </View>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+};
+
+// ─── Income Breakdown Card Block ─────────────────────────────────────────────
+const IncomeBreakdownCardBlock = ({ data }: { data: any }) => {
+  return (
+    <View style={st.detailCardContainer}>
+      <Text style={st.listHeader}>Monthly Income Breakdown</Text>
+      <Text style={[st.finAmount, { color: '#10B981', marginBottom: 10 }]}>{INR(data.totalIncome)}</Text>
+
+      <View style={{ gap: 8 }}>
+        <View style={st.listItem}>
+          <Ionicons name="home-outline" size={18} color="#4F46E5" style={{ marginRight: 8 }} />
+          <View style={{ flex: 1 }}>
+            <Text style={st.listItemName}>Student Rent Collection</Text>
+            <Text style={st.listItemSub}>Monthly fees & room rent</Text>
+          </View>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#1E293B' }}>{INR(data.rentCollected)}</Text>
+        </View>
+
+        <View style={st.listItem}>
+          <Ionicons name="person-outline" size={18} color="#F59E0B" style={{ marginRight: 8 }} />
+          <View style={{ flex: 1 }}>
+            <Text style={st.listItemName}>Guest Charges</Text>
+            <Text style={st.listItemSub}>Short stay guest fees</Text>
+          </View>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#1E293B' }}>{INR(data.guestFees)}</Text>
+        </View>
+
+        {data.otherIncome > 0 && (
+          <View style={st.listItem}>
+            <Ionicons name="cash-outline" size={18} color="#10B981" style={{ marginRight: 8 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={st.listItemName}>Other Revenue</Text>
+              <Text style={st.listItemSub}>Services & deposits</Text>
+            </View>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#1E293B' }}>{INR(data.otherIncome)}</Text>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+};
+
 // ─── Master Renderer ──────────────────────────────────────────────────────────
 export const AssistantResponse: React.FC<AssistantResponseProps> = ({ blocks }) => (
   <View style={{ gap: 14 }}>
@@ -1014,12 +1409,32 @@ export const AssistantResponse: React.FC<AssistantResponseProps> = ({ blocks }) 
         case 'info_tip':
           return <InfoTipBlock key={i} text={block.text} icon={block.icon} color={block.color} />;
 
+        case 'student_detail_card':
+          return <StudentDetailCardBlock key={i} student={block.student} />;
+
+        case 'room_detail_card':
+          return <RoomDetailCardBlock key={i} room={block.room} />;
+
+        case 'floor_detail_card':
+          return <FloorDetailCardBlock key={i} floor={block.floor} />;
+
+        case 'student_list_card':
+          return <StudentListCardBlock key={i} title={block.title} students={block.students} />;
+
+        case 'income_breakdown_card':
+          return <IncomeBreakdownCardBlock key={i} data={block.data} />;
+
+        case 'app_info_card':
+          return <AppInfoCardBlock key={i} topic={block.topic} />;
+
+
         default:
           return null;
       }
     })}
   </View>
 );
+
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const st = StyleSheet.create({
@@ -1474,5 +1889,66 @@ const st = StyleSheet.create({
     fontWeight: '500',
     lineHeight: 17,
   },
+
+  // Detail Cards (Student, Room, Floor, Income)
+  detailCardContainer: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+  },
+  detailCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  avatarCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailCardName: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  detailCardSub: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  detailGrid: {
+    flexDirection: 'row',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 10,
+    gap: 8,
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  detailGridItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  detailGridLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#64748B',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  detailGridVal: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#1E293B',
+  },
 });
+
 

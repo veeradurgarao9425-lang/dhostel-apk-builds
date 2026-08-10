@@ -44,8 +44,11 @@ import {
   fetchDashboardSnapshot, fetchDuesSummary, fetchFinancialOverview,
   fetchOccupancy, fetchStudents, fetchExpenseSummary, fetchMyHostels,
   switchActiveHostel, fetchStaffList, fetchGuestsList, fetchStudentStats,
+  fetchStudentByName, fetchRoomByNumber, fetchRoomsByFloor, fetchPaidStudents,
+  fetchStudentsJoinedThisMonth, fetchStudentsVacatedThisMonth, fetchDetailedIncomeBreakdown,
   DashboardSnapshot,
 } from './assistantApi';
+
 
 const INR = (n: number) => `₹${Number(n).toLocaleString('en-IN')}`;
 
@@ -56,6 +59,23 @@ function getGreeting(name?: string) {
   const g = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
   return first ? `${g}, ${first} 👋` : `${g} 👋`;
 }
+
+function getQuestionChipIcon(q: string): string {
+  const l = q.toLowerCase();
+  if (l.includes('student') || l.includes('tenants')) return 'people-outline';
+  if (l.includes('room') || l.includes('floor')) return 'business-outline';
+  if (l.includes('bed') || l.includes('vacant')) return 'bed-outline';
+  if (l.includes('paid') || l.includes('collection') || l.includes('income')) return 'cash-outline';
+  if (l.includes('due') || l.includes('overdue') || l.includes('unpaid')) return 'alert-circle-outline';
+  if (l.includes('expense') || l.includes('spent')) return 'card-outline';
+  if (l.includes('staff') || l.includes('warden')) return 'briefcase-outline';
+  if (l.includes('guest')) return 'person-outline';
+  if (l.includes('qr')) return 'qr-code-outline';
+  if (l.includes('notice')) return 'notifications-outline';
+  if (l.includes('add')) return 'add-circle-outline';
+  return 'sparkles-outline';
+}
+
 
 // ─── Bouncing dots (typing indicator) ─────────────────────────────────────
 const BouncingDots = () => {
@@ -121,7 +141,7 @@ const HomeContent: React.FC<HomeProps> = ({ snap, loading, onQuestion, onIntent 
       <Text style={hc.sub}>{user?.hostel_name || 'Your Hostel'}</Text>
 
       {/* Rounded outline guide options */}
-      <View style={{ gap: 10, marginBottom: 12 }}>
+      <View style={{ gap: 8, marginBottom: 8 }}>
         <TouchableOpacity
           style={hc.outlinePillBtn}
           onPress={() => onQuestion("How do I collect rent?")}
@@ -154,6 +174,9 @@ const HomeContent: React.FC<HomeProps> = ({ snap, loading, onQuestion, onIntent 
           <Text style={hc.outlinePillBtnText}>How to vacate a bed?</Text>
         </TouchableOpacity>
       </View>
+
+
+
 
       {/* Suggested Topics / Shortcuts Section */}
       <Text style={hc.sectionLabel}>Suggested Shortcuts</Text>
@@ -208,10 +231,11 @@ const HomeContent: React.FC<HomeProps> = ({ snap, loading, onQuestion, onIntent 
 };
 
 const hc = StyleSheet.create({
-  scroll: { padding: 16, gap: 16, paddingBottom: 24 },
-  greeting: { fontSize: 22, fontWeight: '800', color: '#0F172A', letterSpacing: -0.3, marginBottom: 4 },
-  sub: { fontSize: 13, color: '#94A3B8', fontWeight: '500', marginBottom: 16 },
-  sectionLabel: { fontSize: 11, fontWeight: '800', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10, marginTop: 10 },
+  scroll: { padding: 16, gap: 10, paddingBottom: 24 },
+  greeting: { fontSize: 22, fontWeight: '800', color: '#0F172A', letterSpacing: -0.3, marginBottom: 2 },
+  sub: { fontSize: 13, color: '#94A3B8', fontWeight: '500', marginBottom: 6 },
+  sectionLabel: { fontSize: 11, fontWeight: '800', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6, marginTop: 4 },
+
   qChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12 },
   qText: { flex: 1, fontSize: 13, color: '#334155', fontWeight: '500' },
 
@@ -285,6 +309,40 @@ const hc = StyleSheet.create({
     lineHeight: 16,
     textAlign: 'center',
   },
+  actionGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 8,
+  },
+  actionTile: {
+    width: '48.5%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 8,
+  },
+  actionTileIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionTileTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  actionTileSub: {
+    fontSize: 10,
+    color: '#64748B',
+    fontWeight: '500',
+    marginTop: 1,
+  },
+
   outlinePillBtn: {
     width: '100%',
     paddingVertical: 12,
@@ -301,6 +359,7 @@ const hc = StyleSheet.create({
     fontWeight: '600',
     color: '#4F46E5',
   },
+
   shortcutCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -346,6 +405,8 @@ export const OwnerAssistant: React.FC = () => {
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [isKeyboardActive, setIsKeyboardActive] = useState(false);
+  const [chipTab, setChipTab] = useState<'stats' | 'guides'>('stats');
+
 
   // Snapshot data for home screen
   const [snap, setSnap] = useState<DashboardSnapshot | null>(null);
@@ -612,6 +673,34 @@ export const OwnerAssistant: React.FC = () => {
                 { label: 'View Rooms', icon: 'business-outline', screen: 'Rooms', variant: 'outline' },
               ]},
             ]);
+          } else if (filter === 'joined_this_month') {
+            const joinedList = await fetchStudentsJoinedThisMonth();
+            addBot([
+              { type: 'info_tip', text: `${joinedList.length} new student(s) joined your hostel this month.`, icon: 'calendar-outline', color: '#10B981' },
+              { type: 'student_list_card', title: 'Students Joined This Month', students: joinedList.map((s: any) => ({
+                name: `${s.first_name || ''} ${s.last_name || ''}`.trim(),
+                roomNumber: s.room_number || 'N/A',
+                phone: s.phone || '',
+                badgeText: 'New Admission',
+                badgeColor: '#ECFDF5',
+                badgeTextColor: '#10B981'
+              })) },
+              { type: 'follow_up_chips', label: 'Explore more:', chips: followUpChips },
+            ]);
+          } else if (filter === 'vacated_this_month') {
+            const vacatedList = await fetchStudentsVacatedThisMonth();
+            addBot([
+              { type: 'info_tip', text: `${vacatedList.length} student(s) vacated or left your hostel this month.`, icon: 'exit-outline', color: '#64748B' },
+              { type: 'student_list_card', title: 'Students Vacated This Month', students: vacatedList.map((s: any) => ({
+                name: `${s.first_name || ''} ${s.last_name || ''}`.trim(),
+                roomNumber: s.room_number || 'N/A',
+                phone: s.phone || '',
+                badgeText: 'Vacated',
+                badgeColor: '#F8FAFC',
+                badgeTextColor: '#64748B'
+              })) },
+              { type: 'follow_up_chips', label: 'Explore more:', chips: followUpChips },
+            ]);
           } else {
             // 'all' — full view
             addBot([
@@ -646,6 +735,130 @@ export const OwnerAssistant: React.FC = () => {
         }
         break;
       }
+
+      case 'SHOW_STUDENT_SEARCH': {
+        addBot([{ type: 'loading' }]);
+        try {
+          const results = await fetchStudentByName((intent as any).name);
+          removeLoadingBlock();
+          if (!results || results.length === 0) {
+            addBot([
+              { type: 'info_tip', text: `No student found matching "${(intent as any).name}".`, icon: 'person-outline', color: '#EF4444' },
+              { type: 'text', text: `Could not find any student named "${(intent as any).name}". Please check the spelling or search from the Students directory.` },
+              { type: 'action_buttons', buttons: [{ label: 'View All Students', icon: 'list-outline', screen: 'Students', variant: 'primary' }] }
+            ]);
+          } else if (results.length === 1) {
+            addBot([
+              { type: 'info_tip', text: `Found student record for "${(intent as any).name}".`, icon: 'checkmark-circle-outline', color: '#10B981' },
+              { type: 'student_detail_card', student: results[0] }
+            ]);
+          } else {
+            addBot([
+              { type: 'info_tip', text: `Found ${results.length} students matching "${(intent as any).name}".`, icon: 'people-outline', color: '#4F46E5' },
+              { type: 'student_list_card', title: `Search Results for "${(intent as any).name}"`, students: results.map(s => ({
+                name: `${s.first_name || ''} ${s.last_name || ''}`.trim(),
+                roomNumber: s.room_number || 'N/A',
+                phone: s.phone || '',
+                badgeText: s.status === 1 ? 'Active' : 'Inactive',
+                badgeColor: s.status === 1 ? '#ECFDF5' : '#F1F5F9',
+                badgeTextColor: s.status === 1 ? '#10B981' : '#64748B'
+              })) }
+            ]);
+          }
+        } catch {
+          removeLoadingBlock();
+          addBot([{ type: 'text', text: 'Error searching for student.' }]);
+        }
+        break;
+      }
+
+      case 'SHOW_ROOM_DETAIL': {
+        addBot([{ type: 'loading' }]);
+        try {
+          const room = await fetchRoomByNumber((intent as any).roomNumber);
+          removeLoadingBlock();
+          if (!room) {
+            addBot([
+              { type: 'info_tip', text: `Room ${(intent as any).roomNumber} not found in this hostel.`, icon: 'business-outline', color: '#EF4444' },
+              { type: 'text', text: `Room ${(intent as any).roomNumber} does not exist. Please check your room list.` },
+              { type: 'action_buttons', buttons: [{ label: 'View All Rooms', icon: 'business-outline', screen: 'Rooms', variant: 'primary' }] }
+            ]);
+          } else {
+            addBot([
+              { type: 'info_tip', text: `Room ${(intent as any).roomNumber} specifications & occupant details.`, icon: 'business-outline', color: '#4F46E5' },
+              { type: 'room_detail_card', room }
+            ]);
+          }
+        } catch {
+          removeLoadingBlock();
+          addBot([{ type: 'text', text: 'Error loading room details.' }]);
+        }
+        break;
+      }
+
+      case 'SHOW_FLOOR_DETAIL': {
+        addBot([{ type: 'loading' }]);
+        try {
+          const floor = await fetchRoomsByFloor((intent as any).floorNumber);
+          removeLoadingBlock();
+          if (!floor) {
+            addBot([
+              { type: 'info_tip', text: `Floor ${(intent as any).floorNumber} not found or has no rooms.`, icon: 'layers-outline', color: '#EF4444' },
+              { type: 'text', text: `No rooms found on Floor ${(intent as any).floorNumber}.` }
+            ]);
+          } else {
+            addBot([
+              { type: 'info_tip', text: `Overview of all rooms on Floor ${(intent as any).floorNumber}.`, icon: 'layers-outline', color: '#D97706' },
+              { type: 'floor_detail_card', floor }
+            ]);
+          }
+        } catch {
+          removeLoadingBlock();
+          addBot([{ type: 'text', text: 'Error loading floor details.' }]);
+        }
+        break;
+      }
+
+      case 'SHOW_PAID_STUDENTS': {
+        addBot([{ type: 'loading' }]);
+        try {
+          const list = await fetchPaidStudents();
+          removeLoadingBlock();
+          addBot([
+            { type: 'info_tip', text: `Showing list of ${list.length} students who have completed their rent payment.`, icon: 'checkmark-circle-outline', color: '#10B981' },
+            { type: 'student_list_card', title: 'Paid Students List', students: list.map(s => ({
+              name: s.name,
+              roomNumber: s.roomNumber,
+              paidAmount: s.paidAmount,
+              phone: s.phone,
+              badgeText: 'Paid',
+              badgeColor: '#ECFDF5',
+              badgeTextColor: '#10B981'
+            })) }
+          ]);
+        } catch {
+          removeLoadingBlock();
+          addBot([{ type: 'text', text: 'Failed to load paid students list.' }]);
+        }
+        break;
+      }
+
+      case 'SHOW_APP_INFO': {
+        const topic = (intent as any).topic || 'owner';
+        addBot([
+          { type: 'app_info_card', topic },
+          {
+            type: 'follow_up_chips', label: 'Explore app details:', chips: [
+              { label: '👨‍💻 App Owner', icon: 'person-outline', onPress: () => handleIntent({ type: 'SHOW_APP_INFO', topic: 'owner' }) },
+              { label: '🎯 Main Goal', icon: 'rocket-outline', onPress: () => handleIntent({ type: 'SHOW_APP_INFO', topic: 'goal' }) },
+              { label: '💡 How to Use', icon: 'help-circle-outline', onPress: () => handleIntent({ type: 'SHOW_APP_INFO', topic: 'usage' }) },
+            ]
+          }
+        ]);
+        break;
+      }
+
+
 
 
       case 'SHOW_DUES': {
@@ -834,16 +1047,26 @@ export const OwnerAssistant: React.FC = () => {
         break;
       }
 
-      case 'SHOW_INCOME':
-        typingThen([
-          {
-            type: 'action_buttons', buttons: [
-              { label: 'View Income', icon: 'trending-up-outline', screen: 'Income', variant: 'primary' },
-              { label: 'Add Income', icon: 'add-circle-outline', screen: 'AddIncome', variant: 'outline' },
-            ]
-          },
-        ]);
+      case 'SHOW_INCOME': {
+        addBot([{ type: 'loading' }]);
+        try {
+          const incData = await fetchDetailedIncomeBreakdown();
+          removeLoadingBlock();
+          addBot([
+            { type: 'info_tip', text: 'Complete breakdown of all revenue sources for your hostel this month.', icon: 'trending-up-outline', color: '#10B981' },
+            { type: 'income_breakdown_card', data: incData },
+            { type: 'action_buttons', buttons: [
+              { label: 'Add Income Entry', icon: 'add-circle-outline', screen: 'AddIncome', variant: 'primary' },
+              { label: 'View Financial Report', icon: 'bar-chart-outline', screen: 'Reports', variant: 'outline' }
+            ]}
+          ]);
+        } catch {
+          removeLoadingBlock();
+          addBot([{ type: 'text', text: 'Error loading income breakdown.' }]);
+        }
         break;
+      }
+
 
       case 'SHOW_HOSTELS': {
         addBot([{ type: 'loading' }]);
@@ -1139,7 +1362,7 @@ export const OwnerAssistant: React.FC = () => {
                     onPress={() => { Haptics.selectionAsync().catch(() => { }); handleQuery(q); }}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="bar-chart-outline" size={11} color="#4338CA" style={{ marginRight: 4 }} />
+                    <Ionicons name={getQuestionChipIcon(q) as any} size={11} color="#4338CA" style={{ marginRight: 4 }} />
                     <Text style={s.quickChipBtnText}>{q}</Text>
                   </TouchableOpacity>
                 ))}
@@ -1166,12 +1389,15 @@ export const OwnerAssistant: React.FC = () => {
                     onPress={() => { Haptics.selectionAsync().catch(() => { }); handleQuery(q); }}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="help-circle-outline" size={11} color="#16A34A" style={{ marginRight: 4 }} />
+                    <Ionicons name={getQuestionChipIcon(q) as any} size={11} color="#16A34A" style={{ marginRight: 4 }} />
                     <Text style={[s.quickChipBtnText, { color: '#15803D' }]}>{q}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
             </View>
+
+
+
 
 
             {/* ── Bottom input bar ── */}
