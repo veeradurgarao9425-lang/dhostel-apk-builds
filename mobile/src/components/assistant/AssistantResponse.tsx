@@ -71,6 +71,8 @@ export type ContentBlock =
   | { type: 'steps'; title: string; steps: string[]; screen?: string; screenLabel?: string }
   | { type: 'empty_state'; icon: string; message: string; subMessage?: string; action?: ActionButton }
   | { type: 'error_state'; message: string; onRetry?: () => void }
+  | { type: 'follow_up_chips'; label?: string; chips: Array<{ label: string; icon?: string; onPress: () => void }> }
+  | { type: 'info_tip'; text: string; icon?: string; color?: string }
   | { type: 'loading' };
 
 interface AssistantResponseProps {
@@ -833,6 +835,47 @@ const ErrorStateBlock = ({ message, onRetry }: { message: string; onRetry?: () =
   </View>
 );
 
+// ─── Follow-Up Chips ─────────────────────────────────────────────────────────
+const FollowUpChipsBlock = ({ label, chips }: {
+  label?: string;
+  chips: Array<{ label: string; icon?: string; onPress: () => void }>;
+}) => (
+  <View style={st.followUpContainer}>
+    {label ? <Text style={st.followUpLabel}>{label}</Text> : null}
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{ gap: 8, flexDirection: 'row', paddingVertical: 2 }}
+    >
+      {chips.map((chip, i) => (
+        <TouchableOpacity
+          key={i}
+          style={st.followUpChip}
+          onPress={() => { Haptics.selectionAsync().catch(() => {}); chip.onPress(); }}
+          activeOpacity={0.7}
+        >
+          {chip.icon ? (
+            <Ionicons name={chip.icon as any} size={12} color="#4338CA" style={{ marginRight: 4 }} />
+          ) : null}
+          <Text style={st.followUpChipText}>{chip.label}</Text>
+        </TouchableOpacity>
+      ))}
+    </ScrollView>
+  </View>
+);
+
+// ─── Info Tip ────────────────────────────────────────────────────────────────
+const InfoTipBlock = ({ text, icon, color }: { text: string; icon?: string; color?: string }) => {
+  const bg = color ? color + '15' : '#EEF2FF';
+  const fg = color || '#4338CA';
+  return (
+    <View style={[st.infoTipContainer, { backgroundColor: bg, borderColor: fg + '30' }]}>
+      <Ionicons name={(icon as any) || 'information-circle-outline'} size={14} color={fg} />
+      <Text style={[st.infoTipText, { color: fg }]}>{text}</Text>
+    </View>
+  );
+};
+
 // ─── Master Renderer ──────────────────────────────────────────────────────────
 export const AssistantResponse: React.FC<AssistantResponseProps> = ({ blocks }) => (
   <View style={{ gap: 14 }}>
@@ -964,6 +1007,12 @@ export const AssistantResponse: React.FC<AssistantResponseProps> = ({ blocks }) 
 
         case 'error_state':
           return <ErrorStateBlock key={i} message={block.message} onRetry={block.onRetry} />;
+
+        case 'follow_up_chips':
+          return <FollowUpChipsBlock key={i} label={block.label} chips={block.chips} />;
+
+        case 'info_tip':
+          return <InfoTipBlock key={i} text={block.text} icon={block.icon} color={block.color} />;
 
         default:
           return null;
@@ -1379,4 +1428,51 @@ const st = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 18,
   },
+
+  // Follow-up chips
+  followUpContainer: {
+    marginTop: 4,
+    gap: 6,
+  },
+  followUpLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#94A3B8',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  followUpChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EEF2FF',
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  followUpChipText: {
+    fontSize: 11,
+    color: '#4338CA',
+    fontWeight: '600',
+  },
+
+  // Info Tip
+  infoTipContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  infoTipText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '500',
+    lineHeight: 17,
+  },
 });
+

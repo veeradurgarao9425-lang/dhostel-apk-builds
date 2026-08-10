@@ -1,12 +1,23 @@
 /**
- * intentEngine.ts
- * Maps natural language user input → structured AssistantIntent.
- * No external NLP library needed — keyword + pattern matching covers all real use cases.
+ * intentEngine.ts  (v3 — Massive Question Bank)
+ *
+ * Key improvements over v2:
+ *  1. normalizeQuery()  — typo correction + synonym expansion before matching
+ *  2. 400+ keyword rules across all 9 hostel-management modules
+ *  3. extractRoomNumber() / extractFloorNumber() — dynamic param extraction
+ *  4. conversationContext — simple follow-up / context tracking
+ *  5. 60+ QUICK_QUESTIONS chips (categorized)
+ *  6. 3 new HOW_TO_STEPS (deactivate_student, qr_registration, vacate_bed,
+ *     send_reminder, mark_vacated)
+ *
+ * NO external NLP library — pure keyword + pattern matching.
+ * All existing intents + how-to guides are preserved exactly.
  */
 
+// ─── Intent Type ─────────────────────────────────────────────────────────────
 export type AssistantIntent =
   | { type: 'SHOW_HOME' }
-  | { type: 'SHOW_STUDENTS' }
+  | { type: 'SHOW_STUDENTS'; filter?: 'active' | 'inactive' | 'prebooked' | 'qr' | 'pending' | 'unallocated' | 'all' }
   | { type: 'SHOW_DUES'; filter?: 'overdue' | 'pending' | 'all' }
   | { type: 'SHOW_ROOMS' }
   | { type: 'SHOW_PAYMENTS' }
@@ -36,204 +47,885 @@ export type HowToAction =
   | 'add_staff'
   | 'add_notice'
   | 'switch_hostel'
-  | 'pre_booking';
+  | 'pre_booking'
+  | 'deactivate_student'
+  | 'qr_registration'
+  | 'vacate_bed'
+  | 'send_reminder'
+  | 'mark_vacated';
 
+// ─── Conversation Context ─────────────────────────────────────────────────────
+// Tracks last resolved intent category so follow-up questions work correctly.
+// e.g. "how many rooms?" → "how many are full?" → resolves to SHOW_ROOMS
+let _lastContext: AssistantIntent['type'] | null = null;
+
+export function getLastContext() { return _lastContext; }
+export function setLastContext(t: AssistantIntent['type'] | null) { _lastContext = t; }
+
+// ─── Normalization ────────────────────────────────────────────────────────────
+/**
+ * normalizeQuery: lowercase + trim + correct common spelling mistakes
+ * + expand Indian-English synonyms.
+ * This runs BEFORE keyword matching so rules stay clean.
+ */
+const TYPO_MAP: [RegExp, string][] = [
+  // Common hostel/PG typing mistakes
+  [/\bstudnts?\b/g, 'student'],
+  [/\bstudents?\b/g, 'student'],       // already correct, keep normalised
+  [/\bstudnt\b/g, 'student'],
+  [/\bstudant\b/g, 'student'],
+  [/\btenent\b/g, 'tenant'],
+  [/\btenat\b/g, 'tenant'],
+  [/\bhostle\b/g, 'hostel'],
+  [/\bhostl\b/g, 'hostel'],
+  [/\bpaymnt\b/g, 'payment'],
+  [/\bpaymant\b/g, 'payment'],
+  [/\brecipt\b/g, 'receipt'],
+  [/\brecpt\b/g, 'receipt'],
+  [/\bvakant\b/g, 'vacant'],
+  [/\bvacante\b/g, 'vacant'],
+  [/\bvacent\b/g, 'vacant'],
+  [/\bavailble\b/g, 'available'],
+  [/\bavaialble\b/g, 'available'],
+  [/\bavailble\b/g, 'available'],
+  [/\bexpnse\b/g, 'expense'],
+  [/\bexpenes\b/g, 'expense'],
+  [/\bsalry\b/g, 'salary'],
+  [/\bsalary\b/g, 'salary'],
+  [/\bremnder\b/g, 'reminder'],
+  [/\bremider\b/g, 'reminder'],
+  [/\bregistartion\b/g, 'registration'],
+  [/\bregistrtion\b/g, 'registration'],
+  [/\bregstration\b/g, 'registration'],
+  [/\badmision\b/g, 'admission'],
+  [/\badmssion\b/g, 'admission'],
+  [/\brom\b/g, 'room'],
+  [/\bflor\b/g, 'floor'],
+  [/\boccupid\b/g, 'occupied'],
+  [/\bcolecton\b/g, 'collection'],
+  [/\bcolection\b/g, 'collection'],
+  [/\bpendng\b/g, 'pending'],
+  [/\binactve\b/g, 'inactive'],
+  [/\bprebook\b/g, 'prebooked'],
+  [/\bpreboked\b/g, 'prebooked'],
+  [/\boverdue\b/g, 'overdue'],
+  [/\boverdues\b/g, 'overdue'],
+  [/\bdefaulter\b/g, 'defaulter'],
+  [/\bdefaulters\b/g, 'defaulter'],
+  [/\bwarden\b/g, 'warden'],
+  [/\breceipt\b/g, 'receipt'],
+  // Indian English / PG slang
+  [/\bpg\b/g, 'hostel'],
+  [/\bpaying guest\b/g, 'hostel'],
+  [/\bproperty\b/g, 'hostel'],
+  [/\bproperties\b/g, 'hostel'],
+  [/\btenants?\b/g, 'student'],
+  [/\bresidents?\b/g, 'student'],
+  [/\binmates?\b/g, 'student'],
+  [/\bguests?\b/g, 'guest'],
+  [/\bworker\b/g, 'staff'],
+  [/\bemployees?\b/g, 'staff'],
+  [/\bwardens?\b/g, 'warden'],
+  [/\bannouncement\b/g, 'notice'],
+  [/\bannouncements\b/g, 'notice'],
+  [/\bbroadcast\b/g, 'notice'],
+  [/\bbed\b/g, 'bed'],
+  [/\bbeds\b/g, 'bed'],
+  [/\bsharing\b/g, 'share'],
+  [/\bprofits?\b/g, 'profit'],
+  [/\bearnings?\b/g, 'income'],
+  [/\brevenues?\b/g, 'income'],
+  [/\bexpenditures?\b/g, 'expense'],
+  [/\bspendings?\b/g, 'expense'],
+  // Short/sloppy forms
+  [/\bstaying\b/g, 'stay'],
+  [/\bstays\b/g, 'stay'],
+  [/\bcollect\b/g, 'collection'],
+  [/\bcollected\b/g, 'collection'],
+  [/\bcollecting\b/g, 'collection'],
+  [/\bhow much did i collect\b/g, 'total collection'],
+  [/\bhow much have i collected\b/g, 'total collection'],
+  [/\bwhat did i collect\b/g, 'total collection'],
+  [/\bwho hasn.?t paid\b/g, 'unpaid student'],
+  [/\bwho has not paid\b/g, 'unpaid student'],
+  [/\bwho did not pay\b/g, 'unpaid student'],
+  [/\bwho haven.?t paid\b/g, 'unpaid student'],
+  [/\bwho owes\b/g, 'due pending'],
+  [/\bwho still owes\b/g, 'due pending'],
+  [/\bwho owe\b/g, 'due pending'],
+  [/\bhow full\b/g, 'occupancy rate'],
+  [/\bpercentage occupied\b/g, 'occupancy rate'],
+  [/\bhow many people are (currently )?staying\b/g, 'active student'],
+  [/\bhow many people (are )?living\b/g, 'active student'],
+  [/\bdo i have any empty bed\b/g, 'vacant bed'],
+  [/\bany empty bed\b/g, 'vacant bed'],
+  [/\bany vacant bed\b/g, 'vacant bed'],
+  [/\bfloor (one|1|first)\b/g, 'floor 1'],
+  [/\bfloor (two|2|second)\b/g, 'floor 2'],
+  [/\bfloor (three|3|third)\b/g, 'floor 3'],
+  [/\bfloor (four|4|fourth)\b/g, 'floor 4'],
+  [/\bfirst floor\b/g, 'floor 1'],
+  [/\bsecond floor\b/g, 'floor 2'],
+  [/\bthird floor\b/g, 'floor 3'],
+  [/\bfourth floor\b/g, 'floor 4'],
+  [/\bground floor\b/g, 'floor 0'],
+];
+
+export function normalizeQuery(raw: string): string {
+  let q = raw.toLowerCase().trim();
+  // Remove trailing punctuation like ? ! .
+  q = q.replace(/[?!.]+$/g, '').trim();
+  for (const [pattern, replacement] of TYPO_MAP) {
+    q = q.replace(pattern, replacement);
+  }
+  return q;
+}
+
+// ─── Dynamic Extraction ───────────────────────────────────────────────────────
+/** Extract room number from a query, e.g. "room 101" → 101 */
+export function extractRoomNumber(q: string): number | null {
+  const m = q.match(/room\s+(\d+)/i) || q.match(/(\d{3,4})\s+room/i);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+/** Extract floor number from a query (after normalizeQuery runs floor synonyms) */
+export function extractFloorNumber(q: string): number | null {
+  const m = q.match(/floor\s+(\d)/i);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+// ─── Rule System ──────────────────────────────────────────────────────────────
 interface Rule {
   keywords: string[];
   intent: AssistantIntent;
   priority?: number;
 }
 
+/**
+ * RULES[] — the master keyword→intent lookup table.
+ * Higher priority = wins when multiple rules match.
+ * Phrase keywords (multiple words) score double their priority.
+ *
+ * ORDER within same priority: more specific rules first so they can win
+ * when two rules tie on score.
+ */
 const RULES: Rule[] = [
-  // ── How-to patterns (highest priority) ─────────────────────────────────────
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PRIORITY 12 — HOW-TO (highest — must beat all data questions)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // Add Student
   {
-    keywords: ['how', 'add', 'student', 'tenant', 'register', 'new student'],
+    keywords: [
+      'how to add student', 'how do i add student', 'how can i add student',
+      'how to add a student', 'how do i add a student', 'add new student',
+      'steps to add student', 'where can i add student', 'student adding',
+      'how to register student', 'student registration steps',
+      'how to create student', 'how to enroll student', 'admit student',
+      'add a tenant', 'how to add tenant', 'new student steps',
+      'student admission steps', 'process to add student',
+    ],
     intent: { type: 'SHOW_HOW_TO', action: 'add_student' },
-    priority: 10,
+    priority: 12,
   },
+
+  // Add Room
   {
-    keywords: ['how', 'add', 'room', 'create room', 'new room'],
+    keywords: [
+      'how to add room', 'how do i add room', 'how can i add room',
+      'add new room', 'create room', 'room creation steps',
+      'where do i add room', 'how to create a room', 'new room steps',
+      'steps to create room', 'process to add room',
+      'how to make room', 'add a room',
+    ],
     intent: { type: 'SHOW_HOW_TO', action: 'add_room' },
-    priority: 10,
+    priority: 12,
   },
+
+  // Collect Rent
   {
-    keywords: ['how', 'collect', 'rent', 'payment', 'fee'],
+    keywords: [
+      'how to collect rent', 'how do i collect rent', 'collect rent',
+      'how to collect fees', 'record payment', 'record rent',
+      'how to receive payment', 'mark student as paid',
+      'payment collection steps', 'how to collect payment',
+      'how do i take payment', 'receive rent', 'collect fee steps',
+      'fee collection process', 'how to mark paid',
+    ],
     intent: { type: 'SHOW_HOW_TO', action: 'collect_rent' },
-    priority: 10,
+    priority: 12,
   },
+
+  // Assign Bed
   {
-    keywords: ['how', 'assign', 'bed', 'allocate bed', 'room assign'],
+    keywords: [
+      'how to assign bed', 'how do i assign bed', 'assign student bed',
+      'allocate bed', 'allocate room', 'assign room to student',
+      'move student to room', 'how to allocate student',
+      'bed assignment steps', 'room assignment steps',
+      'how to give bed to student', 'bed allotment',
+    ],
     intent: { type: 'SHOW_HOW_TO', action: 'assign_bed' },
-    priority: 10,
+    priority: 12,
   },
+
+  // Add Expense
   {
-    keywords: ['how', 'add', 'expense', 'bill', 'record expense'],
+    keywords: [
+      'how to add expense', 'how do i add expense', 'add expense',
+      'record expense', 'create expense', 'enter expense',
+      'expense entry steps', 'how to record expense',
+      'how to log expense', 'expense steps', 'new expense',
+    ],
     intent: { type: 'SHOW_HOW_TO', action: 'add_expense' },
-    priority: 10,
+    priority: 12,
   },
+
+  // Add Income
   {
-    keywords: ['how', 'add', 'income', 'record income'],
+    keywords: [
+      'how to add income', 'how do i add income', 'record income',
+      'add income', 'income entry steps', 'how to log income',
+      'create income', 'new income entry',
+    ],
     intent: { type: 'SHOW_HOW_TO', action: 'add_income' },
-    priority: 10,
+    priority: 12,
   },
+
+  // View Reports
   {
-    keywords: ['how', 'view', 'report', 'generate report'],
+    keywords: [
+      'how to view report', 'how do i view report', 'how to generate report',
+      'generate report steps', 'report steps', 'how to download report',
+      'how to export report', 'how to see reports',
+    ],
     intent: { type: 'SHOW_HOW_TO', action: 'view_reports' },
-    priority: 10,
+    priority: 12,
   },
+
+  // View Dues
   {
-    keywords: ['how', 'check', 'due', 'view dues'],
+    keywords: [
+      'how to view dues', 'how do i view dues', 'how to check dues',
+      'view dues steps', 'dues steps', 'how to see pending dues',
+      'how to see overdue', 'how to find unpaid students',
+    ],
     intent: { type: 'SHOW_HOW_TO', action: 'view_dues' },
-    priority: 10,
+    priority: 12,
   },
+
+  // Generate Receipt
   {
-    keywords: ['how', 'receipt', 'generate receipt', 'download receipt'],
+    keywords: [
+      'how to generate receipt', 'how to download receipt',
+      'how do i get receipt', 'receipt download steps',
+      'generate receipt steps', 'get receipt', 'print receipt',
+      'save receipt', 'download payment receipt',
+      'how to print receipt', 'how to share receipt',
+    ],
     intent: { type: 'SHOW_HOW_TO', action: 'generate_receipt' },
-    priority: 10,
+    priority: 12,
   },
+
+  // Update Student
   {
-    keywords: ['how', 'update', 'edit', 'student', 'change student'],
+    keywords: [
+      'how to edit student', 'how do i edit student',
+      'edit student details', 'update student', 'modify student',
+      'change student information', 'update tenant details',
+      'how to update student', 'student edit steps', 'change student details',
+    ],
     intent: { type: 'SHOW_HOW_TO', action: 'update_student' },
-    priority: 10,
+    priority: 12,
   },
+
+  // Add Staff
   {
-    keywords: ['how', 'add', 'staff', 'create staff'],
+    keywords: [
+      'how to add staff', 'how do i add staff', 'create staff',
+      'add employee', 'register staff', 'staff creation steps',
+      'add a staff', 'new staff steps', 'staff entry',
+      'add warden', 'how to add warden',
+    ],
     intent: { type: 'SHOW_HOW_TO', action: 'add_staff' },
-    priority: 10,
+    priority: 12,
   },
+
+  // Add Notice
   {
-    keywords: ['how', 'notice', 'add notice', 'create notice'],
+    keywords: [
+      'how to add notice', 'how do i add notice', 'create notice',
+      'post notice', 'publish announcement', 'add announcement',
+      'how to post notice', 'notice steps', 'publish notice',
+      'how to send notice', 'send announcement',
+    ],
     intent: { type: 'SHOW_HOW_TO', action: 'add_notice' },
-    priority: 10,
+    priority: 12,
   },
+
+  // Switch Hostel
   {
-    keywords: ['how', 'switch', 'hostel', 'change hostel', 'change pg'],
+    keywords: [
+      'how to switch hostel', 'how do i switch hostel', 'change hostel steps',
+      'switch hostel steps', 'how to change pg',
+      'select another hostel', 'manage another property',
+      'switch property steps', 'how to switch property',
+      'change active hostel', 'how to change active pg',
+    ],
     intent: { type: 'SHOW_HOW_TO', action: 'switch_hostel' },
-    priority: 10,
+    priority: 12,
   },
+
+  // Pre-Booking
   {
-    keywords: ['how', 'pre-book', 'prebook', 'pre booking', 'book advance'],
+    keywords: [
+      'how to prebook room', 'how to pre book', 'prebook a bed',
+      'reserve room', 'reserve bed', 'advance room booking',
+      'how to reserve room', 'room reservation steps',
+      'pre-booking steps', 'how to book in advance', 'book room advance',
+    ],
     intent: { type: 'SHOW_HOW_TO', action: 'pre_booking' },
+    priority: 12,
+  },
+
+  // Deactivate Student (NEW)
+  {
+    keywords: [
+      'how to deactivate student', 'deactivate student', 'disable student',
+      'make student inactive', 'remove student from active list',
+      'how to mark student inactive', 'deactivate tenant',
+      'how to deactivate tenant', 'student deactivation steps',
+      'mark as left', 'how to mark student as left',
+    ],
+    intent: { type: 'SHOW_HOW_TO', action: 'deactivate_student' },
+    priority: 12,
+  },
+
+  // QR Registration (NEW)
+  {
+    keywords: [
+      'how does qr registration work', 'qr registration process',
+      'how to register using qr', 'student qr registration',
+      'scan qr registration', 'register student through qr',
+      'how does student qr work', 'qr scan steps',
+      'how to use qr for registration', 'qr admission steps',
+      'how qr works', 'qr signup steps',
+    ],
+    intent: { type: 'SHOW_HOW_TO', action: 'qr_registration' },
+    priority: 12,
+  },
+
+  // Vacate Bed (NEW)
+  {
+    keywords: [
+      'how to vacate bed', 'vacate room steps', 'free a bed',
+      'release bed', 'remove student from bed', 'how to make bed vacant',
+      'mark bed vacant', 'student checkout process',
+      'how to checkout student', 'checkout process', 'bed vacate steps',
+      'how to vacate student', 'how to remove student from room',
+    ],
+    intent: { type: 'SHOW_HOW_TO', action: 'vacate_bed' },
+    priority: 12,
+  },
+
+  // Send Reminder (NEW)
+  {
+    keywords: [
+      'how to send reminder', 'send payment reminder steps',
+      'send rent reminder steps', 'reminder steps',
+      'how to notify unpaid students', 'due reminder steps',
+      'how to send due reminder', 'reminder process',
+      'how to remind students', 'send reminder to defaulters',
+    ],
+    intent: { type: 'SHOW_HOW_TO', action: 'send_reminder' },
+    priority: 12,
+  },
+
+  // Mark Vacated (NEW)
+  {
+    keywords: [
+      'how to mark student vacated', 'mark student as vacated',
+      'mark as vacated', 'vacated student steps',
+      'how to show student left', 'mark student moved out',
+    ],
+    intent: { type: 'SHOW_HOW_TO', action: 'mark_vacated' },
+    priority: 12,
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PRIORITY 10 — OVERDUE (specific filter — must beat generic 'dues')
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    keywords: [
+      'overdue', 'over due', 'late payment', 'late rent', 'late fee',
+      'overdue student', 'overdue list', 'show overdue',
+      'all overdue', 'who is overdue', 'defaulter', 'defaulters',
+      'payment defaulter', 'students overdue', 'overdue amount',
+      'total overdue', 'overdue rent', 'overdue fees',
+      'long pending', 'very pending',
+    ],
+    intent: { type: 'SHOW_DUES', filter: 'overdue' },
     priority: 10,
   },
 
-  // ── Dues / Payments Due ────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PRIORITY 9 — SWITCH HOSTEL (specific — beats generic hostel query)
+  // ═══════════════════════════════════════════════════════════════════════════
   {
-    keywords: ['overdue', 'over due', 'late payment', 'defaulter'],
-    intent: { type: 'SHOW_DUES', filter: 'overdue' },
-    priority: 8,
+    keywords: [
+      'switch pg', 'switch hostel', 'change pg', 'change hostel',
+      'my hostel', 'show hostel', 'list hostel', 'pg list',
+      'hostel list', 'all hostel', 'all my hostel',
+      'how many hostel', 'total hostel', 'number of hostel',
+      'how many pg', 'how many properties', 'list properties',
+      'which hostel', 'which pg', 'active hostel', 'active pg',
+      'current hostel', 'current pg', 'selected hostel', 'selected pg',
+      'hostel name', 'pg name', 'my hostel name', 'my pg name',
+      'what is my hostel', 'what is my pg', 'which property',
+      'which hostel is active', 'what property am i managing',
+      'tell me hostel', 'show active hostel', 'manage hostel',
+    ],
+    intent: { type: 'SHOW_HOSTELS' },
+    priority: 9,
   },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PRIORITY 8 — PENDING DUES (specific filter)
+  // ═══════════════════════════════════════════════════════════════════════════
   {
-    keywords: ['pending due', 'pending payment', 'who hasn\'t paid', 'who has not paid', 'pending rent'],
+    keywords: [
+      'pending due', 'pending payment', 'unpaid student', 'who has not paid',
+      'who hasn t paid', 'who have not paid', 'pending rent',
+      'not paid this month', 'who did not pay', 'students who have not paid',
+      'unpaid this month', 'not paid yet', 'zero payment',
+      'students with no payment', 'fully unpaid', 'unpaid fee',
+      'pending fee', 'outstanding payment', 'outstanding due',
+      'outstanding rent', 'amount outstanding',
+    ],
     intent: { type: 'SHOW_DUES', filter: 'pending' },
     priority: 8,
   },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PRIORITY 7 — ALL DUES (generic)
+  // ═══════════════════════════════════════════════════════════════════════════
   {
-    keywords: ['due', 'dues', 'unpaid', 'not paid', 'outstanding', 'owe'],
+    keywords: [
+      'due', 'dues', 'unpaid', 'not paid', 'outstanding', 'owe',
+      'total pending', 'pending amount', 'show due', 'check due',
+      'partial paid', 'partial payment', 'partially paid',
+      'partial fee', 'partial rent', 'who paid partially',
+      'partial payment list', 'balance due', 'balance payment',
+      'pending balance', 'how many paid', 'paid student',
+      'fully paid', 'payment done', 'payment received',
+      'who paid today', 'payment today', 'dues today',
+      'due today', 'due tomorrow', 'tomorrow due',
+      'how many overdue', 'overdue count',
+      'send reminder', 'remind unpaid', 'rent reminder',
+      'payment reminder', 'notify unpaid', 'due reminder',
+      'remind defaulter', 'today collection', 'collection today',
+      'what did i collect', 'how much collected today',
+      'collected today', 'today income from rent',
+      'monthly collection', 'collection this month',
+      'this month collection', 'how much collected this month',
+      'total collection this month', 'monthly revenue from fee',
+      'monthly paid amount', 'what is total collection',
+      'highest due', 'biggest defaulter', 'top defaulter',
+      'who owes most', 'maximum pending', 'largest due',
+    ],
     intent: { type: 'SHOW_DUES', filter: 'all' },
-    priority: 5,
+    priority: 7,
   },
 
-  // ── Students ───────────────────────────────────────────────────────────────
-  {
-    keywords: ['student', 'tenant', 'tenants', 'students', 'how many student', 'list student', 'show student', 'active student'],
-    intent: { type: 'SHOW_STUDENTS' },
-    priority: 5,
-  },
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PRIORITY 8 — STUDENT FILTER INTENTS (beat the generic SHOW_STUDENTS)
+  // ═══════════════════════════════════════════════════════════════════════════
 
-  // ── Rooms / Beds / Occupancy ───────────────────────────────────────────────
+  // Active students specifically
   {
-    keywords: ['room', 'rooms', 'bed', 'beds', 'occupancy', 'available bed', 'occupied', 'capacity'],
-    intent: { type: 'SHOW_ROOMS' },
-    priority: 5,
-  },
-
-  // ── Payments / Collection ──────────────────────────────────────────────────
-  {
-    keywords: ['payment', 'payments', 'collection', 'collected', 'received', 'how much collected', 'today collection', 'receipt'],
-    intent: { type: 'SHOW_PAYMENTS' },
-    priority: 5,
-  },
-
-  // ── Reports / Financial ────────────────────────────────────────────────────
-  {
-    keywords: ['report', 'reports', 'financial', 'profit', 'loss', 'net', 'revenue', 'summary', 'overview'],
-    intent: { type: 'SHOW_REPORTS' },
-    priority: 5,
-  },
-
-  // ── Expenses ───────────────────────────────────────────────────────────────
-  {
-    keywords: ['expense', 'expenses', 'spend', 'spent', 'cost', 'electricity', 'maintenance', 'bill'],
-    intent: { type: 'SHOW_EXPENSES' },
-    priority: 5,
-  },
-
-  // ── Income ────────────────────────────────────────────────────────────────
-  {
-    keywords: ['income', 'incomes', 'revenue', 'earning', 'earned'],
-    intent: { type: 'SHOW_INCOME' },
-    priority: 5,
-  },
-
-  // ── Staff ─────────────────────────────────────────────────────────────────
-  {
-    keywords: ['staff', 'employee', 'warden', 'worker', 'salary'],
-    intent: { type: 'SHOW_STAFF' },
-    priority: 5,
-  },
-
-  // ── Bills / Reminders ─────────────────────────────────────────────────────
-  {
-    keywords: ['bill reminders', 'reminder', 'reminders', 'utility bill', 'upcoming bill'],
-    intent: { type: 'SHOW_BILLS' },
-    priority: 5,
-  },
-
-  // ── Guests ────────────────────────────────────────────────────────────────
-  {
-    keywords: ['guest', 'guests', 'visitor', 'temporary stay', 'day pass'],
-    intent: { type: 'SHOW_GUESTS' },
-    priority: 5,
-  },
-
-  // ── Notices ───────────────────────────────────────────────────────────────
-  {
-    keywords: ['notice', 'notices', 'announcement', 'broadcast', 'message'],
-    intent: { type: 'SHOW_NOTICES' },
-    priority: 5,
-  },
-  
-  // ── Hostels ────────────────────────────────────────────────────────────────
-  {
-    keywords: ['switch pg', 'switch hostel', 'change pg', 'change hostel', 'my hostels', 'show hostels', 'list hostels', 'pg list', 'hostel list'],
-    intent: { type: 'SHOW_HOSTELS' },
+    keywords: [
+      'how many active student', 'active student count', 'students currently staying',
+      'currently active student', 'students living now', 'how many are active',
+      'number of active student', 'active count', 'active resident',
+      'students checked in', 'total active', 'active strength',
+    ],
+    intent: { type: 'SHOW_STUDENTS', filter: 'active' },
     priority: 8,
+  },
+
+  // Left / vacated students specifically
+  {
+    keywords: [
+      'how many student left', 'students who left', 'student left count',
+      'how many left', 'how many vacated', 'vacated student',
+      'students moved out', 'left student count', 'students who vacated',
+      'how many student vacated', 'inactive student count', 'former student count',
+      'students no longer staying', 'moved out count',
+    ],
+    intent: { type: 'SHOW_STUDENTS', filter: 'inactive' },
+    priority: 8,
+  },
+
+  // Pre-booked specifically
+  {
+    keywords: [
+      'how many prebooked', 'prebooked count', 'pre-booked student count',
+      'students prebooked', 'advance booking count', 'upcoming student count',
+      'reserved student count', 'how many reserved', 'pre booking count',
+      'students with advance booking',
+    ],
+    intent: { type: 'SHOW_STUDENTS', filter: 'prebooked' },
+    priority: 8,
+  },
+
+  // QR registration specifically
+  {
+    keywords: [
+      'how many qr', 'qr registration count', 'qr registered student',
+      'students via qr', 'qr signup count', 'students registered by qr',
+      'how many student used qr', 'qr register count',
+    ],
+    intent: { type: 'SHOW_STUDENTS', filter: 'qr' },
+    priority: 8,
+  },
+
+  // Pending admissions specifically
+  {
+    keywords: [
+      'how many admission pending', 'pending admission count',
+      'students waiting for admission', 'pending registration count',
+      'incomplete admission', 'admissions pending', 'not admitted count',
+    ],
+    intent: { type: 'SHOW_STUDENTS', filter: 'pending' },
+    priority: 8,
+  },
+
+  // Unallocated specifically
+  {
+    keywords: [
+      'how many unallocated', 'unallocated student count', 'student without bed count',
+      'students without room', 'no bed assigned count', 'not assigned count',
+      'students waiting for bed', 'bed not assigned', 'how many have no bed',
+    ],
+    intent: { type: 'SHOW_STUDENTS', filter: 'unallocated' },
+    priority: 8,
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PRIORITY 6 — STUDENTS (generic — catches all remaining student queries)
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    keywords: [
+      // Generic counts
+      'student', 'how many student', 'total student', 'student count',
+      'student strength', 'number of student', 'how many tenant',
+      'total tenant', 'tenant count', 'people staying',
+      'how many people', 'how many are staying', 'how many live here',
+      'current resident', 'residents count', 'how many residents',
+      'currently staying', 'currently living', 'living right now',
+      'student statistics', 'student stats', 'show student',
+      'list student', 'all student', 'student list', 'display student',
+      // Active
+      'active student', 'total active student', 'how many active',
+      'active tenant', 'current tenant', 'students living now',
+      'occupied student', 'students currently staying',
+      // Inactive / vacated
+      'inactive student', 'students who left', 'students who vacated',
+      'student left', 'former student', 'former tenant',
+      'student vacated', 'recently vacated', 'moved out',
+      'how many left', 'how many vacated', 'who left',
+      'show vacated', 'vacated student', 'students moved out',
+      'inactive tenant', 'left student',
+      // Pre-booked
+      'prebooked student', 'pre-booking', 'how many prebooked',
+      'upcoming student', 'reserved student', 'advance booking',
+      'students with advance booking', 'pre-booked admission',
+      'future admission', 'students prebooked', 'prebook',
+      // QR
+      'qr registration', 'how many qr', 'qr registered',
+      'student registered qr', 'qr admission', 'student qr',
+      'qr register', 'qr count', 'qr signup',
+      // Pending admissions
+      'pending admission', 'admission pending', 'how many admission pending',
+      'student waiting for admission', 'pending registration',
+      'incomplete admission', 'not admitted', 'waiting admission',
+      'pending student registration',
+      // Unallocated
+      'unallocated student', 'student without bed', 'student without room',
+      'no bed assigned', 'not assigned', 'not allocated',
+      'who has no bed', 'who has no room', 'unassigned student',
+      'student waiting for bed',
+      // New joinings
+      'new student this month', 'new joining', 'student joined this month',
+      'recent admission', 'recent student', 'new registration',
+      'new admission', 'how many joined', 'latest student',
+      'students registered this month', 'newly joined',
+      // My name / owner info
+      'my name', 'who am i', 'owner name', 'what is my name',
+      'tell me my name', 'who is owner', 'owner details',
+      'owner information', 'owner info', 'registered name',
+    ],
+    intent: { type: 'SHOW_STUDENTS' },
+    priority: 6,
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PRIORITY 6 — ROOMS / BEDS / OCCUPANCY
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    keywords: [
+      // Generic rooms
+      'room', 'how many room', 'total room', 'room count', 'number of room',
+      'rooms count', 'room statistics', 'show room', 'room stats',
+      'room list', 'all room', 'display room',
+      // Beds
+      'bed', 'how many bed', 'total bed', 'bed count', 'number of bed',
+      'total capacity', 'hostel capacity', 'sleeping capacity',
+      'how many bed do i have', 'bed statistics',
+      // Available / vacant
+      'available bed', 'vacant bed', 'empty bed', 'free bed',
+      'beds available', 'remaining bed', 'open bed', 'unused bed',
+      'bed availability', 'available capacity', 'bed vacant',
+      'how many vacant bed', 'how many empty bed', 'any empty bed',
+      'any vacant bed', 'vacant room', 'empty room',
+      // Occupied
+      'occupied bed', 'filled bed', 'used bed', 'beds occupied',
+      'beds filled', 'current occupancy', 'occupied capacity',
+      'students occupying', 'total filled',
+      // Floors
+      'floor', 'how many floor', 'total floor', 'number of floor',
+      'floor count', 'hostel floor', 'how many floors',
+      // Floor-specific (after normalization)
+      'floor 0', 'floor 1', 'floor 2', 'floor 3', 'floor 4',
+      'floor 5', 'floor 6', 'room on floor',
+      // Room-specific (dynamic extraction handles room number)
+      'room 1', 'room 2', 'room 3', 'room 4', 'room 5',
+      'who is in room', 'how many people in room', 'beds in room',
+      'vacancies in room', 'room occupancy', 'room student',
+      'show room', 'is room full', 'is room vacant',
+      'who stays in room', 'room detail', 'room info',
+      // Vacancy status
+      'rooms with vacancy', 'rooms with one vacancy', 'rooms with two vacancy',
+      'partially occupied room', 'partially filled room',
+      'fully occupied room', 'completely full room',
+      'room with 1 available', 'room with 2 available',
+      'rooms almost full', 'room vacancy status',
+      // Sharing types
+      'single room', 'single sharing', 'single occupancy',
+      'double room', 'double sharing', 'twin sharing',
+      'triple sharing', 'triple room', '3 sharing', '3share',
+      'four sharing', '4 sharing', '4share', 'four bed room',
+      '4 bed room', 'sharing type', 'room type',
+      'how many single', 'how many double', 'how many triple', 'how many 4',
+      // Occupancy rate
+      'occupancy rate', 'occupancy percentage', 'hostel occupancy',
+      'current occupancy', 'occupancy rate percent', 'bed occupancy',
+      'how full is my hostel', 'how much occupied',
+      'percentage of hostel filled', 'occupancy level',
+    ],
+    intent: { type: 'SHOW_ROOMS' },
+    priority: 6,
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PRIORITY 6 — PAYMENTS / COLLECTION
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    keywords: [
+      'payment', 'payments', 'collection', 'received', 'how much collected',
+      'receipt', 'show receipt', 'download receipt', 'get receipt',
+      'payment receipt', 'latest receipt', 'payment history',
+      'collected payment', 'payment done', 'total paid',
+      'amount collected', 'payment collection', 'show payment',
+      'payment list', 'payment summary',
+    ],
+    intent: { type: 'SHOW_PAYMENTS' },
+    priority: 6,
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PRIORITY 6 — REPORTS / FINANCIAL OVERVIEW
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    keywords: [
+      'report', 'reports', 'financial', 'profit', 'net profit', 'net earning',
+      'revenue', 'summary', 'overview', 'financial summary',
+      'financial report', 'financial overview', 'overall summary',
+      'monthly report', 'hostel report', 'show report',
+      'income vs expense', 'income and expense', 'compare income expense',
+      'earnings vs spending', 'revenue vs expense',
+      'monthly income expense', 'financial comparison',
+      'income expense chart', 'last 6 month', 'six month trend',
+      'monthly trend', 'financial trend', 'income trend',
+      'expense trend', 'profit trend', 'yearly trend',
+      'financial history', 'previous month performance',
+      'collection rate', 'payment collection rate', 'fee collection percentage',
+      'rent collection percentage', 'how much percentage collected',
+      'collection efficiency', 'how much profit', 'earnings after expense',
+      'income minus expense', 'net earning', 'profit this year',
+      'profit this month', 'monthly profit',
+      'tell me about my hostel', 'give me a summary', 'quick overview',
+      'show current situation', 'what is pending', 'what needs attention',
+      'give me today summary', 'today numbers', 'today dashboard',
+      'what is important today', 'hostel status', 'everything okay',
+      'how are things', 'what is happening', 'show dashboard',
+    ],
+    intent: { type: 'SHOW_REPORTS' },
+    priority: 6,
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PRIORITY 6 — EXPENSES
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    keywords: [
+      'expense', 'spend', 'spent', 'spending', 'cost', 'expenditure',
+      'total expense', 'expense this month', 'monthly expense',
+      'how much did i spend', 'how much spent', 'expense amount',
+      'expense breakdown', 'expense category', 'expense list',
+      'show expense', 'electricity expense', 'electricity bill',
+      'power bill', 'maintenance expense', 'maintenance cost',
+      'food expense', 'grocery expense', 'water bill',
+      'internet bill', 'repair expense', 'cleaning expense',
+      'miscellaneous expense', 'other expense',
+      'yearly expense', 'expense this year', 'annual expense',
+    ],
+    intent: { type: 'SHOW_EXPENSES' },
+    priority: 6,
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PRIORITY 6 — INCOME
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    keywords: [
+      'income', 'earning', 'earned', 'revenue', 'monthly income',
+      'income this month', 'how much did i earn', 'total income',
+      'income generated', 'yearly income', 'income this year',
+      'annual income', 'show income', 'income summary',
+      'income details', 'view income',
+    ],
+    intent: { type: 'SHOW_INCOME' },
+    priority: 6,
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PRIORITY 6 — STAFF
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    keywords: [
+      'staff', 'employee', 'workers', 'total staff', 'staff count',
+      'active staff', 'inactive staff', 'staff list', 'show staff',
+      'employee list', 'total employee', 'warden', 'who is warden',
+      'warden name', 'show warden', 'staff roles', 'staff details',
+      'employee details', 'staff salary', 'salary this month',
+      'total salary', 'monthly salary', 'payroll',
+      'salary expense', 'how many staff', 'staff members',
+    ],
+    intent: { type: 'SHOW_STAFF' },
+    priority: 6,
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PRIORITY 6 — BILLS / REMINDERS
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    keywords: [
+      'bill reminder', 'utility bill', 'upcoming bill', 'bill due',
+      'bill reminders', 'scheduled bill', 'monthly bill',
+    ],
+    intent: { type: 'SHOW_BILLS' },
+    priority: 6,
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PRIORITY 6 — GUESTS
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    keywords: [
+      'guest', 'total guest', 'guest count', 'how many guest',
+      'current guest', 'guest list', 'show guest', 'guest detail',
+      'who is staying as guest', 'guest check-in', 'guest checkin',
+      'today check-in', 'guest fee', 'guest charge', 'guest collection',
+      'guest payment', 'guest revenue', 'guest history',
+      'checked-in guest', 'checked-out guest', 'guests staying',
+    ],
+    intent: { type: 'SHOW_GUESTS' },
+    priority: 6,
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PRIORITY 6 — NOTICES / ANNOUNCEMENTS
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    keywords: [
+      'notice', 'notices', 'latest notice', 'recent notice',
+      'hostel notice', 'announcement', 'show announcement',
+      'add notice', 'create notice', 'new notice', 'publish notice',
+      'post announcement', 'add announcement',
+    ],
+    intent: { type: 'SHOW_NOTICES' },
+    priority: 6,
   },
 ];
 
-/**
- * Resolve a natural language query to the most relevant intent.
- * Returns the intent with the highest score across keyword matches.
- */
-export function resolveIntent(query: string): AssistantIntent {
-  const q = query.toLowerCase().trim();
+// ─── Core Resolve Function ────────────────────────────────────────────────────
 
+/**
+ * resolveIntent — main public API.
+ * 1. Normalize input (typos + synonyms)
+ * 2. Apply context for follow-up questions
+ * 3. Score all rules against normalized query
+ * 4. Return highest-scoring intent
+ */
+export function resolveIntent(rawQuery: string): AssistantIntent {
+  if (!rawQuery.trim()) return { type: 'SHOW_HOME' };
+
+  const q = normalizeQuery(rawQuery);
   if (!q) return { type: 'SHOW_HOME' };
 
+  // ── Context-aware follow-ups ────────────────────────────────────────────
+  // If the query is very short and ambiguous, use last context to help.
+  const SHORT_THRESHOLD = 20;
+  if (q.length <= SHORT_THRESHOLD && _lastContext) {
+    const CONTEXT_CLUES: Record<string, string[]> = {
+      SHOW_STUDENTS: [
+        'active', 'inactive', 'how many', 'count', 'total',
+        'left', 'vacated', 'prebooked', 'qr', 'new', 'list',
+        'unallocated', 'pending',
+      ],
+      SHOW_ROOMS: [
+        'full', 'empty', 'occupied', 'available', 'vacant', 'how many',
+        'count', 'total', 'single', 'double', 'triple', '4',
+      ],
+      SHOW_DUES: [
+        'overdue', 'paid', 'partial', 'pending', 'how many',
+        'total', 'amount', 'who', 'list', 'today', 'tomorrow',
+      ],
+      SHOW_REPORTS: ['last month', 'this year', 'previous', 'trend', 'compare'],
+    };
+    const clues = CONTEXT_CLUES[_lastContext];
+    if (clues && clues.some(c => q.includes(c))) {
+      const existingIntent = RULES.find(r => r.intent.type === _lastContext);
+      if (existingIntent) return existingIntent.intent;
+    }
+  }
+
+  // ── Scoring ──────────────────────────────────────────────────────────────
   let best: { intent: AssistantIntent; score: number } = {
-    intent: { type: 'UNKNOWN', query },
+    intent: { type: 'UNKNOWN', query: rawQuery },
     score: 0,
   };
 
   for (const rule of RULES) {
     let score = 0;
-    const basePriority = rule.priority ?? 5;
+    const basePriority = rule.priority ?? 6;
 
     for (const kw of rule.keywords) {
       if (q.includes(kw)) {
-        // Exact phrase match gets more weight than single word
         const wordCount = kw.split(' ').length;
+        // Phrase matches (multi-word) score double their base priority
         score += wordCount > 1 ? basePriority * 2 : basePriority;
       }
     }
@@ -243,13 +935,15 @@ export function resolveIntent(query: string): AssistantIntent {
     }
   }
 
+  // Save context for follow-up
+  if (best.intent.type !== 'UNKNOWN') {
+    _lastContext = best.intent.type;
+  }
+
   return best.intent;
 }
 
-/**
- * Quick category chips for the sidebar navigation.
- * Maps to the real navigation routes.
- */
+// ─── Sidebar Categories ───────────────────────────────────────────────────────
 export const SIDEBAR_CATEGORIES = [
   {
     section: 'Hostel',
@@ -288,27 +982,110 @@ export const SIDEBAR_CATEGORIES = [
   },
 ];
 
+// ─── Quick Questions — DATA / STATS chips ─────────────────────────────────────
 /**
- * Suggested quick questions for the home screen.
- * Grouped by contextual relevance.
+ * INFO_QUESTIONS: Data/stats questions shown in the "Quick Stats" scroller.
+ * Every question here maps to a visualisation response (donut, stat cards, etc.)
  */
-export const QUICK_QUESTIONS = [
-  'Who hasn\'t paid this month?',
-  'How many students are staying?',
-  'How many beds are available?',
-  'What did I collect this month?',
-  'Show overdue dues',
-  'What are my this month\'s expenses?',
-  'How do I add a student?',
-  'How do I collect rent?',
-  'Show financial summary',
-  'What is my hostel occupancy?',
+export const INFO_QUESTIONS: string[] = [
+  // Students
+  'How many students?',
+  'How many active students?',
+  'How many students left?',
+  'How many prebooked?',
+  'How many QR registrations?',
+  'How many admissions pending?',
+  'How many unallocated students?',
+  'Students joined this month?',
+  // Rooms & Beds
+  'How many rooms?',
+  'How many beds available?',
+  'How many beds occupied?',
+  'How many floors?',
+  'Single sharing rooms?',
+  'Double sharing rooms?',
+  'Triple sharing rooms?',
+  'Vacant rooms?',
+  'Full rooms?',
+  // Occupancy
+  'Hostel occupancy?',
+  'Occupancy rate?',
+  'How full is my hostel?',
+  // Dues & Payments
+  "Who hasn't paid this month?",
+  'How many overdues?',
+  'Pending dues?',
+  'Partial payments?',
+  'Show overdue students',
+  'Total pending amount?',
+  'How much collected today?',
+  'How much collected this month?',
+  'Who paid today?',
+  'Due today',
+  'Due tomorrow',
+  'Top defaulters?',
+  // Finance
+  'Income this month?',
+  'Expenses this month?',
+  'Profit this month?',
+  'Expense breakdown',
+  'Collection rate?',
+  'Income vs expenses',
+  'Last 6 months trend',
+  'Financial summary',
+  // Staff
+  'How many staff?',
+  'Staff list',
+  'Monthly salary total',
+  'Who is the warden?',
+  // Guests
+  'How many guests?',
+  'Guest list',
+  'Guest fee collected?',
+  // Notices
+  'Show notices',
+  // Hostels
+  'My hostels',
+  'Active hostel?',
+  'How many PGs?',
 ];
 
+// ─── Quick Questions — HOW-TO / GUIDE chips ───────────────────────────────────
 /**
- * How-to steps for each action — matches the real app UI flows.
+ * GUIDE_QUESTIONS: Instruction/how-to questions shown in the "Guides" scroller.
+ * Every question here maps to a step-by-step guide response.
  */
+export const GUIDE_QUESTIONS: string[] = [
+  'How to add a student?',
+  'How to add a room?',
+  'How to collect rent?',
+  'How to deactivate a student?',
+  'How does QR registration work?',
+  'How to vacate a bed?',
+  'How to prebook a room?',
+  'How to send a reminder?',
+  'How to download a receipt?',
+  'How to add an expense?',
+  'How to add income?',
+  'How to add staff?',
+  'How to switch hostel?',
+  'How to post a notice?',
+  'How to edit student details?',
+  'How to assign a bed?',
+  'How to view reports?',
+  'How to mark student as vacated?',
+  'How to register via QR?',
+  'How to view pending dues?',
+];
+
+/** Combined export for backward compatibility */
+export const QUICK_QUESTIONS: string[] = [...INFO_QUESTIONS, ...GUIDE_QUESTIONS];
+
+// ─── How-To Steps ─────────────────────────────────────────────────────────────
+
 export const HOW_TO_STEPS: Record<HowToAction, { title: string; steps: string[]; screen?: string; screenLabel?: string }> = {
+
+  // ── Existing guides (preserved exactly) ──────────────────────────────────
   add_student: {
     title: 'How to Add a Student / Tenant',
     steps: [
@@ -416,7 +1193,7 @@ export const HOW_TO_STEPS: Record<HowToAction, { title: string; steps: string[];
     title: 'How to Generate / Download a Receipt',
     steps: [
       'After collecting rent, a receipt is auto-generated.',
-      'Go to Collected Payments or the student\'s payment history.',
+      "Go to Collected Payments or the student's payment history.",
       'Tap on any payment entry.',
       'Tap "Download Receipt" to save or share as PDF.',
     ],
@@ -426,7 +1203,7 @@ export const HOW_TO_STEPS: Record<HowToAction, { title: string; steps: string[];
   update_student: {
     title: 'How to Update Student Details',
     steps: [
-      'Go to Students and tap the student\'s name.',
+      "Go to Students and tap the student's name.",
       'In their profile, tap the Edit (pencil) icon.',
       'Update the required fields.',
       'Tap Save to apply changes.',
@@ -471,12 +1248,79 @@ export const HOW_TO_STEPS: Record<HowToAction, { title: string; steps: string[];
     title: 'How to Pre-Book a Bed',
     steps: [
       'Go to Pre-Booking from the dashboard quick actions.',
-      'Enter the prospective tenant\'s name and contact.',
+      "Enter the prospective tenant's name and contact.",
       'Select the Room and Bed to reserve.',
       'Collect advance payment if applicable.',
       'Tap Save — the bed is reserved until check-in.',
     ],
     screen: 'PreBooking',
     screenLabel: 'Go to Pre-Booking',
+  },
+
+  // ── NEW guides ────────────────────────────────────────────────────────────
+  deactivate_student: {
+    title: 'How to Deactivate / Mark a Student as Left',
+    steps: [
+      'Go to the Students screen.',
+      "Tap the student's name to open their profile.",
+      'Tap the Edit (pencil) icon.',
+      'Change the Status to "Inactive" or "Left".',
+      'Enter the vacating date.',
+      'Tap Save — the student is now deactivated and the bed is freed.',
+    ],
+    screen: 'Students',
+    screenLabel: 'Go to Students',
+  },
+  qr_registration: {
+    title: 'How QR Registration Works',
+    steps: [
+      'Go to Settings and find your hostel QR code.',
+      'Share the QR code with a prospective student.',
+      'The student scans the QR using any camera or QR app.',
+      'They fill in their basic details in the self-registration form.',
+      'The submission appears in your Pending Admissions list.',
+      'You review and approve the registration — the student becomes active.',
+    ],
+    screen: 'QRSignup',
+    screenLabel: 'View QR Settings',
+  },
+  vacate_bed: {
+    title: 'How to Vacate a Bed / Room',
+    steps: [
+      'Go to Students and find the student who is leaving.',
+      "Open the student's profile.",
+      'Tap the Edit icon and change Status to "Vacated".',
+      'Enter the vacating / check-out date.',
+      'Tap Save — the bed is immediately freed and shows as Available.',
+      'The student moves to the Inactive section.',
+    ],
+    screen: 'Students',
+    screenLabel: 'Go to Students',
+  },
+  send_reminder: {
+    title: 'How to Send a Payment Reminder',
+    steps: [
+      'Open Pending Dues or the Reminders section.',
+      'You will see a list of students with pending payments.',
+      'Tap the "Send Reminder" button.',
+      'Choose students to remind (all or selected).',
+      'A WhatsApp / notification message is sent to each student.',
+      'You can also type a custom message before sending.',
+    ],
+    screen: 'Reminders',
+    screenLabel: 'Go to Reminders',
+  },
+  mark_vacated: {
+    title: 'How to Mark a Student as Vacated',
+    steps: [
+      'Go to the Students screen.',
+      "Tap the student's name.",
+      'Tap Edit and set Status to "Vacated".',
+      'Enter the date they left.',
+      'Tap Save — the record is updated and the bed is freed.',
+      'You can view vacated students under the "Left" filter in Students.',
+    ],
+    screen: 'Students',
+    screenLabel: 'Go to Students',
   },
 };
