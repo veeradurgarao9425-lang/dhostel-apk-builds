@@ -22,7 +22,7 @@
       },
       "package": "com.durgarao2.hostixmobile",
       "googleServicesFile": "./google-services.json",
-      "softwareKeyboardLayoutMode": "pan",
+      "softwareKeyboardLayoutMode": "resize",
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",
         "CAMERA",

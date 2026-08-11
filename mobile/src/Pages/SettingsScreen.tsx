@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, TextInput, ActivityIndicator, Image } from 'react-native';
 import { AppHeader } from '../components/AppHeader';
 import { Card } from '../components/Card';
-import { Bell, Shield, ChevronRight, ChevronDown, Lock, Eye, EyeOff, MessageSquare, RefreshCw, CheckCircle2 } from 'lucide-react-native';
+import { Bell, Shield, ChevronRight, ChevronDown, Lock, Eye, EyeOff, MessageSquare, RefreshCw, CheckCircle2, Smartphone } from 'lucide-react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useToast } from '../context/ToastContext';
 import { useTranslation } from 'react-i18next';
@@ -40,28 +40,34 @@ export const SettingsScreen = ({ navigation }: any) => {
             if (!isSilent) setWaLoading(true);
             const res = await api.get('/monthly-fees/whatsapp-status');
             if (res.data.success) {
-                setWaStatus(res.data.data);
+                const data = res.data.data;
+                setWaStatus(data);
+                return data;
             }
         } catch (err) {
             console.error('WhatsApp status fetch error:', err);
         } finally {
             if (!isSilent) setWaLoading(false);
         }
+        return null;
     };
 
     const handleRestartWa = async () => {
         try {
             setWaLoading(true);
-            const res = await api.post('/monthly-fees/whatsapp-restart');
-            if (res.data.success && res.data.data) {
-                setWaStatus(res.data.data);
-            } else {
-                fetchWaStatus();
-            }
+            setWaStatus(null);
+            await api.post('/monthly-fees/whatsapp-restart');
+            let attempts = 0;
+            const poll = setInterval(async () => {
+                attempts++;
+                const status = await fetchWaStatus(true);
+                if (status?.qrCodeDataUrl || status?.isReady || attempts >= 15) {
+                    clearInterval(poll);
+                    setWaLoading(false);
+                }
+            }, 1500);
         } catch (err) {
             console.error('WhatsApp restart error:', err);
-            fetchWaStatus();
-        } finally {
             setWaLoading(false);
         }
     };
@@ -69,10 +75,13 @@ export const SettingsScreen = ({ navigation }: any) => {
     const renderWaContent = () => {
         if (waLoading) {
             return (
-                <View style={{ alignItems: 'center', gap: 8, paddingVertical: 12 }}>
-                    <ActivityIndicator size="small" color="#25D366" />
-                    <Text style={{ fontSize: 12, color: theme.textSecondary, fontWeight: '600' }}>
-                        Connecting to WhatsApp Web... (Generating QR Code)
+                <View style={{ alignItems: 'center', gap: 8, paddingVertical: 16 }}>
+                    <ActivityIndicator size="large" color="#25D366" />
+                    <Text style={{ fontSize: 13, color: theme.textPrimary, fontWeight: '700', textAlign: 'center' }}>
+                        Initializing WhatsApp Web...
+                    </Text>
+                    <Text style={{ fontSize: 11, color: theme.textSecondary, textAlign: 'center' }}>
+                        Generating pairing QR code. Please wait a moment...
                     </Text>
                 </View>
             );
@@ -317,14 +326,14 @@ export const SettingsScreen = ({ navigation }: any) => {
                         label="Direct WhatsApp Link"
                         type="custom"
                         rightElement={
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: waStatus?.isReady ? '#ECFDF5' : '#FEF2F2', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
                                 <Text style={{ fontSize: 12, fontWeight: '700', color: waStatus?.isReady ? '#16A34A' : '#DC2626' }}>
                                     {waStatus?.isReady ? '✅ Linked' : 'Link Device'}
                                 </Text>
                                 {showWaDetails ? (
-                                    <ChevronDown size={20} color={isDark ? '#475569' : '#CBD5E1'} />
+                                    <ChevronDown size={18} color={waStatus?.isReady ? '#16A34A' : '#DC2626'} />
                                 ) : (
-                                    <ChevronRight size={20} color={isDark ? '#475569' : '#CBD5E1'} />
+                                    <ChevronRight size={18} color={waStatus?.isReady ? '#16A34A' : '#DC2626'} />
                                 )}
                             </View>
                         }
@@ -333,6 +342,18 @@ export const SettingsScreen = ({ navigation }: any) => {
 
                     {showWaDetails && (
                         <View style={{ padding: 16, borderTopWidth: 1, borderTopColor: isDark ? '#334155' : '#F1F5F9', alignItems: 'center' }}>
+                            <View style={{ backgroundColor: isDark ? '#1E293B' : '#ECFDF5', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: isDark ? '#334155' : '#A7F3D0', marginBottom: 14, width: '100%' }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                    <Smartphone size={18} color="#059669" />
+                                    <Text style={{ fontSize: 13, fontWeight: '800', color: isDark ? '#34D399' : '#065F46' }}>
+                                        📱 Same Phone User? No QR Scan Needed!
+                                    </Text>
+                                </View>
+                                <Text style={{ fontSize: 11, color: isDark ? '#94A3B8' : '#047857', lineHeight: 16 }}>
+                                    If both the Hostel App and WhatsApp are on this same phone, simply tap the green WhatsApp icon on any Student or Dues card — WhatsApp opens automatically with the pre-filled message!
+                                </Text>
+                            </View>
+
                             {renderWaContent()}
 
                             <TouchableOpacity

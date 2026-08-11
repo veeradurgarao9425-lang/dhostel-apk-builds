@@ -119,7 +119,6 @@ interface Msg {
   blocks?: ContentBlock[];
 }
 
-// ─── Home content (greeting + snapshot + questions) ────────────────────────
 interface HomeProps {
   snap: DashboardSnapshot | null;
   loading: boolean;
@@ -129,263 +128,118 @@ interface HomeProps {
 const HomeContent: React.FC<HomeProps> = ({ snap, loading, onQuestion, onIntent }) => {
   const { user } = useAuth();
 
+  const suggestions = [
+    { emoji: '💸', title: "Who hasn't paid rent?", color: '#EF4444', bg: '#FEF2F2', q: "Who hasn't paid this month?" },
+    { emoji: '🛏️', title: 'How many beds are free?', color: '#059669', bg: '#ECFDF5', q: 'How many beds available?' },
+    { emoji: '📊', title: 'Show this month profit', color: '#4F46E5', bg: '#EEF2FF', q: 'Profit this month' },
+    { emoji: '🎓', title: 'How many active students?', color: '#0EA5E9', bg: '#E0F2FE', q: 'Total students count' },
+  ];
+
+  const quickGuides = [
+    { emoji: '➕', label: 'Add Student', q: 'How to add a student?' },
+    { emoji: '💰', label: 'Collect Rent', q: 'How to collect rent?' },
+    { emoji: '⚠️', label: 'Pending Dues', q: 'Pending dues today' },
+    { emoji: '🚪', label: 'Vacate Bed', q: 'How to vacate a bed?' },
+    { emoji: '📋', label: 'Add Expense', q: 'How to add an expense?' },
+    { emoji: '🏠', label: 'Add Room', q: 'How to add a room?' },
+  ];
+
+
   return (
     <View>
-      {/* Greeting */}
-      <Text style={hc.greeting}>{getGreeting(user?.full_name || user?.name)}</Text>
-      <Text style={hc.sub}>{user?.hostel_name || 'Your Hostel'}</Text>
-
-      {/* Rounded outline guide options */}
-      <View style={{ gap: 8, marginBottom: 8 }}>
-        <TouchableOpacity
-          style={hc.outlinePillBtn}
-          onPress={() => onQuestion("How do I collect rent?")}
-          activeOpacity={0.7}
-        >
-          <Text style={hc.outlinePillBtnText}>How to collect rent?</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={hc.outlinePillBtn}
-          onPress={() => onQuestion("How do I add a student?")}
-          activeOpacity={0.7}
-        >
-          <Text style={hc.outlinePillBtnText}>How to add a student?</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={hc.outlinePillBtn}
-          onPress={() => onQuestion("How do I create a room?")}
-          activeOpacity={0.7}
-        >
-          <Text style={hc.outlinePillBtnText}>How to create a room?</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={hc.outlinePillBtn}
-          onPress={() => onQuestion("How do I vacate a bed?")}
-          activeOpacity={0.7}
-        >
-          <Text style={hc.outlinePillBtnText}>How to vacate a bed?</Text>
-        </TouchableOpacity>
+      {/* Greeting banner */}
+      <View style={hc.greetBanner}>
+        <View>
+          <Text style={hc.greeting}>{getGreeting(user?.full_name || user?.name)}</Text>
+          <Text style={hc.sub}>Ask me anything about your hostel 👇</Text>
+        </View>
       </View>
 
-      {/* Suggested Topics / Shortcuts Section */}
-      <Text style={hc.sectionLabel}>Suggested Shortcuts</Text>
-      <View style={{ gap: 10, marginBottom: 12 }}>
-        <TouchableOpacity
-          style={hc.shortcutCard}
-          onPress={() => onQuestion("What is my hostel occupancy?")}
-          activeOpacity={0.7}
-        >
-          <View style={[hc.shortcutIconBg, { backgroundColor: '#ECFDF5' }]}>
-            <Ionicons name="business-outline" size={16} color="#059669" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={hc.shortcutTitle}>Check Hostel Occupancy</Text>
-            <Text style={hc.shortcutDesc}>See how many beds are occupied or available</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={16} color="#94A3B8" />
-        </TouchableOpacity>
+      {/* Suggestion cards */}
+      <View style={hc.sectionRow}>
+        <Text style={hc.sectionLabel}>✨ SMART SUGGESTIONS</Text>
+      </View>
+      <View style={hc.suggestionGrid}>
+        {suggestions.map((s, i) => (
+          <TouchableOpacity
+            key={i}
+            style={[hc.suggListBtn, { backgroundColor: s.bg, borderColor: s.bg }]}
+            onPress={() => { Haptics.selectionAsync().catch(() => {}); onQuestion(s.q); }}
+            activeOpacity={0.75}
+          >
+            <View style={[hc.suggListIcon, { backgroundColor: '#FFF' }]}>
+              <Text style={{ fontSize: 16 }}>{s.emoji}</Text>
+            </View>
+            <Text style={[hc.suggListTitle, { color: s.color }]}>{s.title}</Text>
+            <Ionicons name="chevron-forward" size={16} color={s.color} style={{ opacity: 0.5 }} />
+          </TouchableOpacity>
+        ))}
+      </View>
 
-        <TouchableOpacity
-          style={hc.shortcutCard}
-          onPress={() => onQuestion("What are my this month's expenses?")}
-          activeOpacity={0.7}
-        >
-          <View style={[hc.shortcutIconBg, { backgroundColor: '#FDF2F8' }]}>
-            <Ionicons name="receipt-outline" size={16} color="#DB2777" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={hc.shortcutTitle}>Analyze Expenses</Text>
-            <Text style={hc.shortcutDesc}>View total spent and expense categories this month</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={16} color="#94A3B8" />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={hc.shortcutCard}
-          onPress={() => onQuestion("Who hasn't paid this month?")}
-          activeOpacity={0.7}
-        >
-          <View style={[hc.shortcutIconBg, { backgroundColor: '#FEF2F2' }]}>
-            <Ionicons name="alert-circle-outline" size={16} color="#DC2626" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={hc.shortcutTitle}>Review Pending Payments</Text>
-            <Text style={hc.shortcutDesc}>See which students still owe monthly rent</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={16} color="#94A3B8" />
-        </TouchableOpacity>
+      {/* Quick guide pills */}
+      <View style={[hc.sectionRow, { marginTop: 14 }]}>
+        <Text style={[hc.sectionLabel, { color: '#16A34A' }]}>📖 HOW-TO GUIDES</Text>
+      </View>
+      <View style={hc.guideGrid}>
+        {quickGuides.map((g, i) => (
+          <TouchableOpacity
+            key={i}
+            style={hc.guidePill}
+            onPress={() => { Haptics.selectionAsync().catch(() => {}); onQuestion(g.q); }}
+            activeOpacity={0.75}
+          >
+            <Text style={{ fontSize: 13, marginRight: 5 }}>{g.emoji}</Text>
+            <Text style={hc.guidePillText}>{g.label}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
     </View>
   );
 };
 
 const hc = StyleSheet.create({
-  // No paddingBottom: the ChipsPanel is the last child and supplies its own.
-  scroll: { padding: 16, gap: 10, paddingBottom: 0 },
-  greeting: { fontSize: 22, fontWeight: '800', color: '#0F172A', letterSpacing: -0.3, marginBottom: 2 },
-  sub: { fontSize: 13, color: '#94A3B8', fontWeight: '500', marginBottom: 6 },
-  sectionLabel: { fontSize: 11, fontWeight: '800', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6, marginTop: 4 },
-
-  qChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12 },
-  qText: { flex: 1, fontSize: 13, color: '#334155', fontWeight: '500' },
-
-  horizontalChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  scroll: { padding: 14, gap: 12, paddingBottom: 6 },
+  greetBanner: {
     backgroundColor: '#EEF2FF',
-    borderWidth: 1,
-    borderColor: '#E0E7FF',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    marginRight: 4,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 4,
   },
-  horizontalChipText: {
-    fontSize: 13,
-    color: '#4F46E5',
-    fontWeight: '600',
-  },
-  profileCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    padding: 20,
-    elevation: 2,
-    shadowColor: '#0F172A',
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    marginBottom: 8,
-  },
-  profileCardHeader: {
-    alignItems: 'center',
-    paddingBottom: 12,
-    marginBottom: 12,
-  },
-  profileImg: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    borderWidth: 3,
-    borderColor: '#EEF2FF',
-    marginBottom: 8,
-  },
-  profileAppName: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#1E293B',
-  },
-  profileAppSub: {
-    fontSize: 12,
-    color: '#94A3B8',
-    fontWeight: '500',
-    marginTop: 2,
-  },
-  profileCardContent: {
-    width: '100%',
-  },
-  profileContentText: {
-    fontSize: 13,
-    color: '#334155',
-    lineHeight: 18,
-    textAlign: 'center',
-    fontWeight: '500',
-    marginBottom: 8,
-  },
-  profileInstructionText: {
-    fontSize: 11,
-    color: '#64748B',
-    lineHeight: 16,
-    textAlign: 'center',
-  },
-  actionGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 8,
-  },
-  actionTile: {
-    width: '48.5%',
+  greeting: { fontSize: 18, fontWeight: '800', color: '#1E293B', letterSpacing: -0.3, marginBottom: 3 },
+  sub: { fontSize: 13, color: '#4F46E5', fontWeight: '600' },
+  sectionRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 8 },
+  sectionLabel: { fontSize: 10, fontWeight: '800', color: '#4F46E5', textTransform: 'uppercase', letterSpacing: 0.8 },
+
+  // Simple vertical list for suggestions
+  suggestionGrid: { flexDirection: 'column', gap: 8 },
+  suggListBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 10,
     borderRadius: 14,
-    borderWidth: 1,
-    gap: 8,
-  },
-  actionTileIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionTileTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  actionTileSub: {
-    fontSize: 10,
-    color: '#64748B',
-    fontWeight: '500',
-    marginTop: 1,
-  },
-
-  outlinePillBtn: {
-    width: '100%',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: '#4F46E5',
-    backgroundColor: '#FFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  outlinePillBtnText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#4F46E5',
-  },
-
-  shortcutCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    padding: 12,
+    borderWidth: 1.5,
+    padding: 10,
     gap: 12,
   },
-  shortcutIconBg: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  suggListIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  suggListTitle: { fontSize: 14, fontWeight: '700', flex: 1 },
+
+  // Guide pills
+  guideGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  guidePill: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#F0FDF4',
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#DCFCE7',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
-  shortcutTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#1E293B',
-  },
-  shortcutDesc: {
-    fontSize: 11,
-    color: '#64748B',
-    marginTop: 2,
-  },
+  guidePillText: { fontSize: 12, fontWeight: '700', color: '#15803D' },
 });
 
-// ─── ChipsPanel — defined AFTER stylesheet at bottom of file ───────────────────
+// ─── ChipsPanel — compact scrollable footer chip bar ─────────────────────────
 interface ChipsPanelProps {
-  chipTab: 'stats' | 'guides';
-  setChipTab: (t: 'stats' | 'guides') => void;
   handleQuery: (q: string) => void;
 }
 // Forward declaration - implementation injected after main stylesheet
@@ -407,7 +261,6 @@ export const OwnerAssistant: React.FC = () => {
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [isKeyboardActive, setIsKeyboardActive] = useState(false);
-  const [chipTab, setChipTab] = useState<'stats' | 'guides'>('stats');
 
 
   // Snapshot data for home screen
@@ -534,8 +387,10 @@ export const OwnerAssistant: React.FC = () => {
    * the home-indicator inset. Once the keyboard is up nothing needs the inset.
    */
   const bottomInset = useMemo(() => {
-    if (isKeyboardActive) return 8;
-    return Platform.OS === 'ios' ? Math.max(insets.bottom, 8) : 8;
+    // When keyboard is active, no bottom inset needed — keyboard is sitting right below
+    if (isKeyboardActive) return 0;
+    // Both iOS and Android need the real bottom inset to avoid system nav bar overlap
+    return Math.max(insets.bottom, 0);
   }, [isKeyboardActive, insets.bottom]);
 
   // ── Position ───────────────────────────────────────────────────────────
@@ -588,6 +443,98 @@ export const OwnerAssistant: React.FC = () => {
         setMessages([]);
         setView('home');
         break;
+
+      case 'SMALL_TALK': {
+        const subtype = (intent as any).subtype;
+        const hour = new Date().getHours();
+        const timeStr = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+        const dateStr = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
+        const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+
+        if (subtype === 'greeting') {
+          typingThen([
+            { type: 'text', text: `${greeting}! 👋 I'm HOSTIX Assistant — your smart hostel management companion.\n\nAsk me about students, rooms, dues, finances, or anything about your hostel!` },
+            {
+              type: 'follow_up_chips', label: 'Try asking:', chips: [
+                { label: 'Pending dues', icon: 'alert-circle-outline', onPress: () => handleIntent({ type: 'SHOW_DUES', filter: 'all' }) },
+                { label: 'Occupancy', icon: 'business-outline', onPress: () => handleIntent({ type: 'SHOW_ROOMS' }) },
+                { label: 'Students', icon: 'people-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENTS' }) },
+              ]
+            }
+          ]);
+        } else if (subtype === 'feeling') {
+          typingThen([
+            { type: 'text', text: `I'm doing great, always ready to help! 🚀\n\nI'm your HOSTIX Assistant — I can pull up student data, dues, room status, finances, and more in seconds. What do you need today?` },
+            {
+              type: 'follow_up_chips', label: 'Quick actions:', chips: [
+                { label: 'Dashboard', icon: 'home-outline', onPress: () => handleIntent({ type: 'SHOW_HOME' }) },
+                { label: 'Reports', icon: 'bar-chart-outline', onPress: () => handleIntent({ type: 'SHOW_REPORTS' }) },
+                { label: 'Students', icon: 'people-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENTS' }) },
+              ]
+            }
+          ]);
+        } else if (subtype === 'time') {
+          typingThen([
+            { type: 'text', text: `🕐 Current time: **${timeStr}**\n📅 Today is **${dateStr}**\n\nAny hostel queries I can help with right now?` },
+            {
+              type: 'follow_up_chips', label: 'Check today\'s data:', chips: [
+                { label: 'Pending dues today', icon: 'alert-circle-outline', onPress: () => handleIntent({ type: 'SHOW_DUES', filter: 'all' }) },
+                { label: 'Today\'s collection', icon: 'cash-outline', onPress: () => handleIntent({ type: 'SHOW_PAYMENTS' }) },
+              ]
+            }
+          ]);
+        } else if (subtype === 'who_are_you') {
+          typingThen([
+            { type: 'app_info_card', topic: 'usage' },
+            {
+              type: 'follow_up_chips', label: 'Explore:', chips: [
+                { label: 'App Owner', icon: 'person-outline', onPress: () => handleIntent({ type: 'SHOW_APP_INFO', topic: 'owner' }) },
+                { label: 'App Goal', icon: 'rocket-outline', onPress: () => handleIntent({ type: 'SHOW_APP_INFO', topic: 'goal' }) },
+              ]
+            }
+          ]);
+        } else if (subtype === 'thanks') {
+          typingThen([
+            { type: 'text', text: `You're welcome! 😊 Happy to help anytime.\n\nAnything else about your hostel I can assist with?` },
+            {
+              type: 'follow_up_chips', label: 'More options:', chips: [
+                { label: 'Students', icon: 'people-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENTS' }) },
+                { label: 'Finances', icon: 'bar-chart-outline', onPress: () => handleIntent({ type: 'SHOW_REPORTS' }) },
+              ]
+            }
+          ]);
+        } else if (subtype === 'my_name') {
+          const ownerName = user?.full_name || user?.name || 'the owner';
+          typingThen([
+            { type: 'text', text: `Your name is ${ownerName}.\n\nYou are the owner of ${user?.hostel_name || 'this hostel'}. You can view and update your profile in the Settings section.` },
+            { type: 'app_info_card', topic: 'owner' },
+            {
+              type: 'follow_up_chips', label: 'App details:', chips: [
+                { label: '🎯 App Goal', icon: 'rocket-outline', onPress: () => handleIntent({ type: 'SHOW_APP_INFO', topic: 'goal' }) },
+                { label: '💡 How to Use', icon: 'help-circle-outline', onPress: () => handleIntent({ type: 'SHOW_APP_INFO', topic: 'usage' }) },
+              ]
+            }
+          ]);
+        } else if (subtype === 'app_developer') {
+          typingThen([
+            { type: 'text', text: `This app was created by Veeradurgarao Goriparthi (Hostix).\n\nThe goal is to provide a comprehensive and easy-to-use hostel management solution.` },
+            {
+              type: 'follow_up_chips', label: 'App details:', chips: [
+                { label: '🎯 App Goal', icon: 'rocket-outline', onPress: () => handleIntent({ type: 'SHOW_APP_INFO', topic: 'goal' }) },
+                { label: '💡 How to Use', icon: 'help-circle-outline', onPress: () => handleIntent({ type: 'SHOW_APP_INFO', topic: 'usage' }) },
+              ]
+            }
+          ]);
+        } else if (subtype === 'bye') {
+          typingThen([
+            { type: 'text', text: `Goodbye! 👋 Have a great day ahead.\n\nI'll be right here whenever you need hostel insights. Take care! 🙏` },
+          ]);
+        } else {
+          typingThen([{ type: 'text', text: `Hello! 👋 How can I help you with your hostel today?` }]);
+        }
+        break;
+      }
+
 
       case 'SHOW_STUDENTS': {
         addBot([{ type: 'loading' }]);
@@ -772,7 +719,11 @@ export const OwnerAssistant: React.FC = () => {
           } else if (results.length === 1) {
             addBot([
               { type: 'info_tip', text: `Found student record for "${(intent as any).name}".`, icon: 'checkmark-circle-outline', color: '#10B981' },
-              { type: 'student_detail_card', student: results[0] }
+              { type: 'student_detail_card', student: results[0] },
+              { type: 'follow_up_chips', label: 'Explore:', chips: [
+                { label: 'All students', icon: 'list-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENTS' }) },
+                { label: 'Active students', icon: 'people-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENTS', filter: 'active' }) },
+              ] }
             ]);
           } else {
             addBot([
@@ -784,7 +735,12 @@ export const OwnerAssistant: React.FC = () => {
                 badgeText: s.status === 1 ? 'Active' : 'Inactive',
                 badgeColor: s.status === 1 ? '#ECFDF5' : '#F1F5F9',
                 badgeTextColor: s.status === 1 ? '#10B981' : '#64748B'
-              })) }
+              })) },
+              { type: 'follow_up_chips', label: 'Explore:', chips: [
+                { label: 'All students', icon: 'list-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENTS' }) },
+                { label: 'Active students', icon: 'people-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENTS', filter: 'active' }) },
+                { label: 'Overdue students', icon: 'alert-circle-outline', onPress: () => handleIntent({ type: 'SHOW_DUES', filter: 'overdue' }) },
+              ] }
             ]);
           }
         } catch {
@@ -806,10 +762,42 @@ export const OwnerAssistant: React.FC = () => {
               { type: 'action_buttons', buttons: [{ label: 'View All Rooms', icon: 'business-outline', screen: 'Rooms', variant: 'primary' }] }
             ]);
           } else {
-            addBot([
+            let floorChips: { label: string; icon: string; onPress: () => void }[] = [];
+            try {
+              if (room.floor !== undefined) {
+                const floorData = await fetchRoomsByFloor(room.floor);
+                if (floorData && floorData.rooms) {
+                  // Sort rooms by room number and exclude the current one to avoid clutter
+                  const otherRooms = floorData.rooms
+                    .map(r => r.room_number)
+                    .filter(rn => rn && String(rn) !== String(room.roomNumber))
+                    .sort((a, b) => Number(a) - Number(b));
+                  
+                  floorChips = otherRooms.slice(0, 8).map(rn => ({
+                    label: `Room ${rn}`,
+                    icon: 'home-outline',
+                    onPress: () => handleIntent({ type: 'SHOW_ROOM_DETAIL', roomNumber: rn })
+                  }));
+                }
+              }
+            } catch (e) {
+              // Ignore floor fetch errors silently
+            }
+
+            const responseBlocks: any[] = [
               { type: 'info_tip', text: `Room ${(intent as any).roomNumber} specifications & occupant details.`, icon: 'business-outline', color: '#4F46E5' },
               { type: 'room_detail_card', room }
-            ]);
+            ];
+
+            if (floorChips.length > 0) {
+              responseBlocks.push({ type: 'follow_up_chips', label: `Other rooms on Floor ${room.floor}:`, chips: floorChips });
+            } else {
+               responseBlocks.push({ type: 'follow_up_chips', label: `Explore:`, chips: [
+                 { label: 'All Rooms', icon: 'business-outline', onPress: () => handleIntent({ type: 'SHOW_ROOMS' }) }
+               ]});
+            }
+
+            addBot(responseBlocks);
           }
         } catch {
           removeLoadingBlock();
@@ -898,47 +886,78 @@ export const OwnerAssistant: React.FC = () => {
             }
           ]);
         } else {
-          const dueFilter = (intent as any).filter;
-          const filterLabel = dueFilter === 'overdue'
-            ? 'Showing students whose payment due date has already passed.'
-            : dueFilter === 'pending'
-            ? 'Showing students who have not yet paid this month.'
-            : 'Full payment status breakdown for all students this month.';
-          addBot([
-            { type: 'info_tip', text: filterLabel, icon: 'wallet-outline', color: '#EF4444' },
-            {
-              type: 'dues_donut',
-              paidCount: dues.paidCount,
-              partialCount: dues.partialCount,
-              unpaidCount: dues.unpaidCount,
-              totalPaidAmount: dues.totalPaidAmount,
-              totalPending: dues.totalPending
-            },
-            {
-              type: 'stat_cards', cards: [
-                { label: 'Total Pending', value: INR(dues.totalPending), icon: 'alert-circle-outline', color: '#EF4444', bg: '#FEF2F2' },
-                { label: 'Overdue', value: String(dues.overdueCount), icon: 'time-outline', color: '#DC2626', bg: '#FFF1F2' },
-                { label: 'Paid Rent', value: INR(dues.totalPaidAmount), icon: 'cash-outline', color: '#10B981', bg: '#ECFDF5' },
-                { label: 'Partial Paid', value: String(dues.partialCount), icon: 'cash-outline', color: '#F59E0B', bg: '#FFFBEB' },
-                { label: 'Fully Paid', value: String(dues.paidCount), icon: 'checkmark-circle-outline', color: '#10B981', bg: '#ECFDF5' },
-              ]
-            },
-            {
-              type: 'follow_up_chips', label: 'Related:', chips: [
-                { label: 'Overdue only', icon: 'time-outline', onPress: () => handleIntent({ type: 'SHOW_DUES', filter: 'overdue' }) },
-                { label: 'Unpaid only', icon: 'alert-circle-outline', onPress: () => handleIntent({ type: 'SHOW_DUES', filter: 'pending' }) },
-                { label: 'All dues', icon: 'wallet-outline', onPress: () => handleIntent({ type: 'SHOW_DUES', filter: 'all' }) },
-                { label: 'Collection', icon: 'cash-outline', onPress: () => handleIntent({ type: 'SHOW_PAYMENTS' }) },
-                { label: 'Reports', icon: 'bar-chart-outline', onPress: () => handleIntent({ type: 'SHOW_REPORTS' }) },
-              ]
-            },
-            {
-              type: 'action_buttons', buttons: [
-                { label: 'Collect Payment', icon: 'cash-outline', screen: 'PendingPayments', variant: 'primary' },
-                { label: 'Send Reminders', icon: 'notifications-outline', screen: 'Reminders', variant: 'outline' },
-              ]
-            },
-          ]);
+          const dueFilter = (intent as any).filter || 'all';
+
+          if (dueFilter === 'overdue' || dueFilter === 'pending') {
+            const filteredList = dueFilter === 'overdue' 
+              ? dues.allDefaulters.filter(d => d.status === 'overdue')
+              : dues.allDefaulters; // all pending fees
+
+            const labelText = dueFilter === 'overdue' 
+              ? `Showing ${filteredList.length} students whose payment due date has already passed.`
+              : `Showing ${filteredList.length} students who have not paid rent this month.`;
+
+            addBot([
+              { type: 'info_tip', text: labelText, icon: 'time-outline', color: '#EF4444' },
+              { type: 'student_list_card', title: dueFilter === 'overdue' ? 'Overdue Students' : 'Pending Students', students: filteredList.map(s => ({
+                name: s.name,
+                roomNumber: s.roomNumber || 'N/A',
+                phone: String(s.amount), // Using phone prop for amount visualization in the card
+                badgeText: `₹${s.amount}`,
+                badgeColor: '#FEF2F2',
+                badgeTextColor: '#EF4444'
+              })) },
+              {
+                type: 'follow_up_chips', label: 'Related:', chips: [
+                  { label: 'All dues overview', icon: 'pie-chart-outline', onPress: () => handleIntent({ type: 'SHOW_DUES', filter: 'all' }) },
+                  { label: 'Send Reminders', icon: 'notifications-outline', onPress: () => handleIntent({ type: 'SHOW_HOW_TO', action: 'send_reminder' }) },
+                  { label: 'Collect Payment', icon: 'cash-outline', onPress: () => handleIntent({ type: 'SHOW_PAYMENTS' }) },
+                ]
+              },
+              {
+                type: 'action_buttons', buttons: [
+                  { label: 'Send Reminders', icon: 'notifications-outline', screen: 'Reminders', variant: 'primary' },
+                  { label: 'Collect Payment', icon: 'cash-outline', screen: 'PendingPayments', variant: 'outline' },
+                ]
+              },
+            ]);
+          } else {
+            // 'all' filter — show donut breakdown
+            addBot([
+              { type: 'info_tip', text: 'Full payment status breakdown for all students this month.', icon: 'wallet-outline', color: '#EF4444' },
+              {
+                type: 'dues_donut',
+                paidCount: dues.paidCount,
+                partialCount: dues.partialCount,
+                unpaidCount: dues.unpaidCount,
+                totalPaidAmount: dues.totalPaidAmount,
+                totalPending: dues.totalPending
+              },
+              {
+                type: 'stat_cards', cards: [
+                  { label: 'Total Pending', value: INR(dues.totalPending), icon: 'alert-circle-outline', color: '#EF4444', bg: '#FEF2F2' },
+                  { label: 'Overdue', value: String(dues.overdueCount), icon: 'time-outline', color: '#DC2626', bg: '#FFF1F2' },
+                  { label: 'Paid Rent', value: INR(dues.totalPaidAmount), icon: 'cash-outline', color: '#10B981', bg: '#ECFDF5' },
+                  { label: 'Partial Paid', value: String(dues.partialCount), icon: 'cash-outline', color: '#F59E0B', bg: '#FFFBEB' },
+                  { label: 'Fully Paid', value: String(dues.paidCount), icon: 'checkmark-circle-outline', color: '#10B981', bg: '#ECFDF5' },
+                ]
+              },
+              {
+                type: 'follow_up_chips', label: 'Explore Details:', chips: [
+                  { label: 'Overdue only', icon: 'time-outline', onPress: () => handleIntent({ type: 'SHOW_DUES', filter: 'overdue' }) },
+                  { label: 'Unpaid only', icon: 'alert-circle-outline', onPress: () => handleIntent({ type: 'SHOW_DUES', filter: 'pending' }) },
+                  { label: 'Collection', icon: 'cash-outline', onPress: () => handleIntent({ type: 'SHOW_PAYMENTS' }) },
+                  { label: 'Reports', icon: 'bar-chart-outline', onPress: () => handleIntent({ type: 'SHOW_REPORTS' }) },
+                ]
+              },
+              {
+                type: 'action_buttons', buttons: [
+                  { label: 'Collect Payment', icon: 'cash-outline', screen: 'PendingPayments', variant: 'primary' },
+                  { label: 'Send Reminders', icon: 'notifications-outline', screen: 'Reminders', variant: 'outline' },
+                ]
+              },
+            ]);
+          }
         }
         break;
       }
@@ -997,23 +1016,59 @@ export const OwnerAssistant: React.FC = () => {
 
 
 
-      case 'SHOW_PAYMENTS':
-        typingThen([
-          {
-            type: 'stat_cards', cards: [
-              { label: 'This Month', value: INR(snap?.monthCollection ?? 0), icon: 'wallet-outline', color: '#4F46E5', bg: '#EEF2FF' },
-              { label: 'Pending', value: INR(snap?.pendingDues ?? 0), icon: 'alert-circle-outline', color: '#EF4444', bg: '#FEF2F2' },
-            ]
-          },
-          {
-            type: 'action_buttons', buttons: [
-              { label: 'Collected Payments', icon: 'checkmark-circle-outline', screen: 'CollectedPayments', variant: 'primary' },
-              { label: 'Pending Dues', icon: 'time-outline', screen: 'PendingPayments', variant: 'outline' },
-              { label: 'Download Receipts', icon: 'download-outline', screen: 'DownloadReceipts', variant: 'outline' },
-            ]
-          },
-        ]);
+      case 'SHOW_PAYMENTS': {
+        addBot([{ type: 'loading' }]);
+        try {
+          const fin = await fetchFinancialOverview();
+          removeLoadingBlock();
+          const collected = fin?.income ?? snap?.monthCollection ?? 0;
+          const pending = fin?.pendingDues ?? snap?.pendingDues ?? 0;
+          const totalTenants = snap?.activeTenants ?? 0;
+          const paidCount = snap ? Math.round((collected / Math.max(collected + pending, 1)) * totalTenants) : 0;
+          addBot([
+            { type: 'info_tip', text: `Here's your rent collection summary for this month.`, icon: 'cash-outline', color: '#4F46E5' },
+            {
+              type: 'stat_cards', cards: [
+                { label: '💰 Collected', value: INR(collected), icon: 'checkmark-circle-outline', color: '#10B981', bg: '#ECFDF5' },
+                { label: '⚠️ Pending', value: INR(pending), icon: 'alert-circle-outline', color: '#EF4444', bg: '#FEF2F2' },
+              ]
+            },
+            ...(fin?.trend && fin.trend.length >= 2 ? [{ type: 'trend_chart' as const, data: fin.trend }] : []),
+            {
+              type: 'follow_up_chips', label: 'Related:', chips: [
+                { label: "Who hasn't paid?", icon: 'alert-circle-outline', onPress: () => handleIntent({ type: 'SHOW_DUES', filter: 'pending' }) },
+                { label: 'Overdue students', icon: 'time-outline', onPress: () => handleIntent({ type: 'SHOW_DUES', filter: 'overdue' }) },
+                { label: 'Paid students', icon: 'checkmark-circle-outline', onPress: () => handleIntent({ type: 'SHOW_PAID_STUDENTS' }) },
+                { label: 'Full reports', icon: 'bar-chart-outline', onPress: () => handleIntent({ type: 'SHOW_REPORTS' }) },
+              ]
+            },
+            {
+              type: 'action_buttons', buttons: [
+                { label: 'Collect Payment', icon: 'cash-outline', screen: 'PendingPayments', variant: 'primary' },
+                { label: 'Payment History', icon: 'checkmark-circle-outline', screen: 'CollectedPayments', variant: 'outline' },
+                { label: 'Download Receipts', icon: 'download-outline', screen: 'DownloadReceipts', variant: 'outline' },
+              ]
+            },
+          ]);
+        } catch {
+          removeLoadingBlock();
+          typingThen([
+            {
+              type: 'stat_cards', cards: [
+                { label: 'This Month', value: INR(snap?.monthCollection ?? 0), icon: 'wallet-outline', color: '#4F46E5', bg: '#EEF2FF' },
+                { label: 'Pending', value: INR(snap?.pendingDues ?? 0), icon: 'alert-circle-outline', color: '#EF4444', bg: '#FEF2F2' },
+              ]
+            },
+            {
+              type: 'action_buttons', buttons: [
+                { label: 'Collected Payments', icon: 'checkmark-circle-outline', screen: 'CollectedPayments', variant: 'primary' },
+                { label: 'Pending Dues', icon: 'time-outline', screen: 'PendingPayments', variant: 'outline' },
+              ]
+            },
+          ]);
+        }
         break;
+      }
 
       case 'SHOW_REPORTS': {
         addBot([{ type: 'loading' }]);
@@ -1251,16 +1306,69 @@ export const OwnerAssistant: React.FC = () => {
 
 
       case 'SHOW_HOW_TO': {
-        const guide = HOW_TO_STEPS[intent.action];
+        const action = intent.action;
+        const guide = HOW_TO_STEPS[action];
         if (guide) {
-          typingThen([{ type: 'steps', title: guide.title, steps: guide.steps, screen: guide.screen, screenLabel: guide.screenLabel }]);
+          // Related follow-up chips based on action type
+          const relatedChips: Record<string, Array<{ label: string; icon: string; onPress: () => void }>> = {
+            add_student: [
+              { label: 'How to assign a bed?', icon: 'bed-outline', onPress: () => handleIntent({ type: 'SHOW_HOW_TO', action: 'assign_bed' }) },
+              { label: 'How to collect rent?', icon: 'cash-outline', onPress: () => handleIntent({ type: 'SHOW_HOW_TO', action: 'collect_rent' }) },
+              { label: 'How to deactivate?', icon: 'person-remove-outline', onPress: () => handleIntent({ type: 'SHOW_HOW_TO', action: 'deactivate_student' }) },
+              { label: 'View all students', icon: 'people-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENTS' }) },
+            ],
+            collect_rent: [
+              { label: 'Who hasn\'t paid?', icon: 'alert-circle-outline', onPress: () => handleIntent({ type: 'SHOW_DUES', filter: 'pending' }) },
+              { label: 'How to download receipt?', icon: 'document-outline', onPress: () => handleIntent({ type: 'SHOW_HOW_TO', action: 'download_receipt' }) },
+              { label: 'How to send reminder?', icon: 'notifications-outline', onPress: () => handleIntent({ type: 'SHOW_HOW_TO', action: 'send_reminder' }) },
+              { label: 'Pending dues', icon: 'wallet-outline', onPress: () => handleIntent({ type: 'SHOW_DUES', filter: 'all' }) },
+            ],
+            add_room: [
+              { label: 'How to assign a bed?', icon: 'bed-outline', onPress: () => handleIntent({ type: 'SHOW_HOW_TO', action: 'assign_bed' }) },
+              { label: 'How to prebook a room?', icon: 'calendar-outline', onPress: () => handleIntent({ type: 'SHOW_HOW_TO', action: 'prebook_room' }) },
+              { label: 'Room occupancy', icon: 'business-outline', onPress: () => handleIntent({ type: 'SHOW_ROOMS' }) },
+            ],
+            assign_bed: [
+              { label: 'How to add student?', icon: 'person-add-outline', onPress: () => handleIntent({ type: 'SHOW_HOW_TO', action: 'add_student' }) },
+              { label: 'How to vacate a bed?', icon: 'exit-outline', onPress: () => handleIntent({ type: 'SHOW_HOW_TO', action: 'vacate_bed' }) },
+              { label: 'Available beds', icon: 'bed-outline', onPress: () => handleQuery('how many vacant beds') },
+            ],
+            vacate_bed: [
+              { label: 'How to deactivate student?', icon: 'person-remove-outline', onPress: () => handleIntent({ type: 'SHOW_HOW_TO', action: 'deactivate_student' }) },
+              { label: 'How to assign new bed?', icon: 'bed-outline', onPress: () => handleIntent({ type: 'SHOW_HOW_TO', action: 'assign_bed' }) },
+              { label: 'View rooms', icon: 'business-outline', onPress: () => handleIntent({ type: 'SHOW_ROOMS' }) },
+            ],
+            deactivate_student: [
+              { label: 'How to vacate bed?', icon: 'exit-outline', onPress: () => handleIntent({ type: 'SHOW_HOW_TO', action: 'vacate_bed' }) },
+              { label: 'Students left this month', icon: 'exit-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENTS', filter: 'vacated_this_month' }) },
+              { label: 'View students', icon: 'people-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENTS' }) },
+            ],
+            add_expense: [
+              { label: 'Expenses this month', icon: 'receipt-outline', onPress: () => handleIntent({ type: 'SHOW_EXPENSES' }) },
+              { label: 'Financial reports', icon: 'bar-chart-outline', onPress: () => handleIntent({ type: 'SHOW_REPORTS' }) },
+            ],
+            send_reminder: [
+              { label: 'Pending dues', icon: 'alert-circle-outline', onPress: () => handleIntent({ type: 'SHOW_DUES', filter: 'all' }) },
+              { label: 'Who hasn\'t paid?', icon: 'wallet-outline', onPress: () => handleIntent({ type: 'SHOW_DUES', filter: 'pending' }) },
+            ],
+          };
+
+          const chips = relatedChips[action] ?? [
+            { label: 'View Students', icon: 'people-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENTS' }) },
+            { label: 'Pending Dues', icon: 'alert-circle-outline', onPress: () => handleIntent({ type: 'SHOW_DUES', filter: 'all' }) },
+          ];
+
+          typingThen([
+            { type: 'steps', title: guide.title, steps: guide.steps, screen: guide.screen, screenLabel: guide.screenLabel },
+            { type: 'follow_up_chips', label: '🔗 Related topics:', chips },
+          ]);
         }
         break;
       }
 
       case 'UNKNOWN':
         typingThen([
-          { type: 'text', text: `I'm not sure about that. Try one of these:` },
+          { type: 'text', text: `I didn't quite catch that. Here is how you can search:\n\n👤 Find a student: Type their name (e.g., "Durgarao")\n🚪 Find a room: Type the room number (e.g., "201")\n❓ Ask questions: Try asking "who hasn't paid rent?" or "show total profit"` },
           {
             type: 'action_buttons', buttons: [
               { label: 'Pending Dues', icon: 'alert-circle-outline', variant: 'outline', onPress: () => handleIntent({ type: 'SHOW_DUES', filter: 'all' }) },
@@ -1315,14 +1423,16 @@ export const OwnerAssistant: React.FC = () => {
       )}
 
       <Modal visible={isOpen} transparent={false} animationType="slide" onRequestClose={() => setIsOpen(false)}>
+        {/* edges=['top'] only — bottom is handled by the inner SafeAreaView wrapper
+            around the input bar, which gives precise control over safe-area padding. */}
         <SafeAreaView style={s.safe} edges={['top']}>
-          {/* Android: RN's Modal forces adjustResize on its own dialog window, so
-              the layout already shrinks above the keyboard — any KAV behaviour here
-              subtracts the keyboard height a second time and pushes the input bar
-              off screen. iOS has no adjustResize, so it still needs `padding`. */}
+          {/* KeyboardAvoidingView with 'padding' on both platforms:
+              - iOS: modal is truly full-screen, KAV pushes content up
+              - Android with softwareKeyboardLayoutMode=resize: window shrinks, but KAV
+                still needed to push the input bar above the keyboard within the modal */}
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={0}
+            behavior="padding"
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
             style={s.kav}
           >
 
@@ -1407,8 +1517,9 @@ export const OwnerAssistant: React.FC = () => {
               )}
             </View>
 
-            {/* ── Bottom input bar ── */}
-            <View style={[s.inputBar, isFocused && s.inputBarFocused, { paddingBottom: isAddMenuOpen ? 8 : Math.max(bottomInset, 8) }]}>
+            {/* ── Bottom input bar wrapped in a bottom-safe-area view ── */}
+            <View style={[s.inputBarWrapper, isFocused && s.inputBarWrapperFocused, { paddingBottom: isKeyboardActive ? 4 : bottomInset }]}>
+            <View style={[s.inputBar, isFocused && s.inputBarFocused]}>
               {/* Hamburger / Menu Toggle Button */}
               <TouchableOpacity
                 onPress={() => {
@@ -1477,12 +1588,13 @@ export const OwnerAssistant: React.FC = () => {
                 )}
               </TouchableOpacity>
             </View>
+            </View>
 
             {/* Inline 4x2 Grid Menu below input bar */}
             {isAddMenuOpen && (
               <View style={[s.inlineMenuContainer, {
-                height: 160 + bottomInset,
-                paddingBottom: bottomInset,
+                height: 160 + (isKeyboardActive ? 0 : bottomInset),
+                paddingBottom: isKeyboardActive ? 0 : bottomInset,
               }]}>
                 <View style={s.inlineMenuGrid}>
                   {menuItems.map((item, idx) => (
@@ -1576,12 +1688,7 @@ const s = StyleSheet.create({
   },
 
   /* Bottom input bar */
-  inputBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+  inputBarWrapper: {
     backgroundColor: '#FFF',
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
@@ -1591,9 +1698,20 @@ const s = StyleSheet.create({
     shadowRadius: 6,
     shadowOffset: { width: 0, height: -3 },
   },
+  inputBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 10,
+    backgroundColor: '#FFF',
+  },
   inputBarFocused: {
-    borderTopColor: '#E0E7FF',
     backgroundColor: '#FAFAFF',
+  },
+  inputBarWrapperFocused: {
+    borderTopColor: '#E0E7FF',
   },
   menuBtnWrap: {
     width: 38,
@@ -1657,40 +1775,27 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 21,
   },
-  quickChipBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#EEF2FF',
-    borderWidth: 1,
-    borderColor: '#C7D2FE',
-    borderRadius: 16,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  quickChipBtnText: {
-    fontSize: 11,
-    color: '#4338CA',
-    fontWeight: '600',
-  },
-  chipPanel: {
-    backgroundColor: '#FFF',
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-    paddingTop: 6,
-    paddingBottom: 2,
-  },
-  chipSectionHeader: {
+  footerChip: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    marginBottom: 4,
+    paddingVertical: 8,
+    borderRadius: 20,
     gap: 4,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
-  chipSectionTitle: {
-    fontSize: 9.5,
-    fontWeight: '800',
-    color: '#4338CA',
-    letterSpacing: 0.5,
+  footerChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  chipPanel: {
+    backgroundColor: '#F8FAFC',
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
   },
   inlineMenuContainer: {
     backgroundColor: '#FFF',
@@ -1725,57 +1830,44 @@ const s = StyleSheet.create({
   },
 });
 
-// ─── ChipsPanel implementation (after styles so `s` is available) ─────────────
+// ─── ChipsPanel implementation (after styles so `s` is available) ──────────────────
+const FOOTER_CHIPS: Array<{ label: string; q: string }> = [
+  { label: "💸 Who hasn't paid?", q: "Who hasn't paid this month?" },
+  { label: '🏠 How full is hostel?', q: 'Room occupancy rate' },
+  { label: '📊 This month profit', q: 'Profit this month' },
+  { label: '🎓 Active students', q: 'Total students count' },
+  { label: '⚠️ Overdue students', q: 'Show overdue students' },
+  { label: '💰 Collection today', q: 'How much collected today?' },
+  { label: '🧾 Expenses breakdown', q: 'Expense breakdown' },
+  { label: '🛏️ Available beds', q: 'How many beds available?' },
+  { label: '👥 Staff list', q: 'Staff list' },
+  { label: '🔔 Show notices', q: 'Show notices' },
+  { label: '💡 How to add student?', q: 'How to add a student?' },
+  { label: '💡 How to collect rent?', q: 'How to collect rent?' },
+  { label: '💡 How to vacate bed?', q: 'How to vacate a bed?' },
+];
+
 ChipsPanel = ({ handleQuery }: { handleQuery: (q: string) => void }) => (
   <View style={s.chipPanel}>
-    {/* 📊 Quick Stats Row */}
-    <View style={s.chipSectionHeader}>
-      <Ionicons name="stats-chart-outline" size={11} color="#4338CA" />
-      <Text style={s.chipSectionTitle}>QUICK STATS</Text>
-    </View>
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ flexDirection: 'row', gap: 6, paddingHorizontal: 12, paddingBottom: 6 }}
+      contentContainerStyle={{ flexDirection: 'row', gap: 7, paddingHorizontal: 12, alignItems: 'center' }}
       keyboardShouldPersistTaps="handled"
     >
-      {INFO_QUESTIONS.map((q, i) => (
+      {FOOTER_CHIPS.map((chip, i) => (
         <TouchableOpacity
           key={i}
-          style={s.quickChipBtn}
-          onPress={() => { Haptics.selectionAsync().catch(() => {}); handleQuery(q); }}
+          style={s.footerChip}
+          onPress={() => { Haptics.selectionAsync().catch(() => {}); handleQuery(chip.q); }}
           activeOpacity={0.7}
         >
-          <Ionicons name={getQuestionChipIcon(q) as any} size={11} color="#4338CA" style={{ marginRight: 4 }} />
-          <Text style={s.quickChipBtnText}>{q}</Text>
-        </TouchableOpacity>
-      ))}
-    </ScrollView>
-
-    {/* 💡 Guides Row */}
-    <View style={[s.chipSectionHeader, { marginTop: 2 }]}>
-      <Ionicons name="help-circle-outline" size={11} color="#16A34A" />
-      <Text style={[s.chipSectionTitle, { color: '#15803D' }]}>GUIDES</Text>
-    </View>
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ flexDirection: 'row', gap: 6, paddingHorizontal: 12, paddingBottom: 6 }}
-      keyboardShouldPersistTaps="handled"
-    >
-      {GUIDE_QUESTIONS.map((q, i) => (
-        <TouchableOpacity
-          key={i}
-          style={[s.quickChipBtn, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}
-          onPress={() => { Haptics.selectionAsync().catch(() => {}); handleQuery(q); }}
-          activeOpacity={0.7}
-        >
-          <Ionicons name={getQuestionChipIcon(q) as any} size={11} color="#16A34A" style={{ marginRight: 4 }} />
-          <Text style={[s.quickChipBtnText, { color: '#15803D' }]}>{q}</Text>
+          <Text style={s.footerChipText}>{chip.label}</Text>
         </TouchableOpacity>
       ))}
     </ScrollView>
   </View>
 );
+
 
 export default OwnerAssistant;

@@ -36,6 +36,7 @@ export type AssistantIntent =
   | { type: 'SHOW_NOTICES' }
   | { type: 'SHOW_HOSTELS' }
   | { type: 'SHOW_APP_INFO'; topic: 'owner' | 'goal' | 'usage' }
+  | { type: 'SMALL_TALK'; subtype: 'greeting' | 'time' | 'feeling' | 'who_are_you' | 'my_name' | 'app_developer' | 'thanks' | 'bye' }
   | { type: 'UNKNOWN'; query: string };
 
 
@@ -221,7 +222,7 @@ export function normalizeQuery(raw: string): string {
 // ─── Dynamic Extraction ───────────────────────────────────────────────────────
 /** Extract room number from a query, e.g. "room 101" → 101 */
 export function extractRoomNumber(q: string): number | null {
-  const m = q.match(/room\s+(\d+)/i) || q.match(/(\d{3,4})\s+room/i);
+  const m = q.match(/room\s+(\d+)/i) || q.match(/(\d{3,4})\s+room/i) || (q.match(/^\s*(\d{1,4})\s*$/) ? q.match(/^\s*(\d{1,4})\s*$/) : null);
   return m ? parseInt(m[1], 10) : null;
 }
 
@@ -249,8 +250,87 @@ interface Rule {
 const RULES: Rule[] = [
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // PRIORITY 12 — HOW-TO (highest — must beat all data questions)
+  // PRIORITY 15 — SMALL TALK (greetings, time, casual chat — highest priority)
   // ═══════════════════════════════════════════════════════════════════════════
+  {
+    keywords: [
+      'hi', 'hello', 'hey', 'hii', 'helo', 'hai', 'hola',
+      'good morning', 'good afternoon', 'good evening', 'good night',
+      'namaste', 'namaskar', 'vanakkam', 'assalamualaikum',
+      'greetings', 'howdy', 'sup', "what's up", 'whats up',
+    ],
+    intent: { type: 'SMALL_TALK', subtype: 'greeting' },
+    priority: 15,
+  },
+  {
+    keywords: [
+      'how are you', 'how r u', 'how are u', 'how r you',
+      'how do you do', 'are you okay', 'are you fine',
+      'how is it going', 'hows it going', 'all good',
+      'you okay', 'doing well', 'how are things',
+    ],
+    intent: { type: 'SMALL_TALK', subtype: 'feeling' },
+    priority: 15,
+  },
+  {
+    keywords: [
+      'what time is it', 'what is the time', 'current time', 'tell me time',
+      'time now', 'what time', 'time please', 'whats the time',
+      "what's the time", 'time kya hai', 'abhi time kya hai',
+    ],
+    intent: { type: 'SMALL_TALK', subtype: 'time' },
+    priority: 15,
+  },
+  {
+    keywords: [
+      'who are you', 'what are you', 'what is your name', 'your name',
+      'tell me about yourself', 'introduce yourself', 'you are a bot',
+      'are you a bot', 'are you ai', 'are you robot', 'are you human',
+      'what can you do', 'what do you do', 'what is hostix assistant',
+      'hostix assistant', 'who is this', 'who am i talking to',
+      'what is main use', 'what is hostix', 'main purpose', 'app use',
+    ],
+    intent: { type: 'SMALL_TALK', subtype: 'who_are_you' },
+    priority: 15,
+  },
+  {
+    keywords: [
+      'what is my name', 'my name', 'who am i', 'tell me my name',
+      'do you know my name', 'what do you call me',
+    ],
+    intent: { type: 'SMALL_TALK', subtype: 'my_name' },
+    priority: 15,
+  },
+  {
+    keywords: [
+      'what is owner name', 'who is owner', 'how is owner',
+      'owner name', 'owner of this app', 'who built this', 'who made this',
+      'who created hostix', 'hostix owner', 'developer name',
+      'who is the developer', 'who is founder', 'who is this app owner',
+      'app owner name', 'contact owner',
+    ],
+    intent: { type: 'SMALL_TALK', subtype: 'app_developer' },
+    priority: 15,
+  },
+  {
+    keywords: [
+      'thank you', 'thanks', 'thankyou', 'thank u', 'thx', 'ty',
+      'thanks a lot', 'many thanks', 'much appreciated', 'great job',
+      'awesome', 'perfect', 'wonderful', 'well done', 'nice', 'great',
+      'shukriya', 'dhanyawad',
+    ],
+    intent: { type: 'SMALL_TALK', subtype: 'thanks' },
+    priority: 15,
+  },
+  {
+    keywords: [
+      'bye', 'goodbye', 'see you', 'see ya', 'cya', 'take care',
+      'good bye', 'catch you later', 'later', 'tata', 'ok bye',
+      'that is all', "that's all", 'i am done', "i'm done",
+    ],
+    intent: { type: 'SMALL_TALK', subtype: 'bye' },
+    priority: 15,
+  },
 
   // Add Student
   {
@@ -1043,9 +1123,9 @@ export function resolveIntent(rawQuery: string): AssistantIntent {
 
   const rawLower = rawQuery.toLowerCase().trim();
 
-  // ── 1. Specific Room Detail Query (e.g. "room 101", "show me 101 room", "beds in room 101") ──
+  // ── 1. Specific Room Detail Query (e.g. "room 101", "show me 101 room", "beds in room 101", "201") ──
   const roomNum = extractRoomNumber(rawQuery);
-  if (roomNum !== null && (rawLower.includes('room') || rawQuery.match(/\b\d{3,4}\b/))) {
+  if (roomNum !== null && (rawLower.includes('room') || rawQuery.match(/\b\d{1,4}\b/))) {
     return { type: 'SHOW_ROOM_DETAIL', roomNumber: roomNum };
   }
 
@@ -1123,12 +1203,13 @@ export function resolveIntent(rawQuery: string): AssistantIntent {
   }
 
   // ── 5. Student Search by Name (Fallback if no rule matched) ──
-  const studentSearchName = extractStudentSearchName(rawQuery);
-  if (studentSearchName) {
-    return { type: 'SHOW_STUDENT_SEARCH', name: studentSearchName };
+  // ── 6. Unknown / Search Fallback ──
+  // If the query is relatively short and doesn't match any system intents, we assume it's a student search
+  if (rawQuery.trim().length > 2 && rawQuery.trim().length < 30) {
+    return { type: 'SHOW_STUDENT_SEARCH', name: rawQuery.trim() };
   }
 
-  return best.intent;
+  return { type: 'UNKNOWN', query: rawQuery };
 }
 
 
@@ -1173,69 +1254,37 @@ export const SIDEBAR_CATEGORIES = [
 
 // ─── Quick Questions — DATA / STATS chips ─────────────────────────────────────
 /**
- * INFO_QUESTIONS: Data/stats questions shown in the "Quick Stats" scroller.
- * Every question here maps to a visualisation response (donut, stat cards, etc.)
+ * INFO_QUESTIONS: Concise action-oriented phrases for the quick chips panel.
+ * These map to data queries — shown as scrollable chips at the bottom.
  */
 export const INFO_QUESTIONS: string[] = [
   // Students
-  'How many students?',
-  'How many active students?',
-  'How many students left?',
-  'How many prebooked?',
-  'How many QR registrations?',
-  'How many admissions pending?',
-  'How many unallocated students?',
-  'Students joined this month?',
+  'Total students count',
+  'Active students now',
+  'Students left this month',
+  'New admissions this month',
+  'Prebooked students',
+  'Unallocated students',
   // Rooms & Beds
-  'How many rooms?',
-  'How many beds available?',
-  'How many beds occupied?',
-  'How many floors?',
-  'Single sharing rooms?',
-  'Double sharing rooms?',
-  'Triple sharing rooms?',
-  'Vacant rooms?',
-  'Full rooms?',
-  // Occupancy
-  'Hostel occupancy?',
-  'Occupancy rate?',
-  'How full is my hostel?',
-  // Dues & Payments
-  "Who hasn't paid this month?",
-  'How many overdues?',
-  'Pending dues?',
-  'Partial payments?',
-  'Show overdue students',
-  'Total pending amount?',
-  'How much collected today?',
-  'How much collected this month?',
-  'Who paid today?',
-  'Due today',
-  'Due tomorrow',
-  'Top defaulters?',
+  'Bed availability',
+  'Room occupancy rate',
+  'Vacant beds now',
+  'Full rooms',
+  'Total rooms',
   // Finance
-  'Income this month?',
-  'Expenses this month?',
-  'Profit this month?',
-  'Expense breakdown',
-  'Collection rate?',
+  'Pending dues today',
+  'Collection this month',
+  'Expenses this month',
+  'Profit this month',
+  'Overdue students',
   'Income vs expenses',
-  'Last 6 months trend',
-  'Financial summary',
-  // Staff
-  'How many staff?',
+  // Staff & Guests
   'Staff list',
-  'Monthly salary total',
-  // Guests
-  'How many guests?',
-  'Guest list',
-  'Guest fee collected?',
+  'Total guests today',
   // Notices
-  'Show notices',
-  // Hostels
+  'Active notices',
+  // Hostel
   'My hostels',
-  'Active hostel?',
-  'How many PGs?',
 ];
 
 // ─── Quick Questions — HOW-TO / GUIDE chips ───────────────────────────────────

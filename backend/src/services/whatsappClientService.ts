@@ -8,6 +8,7 @@ class WhatsAppClientService {
   private isReady: boolean = false;
   private qrCodeDataUrl: string | null = null;
   private isInitializing: boolean = false;
+  private initError: string | null = null;
 
   constructor() {
     // Lazy initialization on first usage or startup
@@ -16,8 +17,9 @@ class WhatsAppClientService {
   public init() {
     if (this.client || this.isInitializing) return;
     this.isInitializing = true;
+    this.initError = null;
 
-    console.log('📱 Initializing 100% FREE Direct WhatsApp Service (whatsapp-web.js)...');
+    console.log('📱 Initializing Direct WhatsApp Service (whatsapp-web.js)...');
 
     try {
       this.client = new Client({
@@ -65,6 +67,7 @@ class WhatsAppClientService {
         console.error('❌ WhatsApp Authentication Failure:', msg);
         this.isReady = false;
         this.isInitializing = false;
+        this.initError = msg;
       });
 
       this.client.on('disconnected', (reason: string) => {
@@ -78,10 +81,12 @@ class WhatsAppClientService {
       this.client.initialize().catch((err: any) => {
         console.error('❌ Error launching WhatsApp Puppeteer client:', err?.message || err);
         this.isInitializing = false;
+        this.initError = err?.message || 'Puppeteer launch error';
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Failed to construct WhatsApp Client:', error);
       this.isInitializing = false;
+      this.initError = error?.message || 'Construction error';
     }
   }
 
@@ -90,6 +95,7 @@ class WhatsAppClientService {
     this.isReady = false;
     this.isInitializing = false;
     this.qrCodeDataUrl = null;
+    this.initError = null;
     if (this.client) {
       try {
         await this.client.destroy();
@@ -110,7 +116,8 @@ class WhatsAppClientService {
     return {
       isReady: this.isReady,
       isInitializing: this.isInitializing,
-      qrCodeDataUrl: this.qrCodeDataUrl
+      qrCodeDataUrl: this.qrCodeDataUrl,
+      error: this.initError || null
     };
   }
 

@@ -45,6 +45,7 @@ export interface DueSummary {
   totalPaidAmount: number;
   tenantsCount: number;
   topDefaulters: DueRecord[];
+  allDefaulters: DueRecord[];
 }
 
 export interface DueRecord {
@@ -215,9 +216,8 @@ export async function fetchDuesSummary(): Promise<DueSummary | null> {
     }
   });
 
-  const topDefaulters: DueRecord[] = pendingFees
+  const allDefaulters = pendingFees
     .sort((a, b) => parseFloat(b.balance) - parseFloat(a.balance))
-    .slice(0, 8)
     .map((f) => {
       const due = f.due_date ? new Date(f.due_date).getTime() : nowMs;
       return {
@@ -226,10 +226,12 @@ export async function fetchDuesSummary(): Promise<DueSummary | null> {
         roomNumber: f.room_number ?? undefined,
         amount: parseFloat(f.balance || 0),
         dueDate: f.due_date,
-        status: due < nowMs ? 'overdue' : 'pending',
+        status: (due < nowMs) ? 'overdue' : 'pending',
         studentId: f.student_id,
       };
     });
+    
+  const topDefaulters: DueRecord[] = allDefaulters.slice(0, 8);
 
   return {
     totalPending,
@@ -242,6 +244,7 @@ export async function fetchDuesSummary(): Promise<DueSummary | null> {
     totalPaidAmount,
     tenantsCount: fees.length,
     topDefaulters,
+    allDefaulters,
   };
 }
 
