@@ -129,14 +129,9 @@ interface HomeProps {
 }
 const HomeContent: React.FC<HomeProps> = ({ snap, loading, onQuestion, onIntent }) => {
   const { user } = useAuth();
-  const insets = useSafeAreaInsets();
 
   return (
-    <ScrollView
-      showsVerticalScrollIndicator={false}
-      keyboardShouldPersistTaps="handled"
-      contentContainerStyle={[hc.scroll, { paddingBottom: 24 + Math.max(insets.bottom, 10) }]}
-    >
+    <View>
       {/* Greeting */}
       <Text style={hc.greeting}>{getGreeting(user?.full_name || user?.name)}</Text>
       <Text style={hc.sub}>{user?.hostel_name || 'Your Hostel'}</Text>
@@ -224,7 +219,7 @@ const HomeContent: React.FC<HomeProps> = ({ snap, loading, onQuestion, onIntent 
           <Ionicons name="chevron-forward" size={16} color="#94A3B8" />
         </TouchableOpacity>
       </View>
-    </ScrollView>
+    </View>
   );
 };
 
@@ -386,6 +381,15 @@ const hc = StyleSheet.create({
     marginTop: 2,
   },
 });
+
+// ─── ChipsPanel — defined AFTER stylesheet at bottom of file ───────────────────
+interface ChipsPanelProps {
+  chipTab: 'stats' | 'guides';
+  setChipTab: (t: 'stats' | 'guides') => void;
+  handleQuery: (q: string) => void;
+}
+// Forward declaration - implementation injected after main stylesheet
+let ChipsPanel: React.FC<ChipsPanelProps>;
 
 // ─── Main Component ────────────────────────────────────────────────────────
 export const OwnerAssistant: React.FC = () => {
@@ -1292,10 +1296,10 @@ export const OwnerAssistant: React.FC = () => {
 
       <Modal visible={isOpen} transparent={false} animationType="slide" onRequestClose={() => setIsOpen(false)}>
         <SafeAreaView style={s.safe} edges={['top']}>
-          <KeyboardAvoidingView 
-            behavior={isKeyboardActive ? 'padding' : undefined} 
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : (StatusBar.currentHeight || 24)}
-            style={{ flex: 1, backgroundColor: '#FFF' }}
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : (StatusBar.currentHeight || 0)}
+            style={s.kav}
           >
 
             {/* ── Header ── */}
@@ -1331,20 +1335,32 @@ export const OwnerAssistant: React.FC = () => {
               </View>
             </LinearGradient>
 
-            {/* ── Main content area ── */}
-            <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
+            {/* ── Main content area (flex:1 — fills all remaining space) ── */}
+            <View style={s.chatArea}>
               {view === 'home' ? (
-                <HomeContent
-                  snap={snap}
-                  loading={snapLoading}
-                  onQuestion={handleQuery}
-                  onIntent={(i) => { setMessages([]); handleIntent(i); }}
-                />
+                <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                  contentContainerStyle={[hc.scroll, { paddingBottom: Math.max(insets.bottom, 8) }]}
+                >
+                  <HomeContent
+                    snap={snap}
+                    loading={snapLoading}
+                    onQuestion={handleQuery}
+                    onIntent={(i) => { setMessages([]); handleIntent(i); }}
+                  />
+                  {/* ── Chips inside scroll for home view ── */}
+                  <ChipsPanel
+                    chipTab={chipTab}
+                    setChipTab={setChipTab}
+                    handleQuery={handleQuery}
+                  />
+                </ScrollView>
               ) : (
                 <ScrollView
                   ref={scrollRef}
                   style={{ flex: 1 }}
-                  contentContainerStyle={[s.msgList, { paddingBottom: 20 + Math.max(insets.bottom, 10) }]}
+                  contentContainerStyle={[s.msgList, { paddingBottom: Math.max(insets.bottom, 8) }]}
                   showsVerticalScrollIndicator={false}
                   keyboardShouldPersistTaps="handled"
                 >
@@ -1365,69 +1381,24 @@ export const OwnerAssistant: React.FC = () => {
                       )}
                     </View>
                   ))}
-
                   {isTyping && (
                     <View style={s.botRow}>
                       <View style={s.botBubble}><BouncingDots /></View>
                     </View>
                   )}
+                  {/* ── Chips inside scroll for conversation view ── */}
+                  {!isKeyboardActive && !isAddMenuOpen && (
+                    <ChipsPanel
+                      chipTab={chipTab}
+                      setChipTab={setChipTab}
+                      handleQuery={handleQuery}
+                    />
+                  )}
                 </ScrollView>
               )}
             </View>
 
-            {/* ── Quick stats chips ── */}
-            <View style={{ backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingTop: 8, paddingBottom: 4 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, marginBottom: 5 }}>
-                <Ionicons name="stats-chart-outline" size={11} color="#94A3B8" />
-                <Text style={{ fontSize: 10, fontWeight: '700', color: '#94A3B8', marginLeft: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                  Quick Stats
-                </Text>
-              </View>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ flexDirection: 'row', gap: 8, paddingHorizontal: 12 }}
-              >
-                {INFO_QUESTIONS.map((q, i) => (
-                  <TouchableOpacity
-                    key={i}
-                    style={s.quickChipBtn}
-                    onPress={() => { Haptics.selectionAsync().catch(() => { }); handleQuery(q); }}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name={getQuestionChipIcon(q) as any} size={11} color="#4338CA" style={{ marginRight: 4 }} />
-                    <Text style={s.quickChipBtnText}>{q}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
 
-            {/* ── How-to guide chips ── */}
-            <View style={{ backgroundColor: '#FFF', paddingTop: 4, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, marginBottom: 5 }}>
-                <Ionicons name="help-circle-outline" size={11} color="#94A3B8" />
-                <Text style={{ fontSize: 10, fontWeight: '700', color: '#94A3B8', marginLeft: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                  Guides
-                </Text>
-              </View>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ flexDirection: 'row', gap: 8, paddingHorizontal: 12 }}
-              >
-                {GUIDE_QUESTIONS.map((q, i) => (
-                  <TouchableOpacity
-                    key={i}
-                    style={[s.quickChipBtn, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}
-                    onPress={() => { Haptics.selectionAsync().catch(() => { }); handleQuery(q); }}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name={getQuestionChipIcon(q) as any} size={11} color="#16A34A" style={{ marginRight: 4 }} />
-                    <Text style={[s.quickChipBtnText, { color: '#15803D' }]}>{q}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
 
 
 
@@ -1435,7 +1406,7 @@ export const OwnerAssistant: React.FC = () => {
 
             {/* ── Bottom input bar ── */}
             <View style={[s.inputBar, { 
-              paddingBottom: (isAddMenuOpen || isFocused || isKeyboardActive) ? 8 : (Platform.OS === 'ios' ? Math.max(insets.bottom, 10) : 10), 
+              paddingBottom: 8, 
               gap: 8, 
               borderTopWidth: 1, 
               borderTopColor: '#E2E8F0' 
@@ -1536,6 +1507,8 @@ const s = StyleSheet.create({
 
   /* Modal */
   safe: { flex: 1, backgroundColor: '#312E81' },
+  kav: { flex: 1, backgroundColor: '#FFF' },
+  chatArea: { flex: 1, backgroundColor: '#F8FAFC' },
 
   /* Header */
   header: {
@@ -1602,13 +1575,51 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#C7D2FE',
     borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
   quickChipBtnText: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#4338CA',
     fontWeight: '600',
+  },
+  chipPanel: {
+    backgroundColor: '#FFF',
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  chipTabRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 12,
+    paddingTop: 6,
+    paddingBottom: 2,
+    gap: 6,
+  },
+  chipTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  chipTabActive: {
+    backgroundColor: '#EEF2FF',
+    borderColor: '#C7D2FE',
+  },
+  chipTabText: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: '#94A3B8',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  chipTabTextActive: {
+    color: '#4338CA',
+    fontWeight: '700',
   },
   inlineMenuContainer: {
     backgroundColor: '#FFF',
@@ -1642,5 +1653,62 @@ const s = StyleSheet.create({
     lineHeight: 12,
   },
 });
+
+// \u2500\u2500\u2500 ChipsPanel implementation (after styles so `s` is available) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+ChipsPanel = ({ chipTab, setChipTab, handleQuery }) => (
+  <View style={[s.chipPanel, { marginTop: 12 }]}>
+    {/* Tab toggles */}
+    <View style={s.chipTabRow}>
+      <TouchableOpacity
+        style={[s.chipTab, chipTab === 'stats' && s.chipTabActive]}
+        onPress={() => setChipTab('stats')}
+        activeOpacity={0.7}
+      >
+        <Ionicons name="stats-chart-outline" size={10} color={chipTab === 'stats' ? '#4338CA' : '#94A3B8'} />
+        <Text style={[s.chipTabText, chipTab === 'stats' && s.chipTabTextActive]}>Quick Stats</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[s.chipTab, chipTab === 'guides' && s.chipTabActive]}
+        onPress={() => setChipTab('guides')}
+        activeOpacity={0.7}
+      >
+        <Ionicons name="help-circle-outline" size={10} color={chipTab === 'guides' ? '#16A34A' : '#94A3B8'} />
+        <Text style={[s.chipTabText, chipTab === 'guides' && { color: '#16A34A', fontWeight: '700' as const }]}>Guides</Text>
+      </TouchableOpacity>
+    </View>
+    {/* Chips row - horizontal scroll */}
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{ flexDirection: 'row', gap: 7, paddingHorizontal: 12, paddingBottom: 8 }}
+      keyboardShouldPersistTaps="handled"
+    >
+      {chipTab === 'stats'
+        ? INFO_QUESTIONS.map((q, i) => (
+            <TouchableOpacity
+              key={i}
+              style={s.quickChipBtn}
+              onPress={() => { Haptics.selectionAsync().catch(() => {}); handleQuery(q); }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name={getQuestionChipIcon(q) as any} size={11} color="#4338CA" style={{ marginRight: 4 }} />
+              <Text style={s.quickChipBtnText}>{q}</Text>
+            </TouchableOpacity>
+          ))
+        : GUIDE_QUESTIONS.map((q, i) => (
+            <TouchableOpacity
+              key={i}
+              style={[s.quickChipBtn, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}
+              onPress={() => { Haptics.selectionAsync().catch(() => {}); handleQuery(q); }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name={getQuestionChipIcon(q) as any} size={11} color="#16A34A" style={{ marginRight: 4 }} />
+              <Text style={[s.quickChipBtnText, { color: '#15803D' }]}>{q}</Text>
+            </TouchableOpacity>
+          ))
+      }
+    </ScrollView>
+  </View>
+);
 
 export default OwnerAssistant;

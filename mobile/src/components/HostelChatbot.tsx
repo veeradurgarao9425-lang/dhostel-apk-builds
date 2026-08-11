@@ -364,7 +364,8 @@ export const HostelChatbot: React.FC = () => {
       >
         <SafeAreaView style={s.modalContainer} edges={['top']}>
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior="padding"
+            keyboardVerticalOffset={Platform.OS === 'android' ? 0 : 0}
             style={s.modalWrapper}
           >
             {/* Header */}
@@ -435,6 +436,9 @@ export const HostelChatbot: React.FC = () => {
                     placeholder="Search for help..."
                     placeholderTextColor="#94A3B8"
                     returnKeyType="send"
+                    autoCorrect={false}
+                    autoCapitalize="none"
+                    underlineColorAndroid="transparent"
                   />
                   {searchQuery.length > 0 && (
                     <TouchableOpacity onPress={() => setSearchQuery('')}>
@@ -839,6 +843,8 @@ const s = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
     backgroundColor: '#FFF',
+    zIndex: 10,
+    elevation: 2,
   },
   searchInputContainer: {
     flexDirection: 'row',
@@ -848,13 +854,16 @@ const s = StyleSheet.create({
     borderColor: '#E2E8F0',
     borderRadius: 12,
     paddingHorizontal: 12,
-    height: 44,
+    height: 48,
+    minHeight: 48,
   },
   searchInput: {
     flex: 1,
     fontSize: 14,
     color: '#0F172A',
     paddingVertical: 0,
+    height: 48,
+    includeFontPadding: false,
   },
   categoryPill: {
     paddingHorizontal: 14,
