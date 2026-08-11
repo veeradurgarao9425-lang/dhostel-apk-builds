@@ -351,11 +351,12 @@ export async function fetchOccupancy(): Promise<OccupancyData | null> {
 }
 
 // ─── Students ─────────────────────────────────────────────────────────────────
-export async function fetchStudents(limit = 20): Promise<StudentRecord[]> {
-  const data = await safeGet('/students', { limit, status: 1 });
+export async function fetchStudents(params: any = {}): Promise<StudentRecord[]> {
+  // Default to limit 100 to avoid freezing, but allow overriding
+  const data = await safeGet('/students', { limit: 100, ...params });
   if (!data?.data) return [];
 
-  return (Array.isArray(data.data) ? data.data : []).slice(0, limit).map((s: any) => ({
+  return (Array.isArray(data.data) ? data.data : []).map((s: any) => ({
     id: s.student_id ?? s.id,
     name: `${s.first_name || ''} ${s.last_name || ''}`.trim() || 'Unknown',
     roomNumber: s.room_number ?? undefined,
@@ -467,6 +468,12 @@ export async function fetchRoomByNumber(roomNum: number): Promise<any | null> {
 }
 
 // ─── Floor Details by Floor Number ───────────────────────────────────────────
+export async function fetchRooms(): Promise<any[]> {
+  const data = await safeGet('/rooms', { limit: 200 });
+  if (!data?.data || !Array.isArray(data.data)) return [];
+  return data.data;
+}
+
 export async function fetchRoomsByFloor(floorNum: number): Promise<{ floorNumber: number; totalRooms: number; totalBeds: number; occupiedBeds: number; availableBeds: number; rooms: any[] } | null> {
   const data = await safeGet('/rooms', { limit: 200 });
   if (!data?.data || !Array.isArray(data.data)) return null;

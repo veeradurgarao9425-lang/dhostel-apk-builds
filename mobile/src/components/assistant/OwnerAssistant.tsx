@@ -45,7 +45,7 @@ import {
   switchActiveHostel, fetchStaffList, fetchGuestsList, fetchStudentStats,
   fetchStudentByName, fetchRoomByNumber, fetchRoomsByFloor, fetchPaidStudents,
   fetchStudentsJoinedThisMonth, fetchStudentsVacatedThisMonth, fetchDetailedIncomeBreakdown,
-  fetchNoticesCount, DashboardSnapshot,
+  fetchNoticesCount, fetchRooms, DashboardSnapshot,
 } from './assistantApi';
 
 
@@ -507,7 +507,6 @@ export const OwnerAssistant: React.FC = () => {
           const ownerName = user?.full_name || user?.name || 'the owner';
           typingThen([
             { type: 'text', text: `Your name is ${ownerName}.\n\nYou are the owner of ${user?.hostel_name || 'this hostel'}. You can view and update your profile in the Settings section.` },
-            { type: 'app_info_card', topic: 'owner' },
             {
               type: 'follow_up_chips', label: 'App details:', chips: [
                 { label: '🎯 App Goal', icon: 'rocket-outline', onPress: () => handleIntent({ type: 'SHOW_APP_INFO', topic: 'goal' }) },
@@ -574,11 +573,10 @@ export const OwnerAssistant: React.FC = () => {
                 { label: 'Paid Rent', value: String(paidCount), icon: 'checkmark-circle-outline', color: '#10B981', bg: '#ECFDF5' },
                 { label: 'Unpaid Rent', value: String(unpaidCount), icon: 'alert-circle-outline', color: '#EF4444', bg: '#FEF2F2' },
               ]},
-              { type: 'follow_up_chips', label: 'Explore more:', chips: followUpChips },
-              { type: 'action_buttons', buttons: [
-                { label: 'View Students', icon: 'list-outline', screen: 'Students', variant: 'primary' },
-                { label: 'Pending Dues', icon: 'alert-circle-outline', screen: 'PendingPayments', variant: 'outline' },
+              { type: 'follow_up_chips', label: `Do you want to see these ${activeCount} active students?`, chips: [
+                { label: `View ${activeCount} Students`, icon: 'list-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENT_LIST_INLINE', filter: 'active' }) },
               ]},
+              { type: 'follow_up_chips', label: 'Explore more:', chips: followUpChips },
             ]);
           } else if (filter === 'inactive') {
             addBot([
@@ -587,10 +585,10 @@ export const OwnerAssistant: React.FC = () => {
                 { label: 'Students Left', value: String(leftCount), icon: 'exit-outline', color: '#94A3B8', bg: '#F8FAFC' },
                 { label: 'Still Active', value: String(activeCount), icon: 'people-outline', color: '#6366F1', bg: '#EEF2FF' },
               ]},
-              { type: 'follow_up_chips', label: 'Explore more:', chips: followUpChips },
-              { type: 'action_buttons', buttons: [
-                { label: 'View Students', icon: 'list-outline', screen: 'Students', variant: 'primary' },
+              { type: 'follow_up_chips', label: `Do you want to see these ${leftCount} vacated students?`, chips: [
+                { label: `View ${leftCount} Students`, icon: 'list-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENT_LIST_INLINE', filter: 'inactive' }) },
               ]},
+              { type: 'follow_up_chips', label: 'Explore more:', chips: followUpChips },
             ]);
           } else if (filter === 'prebooked') {
             addBot([
@@ -599,10 +597,10 @@ export const OwnerAssistant: React.FC = () => {
                 { label: 'Pre-Booked', value: String(prebookedCount), icon: 'calendar-outline', color: '#F59E0B', bg: '#FFFBEB' },
                 { label: 'Active Now', value: String(activeCount), icon: 'people-outline', color: '#6366F1', bg: '#EEF2FF' },
               ]},
-              { type: 'follow_up_chips', label: 'Explore more:', chips: followUpChips },
-              { type: 'action_buttons', buttons: [
-                { label: 'Go to Pre-Booking', icon: 'calendar-outline', screen: 'PreBooking', variant: 'primary' },
+              { type: 'follow_up_chips', label: `Do you want to see these ${prebookedCount} pre-booked students?`, chips: [
+                { label: `View ${prebookedCount} Students`, icon: 'list-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENT_LIST_INLINE', filter: 'prebooked' }) },
               ]},
+              { type: 'follow_up_chips', label: 'Explore more:', chips: followUpChips },
             ]);
           } else if (filter === 'qr') {
             addBot([
@@ -611,10 +609,10 @@ export const OwnerAssistant: React.FC = () => {
                 { label: 'QR Registrations', value: String(qrCount), icon: 'qr-code-outline', color: '#10B981', bg: '#ECFDF5' },
                 { label: 'Active Now', value: String(activeCount), icon: 'people-outline', color: '#6366F1', bg: '#EEF2FF' },
               ]},
-              { type: 'follow_up_chips', label: 'Explore more:', chips: followUpChips },
-              { type: 'action_buttons', buttons: [
-                { label: 'QR Registration', icon: 'qr-code-outline', screen: 'QRSignup', variant: 'primary' },
+              { type: 'follow_up_chips', label: `Do you want to see these ${qrCount} QR registrations?`, chips: [
+                { label: `View ${qrCount} Students`, icon: 'list-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENT_LIST_INLINE', filter: 'qr' }) },
               ]},
+              { type: 'follow_up_chips', label: 'Explore more:', chips: followUpChips },
             ]);
           } else if (filter === 'pending') {
             addBot([
@@ -623,10 +621,10 @@ export const OwnerAssistant: React.FC = () => {
                 { label: 'Pending Admissions', value: String(pendingAdm), icon: 'hourglass-outline', color: '#8B5CF6', bg: '#F5F3FF' },
                 { label: 'Active Now', value: String(activeCount), icon: 'people-outline', color: '#6366F1', bg: '#EEF2FF' },
               ]},
-              { type: 'follow_up_chips', label: 'Explore more:', chips: followUpChips },
-              { type: 'action_buttons', buttons: [
-                { label: 'View Students', icon: 'list-outline', screen: 'Students', variant: 'primary' },
+              { type: 'follow_up_chips', label: `Do you want to see these ${pendingAdm} pending admissions?`, chips: [
+                { label: `View ${pendingAdm} Students`, icon: 'list-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENT_LIST_INLINE', filter: 'pending' }) },
               ]},
+              { type: 'follow_up_chips', label: 'Explore more:', chips: followUpChips },
             ]);
           } else if (filter === 'unallocated') {
             addBot([
@@ -636,11 +634,10 @@ export const OwnerAssistant: React.FC = () => {
                 { label: 'Active Now', value: String(activeCount), icon: 'people-outline', color: '#6366F1', bg: '#EEF2FF' },
                 { label: 'Available Beds', value: String(snap?.availableBeds ?? 0), icon: 'business-outline', color: '#10B981', bg: '#ECFDF5' },
               ]},
-              { type: 'follow_up_chips', label: 'Explore more:', chips: followUpChips },
-              { type: 'action_buttons', buttons: [
-                { label: 'View Students', icon: 'list-outline', screen: 'Students', variant: 'primary' },
-                { label: 'View Rooms', icon: 'business-outline', screen: 'Rooms', variant: 'outline' },
+              { type: 'follow_up_chips', label: `Do you want to see these ${unallocated} unallocated students?`, chips: [
+                { label: `View ${unallocated} Students`, icon: 'list-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENT_LIST_INLINE', filter: 'unallocated' }) },
               ]},
+              { type: 'follow_up_chips', label: 'Explore more:', chips: followUpChips },
             ]);
           } else if (filter === 'joined_this_month') {
             const joinedList = await fetchStudentsJoinedThisMonth();
@@ -690,17 +687,54 @@ export const OwnerAssistant: React.FC = () => {
                 ]
               },
               { type: 'follow_up_chips', label: 'Dig deeper:', chips: followUpChips },
-              {
-                type: 'action_buttons', buttons: [
-                  { label: 'View Students List', icon: 'list-outline', screen: 'Students', variant: 'primary' },
-                  { label: 'Pending Dues', icon: 'alert-circle-outline', screen: 'PendingPayments', variant: 'outline' },
-                ]
-              },
+              { type: 'follow_up_chips', label: `Do you want to see all ${stats.totalStudents || snap?.activeTenants || 0} students?`, chips: [
+                { label: `View All Students`, icon: 'list-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENT_LIST_INLINE', filter: 'all' }) },
+              ]},
+              { type: 'follow_up_chips', label: 'Dig deeper:', chips: followUpChips },
             ]);
           }
         } catch (err) {
           removeLoadingBlock();
           addBot([{ type: 'text', text: 'Failed to load students statistics. Please try again.' }]);
+        }
+        break;
+      }
+
+      case 'SHOW_STUDENT_LIST_INLINE': {
+        addBot([{ type: 'loading' }]);
+        try {
+          const filter = (intent as any).filter;
+          let params: any = {};
+          let title = 'Students';
+          if (filter === 'active') { params = { status: 1 }; title = 'Active Students'; }
+          else if (filter === 'inactive') { params = { status: 0 }; title = 'Vacated Students'; }
+          else if (filter === 'prebooked') { params = { prebooked: true }; title = 'Pre-booked Students'; }
+          else if (filter === 'qr') { params = { qr_registered: true }; title = 'QR Registered Students'; }
+          else if (filter === 'unallocated') { params = { unallocated: true }; title = 'Unallocated Students'; }
+          else if (filter === 'pending') { params = { pending: true }; title = 'Pending Admissions'; }
+          else if (filter === 'all') { params = {}; title = 'All Students'; }
+          
+          const list = await fetchStudents(params);
+          removeLoadingBlock();
+
+          if (!list || list.length === 0) {
+            addBot([{ type: 'text', text: `You currently don't have any ${title.toLowerCase()}.` }]);
+          } else {
+            addBot([
+              { type: 'info_tip', text: `Showing list of ${list.length} ${title.toLowerCase()}.`, icon: 'people-outline', color: '#4F46E5' },
+              { type: 'student_list_card', title: title, students: list.map(s => ({
+                name: s.name,
+                roomNumber: s.roomNumber || 'N/A',
+                phone: s.phone || '',
+                badgeText: s.status === 1 ? 'Active' : 'Inactive',
+                badgeColor: s.status === 1 ? '#ECFDF5' : '#F1F5F9',
+                badgeTextColor: s.status === 1 ? '#10B981' : '#64748B'
+              })) }
+            ]);
+          }
+        } catch {
+          removeLoadingBlock();
+          addBot([{ type: 'text', text: 'Error fetching the students list.' }]);
         }
         break;
       }
@@ -712,9 +746,11 @@ export const OwnerAssistant: React.FC = () => {
           removeLoadingBlock();
           if (!results || results.length === 0) {
             addBot([
-              { type: 'info_tip', text: `No student found matching "${(intent as any).name}".`, icon: 'person-outline', color: '#EF4444' },
-              { type: 'text', text: `Could not find any student named "${(intent as any).name}". Please check the spelling or search from the Students directory.` },
-              { type: 'action_buttons', buttons: [{ label: 'View All Students', icon: 'list-outline', screen: 'Students', variant: 'primary' }] }
+              { type: 'info_tip', text: `I didn't quite catch that, or no student found matching "${(intent as any).name}".`, icon: 'help-circle-outline', color: '#EF4444' },
+              { type: 'text', text: `Here is how you can search:\n\n👤 Find a student: Type their name (e.g., "Durgarao")\n🚪 Find a room: Type the room number (e.g., "201")\n❓ Ask questions: Try asking "who hasn't paid rent?"` },
+              { type: 'follow_up_chips', label: 'Try:', chips: [
+                { label: 'View All Students', icon: 'list-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENT_LIST_INLINE', filter: 'all' }) }
+              ]}
             ]);
           } else if (results.length === 1) {
             addBot([
@@ -764,16 +800,17 @@ export const OwnerAssistant: React.FC = () => {
           } else {
             let floorChips: { label: string; icon: string; onPress: () => void }[] = [];
             try {
-              if (room.floor !== undefined) {
-                const floorData = await fetchRoomsByFloor(room.floor);
+              const currentFloor = room.floor_number ?? room.floor;
+              if (currentFloor !== undefined) {
+                const floorData = await fetchRoomsByFloor(currentFloor);
                 if (floorData && floorData.rooms) {
-                  // Sort rooms by room number and exclude the current one to avoid clutter
+                  // Sort rooms by room number and include ALL rooms on this floor
                   const otherRooms = floorData.rooms
                     .map(r => r.room_number)
-                    .filter(rn => rn && String(rn) !== String(room.roomNumber))
+                    .filter(rn => rn)
                     .sort((a, b) => Number(a) - Number(b));
                   
-                  floorChips = otherRooms.slice(0, 8).map(rn => ({
+                  floorChips = otherRooms.map(rn => ({
                     label: `Room ${rn}`,
                     icon: 'home-outline',
                     onPress: () => handleIntent({ type: 'SHOW_ROOM_DETAIL', roomNumber: rn })
@@ -790,7 +827,8 @@ export const OwnerAssistant: React.FC = () => {
             ];
 
             if (floorChips.length > 0) {
-              responseBlocks.push({ type: 'follow_up_chips', label: `Other rooms on Floor ${room.floor}:`, chips: floorChips });
+              const currentFloor = room.floor_number ?? room.floor;
+              responseBlocks.push({ type: 'follow_up_chips', label: `Other rooms on Floor ${currentFloor}:`, chips: floorChips });
             } else {
                responseBlocks.push({ type: 'follow_up_chips', label: `Explore:`, chips: [
                  { label: 'All Rooms', icon: 'business-outline', onPress: () => handleIntent({ type: 'SHOW_ROOMS' }) }
@@ -1004,12 +1042,42 @@ export const OwnerAssistant: React.FC = () => {
               ]
             },
             {
+              type: 'follow_up_chips', label: 'Do you want to see all rooms?', chips: [
+                { label: 'View All Rooms', icon: 'list-outline', onPress: () => handleIntent({ type: 'SHOW_ROOM_LIST_INLINE' }) },
+              ]
+            },
+            {
               type: 'action_buttons', buttons: [
-                { label: 'View All Rooms', icon: 'business-outline', screen: 'Rooms', variant: 'primary' },
-                { label: 'Add Room (+)', icon: 'add-circle-outline', screen: 'AddRoom', variant: 'outline' },
+                { label: 'Add Room (+)', icon: 'add-circle-outline', screen: 'AddRoom', variant: 'primary' },
               ]
             },
           ]);
+        }
+        break;
+      }
+
+      case 'SHOW_ROOM_LIST_INLINE': {
+        addBot([{ type: 'loading' }]);
+        try {
+          const roomsRes = await fetchRooms(); 
+          removeLoadingBlock();
+          if (!roomsRes || roomsRes.length === 0) {
+            addBot([{ type: 'text', text: 'You currently have no rooms.' }]);
+          } else {
+            addBot([
+              { type: 'info_tip', text: `Showing all ${roomsRes.length} rooms in your hostel.`, icon: 'business-outline', color: '#4F46E5' },
+              {
+                type: 'follow_up_chips', label: 'Rooms:', chips: roomsRes.map((r: any) => ({
+                  label: `Room ${r.room_number}`,
+                  icon: 'home-outline',
+                  onPress: () => handleIntent({ type: 'SHOW_ROOM_DETAIL', roomNumber: r.room_number })
+                }))
+              }
+            ]);
+          }
+        } catch {
+          removeLoadingBlock();
+          addBot([{ type: 'text', text: 'Error fetching the rooms list.' }]);
         }
         break;
       }

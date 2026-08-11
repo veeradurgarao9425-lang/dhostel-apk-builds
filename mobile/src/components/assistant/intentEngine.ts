@@ -296,18 +296,21 @@ const RULES: Rule[] = [
   {
     keywords: [
       'what is my name', 'my name', 'who am i', 'tell me my name',
-      'do you know my name', 'what do you call me',
+      'do you know my name', 'what do you call me', 'owner', 'hostel owner',
+      'who is hostel owner', 'who is the owner', 'owner name', 'owner details',
+      'owner information', 'owner info', 'registered name',
     ],
     intent: { type: 'SMALL_TALK', subtype: 'my_name' },
     priority: 15,
   },
   {
     keywords: [
-      'what is owner name', 'who is owner', 'how is owner',
-      'owner name', 'owner of this app', 'who built this', 'who made this',
-      'who created hostix', 'hostix owner', 'developer name',
+      'what is app owner name', 'who is app owner', 'how is app owner',
+      'app owner name', 'owner of this app', 'who built this app', 'who made this app',
+      'who created hostix', 'hostix owner', 'developer name', 'app owner',
       'who is the developer', 'who is founder', 'who is this app owner',
-      'app owner name', 'contact owner',
+      'app creator', 'contact developer', 'about developer', 'developer details',
+      'veeradurgarao', 'goriparthi', 'durgarao goriparthi', 'software engineer',
     ],
     intent: { type: 'SMALL_TALK', subtype: 'app_developer' },
     priority: 15,
@@ -828,10 +831,7 @@ const RULES: Rule[] = [
       'recent admission', 'recent student', 'new registration',
       'new admission', 'how many joined', 'latest student',
       'students registered this month', 'newly joined',
-      // My name / owner info
-      'my name', 'who am i', 'owner name', 'what is my name',
-      'tell me my name', 'who is owner', 'owner details',
-      'owner information', 'owner info', 'registered name',
+      'students registered this month', 'newly joined',
     ],
     intent: { type: 'SHOW_STUDENTS' },
     priority: 6,
@@ -1040,11 +1040,11 @@ const RULES: Rule[] = [
 
   {
     keywords: [
-      'who is owner', 'who is the owner', 'owner of this app', 'who built this app',
+      'app owner of this app', 'who built this app',
       'who created this app', 'who is developer', 'who is the developer',
       'who is founder', 'veeradurgarao', 'goriparthi', 'durgarao goriparthi',
-      'contact developer', 'about owner', 'about developer', 'developer details',
-      'owner details', 'app owner', 'app creator', 'who made this app',
+      'contact developer', 'about developer', 'developer details',
+      'app owner', 'app creator', 'who made this app',
     ],
     intent: { type: 'SHOW_APP_INFO', topic: 'owner' },
     priority: 9,
