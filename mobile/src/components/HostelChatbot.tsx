@@ -7,8 +7,6 @@ import {
   TextInput,
   ScrollView,
   Modal,
-  Platform,
-  KeyboardAvoidingView,
   DeviceEventEmitter,
   Animated,
   Image
@@ -358,16 +356,12 @@ export const HostelChatbot: React.FC = () => {
 
       <Modal
         visible={isOpen}
-        transparent
         animationType="slide"
         onRequestClose={() => setIsOpen(false)}
+        statusBarTranslucent={false}
       >
         <SafeAreaView style={s.modalContainer} edges={['top']}>
-          <KeyboardAvoidingView
-            behavior="padding"
-            keyboardVerticalOffset={Platform.OS === 'android' ? 0 : 0}
-            style={s.modalWrapper}
-          >
+          <View style={s.modalWrapper}>
             {/* Header */}
             <LinearGradient colors={['#4F46E5', '#7C3AED']} style={s.header}>
               <View style={s.headerInfoRow}>
@@ -680,7 +674,7 @@ export const HostelChatbot: React.FC = () => {
 
             {/* Footer removed per request */}
 
-          </KeyboardAvoidingView>
+          </View>
 
           {/* Add Menu Pop-up Overlay */}
           {isAddMenuOpen && (
