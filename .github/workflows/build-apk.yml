@@ -21,6 +21,25 @@ jobs:
           sudo rm -rf /usr/local/.ghcup
           sudo docker image prune --all --force
 
+      - name: Delete old artifacts to free storage quota
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const artifacts = await github.rest.actions.listArtifactsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100,
+            });
+            for (const artifact of artifacts.data.artifacts) {
+              if (artifact.name === 'dhostel-release-apk') {
+                console.log(`Deleting old artifact: ${artifact.id} (${artifact.name})`);
+                await github.rest.actions.deleteArtifact({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  artifact_id: artifact.id,
+                });
+              }
+            }
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -59,6 +78,5 @@ jobs:
         with:
           name: dhostel-release-apk
           path: mobile/android/app/build/outputs/apk/release/app-release.apk
-          retention-days: 7
-
-
+          retention-days: 3
+          overwrite: true
