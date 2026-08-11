@@ -418,9 +418,9 @@ const s = StyleSheet.create({
     statusToggleTextNew: { fontSize: 11, fontWeight: '800' },
 
     fab: {
-        position: 'absolute', bottom: 45, right: 24, width: 50, height: 50, borderRadius: 25,
-        justifyContent: 'center', alignItems: 'center', elevation: 5,
-        shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 3,
+        position: 'absolute', bottom: 140, right: 20, width: 52, height: 52, borderRadius: 26,
+        justifyContent: 'center', alignItems: 'center', elevation: 10,
+        shadowColor: '#4F46E5', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 6, zIndex: 99999,
     },
 
     emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: 80 },

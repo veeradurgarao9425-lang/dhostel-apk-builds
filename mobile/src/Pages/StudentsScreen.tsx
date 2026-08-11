@@ -796,7 +796,7 @@ export default function StudentsScreen({ navigation, route }: any) {
                 style={[styles.fab, { backgroundColor: COLORS.primary }]}
                 onPress={() => navigation.navigate('AddStudent')}
             >
-                <Plus color="#FFF" size={22} strokeWidth={3.2} />
+                <Plus color="#FFF" size={20} strokeWidth={3.0} />
             </TouchableOpacity>
 
             {/* Confirm Dialog for status toggle */}
@@ -1072,9 +1072,11 @@ const styles = StyleSheet.create({
         fontWeight: '700',
     },
     fab: {
-        position: 'absolute', bottom: 45, right: 24,
-        width: 50, height: 50, borderRadius: 25,
-        justifyContent: 'center', alignItems: 'center', elevation: 5
+        position: 'absolute', bottom: 140, right: 20,
+        width: 52, height: 52, borderRadius: 26,
+        justifyContent: 'center', alignItems: 'center', elevation: 10,
+        shadowColor: '#4F46E5', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 6,
+        zIndex: 99999,
     },
     countRow: {
         flexDirection: 'row',

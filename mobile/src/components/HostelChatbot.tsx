@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  Pressable,
   TextInput,
   ScrollView,
   Modal,
@@ -87,6 +88,7 @@ export const HostelChatbot: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
+  const searchInputRef = useRef<TextInput>(null);
 
   const isOwner = useMemo(() => {
     return user?.role !== 'TENANT' && user?.role?.toLowerCase() !== 'tenant';
@@ -160,14 +162,14 @@ export const HostelChatbot: React.FC = () => {
 
   const chatbotPosition = useMemo(() => {
     const listPagesWithFAB = [
-      'Students', 'Rooms', 'Expenses', 'Staff', 'Guests',
-      'StaffPayments', 'Reminders', 'IncomeDetails', 'Hostels', 'Notices',
-      'NoticesManagement', 'InCome'
+      'Students', 'StudentsTab', 'Rooms', 'RoomsTab', 'Expenses', 'ExpensesTab',
+      'Staff', 'StaffTab', 'Guests', 'StaffPayments', 'Reminders', 'IncomeDetails',
+      'Hostels', 'Notices', 'NoticesTab', 'NoticesManagement', 'InCome'
     ];
     if (currentRoute && listPagesWithFAB.includes(currentRoute)) {
-      return { bottom: 110, right: 24 };
+      return { bottom: 210, right: 20 };
     }
-    return { bottom: 140, right: 24 };
+    return { bottom: 140, right: 20 };
   }, [currentRoute]);
 
   const getTimeGreeting = () => {
@@ -420,9 +422,13 @@ export const HostelChatbot: React.FC = () => {
                 >
                   <Ionicons name="menu-outline" size={28} color="#4F46E5" />
                 </TouchableOpacity>
-                <View style={[s.searchInputContainer, { flex: 1 }]}>
+                <Pressable 
+                  style={[s.searchInputContainer, { flex: 1 }]}
+                  onPress={() => searchInputRef.current?.focus()}
+                >
                   <Ionicons name="search-outline" size={16} color="#94A3B8" style={{ marginRight: 6 }} />
                   <TextInput
+                    ref={searchInputRef}
                     style={s.searchInput}
                     value={searchQuery}
                     onChangeText={setSearchQuery}
@@ -439,7 +445,7 @@ export const HostelChatbot: React.FC = () => {
                       <Ionicons name="close-circle" size={16} color="#94A3B8" />
                     </TouchableOpacity>
                   )}
-                </View>
+                </Pressable>
               </View>
 
               <ScrollView 
@@ -731,18 +737,19 @@ const s = StyleSheet.create({
     position: 'absolute',
     bottom: 140,
     right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: '#4F46E5',
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 8,
+    elevation: 10,
     shadowColor: '#4F46E5',
     shadowOpacity: 0.4,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 4 },
-    overflow: 'hidden'
+    overflow: 'hidden',
+    zIndex: 9999,
   },
   fabGradient: {
     flex: 1,

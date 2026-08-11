@@ -36,16 +36,14 @@ jobs:
                 per_page: 100,
               });
               for (const artifact of artifacts.data.artifacts) {
-                if (artifact.name === 'dhostel-release-apk') {
-                  console.log(`Deleting old artifact: ${artifact.id} (${artifact.name})`);
-                  await github.rest.actions.deleteArtifact({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    artifact_id: artifact.id,
-                  });
-                }
+                console.log(`Deleting old artifact: ${artifact.id} (${artifact.name})`);
+                await github.rest.actions.deleteArtifact({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  artifact_id: artifact.id,
+                });
               }
-              console.log('Old artifacts cleaned up successfully.');
+              console.log('All old artifacts cleaned up successfully.');
             } catch (err) {
               console.warn('Could not delete old artifacts (non-fatal):', err.message);
             }
@@ -87,5 +85,5 @@ jobs:
         with:
           name: dhostel-release-apk
           path: mobile/android/app/build/outputs/apk/release/app-release.apk
-          retention-days: 3
+          retention-days: 1
           overwrite: true

@@ -24,10 +24,9 @@ import React, {
   useState, useEffect, useRef, useCallback, useMemo,
 } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView,
+  View, Text, StyleSheet, TouchableOpacity, Pressable, ScrollView,
   Modal, Platform, KeyboardAvoidingView, TextInput,
   Animated, Image, DeviceEventEmitter, Dimensions, Keyboard,
-  StatusBar,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -224,7 +223,8 @@ const HomeContent: React.FC<HomeProps> = ({ snap, loading, onQuestion, onIntent 
 };
 
 const hc = StyleSheet.create({
-  scroll: { padding: 16, gap: 10, paddingBottom: 24 },
+  // No paddingBottom: the ChipsPanel is the last child and supplies its own.
+  scroll: { padding: 16, gap: 10, paddingBottom: 0 },
   greeting: { fontSize: 22, fontWeight: '800', color: '#0F172A', letterSpacing: -0.3, marginBottom: 2 },
   sub: { fontSize: 13, color: '#94A3B8', fontWeight: '500', marginBottom: 6 },
   sectionLabel: { fontSize: 11, fontWeight: '800', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6, marginTop: 4 },
@@ -465,7 +465,12 @@ export const OwnerAssistant: React.FC = () => {
   useEffect(() => {
     const showSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      () => setIsKeyboardActive(true)
+      () => {
+        setIsKeyboardActive(true);
+        // Stay pinned to the newest message when the keyboard takes the space
+        // (WhatsApp/Instagram behaviour) — the modal window resizes under us.
+        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
+      }
     );
     const hideSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
@@ -520,6 +525,19 @@ export const OwnerAssistant: React.FC = () => {
     finally { setSnapLoading(false); }
   };
 
+  /**
+   * Bottom inset for content inside the Modal.
+   *
+   * A non-transparent RN Modal on Android gets its own dialog window that already
+   * excludes the navigation bar, so adding `insets.bottom` (~48px on gesture-nav
+   * phones) there is pure dead space. iOS Modals are truly full screen and do need
+   * the home-indicator inset. Once the keyboard is up nothing needs the inset.
+   */
+  const bottomInset = useMemo(() => {
+    if (isKeyboardActive) return 8;
+    return Platform.OS === 'ios' ? Math.max(insets.bottom, 8) : 8;
+  }, [isKeyboardActive, insets.bottom]);
+
   // ── Position ───────────────────────────────────────────────────────────
   const isFormPage = useMemo(() => {
     if (!currentRoute) return false;
@@ -534,11 +552,13 @@ export const OwnerAssistant: React.FC = () => {
   }, [currentRoute]);
 
   const fabPos = useMemo(() => {
-    const listPages = ['Students', 'Rooms', 'Expenses', 'Staff', 'Guests',
-      'StaffPayments', 'Reminders', 'IncomeDetails', 'Hostels', 'Notices',
-      'NoticesManagement', 'InCome'];
+    const listPages = [
+      'Students', 'StudentsTab', 'Rooms', 'RoomsTab', 'Expenses', 'ExpensesTab',
+      'Staff', 'StaffTab', 'Guests', 'StaffPayments', 'Reminders', 'IncomeDetails',
+      'Hostels', 'Notices', 'NoticesTab', 'NoticesManagement', 'InCome'
+    ];
     return currentRoute && listPages.includes(currentRoute)
-      ? { bottom: 110, right: 24 } : { bottom: 140, right: 24 };
+      ? { bottom: 210, right: 20 } : { bottom: 140, right: 20 };
   }, [currentRoute]);
 
   // ── Message helpers ────────────────────────────────────────────────────
@@ -1296,9 +1316,13 @@ export const OwnerAssistant: React.FC = () => {
 
       <Modal visible={isOpen} transparent={false} animationType="slide" onRequestClose={() => setIsOpen(false)}>
         <SafeAreaView style={s.safe} edges={['top']}>
+          {/* Android: RN's Modal forces adjustResize on its own dialog window, so
+              the layout already shrinks above the keyboard — any KAV behaviour here
+              subtracts the keyboard height a second time and pushes the input bar
+              off screen. iOS has no adjustResize, so it still needs `padding`. */}
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : (StatusBar.currentHeight || 0)}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={0}
             style={s.kav}
           >
 
@@ -1319,16 +1343,9 @@ export const OwnerAssistant: React.FC = () => {
                 </View>
               </View>
               <View style={{ flexDirection: 'row', gap: 4 }}>
-                {view === 'conversation' && (
-                  <>
-                    <TouchableOpacity style={s.iconBtn} onPress={() => setMessages([])}>
-                      <Ionicons name="refresh-outline" size={20} color="#C7D2FE" />
-                    </TouchableOpacity>
-                    <TouchableOpacity style={s.iconBtn} onPress={handleReset}>
-                      <Ionicons name="home-outline" size={20} color="#C7D2FE" />
-                    </TouchableOpacity>
-                  </>
-                )}
+                <TouchableOpacity style={s.iconBtn} onPress={handleReset}>
+                  <Ionicons name="refresh-outline" size={20} color="#C7D2FE" />
+                </TouchableOpacity>
                 <TouchableOpacity style={s.iconBtn} onPress={() => setIsOpen(false)}>
                   <Ionicons name="close" size={22} color="#FFF" />
                 </TouchableOpacity>
@@ -1341,7 +1358,7 @@ export const OwnerAssistant: React.FC = () => {
                 <ScrollView
                   showsVerticalScrollIndicator={false}
                   keyboardShouldPersistTaps="handled"
-                  contentContainerStyle={[hc.scroll, { paddingBottom: Math.max(insets.bottom, 8) }]}
+                  contentContainerStyle={[hc.scroll, { flexGrow: 1, justifyContent: 'space-between' }]}
                 >
                   <HomeContent
                     snap={snap}
@@ -1349,82 +1366,70 @@ export const OwnerAssistant: React.FC = () => {
                     onQuestion={handleQuery}
                     onIntent={(i) => { setMessages([]); handleIntent(i); }}
                   />
-                  {/* ── Chips inside scroll for home view ── */}
-                  <ChipsPanel
-                    chipTab={chipTab}
-                    setChipTab={setChipTab}
-                    handleQuery={handleQuery}
-                  />
+                  <ChipsPanel handleQuery={handleQuery} />
                 </ScrollView>
               ) : (
                 <ScrollView
                   ref={scrollRef}
                   style={{ flex: 1 }}
-                  contentContainerStyle={[s.msgList, { paddingBottom: Math.max(insets.bottom, 8) }]}
+                  contentContainerStyle={[s.msgList, { flexGrow: 1, justifyContent: 'space-between' }]}
                   showsVerticalScrollIndicator={false}
                   keyboardShouldPersistTaps="handled"
                 >
-                  {messages.map(msg => (
-                    <View key={msg.id}>
-                      {msg.sender === 'user' ? (
-                        <View style={s.userRow}>
-                          <View style={s.userBubble}>
-                            <Text style={s.userText}>{msg.text}</Text>
+                  <View style={{ gap: 14 }}>
+                    {messages.map(msg => (
+                      <View key={msg.id}>
+                        {msg.sender === 'user' ? (
+                          <View style={s.userRow}>
+                            <View style={s.userBubble}>
+                              <Text style={s.userText}>{msg.text}</Text>
+                            </View>
                           </View>
-                        </View>
-                      ) : (
-                        <View style={s.botRow}>
-                          <View style={[s.botBubble, { flex: 1 }]}>
-                            {msg.blocks && <AssistantResponse blocks={msg.blocks} />}
+                        ) : (
+                          <View style={s.botRow}>
+                            <View style={[s.botBubble, { flex: 1 }]}>
+                              {msg.blocks && <AssistantResponse blocks={msg.blocks} />}
+                            </View>
                           </View>
-                        </View>
-                      )}
-                    </View>
-                  ))}
-                  {isTyping && (
-                    <View style={s.botRow}>
-                      <View style={s.botBubble}><BouncingDots /></View>
-                    </View>
-                  )}
-                  {/* ── Chips inside scroll for conversation view ── */}
-                  {!isKeyboardActive && !isAddMenuOpen && (
-                    <ChipsPanel
-                      chipTab={chipTab}
-                      setChipTab={setChipTab}
-                      handleQuery={handleQuery}
-                    />
-                  )}
+                        )}
+                      </View>
+                    ))}
+                    {isTyping && (
+                      <View style={s.botRow}>
+                        <View style={s.botBubble}><BouncingDots /></View>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* ── Quick Stats & Guides chips inside scroll view ── */}
+                  <ChipsPanel handleQuery={handleQuery} />
                 </ScrollView>
               )}
             </View>
 
-
-
-
-
-
-
             {/* ── Bottom input bar ── */}
-            <View style={[s.inputBar, { 
-              paddingBottom: 8, 
-              gap: 8, 
-              borderTopWidth: 1, 
-              borderTopColor: '#E2E8F0' 
-            }]}>
-              {/* Hamburger Menu Button with Keyboard Dismiss handling */}
+            <View style={[s.inputBar, isFocused && s.inputBarFocused, { paddingBottom: isAddMenuOpen ? 8 : Math.max(bottomInset, 8) }]}>
+              {/* Hamburger / Menu Toggle Button */}
               <TouchableOpacity
                 onPress={() => {
                   Keyboard.dismiss();
                   setIsAddMenuOpen(!isAddMenuOpen);
                 }}
-                style={{ padding: 4 }}
+                style={s.menuBtnWrap}
                 activeOpacity={0.7}
               >
-                <Ionicons name={isAddMenuOpen ? "close-outline" : "menu-outline"} size={28} color="#4338CA" />
+                <Ionicons name={isAddMenuOpen ? "close-outline" : "apps-outline"} size={22} color={isAddMenuOpen ? "#DC2626" : "#4F46E5"} />
               </TouchableOpacity>
 
-              {/* Search / input */}
-              <View style={s.inputWrap}>
+              {/* Search / input pill */}
+              <Pressable
+                style={[s.inputWrap, isFocused && s.inputWrapFocused]}
+                onPress={() => {
+                  setIsAddMenuOpen(false);
+                  inputRef.current?.focus();
+                }}
+              >
+                <Ionicons name="search-outline" size={17} color={isFocused ? "#4F46E5" : "#94A3B8"} style={{ marginRight: 6 }} />
                 <TextInput
                   ref={inputRef}
                   style={s.input}
@@ -1435,30 +1440,49 @@ export const OwnerAssistant: React.FC = () => {
                   returnKeyType="send"
                   onSubmitEditing={() => handleQuery(inputText)}
                   multiline={false}
+                  maxFontSizeMultiplier={1.3}
+                  underlineColorAndroid="transparent"
                   onFocus={() => {
                     setIsAddMenuOpen(false);
                     setIsFocused(true);
                   }}
                   onBlur={() => setIsFocused(false)}
                 />
-              </View>
+                {inputText.length > 0 && (
+                  <TouchableOpacity onPress={() => setInputText('')} style={{ padding: 2 }}>
+                    <Ionicons name="close-circle" size={18} color="#94A3B8" />
+                  </TouchableOpacity>
+                )}
+              </Pressable>
 
               {/* Send button */}
               <TouchableOpacity
-                style={[s.sendBtn, { opacity: inputText.trim() ? 1 : 0.4 }]}
+                style={s.sendBtnTouch}
                 onPress={() => handleQuery(inputText)}
-                activeOpacity={0.75}
+                activeOpacity={0.8}
                 disabled={!inputText.trim()}
               >
-                <Ionicons name="send" size={16} color="#FFF" />
+                {inputText.trim() ? (
+                  <LinearGradient
+                    colors={['#6366F1', '#4F46E5']}
+                    style={s.sendBtnGrad}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                  >
+                    <Ionicons name="send" size={15} color="#FFF" style={{ marginLeft: 2 }} />
+                  </LinearGradient>
+                ) : (
+                  <View style={s.sendBtnDisabled}>
+                    <Ionicons name="send" size={15} color="#CBD5E1" style={{ marginLeft: 2 }} />
+                  </View>
+                )}
               </TouchableOpacity>
             </View>
 
             {/* Inline 4x2 Grid Menu below input bar */}
             {isAddMenuOpen && (
-              <View style={[s.inlineMenuContainer, { 
-                height: 160 + (Platform.OS === 'ios' ? Math.max(insets.bottom, 10) : 10), 
-                paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 10) : 10 
+              <View style={[s.inlineMenuContainer, {
+                height: 160 + bottomInset,
+                paddingBottom: bottomInset,
               }]}>
                 <View style={s.inlineMenuGrid}>
                   {menuItems.map((item, idx) => (
@@ -1498,10 +1522,11 @@ const s = StyleSheet.create({
   /* FAB */
   fab: {
     position: 'absolute',
-    width: 56, height: 56, borderRadius: 28,
+    width: 52, height: 52, borderRadius: 26,
     overflow: 'hidden',
     elevation: 10,
     shadowColor: '#4F46E5', shadowOpacity: 0.45, shadowRadius: 8, shadowOffset: { width: 0, height: 4 },
+    zIndex: 9999,
   },
   fabGrad: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
@@ -1532,7 +1557,7 @@ const s = StyleSheet.create({
   iconBtn: { padding: 6, borderRadius: 8 },
 
   /* Messages */
-  msgList: { padding: 14, gap: 14, paddingBottom: 20 },
+  msgList: { padding: 14, gap: 14, paddingBottom: 8 },
   userRow: { alignItems: 'flex-end' },
   userBubble: {
     backgroundColor: '#4338CA', borderRadius: 18, borderBottomRightRadius: 4,
@@ -1552,21 +1577,85 @@ const s = StyleSheet.create({
 
   /* Bottom input bar */
   inputBar: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingHorizontal: 12, paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     backgroundColor: '#FFF',
-    borderTopWidth: 1, borderTopColor: '#F1F5F9',
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: -3 },
+  },
+  inputBarFocused: {
+    borderTopColor: '#E0E7FF',
+    backgroundColor: '#FAFAFF',
+  },
+  menuBtnWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E0E7FF',
   },
   inputWrap: {
     flex: 1,
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#F8FAFC', borderWidth: 1.5, borderColor: '#E2E8F0',
-    borderRadius: 22, paddingHorizontal: 14, minHeight: 42,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 22,
+    paddingHorizontal: 12,
+    minHeight: 44,
   },
-  input: { flex: 1, fontSize: 14, color: '#0F172A', fontWeight: '500', paddingVertical: Platform.OS === 'ios' ? 8 : 4 },
-  sendBtn: {
-    width: 42, height: 42, borderRadius: 21,
-    backgroundColor: '#4338CA', alignItems: 'center', justifyContent: 'center',
+  inputWrapFocused: {
+    backgroundColor: '#FFF',
+    borderColor: '#4F46E5',
+    shadowColor: '#4F46E5',
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  input: {
+    flex: 1,
+    fontSize: 14,
+    color: '#0F172A',
+    fontWeight: '500',
+    paddingVertical: Platform.OS === 'ios' ? 8 : 4,
+  },
+  sendBtnTouch: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    overflow: 'hidden',
+  },
+  sendBtnGrad: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+    shadowColor: '#4F46E5',
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  sendBtnDisabled: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 21,
   },
   quickChipBtn: {
     flexDirection: 'row',
@@ -1587,39 +1676,21 @@ const s = StyleSheet.create({
     backgroundColor: '#FFF',
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
-  },
-  chipTabRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 12,
     paddingTop: 6,
     paddingBottom: 2,
-    gap: 6,
   },
-  chipTab: {
+  chipSectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    paddingHorizontal: 12,
+    marginBottom: 4,
+    gap: 4,
   },
-  chipTabActive: {
-    backgroundColor: '#EEF2FF',
-    borderColor: '#C7D2FE',
-  },
-  chipTabText: {
-    fontSize: 9,
-    fontWeight: '600',
-    color: '#94A3B8',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
-  chipTabTextActive: {
+  chipSectionTitle: {
+    fontSize: 9.5,
+    fontWeight: '800',
     color: '#4338CA',
-    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   inlineMenuContainer: {
     backgroundColor: '#FFF',
@@ -1654,59 +1725,55 @@ const s = StyleSheet.create({
   },
 });
 
-// \u2500\u2500\u2500 ChipsPanel implementation (after styles so `s` is available) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-ChipsPanel = ({ chipTab, setChipTab, handleQuery }) => (
-  <View style={[s.chipPanel, { marginTop: 12 }]}>
-    {/* Tab toggles */}
-    <View style={s.chipTabRow}>
-      <TouchableOpacity
-        style={[s.chipTab, chipTab === 'stats' && s.chipTabActive]}
-        onPress={() => setChipTab('stats')}
-        activeOpacity={0.7}
-      >
-        <Ionicons name="stats-chart-outline" size={10} color={chipTab === 'stats' ? '#4338CA' : '#94A3B8'} />
-        <Text style={[s.chipTabText, chipTab === 'stats' && s.chipTabTextActive]}>Quick Stats</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[s.chipTab, chipTab === 'guides' && s.chipTabActive]}
-        onPress={() => setChipTab('guides')}
-        activeOpacity={0.7}
-      >
-        <Ionicons name="help-circle-outline" size={10} color={chipTab === 'guides' ? '#16A34A' : '#94A3B8'} />
-        <Text style={[s.chipTabText, chipTab === 'guides' && { color: '#16A34A', fontWeight: '700' as const }]}>Guides</Text>
-      </TouchableOpacity>
+// ─── ChipsPanel implementation (after styles so `s` is available) ─────────────
+ChipsPanel = ({ handleQuery }: { handleQuery: (q: string) => void }) => (
+  <View style={s.chipPanel}>
+    {/* 📊 Quick Stats Row */}
+    <View style={s.chipSectionHeader}>
+      <Ionicons name="stats-chart-outline" size={11} color="#4338CA" />
+      <Text style={s.chipSectionTitle}>QUICK STATS</Text>
     </View>
-    {/* Chips row - horizontal scroll */}
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ flexDirection: 'row', gap: 7, paddingHorizontal: 12, paddingBottom: 8 }}
+      contentContainerStyle={{ flexDirection: 'row', gap: 6, paddingHorizontal: 12, paddingBottom: 6 }}
       keyboardShouldPersistTaps="handled"
     >
-      {chipTab === 'stats'
-        ? INFO_QUESTIONS.map((q, i) => (
-            <TouchableOpacity
-              key={i}
-              style={s.quickChipBtn}
-              onPress={() => { Haptics.selectionAsync().catch(() => {}); handleQuery(q); }}
-              activeOpacity={0.7}
-            >
-              <Ionicons name={getQuestionChipIcon(q) as any} size={11} color="#4338CA" style={{ marginRight: 4 }} />
-              <Text style={s.quickChipBtnText}>{q}</Text>
-            </TouchableOpacity>
-          ))
-        : GUIDE_QUESTIONS.map((q, i) => (
-            <TouchableOpacity
-              key={i}
-              style={[s.quickChipBtn, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}
-              onPress={() => { Haptics.selectionAsync().catch(() => {}); handleQuery(q); }}
-              activeOpacity={0.7}
-            >
-              <Ionicons name={getQuestionChipIcon(q) as any} size={11} color="#16A34A" style={{ marginRight: 4 }} />
-              <Text style={[s.quickChipBtnText, { color: '#15803D' }]}>{q}</Text>
-            </TouchableOpacity>
-          ))
-      }
+      {INFO_QUESTIONS.map((q, i) => (
+        <TouchableOpacity
+          key={i}
+          style={s.quickChipBtn}
+          onPress={() => { Haptics.selectionAsync().catch(() => {}); handleQuery(q); }}
+          activeOpacity={0.7}
+        >
+          <Ionicons name={getQuestionChipIcon(q) as any} size={11} color="#4338CA" style={{ marginRight: 4 }} />
+          <Text style={s.quickChipBtnText}>{q}</Text>
+        </TouchableOpacity>
+      ))}
+    </ScrollView>
+
+    {/* 💡 Guides Row */}
+    <View style={[s.chipSectionHeader, { marginTop: 2 }]}>
+      <Ionicons name="help-circle-outline" size={11} color="#16A34A" />
+      <Text style={[s.chipSectionTitle, { color: '#15803D' }]}>GUIDES</Text>
+    </View>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{ flexDirection: 'row', gap: 6, paddingHorizontal: 12, paddingBottom: 6 }}
+      keyboardShouldPersistTaps="handled"
+    >
+      {GUIDE_QUESTIONS.map((q, i) => (
+        <TouchableOpacity
+          key={i}
+          style={[s.quickChipBtn, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}
+          onPress={() => { Haptics.selectionAsync().catch(() => {}); handleQuery(q); }}
+          activeOpacity={0.7}
+        >
+          <Ionicons name={getQuestionChipIcon(q) as any} size={11} color="#16A34A" style={{ marginRight: 4 }} />
+          <Text style={[s.quickChipBtnText, { color: '#15803D' }]}>{q}</Text>
+        </TouchableOpacity>
+      ))}
     </ScrollView>
   </View>
 );

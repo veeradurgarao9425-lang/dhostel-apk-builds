@@ -178,6 +178,7 @@ export default function MoreScreen() {
                     iconBg: '#CFFAFE',
                     route: 'Guests',
                 },
+                /*
                 {
                     label: 'Tenant Reviews',
                     subtitle: 'View ratings from your tenants',
@@ -186,6 +187,7 @@ export default function MoreScreen() {
                     iconBg: '#FFFBEB',
                     route: 'RatingsManagement',
                 },
+                */
             ],
         },
         {
@@ -325,6 +327,7 @@ export default function MoreScreen() {
                     iconBg: '#EEF2FF',
                     route: 'BillReminders',
                 },
+                /*
                 {
                     label: t('more.reminders'),
                     subtitle: t('more.remindersSub', 'View and manage rent alerts'),
@@ -333,6 +336,7 @@ export default function MoreScreen() {
                     iconBg: '#CFFAFE',
                     route: 'Reminders',
                 },
+                */
                 {
                     label: t('more.profile'),
                     subtitle: t('more.profileSub', 'Manage your account and branch details'),
