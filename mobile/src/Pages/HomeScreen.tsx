@@ -729,7 +729,7 @@ export default function HomeScreen() {
                     <View style={s.headerActions}>
                         <TouchableOpacity
                             style={s.headerIconBtn}
-                            onPress={() => DeviceEventEmitter.emit('OPEN_ASSISTANT')}
+                            onPress={() => navigation.navigate('More' as any)}
                             activeOpacity={0.8}
                         >
                             <Ionicons name="search-outline" size={19} color="#FFF" />

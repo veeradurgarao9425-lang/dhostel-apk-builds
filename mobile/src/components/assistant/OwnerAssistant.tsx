@@ -217,7 +217,6 @@ export const OwnerAssistant: React.FC = () => {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [inputText, setInputText] = useState('');
-  const [topSearchText, setTopSearchText] = useState('');
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [isKeyboardActive, setIsKeyboardActive] = useState(false);
@@ -1612,43 +1611,6 @@ export const OwnerAssistant: React.FC = () => {
                     </Text>
                     <Ionicons name="chevron-down" size={12} color="#94A3B8" />
                   </TouchableOpacity>
-
-                  {/* ── Top Quick Search Bar ── */}
-                  <View style={s.topSearchBarWrap}>
-                    <Ionicons name="search-outline" size={16} color="#4F46E5" style={{ marginRight: 8 }} />
-                    <TextInput
-                      style={s.topSearchInput}
-                      value={topSearchText}
-                      onChangeText={setTopSearchText}
-                      placeholder="Search or ask anything (e.g. dues, occupancy)..."
-                      placeholderTextColor="#94A3B8"
-                      returnKeyType="search"
-                      onSubmitEditing={() => {
-                        if (topSearchText.trim()) {
-                          handleQuery(topSearchText);
-                          setTopSearchText('');
-                        }
-                      }}
-                      underlineColorAndroid="transparent"
-                    />
-                    {topSearchText.length > 0 ? (
-                      <TouchableOpacity onPress={() => setTopSearchText('')} style={{ padding: 4 }}>
-                        <Ionicons name="close-circle" size={18} color="#94A3B8" />
-                      </TouchableOpacity>
-                    ) : (
-                      <TouchableOpacity
-                        style={s.topSearchSubmitBtn}
-                        onPress={() => {
-                          if (topSearchText.trim()) {
-                            handleQuery(topSearchText);
-                            setTopSearchText('');
-                          }
-                        }}
-                      >
-                        <Ionicons name="arrow-forward" size={13} color="#FFF" />
-                      </TouchableOpacity>
-                    )}
-                  </View>
 
                   {messages.map(msg => (
                     <View key={msg.id}>
