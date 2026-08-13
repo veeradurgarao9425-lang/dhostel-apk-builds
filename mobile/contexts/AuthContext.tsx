@@ -239,8 +239,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return { error: errorMessage };
       }
     } catch (error: any) {
-      const targetUrl = api.defaults.baseURL;
-      const errorMessage = error.response?.data?.error || error.response?.data?.message || `Cannot reach server at ${targetUrl}.`;
+      // No response → server is sleeping (Render free-tier cold start takes 30-60 sec)
+      const isNetworkError = !error.response;
+      const errorMessage = isNetworkError
+        ? 'Server is starting up, please wait 30-60 seconds and try again.'
+        : (error.response?.data?.error || error.response?.data?.message || 'Authentication failed.');
       return { error: errorMessage };
     }
   };
@@ -278,10 +281,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const errorMessage = body?.error || body?.message || 'Registration failed.';
       return { error: errorMessage };
     } catch (error: any) {
-      const errorMessage =
-        error.response?.data?.error ||
-        error.response?.data?.message ||
-        'Cannot reach server. Check your connection and try again.';
+      const isNetworkError = !error.response;
+      const errorMessage = isNetworkError
+        ? 'Server is starting up, please wait 30-60 seconds and try again.'
+        : (error.response?.data?.error || error.response?.data?.message || 'Registration failed.');
       return { error: errorMessage };
     }
   };

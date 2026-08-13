@@ -14,7 +14,7 @@ const BASE_URL =
 // ─── Axios Instance ───────────────────────────────────────────────────────────
 export const api = axios.create({
   baseURL: BASE_URL,
-  timeout: 60000, // 60s — Render free-tier needs up to 50s on cold start
+  timeout: 90000, // 90s — Render free-tier cold start can take 50-80s
   headers: {
     'Content-Type': 'application/json',
   },
@@ -64,15 +64,15 @@ api.interceptors.response.use(
     // Auto-retry up to 2 times on network failure or timeout (Render server cold-start)
     const config = error.config as any;
     const isNetworkOrTimeout = !error.response || error.code === 'ECONNABORTED';
-    
-    if (
-      isNetworkOrTimeout &&
-      (config._retryCount || 0) < 2 &&
-      config.method?.toLowerCase() === 'get'
-    ) {
+    // Allow retry on GET requests AND on POST to auth/login (idempotent login for cold-start)
+    const isRetryableMethod =
+      config.method?.toLowerCase() === 'get' ||
+      (config.method?.toLowerCase() === 'post' && config.url?.includes('/auth/login'));
+
+    if (isNetworkOrTimeout && (config._retryCount || 0) < 2 && isRetryableMethod) {
       config._retryCount = (config._retryCount || 0) + 1;
-      // Progressive delay to allow Render server to spin up
-      const delay = config._retryCount * 2500;
+      // Progressive delay: 3s, then 6s — gives Render cold-start time to wake up
+      const delay = config._retryCount * 3000;
       await new Promise((r) => setTimeout(r, delay));
       return api(config);
     }

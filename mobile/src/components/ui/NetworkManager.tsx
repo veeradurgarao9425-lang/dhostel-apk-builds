@@ -53,8 +53,6 @@ export const NetworkManager = ({ children }: { children: React.ReactNode }) => {
     const bannerAnim = useRef(new Animated.Value(-100)).current;
     const spinAnim = useRef(new Animated.Value(0)).current;
 
-    const wasDisconnectedRef = useRef(false);
-
     useEffect(() => {
         Animated.loop(
             Animated.timing(spinAnim, {
@@ -90,12 +88,8 @@ export const NetworkManager = ({ children }: { children: React.ReactNode }) => {
     const simulateBanner = (type: 'offline' | 'reconnecting' | 'online' | 'syncing' | 'sync_success' | 'sync_failed') => {
         setBannerState(type);
         showBannerAnim();
-        
-        // Auto hide certain banners
         if (type === 'online' || type === 'sync_success' || type === 'sync_failed') {
-            setTimeout(() => {
-                hideBannerAnim();
-            }, 3000);
+            setTimeout(() => hideBannerAnim(), 3000);
         }
     };
 
@@ -103,53 +97,22 @@ export const NetworkManager = ({ children }: { children: React.ReactNode }) => {
         setScreenState(type);
     };
 
-    const processNetworkState = (state: any) => {
-        // Device is connected if isConnected is NOT explicitly false.
-        // DO NOT rely on state.isInternetReachable for blocking screen because NetInfo's 204 ping fails on many Android networks.
-        const connected = state.isConnected !== false;
-        setIsConnected(connected);
-
-        if (state.isConnected === false) {
-            wasDisconnectedRef.current = true;
-            setWasDisconnected(true);
-            setBannerState('offline');
-            setScreenState(current => (current === 'NONE' || current === 'RECONNECTING' ? 'OFFLINE' : current));
-            showBannerAnim();
-        } else {
-            if (wasDisconnectedRef.current) {
-                wasDisconnectedRef.current = false;
-                setWasDisconnected(false);
-                setBannerState('reconnecting');
-                setScreenState(current => (current === 'OFFLINE' ? 'RECONNECTING' : current));
-                showBannerAnim();
-
-                setTimeout(() => {
-                    setBannerState('online');
-                    setScreenState(current => (current === 'RECONNECTING' ? 'BACK_ONLINE' : current));
-                    setTimeout(() => {
-                        hideBannerAnim();
-                        setScreenState(current => (current === 'BACK_ONLINE' ? 'NONE' : current));
-                    }, 2000);
-                }, 1000);
-            } else {
-                // Ensure offline screen is cleared whenever device network is connected
-                setScreenState(current => (current === 'OFFLINE' || current === 'RECONNECTING' || current === 'BACK_ONLINE' ? 'NONE' : current));
-            }
-        }
-    };
-
+    // ─── NetInfo is intentionally NOT used to auto-trigger the OFFLINE screen ───
+    // NetInfo's isConnected is unreliable on Android (carrier NAT, captive portals,
+    // and Render cold-start all cause false "disconnected" readings even with active
+    // mobile data). The OFFLINE full-screen is only triggered via simulateScreen()
+    // which is called explicitly from API error handlers when real HTTP calls fail.
     useEffect(() => {
-        NetInfo.fetch().then(processNetworkState).catch(() => {});
-        const unsubscribe = NetInfo.addEventListener(processNetworkState);
+        // Still track isConnected so context consumers can read it, but NEVER
+        // auto-trigger the OFFLINE screen from here.
+        const unsubscribe = NetInfo.addEventListener(state => {
+            setIsConnected(state.isConnected !== false);
+        });
         return () => unsubscribe();
     }, []);
 
     const handleScreenAction = () => {
-        if (screenState === 'OFFLINE') {
-            NetInfo.fetch().then(processNetworkState).catch(() => {
-                setScreenState('NONE');
-            });
-        }
+        if (screenState === 'OFFLINE') setScreenState('NONE');   // dismiss & let user try
         else if (screenState === 'POOR_CONNECTION') setScreenState('NONE');
         else if (screenState === 'SLOW_NETWORK') setScreenState('NONE');
         else if (screenState === 'BACK_ONLINE') setScreenState('NONE');
