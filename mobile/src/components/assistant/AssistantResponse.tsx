@@ -56,7 +56,7 @@ export interface TrendPoint {
 export type ContentBlock =
   | { type: 'text'; text: string }
   | { type: 'stat_cards'; cards: StatCard[] }
-  | { type: 'action_buttons'; buttons: ActionButton[] }
+  | { type: 'action_buttons'; buttons: ActionButton[]; isWelcome?: boolean }
   | { type: 'due_list'; dues: DueRecord[]; onCollect?: (id: string | number) => void }
   | { type: 'dues_donut'; paidCount: number; partialCount: number; unpaidCount: number; totalPaidAmount: number; totalPending: number }
   | { type: 'occupancy_donut'; occupied: number; available: number; total: number }
@@ -181,7 +181,7 @@ const DuesDonutBlock = ({ paidCount, partialCount, unpaidCount, totalPaidAmount,
             <Text style={st.donutTotalAmount}>Dues: {INR(totalPending)}</Text>
             <Text style={st.donutPaidAmount}>Paid: {INR(totalPaidAmount)}</Text>
           </View>
-          
+
           <View style={{ gap: 4 }}>
             <View style={st.legendItem}>
               <View style={[st.legendDot, { backgroundColor: '#10B981' }]} />
@@ -256,7 +256,7 @@ const OccupancyDonutBlock = ({ occupied, available, total }: {
         <View style={st.donutLegendWrap}>
           <Text style={st.donutTitle}>Hostel Bed Occupancy</Text>
           <Text style={[st.donutTotalAmount, { color: '#6366F1' }]}>Total Beds: {totalBeds}</Text>
-          
+
           <View style={{ gap: 4, marginTop: 4 }}>
             <View style={st.legendItem}>
               <View style={[st.legendDot, { backgroundColor: '#6366F1' }]} />
@@ -281,7 +281,7 @@ const ExpenseDonutBlock = ({ totalThisMonth, breakdown }: {
   totalThisMonth: number; breakdown: { category: string; amount: number }[];
 }) => {
   const total = totalThisMonth || 1;
-  
+
   const items = breakdown.slice(0, 3);
   const sumTop = items.reduce((sum, item) => sum + item.amount, 0);
   const hasOthers = total > sumTop;
@@ -338,7 +338,7 @@ const ExpenseDonutBlock = ({ totalThisMonth, breakdown }: {
         <View style={st.donutLegendWrap}>
           <Text style={st.donutTitle}>Expenses Breakdown</Text>
           <Text style={[st.donutTotalAmount, { color: '#EF4444' }]}>Total: {INR(total)}</Text>
-          
+
           <View style={{ gap: 4, marginTop: 4 }}>
             {items.map((item, idx) => {
               const pct = Math.round((item.amount / total) * 100);
@@ -372,7 +372,7 @@ const StudentStatsDonutBlock = ({ active, inactive, prebooked, qrRegister }: {
   const circumference = 2 * Math.PI * radius;
 
   const colors = ['#6366F1', '#10B981', '#F59E0B', '#94A3B8'];
-  
+
   const items = [
     { label: 'Active', count: active, pct: activePct, color: '#6366F1' },
     { label: 'Pending QR', count: qrRegister, pct: qrPct, color: '#10B981' },
@@ -422,7 +422,7 @@ const StudentStatsDonutBlock = ({ active, inactive, prebooked, qrRegister }: {
 
         <View style={st.donutLegendWrap}>
           <Text style={st.donutTitle}>Student Distribution</Text>
-          
+
           <View style={{ gap: 4, marginTop: 4 }}>
             {items.map((item, idx) => (
               <View key={idx} style={st.legendItem}>
@@ -528,7 +528,7 @@ const HostelListBlock = ({ hostels, activeHostelId, onSwitch }: {
                   <Text style={[st.listItemBadgeText, { color: '#10B981' }]}>Active</Text>
                 </View>
               ) : (
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={{
                     backgroundColor: '#EEF2FF',
                     paddingHorizontal: 10,
@@ -568,51 +568,133 @@ const StatCardsBlock = ({ cards }: { cards: StatCard[] }) => (
 );
 
 // ─── Action Buttons ───────────────────────────────────────────────────────────
-const ActionButtonsBlock = ({ buttons }: { buttons: ActionButton[] }) => (
-  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-    {buttons.map((btn, i) => {
-      const isPrimary = btn.variant === 'primary' || !btn.variant;
-      const isDanger = btn.variant === 'danger';
-      return (
-        <TouchableOpacity
-          key={i}
-          style={[
-            st.actionBtn,
-            isPrimary && !isDanger && st.actionBtnPrimary,
-            !isPrimary && !isDanger && st.actionBtnOutline,
-            isDanger && st.actionBtnDanger,
-          ]}
-          onPress={() => {
-            Haptics.selectionAsync().catch(() => {});
-            if (btn.onPress) { btn.onPress(); return; }
-            if (btn.screen) { 
-              RootNavigation.navigate(btn.screen); 
-              DeviceEventEmitter.emit('CLOSE_ASSISTANT');
-            }
-          }}
-          activeOpacity={0.75}
-        >
-          {btn.icon && (
-            <Ionicons
-              name={btn.icon as any}
-              size={14}
-              color={isPrimary && !isDanger ? '#FFF' : isDanger ? '#EF4444' : '#4F46E5'}
-              style={{ marginRight: 5 }}
-            />
-          )}
-          <Text style={[
-            st.actionBtnText,
-            isPrimary && !isDanger && { color: '#FFF' },
-            !isPrimary && !isDanger && { color: '#4F46E5' },
-            isDanger && { color: '#EF4444' },
-          ]}>
-            {btn.label}
-          </Text>
-        </TouchableOpacity>
-      );
-    })}
-  </View>
-);
+const ActionButtonsBlock = ({ buttons, isWelcome }: { buttons: ActionButton[]; isWelcome?: boolean }) => {
+  // Top welcome card options (isWelcome === true) ALWAYS remain 100% full-width stacked vertically (one by one).
+  // Bottom result card action buttons (isWelcome === false/undefined) ALWAYS render side-by-side (2 per row).
+  if (isWelcome) {
+    return (
+      <View style={{ gap: 9, marginTop: 6, width: '100%' }}>
+        {buttons.map((btn, i) => {
+          const isPrimary = btn.variant === 'primary';
+          const isDanger = btn.variant === 'danger';
+          return (
+            <TouchableOpacity
+              key={i}
+              style={[
+                st.actionBtn,
+                {
+                  width: '100%',
+                  justifyContent: 'center',
+                  borderRadius: 22,
+                  paddingVertical: 11,
+                  paddingHorizontal: 16,
+                  backgroundColor: isPrimary ? '#4F46E5' : isDanger ? '#FEF2F2' : '#F8FAFC',
+                  borderWidth: 1.2,
+                  borderColor: isPrimary ? '#4F46E5' : isDanger ? '#FECACA' : '#CBD5E1',
+                }
+              ]}
+              onPress={() => {
+                Haptics.selectionAsync().catch(() => { });
+                if (btn.onPress) { btn.onPress(); return; }
+                if (btn.screen) {
+                  RootNavigation.navigate(btn.screen);
+                  DeviceEventEmitter.emit('CLOSE_ASSISTANT');
+                }
+              }}
+              activeOpacity={0.75}
+            >
+              {btn.icon && (
+                <Ionicons
+                  name={btn.icon as any}
+                  size={16}
+                  color={isPrimary ? '#FFF' : isDanger ? '#EF4444' : '#2563EB'}
+                  style={{ marginRight: 8 }}
+                />
+              )}
+              <Text
+                style={[
+                  st.actionBtnText,
+                  {
+                    fontSize: 14,
+                    fontWeight: '600',
+                    textAlign: 'center',
+                    color: isPrimary ? '#FFF' : isDanger ? '#EF4444' : '#2563EB',
+                  }
+                ]}
+              >
+                {btn.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6, width: '100%' }}>
+      {buttons.map((btn, i) => {
+        const isPrimary = btn.variant === 'primary';
+        const isDanger = btn.variant === 'danger';
+        const isOddLast = buttons.length % 2 === 1 && i === buttons.length - 1;
+        const isFullWidth = isOddLast || buttons.length === 1;
+
+        return (
+          <TouchableOpacity
+            key={i}
+            style={[
+              st.actionBtn,
+              {
+                width: isFullWidth ? '100%' : '48%',
+                flexGrow: isFullWidth ? 1 : 0,
+                flexBasis: isFullWidth ? '100%' : '47%',
+                justifyContent: 'center',
+                borderRadius: 22,
+                paddingVertical: 10,
+                paddingHorizontal: 8,
+                backgroundColor: isPrimary ? '#4F46E5' : isDanger ? '#FEF2F2' : '#F8FAFC',
+                borderWidth: 1.2,
+                borderColor: isPrimary ? '#4F46E5' : isDanger ? '#FECACA' : '#CBD5E1',
+              }
+            ]}
+            onPress={() => {
+              Haptics.selectionAsync().catch(() => { });
+              if (btn.onPress) { btn.onPress(); return; }
+              if (btn.screen) {
+                RootNavigation.navigate(btn.screen);
+                DeviceEventEmitter.emit('CLOSE_ASSISTANT');
+              }
+            }}
+            activeOpacity={0.75}
+          >
+            {btn.icon && (
+              <Ionicons
+                name={btn.icon as any}
+                size={15}
+                color={isPrimary ? '#FFF' : isDanger ? '#EF4444' : '#2563EB'}
+                style={{ marginRight: 5 }}
+              />
+            )}
+            <Text
+              numberOfLines={isFullWidth ? undefined : 1}
+              style={[
+                st.actionBtnText,
+                {
+                  fontSize: isFullWidth ? 14 : 13,
+                  fontWeight: '600',
+                  textAlign: 'center',
+                  color: isPrimary ? '#FFF' : isDanger ? '#EF4444' : '#2563EB',
+                }
+              ]}
+            >
+              {btn.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+};
 
 // ─── Due List ─────────────────────────────────────────────────────────────────
 const DueListBlock = ({ dues, onCollect }: { dues: DueRecord[]; onCollect?: (id: string | number) => void }) => {
@@ -788,9 +870,9 @@ const StepsBlock = ({ title, steps, screen, screenLabel }: {
     {screen && (
       <TouchableOpacity
         style={[st.actionBtn, st.actionBtnPrimary, { marginTop: 16, alignSelf: 'flex-start' }]}
-        onPress={() => { 
-          Haptics.selectionAsync().catch(() => {}); 
-          RootNavigation.navigate(screen); 
+        onPress={() => {
+          Haptics.selectionAsync().catch(() => { });
+          RootNavigation.navigate(screen);
           DeviceEventEmitter.emit('CLOSE_ASSISTANT');
         }}
         activeOpacity={0.8}
@@ -815,11 +897,11 @@ const EmptyStateBlock = ({ icon, message, subMessage, action }: {
     {action && (
       <TouchableOpacity
         style={[st.actionBtn, st.actionBtnOutline, { marginTop: 12 }]}
-        onPress={() => { 
+        onPress={() => {
           if (action.onPress) {
-            action.onPress(); 
+            action.onPress();
           } else if (action.screen) {
-            RootNavigation.navigate(action.screen); 
+            RootNavigation.navigate(action.screen);
             DeviceEventEmitter.emit('CLOSE_ASSISTANT');
           }
         }}
@@ -860,7 +942,7 @@ const FollowUpChipsBlock = ({ label, chips }: {
         <TouchableOpacity
           key={i}
           style={st.followUpChip}
-          onPress={() => { Haptics.selectionAsync().catch(() => {}); chip.onPress(); }}
+          onPress={() => { Haptics.selectionAsync().catch(() => { }); chip.onPress(); }}
           activeOpacity={0.7}
         >
           {chip.icon ? (
@@ -1078,72 +1160,222 @@ const RoomDetailCardBlock = ({ room }: { room: any }) => {
   const roomNum = room.room_number || 'N/A';
   const floor = room.floor_number !== undefined ? `Floor ${room.floor_number}` : 'N/A';
   const roomType = room.room_type_name || 'Standard Room';
-  const capacity = room.total_capacity || room.capacity || 0;
-  const occupied = room.occupied_beds || 0;
-  const available = room.available_beds || (capacity - occupied);
+  const capacity = Number(room.total_capacity || room.capacity || 0);
+  const occupied = Number(room.occupied_beds || (room.occupants || room.students || []).length || 0);
+  const available = Math.max(capacity - occupied, 0);
   const occupants: any[] = room.occupants || room.students || [];
+
+  // Generate bed slots up to total capacity
+  const bedSlots = Array.from({ length: Math.max(capacity, occupants.length, 1) }, (_, i) => {
+    const occupant = occupants[i] || null;
+    return {
+      bedNumber: occupant?.bed_number || i + 1,
+      occupant
+    };
+  });
 
   return (
     <View style={st.detailCardContainer}>
+      {/* ── Room Title & Badges Header ── */}
       <View style={st.detailCardHeader}>
-        <View style={[st.avatarCircle, { backgroundColor: '#F0FDF4' }]}>
-          <Ionicons name="business-outline" size={20} color="#10B981" />
+        <View style={[st.avatarCircle, { backgroundColor: '#EEF2FF' }]}>
+          <Ionicons name="business" size={22} color="#4F46E5" />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={st.detailCardName}>Room {roomNum}</Text>
-          <Text style={st.detailCardSub}>{floor} • {roomType}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={[st.detailCardName, { fontSize: 16 }]}>Room {roomNum}</Text>
+            <View style={{ backgroundColor: '#EEF2FF', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+              <Text style={{ fontSize: 10, fontWeight: '700', color: '#4338CA' }}>{floor}</Text>
+            </View>
+          </View>
+          <Text style={st.detailCardSub}>{roomType} • {capacity} Beds Capacity</Text>
         </View>
-        <View style={[st.listItemBadge, { backgroundColor: available > 0 ? '#ECFDF5' : '#FEF2F2' }]}>
-          <Text style={[st.listItemBadgeText, { color: available > 0 ? '#10B981' : '#EF4444' }]}>
-            {available > 0 ? `${available} Free` : 'Full'}
+        <View style={[st.listItemBadge, { backgroundColor: available > 0 ? '#ECFDF5' : '#FEF2F2', paddingHorizontal: 10, paddingVertical: 4 }]}>
+          <Text style={[st.listItemBadgeText, { color: available > 0 ? '#10B981' : '#EF4444', fontSize: 11, fontWeight: '800' }]}>
+            {available > 0 ? `🟢 ${available} Vacant` : '🔴 Fully Occupied'}
           </Text>
         </View>
       </View>
 
-      <View style={st.detailGrid}>
+      {/* ── Summary Stats Pills Bar ── */}
+      <View style={[st.detailGrid, { backgroundColor: '#F8FAFC', borderRadius: 12, padding: 10, marginVertical: 10 }]}>
         <View style={st.detailGridItem}>
-          <Text style={st.detailGridLabel}>Total Beds</Text>
-          <Text style={st.detailGridVal}>{capacity}</Text>
+          <Text style={st.detailGridLabel}>Total Capacity</Text>
+          <Text style={[st.detailGridVal, { color: '#1E293B', fontSize: 16 }]}>{capacity} Beds</Text>
         </View>
         <View style={st.detailGridItem}>
           <Text style={st.detailGridLabel}>Occupied</Text>
-          <Text style={[st.detailGridVal, { color: '#4F46E5' }]}>{occupied}</Text>
+          <Text style={[st.detailGridVal, { color: '#4F46E5', fontSize: 16 }]}>{occupied} Students</Text>
         </View>
         <View style={st.detailGridItem}>
           <Text style={st.detailGridLabel}>Available</Text>
-          <Text style={[st.detailGridVal, { color: '#10B981' }]}>{available}</Text>
+          <Text style={[st.detailGridVal, { color: available > 0 ? '#10B981' : '#EF4444', fontSize: 16 }]}>{available} Free</Text>
         </View>
       </View>
 
-      {/* Occupants list */}
-      <View style={{ marginTop: 10 }}>
-        <Text style={st.listHeader}>Current Occupants ({occupants.length})</Text>
-        {occupants.length === 0 ? (
-          <Text style={{ fontSize: 12, color: '#94A3B8', fontStyle: 'italic' }}>No students currently living in this room.</Text>
+      {/* ── Occupants & Bed Allocation List ── */}
+      <View style={{ marginTop: 4 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <Text style={[st.listHeader, { fontSize: 12, color: '#475569' }]}>Bed Allocation & Occupants ({occupants.length}/{capacity})</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Ionicons name="bed-outline" size={13} color="#6366F1" />
+            <Text style={{ fontSize: 11, fontWeight: '700', color: '#6366F1' }}>
+              {available > 0 ? `${available} Open Bed${available > 1 ? 's' : ''}` : 'No Vacancy'}
+            </Text>
+          </View>
+        </View>
+
+        {bedSlots.length === 0 ? (
+          <View style={{ paddingVertical: 16, alignItems: 'center', backgroundColor: '#F8FAFC', borderRadius: 10 }}>
+            <Ionicons name="bed-outline" size={24} color="#94A3B8" />
+            <Text style={{ fontSize: 12, color: '#94A3B8', marginTop: 4, fontWeight: '500' }}>No bed configuration for this room.</Text>
+          </View>
         ) : (
-          <View style={{ gap: 6 }}>
-            {occupants.map((occ, idx) => (
-              <View key={idx} style={st.listItem}>
-                <View style={{ flex: 1 }}>
-                  <Text style={st.listItemName}>{occ.first_name || occ.name} {occ.last_name || ''}</Text>
-                  <Text style={st.listItemSub}>Phone: {occ.phone || 'N/A'} {occ.bed_number ? `• Bed ${occ.bed_number}` : ''}</Text>
-                </View>
-              </View>
-            ))}
+          <View style={{ gap: 8 }}>
+            {bedSlots.map((slot, idx) => {
+              const occ = slot.occupant;
+              if (occ) {
+                const name = `${occ.first_name || occ.name || 'Student'} ${occ.last_name || ''}`.trim();
+                const studentId = occ.id || occ.student_id || occ.studentId;
+                const phone = occ.phone || occ.mobile || '';
+                const isPaid = occ.rent_status === 'paid' || occ.due_amount === 0;
+
+                return (
+                  <TouchableOpacity
+                    key={idx}
+                    style={[
+                      st.listItem,
+                      {
+                        backgroundColor: '#FFFFFF',
+                        borderColor: '#E2E8F0',
+                        borderWidth: 1.2,
+                        borderRadius: 12,
+                        padding: 11,
+                        elevation: 1,
+                      }
+                    ]}
+                    activeOpacity={0.75}
+                    onPress={() => {
+                      if (studentId) {
+                        RootNavigation.navigate('StudentDetails', { studentId });
+                        DeviceEventEmitter.emit('CLOSE_ASSISTANT');
+                      }
+                    }}
+                  >
+                    {/* Student Avatar */}
+                    <View style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 18,
+                      backgroundColor: '#EEF2FF',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginRight: 10,
+                      borderWidth: 1,
+                      borderColor: '#C7D2FE'
+                    }}>
+                      <Ionicons name="person" size={18} color="#4F46E5" />
+                    </View>
+
+                    {/* Student Details */}
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={[st.listItemName, { fontSize: 13, fontWeight: '700', color: '#0F172A' }]}>{name}</Text>
+                        <View style={{ backgroundColor: '#EEF2FF', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
+                          <Text style={{ fontSize: 10, fontWeight: '800', color: '#4338CA' }}>Bed {slot.bedNumber}</Text>
+                        </View>
+                      </View>
+
+                      {phone ? (
+                        <Text style={[st.listItemSub, { fontSize: 11, color: '#64748B', marginTop: 2 }]}>
+                          📱 {phone}
+                        </Text>
+                      ) : (
+                        <Text style={[st.listItemSub, { fontSize: 11, color: '#94A3B8', marginTop: 2, fontStyle: 'italic' }]}>
+                          No phone record
+                        </Text>
+                      )}
+                    </View>
+
+                    {/* Status Badge */}
+                    <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                      <View style={[st.listItemBadge, { backgroundColor: isPaid ? '#ECFDF5' : '#FEF2F2' }]}>
+                        <Text style={[st.listItemBadgeText, { color: isPaid ? '#10B981' : '#EF4444', fontSize: 10, fontWeight: '700' }]}>
+                          {isPaid ? 'Paid' : 'Dues Pending'}
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={14} color="#CBD5E1" />
+                    </View>
+                  </TouchableOpacity>
+                );
+              } else {
+                // Vacant Bed Slot Card
+                return (
+                  <View
+                    key={idx}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: '#F8FAFC',
+                      borderWidth: 1.5,
+                      borderStyle: 'dashed',
+                      borderColor: '#CBD5E1',
+                      borderRadius: 12,
+                      padding: 10,
+                    }}
+                  >
+                    <View style={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: 17,
+                      backgroundColor: '#F1F5F9',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginRight: 10
+                    }}>
+                      <Ionicons name="bed-outline" size={16} color="#94A3B8" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: '#64748B' }}>
+                        Bed {slot.bedNumber} — Vacant
+                      </Text>
+                      <Text style={{ fontSize: 11, color: '#94A3B8', marginTop: 1 }}>
+                        Ready for new student assignment
+                      </Text>
+                    </View>
+                    <View style={{ backgroundColor: '#ECFDF5', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: '#10B981' }}>+ Available</Text>
+                    </View>
+                  </View>
+                );
+              }
+            })}
           </View>
         )}
       </View>
 
-      <View style={{ marginTop: 12 }}>
+      {/* ── Action Navigation ── */}
+      <View style={{ marginTop: 14 }}>
         <TouchableOpacity
-          style={[st.actionBtn, st.actionBtnPrimary, { justifyContent: 'center' }]}
+          style={[
+            st.actionBtn,
+            {
+              backgroundColor: '#4F46E5',
+              justifyContent: 'center',
+              borderRadius: 22,
+              paddingVertical: 10,
+            }
+          ]}
           onPress={() => {
             RootNavigation.navigate('Rooms');
             DeviceEventEmitter.emit('CLOSE_ASSISTANT');
           }}
+          activeOpacity={0.8}
         >
-          <Ionicons name="business-outline" size={14} color="#FFF" style={{ marginRight: 4 }} />
-          <Text style={[st.actionBtnText, { color: '#FFF' }]}>Go to Rooms Management</Text>
+          <Ionicons name="business-outline" size={15} color="#FFF" style={{ marginRight: 6 }} />
+          <Text style={[st.actionBtnText, { color: '#FFF', fontSize: 13, fontWeight: '700' }]}>
+            Manage Rooms & Bed Rates
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -1271,6 +1503,11 @@ const IncomeBreakdownCardBlock = ({ data }: { data: any }) => {
   );
 };
 
+function cleanMarkdownText(text: string) {
+  if (!text) return '';
+  return text.replace(/\*\*(.*?)\*\*/g, '$1');
+}
+
 // ─── Master Renderer ──────────────────────────────────────────────────────────
 export const AssistantResponse: React.FC<AssistantResponseProps> = ({ blocks }) => (
   <View style={{ gap: 14 }}>
@@ -1280,13 +1517,13 @@ export const AssistantResponse: React.FC<AssistantResponseProps> = ({ blocks }) 
           return <SkeletonBlock key={i} />;
 
         case 'text':
-          return <Text key={i} style={st.textBlock}>{block.text}</Text>;
+          return <Text key={i} style={st.textBlock}>{cleanMarkdownText(block.text)}</Text>;
 
         case 'stat_cards':
           return <StatCardsBlock key={i} cards={block.cards} />;
 
         case 'action_buttons':
-          return <ActionButtonsBlock key={i} buttons={block.buttons} />;
+          return <ActionButtonsBlock key={i} buttons={block.buttons} isWelcome={(block as any).isWelcome} />;
 
         case 'due_list':
           return <DueListBlock key={i} dues={block.dues} onCollect={block.onCollect} />;

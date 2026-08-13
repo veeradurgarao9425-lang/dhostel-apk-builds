@@ -4,6 +4,7 @@ import {
     ScrollView, StatusBar, RefreshControl, Animated,
     ActivityIndicator, Linking, Image, Dimensions, Platform, DeviceEventEmitter,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -120,6 +121,7 @@ const Skeleton = ({ style }: { style?: any }) => (
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function HomeScreen() {
+    const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
     const { user, hostels, hostelsLoading, loadHostels, updateTokenAndUser } = useAuth();
     const { showError, showApiError, showSuccess } = useToast();
@@ -679,7 +681,7 @@ export default function HomeScreen() {
             {/* ─────────────────── HEADER ─────────────────── */}
             <LinearGradient
                 colors={[theme.gradientStart, theme.gradientEnd]}
-                style={s.newHeader}
+                style={[s.newHeader, { paddingTop: Math.max(insets.top + 6, 44) }]}
             >
                 <View style={s.headerRow1}>
                     {/* LEFT: Avatar + Owner Name & Hostel Selector */}
@@ -986,7 +988,6 @@ const s = StyleSheet.create({
 
     // ── New Header ──────────────────────────────────────────────────────────
     newHeader: {
-        paddingTop: 52,
         paddingBottom: 14,
         paddingHorizontal: 18,
         borderBottomLeftRadius: 24,

@@ -127,74 +127,36 @@ interface HomeProps {
 }
 const HomeContent: React.FC<HomeProps> = ({ snap, loading, onQuestion, onIntent }) => {
   const { user } = useAuth();
+  const firstName = user?.full_name?.split(' ')[0] || user?.name || 'there';
 
-  const suggestions = [
-    { iconName: 'alert-circle-outline', title: "Unpaid Rent?", color: '#EF4444', bg: '#FEF2F2', q: "Who hasn't paid this month?" },
-    { iconName: 'bed-outline', title: 'Available Beds?', color: '#059669', bg: '#ECFDF5', q: 'How many beds available?' },
-    { iconName: 'bar-chart-outline', title: 'Monthly Profit', color: '#4F46E5', bg: '#EEF2FF', q: 'Profit this month' },
-    { iconName: 'people-outline', title: 'Active Students', color: '#0EA5E9', bg: '#E0F2FE', q: 'Total students count' },
-  ];
-
-  const quickGuides = [
-    { iconName: 'person-add-outline', label: 'Add Student', color: '#3B82F6', q: 'How to add a student?' },
-    { iconName: 'wallet-outline', label: 'Collect Rent', color: '#10B981', q: 'How to collect rent?' },
-    { iconName: 'warning-outline', label: 'Pending Dues', color: '#EF4444', q: 'Pending dues today' },
-    { iconName: 'log-out-outline', label: 'Vacate Bed', color: '#F59E0B', q: 'How to vacate a bed?' },
-    { iconName: 'receipt-outline', label: 'Add Expense', color: '#8B5CF6', q: 'How to add an expense?' },
-    { iconName: 'business-outline', label: 'Add Room', color: '#0EA5E9', q: 'How to add a room?' },
+  const quickQuestions = [
+    { label: "💸 Who hasn't paid rent?", q: "Who hasn't paid this month?" },
+    { label: "🛏️ Available beds?", q: "How many beds available?" },
+    { label: "📊 Profit this month", q: "Profit this month" },
+    { label: "🎓 Active students count", q: "Total students count" },
+    { label: "⚠️ Overdue defaulters list", q: "Show overdue students" },
+    { label: "🧾 Expense breakdown", q: "Expense breakdown" },
   ];
 
   return (
-    <View style={{ gap: 20, paddingBottom: 10 }}>
-      {/* Greeting banner */}
-      <LinearGradient
-        colors={['#4F46E5', '#6366F1']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={hc.greetBanner}
-      >
-        <Text style={hc.greeting}>How can I help you today?</Text>
-        <Text style={hc.sub}>Ask about students, dues, rooms or quick actions below 👇</Text>
-      </LinearGradient>
+    <View style={hc.container}>
+      <Text style={hc.simpleGreeting}>Hello {firstName}! 👋</Text>
+      <Text style={hc.simpleSub}>Ask me anything about your hostel below.</Text>
 
-      {/* Suggestion cards */}
-      <View>
-        <Text style={hc.sectionLabel}>✨ SMART SUGGESTIONS</Text>
-        <View style={hc.suggestionGrid}>
-          {suggestions.map((s, i) => (
-            <TouchableOpacity
-              key={i}
-              style={[hc.suggListBtn, { backgroundColor: s.bg, borderColor: s.bg }]}
-              onPress={() => { Haptics.selectionAsync().catch(() => {}); onQuestion(s.q); }}
-              activeOpacity={0.75}
-            >
-              <View style={[hc.suggListIcon, { backgroundColor: '#FFF' }]}>
-                <Ionicons name={s.iconName as any} size={20} color={s.color} />
-              </View>
-              <Text style={[hc.suggListTitle, { color: s.color }]}>{s.title}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
-      {/* Quick guide pills */}
-      <View>
-        <Text style={[hc.sectionLabel, { color: '#16A34A' }]}>⚡ QUICK ACTIONS</Text>
-        <View style={hc.guideGrid}>
-          {quickGuides.map((g, i) => (
-            <TouchableOpacity
-              key={i}
-              style={hc.guidePill}
-              onPress={() => { Haptics.selectionAsync().catch(() => {}); onQuestion(g.q); }}
-              activeOpacity={0.75}
-            >
-              <View style={hc.guidePillIconWrap}>
-                <Ionicons name={g.iconName as any} size={22} color={g.color} />
-              </View>
-              <Text style={hc.guidePillText}>{g.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+      <View style={hc.pillWrap}>
+        {quickQuestions.map((item, idx) => (
+          <TouchableOpacity
+            key={idx}
+            style={hc.simplePill}
+            onPress={() => {
+              Haptics.selectionAsync().catch(() => { });
+              onQuestion(item.q);
+            }}
+            activeOpacity={0.75}
+          >
+            <Text style={hc.simplePillText}>{item.label}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
     </View>
   );
@@ -202,51 +164,37 @@ const HomeContent: React.FC<HomeProps> = ({ snap, loading, onQuestion, onIntent 
 
 const hc = StyleSheet.create({
   scroll: { padding: 14, gap: 12, paddingBottom: 6 },
-  greetBanner: {
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 4,
-    shadowColor: '#4F46E5',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
+  container: { paddingVertical: 18, paddingHorizontal: 6, gap: 10 },
+  simpleGreeting: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -0.3,
   },
-  greeting: { fontSize: 20, fontWeight: '800', color: '#FFFFFF', letterSpacing: -0.3, marginBottom: 4 },
-  sub: { fontSize: 14, color: '#E0E7FF', fontWeight: '500' },
-  sectionRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 8 },
-  sectionLabel: { fontSize: 11, fontWeight: '800', color: '#64748B', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10, marginLeft: 4 },
-
-  // Grid for suggestions
-  suggestionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'space-between' },
-  suggListBtn: {
-    width: '48%',
-    borderRadius: 16,
+  simpleSub: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#64748B',
+    marginBottom: 8,
+  },
+  pillWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  simplePill: {
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    paddingVertical: 9,
+    paddingHorizontal: 14,
     borderWidth: 1,
-    padding: 14,
-    gap: 12,
+    borderColor: '#E2E8F0',
   },
-  suggListIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 2 },
-  suggListTitle: { fontSize: 13, fontWeight: '700', lineHeight: 18 },
-
-  // Quick Action pills
-  guideGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between' },
-  guidePill: {
-    width: '31%', // 3 items per row
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 4,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
+  simplePillText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#334155',
   },
-  guidePillIconWrap: {
-    width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFFFFF',
-    alignItems: 'center', justifyContent: 'center', marginBottom: 8,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 2
-  },
-  guidePillText: { fontSize: 12, fontWeight: '700', color: '#475569', textAlign: 'center' },
 });
 
 // ─── ChipsPanel — compact scrollable footer chip bar ─────────────────────────
@@ -301,19 +249,20 @@ export const OwnerAssistant: React.FC = () => {
   };
 
   const handleSwitchHostel = async (hostelId: number, hostelName: string) => {
-    addBot([{ type: 'loading' }]);
+    addUser(`Switch to ${hostelName}`);
+    setIsTyping(true);
     try {
       const data = await switchActiveHostel(hostelId);
-      removeLoadingBlock();
+      setIsTyping(false);
       if (data?.success) {
         const { token } = data.data;
         await updateTokenAndUser(token, { hostel_id: hostelId, hostel_name: hostelName });
         addBot([
-          { type: 'text', text: `Successfully switched active hostel PG to: **${hostelName}** 🎉` },
+          { type: 'text', text: `Successfully switched active hostel PG context to: ${hostelName} 🎉` },
           {
             type: 'action_buttons', buttons: [
-              { label: 'Check Occupancy', icon: 'business-outline', onPress: () => handleIntent({ type: 'SHOW_ROOMS' }), variant: 'primary' },
-              { label: 'Check Dues', icon: 'alert-circle-outline', onPress: () => handleIntent({ type: 'SHOW_DUES', filter: 'all' }), variant: 'outline' },
+              { label: 'Check Occupancy', icon: 'bed-outline', onPress: () => handleQuery("How many beds available?"), variant: 'primary' },
+              { label: 'Check Dues', icon: 'alert-circle-outline', onPress: () => handleQuery("Who hasn't paid rent?"), variant: 'outline' },
             ]
           }
         ]);
@@ -321,7 +270,7 @@ export const OwnerAssistant: React.FC = () => {
         addBot([{ type: 'text', text: `Failed to switch active hostel: ${data?.error || 'Unknown error'}` }]);
       }
     } catch (err) {
-      removeLoadingBlock();
+      setIsTyping(false);
       addBot([{ type: 'text', text: 'Error switching active hostel context. Please try again.' }]);
     }
   };
@@ -374,11 +323,52 @@ export const OwnerAssistant: React.FC = () => {
     return () => { clearTimeout(t); unsub?.(); };
   }, []);
 
+  const getInitialWelcomeMsgs = useCallback((): Msg[] => {
+    const firstName = user?.full_name?.split(' ')[0] || user?.name || 'Owner';
+    const now = Date.now();
+    return [
+      {
+        id: 'welcome_card_1_' + now,
+        sender: 'bot',
+        blocks: [
+          {
+            type: 'text',
+            text: `Welcome ${firstName}! 👋 Glad to assist you.\nI will show you information related to your hostel.`
+          }
+        ]
+      },
+      {
+        id: 'welcome_card_2_' + now,
+        sender: 'bot',
+        blocks: [
+          {
+            type: 'text',
+            text: `Here is the information you are looking for.\n\nType in your query or select one of the options below:`
+          },
+          {
+            type: 'action_buttons',
+            isWelcome: true,
+            buttons: [
+              { label: 'View Pending Dues', icon: 'alert-circle-outline', variant: 'outline', onPress: () => handleQuery("Who hasn't paid rent?") },
+              { label: 'Check Room Occupancy', icon: 'bed-outline', variant: 'outline', onPress: () => handleQuery("How many beds available?") },
+              { label: 'Monthly Financial Overview', icon: 'bar-chart-outline', variant: 'outline', onPress: () => handleQuery("Profit this month") },
+              { label: 'Active Students List', icon: 'people-outline', variant: 'outline', onPress: () => handleQuery("Total active students") },
+              { label: 'Monthly Expense Breakdown', icon: 'receipt-outline', variant: 'outline', onPress: () => handleQuery("Expense breakdown") },
+            ]
+          }
+        ]
+      }
+    ];
+  }, [user, handleQuery]);
+
   useEffect(() => {
     if (isOpen && user?.role !== 'TENANT') {
       loadSnap();
+      if (messages.length === 0) {
+        setMessages(getInitialWelcomeMsgs());
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, messages.length, getInitialWelcomeMsgs, user?.role]);
 
   useEffect(() => {
     if (messages.length) {
@@ -440,8 +430,10 @@ export const OwnerAssistant: React.FC = () => {
   const addUser = (text: string) =>
     setMessages(p => [...p.map(m => ({ ...m })), { id: nid(), sender: 'user' as const, text }]);
 
-  const addBot = (blocks: ContentBlock[]) =>
+  const addBot = (blocks: ContentBlock[]) => {
+    setIsTyping(false);
     setMessages(p => [...p, { id: nid(), sender: 'bot' as const, blocks }]);
+  };
 
   const removeLoadingBlock = () =>
     setMessages(p => p.filter(m => !(m.blocks?.length === 1 && m.blocks[0].type === 'loading')));
@@ -554,23 +546,22 @@ export const OwnerAssistant: React.FC = () => {
 
 
       case 'SHOW_STUDENTS': {
-        addBot([{ type: 'loading' }]);
+        setIsTyping(true);
         try {
           const [stats, dues] = await Promise.all([
             fetchStudentStats(),
             fetchDuesSummary()
           ]);
-          removeLoadingBlock();
 
           const filter = (intent as any).filter || 'all';
-          const activeCount  = stats.active || snap?.activeTenants || 0;
-          const leftCount    = stats.inactive || 0;
+          const activeCount = stats.active || snap?.activeTenants || 0;
+          const leftCount = stats.inactive || 0;
           const prebookedCount = stats.prebooked || 0;
-          const qrCount      = stats.qrRegister || 0;
-          const unallocated  = stats.unallocated || 0;
-          const pendingAdm   = stats.pendingAdmissions || 0;
-          const paidCount    = dues?.paidCount ?? 0;
-          const unpaidCount  = dues?.pendingStudents ?? 0;
+          const qrCount = stats.qrRegister || 0;
+          const unallocated = stats.unallocated || 0;
+          const pendingAdm = stats.pendingAdmissions || 0;
+          const paidCount = dues?.paidCount ?? 0;
+          const unpaidCount = dues?.pendingStudents ?? 0;
 
           // Shared follow-up chips for all filters
           const followUpChips = [
@@ -586,103 +577,131 @@ export const OwnerAssistant: React.FC = () => {
           if (filter === 'active') {
             addBot([
               { type: 'info_tip', text: 'Students currently checked in and occupying a bed in your hostel.', icon: 'people-outline', color: '#6366F1' },
-              { type: 'stat_cards', cards: [
-                { label: 'Active Students', value: String(activeCount), icon: 'people-outline', color: '#6366F1', bg: '#EEF2FF' },
-                { label: 'Paid Rent', value: String(paidCount), icon: 'checkmark-circle-outline', color: '#10B981', bg: '#ECFDF5' },
-                { label: 'Unpaid Rent', value: String(unpaidCount), icon: 'alert-circle-outline', color: '#EF4444', bg: '#FEF2F2' },
-              ]},
-              { type: 'follow_up_chips', label: `Do you want to see these ${activeCount} active students?`, chips: [
-                { label: `View ${activeCount} Students`, icon: 'list-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENT_LIST_INLINE', filter: 'active' }) },
-              ]},
+              {
+                type: 'stat_cards', cards: [
+                  { label: 'Active Students', value: String(activeCount), icon: 'people-outline', color: '#6366F1', bg: '#EEF2FF' },
+                  { label: 'Paid Rent', value: String(paidCount), icon: 'checkmark-circle-outline', color: '#10B981', bg: '#ECFDF5' },
+                  { label: 'Unpaid Rent', value: String(unpaidCount), icon: 'alert-circle-outline', color: '#EF4444', bg: '#FEF2F2' },
+                ]
+              },
+              {
+                type: 'follow_up_chips', label: `Do you want to see these ${activeCount} active students?`, chips: [
+                  { label: `View ${activeCount} Students`, icon: 'list-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENT_LIST_INLINE', filter: 'active' }) },
+                ]
+              },
               { type: 'follow_up_chips', label: 'Explore more:', chips: followUpChips },
             ]);
           } else if (filter === 'inactive') {
             addBot([
               { type: 'info_tip', text: 'Students who have moved out or been marked as vacated.', icon: 'exit-outline', color: '#94A3B8' },
-              { type: 'stat_cards', cards: [
-                { label: 'Students Left', value: String(leftCount), icon: 'exit-outline', color: '#94A3B8', bg: '#F8FAFC' },
-                { label: 'Still Active', value: String(activeCount), icon: 'people-outline', color: '#6366F1', bg: '#EEF2FF' },
-              ]},
-              { type: 'follow_up_chips', label: `Do you want to see these ${leftCount} vacated students?`, chips: [
-                { label: `View ${leftCount} Students`, icon: 'list-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENT_LIST_INLINE', filter: 'inactive' }) },
-              ]},
+              {
+                type: 'stat_cards', cards: [
+                  { label: 'Students Left', value: String(leftCount), icon: 'exit-outline', color: '#94A3B8', bg: '#F8FAFC' },
+                  { label: 'Still Active', value: String(activeCount), icon: 'people-outline', color: '#6366F1', bg: '#EEF2FF' },
+                ]
+              },
+              {
+                type: 'follow_up_chips', label: `Do you want to see these ${leftCount} vacated students?`, chips: [
+                  { label: `View ${leftCount} Students`, icon: 'list-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENT_LIST_INLINE', filter: 'inactive' }) },
+                ]
+              },
               { type: 'follow_up_chips', label: 'Explore more:', chips: followUpChips },
             ]);
           } else if (filter === 'prebooked') {
             addBot([
               { type: 'info_tip', text: 'Upcoming students who pre-booked a bed but have not checked in yet.', icon: 'calendar-outline', color: '#F59E0B' },
-              { type: 'stat_cards', cards: [
-                { label: 'Pre-Booked', value: String(prebookedCount), icon: 'calendar-outline', color: '#F59E0B', bg: '#FFFBEB' },
-                { label: 'Active Now', value: String(activeCount), icon: 'people-outline', color: '#6366F1', bg: '#EEF2FF' },
-              ]},
-              { type: 'follow_up_chips', label: `Do you want to see these ${prebookedCount} pre-booked students?`, chips: [
-                { label: `View ${prebookedCount} Students`, icon: 'list-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENT_LIST_INLINE', filter: 'prebooked' }) },
-              ]},
+              {
+                type: 'stat_cards', cards: [
+                  { label: 'Pre-Booked', value: String(prebookedCount), icon: 'calendar-outline', color: '#F59E0B', bg: '#FFFBEB' },
+                  { label: 'Active Now', value: String(activeCount), icon: 'people-outline', color: '#6366F1', bg: '#EEF2FF' },
+                ]
+              },
+              {
+                type: 'follow_up_chips', label: `Do you want to see these ${prebookedCount} pre-booked students?`, chips: [
+                  { label: `View ${prebookedCount} Students`, icon: 'list-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENT_LIST_INLINE', filter: 'prebooked' }) },
+                ]
+              },
               { type: 'follow_up_chips', label: 'Explore more:', chips: followUpChips },
             ]);
           } else if (filter === 'qr') {
             addBot([
               { type: 'info_tip', text: 'Students who registered themselves using your hostel QR code link.', icon: 'qr-code-outline', color: '#10B981' },
-              { type: 'stat_cards', cards: [
-                { label: 'QR Registrations', value: String(qrCount), icon: 'qr-code-outline', color: '#10B981', bg: '#ECFDF5' },
-                { label: 'Active Now', value: String(activeCount), icon: 'people-outline', color: '#6366F1', bg: '#EEF2FF' },
-              ]},
-              { type: 'follow_up_chips', label: `Do you want to see these ${qrCount} QR registrations?`, chips: [
-                { label: `View ${qrCount} Students`, icon: 'list-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENT_LIST_INLINE', filter: 'qr' }) },
-              ]},
+              {
+                type: 'stat_cards', cards: [
+                  { label: 'QR Registrations', value: String(qrCount), icon: 'qr-code-outline', color: '#10B981', bg: '#ECFDF5' },
+                  { label: 'Active Now', value: String(activeCount), icon: 'people-outline', color: '#6366F1', bg: '#EEF2FF' },
+                ]
+              },
+              {
+                type: 'follow_up_chips', label: `Do you want to see these ${qrCount} QR registrations?`, chips: [
+                  { label: `View ${qrCount} Students`, icon: 'list-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENT_LIST_INLINE', filter: 'qr' }) },
+                ]
+              },
               { type: 'follow_up_chips', label: 'Explore more:', chips: followUpChips },
             ]);
           } else if (filter === 'pending') {
             addBot([
               { type: 'info_tip', text: 'Student registrations submitted but awaiting your approval or completion.', icon: 'hourglass-outline', color: '#8B5CF6' },
-              { type: 'stat_cards', cards: [
-                { label: 'Pending Admissions', value: String(pendingAdm), icon: 'hourglass-outline', color: '#8B5CF6', bg: '#F5F3FF' },
-                { label: 'Active Now', value: String(activeCount), icon: 'people-outline', color: '#6366F1', bg: '#EEF2FF' },
-              ]},
-              { type: 'follow_up_chips', label: `Do you want to see these ${pendingAdm} pending admissions?`, chips: [
-                { label: `View ${pendingAdm} Students`, icon: 'list-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENT_LIST_INLINE', filter: 'pending' }) },
-              ]},
+              {
+                type: 'stat_cards', cards: [
+                  { label: 'Pending Admissions', value: String(pendingAdm), icon: 'hourglass-outline', color: '#8B5CF6', bg: '#F5F3FF' },
+                  { label: 'Active Now', value: String(activeCount), icon: 'people-outline', color: '#6366F1', bg: '#EEF2FF' },
+                ]
+              },
+              {
+                type: 'follow_up_chips', label: `Do you want to see these ${pendingAdm} pending admissions?`, chips: [
+                  { label: `View ${pendingAdm} Students`, icon: 'list-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENT_LIST_INLINE', filter: 'pending' }) },
+                ]
+              },
               { type: 'follow_up_chips', label: 'Explore more:', chips: followUpChips },
             ]);
           } else if (filter === 'unallocated') {
             addBot([
               { type: 'info_tip', text: 'Students who are registered but have not been assigned a bed yet.', icon: 'bed-outline', color: '#F59E0B' },
-              { type: 'stat_cards', cards: [
-                { label: 'Unallocated', value: String(unallocated), icon: 'bed-outline', color: '#F59E0B', bg: '#FFFBEB' },
-                { label: 'Active Now', value: String(activeCount), icon: 'people-outline', color: '#6366F1', bg: '#EEF2FF' },
-                { label: 'Available Beds', value: String(snap?.availableBeds ?? 0), icon: 'business-outline', color: '#10B981', bg: '#ECFDF5' },
-              ]},
-              { type: 'follow_up_chips', label: `Do you want to see these ${unallocated} unallocated students?`, chips: [
-                { label: `View ${unallocated} Students`, icon: 'list-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENT_LIST_INLINE', filter: 'unallocated' }) },
-              ]},
+              {
+                type: 'stat_cards', cards: [
+                  { label: 'Unallocated', value: String(unallocated), icon: 'bed-outline', color: '#F59E0B', bg: '#FFFBEB' },
+                  { label: 'Active Now', value: String(activeCount), icon: 'people-outline', color: '#6366F1', bg: '#EEF2FF' },
+                  { label: 'Available Beds', value: String(snap?.availableBeds ?? 0), icon: 'business-outline', color: '#10B981', bg: '#ECFDF5' },
+                ]
+              },
+              {
+                type: 'follow_up_chips', label: `Do you want to see these ${unallocated} unallocated students?`, chips: [
+                  { label: `View ${unallocated} Students`, icon: 'list-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENT_LIST_INLINE', filter: 'unallocated' }) },
+                ]
+              },
               { type: 'follow_up_chips', label: 'Explore more:', chips: followUpChips },
             ]);
           } else if (filter === 'joined_this_month') {
             const joinedList = await fetchStudentsJoinedThisMonth();
             addBot([
               { type: 'info_tip', text: `${joinedList.length} new student(s) joined your hostel this month.`, icon: 'calendar-outline', color: '#10B981' },
-              { type: 'student_list_card', title: 'Students Joined This Month', students: joinedList.map((s: any) => ({
-                name: `${s.first_name || ''} ${s.last_name || ''}`.trim(),
-                roomNumber: s.room_number || 'N/A',
-                phone: s.phone || '',
-                badgeText: 'New Admission',
-                badgeColor: '#ECFDF5',
-                badgeTextColor: '#10B981'
-              })) },
+              {
+                type: 'student_list_card', title: 'Students Joined This Month', students: joinedList.map((s: any) => ({
+                  name: `${s.first_name || ''} ${s.last_name || ''}`.trim(),
+                  roomNumber: s.room_number || 'N/A',
+                  phone: s.phone || '',
+                  badgeText: 'New Admission',
+                  badgeColor: '#ECFDF5',
+                  badgeTextColor: '#10B981'
+                }))
+              },
               { type: 'follow_up_chips', label: 'Explore more:', chips: followUpChips },
             ]);
           } else if (filter === 'vacated_this_month') {
             const vacatedList = await fetchStudentsVacatedThisMonth();
             addBot([
               { type: 'info_tip', text: `${vacatedList.length} student(s) vacated or left your hostel this month.`, icon: 'exit-outline', color: '#64748B' },
-              { type: 'student_list_card', title: 'Students Vacated This Month', students: vacatedList.map((s: any) => ({
-                name: `${s.first_name || ''} ${s.last_name || ''}`.trim(),
-                roomNumber: s.room_number || 'N/A',
-                phone: s.phone || '',
-                badgeText: 'Vacated',
-                badgeColor: '#F8FAFC',
-                badgeTextColor: '#64748B'
-              })) },
+              {
+                type: 'student_list_card', title: 'Students Vacated This Month', students: vacatedList.map((s: any) => ({
+                  name: `${s.first_name || ''} ${s.last_name || ''}`.trim(),
+                  roomNumber: s.room_number || 'N/A',
+                  phone: s.phone || '',
+                  badgeText: 'Vacated',
+                  badgeColor: '#F8FAFC',
+                  badgeTextColor: '#64748B'
+                }))
+              },
               { type: 'follow_up_chips', label: 'Explore more:', chips: followUpChips },
             ]);
           } else {
@@ -705,21 +724,23 @@ export const OwnerAssistant: React.FC = () => {
                 ]
               },
               { type: 'follow_up_chips', label: 'Dig deeper:', chips: followUpChips },
-              { type: 'follow_up_chips', label: `Do you want to see all ${stats.totalStudents || snap?.activeTenants || 0} students?`, chips: [
-                { label: `View All Students`, icon: 'list-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENT_LIST_INLINE', filter: 'all' }) },
-              ]},
+              {
+                type: 'follow_up_chips', label: `Do you want to see all ${stats.totalStudents || snap?.activeTenants || 0} students?`, chips: [
+                  { label: `View All Students`, icon: 'list-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENT_LIST_INLINE', filter: 'all' }) },
+                ]
+              },
               { type: 'follow_up_chips', label: 'Dig deeper:', chips: followUpChips },
             ]);
           }
         } catch (err) {
-          removeLoadingBlock();
+          setIsTyping(false);
           addBot([{ type: 'text', text: 'Failed to load students statistics. Please try again.' }]);
         }
         break;
       }
 
       case 'SHOW_STUDENT_LIST_INLINE': {
-        addBot([{ type: 'loading' }]);
+        setIsTyping(true);
         try {
           const filter = (intent as any).filter;
           let params: any = {};
@@ -731,84 +752,91 @@ export const OwnerAssistant: React.FC = () => {
           else if (filter === 'unallocated') { params = { unallocated: true }; title = 'Unallocated Students'; }
           else if (filter === 'pending') { params = { pending: true }; title = 'Pending Admissions'; }
           else if (filter === 'all') { params = {}; title = 'All Students'; }
-          
+
           const list = await fetchStudents(params);
-          removeLoadingBlock();
 
           if (!list || list.length === 0) {
             addBot([{ type: 'text', text: `You currently don't have any ${title.toLowerCase()}.` }]);
           } else {
             addBot([
               { type: 'info_tip', text: `Showing list of ${list.length} ${title.toLowerCase()}.`, icon: 'people-outline', color: '#4F46E5' },
-              { type: 'student_list_card', title: title, students: list.map(s => ({
-                name: s.name,
-                roomNumber: s.roomNumber || 'N/A',
-                phone: s.phone || '',
-                badgeText: s.status === 1 ? 'Active' : 'Inactive',
-                badgeColor: s.status === 1 ? '#ECFDF5' : '#F1F5F9',
-                badgeTextColor: s.status === 1 ? '#10B981' : '#64748B'
-              })) }
+              {
+                type: 'student_list_card', title: title, students: list.map(s => ({
+                  name: s.name,
+                  roomNumber: s.roomNumber || 'N/A',
+                  phone: s.phone || '',
+                  badgeText: s.status === 1 ? 'Active' : 'Inactive',
+                  badgeColor: s.status === 1 ? '#ECFDF5' : '#F1F5F9',
+                  badgeTextColor: s.status === 1 ? '#10B981' : '#64748B'
+                }))
+              }
             ]);
           }
         } catch {
-          removeLoadingBlock();
+          setIsTyping(false);
           addBot([{ type: 'text', text: 'Error fetching the students list.' }]);
         }
         break;
       }
 
       case 'SHOW_STUDENT_SEARCH': {
-        addBot([{ type: 'loading' }]);
+        setIsTyping(true);
         try {
           const results = await fetchStudentByName((intent as any).name);
-          removeLoadingBlock();
           if (!results || results.length === 0) {
             addBot([
               { type: 'info_tip', text: `I didn't quite catch that, or no student found matching "${(intent as any).name}".`, icon: 'help-circle-outline', color: '#EF4444' },
               { type: 'text', text: `Here is how you can search:\n\n👤 Find a student: Type their name (e.g., "Durgarao")\n🚪 Find a room: Type the room number (e.g., "201")\n❓ Ask questions: Try asking "who hasn't paid rent?"` },
-              { type: 'follow_up_chips', label: 'Try:', chips: [
-                { label: 'View All Students', icon: 'list-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENT_LIST_INLINE', filter: 'all' }) }
-              ]}
+              {
+                type: 'follow_up_chips', label: 'Try:', chips: [
+                  { label: 'View All Students', icon: 'list-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENT_LIST_INLINE', filter: 'all' }) }
+                ]
+              }
             ]);
           } else if (results.length === 1) {
             addBot([
               { type: 'info_tip', text: `Found student record for "${(intent as any).name}".`, icon: 'checkmark-circle-outline', color: '#10B981' },
               { type: 'student_detail_card', student: results[0] },
-              { type: 'follow_up_chips', label: 'Explore:', chips: [
-                { label: 'All students', icon: 'list-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENTS' }) },
-                { label: 'Active students', icon: 'people-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENTS', filter: 'active' }) },
-              ] }
+              {
+                type: 'follow_up_chips', label: 'Explore:', chips: [
+                  { label: 'All students', icon: 'list-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENTS' }) },
+                  { label: 'Active students', icon: 'people-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENTS', filter: 'active' }) },
+                ]
+              }
             ]);
           } else {
             addBot([
               { type: 'info_tip', text: `Found ${results.length} students matching "${(intent as any).name}".`, icon: 'people-outline', color: '#4F46E5' },
-              { type: 'student_list_card', title: `Search Results for "${(intent as any).name}"`, students: results.map(s => ({
-                name: `${s.first_name || ''} ${s.last_name || ''}`.trim(),
-                roomNumber: s.room_number || 'N/A',
-                phone: s.phone || '',
-                badgeText: s.status === 1 ? 'Active' : 'Inactive',
-                badgeColor: s.status === 1 ? '#ECFDF5' : '#F1F5F9',
-                badgeTextColor: s.status === 1 ? '#10B981' : '#64748B'
-              })) },
-              { type: 'follow_up_chips', label: 'Explore:', chips: [
-                { label: 'All students', icon: 'list-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENTS' }) },
-                { label: 'Active students', icon: 'people-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENTS', filter: 'active' }) },
-                { label: 'Overdue students', icon: 'alert-circle-outline', onPress: () => handleIntent({ type: 'SHOW_DUES', filter: 'overdue' }) },
-              ] }
+              {
+                type: 'student_list_card', title: `Search Results for "${(intent as any).name}"`, students: results.map(s => ({
+                  name: `${s.first_name || ''} ${s.last_name || ''}`.trim(),
+                  roomNumber: s.room_number || 'N/A',
+                  phone: s.phone || '',
+                  badgeText: s.status === 1 ? 'Active' : 'Inactive',
+                  badgeColor: s.status === 1 ? '#ECFDF5' : '#F1F5F9',
+                  badgeTextColor: s.status === 1 ? '#10B981' : '#64748B'
+                }))
+              },
+              {
+                type: 'follow_up_chips', label: 'Explore:', chips: [
+                  { label: 'All students', icon: 'list-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENTS' }) },
+                  { label: 'Active students', icon: 'people-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENTS', filter: 'active' }) },
+                  { label: 'Overdue students', icon: 'alert-circle-outline', onPress: () => handleIntent({ type: 'SHOW_DUES', filter: 'overdue' }) },
+                ]
+              }
             ]);
           }
         } catch {
-          removeLoadingBlock();
+          setIsTyping(false);
           addBot([{ type: 'text', text: 'Error searching for student.' }]);
         }
         break;
       }
 
       case 'SHOW_ROOM_DETAIL': {
-        addBot([{ type: 'loading' }]);
+        setIsTyping(true);
         try {
           const room = await fetchRoomByNumber((intent as any).roomNumber);
-          removeLoadingBlock();
           if (!room) {
             addBot([
               { type: 'info_tip', text: `Room ${(intent as any).roomNumber} not found in this hostel.`, icon: 'business-outline', color: '#EF4444' },
@@ -827,7 +855,7 @@ export const OwnerAssistant: React.FC = () => {
                     .map(r => r.room_number)
                     .filter(rn => rn)
                     .sort((a, b) => Number(a) - Number(b));
-                  
+
                   floorChips = otherRooms.map(rn => ({
                     label: `Room ${rn}`,
                     icon: 'home-outline',
@@ -848,25 +876,26 @@ export const OwnerAssistant: React.FC = () => {
               const currentFloor = room.floor_number ?? room.floor;
               responseBlocks.push({ type: 'follow_up_chips', label: `Other rooms on Floor ${currentFloor}:`, chips: floorChips });
             } else {
-               responseBlocks.push({ type: 'follow_up_chips', label: `Explore:`, chips: [
-                 { label: 'All Rooms', icon: 'business-outline', onPress: () => handleIntent({ type: 'SHOW_ROOMS' }) }
-               ]});
+              responseBlocks.push({
+                type: 'follow_up_chips', label: `Explore:`, chips: [
+                  { label: 'All Rooms', icon: 'business-outline', onPress: () => handleIntent({ type: 'SHOW_ROOMS' }) }
+                ]
+              });
             }
 
             addBot(responseBlocks);
           }
         } catch {
-          removeLoadingBlock();
+          setIsTyping(false);
           addBot([{ type: 'text', text: 'Error loading room details.' }]);
         }
         break;
       }
 
       case 'SHOW_FLOOR_DETAIL': {
-        addBot([{ type: 'loading' }]);
+        setIsTyping(true);
         try {
           const floor = await fetchRoomsByFloor((intent as any).floorNumber);
-          removeLoadingBlock();
           if (!floor) {
             addBot([
               { type: 'info_tip', text: `Floor ${(intent as any).floorNumber} not found or has no rooms.`, icon: 'layers-outline', color: '#EF4444' },
@@ -879,31 +908,32 @@ export const OwnerAssistant: React.FC = () => {
             ]);
           }
         } catch {
-          removeLoadingBlock();
+          setIsTyping(false);
           addBot([{ type: 'text', text: 'Error loading floor details.' }]);
         }
         break;
       }
 
       case 'SHOW_PAID_STUDENTS': {
-        addBot([{ type: 'loading' }]);
+        setIsTyping(true);
         try {
           const list = await fetchPaidStudents();
-          removeLoadingBlock();
           addBot([
             { type: 'info_tip', text: `Showing list of ${list.length} students who have completed their rent payment.`, icon: 'checkmark-circle-outline', color: '#10B981' },
-            { type: 'student_list_card', title: 'Paid Students List', students: list.map(s => ({
-              name: s.name,
-              roomNumber: s.roomNumber,
-              paidAmount: s.paidAmount,
-              phone: s.phone,
-              badgeText: 'Paid',
-              badgeColor: '#ECFDF5',
-              badgeTextColor: '#10B981'
-            })) }
+            {
+              type: 'student_list_card', title: 'Paid Students List', students: list.map(s => ({
+                name: s.name,
+                roomNumber: s.roomNumber,
+                paidAmount: s.paidAmount,
+                phone: s.phone,
+                badgeText: 'Paid',
+                badgeColor: '#ECFDF5',
+                badgeTextColor: '#10B981'
+              }))
+            }
           ]);
         } catch {
-          removeLoadingBlock();
+          setIsTyping(false);
           addBot([{ type: 'text', text: 'Failed to load paid students list.' }]);
         }
         break;
@@ -928,9 +958,8 @@ export const OwnerAssistant: React.FC = () => {
 
 
       case 'SHOW_DUES': {
-        addBot([{ type: 'loading' }]);
+        setIsTyping(true);
         const dues = await fetchDuesSummary();
-        removeLoadingBlock();
         if (!dues || dues.totalPending === 0) {
           addBot([
             { type: 'info_tip', text: 'Great news! All students are up to date with their payments.', icon: 'checkmark-circle-outline', color: '#10B981' },
@@ -945,24 +974,26 @@ export const OwnerAssistant: React.FC = () => {
           const dueFilter = (intent as any).filter || 'all';
 
           if (dueFilter === 'overdue' || dueFilter === 'pending') {
-            const filteredList = dueFilter === 'overdue' 
+            const filteredList = dueFilter === 'overdue'
               ? dues.allDefaulters.filter(d => d.status === 'overdue')
               : dues.allDefaulters; // all pending fees
 
-            const labelText = dueFilter === 'overdue' 
+            const labelText = dueFilter === 'overdue'
               ? `Showing ${filteredList.length} students whose payment due date has already passed.`
               : `Showing ${filteredList.length} students who have not paid rent this month.`;
 
             addBot([
               { type: 'info_tip', text: labelText, icon: 'time-outline', color: '#EF4444' },
-              { type: 'student_list_card', title: dueFilter === 'overdue' ? 'Overdue Students' : 'Pending Students', students: filteredList.map(s => ({
-                name: s.name,
-                roomNumber: s.roomNumber || 'N/A',
-                phone: String(s.amount), // Using phone prop for amount visualization in the card
-                badgeText: `₹${s.amount}`,
-                badgeColor: '#FEF2F2',
-                badgeTextColor: '#EF4444'
-              })) },
+              {
+                type: 'student_list_card', title: dueFilter === 'overdue' ? 'Overdue Students' : 'Pending Students', students: filteredList.map(s => ({
+                  name: s.name,
+                  roomNumber: s.roomNumber || 'N/A',
+                  phone: String(s.amount), // Using phone prop for amount visualization in the card
+                  badgeText: `₹${s.amount}`,
+                  badgeColor: '#FEF2F2',
+                  badgeTextColor: '#EF4444'
+                }))
+              },
               {
                 type: 'follow_up_chips', label: 'Related:', chips: [
                   { label: 'All dues overview', icon: 'pie-chart-outline', onPress: () => handleIntent({ type: 'SHOW_DUES', filter: 'all' }) },
@@ -1020,9 +1051,8 @@ export const OwnerAssistant: React.FC = () => {
 
 
       case 'SHOW_ROOMS': {
-        addBot([{ type: 'loading' }]);
+        setIsTyping(true);
         const occ = await fetchOccupancy();
-        removeLoadingBlock();
         if (!occ || occ.total === 0) {
           addBot([
             { type: 'info_tip', text: 'As of now, no rooms or beds are registered in this hostel.', icon: 'business-outline', color: '#64748B' },
@@ -1077,7 +1107,7 @@ export const OwnerAssistant: React.FC = () => {
       case 'SHOW_ROOM_LIST_INLINE': {
         addBot([{ type: 'loading' }]);
         try {
-          const roomsRes = await fetchRooms(); 
+          const roomsRes = await fetchRooms();
           removeLoadingBlock();
           if (!roomsRes || roomsRes.length === 0) {
             addBot([{ type: 'text', text: 'You currently have no rooms.' }]);
@@ -1103,10 +1133,9 @@ export const OwnerAssistant: React.FC = () => {
 
 
       case 'SHOW_PAYMENTS': {
-        addBot([{ type: 'loading' }]);
+        setIsTyping(true);
         try {
           const fin = await fetchFinancialOverview();
-          removeLoadingBlock();
           const collected = fin?.income ?? snap?.monthCollection ?? 0;
           const pending = fin?.pendingDues ?? snap?.pendingDues ?? 0;
           const totalTenants = snap?.activeTenants ?? 0;
@@ -1137,7 +1166,7 @@ export const OwnerAssistant: React.FC = () => {
             },
           ]);
         } catch {
-          removeLoadingBlock();
+          setIsTyping(false);
           typingThen([
             {
               type: 'stat_cards', cards: [
@@ -1157,9 +1186,8 @@ export const OwnerAssistant: React.FC = () => {
       }
 
       case 'SHOW_REPORTS': {
-        addBot([{ type: 'loading' }]);
+        setIsTyping(true);
         const fin = await fetchFinancialOverview();
-        removeLoadingBlock();
         if (!fin) {
           addBot([{ type: 'error_state', message: 'Could not load financial data.', onRetry: () => handleIntent(intent) }]);
         } else {
@@ -1179,9 +1207,8 @@ export const OwnerAssistant: React.FC = () => {
       }
 
       case 'SHOW_EXPENSES': {
-        addBot([{ type: 'loading' }]);
+        setIsTyping(true);
         const exp = await fetchExpenseSummary();
-        removeLoadingBlock();
         if (!exp || exp.count === 0) {
           addBot([
             { type: 'text', text: 'No expenses recorded for this month.' },
@@ -1220,20 +1247,21 @@ export const OwnerAssistant: React.FC = () => {
       }
 
       case 'SHOW_INCOME': {
-        addBot([{ type: 'loading' }]);
+        setIsTyping(true);
         try {
           const incData = await fetchDetailedIncomeBreakdown();
-          removeLoadingBlock();
           addBot([
             { type: 'info_tip', text: 'Complete breakdown of all revenue sources for your hostel this month.', icon: 'trending-up-outline', color: '#10B981' },
             { type: 'income_breakdown_card', data: incData },
-            { type: 'action_buttons', buttons: [
-              { label: 'View Financial Report', icon: 'bar-chart-outline', screen: 'Reports', variant: 'primary' },
-              { label: 'View Payments', icon: 'cash-outline', screen: 'CollectedPayments', variant: 'outline' }
-            ]}
+            {
+              type: 'action_buttons', buttons: [
+                { label: 'View Financial Report', icon: 'bar-chart-outline', screen: 'Reports', variant: 'primary' },
+                { label: 'View Payments', icon: 'cash-outline', screen: 'CollectedPayments', variant: 'outline' }
+              ]
+            }
           ]);
         } catch {
-          removeLoadingBlock();
+          setIsTyping(false);
           addBot([{ type: 'text', text: 'Error loading income breakdown.' }]);
         }
         break;
@@ -1241,9 +1269,8 @@ export const OwnerAssistant: React.FC = () => {
 
 
       case 'SHOW_HOSTELS': {
-        addBot([{ type: 'loading' }]);
+        setIsTyping(true);
         const hostelsList = await fetchMyHostels();
-        removeLoadingBlock();
         if (!hostelsList || hostelsList.length === 0) {
           addBot([{ type: 'text', text: 'No hostels registered under your account.' }]);
         } else {
@@ -1266,9 +1293,8 @@ export const OwnerAssistant: React.FC = () => {
       }
 
       case 'SHOW_STAFF': {
-        addBot([{ type: 'loading' }]);
+        setIsTyping(true);
         const staff = await fetchStaffList();
-        removeLoadingBlock();
         if (!staff || staff.length === 0) {
           addBot([
             { type: 'text', text: 'No staff members registered yet.' },
@@ -1281,7 +1307,7 @@ export const OwnerAssistant: React.FC = () => {
         } else {
           const activeStaff = staff.filter((s: any) => s.status === 1);
           const totalSalary = activeStaff.reduce((sum: number, s: any) => sum + parseFloat(s.monthly_salary ?? s.salary ?? 0), 0);
-          
+
           addBot([
             {
               type: 'stat_cards', cards: [
@@ -1317,9 +1343,8 @@ export const OwnerAssistant: React.FC = () => {
         break;
 
       case 'SHOW_GUESTS': {
-        addBot([{ type: 'loading' }]);
+        setIsTyping(true);
         const guestData = await fetchGuestsList();
-        removeLoadingBlock();
         if (!guestData || !guestData.guests || guestData.guests.length === 0) {
           addBot([
             { type: 'text', text: 'No guests checked in recently.' },
@@ -1355,35 +1380,40 @@ export const OwnerAssistant: React.FC = () => {
       }
 
       case 'SHOW_NOTICES': {
-        addBot([{ type: 'loading' }]);
+        setIsTyping(true);
         try {
           const count = await fetchNoticesCount();
-          removeLoadingBlock();
           if (count === 0) {
             addBot([
               { type: 'info_tip', text: 'No notices posted for your hostel as of now.', icon: 'megaphone-outline', color: '#64748B' },
               { type: 'text', text: 'As of now, no records/notices have been published. Tap "Add Notice" to post a new announcement for tenants.' },
-              { type: 'action_buttons', buttons: [
-                { label: 'Add Notice Now', icon: 'add-circle-outline', screen: 'AddNotice', variant: 'primary' },
-                { label: 'Manage Notices', icon: 'megaphone-outline', screen: 'NoticesManagement', variant: 'outline' },
-              ]}
+              {
+                type: 'action_buttons', buttons: [
+                  { label: 'Add Notice Now', icon: 'add-circle-outline', screen: 'AddNotice', variant: 'primary' },
+                  { label: 'Manage Notices', icon: 'megaphone-outline', screen: 'NoticesManagement', variant: 'outline' },
+                ]
+              }
             ]);
           } else {
             addBot([
               { type: 'info_tip', text: `Showing ${count} active notice(s) published for your hostel.`, icon: 'megaphone-outline', color: '#4F46E5' },
-              { type: 'action_buttons', buttons: [
-                { label: 'Manage Notices', icon: 'megaphone-outline', screen: 'NoticesManagement', variant: 'primary' },
-                { label: 'Add Notice (+)', icon: 'add-circle-outline', screen: 'AddNotice', variant: 'outline' },
-              ]}
+              {
+                type: 'action_buttons', buttons: [
+                  { label: 'Manage Notices', icon: 'megaphone-outline', screen: 'NoticesManagement', variant: 'primary' },
+                  { label: 'Add Notice (+)', icon: 'add-circle-outline', screen: 'AddNotice', variant: 'outline' },
+                ]
+              }
             ]);
           }
         } catch {
-          removeLoadingBlock();
+          setIsTyping(false);
           addBot([
             { type: 'info_tip', text: 'As of now, no notice records are available.', icon: 'megaphone-outline', color: '#64748B' },
-            { type: 'action_buttons', buttons: [
-              { label: 'Post Notice Now', icon: 'add-circle-outline', screen: 'AddNotice', variant: 'primary' }
-            ]}
+            {
+              type: 'action_buttons', buttons: [
+                { label: 'Post Notice Now', icon: 'add-circle-outline', screen: 'AddNotice', variant: 'primary' }
+              ]
+            }
           ]);
         }
         break;
@@ -1472,20 +1502,21 @@ export const OwnerAssistant: React.FC = () => {
     if (!text.trim()) return;
     inputRef.current?.blur();
     addUser(text);
+    setIsTyping(true);
     setInputText('');
     handleIntent(resolveIntent(text));
   }, [handleIntent]);
 
   const triggerMenuAction = useCallback((label: string, intent: AssistantIntent) => {
     addUser(label);
+    setIsTyping(true);
     setInputText('');
     handleIntent(intent);
   }, [handleIntent]);
 
   // ── Reset ──────────────────────────────────────────────────────────────
   const handleReset = () => {
-    setMessages([]);
-    setView('home');
+    setMessages(getInitialWelcomeMsgs());
     setInputText('');
     loadSnap();
   };
@@ -1546,53 +1577,65 @@ export const OwnerAssistant: React.FC = () => {
 
             {/* ── Main content area (flex:1 — fills all remaining space) ── */}
             <View style={s.chatArea}>
-              {view === 'home' ? (
-                <ScrollView
-                  showsVerticalScrollIndicator={false}
-                  keyboardShouldPersistTaps="handled"
-                  contentContainerStyle={[hc.scroll, { flexGrow: 1 }]}
-                >
-                  <HomeContent
-                    snap={snap}
-                    loading={snapLoading}
-                    onQuestion={handleQuery}
-                    onIntent={(i) => { setMessages([]); handleIntent(i); }}
-                  />
-                </ScrollView>
-              ) : (
-                <ScrollView
-                  ref={scrollRef}
-                  style={{ flex: 1 }}
-                  contentContainerStyle={[s.msgList, { flexGrow: 1 }]}
-                  showsVerticalScrollIndicator={false}
-                  keyboardShouldPersistTaps="handled"
-                >
-                  <View style={{ gap: 14 }}>
-                    {messages.map(msg => (
-                      <View key={msg.id}>
-                        {msg.sender === 'user' ? (
-                          <View style={s.userRow}>
-                            <View style={s.userBubble}>
-                              <Text style={s.userText}>{msg.text}</Text>
-                            </View>
+              <ScrollView
+                ref={scrollRef}
+                style={{ flex: 1 }}
+                contentContainerStyle={[s.msgList, { flexGrow: 1 }]}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
+                <View style={{ gap: 14 }}>
+                  {/* Top Small Card (Owner Name, Date & Active Hostel Selector) */}
+                  <TouchableOpacity
+                    style={s.topSmallCard}
+                    onPress={() => triggerMenuAction('Show My Hostels', { type: 'SHOW_HOSTELS' })}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="person-circle-outline" size={14} color="#4F46E5" />
+                    <Text style={[s.topSmallCardText, { fontWeight: '700', color: '#1E293B' }]}>
+                      {user?.full_name?.split(' ')[0] || 'Admin'}
+                    </Text>
+
+                    <View style={s.topSmallCardDivider} />
+
+                    <Ionicons name="calendar-outline" size={13} color="#64748B" />
+                    <Text style={s.topSmallCardText}>
+                      {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </Text>
+
+                    <View style={s.topSmallCardDivider} />
+
+                    <Ionicons name="business-outline" size={13} color="#4F46E5" />
+                    <Text style={[s.topSmallCardText, { fontWeight: '600', color: '#334155' }]} numberOfLines={1}>
+                      {user?.hostel_name || 'Your Hostel'}
+                    </Text>
+                    <Ionicons name="chevron-down" size={12} color="#94A3B8" />
+                  </TouchableOpacity>
+
+                  {messages.map(msg => (
+                    <View key={msg.id}>
+                      {msg.sender === 'user' ? (
+                        <View style={s.userRow}>
+                          <View style={s.userBubble}>
+                            <Text style={s.userText}>{msg.text}</Text>
                           </View>
-                        ) : (
-                          <View style={s.botRow}>
-                            <View style={[s.botBubble, { flex: 1 }]}>
-                              {msg.blocks && <AssistantResponse blocks={msg.blocks} />}
-                            </View>
+                        </View>
+                      ) : (
+                        <View style={s.botRow}>
+                          <View style={[s.botBubble, { flex: 1, width: '100%' }]}>
+                            {msg.blocks && <AssistantResponse blocks={msg.blocks} />}
                           </View>
-                        )}
-                      </View>
-                    ))}
-                    {isTyping && (
-                      <View style={s.botRow}>
-                        <View style={s.botBubble}><BouncingDots /></View>
-                      </View>
-                    )}
-                  </View>
-                </ScrollView>
-              )}
+                        </View>
+                      )}
+                    </View>
+                  ))}
+                  {isTyping && (
+                    <View style={s.botRow}>
+                      <View style={s.botBubble}><BouncingDots /></View>
+                    </View>
+                  )}
+                </View>
+              </ScrollView>
             </View>
 
             {/* ── Chips Panel — fixed above input bar, never shifts ── */}
@@ -1601,75 +1644,75 @@ export const OwnerAssistant: React.FC = () => {
             {/* ── Bottom input bar ── */}
             {/* paddingBottom is fixed — KAV handles keyboard shift, bottomInset is 0 on Android */}
             <View style={[s.inputBarWrapper, isFocused && s.inputBarWrapperFocused, { paddingBottom: isAddMenuOpen ? 0 : bottomInset }]}>
-            <View style={[s.inputBar, isFocused && s.inputBarFocused]}>
-              {/* Menu Toggle Button */}
-              <TouchableOpacity
-                onPress={() => {
-                  Keyboard.dismiss();
-                  setIsAddMenuOpen(!isAddMenuOpen);
-                }}
-                style={s.menuBtnWrap}
-                activeOpacity={0.7}
-              >
-                <Ionicons name={isAddMenuOpen ? "close-outline" : "apps-outline"} size={22} color={isAddMenuOpen ? "#DC2626" : "#4F46E5"} />
-              </TouchableOpacity>
-
-              {/* Search / input pill */}
-              <Pressable
-                style={[s.inputWrap, isFocused && s.inputWrapFocused]}
-                onPress={() => {
-                  setIsAddMenuOpen(false);
-                  inputRef.current?.focus();
-                }}
-              >
-                <Ionicons name="search-outline" size={17} color={isFocused ? "#4F46E5" : "#94A3B8"} style={{ marginRight: 6 }} />
-                <TextInput
-                  ref={inputRef}
-                  style={s.input}
-                  value={inputText}
-                  onChangeText={setInputText}
-                  placeholder="Ask me anything..."
-                  placeholderTextColor="#94A3B8"
-                  returnKeyType="send"
-                  onSubmitEditing={() => handleQuery(inputText)}
-                  multiline={false}
-                  maxFontSizeMultiplier={1.3}
-                  underlineColorAndroid="transparent"
-                  onFocus={() => {
-                    setIsAddMenuOpen(false);
-                    setIsFocused(true);
+              <View style={[s.inputBar, isFocused && s.inputBarFocused]}>
+                {/* Menu Toggle Button */}
+                <TouchableOpacity
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    setIsAddMenuOpen(!isAddMenuOpen);
                   }}
-                  onBlur={() => setIsFocused(false)}
-                />
-                {inputText.length > 0 && (
-                  <TouchableOpacity onPress={() => setInputText('')} style={{ padding: 2 }}>
-                    <Ionicons name="close-circle" size={18} color="#94A3B8" />
-                  </TouchableOpacity>
-                )}
-              </Pressable>
+                  style={s.menuBtnWrap}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name={isAddMenuOpen ? "close-outline" : "apps-outline"} size={22} color={isAddMenuOpen ? "#DC2626" : "#4F46E5"} />
+                </TouchableOpacity>
 
-              {/* Send button */}
-              <TouchableOpacity
-                style={s.sendBtnTouch}
-                onPress={() => handleQuery(inputText)}
-                activeOpacity={0.8}
-                disabled={!inputText.trim()}
-              >
-                {inputText.trim() ? (
-                  <LinearGradient
-                    colors={['#6366F1', '#4F46E5']}
-                    style={s.sendBtnGrad}
-                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                  >
-                    <Ionicons name="send" size={15} color="#FFF" style={{ marginLeft: 2 }} />
-                  </LinearGradient>
-                ) : (
-                  <View style={s.sendBtnDisabled}>
-                    <Ionicons name="send" size={15} color="#CBD5E1" style={{ marginLeft: 2 }} />
-                  </View>
-                )}
-              </TouchableOpacity>
-            </View>
+                {/* Search / input pill */}
+                <Pressable
+                  style={[s.inputWrap, isFocused && s.inputWrapFocused]}
+                  onPress={() => {
+                    setIsAddMenuOpen(false);
+                    inputRef.current?.focus();
+                  }}
+                >
+                  <Ionicons name="search-outline" size={17} color={isFocused ? "#4F46E5" : "#94A3B8"} style={{ marginRight: 6 }} />
+                  <TextInput
+                    ref={inputRef}
+                    style={s.input}
+                    value={inputText}
+                    onChangeText={setInputText}
+                    placeholder="Ask me anything..."
+                    placeholderTextColor="#94A3B8"
+                    returnKeyType="send"
+                    onSubmitEditing={() => handleQuery(inputText)}
+                    multiline={false}
+                    maxFontSizeMultiplier={1.3}
+                    underlineColorAndroid="transparent"
+                    onFocus={() => {
+                      setIsAddMenuOpen(false);
+                      setIsFocused(true);
+                    }}
+                    onBlur={() => setIsFocused(false)}
+                  />
+                  {inputText.length > 0 && (
+                    <TouchableOpacity onPress={() => setInputText('')} style={{ padding: 2 }}>
+                      <Ionicons name="close-circle" size={18} color="#94A3B8" />
+                    </TouchableOpacity>
+                  )}
+                </Pressable>
+
+                {/* Send button */}
+                <TouchableOpacity
+                  style={s.sendBtnTouch}
+                  onPress={() => handleQuery(inputText)}
+                  activeOpacity={0.8}
+                  disabled={!inputText.trim()}
+                >
+                  {inputText.trim() ? (
+                    <LinearGradient
+                      colors={['#6366F1', '#4F46E5']}
+                      style={s.sendBtnGrad}
+                      start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                    >
+                      <Ionicons name="send" size={15} color="#FFF" style={{ marginLeft: 2 }} />
+                    </LinearGradient>
+                  ) : (
+                    <View style={s.sendBtnDisabled}>
+                      <Ionicons name="send" size={15} color="#CBD5E1" style={{ marginLeft: 2 }} />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Inline 4x2 Grid Menu below input bar */}
@@ -1752,6 +1795,35 @@ const s = StyleSheet.create({
 
   /* Messages */
   msgList: { padding: 14, gap: 14, paddingBottom: 8 },
+  topSmallCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    backgroundColor: '#FFF',
+    borderRadius: 18,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 6,
+    marginBottom: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 1,
+  },
+  topSmallCardText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  topSmallCardDivider: {
+    width: 1,
+    height: 12,
+    backgroundColor: '#CBD5E1',
+    marginHorizontal: 2,
+  },
   userRow: { alignItems: 'flex-end' },
   userBubble: {
     backgroundColor: '#4338CA', borderRadius: 18, borderBottomRightRadius: 4,
@@ -1941,7 +2013,7 @@ ChipsPanel = ({ handleQuery }: { handleQuery: (q: string) => void }) => (
         <TouchableOpacity
           key={i}
           style={s.footerChip}
-          onPress={() => { Haptics.selectionAsync().catch(() => {}); handleQuery(chip.q); }}
+          onPress={() => { Haptics.selectionAsync().catch(() => { }); handleQuery(chip.q); }}
           activeOpacity={0.7}
         >
           <Text style={s.footerChipText}>{chip.label}</Text>
