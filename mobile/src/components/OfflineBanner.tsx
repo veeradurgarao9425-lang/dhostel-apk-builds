@@ -12,7 +12,7 @@ export const OfflineBanner = () => {
 
     useEffect(() => {
         const checkState = (state: any) => {
-            const offline = state.isConnected === false || state.isInternetReachable === false;
+            const offline = state.isConnected === false;
             setIsOffline(offline);
             if (offline) setWasOffline(true);
         };

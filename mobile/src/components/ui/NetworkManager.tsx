@@ -104,11 +104,12 @@ export const NetworkManager = ({ children }: { children: React.ReactNode }) => {
     };
 
     const processNetworkState = (state: any) => {
-        // Connected if isConnected is not explicitly false and isInternetReachable is not explicitly false
-        const connected = state.isConnected !== false && state.isInternetReachable !== false;
+        // Device is connected if isConnected is NOT explicitly false.
+        // DO NOT rely on state.isInternetReachable for blocking screen because NetInfo's 204 ping fails on many Android networks.
+        const connected = state.isConnected !== false;
         setIsConnected(connected);
 
-        if (!connected) {
+        if (state.isConnected === false) {
             wasDisconnectedRef.current = true;
             setWasDisconnected(true);
             setBannerState('offline');
@@ -131,7 +132,7 @@ export const NetworkManager = ({ children }: { children: React.ReactNode }) => {
                     }, 2000);
                 }, 1000);
             } else {
-                // Ensure offline screen is cleared if device is connected
+                // Ensure offline screen is cleared whenever device network is connected
                 setScreenState(current => (current === 'OFFLINE' || current === 'RECONNECTING' || current === 'BACK_ONLINE' ? 'NONE' : current));
             }
         }
