@@ -68,16 +68,14 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Generate Native Android Project (Expo Prebuild)
-        working-directory: mobile
-        run: npx expo prebuild --platform android --no-install
-
       - name: Grant execute permission to gradlew
         working-directory: mobile/android
         run: chmod +x gradlew
 
       - name: Build Release APK
         working-directory: mobile/android
+        env:
+          EXPO_PUBLIC_API_URL: https://dhostel-backend.onrender.com/api
         run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --no-daemon
 
       - name: Upload APK artifact
