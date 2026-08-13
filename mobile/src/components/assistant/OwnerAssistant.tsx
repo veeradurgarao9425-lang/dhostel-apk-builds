@@ -217,6 +217,7 @@ export const OwnerAssistant: React.FC = () => {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [inputText, setInputText] = useState('');
+  const [topSearchText, setTopSearchText] = useState('');
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [isKeyboardActive, setIsKeyboardActive] = useState(false);
@@ -1612,6 +1613,43 @@ export const OwnerAssistant: React.FC = () => {
                     <Ionicons name="chevron-down" size={12} color="#94A3B8" />
                   </TouchableOpacity>
 
+                  {/* ── Top Quick Search Bar ── */}
+                  <View style={s.topSearchBarWrap}>
+                    <Ionicons name="search-outline" size={16} color="#4F46E5" style={{ marginRight: 8 }} />
+                    <TextInput
+                      style={s.topSearchInput}
+                      value={topSearchText}
+                      onChangeText={setTopSearchText}
+                      placeholder="Search or ask anything (e.g. dues, occupancy)..."
+                      placeholderTextColor="#94A3B8"
+                      returnKeyType="search"
+                      onSubmitEditing={() => {
+                        if (topSearchText.trim()) {
+                          handleQuery(topSearchText);
+                          setTopSearchText('');
+                        }
+                      }}
+                      underlineColorAndroid="transparent"
+                    />
+                    {topSearchText.length > 0 ? (
+                      <TouchableOpacity onPress={() => setTopSearchText('')} style={{ padding: 4 }}>
+                        <Ionicons name="close-circle" size={18} color="#94A3B8" />
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        style={s.topSearchSubmitBtn}
+                        onPress={() => {
+                          if (topSearchText.trim()) {
+                            handleQuery(topSearchText);
+                            setTopSearchText('');
+                          }
+                        }}
+                      >
+                        <Ionicons name="arrow-forward" size={13} color="#FFF" />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
                   {messages.map(msg => (
                     <View key={msg.id}>
                       {msg.sender === 'user' ? (
@@ -1642,8 +1680,12 @@ export const OwnerAssistant: React.FC = () => {
             {!isAddMenuOpen && <ChipsPanel handleQuery={handleQuery} />}
 
             {/* ── Bottom input bar ── */}
-            {/* paddingBottom is fixed — KAV handles keyboard shift, bottomInset is 0 on Android */}
-            <View style={[s.inputBarWrapper, isFocused && s.inputBarWrapperFocused, { paddingBottom: isAddMenuOpen ? 0 : bottomInset }]}>
+            {/* Safe bottom padding ensures bottom search bar sits comfortably ABOVE Android/iOS nav buttons */}
+            <View style={[
+              s.inputBarWrapper,
+              isFocused && s.inputBarWrapperFocused,
+              { paddingBottom: isAddMenuOpen ? 0 : Math.max(bottomInset + (Platform.OS === 'android' ? 14 : 10), 18) }
+            ]}>
               <View style={[s.inputBar, isFocused && s.inputBarFocused]}>
                 {/* Menu Toggle Button */}
                 <TouchableOpacity
@@ -1823,6 +1865,37 @@ const s = StyleSheet.create({
     height: 12,
     backgroundColor: '#CBD5E1',
     marginHorizontal: 2,
+  },
+  topSearchBarWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 22,
+    paddingHorizontal: 12,
+    paddingVertical: Platform.OS === 'ios' ? 6 : 2,
+    marginBottom: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 1,
+  },
+  topSearchInput: {
+    flex: 1,
+    fontSize: 13.5,
+    fontWeight: '500',
+    color: '#0F172A',
+    paddingVertical: Platform.OS === 'ios' ? 6 : 4,
+  },
+  topSearchSubmitBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#4F46E5',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   userRow: { alignItems: 'flex-end' },
   userBubble: {
