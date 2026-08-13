@@ -681,12 +681,9 @@ export default function HomeScreen() {
                 colors={[theme.gradientStart, theme.gradientEnd]}
                 style={s.newHeader}
             >
-                {/* ROW 1: [Avatar + Hostel Name]  ←left    [Search + Bell] →right */}
                 <View style={s.headerRow1}>
-
-                    {/* LEFT: Avatar circle + hostel name stacked next to it */}
+                    {/* LEFT: Avatar + Owner Name & Hostel Selector */}
                     <View style={s.headerLeft}>
-                        {/* Avatar → tap to go to Profile */}
                         <TouchableOpacity
                             onPress={() => navigation.navigate('Profile')}
                             activeOpacity={0.8}
@@ -702,44 +699,45 @@ export default function HomeScreen() {
                             </View>
                         </TouchableOpacity>
 
-                        {/* Hostel name → tap to open Hostel Selector Bottom Sheet */}
-                        <TouchableOpacity
-                            ref={headerSelectorRef}
-                            onPress={() => {
-                                setShowHostelSelector(true);
-                                loadHostels();
-                            }}
-                            activeOpacity={0.75}
-                            style={s.hostelNameBtn}
-                        >
-                            <Text style={s.hostelNameLabel} numberOfLines={1}>
-                                {data.hostelName || 'My Hostel'}
+                        <View style={{ gap: 3, justifyContent: 'center' }}>
+                            <Text style={s.headerOwnerName} numberOfLines={1}>
+                                {user?.full_name || 'Admin'}
                             </Text>
-                            <Ionicons name="chevron-down" size={11} color="rgba(255,255,255,0.85)" />
-                        </TouchableOpacity>
+
+                            {/* Hostel selector drop-down pill */}
+                            <TouchableOpacity
+                                ref={headerSelectorRef}
+                                onPress={() => {
+                                    setShowHostelSelector(true);
+                                    loadHostels();
+                                }}
+                                activeOpacity={0.75}
+                                style={s.hostelNameBtn}
+                            >
+                                <Ionicons name="business" size={11} color="rgba(255,255,255,0.9)" />
+                                <Text style={s.hostelNameLabel} numberOfLines={1}>
+                                    {data.hostelName || 'My Hostel'}
+                                </Text>
+                                <Ionicons name="chevron-down" size={10} color="rgba(255,255,255,0.85)" />
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
-                    {/* RIGHT: Bell */}
+                    {/* RIGHT: Search + Loader + Bell */}
                     <View style={s.headerActions}>
+                        <TouchableOpacity
+                            style={s.headerIconBtn}
+                            onPress={() => DeviceEventEmitter.emit('OPEN_ASSISTANT')}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons name="search-outline" size={19} color="#FFF" />
+                        </TouchableOpacity>
+
+                        {backgroundLoading && (
+                            <ActivityIndicator size="small" color="rgba(255,255,255,0.8)" style={{ marginRight: 2 }} />
+                        )}
                         <HeaderNotification navigation={navigation} />
                     </View>
-                </View>
-
-                {/* ROW 2: Greeting + Date */}
-                <View style={s.headerRow2}>
-                    <View style={{ flex: 1 }}>
-                        <Text style={s.greetingText}>
-                            {t(getGreetingKey())}, {(user?.full_name || 'Admin').split(' ')[0]}! 👋
-                        </Text>
-                        <Text style={s.dateText}>
-                            {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-                        </Text>
-                    </View>
-                    {backgroundLoading && (
-                        <Animated.View style={{ opacity: 0.7 }}>
-                            <ActivityIndicator size="small" color="rgba(255,255,255,0.7)" />
-                        </Animated.View>
-                    )}
                 </View>
             </LinearGradient>
 
@@ -989,11 +987,10 @@ const s = StyleSheet.create({
     // ── New Header ──────────────────────────────────────────────────────────
     newHeader: {
         paddingTop: 52,
-        paddingBottom: 20,
+        paddingBottom: 14,
         paddingHorizontal: 18,
-        borderBottomLeftRadius: 28,
-        borderBottomRightRadius: 28,
-        gap: 14,
+        borderBottomLeftRadius: 24,
+        borderBottomRightRadius: 24,
     },
     // Row 1: left group + right icons
     headerRow1: {
@@ -1010,9 +1007,9 @@ const s = StyleSheet.create({
         marginRight: 10,
     },
     avatarCircle: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 42,
+        height: 42,
+        borderRadius: 21,
         backgroundColor: 'rgba(255,255,255,0.25)',
         alignItems: 'center',
         justifyContent: 'center',
@@ -1024,21 +1021,31 @@ const s = StyleSheet.create({
         fontWeight: '900',
         color: '#FFF',
     },
+    headerOwnerName: {
+        fontSize: 15,
+        fontWeight: '800',
+        color: '#FFF',
+        letterSpacing: -0.2,
+        marginBottom: 3,
+    },
     // Hostel name button (translucent pill style drop-down)
     hostelNameBtn: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.15)',
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-        borderRadius: 20,
+        backgroundColor: 'rgba(255,255,255,0.16)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.28)',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 14,
         gap: 4,
+        alignSelf: 'flex-start',
     },
     hostelNameLabel: {
-        fontSize: 13,
-        fontWeight: '800',
-        color: '#FFF',
-        maxWidth: 120,
+        fontSize: 11.5,
+        fontWeight: '700',
+        color: 'rgba(255,255,255,0.92)',
+        maxWidth: 140,
     },
 
     headerActions: {

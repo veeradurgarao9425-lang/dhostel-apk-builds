@@ -153,8 +153,8 @@ const HomeContent: React.FC<HomeProps> = ({ snap, loading, onQuestion, onIntent 
         end={{ x: 1, y: 1 }}
         style={hc.greetBanner}
       >
-        <Text style={hc.greeting}>{getGreeting(user?.full_name || user?.name)}</Text>
-        <Text style={hc.sub}>Ask me anything about your hostel 👇</Text>
+        <Text style={hc.greeting}>How can I help you today?</Text>
+        <Text style={hc.sub}>Ask about students, dues, rooms or quick actions below 👇</Text>
       </LinearGradient>
 
       {/* Suggestion cards */}
@@ -352,9 +352,13 @@ export const OwnerAssistant: React.FC = () => {
     const closeSub = DeviceEventEmitter.addListener('CLOSE_ASSISTANT', () => {
       setIsOpen(false);
     });
+    const openSub = DeviceEventEmitter.addListener('OPEN_ASSISTANT', () => {
+      setIsOpen(true);
+    });
     return () => {
       sub.remove();
       closeSub.remove();
+      openSub.remove();
     };
   }, []);
 
@@ -398,9 +402,12 @@ export const OwnerAssistant: React.FC = () => {
    * the home-indicator inset. Once the keyboard is up nothing needs the inset.
    */
   const bottomInset = useMemo(() => {
-    // When keyboard is active, no bottom inset needed — keyboard is sitting right below
+    // Android modal gets its own window that already excludes the nav bar,
+    // so insets.bottom would be 0 or very small — safe to use directly.
+    // iOS modals are truly full-screen and need the home indicator inset.
+    // When keyboard is active, KAV handles the shift — no inset needed.
     if (isKeyboardActive) return 0;
-    // Both iOS and Android need the real bottom inset to avoid system nav bar overlap
+    if (Platform.OS === 'android') return 0; // Android modal excludes nav bar already
     return Math.max(insets.bottom, 0);
   }, [isKeyboardActive, insets.bottom]);
 
@@ -1502,16 +1509,12 @@ export const OwnerAssistant: React.FC = () => {
       )}
 
       <Modal visible={isOpen} transparent={false} animationType="slide" onRequestClose={() => setIsOpen(false)}>
-        {/* edges=['top'] only — bottom is handled by the inner SafeAreaView wrapper
-            around the input bar, which gives precise control over safe-area padding. */}
         <SafeAreaView style={s.safe} edges={['top']}>
-          {/* KeyboardAvoidingView with 'padding' on both platforms:
-              - iOS: modal is truly full-screen, KAV pushes content up
-              - Android with softwareKeyboardLayoutMode=resize: window shrinks, but KAV
-                still needed to push the input bar above the keyboard within the modal */}
+          {/* With Android softwareKeyboardLayoutMode=resize, the window shrinks automatically.
+              Adding KAV 'padding' on top causes a double-shift on Android. iOS needs KAV. */}
           <KeyboardAvoidingView
-            behavior="padding"
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={0}
             style={s.kav}
           >
 
@@ -1547,7 +1550,7 @@ export const OwnerAssistant: React.FC = () => {
                 <ScrollView
                   showsVerticalScrollIndicator={false}
                   keyboardShouldPersistTaps="handled"
-                  contentContainerStyle={[hc.scroll, { flexGrow: 1, justifyContent: 'space-between' }]}
+                  contentContainerStyle={[hc.scroll, { flexGrow: 1 }]}
                 >
                   <HomeContent
                     snap={snap}
@@ -1555,13 +1558,12 @@ export const OwnerAssistant: React.FC = () => {
                     onQuestion={handleQuery}
                     onIntent={(i) => { setMessages([]); handleIntent(i); }}
                   />
-                  <ChipsPanel handleQuery={handleQuery} />
                 </ScrollView>
               ) : (
                 <ScrollView
                   ref={scrollRef}
                   style={{ flex: 1 }}
-                  contentContainerStyle={[s.msgList, { flexGrow: 1, justifyContent: 'space-between' }]}
+                  contentContainerStyle={[s.msgList, { flexGrow: 1 }]}
                   showsVerticalScrollIndicator={false}
                   keyboardShouldPersistTaps="handled"
                 >
@@ -1589,17 +1591,18 @@ export const OwnerAssistant: React.FC = () => {
                       </View>
                     )}
                   </View>
-
-                  {/* ── Quick Stats & Guides chips inside scroll view ── */}
-                  <ChipsPanel handleQuery={handleQuery} />
                 </ScrollView>
               )}
             </View>
 
-            {/* ── Bottom input bar wrapped in a bottom-safe-area view ── */}
-            <View style={[s.inputBarWrapper, isFocused && s.inputBarWrapperFocused, { paddingBottom: isKeyboardActive ? 4 : (isAddMenuOpen ? 0 : bottomInset) }]}>
+            {/* ── Chips Panel — fixed above input bar, never shifts ── */}
+            {!isAddMenuOpen && <ChipsPanel handleQuery={handleQuery} />}
+
+            {/* ── Bottom input bar ── */}
+            {/* paddingBottom is fixed — KAV handles keyboard shift, bottomInset is 0 on Android */}
+            <View style={[s.inputBarWrapper, isFocused && s.inputBarWrapperFocused, { paddingBottom: isAddMenuOpen ? 0 : bottomInset }]}>
             <View style={[s.inputBar, isFocused && s.inputBarFocused]}>
-              {/* Hamburger / Menu Toggle Button */}
+              {/* Menu Toggle Button */}
               <TouchableOpacity
                 onPress={() => {
                   Keyboard.dismiss();
@@ -1672,8 +1675,8 @@ export const OwnerAssistant: React.FC = () => {
             {/* Inline 4x2 Grid Menu below input bar */}
             {isAddMenuOpen && (
               <View style={[s.inlineMenuContainer, {
-                height: 160 + (isKeyboardActive ? 0 : bottomInset),
-                paddingBottom: isKeyboardActive ? 0 : bottomInset,
+                height: 160 + bottomInset,
+                paddingBottom: bottomInset,
               }]}>
                 <View style={s.inlineMenuGrid}>
                   {menuItems.map((item, idx) => (
