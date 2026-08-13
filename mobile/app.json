@@ -24,6 +24,9 @@
       "googleServicesFile": "./google-services.json",
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE",
+        "ACCESS_WIFI_STATE",
         "RECEIVE_BOOT_COMPLETED",
         "CAMERA",
         "READ_EXTERNAL_STORAGE",

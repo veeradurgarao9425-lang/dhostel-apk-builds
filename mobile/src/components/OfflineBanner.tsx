@@ -11,11 +11,14 @@ export const OfflineBanner = () => {
     const opacity = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
-        const unsub = NetInfo.addEventListener(state => {
-            const offline = !(state.isConnected && state.isInternetReachable !== false);
+        const checkState = (state: any) => {
+            const offline = state.isConnected === false || state.isInternetReachable === false;
             setIsOffline(offline);
             if (offline) setWasOffline(true);
-        });
+        };
+
+        NetInfo.fetch().then(checkState).catch(() => {});
+        const unsub = NetInfo.addEventListener(checkState);
         return () => unsub();
     }, []);
 

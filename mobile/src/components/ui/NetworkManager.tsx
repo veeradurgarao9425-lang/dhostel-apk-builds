@@ -53,6 +53,8 @@ export const NetworkManager = ({ children }: { children: React.ReactNode }) => {
     const bannerAnim = useRef(new Animated.Value(-100)).current;
     const spinAnim = useRef(new Animated.Value(0)).current;
 
+    const wasDisconnectedRef = useRef(false);
+
     useEffect(() => {
         Animated.loop(
             Animated.timing(spinAnim, {
@@ -67,52 +69,6 @@ export const NetworkManager = ({ children }: { children: React.ReactNode }) => {
         inputRange: [0, 1],
         outputRange: ['0deg', '360deg']
     });
-
-    const simulateBanner = (type: 'offline' | 'reconnecting' | 'online' | 'syncing' | 'sync_success' | 'sync_failed') => {
-        setBannerState(type);
-        showBannerAnim();
-        
-        // Auto hide certain banners
-        if (type === 'online' || type === 'sync_success' || type === 'sync_failed') {
-            setTimeout(() => {
-                hideBannerAnim();
-            }, 3000);
-        }
-    };
-
-    const simulateScreen = (type: NetworkScreenState) => {
-        setScreenState(type);
-    };
-
-    useEffect(() => {
-        const unsubscribe = NetInfo.addEventListener(state => {
-            const connected = state.isConnected !== false;
-            setIsConnected(connected);
-            
-            if (!connected) {
-                setWasDisconnected(true);
-                setBannerState('offline');
-                if (screenState === 'NONE') setScreenState('OFFLINE');
-                showBannerAnim();
-            } else if (wasDisconnected) {
-                setBannerState('reconnecting');
-                if (screenState === 'OFFLINE') setScreenState('RECONNECTING');
-                showBannerAnim();
-                
-                // Simulate reconnecting then online
-                setTimeout(() => {
-                    setBannerState('online');
-                    if (screenState === 'RECONNECTING') setScreenState('BACK_ONLINE');
-                    setTimeout(() => {
-                        hideBannerAnim();
-                        setWasDisconnected(false);
-                        if (screenState === 'BACK_ONLINE') setScreenState('NONE');
-                    }, 3000);
-                }, 1500);
-            }
-        });
-        return unsubscribe;
-    }, [wasDisconnected, screenState]);
 
     const showBannerAnim = () => {
         setShowBanner(true);
@@ -131,8 +87,68 @@ export const NetworkManager = ({ children }: { children: React.ReactNode }) => {
         }).start(() => setShowBanner(false));
     };
 
+    const simulateBanner = (type: 'offline' | 'reconnecting' | 'online' | 'syncing' | 'sync_success' | 'sync_failed') => {
+        setBannerState(type);
+        showBannerAnim();
+        
+        // Auto hide certain banners
+        if (type === 'online' || type === 'sync_success' || type === 'sync_failed') {
+            setTimeout(() => {
+                hideBannerAnim();
+            }, 3000);
+        }
+    };
+
+    const simulateScreen = (type: NetworkScreenState) => {
+        setScreenState(type);
+    };
+
+    const processNetworkState = (state: any) => {
+        // Connected if isConnected is not explicitly false and isInternetReachable is not explicitly false
+        const connected = state.isConnected !== false && state.isInternetReachable !== false;
+        setIsConnected(connected);
+
+        if (!connected) {
+            wasDisconnectedRef.current = true;
+            setWasDisconnected(true);
+            setBannerState('offline');
+            setScreenState(current => (current === 'NONE' || current === 'RECONNECTING' ? 'OFFLINE' : current));
+            showBannerAnim();
+        } else {
+            if (wasDisconnectedRef.current) {
+                wasDisconnectedRef.current = false;
+                setWasDisconnected(false);
+                setBannerState('reconnecting');
+                setScreenState(current => (current === 'OFFLINE' ? 'RECONNECTING' : current));
+                showBannerAnim();
+
+                setTimeout(() => {
+                    setBannerState('online');
+                    setScreenState(current => (current === 'RECONNECTING' ? 'BACK_ONLINE' : current));
+                    setTimeout(() => {
+                        hideBannerAnim();
+                        setScreenState(current => (current === 'BACK_ONLINE' ? 'NONE' : current));
+                    }, 2000);
+                }, 1000);
+            } else {
+                // Ensure offline screen is cleared if device is connected
+                setScreenState(current => (current === 'OFFLINE' || current === 'RECONNECTING' || current === 'BACK_ONLINE' ? 'NONE' : current));
+            }
+        }
+    };
+
+    useEffect(() => {
+        NetInfo.fetch().then(processNetworkState).catch(() => {});
+        const unsubscribe = NetInfo.addEventListener(processNetworkState);
+        return () => unsubscribe();
+    }, []);
+
     const handleScreenAction = () => {
-        if (screenState === 'OFFLINE') NetInfo.refresh();
+        if (screenState === 'OFFLINE') {
+            NetInfo.fetch().then(processNetworkState).catch(() => {
+                setScreenState('NONE');
+            });
+        }
         else if (screenState === 'POOR_CONNECTION') setScreenState('NONE');
         else if (screenState === 'SLOW_NETWORK') setScreenState('NONE');
         else if (screenState === 'BACK_ONLINE') setScreenState('NONE');
