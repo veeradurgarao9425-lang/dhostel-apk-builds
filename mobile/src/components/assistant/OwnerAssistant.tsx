@@ -129,69 +129,72 @@ const HomeContent: React.FC<HomeProps> = ({ snap, loading, onQuestion, onIntent 
   const { user } = useAuth();
 
   const suggestions = [
-    { emoji: '💸', title: "Who hasn't paid rent?", color: '#EF4444', bg: '#FEF2F2', q: "Who hasn't paid this month?" },
-    { emoji: '🛏️', title: 'How many beds are free?', color: '#059669', bg: '#ECFDF5', q: 'How many beds available?' },
-    { emoji: '📊', title: 'Show this month profit', color: '#4F46E5', bg: '#EEF2FF', q: 'Profit this month' },
-    { emoji: '🎓', title: 'How many active students?', color: '#0EA5E9', bg: '#E0F2FE', q: 'Total students count' },
+    { iconName: 'alert-circle-outline', title: "Unpaid Rent?", color: '#EF4444', bg: '#FEF2F2', q: "Who hasn't paid this month?" },
+    { iconName: 'bed-outline', title: 'Available Beds?', color: '#059669', bg: '#ECFDF5', q: 'How many beds available?' },
+    { iconName: 'bar-chart-outline', title: 'Monthly Profit', color: '#4F46E5', bg: '#EEF2FF', q: 'Profit this month' },
+    { iconName: 'people-outline', title: 'Active Students', color: '#0EA5E9', bg: '#E0F2FE', q: 'Total students count' },
   ];
 
   const quickGuides = [
-    { emoji: '➕', label: 'Add Student', q: 'How to add a student?' },
-    { emoji: '💰', label: 'Collect Rent', q: 'How to collect rent?' },
-    { emoji: '⚠️', label: 'Pending Dues', q: 'Pending dues today' },
-    { emoji: '🚪', label: 'Vacate Bed', q: 'How to vacate a bed?' },
-    { emoji: '📋', label: 'Add Expense', q: 'How to add an expense?' },
-    { emoji: '🏠', label: 'Add Room', q: 'How to add a room?' },
+    { iconName: 'person-add-outline', label: 'Add Student', color: '#3B82F6', q: 'How to add a student?' },
+    { iconName: 'wallet-outline', label: 'Collect Rent', color: '#10B981', q: 'How to collect rent?' },
+    { iconName: 'warning-outline', label: 'Pending Dues', color: '#EF4444', q: 'Pending dues today' },
+    { iconName: 'log-out-outline', label: 'Vacate Bed', color: '#F59E0B', q: 'How to vacate a bed?' },
+    { iconName: 'receipt-outline', label: 'Add Expense', color: '#8B5CF6', q: 'How to add an expense?' },
+    { iconName: 'business-outline', label: 'Add Room', color: '#0EA5E9', q: 'How to add a room?' },
   ];
 
-
   return (
-    <View>
+    <View style={{ gap: 20, paddingBottom: 10 }}>
       {/* Greeting banner */}
-      <View style={hc.greetBanner}>
-        <View>
-          <Text style={hc.greeting}>{getGreeting(user?.full_name || user?.name)}</Text>
-          <Text style={hc.sub}>Ask me anything about your hostel 👇</Text>
+      <LinearGradient
+        colors={['#4F46E5', '#6366F1']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={hc.greetBanner}
+      >
+        <Text style={hc.greeting}>{getGreeting(user?.full_name || user?.name)}</Text>
+        <Text style={hc.sub}>Ask me anything about your hostel 👇</Text>
+      </LinearGradient>
+
+      {/* Suggestion cards */}
+      <View>
+        <Text style={hc.sectionLabel}>✨ SMART SUGGESTIONS</Text>
+        <View style={hc.suggestionGrid}>
+          {suggestions.map((s, i) => (
+            <TouchableOpacity
+              key={i}
+              style={[hc.suggListBtn, { backgroundColor: s.bg, borderColor: s.bg }]}
+              onPress={() => { Haptics.selectionAsync().catch(() => {}); onQuestion(s.q); }}
+              activeOpacity={0.75}
+            >
+              <View style={[hc.suggListIcon, { backgroundColor: '#FFF' }]}>
+                <Ionicons name={s.iconName as any} size={20} color={s.color} />
+              </View>
+              <Text style={[hc.suggListTitle, { color: s.color }]}>{s.title}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
 
-      {/* Suggestion cards */}
-      <View style={hc.sectionRow}>
-        <Text style={hc.sectionLabel}>✨ SMART SUGGESTIONS</Text>
-      </View>
-      <View style={hc.suggestionGrid}>
-        {suggestions.map((s, i) => (
-          <TouchableOpacity
-            key={i}
-            style={[hc.suggListBtn, { backgroundColor: s.bg, borderColor: s.bg }]}
-            onPress={() => { Haptics.selectionAsync().catch(() => {}); onQuestion(s.q); }}
-            activeOpacity={0.75}
-          >
-            <View style={[hc.suggListIcon, { backgroundColor: '#FFF' }]}>
-              <Text style={{ fontSize: 16 }}>{s.emoji}</Text>
-            </View>
-            <Text style={[hc.suggListTitle, { color: s.color }]}>{s.title}</Text>
-            <Ionicons name="chevron-forward" size={16} color={s.color} style={{ opacity: 0.5 }} />
-          </TouchableOpacity>
-        ))}
-      </View>
-
       {/* Quick guide pills */}
-      <View style={[hc.sectionRow, { marginTop: 14 }]}>
-        <Text style={[hc.sectionLabel, { color: '#16A34A' }]}>📖 HOW-TO GUIDES</Text>
-      </View>
-      <View style={hc.guideGrid}>
-        {quickGuides.map((g, i) => (
-          <TouchableOpacity
-            key={i}
-            style={hc.guidePill}
-            onPress={() => { Haptics.selectionAsync().catch(() => {}); onQuestion(g.q); }}
-            activeOpacity={0.75}
-          >
-            <Text style={{ fontSize: 13, marginRight: 5 }}>{g.emoji}</Text>
-            <Text style={hc.guidePillText}>{g.label}</Text>
-          </TouchableOpacity>
-        ))}
+      <View>
+        <Text style={[hc.sectionLabel, { color: '#16A34A' }]}>⚡ QUICK ACTIONS</Text>
+        <View style={hc.guideGrid}>
+          {quickGuides.map((g, i) => (
+            <TouchableOpacity
+              key={i}
+              style={hc.guidePill}
+              onPress={() => { Haptics.selectionAsync().catch(() => {}); onQuestion(g.q); }}
+              activeOpacity={0.75}
+            >
+              <View style={hc.guidePillIconWrap}>
+                <Ionicons name={g.iconName as any} size={22} color={g.color} />
+              </View>
+              <Text style={hc.guidePillText}>{g.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
     </View>
   );
@@ -200,42 +203,50 @@ const HomeContent: React.FC<HomeProps> = ({ snap, loading, onQuestion, onIntent 
 const hc = StyleSheet.create({
   scroll: { padding: 14, gap: 12, paddingBottom: 6 },
   greetBanner: {
-    backgroundColor: '#EEF2FF',
     borderRadius: 16,
-    padding: 16,
+    padding: 20,
     marginBottom: 4,
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
   },
-  greeting: { fontSize: 18, fontWeight: '800', color: '#1E293B', letterSpacing: -0.3, marginBottom: 3 },
-  sub: { fontSize: 13, color: '#4F46E5', fontWeight: '600' },
+  greeting: { fontSize: 20, fontWeight: '800', color: '#FFFFFF', letterSpacing: -0.3, marginBottom: 4 },
+  sub: { fontSize: 14, color: '#E0E7FF', fontWeight: '500' },
   sectionRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 8 },
-  sectionLabel: { fontSize: 10, fontWeight: '800', color: '#4F46E5', textTransform: 'uppercase', letterSpacing: 0.8 },
+  sectionLabel: { fontSize: 11, fontWeight: '800', color: '#64748B', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10, marginLeft: 4 },
 
-  // Simple vertical list for suggestions
-  suggestionGrid: { flexDirection: 'column', gap: 8 },
+  // Grid for suggestions
+  suggestionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'space-between' },
   suggListBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 14,
-    borderWidth: 1.5,
-    padding: 10,
+    width: '48%',
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 14,
     gap: 12,
   },
-  suggListIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  suggListTitle: { fontSize: 14, fontWeight: '700', flex: 1 },
+  suggListIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 2 },
+  suggListTitle: { fontSize: 13, fontWeight: '700', lineHeight: 18 },
 
-  // Guide pills
-  guideGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  // Quick Action pills
+  guideGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between' },
   guidePill: {
-    flexDirection: 'row',
+    width: '31%', // 3 items per row
     alignItems: 'center',
-    backgroundColor: '#F0FDF4',
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: '#DCFCE7',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
-  guidePillText: { fontSize: 12, fontWeight: '700', color: '#15803D' },
+  guidePillIconWrap: {
+    width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFFFFF',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 8,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 2
+  },
+  guidePillText: { fontSize: 12, fontWeight: '700', color: '#475569', textAlign: 'center' },
 });
 
 // ─── ChipsPanel — compact scrollable footer chip bar ─────────────────────────
@@ -1586,7 +1597,7 @@ export const OwnerAssistant: React.FC = () => {
             </View>
 
             {/* ── Bottom input bar wrapped in a bottom-safe-area view ── */}
-            <View style={[s.inputBarWrapper, isFocused && s.inputBarWrapperFocused, { paddingBottom: isKeyboardActive ? 4 : bottomInset }]}>
+            <View style={[s.inputBarWrapper, isFocused && s.inputBarWrapperFocused, { paddingBottom: isKeyboardActive ? 4 : (isAddMenuOpen ? 0 : bottomInset) }]}>
             <View style={[s.inputBar, isFocused && s.inputBarFocused]}>
               {/* Hamburger / Menu Toggle Button */}
               <TouchableOpacity

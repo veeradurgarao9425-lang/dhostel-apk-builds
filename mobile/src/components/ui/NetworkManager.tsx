@@ -86,7 +86,7 @@ export const NetworkManager = ({ children }: { children: React.ReactNode }) => {
 
     useEffect(() => {
         const unsubscribe = NetInfo.addEventListener(state => {
-            const connected = !!(state.isConnected && state.isInternetReachable !== false);
+            const connected = state.isConnected !== false;
             setIsConnected(connected);
             
             if (!connected) {
