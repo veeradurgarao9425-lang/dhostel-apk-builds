@@ -68,6 +68,10 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Generate Native Android Project (Expo Prebuild)
+        working-directory: mobile
+        run: npx expo prebuild --platform android --clean
+
       - name: Grant execute permission to gradlew
         working-directory: mobile/android
         run: chmod +x gradlew
