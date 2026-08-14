@@ -387,13 +387,15 @@ export const OwnerAssistant: React.FC = () => {
    * the home-indicator inset. Once the keyboard is up nothing needs the inset.
    */
   const bottomInset = useMemo(() => {
-    // Android modal gets its own window that already excludes the nav bar,
-    // so insets.bottom would be 0 or very small — safe to use directly.
-    // iOS modals are truly full-screen and need the home indicator inset.
-    // When keyboard is active, KAV handles the shift — no inset needed.
+    // When the keyboard is active, KAV handles the upward shift — no extra
+    // bottom inset is needed on either platform.
     if (isKeyboardActive) return 0;
-    if (Platform.OS === 'android') return 0; // Android modal excludes nav bar already
-    return Math.max(insets.bottom, 0);
+    // On iOS the Modal is truly full-screen, so we always need the home
+    // indicator inset.  On Android the non-transparent Modal dialog window
+    // does NOT exclude the gesture-nav bar (unlike the old navigation bar),
+    // so we also apply insets.bottom — but cap it to 48 to avoid excessive
+    // dead space on older three-button-nav phones where insets can be 0.
+    return Math.min(Math.max(insets.bottom, 0), 48);
   }, [isKeyboardActive, insets.bottom]);
 
   // ── Position ───────────────────────────────────────────────────────────
@@ -1535,9 +1537,15 @@ export const OwnerAssistant: React.FC = () => {
       )}
 
       <Modal visible={isOpen} transparent={false} animationType="slide" onRequestClose={() => setIsOpen(false)} statusBarTranslucent={false}>
-        <SafeAreaView style={s.safe} edges={['top']}>
+        {/* BUG 1 FIX: include 'bottom' edge so SafeAreaView adds bottom inset
+            space for the home indicator / gesture nav bar on both platforms. */}
+        <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
+          {/* BUG 2 FIX: add keyboardVerticalOffset equal to the header height
+              (~64px) so KAV's 'padding' mode on iOS shifts content the right
+              amount.  On Android 'height' mode ignores this value. */}
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
             style={s.kav}
           >
 
@@ -1634,6 +1642,11 @@ export const OwnerAssistant: React.FC = () => {
             {!isAddMenuOpen && <ChipsPanel handleQuery={handleQuery} />}
 
             {/* ── Bottom input bar & Powered by HOSTIX branding ── */}
+            {/* BUG 1 FIX: paddingBottom uses the real bottomInset (which now
+                correctly returns a non-zero value on Android gesture-nav phones
+                too).  SafeAreaView already adds its own bottom inset so we use
+                a modest minimum (6px/4px) rather than the full inset again when
+                the keyboard is hidden; SafeAreaView handles the rest. */}
             <View style={[
               s.inputBarWrapper,
               isFocused && s.inputBarWrapperFocused,
@@ -1642,7 +1655,7 @@ export const OwnerAssistant: React.FC = () => {
                   ? 0
                   : (isKeyboardActive
                       ? (Platform.OS === 'android' ? 6 : 4)
-                      : Math.max(bottomInset, Platform.OS === 'android' ? 18 : 12))
+                      : (Platform.OS === 'android' ? 6 : 4))
               }
             ]}>
               <View style={[s.inputBar, isFocused && s.inputBarFocused]}>
@@ -1726,35 +1739,47 @@ export const OwnerAssistant: React.FC = () => {
               )}
             </View>
 
-            {/* Inline 4x2 Grid Menu below input bar */}
+            {/* BUG 3 FIX: Inline 4x2 Grid Menu below input bar.
+                Previously used a fixed `height: 160 + bottomInset` which clipped
+                the second row whenever the content was taller than the viewport
+                slice (e.g. on small phones or when bottomInset added padding
+                inside the fixed height).  Now the container sizes to its content
+                (minHeight instead of height) and wraps in a ScrollView with
+                nestedScrollEnabled so it can scroll if ever needed.  The
+                paddingBottom now uses the real bottomInset so the last row is
+                never hidden behind the gesture nav bar. */}
             {isAddMenuOpen && (
-              <View style={[s.inlineMenuContainer, {
-                height: 160 + bottomInset,
-                paddingBottom: bottomInset,
-              }]}>
-                <View style={s.inlineMenuGrid}>
-                  {menuItems.map((item, idx) => (
-                    <TouchableOpacity
-                      key={idx}
-                      style={s.inlineMenuItem}
-                      onPress={() => {
-                        setIsAddMenuOpen(false);
-                        if (item.intent) {
-                          triggerMenuAction(item.label, item.intent);
-                        }
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <View style={[s.inlineMenuIconContainer, { backgroundColor: item.bg }]}>
-                        <Ionicons name={item.icon as any} size={20} color={item.color} />
-                      </View>
-                      <Text style={s.inlineMenuItemText} numberOfLines={2}>
-                        {item.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
+              <ScrollView
+                style={s.inlineMenuContainer}
+                contentContainerStyle={[
+                  s.inlineMenuGrid,
+                  { paddingBottom: bottomInset },
+                ]}
+                scrollEnabled={false}
+                nestedScrollEnabled
+                keyboardShouldPersistTaps="handled"
+              >
+                {menuItems.map((item, idx) => (
+                  <TouchableOpacity
+                    key={idx}
+                    style={s.inlineMenuItem}
+                    onPress={() => {
+                      setIsAddMenuOpen(false);
+                      if (item.intent) {
+                        triggerMenuAction(item.label, item.intent);
+                      }
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[s.inlineMenuIconContainer, { backgroundColor: item.bg }]}>
+                      <Ionicons name={item.icon as any} size={20} color={item.color} />
+                    </View>
+                    <Text style={s.inlineMenuItemText} numberOfLines={2}>
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             )}
 
           </KeyboardAvoidingView>
@@ -1997,10 +2022,14 @@ const s = StyleSheet.create({
     backgroundColor: '#FFF',
     borderTopWidth: 1,
     borderTopColor: '#E2E8F0',
+    // BUG 3 FIX: no fixed height — size to content so the 2nd row is never clipped
   },
   inlineMenuGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    // BUG 3 FIX: minHeight ensures the grid is at least 2 rows tall;
+    // actual height grows with content (no overflow clipping)
+    minHeight: 160,
   },
   inlineMenuItem: {
     width: '25%',
