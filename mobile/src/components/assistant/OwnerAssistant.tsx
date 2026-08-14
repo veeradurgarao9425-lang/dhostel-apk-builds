@@ -27,8 +27,13 @@ import {
   View, Text, StyleSheet, TouchableOpacity, Pressable, ScrollView,
   Modal, Platform, KeyboardAvoidingView, TextInput,
   Animated, Image, DeviceEventEmitter, Dimensions, Keyboard,
+  LayoutAnimation, UIManager,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -125,77 +130,16 @@ interface HomeProps {
   onQuestion: (q: string) => void;
   onIntent: (i: AssistantIntent) => void;
 }
-const HomeContent: React.FC<HomeProps> = ({ snap, loading, onQuestion, onIntent }) => {
-  const { user } = useAuth();
-  const firstName = user?.full_name?.split(' ')[0] || user?.name || 'there';
-
-  const quickQuestions = [
-    { label: "💸 Who hasn't paid rent?", q: "Who hasn't paid this month?" },
-    { label: "🛏️ Available beds?", q: "How many beds available?" },
-    { label: "📊 Profit this month", q: "Profit this month" },
-    { label: "🎓 Active students count", q: "Total students count" },
-    { label: "⚠️ Overdue defaulters list", q: "Show overdue students" },
-    { label: "🧾 Expense breakdown", q: "Expense breakdown" },
-  ];
-
-  return (
-    <View style={hc.container}>
-      <Text style={hc.simpleGreeting}>Hello {firstName}! 👋</Text>
-      <Text style={hc.simpleSub}>Ask me anything about your hostel below.</Text>
-
-      <View style={hc.pillWrap}>
-        {quickQuestions.map((item, idx) => (
-          <TouchableOpacity
-            key={idx}
-            style={hc.simplePill}
-            onPress={() => {
-              Haptics.selectionAsync().catch(() => { });
-              onQuestion(item.q);
-            }}
-            activeOpacity={0.75}
-          >
-            <Text style={hc.simplePillText}>{item.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </View>
-  );
-};
-
-const hc = StyleSheet.create({
-  scroll: { padding: 14, gap: 12, paddingBottom: 6 },
-  container: { paddingVertical: 18, paddingHorizontal: 6, gap: 10 },
-  simpleGreeting: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#0F172A',
-    letterSpacing: -0.3,
-  },
-  simpleSub: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#64748B',
-    marginBottom: 8,
-  },
-  pillWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  simplePill: {
-    backgroundColor: '#FFF',
-    borderRadius: 20,
-    paddingVertical: 9,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  simplePillText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#334155',
-  },
-});
+// ─── Merged suggestion chips shown inline in the welcome area ─────────────────
+// These replace both the old HomeContent pill-grid AND the separate ChipsPanel.
+// Only the most-used queries — 5 chips, icon + short label each.
+const WELCOME_CHIPS: Array<{ icon: string; label: string; q: string }> = [
+  { icon: 'alert-circle-outline',   label: 'Pending dues',     q: "Who hasn't paid this month?" },
+  { icon: 'bed-outline',            label: 'Available beds',   q: 'How many beds available?' },
+  { icon: 'cash-outline',           label: 'Month profit',     q: 'Profit this month' },
+  { icon: 'people-outline',         label: 'Active students',  q: 'Total students count' },
+  { icon: 'receipt-outline',        label: 'Expenses',         q: 'Expense breakdown' },
+];
 
 // ─── ChipsPanel — compact scrollable footer chip bar ─────────────────────────
 interface ChipsPanelProps {
@@ -275,14 +219,28 @@ export const OwnerAssistant: React.FC = () => {
     }
   };
 
+  const toggleQuickMenu = useCallback(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    if (isKeyboardActive) {
+      Keyboard.dismiss();
+    }
+    setIsAddMenuOpen(prev => !prev);
+  }, [isKeyboardActive]);
+
   useEffect(() => {
     const showSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      () => setIsKeyboardActive(true)
+      () => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setIsKeyboardActive(true);
+      }
     );
     const hideSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => setIsKeyboardActive(false)
+      () => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setIsKeyboardActive(false);
+      }
     );
     return () => {
       showSub.remove();
@@ -1584,62 +1542,98 @@ export const OwnerAssistant: React.FC = () => {
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
               >
-                <View style={{ gap: 14 }}>
-                  {/* Top Small Card (Owner Name, Date & Active Hostel Selector) */}
-                  <TouchableOpacity
-                    style={s.topSmallCard}
-                    onPress={() => triggerMenuAction('Show My Hostels', { type: 'SHOW_HOSTELS' })}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="person-circle-outline" size={14} color="#4F46E5" />
-                    <Text style={[s.topSmallCardText, { fontWeight: '700', color: '#1E293B' }]}>
-                      {user?.full_name?.split(' ')[0] || 'Admin'}
+                {/* Context bar — owner name | date | hostel selector */}
+                <TouchableOpacity
+                  style={s.topSmallCard}
+                  onPress={() => triggerMenuAction('Show My Hostels', { type: 'SHOW_HOSTELS' })}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="person-circle-outline" size={14} color="#4F46E5" />
+                  <Text style={[s.topSmallCardText, { fontWeight: '700', color: '#1E293B' }]}>
+                    {user?.full_name?.split(' ')[0] || 'Admin'}
+                  </Text>
+                  <View style={s.topSmallCardDivider} />
+                  <Ionicons name="calendar-outline" size={13} color="#64748B" />
+                  <Text style={s.topSmallCardText}>
+                    {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </Text>
+                  <View style={s.topSmallCardDivider} />
+                  <Ionicons name="business-outline" size={13} color="#4F46E5" />
+                  <Text style={[s.topSmallCardText, { fontWeight: '600', color: '#334155' }]} numberOfLines={1}>
+                    {user?.hostel_name || 'Your Hostel'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={12} color="#94A3B8" />
+                </TouchableOpacity>
+
+                {/* Welcome bubble — shown only when there are no conversation messages yet */}
+                {messages.length <= 2 && (
+                  <View style={s.welcomeBubble}>
+                    <Text style={s.welcomeText}>
+                      Hi {user?.full_name?.split(' ')[0] || 'there'} 👋{'  '}Ask me anything about your hostel.
                     </Text>
+                  </View>
+                )}
 
-                    <View style={s.topSmallCardDivider} />
+                {/* Suggestion chip row — single merged horizontal strip with right-edge fade */}
+                {messages.length <= 2 && (
+                  <View style={s.chipRowOuter}>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={s.chipRowContent}
+                      keyboardShouldPersistTaps="handled"
+                    >
+                      {WELCOME_CHIPS.map((chip, i) => (
+                        <TouchableOpacity
+                          key={i}
+                          style={s.welcomeChip}
+                          onPress={() => {
+                            Haptics.selectionAsync().catch(() => {});
+                            handleQuery(chip.q);
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name={chip.icon as any} size={14} color="#4F46E5" />
+                          <Text style={s.welcomeChipText}>{chip.label}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                    {/* Right-edge fade — pointer-events none so chips stay tappable */}
+                    <LinearGradient
+                      colors={['rgba(248,250,252,0)', 'rgba(248,250,252,0.92)', '#F8FAFC']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={s.chipRowFade}
+                      pointerEvents="none"
+                    />
+                  </View>
+                )}
 
-                    <Ionicons name="calendar-outline" size={13} color="#64748B" />
-                    <Text style={s.topSmallCardText}>
-                      {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </Text>
-
-                    <View style={s.topSmallCardDivider} />
-
-                    <Ionicons name="business-outline" size={13} color="#4F46E5" />
-                    <Text style={[s.topSmallCardText, { fontWeight: '600', color: '#334155' }]} numberOfLines={1}>
-                      {user?.hostel_name || 'Your Hostel'}
-                    </Text>
-                    <Ionicons name="chevron-down" size={12} color="#94A3B8" />
-                  </TouchableOpacity>
-
-                  {messages.map(msg => (
-                    <View key={msg.id}>
-                      {msg.sender === 'user' ? (
-                        <View style={s.userRow}>
-                          <View style={s.userBubble}>
-                            <Text style={s.userText}>{msg.text}</Text>
-                          </View>
+                {/* Message thread */}
+                {messages.map(msg => (
+                  <View key={msg.id}>
+                    {msg.sender === 'user' ? (
+                      <View style={s.userRow}>
+                        <View style={s.userBubble}>
+                          <Text style={s.userText}>{msg.text}</Text>
                         </View>
-                      ) : (
-                        <View style={s.botRow}>
-                          <View style={[s.botBubble, { flex: 1, width: '100%' }]}>
-                            {msg.blocks && <AssistantResponse blocks={msg.blocks} />}
-                          </View>
+                      </View>
+                    ) : (
+                      <View style={s.botRow}>
+                        <View style={[s.botBubble, { flex: 1, width: '100%' }]}>
+                          {msg.blocks && <AssistantResponse blocks={msg.blocks} />}
                         </View>
-                      )}
-                    </View>
-                  ))}
-                  {isTyping && (
-                    <View style={s.botRow}>
-                      <View style={s.botBubble}><BouncingDots /></View>
-                    </View>
-                  )}
-                </View>
+                      </View>
+                    )}
+                  </View>
+                ))}
+                {isTyping && (
+                  <View style={s.botRow}>
+                    <View style={s.botBubble}><BouncingDots /></View>
+                  </View>
+                )}
               </ScrollView>
             </View>
-
-            {/* ── Chips Panel — fixed above input bar, never shifts ── */}
-            {!isAddMenuOpen && <ChipsPanel handleQuery={handleQuery} />}
 
             {/* ── Bottom input bar & Powered by HOSTIX branding ── */}
             {/* BUG 1 FIX: paddingBottom uses the real bottomInset (which now
@@ -1651,34 +1645,61 @@ export const OwnerAssistant: React.FC = () => {
               s.inputBarWrapper,
               isFocused && s.inputBarWrapperFocused,
               {
-                paddingBottom: isAddMenuOpen
-                  ? 0
-                  : (isKeyboardActive
-                      ? (Platform.OS === 'android' ? 6 : 4)
-                      : (Platform.OS === 'android' ? 6 : 4))
+                paddingBottom: isKeyboardActive
+                  ? (Platform.OS === 'android' ? 6 : 4)
+                  : (Platform.OS === 'android' ? 6 : 4)
               }
             ]}>
+              {/* Quick Actions Mini Bar — Compact Horizontal Scroll (No big drawer) */}
+              {isAddMenuOpen && (
+                <View style={s.miniMenuWrapper}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={s.miniMenuContent}
+                    keyboardShouldPersistTaps="handled"
+                  >
+                    {menuItems.map((item, idx) => (
+                      <TouchableOpacity
+                        key={idx}
+                        style={[s.miniMenuChip, { backgroundColor: item.bg, borderColor: item.color + '40' }]}
+                        onPress={() => {
+                          setIsAddMenuOpen(false);
+                          if (item.intent) {
+                            triggerMenuAction(item.label, item.intent);
+                          }
+                        }}
+                        activeOpacity={0.75}
+                      >
+                        <Ionicons name={item.icon as any} size={13} color={item.color} />
+                        <Text style={[s.miniMenuChipText, { color: item.color }]}>
+                          {item.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+
               <View style={[s.inputBar, isFocused && s.inputBarFocused]}>
-                {/* Menu Toggle Button */}
+                {/* Quick-actions toggle — bolt icon, neutral resting, red when open */}
                 <TouchableOpacity
-                  onPress={() => {
-                    Keyboard.dismiss();
-                    setIsAddMenuOpen(!isAddMenuOpen);
-                  }}
-                  style={s.menuBtnWrap}
+                  onPress={toggleQuickMenu}
+                  style={[
+                    s.menuBtnWrap,
+                    isAddMenuOpen && s.menuBtnWrapActive,
+                  ]}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name={isAddMenuOpen ? "close-outline" : "apps-outline"} size={22} color={isAddMenuOpen ? "#DC2626" : "#4F46E5"} />
+                  <Ionicons
+                    name={isAddMenuOpen ? 'close-outline' : 'flash-outline'}
+                    size={20}
+                    color={isAddMenuOpen ? '#DC2626' : '#64748B'}
+                  />
                 </TouchableOpacity>
 
                 {/* Search / input pill */}
-                <Pressable
-                  style={[s.inputWrap, isFocused && s.inputWrapFocused]}
-                  onPress={() => {
-                    setIsAddMenuOpen(false);
-                    inputRef.current?.focus();
-                  }}
-                >
+                <View style={[s.inputWrap, isFocused && s.inputWrapFocused]}>
                   <Ionicons name="search-outline" size={17} color={isFocused ? "#4F46E5" : "#94A3B8"} style={{ marginRight: 6 }} />
                   <TextInput
                     ref={inputRef}
@@ -1693,17 +1714,20 @@ export const OwnerAssistant: React.FC = () => {
                     maxFontSizeMultiplier={1.3}
                     underlineColorAndroid="transparent"
                     onFocus={() => {
-                      setIsAddMenuOpen(false);
+                      if (isAddMenuOpen) {
+                        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                        setIsAddMenuOpen(false);
+                      }
                       setIsFocused(true);
                     }}
                     onBlur={() => setIsFocused(false)}
                   />
                   {inputText.length > 0 && (
-                    <TouchableOpacity onPress={() => setInputText('')} style={{ padding: 2 }}>
+                    <TouchableOpacity onPress={() => setInputText('')} style={{ padding: 4 }}>
                       <Ionicons name="close-circle" size={18} color="#94A3B8" />
                     </TouchableOpacity>
                   )}
-                </Pressable>
+                </View>
 
                 {/* Send button */}
                 <TouchableOpacity
@@ -1739,49 +1763,6 @@ export const OwnerAssistant: React.FC = () => {
               )}
             </View>
 
-            {/* BUG 3 FIX: Inline 4x2 Grid Menu below input bar.
-                Previously used a fixed `height: 160 + bottomInset` which clipped
-                the second row whenever the content was taller than the viewport
-                slice (e.g. on small phones or when bottomInset added padding
-                inside the fixed height).  Now the container sizes to its content
-                (minHeight instead of height) and wraps in a ScrollView with
-                nestedScrollEnabled so it can scroll if ever needed.  The
-                paddingBottom now uses the real bottomInset so the last row is
-                never hidden behind the gesture nav bar. */}
-            {isAddMenuOpen && (
-              <ScrollView
-                style={s.inlineMenuContainer}
-                contentContainerStyle={[
-                  s.inlineMenuGrid,
-                  { paddingBottom: bottomInset },
-                ]}
-                scrollEnabled={false}
-                nestedScrollEnabled
-                keyboardShouldPersistTaps="handled"
-              >
-                {menuItems.map((item, idx) => (
-                  <TouchableOpacity
-                    key={idx}
-                    style={s.inlineMenuItem}
-                    onPress={() => {
-                      setIsAddMenuOpen(false);
-                      if (item.intent) {
-                        triggerMenuAction(item.label, item.intent);
-                      }
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <View style={[s.inlineMenuIconContainer, { backgroundColor: item.bg }]}>
-                      <Ionicons name={item.icon as any} size={20} color={item.color} />
-                    </View>
-                    <Text style={s.inlineMenuItemText} numberOfLines={2}>
-                      {item.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            )}
-
           </KeyboardAvoidingView>
 
         </SafeAreaView>
@@ -1804,7 +1785,11 @@ const s = StyleSheet.create({
   fabGrad: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   /* Modal */
-  safe: { flex: 1, backgroundColor: '#7C3AED' },
+  // Background must be white — the purple header colour is applied only to the
+  // LinearGradient header element itself.  If this SafeAreaView keeps purple,
+  // the bottom safe-area slot (edges={['top','bottom']}) shows a purple block
+  // below the content when the keyboard is closed.
+  safe: { flex: 1, backgroundColor: '#FFF' },
   kav: { flex: 1, backgroundColor: '#FFF' },
   chatArea: { flex: 1, backgroundColor: '#F8FAFC' },
 
@@ -1830,7 +1815,7 @@ const s = StyleSheet.create({
   iconBtn: { padding: 6, borderRadius: 8 },
 
   /* Messages */
-  msgList: { padding: 14, gap: 14, paddingBottom: 8 },
+  msgList: { padding: 16, gap: 16, paddingBottom: 8 },
   topSmallCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1934,15 +1919,20 @@ const s = StyleSheet.create({
   inputBarWrapperFocused: {
     borderTopColor: '#E0E7FF',
   },
+  /* Neutral resting state — no purple tint unless open */
   menuBtnWrap: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#E0E7FF',
+    borderColor: '#E2E8F0',
+  },
+  menuBtnWrapActive: {
+    backgroundColor: '#FEE2E2',
+    borderColor: '#FECACA',
   },
   inputWrap: {
     flex: 1,
@@ -2012,46 +2002,97 @@ const s = StyleSheet.create({
     fontWeight: '600',
     color: '#475569',
   },
-  chipPanel: {
-    backgroundColor: '#F8FAFC',
+  /* Welcome bubble */
+  welcomeBubble: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    borderTopLeftRadius: 4,
+    paddingHorizontal: 14,
     paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    maxWidth: '88%',
   },
-  inlineMenuContainer: {
+  welcomeText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1E293B',
+    lineHeight: 20,
+  },
+  /* Suggestion chip row */
+  chipRowOuter: {
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  chipRowContent: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 0,
+    paddingVertical: 2,
+    paddingRight: 40, // leave room for fade to not cut last chip hard
+    alignItems: 'center',
+  },
+  welcomeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.03,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+  },
+  welcomeChipText: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  chipRowFade: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 44,
+  },
+  /* Legacy chipPanel kept for any remaining reference */
+  chipPanel: {
+    display: 'none' as any, // no longer rendered — chips moved inline
+  },
+  /* Compact horizontal quick-actions mini bar */
+  miniMenuWrapper: {
     backgroundColor: '#FFF',
     borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
-    // BUG 3 FIX: no fixed height — size to content so the 2nd row is never clipped
+    borderTopColor: '#F1F5F9',
+    paddingVertical: 8,
   },
-  inlineMenuGrid: {
+  miniMenuContent: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    // BUG 3 FIX: minHeight ensures the grid is at least 2 rows tall;
-    // actual height grows with content (no overflow clipping)
-    minHeight: 160,
-  },
-  inlineMenuItem: {
-    width: '25%',
-    height: 80,
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: 4,
+    gap: 8,
+    paddingHorizontal: 12,
   },
-  inlineMenuIconContainer: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+  miniMenuChip: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
+    gap: 5,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    borderWidth: 1,
   },
-  inlineMenuItemText: {
-    fontSize: 9.5,
-    fontWeight: '600',
-    color: '#475569',
-    textAlign: 'center',
-    lineHeight: 12,
+  miniMenuChipText: {
+    fontSize: 11.5,
+    fontWeight: '700',
   },
   footerBranding: {
     flexDirection: 'row',
@@ -2074,44 +2115,10 @@ const s = StyleSheet.create({
   },
 });
 
-// ─── ChipsPanel implementation (after styles so `s` is available) ──────────────────
-const FOOTER_CHIPS: Array<{ label: string; q: string }> = [
-  { label: "💸 Who hasn't paid?", q: "Who hasn't paid this month?" },
-  { label: '🏠 How full is hostel?', q: 'Room occupancy rate' },
-  { label: '📊 This month profit', q: 'Profit this month' },
-  { label: '🎓 Active students', q: 'Total students count' },
-  { label: '⚠️ Overdue students', q: 'Show overdue students' },
-  { label: '💰 Collection today', q: 'How much collected today?' },
-  { label: '🧾 Expenses breakdown', q: 'Expense breakdown' },
-  { label: '🛏️ Available beds', q: 'How many beds available?' },
-  { label: '👥 Staff list', q: 'Staff list' },
-  { label: '🔔 Show notices', q: 'Show notices' },
-  { label: '💡 How to add student?', q: 'How to add a student?' },
-  { label: '💡 How to collect rent?', q: 'How to collect rent?' },
-  { label: '💡 How to vacate bed?', q: 'How to vacate a bed?' },
-];
-
-ChipsPanel = ({ handleQuery }: { handleQuery: (q: string) => void }) => (
-  <View style={s.chipPanel}>
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ flexDirection: 'row', gap: 7, paddingHorizontal: 12, alignItems: 'center' }}
-      keyboardShouldPersistTaps="handled"
-    >
-      {FOOTER_CHIPS.map((chip, i) => (
-        <TouchableOpacity
-          key={i}
-          style={s.footerChip}
-          onPress={() => { Haptics.selectionAsync().catch(() => { }); handleQuery(chip.q); }}
-          activeOpacity={0.7}
-        >
-          <Text style={s.footerChipText}>{chip.label}</Text>
-        </TouchableOpacity>
-      ))}
-    </ScrollView>
-  </View>
-);
+// ─── ChipsPanel — no longer rendered above the input bar.
+// Suggestions are now shown inline in the chat scroll area (WELCOME_CHIPS).
+// This stub satisfies the earlier forward-declaration without rendering anything.
+ChipsPanel = (_: { handleQuery: (q: string) => void }) => null;
 
 
 export default OwnerAssistant;
