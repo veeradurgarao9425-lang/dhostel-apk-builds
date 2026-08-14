@@ -46,10 +46,10 @@ export const themes = {
         ...commonLayout,
         id: 'purple',
         name: 'Royal Purple',
-        primary: '#5F2EEA',
-        gradientStart: '#7B4FEA',
-        gradientEnd: '#5F2EEA',
-        lightBg: '#EDE9FF',
+        primary: '#7C3AED',
+        gradientStart: '#7C3AED',
+        gradientEnd: '#6D28D9',
+        lightBg: '#F3E8FF',
     },
     orange: {
         ...commonLayout,
@@ -69,8 +69,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export type ThemeId = keyof typeof themes;
 
 const ThemeContext = createContext({
-    theme: themes.coral,
-    themeId: 'coral' as ThemeId,
+    theme: themes.purple,
+    themeId: 'purple' as ThemeId,
     setThemeId: (id: ThemeId) => { },
     isDark: false,
     toggleTheme: () => { },
@@ -150,5 +150,5 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
 
 export const useTheme = () => useContext(ThemeContext);
 
-export default themes.coral;
+export default themes.purple;
 

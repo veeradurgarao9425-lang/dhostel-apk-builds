@@ -10,7 +10,9 @@ import {
   Modal,
   DeviceEventEmitter,
   Animated,
-  Image
+  Image,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -80,6 +82,7 @@ export const HostelChatbot: React.FC = () => {
   const { t, i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [bottomInputText, setBottomInputText] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [activeFaq, setActiveFaq] = useState<FAQItem | null>(null);
   const [currentRoute, setCurrentRoute] = useState<string | null>(null);
@@ -362,123 +365,93 @@ export const HostelChatbot: React.FC = () => {
         onRequestClose={() => setIsOpen(false)}
         statusBarTranslucent={false}
       >
-        <SafeAreaView style={s.modalContainer} edges={['top']}>
-          <View style={s.modalWrapper}>
-            {/* Header */}
-            <LinearGradient colors={['#4F46E5', '#7C3AED']} style={s.header}>
-              <View style={s.headerInfoRow}>
-                <View style={s.avatarContainer}>
-                  <View style={[s.avatar, { backgroundColor: 'transparent' }]}>
-                    <Image source={require('../../assets/durgarao-bot.jpeg')}
-                      style={{ width: '100%', height: '100%', transform: [{ scale: 1.8 }, { translateY: 4 }] }}
-                      resizeMode="cover" />
+        <SafeAreaView style={s.modalContainer} edges={['top', 'bottom']}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={{ flex: 1 }}
+          >
+            <View style={s.modalWrapper}>
+              {/* Header */}
+              <LinearGradient colors={['#7C3AED', '#6D28D9']} style={s.header}>
+                <View style={s.headerInfoRow}>
+                  <View style={s.avatarContainer}>
+                    <View style={[s.avatar, { backgroundColor: 'transparent' }]}>
+                      <Image source={require('../../assets/durgarao-bot.jpeg')}
+                        style={{ width: '100%', height: '100%', transform: [{ scale: 1.8 }, { translateY: 4 }] }}
+                        resizeMode="cover" />
+                    </View>
+                    <View style={s.pulseDot} />
                   </View>
-                  <View style={s.pulseDot} />
-                </View>
-                <View>
-                  <View style={titleRowStyle().titleRow}>
-                    <Text style={s.headerTitle}>HOSTIX</Text>
+                  <View>
+                    <View style={titleRowStyle().titleRow}>
+                      <Text style={s.headerTitle}>HOSTIX</Text>
+                    </View>
+                    <Text style={s.headerSubtitle}>Always here to help</Text>
                   </View>
-                  <Text style={s.headerSubtitle}>Always here to help</Text>
                 </View>
-              </View>
 
-              <View style={s.headerActions}>
-                <TouchableOpacity onPress={handleReset} style={s.headerIconBtn}>
-                  <Ionicons name="refresh-outline" size={20} color="#FFF" />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => setIsOpen(false)} style={s.headerIconBtn}>
-                  <Ionicons name="close" size={24} color="#FFF" />
-                </TouchableOpacity>
-              </View>
-            </LinearGradient>
+                <View style={s.headerActions}>
+                  <TouchableOpacity onPress={handleReset} style={s.headerIconBtn}>
+                    <Ionicons name="refresh-outline" size={20} color="#FFF" />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setIsOpen(false)} style={s.headerIconBtn}>
+                    <Ionicons name="close" size={24} color="#FFF" />
+                  </TouchableOpacity>
+                </View>
+              </LinearGradient>
 
-            {/* Quick Prompts */}
-            {!activeFaq && (
-              <View style={{ backgroundColor: '#F8FAFC', paddingVertical: 8 }}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 8 }}>
-                  {quickPrompts.map((prompt, idx) => (
+              {/* Quick Prompts */}
+              {!activeFaq && (
+                <View style={{ backgroundColor: '#F8FAFC', paddingVertical: 8 }}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 8 }}>
+                    {quickPrompts.map((prompt, idx) => (
+                      <TouchableOpacity
+                        key={idx}
+                        style={s.quickPromptChip}
+                        onPress={() => handleCustomQuestionSubmit(prompt)}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="sparkles" size={14} color="#7C3AED" style={{ marginRight: 6 }} />
+                        <Text style={s.quickPromptText}>{prompt}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+
+              {/* Category Pills Bar */}
+              <View style={s.searchSection}>
+                <ScrollView 
+                  horizontal 
+                  showsHorizontalScrollIndicator={false} 
+                  contentContainerStyle={{ flexDirection: 'row', gap: 8, paddingHorizontal: 4, paddingVertical: 2 }}
+                >
+                  {categories.map(cat => (
                     <TouchableOpacity
-                      key={idx}
-                      style={s.quickPromptChip}
-                      onPress={() => handleCustomQuestionSubmit(prompt)}
+                      key={cat.id}
+                      onPress={() => {
+                        Haptics.selectionAsync().catch(() => { });
+                        setSelectedCategory(cat.id);
+                        setActiveFaq(null);
+                      }}
+                      style={[
+                        s.categoryPill,
+                        selectedCategory === cat.id && s.categoryPillActive
+                      ]}
                       activeOpacity={0.7}
                     >
-                      <Ionicons name="sparkles" size={14} color="#4F46E5" style={{ marginRight: 6 }} />
-                      <Text style={s.quickPromptText}>{prompt}</Text>
+                      <Text
+                        style={[
+                          s.categoryText,
+                          selectedCategory === cat.id && s.categoryTextActive
+                        ]}
+                      >
+                        {cat.label}
+                      </Text>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
               </View>
-            )}
-
-            {/* Search Section */}
-            <View style={s.searchSection}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <TouchableOpacity 
-                  onPress={() => setIsAddMenuOpen(true)}
-                  style={s.addMenuBtn}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="menu-outline" size={28} color="#4F46E5" />
-                </TouchableOpacity>
-                <Pressable 
-                  style={[s.searchInputContainer, { flex: 1 }]}
-                  onPress={() => searchInputRef.current?.focus()}
-                >
-                  <Ionicons name="search-outline" size={16} color="#94A3B8" style={{ marginRight: 6 }} />
-                  <TextInput
-                    ref={searchInputRef}
-                    style={s.searchInput}
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                    onSubmitEditing={() => handleCustomQuestionSubmit()}
-                    placeholder="Search for help..."
-                    placeholderTextColor="#94A3B8"
-                    returnKeyType="send"
-                    autoCorrect={false}
-                    autoCapitalize="none"
-                    underlineColorAndroid="transparent"
-                  />
-                  {searchQuery.length > 0 && (
-                    <TouchableOpacity onPress={() => setSearchQuery('')}>
-                      <Ionicons name="close-circle" size={16} color="#94A3B8" />
-                    </TouchableOpacity>
-                  )}
-                </Pressable>
-              </View>
-
-              <ScrollView 
-                horizontal 
-                showsHorizontalScrollIndicator={false} 
-                contentContainerStyle={{ flexDirection: 'row', gap: 8, paddingHorizontal: 4, marginTop: 10, paddingBottom: 4 }}
-              >
-                {categories.map(cat => (
-                  <TouchableOpacity
-                    key={cat.id}
-                    onPress={() => {
-                      Haptics.selectionAsync().catch(() => { });
-                      setSelectedCategory(cat.id);
-                      setActiveFaq(null);
-                    }}
-                    style={[
-                      s.categoryPill,
-                      selectedCategory === cat.id && s.categoryPillActive
-                    ]}
-                    activeOpacity={0.7}
-                  >
-                    <Text
-                      style={[
-                        s.categoryText,
-                        selectedCategory === cat.id && s.categoryTextActive
-                      ]}
-                    >
-                      {cat.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
 
             {/* Chat conversation area */}
             <ScrollView
@@ -560,7 +533,7 @@ export const HostelChatbot: React.FC = () => {
                     <View style={{ gap: 16 }}>
                       {/* Welcome banner card at the top of the chat area */}
                       <View style={s.welcomeCard}>
-                        <LinearGradient colors={['#4F46E5', '#7C3AED']} style={s.welcomeBanner}>
+                        <LinearGradient colors={['#7C3AED', '#6D28D9']} style={s.welcomeBanner}>
                           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                             <View style={{ flex: 1 }}>
                               <Text style={s.welcomeTitle}>Hostix AI Assistant</Text>
@@ -678,9 +651,48 @@ export const HostelChatbot: React.FC = () => {
               )}
             </ScrollView>
 
-            {/* Footer removed per request */}
+            {/* Unified Bottom Input Bar */}
+            <View style={s.bottomInputSection}>
+              <View style={s.bottomInputContainer}>
+                <TouchableOpacity
+                  onPress={() => setIsAddMenuOpen(true)}
+                  style={s.addMenuBtn}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="menu-outline" size={24} color="#7C3AED" />
+                </TouchableOpacity>
+                <TextInput
+                  style={s.bottomTextInput}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  placeholder="Ask me anything..."
+                  placeholderTextColor="#94A3B8"
+                  onSubmitEditing={() => handleCustomQuestionSubmit()}
+                  returnKeyType="send"
+                  autoCorrect={false}
+                  autoCapitalize="none"
+                />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearchQuery('')} style={{ marginRight: 6 }}>
+                    <Ionicons name="close-circle" size={18} color="#94A3B8" />
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  onPress={() => handleCustomQuestionSubmit()}
+                  disabled={!searchQuery.trim()}
+                  style={[
+                    s.sendBtn,
+                    { backgroundColor: searchQuery.trim() ? '#7C3AED' : '#E2E8F0' }
+                  ]}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="arrow-up" size={20} color={searchQuery.trim() ? '#FFF' : '#94A3B8'} />
+                </TouchableOpacity>
+              </View>
+            </View>
 
           </View>
+          </KeyboardAvoidingView>
 
           {/* Add Menu Pop-up Overlay */}
           {isAddMenuOpen && (
@@ -740,11 +752,11 @@ const s = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#7C3AED',
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 10,
-    shadowColor: '#4F46E5',
+    shadowColor: '#7C3AED',
     shadowOpacity: 0.4,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 4 },
@@ -836,16 +848,15 @@ const s = StyleSheet.create({
   },
   quickPromptText: {
     fontSize: 13,
-    color: '#4F46E5',
+    color: '#7C3AED',
     fontWeight: '600',
   },
   searchSection: {
-    padding: 12,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
     backgroundColor: '#FFF',
     zIndex: 10,
-    elevation: 2,
   },
   searchInputContainer: {
     flexDirection: 'row',
@@ -1218,7 +1229,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#4F46E5',
+    borderColor: '#7C3AED',
     backgroundColor: '#FFF',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1226,6 +1237,44 @@ const s = StyleSheet.create({
   outlinePillBtnText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#4F46E5',
+    color: '#7C3AED',
+  },
+  bottomInputSection: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 16,
+    backgroundColor: '#FFF',
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: -3 },
+  },
+  bottomInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    minHeight: 52,
+  },
+  bottomTextInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#0F172A',
+    paddingVertical: 8,
+    includeFontPadding: false,
+  },
+  sendBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 6,
   }
 });

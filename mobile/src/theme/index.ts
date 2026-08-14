@@ -3,9 +3,9 @@
 // No hardcoded hex values in components.
 
 export const COLORS = {
-  primary: '#5F2EEA',       // Purple (PhonePe-style)
-  primaryLight: '#EDE9FF',
-  primaryDark: '#3B0FAB',
+  primary: '#7C3AED',       // Royal Purple
+  primaryLight: '#F3E8FF',
+  primaryDark: '#5B21B6',
   surface: '#FFFFFF',
   background: '#F5F5F8',
   border: '#E8E8F0',
@@ -23,8 +23,8 @@ export const COLORS = {
   white: '#FFFFFF',
   black: '#000000',
   // Gradient pair
-  gradientStart: '#7B4FEA',
-  gradientEnd: '#5F2EEA',
+  gradientStart: '#7C3AED',
+  gradientEnd: '#6D28D9',
 };
 
 export const SPACING = {

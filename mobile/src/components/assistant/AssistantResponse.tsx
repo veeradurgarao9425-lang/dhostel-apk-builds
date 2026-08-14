@@ -2097,16 +2097,16 @@ const st = StyleSheet.create({
   followUpChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#F3E8FF',
     borderWidth: 1,
-    borderColor: '#C7D2FE',
+    borderColor: '#DDD6FE',
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
   followUpChipText: {
     fontSize: 11,
-    color: '#4338CA',
+    color: '#7C3AED',
     fontWeight: '600',
   },
 
@@ -2202,21 +2202,21 @@ const st = StyleSheet.create({
     paddingVertical: 9,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#4F46E5',
+    borderColor: '#7C3AED',
     backgroundColor: '#FFF',
-    shadowColor: '#4F46E5',
+    shadowColor: '#7C3AED',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
   },
   actionBtnPrimary: {
-    backgroundColor: '#4F46E5',
-    borderColor: '#4F46E5',
+    backgroundColor: '#7C3AED',
+    borderColor: '#7C3AED',
   },
   actionBtnOutline: {
-    backgroundColor: '#EEF2FF',
-    borderColor: '#C7D2FE',
+    backgroundColor: '#F3E8FF',
+    borderColor: '#DDD6FE',
   },
   actionBtnDanger: {
     backgroundColor: '#FEF2F2',
@@ -2225,7 +2225,7 @@ const st = StyleSheet.create({
   actionBtnText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#4F46E5',
+    color: '#7C3AED',
   },
 });
 

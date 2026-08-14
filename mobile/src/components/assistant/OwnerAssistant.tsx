@@ -1533,24 +1533,21 @@ export const OwnerAssistant: React.FC = () => {
           onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => { }); setIsOpen(true); }}
           activeOpacity={0.85}
         >
-          <LinearGradient colors={['#818CF8', '#4F46E5']} style={s.fabGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+          <LinearGradient colors={['#7C3AED', '#6D28D9']} style={s.fabGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
             <Ionicons name="chatbubble-ellipses" size={22} color="#FFF" />
           </LinearGradient>
         </TouchableOpacity>
       )}
 
-      <Modal visible={isOpen} transparent={false} animationType="slide" onRequestClose={() => setIsOpen(false)}>
+      <Modal visible={isOpen} transparent={false} animationType="slide" onRequestClose={() => setIsOpen(false)} statusBarTranslucent={false}>
         <SafeAreaView style={s.safe} edges={['top']}>
-          {/* With Android softwareKeyboardLayoutMode=resize, the window shrinks automatically.
-              Adding KAV 'padding' on top causes a double-shift on Android. iOS needs KAV. */}
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={0}
             style={s.kav}
           >
 
             {/* ── Header ── */}
-            <LinearGradient colors={['#312E81', '#4338CA']} style={s.header} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+            <LinearGradient colors={['#7C3AED', '#6D28D9']} style={s.header} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
               <View style={s.headerLeft}>
                 <View style={s.avatarBox}>
                   <Image
@@ -1641,12 +1638,17 @@ export const OwnerAssistant: React.FC = () => {
             {/* ── Chips Panel — fixed above input bar, never shifts ── */}
             {!isAddMenuOpen && <ChipsPanel handleQuery={handleQuery} />}
 
-            {/* ── Bottom input bar ── */}
-            {/* Safe bottom padding ensures bottom search bar sits comfortably ABOVE Android/iOS nav buttons */}
+            {/* ── Bottom input bar & Powered by HOSTIX branding ── */}
             <View style={[
               s.inputBarWrapper,
               isFocused && s.inputBarWrapperFocused,
-              { paddingBottom: isAddMenuOpen ? 0 : Math.max(bottomInset + (Platform.OS === 'android' ? 14 : 10), 18) }
+              {
+                paddingBottom: isAddMenuOpen
+                  ? 0
+                  : (isKeyboardActive
+                      ? (Platform.OS === 'android' ? 6 : 4)
+                      : Math.max(bottomInset, Platform.OS === 'android' ? 18 : 12))
+              }
             ]}>
               <View style={[s.inputBar, isFocused && s.inputBarFocused]}>
                 {/* Menu Toggle Button */}
@@ -1717,6 +1719,16 @@ export const OwnerAssistant: React.FC = () => {
                   )}
                 </TouchableOpacity>
               </View>
+
+              {/* Powered by HOSTIX footer branding */}
+              {!isKeyboardActive && !isAddMenuOpen && (
+                <View style={s.footerBranding}>
+                  <Ionicons name="sparkles" size={11} color="#6366F1" />
+                  <Text style={s.footerBrandingText}>
+                    Powered by <Text style={s.footerBrandingBold}>HOSTIX</Text>
+                  </Text>
+                </View>
+              )}
             </View>
 
             {/* Inline 4x2 Grid Menu below input bar */}
@@ -1766,13 +1778,13 @@ const s = StyleSheet.create({
     width: 52, height: 52, borderRadius: 26,
     overflow: 'hidden',
     elevation: 10,
-    shadowColor: '#4F46E5', shadowOpacity: 0.45, shadowRadius: 8, shadowOffset: { width: 0, height: 4 },
+    shadowColor: '#7C3AED', shadowOpacity: 0.45, shadowRadius: 8, shadowOffset: { width: 0, height: 4 },
     zIndex: 9999,
   },
   fabGrad: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   /* Modal */
-  safe: { flex: 1, backgroundColor: '#312E81' },
+  safe: { flex: 1, backgroundColor: '#7C3AED' },
   kav: { flex: 1, backgroundColor: '#FFF' },
   chatArea: { flex: 1, backgroundColor: '#F8FAFC' },
 
@@ -2016,6 +2028,25 @@ const s = StyleSheet.create({
     color: '#475569',
     textAlign: 'center',
     lineHeight: 12,
+  },
+  footerBranding: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingTop: 4,
+    paddingBottom: Platform.OS === 'android' ? 6 : 2,
+    backgroundColor: '#FFF',
+  },
+  footerBrandingText: {
+    fontSize: 10.5,
+    fontWeight: '500',
+    color: '#94A3B8',
+    letterSpacing: 0.3,
+  },
+  footerBrandingBold: {
+    fontWeight: '700',
+    color: '#4F46E5',
   },
 });
 

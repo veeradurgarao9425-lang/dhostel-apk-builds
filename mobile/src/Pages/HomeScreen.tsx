@@ -23,6 +23,7 @@ import { toLocalDateStr } from '../utils/dateUtils';
 import { useRefresh } from '../../contexts/RefreshContext';
 import { useTranslation } from 'react-i18next';
 import { TenantAppCard } from '../components/TenantAppCard';
+import MoreScreen from './MoreScreen';
 import { ModalSheet } from '../components/FormComponents';
 import { WarningCards } from '../components/dashboard/WarningCards';
 import { OverviewCard } from '../components/dashboard/OverviewCard';
@@ -143,7 +144,15 @@ export default function HomeScreen() {
         DeviceEventEmitter.emit('TOUR_STATE_CHANGE', showTour);
     }, [showTour]);
     const scrollViewRef = useRef<ScrollView>(null);
+    const horizontalScrollRef = useRef<ScrollView>(null);
     const headerSelectorRef = useRef<any>(null);
+    const SCREEN_WIDTH = Dimensions.get('window').width;
+    const [activePageIndex, setActivePageIndex] = useState(0);
+
+    const scrollToPage = useCallback((pageIndex: number) => {
+        setActivePageIndex(pageIndex);
+        horizontalScrollRef.current?.scrollTo({ x: pageIndex * SCREEN_WIDTH, animated: true });
+    }, [SCREEN_WIDTH]);
 
     const isFirstLoadRef = React.useRef(true);
 
@@ -725,14 +734,14 @@ export default function HomeScreen() {
                         </View>
                     </View>
 
-                    {/* RIGHT: Search + Loader + Bell */}
+                    {/* RIGHT: Toggle Page + Loader + Bell */}
                     <View style={s.headerActions}>
                         <TouchableOpacity
                             style={s.headerIconBtn}
-                            onPress={() => navigation.navigate('More' as any)}
+                            onPress={() => scrollToPage(activePageIndex === 0 ? 1 : 0)}
                             activeOpacity={0.8}
                         >
-                            <Ionicons name="search-outline" size={19} color="#FFF" />
+                            <Ionicons name={activePageIndex === 0 ? "apps-outline" : "grid-outline"} size={19} color="#FFF" />
                         </TouchableOpacity>
 
                         {backgroundLoading && (
@@ -743,52 +752,74 @@ export default function HomeScreen() {
                 </View>
             </LinearGradient>
 
+            {/* ── Side-by-Side Pager View (Horizontal Scroll) ── */}
             <ScrollView
-                ref={scrollViewRef}
-                scrollEnabled={true}
+                ref={horizontalScrollRef}
+                horizontal
+                pagingEnabled
+                keyboardShouldPersistTaps="handled"
+                showsHorizontalScrollIndicator={false}
+                onMomentumScrollEnd={(e) => {
+                    const page = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+                    setActivePageIndex(page);
+                }}
                 style={{ flex: 1 }}
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 180 }}
-                refreshControl={
-                    <RefreshControl
-                        refreshing={refreshing}
-                        onRefresh={() => { setRefreshing(true); load(true); }}
-                        tintColor={theme.primary}
-                    />
-                }
             >
-                <View style={s.body}>
-                    {/* Setup guide for first-time owners: show whenever setup is incomplete (missing rooms OR missing tenants) */}
-                    {!loading && (data.totalStudentsCount === 0 || (data.totalBeds === 0 && data.totalRooms === 0)) ? (
-                        <View collapsable={false}>
-                            <SetupGuideCard
-                                hasHostel={Boolean(user?.hostel_id || data.hostelName)}
-                                hasRooms={data.totalBeds > 0 || data.totalRooms > 0}
-                                hasTenants={data.totalStudentsCount > 0 || data.occupiedBeds > 0}
+                {/* ── PAGE 0: Dashboard Content ── */}
+                <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
+                    <ScrollView
+                        ref={scrollViewRef}
+                        scrollEnabled={true}
+                        style={{ flex: 1 }}
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={{ paddingBottom: 180 }}
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={refreshing}
+                                onRefresh={() => { setRefreshing(true); load(true); }}
+                                tintColor={theme.primary}
                             />
+                        }
+                    >
+                        <View style={s.body}>
+                            {/* Setup guide for first-time owners: show whenever setup is incomplete (missing rooms OR missing tenants) */}
+                            {!loading && (data.totalStudentsCount === 0 || (data.totalBeds === 0 && data.totalRooms === 0)) ? (
+                                <View collapsable={false}>
+                                    <SetupGuideCard
+                                        hasHostel={Boolean(user?.hostel_id || data.hostelName)}
+                                        hasRooms={data.totalBeds > 0 || data.totalRooms > 0}
+                                        hasTenants={data.totalStudentsCount > 0 || data.occupiedBeds > 0}
+                                    />
+                                </View>
+                            ) : null}
+                            {(data.unallocatedCount > 0 || data.qrRegisterCount > 0 || data.openComplaintsCount > 0 || data.pendingAdmissionsCount > 0) && (
+                                <WarningCards data={data} />
+                            )}
+                            <View collapsable={false}>
+                                <OverviewCard data={data} setShowCollectionSheet={setShowCollectionSheet} pulseValue={pulseValue} fmt={fmt} />
+                            </View>
+                            <View collapsable={false}>
+                                <QuickActionsGrid data={data} />
+                            </View>
+                            <View collapsable={false}>
+                                <StatisticsGrid data={data} fmt={fmt} />
+                            </View>
+                            <TopOverdueStudents data={data} />
+                            <View collapsable={false}>
+                                <UpcomingDues data={data} renewalStudents={renewalStudents} />
+                            </View>
+                            <View collapsable={false}>
+                                <UpcomingCheckoutSchedules data={data} />
+                            </View>
+                            <OccupancyCard data={data} />
+                            <TenantAppCard theme={theme} isDark={isDark} hostelCode={data.hostelCode} />
                         </View>
-                    ) : null}
-                    {(data.unallocatedCount > 0 || data.qrRegisterCount > 0 || data.openComplaintsCount > 0 || data.pendingAdmissionsCount > 0) && (
-                        <WarningCards data={data} />
-                    )}
-                    <View collapsable={false}>
-                        <OverviewCard data={data} setShowCollectionSheet={setShowCollectionSheet} pulseValue={pulseValue} fmt={fmt} />
-                    </View>
-                    <View collapsable={false}>
-                        <QuickActionsGrid data={data} />
-                    </View>
-                    <View collapsable={false}>
-                        <StatisticsGrid data={data} fmt={fmt} />
-                    </View>
-                    <TopOverdueStudents data={data} />
-                    <View collapsable={false}>
-                        <UpcomingDues data={data} renewalStudents={renewalStudents} />
-                    </View>
-                    <View collapsable={false}>
-                        <UpcomingCheckoutSchedules data={data} />
-                    </View>
-                    <OccupancyCard data={data} />
-                    <TenantAppCard theme={theme} isDark={isDark} hostelCode={data.hostelCode} />
+                    </ScrollView>
+                </View>
+
+                {/* ── PAGE 1: More Screen Content ── */}
+                <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
+                    <MoreScreen hideHeader={true} />
                 </View>
             </ScrollView>
             <CollectionDetailsSheet data={data} showCollectionSheet={showCollectionSheet} setShowCollectionSheet={setShowCollectionSheet} />
@@ -1874,6 +1905,40 @@ const s = StyleSheet.create({
     tourDialogNextBtnText: {
         color: '#FFF',
         fontSize: 13,
+        fontWeight: '800',
+    },
+    tabChipsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.2)',
+        borderRadius: 20,
+        padding: 3,
+        marginTop: 10,
+        alignSelf: 'center',
+    },
+    tabChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 5,
+        paddingHorizontal: 16,
+        borderRadius: 17,
+        gap: 6,
+    },
+    tabChipActive: {
+        backgroundColor: '#FFF',
+        shadowColor: '#000',
+        shadowOpacity: 0.12,
+        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 1 },
+        elevation: 2,
+    },
+    tabChipText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: 'rgba(255, 255, 255, 0.85)',
+    },
+    tabChipTextActive: {
+        color: '#4F46E5',
         fontWeight: '800',
     },
 });

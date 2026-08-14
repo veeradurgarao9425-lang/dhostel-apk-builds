@@ -5,6 +5,7 @@ import {
     Modal, ActivityIndicator, Image, Animated
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
@@ -30,9 +31,14 @@ interface MenuItem {
     badgeCount?: string | number;
 }
 
-export default function MoreScreen() {
+interface MoreScreenProps {
+    hideHeader?: boolean;
+}
+
+export default function MoreScreen({ hideHeader = false }: MoreScreenProps) {
+    const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
-    const { user, signOut, updateTokenAndUser, hostels: authHostels, loadHostels } = useAuth();
+    const { user, signOut, updateTokenAndUser, hostels = [], loadHostels } = useAuth();
     const confirm = useConfirmation();
 
     const borderAnim = React.useRef(new Animated.Value(0)).current;
@@ -45,6 +51,16 @@ export default function MoreScreen() {
             ])
         ).start();
     }, [borderAnim]);
+
+    const animatedBorderColor = borderAnim.interpolate({
+        inputRange: [0, 0.25, 0.5, 0.75, 1],
+        outputRange: ['#3B82F6', '#8B5CF6', '#EC4899', '#F97316', '#3B82F6']
+    });
+
+    const animatedShadowColor = borderAnim.interpolate({
+        inputRange: [0, 0.25, 0.5, 0.75, 1],
+        outputRange: ['rgba(59, 130, 246, 0.3)', 'rgba(139, 92, 246, 0.3)', 'rgba(236, 72, 153, 0.3)', 'rgba(249, 115, 22, 0.3)', 'rgba(59, 130, 246, 0.3)']
+    });
 
     const [stats, setStats] = useState<any>(null);
 
@@ -67,11 +83,11 @@ export default function MoreScreen() {
 
     const hostelsAttemptedRef = React.useRef(false);
     useEffect(() => {
-        if (!hostelsAttemptedRef.current && (user?.role === 'OWNER' || user?.role_id === 1 || user?.role_id === 2) && authHostels.length === 0) {
+        if (!hostelsAttemptedRef.current && (user?.role === 'OWNER' || user?.role_id === 1 || user?.role_id === 2) && hostels.length === 0) {
             hostelsAttemptedRef.current = true;
             loadHostels();
         }
-    }, [user?.role, user?.role_id, authHostels.length, loadHostels]);
+    }, [user?.role, user?.role_id, hostels.length, loadHostels]);
     const { theme, isDark, fontSize } = useTheme();
     const { t } = useTranslation();
     const { showToast, showSuccess, showError, showApiError } = useToast();
@@ -297,273 +313,167 @@ export default function MoreScreen() {
                     route: 'NoticesManagement',
                 },
                 {
-                    label: t('more.vacateNotices', 'Vacate Notices'),
-                    subtitle: t('more.vacateNoticesSub', 'View check-out schedule requests'),
-                    icon: 'calendar-outline',
-                    iconColor: '#EA580C',
-                    iconBg: '#FFEDD5',
-                    route: 'Notices',
-                    badgeCount: stats?.noticesCount || 0,
-                },
-                {
-                    label: 'Complaints',
-                    subtitle: 'Manage tenant complaints',
-                    icon: 'construct-outline',
-                    iconColor: '#DC2626',
-                    iconBg: '#FEE2E2',
-                    route: 'ComplaintsManagement',
-                    badgeCount: 0,
-                },
-            ],
-        },
-        {
-            groupTitle: 'Settings & Other',
-            items: [
-                {
-                    label: 'Bill Reminders',
-                    subtitle: 'Configure automated payment alerts',
-                    icon: 'notifications-outline',
-                    iconColor: '#4F46E5',
-                    iconBg: '#EEF2FF',
-                    route: 'BillReminders',
-                },
-                /*
-                {
-                    label: t('more.reminders'),
-                    subtitle: t('more.remindersSub', 'View and manage rent alerts'),
-                    icon: 'notifications',
-                    iconColor: '#0891B2',
-                    iconBg: '#CFFAFE',
-                    route: 'Reminders',
-                },
-                */
-                {
-                    label: t('more.profile'),
-                    subtitle: t('more.profileSub', 'Manage your account and branch details'),
-                    icon: 'person',
-                    iconColor: '#8B5CF6',
-                    iconBg: '#EDE9FE',
-                    route: 'Profile',
-                },
-                {
-                    label: t('more.settings', 'Settings'),
-                    subtitle: t('more.appSettingsSub', 'Configure app theme and preferences'),
-                    icon: 'settings',
-                    iconColor: '#3B82F6',
-                    iconBg: '#DBEAFE',
+                    label: t('more.appSettings'),
+                    subtitle: t('more.appSettingsSub'),
+                    icon: 'settings-outline',
+                    iconColor: '#475569',
+                    iconBg: '#F1F5F9',
                     route: 'Settings',
                 },
                 {
-                    label: t('more.bulkDelete'),
-                    subtitle: t('more.bulkDeleteSub', 'Delete rooms, beds, and records in bulk'),
-                    icon: 'trash-outline',
-                    iconColor: '#DC2626',
-                    iconBg: '#FEE2E2',
-                    route: 'BulkDelete',
+                    label: t('more.privacyPolicy'),
+                    subtitle: t('more.privacyPolicySub'),
+                    icon: 'shield-checkmark-outline',
+                    iconColor: '#059669',
+                    iconBg: '#D1FAE5',
+                    route: 'PrivacyPolicy',
                 },
-            ],
-        },
+                {
+                    label: t('more.logOut'),
+                    subtitle: t('more.logOutSub'),
+                    icon: 'log-out-outline',
+                    iconColor: '#EF4444',
+                    iconBg: '#FEE2E2',
+                    route: 'LOGOUT',
+                    danger: true,
+                },
+            ]
+        }
     ], [t, stats]);
 
-    const [showSearch, setShowSearch] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-
     const [selectorVisible, setSelectorVisible] = useState(false);
-    const [hostels, setHostels] = useState<any[]>([]);
-    const [switching, setSwitching] = useState(false);
     const [loadingHostels, setLoadingHostels] = useState(false);
-    const [copiedActiveCode, setCopiedActiveCode] = useState(false);
-    const [copiedCardCode, setCopiedCardCode] = useState(false);
+    const [ownedHostels, setOwnedHostels] = useState<any[]>([]);
+    const [switching, setSwitching] = useState(false);
 
-    const handleCopyCode = async (code: string, type: 'active' | 'card') => {
-        try {
-            await Clipboard.setStringAsync(code);
-            if (type === 'active') {
-                setCopiedActiveCode(true);
-                setTimeout(() => setCopiedActiveCode(false), 2000);
-            } else {
-                setCopiedCardCode(true);
-                setTimeout(() => setCopiedCardCode(false), 2000);
-            }
-        } catch (err) {
-            console.error('Failed to copy to clipboard:', err);
-        }
-    };
+    const filteredMenuGroups = useMemo(() => {
+        if (!searchQuery.trim()) return menuGroups;
+        const q = searchQuery.toLowerCase().trim();
+        return menuGroups.map(group => ({
+            ...group,
+            items: group.items.filter(item =>
+                item.label?.toLowerCase().includes(q) ||
+                item.subtitle?.toLowerCase().includes(q)
+            )
+        })).filter(group => group.items.length > 0);
+    }, [menuGroups, searchQuery]);
 
-    const fetchHostels = async () => {
-        try {
-            setLoadingHostels(true);
-            const res = await api.get('/hostels?my_hostels=true');
-            if (res.data?.success) {
-                setHostels(res.data.data || []);
-            }
-        } catch (e) {
-            console.error('Failed to fetch owned hostels:', e);
-        } finally {
-            setLoadingHostels(false);
-        }
-    };
-
-    const handleSwitchHostel = async (hostelId: number) => {
-        if (Number(hostelId) === Number(user?.hostel_id)) {
-            setSelectorVisible(false);
-            return;
-        }
-        try {
-            setSwitching(true);
-            const res = await api.put('/auth/active-hostel', { hostel_id: hostelId });
-            if (res.data?.success) {
-                const { token, hostel_name } = res.data.data;
-                await updateTokenAndUser(token, { hostel_id: hostelId, hostel_name });
-                setSelectorVisible(false);
-                showSuccess(`Switched to ${hostel_name}`);
-            } else {
-                showError(res.data?.error || 'Failed to switch active hostel');
-            }
-        } catch (err: any) {
-            console.error('Switch active hostel error:', err);
-            showApiError(err, 'An error occurred while switching hostels.');
-        } finally {
-            setSwitching(false);
-        }
-    };
-
-    const openHostelSelector = () => {
-        setSelectorVisible(true);
-        fetchHostels();
-    };
-
-    const handlePress = (item: MenuItem) => {
-        if (item.comingSoon) {
-            return;
-        }
-
-        if (item.route === 'LOGOUT') {
-            handleLogout();
-            return;
-        }
-
-        if (item.route) {
-            navigation.navigate(item.route, item.routeParams);
-        }
-    };
+    const isListEmpty = useMemo(() => {
+        return filteredMenuGroups.every(g => g.items.length === 0);
+    }, [filteredMenuGroups]);
 
     const handleLogout = () => {
         confirm({
-            title: t('more.confirmLogOut', 'Confirm Log Out'),
-            message: t('more.logOutConfirmMsg', 'Are you sure you want to log out from the application?'),
-            confirmText: t('more.logOut', 'Log Out'),
-            cancelText: t('overview.cancel', 'Cancel'),
-            variant: 'danger',
+            title: t('more.logOutTitle', 'Logout'),
+            message: t('more.logOutConfirm', 'Are you sure you want to log out?'),
+            confirmText: t('more.logOut', 'Logout'),
+            confirmDanger: true,
             onConfirm: async () => {
                 try {
                     await signOut();
                 } catch (e) {
-                    console.error('Logout failed:', e);
+                    console.error('Logout error', e);
                 }
             }
         });
     };
 
-    // Filter topTools
-    const filteredTopTools = useMemo(() => {
-        if (!searchQuery) return topTools;
-        const q = searchQuery.toLowerCase();
-        return topTools.filter(tVal => tVal.label.toLowerCase().includes(q) || tVal.subtitle.toLowerCase().includes(q));
-    }, [searchQuery, topTools]);
+    const handlePress = (item: MenuItem) => {
+        if (item.route === 'LOGOUT') {
+            handleLogout();
+            return;
+        }
+        if (item.route) {
+            navigation.navigate(item.route, item.routeParams);
+        }
+    };
 
-    // Filter menuGroups
-    const filteredMenuGroups = useMemo(() => {
-        if (!searchQuery) return menuGroups;
-        const q = searchQuery.toLowerCase();
-        return menuGroups.map(group => {
-            const items = group.items.filter(item =>
-                item.label.toLowerCase().includes(q) ||
-                item.subtitle.toLowerCase().includes(q)
-            );
-            return { ...group, items };
-        }).filter(group => group.items.length > 0);
-    }, [searchQuery, menuGroups]);
-
-    const isListEmpty = filteredMenuGroups.length === 0;
-
-    // Google Gemini search bar breathing glow animations
-    const animatedBorderColor = borderAnim.interpolate({
-        inputRange: [0, 0.25, 0.5, 0.75, 1],
-        outputRange: ['#3B82F6', '#8B5CF6', '#EC4899', '#F97316', '#3B82F6']
-    });
-
-    const animatedShadowColor = borderAnim.interpolate({
-        inputRange: [0, 0.25, 0.5, 0.75, 1],
-        outputRange: ['rgba(59, 130, 246, 0.3)', 'rgba(139, 92, 246, 0.3)', 'rgba(236, 72, 153, 0.3)', 'rgba(249, 115, 22, 0.3)', 'rgba(59, 130, 246, 0.3)']
-    });
+    const handleSwitchHostel = async (hostelId: number) => {
+        if (switching) return;
+        try {
+            setSwitching(true);
+            const res = await api.post('/auth/switch-hostel', { hostel_id: hostelId });
+            if (res.data?.success && res.data.data?.token) {
+                await updateTokenAndUser(res.data.data.token, res.data.data.user);
+                showSuccess(t('more.switchHostelSuccess', 'Hostel switched successfully'));
+                setSelectorVisible(false);
+            }
+        } catch (e) {
+            showApiError(e);
+        } finally {
+            setSwitching(false);
+        }
+    };
 
     return (
         <View style={[s.root, { backgroundColor: theme.background }]}>
             <StatusBar barStyle="light-content" />
 
             {/* Header */}
-            <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={s.header}>
-                <View style={s.headerContent}>
-                    {navigation.canGoBack() && (
-                        <TouchableOpacity
-                            onPress={() => navigation.goBack()}
-                            style={{ marginRight: 4, padding: 4 }}
-                            activeOpacity={0.7}
-                        >
-                            <Ionicons name="arrow-back" size={24} color="#FFF" />
+            {!hideHeader && (
+                <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={[s.header, { paddingTop: insets.top ? insets.top + 12 : 44 }]}>
+                    <View style={s.headerContent}>
+                        {navigation.canGoBack() && (
+                            <TouchableOpacity
+                                onPress={() => navigation.goBack()}
+                                style={{ marginRight: 4, padding: 4 }}
+                                activeOpacity={0.7}
+                            >
+                                <Ionicons name="arrow-back" size={24} color="#FFF" />
+                            </TouchableOpacity>
+                        )}
+                        <TouchableOpacity onPress={() => navigation.navigate('Profile')} activeOpacity={0.9} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                            <View style={s.avatarCircle}>
+                                <Text style={s.avatarText}>
+                                    {(user?.full_name || 'O')[0].toUpperCase()}
+                                </Text>
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[s.headerName, { fontSize: fontSize + 3 }]} numberOfLines={1}>
+                                    {user?.full_name || (user?.role_id === 1 ? 'Hostel Administrator' : 'Hostel Owner')}
+                                </Text>
+                                <Text style={{ fontSize: fontSize - 2, color: 'rgba(255, 255, 255, 0.75)', fontWeight: '600', marginTop: 2 }} numberOfLines={1}>
+                                    {user?.phone ? `+91 ${user.phone}` : (user?.email || 'Admin User')}
+                                </Text>
+                            </View>
                         </TouchableOpacity>
-                    )}
-                    <TouchableOpacity onPress={() => navigation.navigate('Profile')} activeOpacity={0.9} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-                        <View style={s.avatarCircle}>
-                            <Text style={s.avatarText}>
-                                {(user?.full_name || 'O')[0].toUpperCase()}
-                            </Text>
-                        </View>
-                        <View style={{ flex: 1 }}>
-                            <Text style={[s.headerName, { fontSize: fontSize + 3 }]} numberOfLines={1}>
-                                {user?.full_name || (user?.role_id === 1 ? 'Hostel Administrator' : 'Hostel Owner')}
-                            </Text>
-                            <Text style={{ fontSize: fontSize - 2, color: 'rgba(255, 255, 255, 0.75)', fontWeight: '600', marginTop: 2 }} numberOfLines={1}>
-                                {user?.phone ? `+91 ${user.phone}` : (user?.email || 'Admin User')}
-                            </Text>
-                        </View>
-                    </TouchableOpacity>
-                </View>
-            </LinearGradient>
-
-            {/* Big Search Bar - Always Visible with Gemini breathing border glow */}
-            <Animated.View style={[
-                s.bigSearchWrap,
-                {
-                    backgroundColor: isDark ? '#1E293B' : '#FFF',
-                    borderColor: animatedBorderColor,
-                    shadowColor: animatedShadowColor,
-                    shadowOpacity: 0.5,
-                    shadowRadius: 10,
-                }
-            ]}>
-                <Ionicons name="search" size={18} color={isDark ? '#94A3B8' : '#64748B'} style={{ marginRight: 8 }} />
-                <TextInput
-                    style={[s.bigSearchInput, { color: theme.textPrimary, fontSize: fontSize - 1 }]}
-                    placeholder="Search settings, tools, actions..."
-                    placeholderTextColor={isDark ? '#475569' : '#94A3B8'}
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                />
-                {searchQuery.length > 0 && (
-                    <TouchableOpacity onPress={() => setSearchQuery('')}>
-                        <Ionicons name="close-circle" size={18} color="#94A3B8" />
-                    </TouchableOpacity>
-                )}
-            </Animated.View>
+                    </View>
+                </LinearGradient>
+            )}
 
             {/* Menu groups */}
             <ScrollView
                 style={s.scroll}
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 110, paddingTop: 4 }}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{ paddingBottom: Platform.OS === 'ios' ? 140 : 120, paddingTop: 10 }}
             >
+                {/* Big Search Bar - Always Visible with Gemini breathing border glow */}
+                <Animated.View style={[
+                    s.bigSearchWrap,
+                    {
+                        backgroundColor: isDark ? '#1E293B' : '#FFF',
+                        borderColor: animatedBorderColor,
+                        shadowColor: animatedShadowColor,
+                        shadowOpacity: 0.5,
+                        shadowRadius: 10,
+                    }
+                ]}>
+                    <Ionicons name="search" size={18} color={isDark ? '#94A3B8' : '#64748B'} style={{ marginRight: 8 }} />
+                    <TextInput
+                        style={[s.bigSearchInput, { color: theme.textPrimary, fontSize: fontSize - 1 }]}
+                        placeholder="Search settings, tools, actions..."
+                        placeholderTextColor={isDark ? '#475569' : '#94A3B8'}
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                    />
+                    {searchQuery.length > 0 && (
+                        <TouchableOpacity onPress={() => setSearchQuery('')}>
+                            <Ionicons name="close-circle" size={18} color="#94A3B8" />
+                        </TouchableOpacity>
+                    )}
+                </Animated.View>
                 {/* QR Signup Onboarding Card */}
                 {!searchQuery && (
                     <TouchableOpacity
@@ -845,21 +755,22 @@ const s = StyleSheet.create({
         alignItems: 'center',
         borderRadius: 16,
         paddingHorizontal: 16,
-        paddingVertical: 10,
+        paddingVertical: 12,
         marginHorizontal: 16,
         marginTop: 16,
-        marginBottom: 10,
+        marginBottom: 20,
+        minHeight: 52,
         borderWidth: 1.5,
-        elevation: 2,
+        elevation: 3,
         shadowColor: '#000',
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
-        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 3 },
     },
     bigSearchInput: {
         flex: 1,
         fontWeight: '700',
-        paddingVertical: 2,
+        paddingVertical: 4,
     },
     emptyState: {
         alignItems: 'center',
