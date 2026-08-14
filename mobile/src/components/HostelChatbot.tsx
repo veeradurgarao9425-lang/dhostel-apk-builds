@@ -702,26 +702,28 @@ export const HostelChatbot: React.FC = () => {
               activeOpacity={1}
               onPress={() => setIsAddMenuOpen(false)}
             >
-              <View style={s.popupMenuCard}>
+              <TouchableOpacity activeOpacity={1} style={s.popupMenuCard}>
                 <Text style={s.popupMenuTitle}>Quick Actions</Text>
-                <View style={s.popupMenuGrid}>
-                  {menuItems.map((item, idx) => (
-                    <TouchableOpacity
-                      key={idx}
-                      style={s.popupMenuItem}
-                      onPress={() => {
-                        setIsAddMenuOpen(false);
-                        handleLinkClick(item.path);
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <View style={[s.popupMenuIconContainer, { backgroundColor: item.bg }]}>
-                        <Ionicons name={item.icon as any} size={22} color={item.color} />
-                      </View>
-                      <Text style={s.popupMenuItemText}>{item.label}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
+                <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 340 }} contentContainerStyle={{ paddingBottom: 4 }}>
+                  <View style={s.popupMenuGrid}>
+                    {menuItems.map((item, idx) => (
+                      <TouchableOpacity
+                        key={idx}
+                        style={s.popupMenuItem}
+                        onPress={() => {
+                          setIsAddMenuOpen(false);
+                          handleLinkClick(item.path);
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <View style={[s.popupMenuIconContainer, { backgroundColor: item.bg }]}>
+                          <Ionicons name={item.icon as any} size={22} color={item.color} />
+                        </View>
+                        <Text style={s.popupMenuItemText}>{item.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
                 <TouchableOpacity
                   style={s.popupMenuCloseBtn}
                   onPress={() => setIsAddMenuOpen(false)}
@@ -729,7 +731,7 @@ export const HostelChatbot: React.FC = () => {
                 >
                   <Text style={s.popupMenuCloseText}>Close</Text>
                 </TouchableOpacity>
-              </View>
+              </TouchableOpacity>
             </TouchableOpacity>
           )}
 
@@ -1116,21 +1118,27 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   overlayBackground: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 9999,
+    paddingHorizontal: 20,
+    zIndex: 99999,
   },
   popupMenuCard: {
-    width: '85%',
+    width: '100%',
+    maxWidth: 380,
     backgroundColor: '#FFF',
     borderRadius: 24,
     padding: 20,
-    elevation: 5,
+    elevation: 10,
     shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
   },
   popupMenuTitle: {
