@@ -2311,3 +2311,22 @@ export const restartWhatsApp = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// Request 8-Digit WhatsApp Pairing Code for single phone linkage
+export const requestWhatsAppPairingCode = async (req: AuthRequest, res: Response) => {
+  try {
+    const { phoneNumber } = req.body;
+    if (!phoneNumber) {
+      return res.status(400).json({ success: false, error: 'Phone number is required' });
+    }
+    const code = await whatsappService.requestPairingCode(phoneNumber);
+    const status = whatsappService.getStatus();
+    return res.json({
+      success: true,
+      message: 'Pairing code generated successfully',
+      data: { ...status, pairingCode: code }
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error?.message || 'Failed to generate pairing code' });
+  }
+};
+

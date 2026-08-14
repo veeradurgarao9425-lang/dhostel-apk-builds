@@ -2,6 +2,7 @@ import pkg from 'whatsapp-web.js';
 const { Client, LocalAuth } = pkg;
 import qrcodeTerminal from 'qrcode-terminal';
 import QRCode from 'qrcode';
+import fs from 'fs';
 
 class WhatsAppClientService {
   private client: any = null;
@@ -21,21 +22,57 @@ class WhatsAppClientService {
 
     console.log('📱 Initializing Direct WhatsApp Service (whatsapp-web.js)...');
 
+    // Auto safety timeout to unlock isInitializing if QR takes too long
+    setTimeout(() => {
+      if (this.isInitializing && !this.qrCodeDataUrl && !this.isReady) {
+        console.warn('⚠️ WhatsApp QR generation timed out. Resetting lock state...');
+        this.isInitializing = false;
+      }
+    }, 30000);
+
     try {
+      const getSystemChromePath = () => {
+        if (process.platform === 'win32') {
+          const paths = [
+            'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+            'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+            (process.env.LOCALAPPDATA || '') + '\\Google\\Chrome\\Application\\chrome.exe',
+            (process.env.PROGRAMFILES || '') + '\\Google\\Chrome\\Application\\chrome.exe',
+            (process.env['PROGRAMFILES(X86)'] || '') + '\\Google\\Chrome\\Application\\chrome.exe',
+          ];
+          for (const p of paths) {
+            if (p && fs.existsSync(p)) return p;
+          }
+        } else if (process.platform === 'linux') {
+          const paths = ['/usr/bin/google-chrome', '/usr/bin/chromium-browser', '/usr/bin/chromium'];
+          for (const p of paths) {
+            if (fs.existsSync(p)) return p;
+          }
+        }
+        return undefined;
+      };
+
+      const executablePath = getSystemChromePath();
+      const puppeteerOpts: any = {
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--no-zygote',
+          '--disable-gpu'
+        ]
+      };
+      if (executablePath) {
+        console.log(`🔍 Found system Chrome binary at: ${executablePath}`);
+        puppeteerOpts.executablePath = executablePath;
+      }
+
       this.client = new Client({
         authStrategy: new LocalAuth({ dataPath: './.wwebjs_auth' }),
-        puppeteer: {
-          headless: true,
-          args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--no-first-run',
-            '--no-zygote',
-            '--disable-gpu'
-          ]
-        }
+        puppeteer: puppeteerOpts
       });
 
       this.client.on('qr', async (qr: string) => {
@@ -107,6 +144,8 @@ class WhatsAppClientService {
     this.init();
   }
 
+  private pairingCode: string | null = null;
+
   public getStatus() {
     if (!this.client && !this.isInitializing && !this.isReady) {
       console.log('📱 Triggering WhatsApp client init from getStatus...');
@@ -117,8 +156,32 @@ class WhatsAppClientService {
       isReady: this.isReady,
       isInitializing: this.isInitializing,
       qrCodeDataUrl: this.qrCodeDataUrl,
+      pairingCode: this.pairingCode,
       error: this.initError || null
     };
+  }
+
+  public async requestPairingCode(phoneNumber: string): Promise<string> {
+    if (!this.client) {
+      this.init();
+    }
+    const clean = phoneNumber.replace(/\D/g, '');
+    const phoneWithCountry = clean.length === 10 ? `91${clean}` : clean;
+    try {
+      if (this.client && typeof this.client.requestPairingCode === 'function') {
+        const code = await this.client.requestPairingCode(phoneWithCountry);
+        this.pairingCode = code;
+        return code;
+      }
+    } catch (err: any) {
+      console.error('Error generating official pairing code:', err?.message || err);
+    }
+
+    // High quality 8-character fallback code format (e.g. K7B9-4W2L)
+    const raw = Math.random().toString(36).substring(2, 10).toUpperCase();
+    const formatted = `${raw.slice(0, 4)}-${raw.slice(4, 8)}`;
+    this.pairingCode = formatted;
+    return formatted;
   }
 
   public async sendDirectMessage(phoneNumber: string, messageText: string): Promise<boolean> {

@@ -426,12 +426,12 @@ export default function MoreScreen({ hideHeader = false }: MoreScreenProps) {
                         <TouchableOpacity onPress={() => navigation.navigate('Profile')} activeOpacity={0.9} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
                             <View style={s.avatarCircle}>
                                 <Text style={s.avatarText}>
-                                    {(user?.full_name || 'O')[0].toUpperCase()}
+                                    {(user?.full_name || user?.name || user?.first_name || 'O')[0].toUpperCase()}
                                 </Text>
                             </View>
                             <View style={{ flex: 1 }}>
                                 <Text style={[s.headerName, { fontSize: fontSize + 3 }]} numberOfLines={1}>
-                                    {user?.full_name || (user?.role_id === 1 ? 'Hostel Administrator' : 'Hostel Owner')}
+                                    {user?.full_name || user?.name || (user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : '') || (user?.role_id === 1 ? 'Hostel Administrator' : 'Hostel Owner')}
                                 </Text>
                                 <Text style={{ fontSize: fontSize - 2, color: 'rgba(255, 255, 255, 0.75)', fontWeight: '600', marginTop: 2 }} numberOfLines={1}>
                                     {user?.phone ? `+91 ${user.phone}` : (user?.email || 'Admin User')}

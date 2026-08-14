@@ -19,7 +19,8 @@ import {
   getPaymentModes,
   sendBulkWhatsAppDirect,
   getWhatsAppStatus,
-  restartWhatsApp
+  restartWhatsApp,
+  requestWhatsAppPairingCode
 } from '../controllers/monthlyFeeController.js';
 
 const router = express.Router();
@@ -77,5 +78,6 @@ router.put('/:feeId', editCurrentMonthFee);
 router.post('/send-bulk-whatsapp-direct', sendBulkWhatsAppDirect);
 router.get('/whatsapp-status', getWhatsAppStatus);
 router.post('/whatsapp-restart', restartWhatsApp);
+router.post('/whatsapp-pairing-code', requestWhatsAppPairingCode);
 
 export default router;

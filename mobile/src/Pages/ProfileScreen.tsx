@@ -185,7 +185,8 @@ const ProfileScreen = ({ navigation }: any) => {
         return `₹${n.toLocaleString('en-IN')}`;
     };
 
-    const initials = (user?.full_name || user?.email || 'U')
+    const displayName = user?.full_name || user?.name || (user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : '') || '';
+    const initials = (displayName || user?.email || 'U')
         .split(' ')
         .map(w => w[0])
         .join('')
@@ -250,7 +251,7 @@ const ProfileScreen = ({ navigation }: any) => {
 
                     {/* Profile Details Column */}
                     <View style={styles.profileDetailsCol}>
-                        <Text style={styles.profileName} numberOfLines={1}>{user?.full_name || t('profile.hostelOwner', 'Hostel Owner')}</Text>
+                        <Text style={styles.profileName} numberOfLines={1}>{displayName || t('profile.hostelOwner', 'Hostel Owner')}</Text>
                         <View style={styles.roleBadge}>
                             <Ionicons name="shield-checkmark" size={12} color="#7C3AED" />
                             <Text style={styles.roleBadgeText}>{roleLabel}</Text>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Platform, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../contexts/ThemeContext';
 import api from '../services/api';
 import { CustomDateRangePicker } from './ui/pickers/CustomDateRangePicker';
@@ -15,6 +16,7 @@ export interface FilterDuesProps {
 export function FilterDuesModal({ visible, onClose, onApply, initialFilters }: FilterDuesProps) {
     const { theme, isDark } = useTheme();
     const primary = theme?.primary || '#3B82F6';
+    const insets = useSafeAreaInsets();
     
     const [activeCategory, setActiveCategory] = useState<'sortBy' | 'dueDate' | 'defaulter' | 'rooms'>('sortBy');
     const [searchQuery, setSearchQuery] = useState('');
@@ -466,7 +468,14 @@ export function FilterDuesModal({ visible, onClose, onApply, initialFilters }: F
                     </View>
 
                     {/* Bottom Buttons */}
-                    <View style={[S.footer, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }]}>
+                    <View style={[
+                        S.footer, 
+                        { 
+                            backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
+                            borderTopColor: isDark ? '#1E293B' : '#E2E8F0',
+                            paddingBottom: Math.max(insets.bottom + 12, Platform.OS === 'android' ? 24 : 16)
+                        }
+                    ]}>
                         <TouchableOpacity style={[S.clearBtn, { borderColor: primary }]} onPress={handleReset}>
                             <Text style={[S.clearBtnText, { color: primary }]}>Clear All</Text>
                         </TouchableOpacity>
@@ -644,7 +653,8 @@ const S = StyleSheet.create({
     footer: {
         flexDirection: 'row',
         paddingHorizontal: 16,
-        paddingVertical: 14,
+        paddingTop: 12,
+        borderTopWidth: 1,
         gap: 12,
         alignItems: 'center',
     },

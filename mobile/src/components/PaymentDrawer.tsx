@@ -177,17 +177,19 @@ export function PaymentDrawer({
 
                                 const carryForward = parseFloat(selectedFee?.carryForward || selectedFee?.effectiveCarryForward || selectedFee?.carry_forward || 0);
                                 const monthlyRent = parseFloat(selectedFee?.monthlyRent || selectedFee?.monthly_rent || selectedFee?.fee_monthly_rent || 0);
+                                const paidAmount = parseFloat(selectedFee?.paidAmount || selectedFee?.paid_amount || selectedFee?.amount_paid || 0);
 
                                 const prevOverdue = Math.max(0, carryForward);
-                                const currRent = monthlyRent > 0 ? monthlyRent : Math.max(0, maxDue - prevOverdue);
+                                // Net current month rent remaining before this collection transaction:
+                                const netCurrRent = monthlyRent > 0 ? Math.max(0, monthlyRent - paidAmount) : Math.max(0, maxDue - prevOverdue);
 
                                 // Allocation calculation
                                 const prevAllocated = Math.min(amount, prevOverdue);
                                 const prevPending = Math.max(0, prevOverdue - prevAllocated);
 
                                 const remAfterPrev = Math.max(0, amount - prevAllocated);
-                                const currAllocated = Math.min(remAfterPrev, currRent);
-                                const currPending = Math.max(0, currRent - currAllocated);
+                                const currAllocated = Math.min(remAfterPrev, netCurrRent);
+                                const currPending = Math.max(0, netCurrRent - currAllocated);
 
                                 const remainingBal = Math.max(0, maxDue - amount);
                                 const isExceeding = maxDue > 0 && amount > maxDue;
@@ -223,10 +225,14 @@ export function PaymentDrawer({
 
                                         <View style={{ borderTopWidth: 1, borderTopColor: isDark ? '#334155' : '#E2E8F0', marginTop: 6, paddingTop: 6, flexDirection: 'row', justifyContent: 'space-between' }}>
                                             <Text style={{ fontSize: 13, fontWeight: '800', color: themeColor }}>
-                                                Remaining Balance Due:
+                                                Remaining Balance After Payment:
                                             </Text>
                                             <Text style={{ fontSize: 13, fontWeight: '800', color: remainingBal === 0 ? '#10B981' : '#EF4444' }}>
-                                                {remainingBal === 0 ? '₹0 (Fully Paid)' : `₹${remainingBal.toLocaleString('en-IN')}`}
+                                                {amount === 0 
+                                                    ? `₹${maxDue.toLocaleString('en-IN')}` 
+                                                    : (remainingBal === 0 
+                                                        ? '₹0 (Fully Cleared)' 
+                                                        : `₹${remainingBal.toLocaleString('en-IN')} (Partial)`)}
                                             </Text>
                                         </View>
 
