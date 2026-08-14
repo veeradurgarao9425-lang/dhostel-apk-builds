@@ -368,7 +368,7 @@ export const HostelChatbot: React.FC = () => {
       >
         <SafeAreaView style={s.modalContainer} edges={['top', 'bottom']}>
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={{ flex: 1 }}
           >
             <View style={s.modalWrapper}>

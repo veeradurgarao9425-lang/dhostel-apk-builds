@@ -1537,7 +1537,7 @@ export const OwnerAssistant: React.FC = () => {
       <Modal visible={isOpen} transparent={false} animationType="slide" onRequestClose={() => setIsOpen(false)} statusBarTranslucent={false}>
         <SafeAreaView style={s.safe} edges={['top']}>
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={s.kav}
           >
 
