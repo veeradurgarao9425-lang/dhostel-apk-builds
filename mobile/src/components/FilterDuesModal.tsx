@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Platform, Animated } from 'react-native';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Platform, Animated, KeyboardAvoidingView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -201,7 +201,8 @@ export function FilterDuesModal({ visible, onClose, onApply, initialFilters }: F
 
     return (
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-            <View style={S.modalOverlay}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+                <View style={S.modalOverlay}>
                 <View style={[S.modalContent, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }]}>
                     {/* Header Left Aligned */}
                     <View style={[S.header, { borderBottomColor: isDark ? '#1E293B' : '#E2E8F0' }]}>
@@ -485,6 +486,7 @@ export function FilterDuesModal({ visible, onClose, onApply, initialFilters }: F
                     </View>
                 </View>
             </View>
+            </KeyboardAvoidingView>
 
             {/* Custom Date Range Picker Component */}
             <CustomDateRangePicker
