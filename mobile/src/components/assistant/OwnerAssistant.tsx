@@ -220,7 +220,6 @@ export const OwnerAssistant: React.FC = () => {
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [isKeyboardActive, setIsKeyboardActive] = useState(false);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
 
   // Snapshot data for home screen
@@ -279,20 +278,11 @@ export const OwnerAssistant: React.FC = () => {
   useEffect(() => {
     const showSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      (e) => {
-        setIsKeyboardActive(true);
-        if (e && e.endCoordinates && e.endCoordinates.height) {
-          setKeyboardHeight(e.endCoordinates.height);
-        }
-        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
-      }
+      () => setIsKeyboardActive(true)
     );
     const hideSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => {
-        setIsKeyboardActive(false);
-        setKeyboardHeight(0);
-      }
+      () => setIsKeyboardActive(false)
     );
     return () => {
       showSub.remove();
@@ -1648,7 +1638,6 @@ export const OwnerAssistant: React.FC = () => {
               s.inputBarWrapper,
               isFocused && s.inputBarWrapperFocused,
               {
-                marginBottom: Platform.OS === 'android' && isKeyboardActive ? keyboardHeight : 0,
                 paddingBottom: isAddMenuOpen
                   ? 0
                   : (isKeyboardActive
@@ -1682,10 +1671,7 @@ export const OwnerAssistant: React.FC = () => {
                     ref={inputRef}
                     style={s.input}
                     value={inputText}
-                    onChangeText={(text) => {
-                      setInputText(text);
-                      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: false }), 50);
-                    }}
+                    onChangeText={setInputText}
                     placeholder="Ask me anything..."
                     placeholderTextColor="#94A3B8"
                     returnKeyType="send"
@@ -1696,7 +1682,6 @@ export const OwnerAssistant: React.FC = () => {
                     onFocus={() => {
                       setIsAddMenuOpen(false);
                       setIsFocused(true);
-                      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
                     }}
                     onBlur={() => setIsFocused(false)}
                   />
