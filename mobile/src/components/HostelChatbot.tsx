@@ -12,7 +12,8 @@ import {
   Animated,
   Image,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  Keyboard
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -90,6 +91,8 @@ export const HostelChatbot: React.FC = () => {
   const [isTourActive, setIsTourActive] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
+  const [isKeyboardActive, setIsKeyboardActive] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
   const searchInputRef = useRef<TextInput>(null);
 
@@ -118,6 +121,30 @@ export const HostelChatbot: React.FC = () => {
       { label: 'Add Notice', path: 'AddNotice', icon: 'megaphone-outline', color: '#EA580C', bg: '#FFF7ED' },
     ];
   }, [user]);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => {
+        setIsKeyboardActive(true);
+        if (e && e.endCoordinates && e.endCoordinates.height) {
+          setKeyboardHeight(e.endCoordinates.height);
+        }
+        setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 80);
+      }
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setIsKeyboardActive(false);
+        setKeyboardHeight(0);
+      }
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener('TOUR_STATE_CHANGE', (isActive) => {
@@ -652,7 +679,10 @@ export const HostelChatbot: React.FC = () => {
             </ScrollView>
 
             {/* Unified Bottom Input Bar */}
-            <View style={s.bottomInputSection}>
+            <View style={[
+              s.bottomInputSection,
+              { marginBottom: Platform.OS === 'android' && isKeyboardActive ? keyboardHeight : 0 }
+            ]}>
               <View style={s.bottomInputContainer}>
                 <TouchableOpacity
                   onPress={() => setIsAddMenuOpen(true)}
@@ -664,13 +694,19 @@ export const HostelChatbot: React.FC = () => {
                 <TextInput
                   style={s.bottomTextInput}
                   value={searchQuery}
-                  onChangeText={setSearchQuery}
+                  onChangeText={(text) => {
+                    setSearchQuery(text);
+                    setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: false }), 50);
+                  }}
                   placeholder="Ask me anything..."
                   placeholderTextColor="#94A3B8"
                   onSubmitEditing={() => handleCustomQuestionSubmit()}
                   returnKeyType="send"
                   autoCorrect={false}
                   autoCapitalize="none"
+                  onFocus={() => {
+                    setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
+                  }}
                 />
                 {searchQuery.length > 0 && (
                   <TouchableOpacity onPress={() => setSearchQuery('')} style={{ marginRight: 6 }}>
