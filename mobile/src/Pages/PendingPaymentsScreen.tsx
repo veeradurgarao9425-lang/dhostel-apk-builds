@@ -326,7 +326,7 @@ const WaveDecoration = ({ color }: { color: string }) => (
 );
 
 // ─── Bulk WhatsApp Modal Component ──────────────────────────────────────────
-const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab }: any) => {
+const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab, navigation }: any) => {
     const insets = useSafeAreaInsets();
     const [modalFilter, setModalFilter] = useState<'All' | 'Overdue' | 'Partial'>('All');
 
@@ -389,21 +389,37 @@ const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab }: any
             if (res.data.success) {
                 Alert.alert(
                     '⚡ Direct WhatsApp Sent!',
-                    res.data.message || `Successfully sent WhatsApp reminders directly to ${res.data.sentCount} students in background!`
+                    res.data.message || `Successfully sent WhatsApp reminders directly to ${res.data.sentCount || selectedTenants.length} students in background!`
                 );
                 onClose();
             } else {
-                Alert.alert('Notice', res.data.error || 'Direct sending requires backend WhatsApp linking.');
+                Alert.alert(
+                    '📲 WhatsApp Bot Not Linked Yet',
+                    'Your WhatsApp account is not linked yet. Please go to Settings ➔ Link Device to generate your 8-digit code and activate 1-click automated messaging.',
+                    [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                            text: 'Link Now (Settings)',
+                            onPress: () => {
+                                onClose();
+                                if (navigation?.navigate) navigation.navigate('Settings');
+                            }
+                        }
+                    ]
+                );
             }
         } catch (err: any) {
-            // Fallback to manual queue if backend WhatsApp is initializing/unlinked
             Alert.alert(
-                '📱 Direct Sending Unlinked',
-                'Backend WhatsApp is not linked. Opening WhatsApp app dispatch sequence for selected students.',
+                '📲 WhatsApp Bot Not Linked Yet',
+                'Your WhatsApp account is not linked yet. Please go to Settings ➔ Link Device to generate your 8-digit code and activate 1-click automated messaging.',
                 [
+                    { text: 'Cancel', style: 'cancel' },
                     {
-                        text: 'Open WhatsApp',
-                        onPress: () => handleSendBulk()
+                        text: 'Link Now (Settings)',
+                        onPress: () => {
+                            onClose();
+                            if (navigation?.navigate) navigation.navigate('Settings');
+                        }
                     }
                 ]
             );
@@ -1553,6 +1569,7 @@ export default function PendingPaymentsScreen() {
                 tenants={tenants}
                 isDark={isDark}
                 activeTab={activeTab}
+                navigation={navigation}
             />
         </View>
     );
