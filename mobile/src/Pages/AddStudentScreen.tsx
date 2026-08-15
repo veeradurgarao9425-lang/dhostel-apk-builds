@@ -1060,8 +1060,8 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 hostel_id: String(user?.hostel_id),
                 guardian_phone: formData.guardian_phone || null,
                 guardian_name: formData.guardian_name || null,
-                admission_fee: parseFloat(formData.admission_fee || '0'),
-                admission_status: forceStatus ? 0 : (formData.admission_status === 'Paid' ? 1 : 0),
+                admission_fee: formData.is_old_student ? 0 : parseFloat(formData.admission_fee || '0'),
+                admission_status: (formData.is_old_student || formData.admission_status === 'Paid') ? 1 : 0,
                 status: (isEdit && !quickAllocate) ? student.status : 1,
                 room_id: formData.room_id ? parseInt(formData.room_id) : null,
                 bed_id: formData.bed_id || null,
@@ -1131,11 +1131,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 const createdId = res.data?.data?.student_id || student?.student_id;
 
                 const navigateAfterSave = () => {
-                    if (createdId) {
-                        navigation.replace('StudentDetails', { studentId: createdId });
-                    } else {
-                        navigation.navigate('Main', { screen: 'StudentsTab' });
-                    }
+                    navigation.goBack();
                     setTimeout(() => triggerRefresh({ studentAllocated: !!payload.room_id }), 50);
                 };
 

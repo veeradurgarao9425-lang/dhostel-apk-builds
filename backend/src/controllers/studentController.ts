@@ -488,7 +488,7 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
       admission_fee: admission_fee || 0,
       refundable_deposit: refundable_deposit || 0,
       is_old_student: is_old_student ? 1 : 0,
-      admission_status: typeof admission_status === 'number' ? admission_status : (admission_status === 'Paid' ? 1 : 0),
+      admission_status: (is_old_student || admission_status === 1 || admission_status === '1' || admission_status === 'Paid') ? 1 : 0,
       status: typeof status === 'number' ? status : (status === 'Active' ? 1 : 0),
       room_id: room_id || null,
       bed_id: bed_id || null,
