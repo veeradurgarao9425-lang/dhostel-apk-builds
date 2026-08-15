@@ -7,10 +7,7 @@ import { navigate } from '../navigation/navigationRef';
 // For local dev: set EXPO_PUBLIC_API_URL in .env file
 // e.g. EXPO_PUBLIC_API_URL=http://10.0.2.2:5000/api (Android emulator)
 //      EXPO_PUBLIC_API_URL=http://192.168.x.x:5000/api (Physical device)
-const envUrl = process.env.EXPO_PUBLIC_API_URL as string | undefined;
-const BASE_URL = (envUrl && !envUrl.includes('192.168.'))
-  ? envUrl
-  : 'http://143.244.131.69:8081/api';
+const BASE_URL = 'http://143.244.131.69:8081/api';
 
 // ─── Axios Instance ───────────────────────────────────────────────────────────
 export const api = axios.create({
