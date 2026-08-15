@@ -162,7 +162,7 @@ export function TenantHostelKeyScreen() {
         <View style={styles.logoSection}>
           <View style={styles.logoGlowRing}>
             <Image
-              source={require('../../../assets/HostixNew.jpeg')}
+              source={require('../../../assets/HostixNew.png')}
               style={{ width: '100%', height: '100%', borderRadius: 55 }}
               resizeMode="cover"
             />

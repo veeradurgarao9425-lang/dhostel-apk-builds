@@ -345,7 +345,7 @@ export default function RegisterScreen({ navigation }: any) {
 
                     <View style={styles.headerLogoContainer}>
                         <Image
-                            source={require('../../assets/HostixNew.jpeg')}
+                            source={require('../../assets/HostixNew.png')}
                             style={styles.headerLogo}
                             resizeMode="cover"
                         />

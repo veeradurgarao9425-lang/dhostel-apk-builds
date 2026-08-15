@@ -521,7 +521,7 @@ export default function QRSignupScreen({ navigation }: any) {
 
                                     {/* Product Branding Pill */}
                                     <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16, opacity: 0.8 }}>
-                                        <Image source={require('../../assets/HostixNew.jpeg')} style={{ width: 12, height: 12, borderRadius: 2, marginRight: 4 }} resizeMode="contain" />
+                                        <Image source={require('../../assets/HostixNew.png')} style={{ width: 12, height: 12, borderRadius: 2, marginRight: 4 }} resizeMode="contain" />
                                         <Text style={{ fontSize: 9, fontWeight: '700', color: '#64748B', letterSpacing: 0.5 }}>POWERED BY DHOSTEL</Text>
                                     </View>
                                 </View>

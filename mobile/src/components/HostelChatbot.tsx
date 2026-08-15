@@ -377,7 +377,7 @@ export const HostelChatbot: React.FC = () => {
                 <View style={s.headerInfoRow}>
                   <View style={s.avatarContainer}>
                     <View style={[s.avatar, { backgroundColor: 'transparent' }]}>
-                      <Image source={require('../../assets/HostixNew.jpeg')}
+                      <Image source={require('../../assets/HostixNew.png')}
                         style={{ width: '100%', height: '100%' }}
                         resizeMode="cover" />
                     </View>
@@ -541,7 +541,7 @@ export const HostelChatbot: React.FC = () => {
                               <Text style={s.welcomeSubtitle}>{getTimeGreeting()}</Text>
                             </View>
                              <Image 
-                               source={require('../../assets/HostixNew.jpeg')} 
+                               source={require('../../assets/HostixNew.png')} 
                                style={s.welcomeBotImg} 
                                resizeMode="cover" 
                              />

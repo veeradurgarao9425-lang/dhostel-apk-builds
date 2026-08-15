@@ -56,7 +56,7 @@ export default function RoleSelectScreen({ navigation }: any) {
             >
               <View style={styles.logoBadge}>
                 <Image
-                  source={require('../../assets/HostixNew.jpeg')}
+                  source={require('../../assets/HostixNew.png')}
                   style={styles.logoImage}
                   resizeMode="cover"
                 />
