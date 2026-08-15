@@ -131,8 +131,6 @@ const RemindModal = ({ visible, tenant, onClose }: {
                     <Ionicons name="chevron-forward" size={16} color={isDark ? '#475569' : '#CBD5E1'} />
                 </TouchableOpacity>
 
-                {/* WhatsApp reminder option commented out as requested */}
-                {/*
                 <TouchableOpacity style={[rm.option, { borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]} onPress={whatsappRemind} activeOpacity={0.8}>
                     <View style={[rm.optionIcon, { backgroundColor: isDark ? '#14532D' : '#DCFCE7' }]}>
                         <Ionicons name="logo-whatsapp" size={22} color="#22C55E" />
@@ -143,7 +141,6 @@ const RemindModal = ({ visible, tenant, onClose }: {
                     </View>
                     <Ionicons name="chevron-forward" size={16} color={isDark ? '#475569' : '#CBD5E1'} />
                 </TouchableOpacity>
-                */}
 
                 <View style={{ height: 32 }} />
             </View>
@@ -576,8 +573,6 @@ const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab, navig
 
                     {/* Action Buttons */}
                     <View style={{ gap: 8, marginTop: 14 }}>
-                        {/* Direct WhatsApp button commented out as requested */}
-                        {/*
                         <TouchableOpacity
                             onPress={handleDirectSendBulk}
                             disabled={selectedTenants.length === 0 || sendingDirect}
@@ -597,7 +592,6 @@ const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab, navig
                                 {sendingDirect ? 'Sending Direct WhatsApp...' : `⚡ Send Direct WhatsApp (${selectedTenants.length})`}
                             </Text>
                         </TouchableOpacity>
-                        */}
 
                         <TouchableOpacity
                             onPress={handleSendBulk}

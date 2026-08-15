@@ -78,8 +78,6 @@ export const TopOverdueStudents = ({ data }: TopOverdueStudentsProps) => {
                                 </View>
                                 {!!item.phone && (
                                     <View style={{ flexDirection: 'row', gap: 6 }}>
-                                        {/* WhatsApp button commented out as requested */}
-                                        {/*
                                         <TouchableOpacity
                                             style={[s.callBtn, { backgroundColor: isDark ? '#064E3B' : '#DCFCE7' }]}
                                             onPress={(e) => { 
@@ -91,7 +89,6 @@ export const TopOverdueStudents = ({ data }: TopOverdueStudentsProps) => {
                                         >
                                             <Ionicons name="logo-whatsapp" size={12} color="#16A34A" />
                                         </TouchableOpacity>
-                                        */}
                                         <TouchableOpacity
                                             style={[s.callBtn, { backgroundColor: isDark ? '#4A1D1D' : '#FEE2E2' }]}
                                             onPress={(e) => { e.stopPropagation(); Linking.openURL(`tel:${item.phone}`); }}
