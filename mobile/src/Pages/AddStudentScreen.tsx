@@ -1006,7 +1006,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
             return;
         }
 
-        if (formData.admission_status === 'Unpaid' && (!formData.admission_fee || parseFloat(formData.admission_fee) === 0)) {
+        if (!isEdit && formData.admission_status === 'Unpaid' && (!formData.admission_fee || parseFloat(formData.admission_fee) === 0)) {
             setPageAlert({
                 visible: true,
                 title: 'Admission Fee Not Updated',
@@ -1018,7 +1018,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
             return;
         }
 
-        if (formData.admission_status === 'Paid' && (!formData.admission_fee || parseFloat(formData.admission_fee) === 0)) {
+        if (!isEdit && formData.admission_status === 'Paid' && (!formData.admission_fee || parseFloat(formData.admission_fee) === 0)) {
             setPageAlert({
                 visible: true,
                 title: 'Zero Admission Fee',

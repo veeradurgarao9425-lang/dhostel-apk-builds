@@ -757,7 +757,6 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
     // This guards against the owner form sending status 0 for a status-3 tenant.
     if (room_id) {
       updateData.status = 1;
-      updateData.inactive_date = null;
     }
 
     // Handle room allocation changes if room_id is provided
@@ -823,11 +822,8 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
       updateData.id_proof_back_url = backUrl;
     }
 
-    // Check if inactive_date column exists before updating
-    const hasInactiveDateCol = await db.schema.hasColumn('students', 'inactive_date');
-    if (!hasInactiveDateCol && 'inactive_date' in updateData) {
-      delete updateData.inactive_date;
-    }
+    // Safely remove inactive_date if present to prevent MySQL unknown column error
+    delete updateData.inactive_date;
 
     // Now perform the single database update with all changes
     await db('students')
