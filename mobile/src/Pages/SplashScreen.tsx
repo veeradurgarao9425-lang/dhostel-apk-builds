@@ -18,10 +18,46 @@ const ALWAYS_SHOW_INTRO_IN_DEV = true;
 export default function SplashScreen({ navigation }: any) {
   const { user, loading } = useAuth();
 
+  // Animated dots pulse effect
+  const dot1 = useRef(new Animated.Value(0.3)).current;
+  const dot2 = useRef(new Animated.Value(0.3)).current;
+  const dot3 = useRef(new Animated.Value(0.3)).current;
+
   useEffect(() => {
-    // Navigate as soon as auth state is known. Keep a short minimum brand
-    // display (600ms) so the logo doesn't flash, but never block on a fixed
-    // 2.5s timer — that delay used to stack on top of slow cold-start loads.
+    const createPulse = (dot: Animated.Value, delay: number) => {
+      return Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.timing(dot, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+          Animated.timing(dot, {
+            toValue: 0.3,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+    };
+
+    const anim1 = createPulse(dot1, 0);
+    const anim2 = createPulse(dot2, 200);
+    const anim3 = createPulse(dot3, 400);
+
+    anim1.start();
+    anim2.start();
+    anim3.start();
+
+    return () => {
+      anim1.stop();
+      anim2.stop();
+      anim3.stop();
+    };
+  }, [dot1, dot2, dot3]);
+
+  useEffect(() => {
     if (loading) return;
 
     let cancelled = false;
@@ -32,12 +68,10 @@ export default function SplashScreen({ navigation }: any) {
         return;
       }
 
-      // In dev, clear the "seen" flag every cold start so the intro always shows.
       if (__DEV__ && ALWAYS_SHOW_INTRO_IN_DEV) {
         try { await AsyncStorage.removeItem(ONBOARDING_KEY); } catch { /* ignore */ }
       }
 
-      // Logged out: show the intro on first launch, otherwise go straight to Login.
       let seenIntro = false;
       try {
         seenIntro = (await AsyncStorage.getItem(ONBOARDING_KEY)) === 'true';
@@ -80,10 +114,10 @@ export default function SplashScreen({ navigation }: any) {
 
           {/* Animated dots */}
           <View style={styles.dotsContainer}>
-            {[1, 0.55, 0.3].map((opacity, i) => (
-              <View
+            {[dot1, dot2, dot3].map((dotAnim, i) => (
+              <Animated.View
                 key={i}
-                style={[styles.dot, { opacity }]}
+                style={[styles.dot, { opacity: dotAnim, transform: [{ scale: dotAnim }] }]}
               />
             ))}
           </View>
