@@ -1186,7 +1186,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                                  return `http://143.244.131.69:8081${raw.startsWith('/') ? '' : '/'}${raw}`;
                                              };
 
-                                             const docFront = resolveUrl(student.id_proof_front_url || student.id_proof_document_url || student.id_proof_front);
+                                             const docFront = resolveUrl(student.id_proof_front_url || (student.id_proof_document_url && !student.id_proof_back_url ? student.id_proof_document_url : null) || student.id_proof_front);
                                              const docBack = resolveUrl(student.id_proof_back_url || student.id_proof_back);
 
                                              if (!docFront && !docBack) return null;

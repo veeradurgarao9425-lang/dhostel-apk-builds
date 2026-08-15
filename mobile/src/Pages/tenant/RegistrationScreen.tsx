@@ -195,8 +195,6 @@ const DocBox = ({ label, uri, onCapture, onRemove, error }: any) => {
           </>
         )}
       </TouchableOpacity>
-        mode="document"
-      />
     </View>
   );
 };
