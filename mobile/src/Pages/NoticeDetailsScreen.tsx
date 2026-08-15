@@ -31,7 +31,7 @@ export default function NoticeDetailsScreen({ route, navigation }: any) {
     };
 
     const dateTime = formatDate(notice.created_at);
-    const imageUrl = notice.image_url ? `https://dhostel-backend.onrender.com${notice.image_url}` : null;
+    const imageUrl = notice.image_url ? `http://143.244.131.69:8081${notice.image_url}` : null;
 
     // Convert hex color to rgba for soft backgrounds
     const hexToRgba = (hex: string, alpha: number) => {

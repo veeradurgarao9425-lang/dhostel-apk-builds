@@ -634,7 +634,7 @@ export const AddNoticeScreen = ({ navigation, route }: any) => {
                             {formData.image || (isEdit && noticeToEdit?.image_url) ? (
                                 <View style={styles.imagePreviewContainer}>
                                     <Image
-                                        source={{ uri: formData.image ? formData.image.uri : `https://dhostel-backend.onrender.com${noticeToEdit.image_url}` }}
+                                        source={{ uri: formData.image ? formData.image.uri : `http://143.244.131.69:8081${noticeToEdit.image_url}` }}
                                         style={styles.imagePreview}
                                     />
                                     <TouchableOpacity

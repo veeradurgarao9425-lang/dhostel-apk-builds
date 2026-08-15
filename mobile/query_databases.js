@@ -1,7 +1,7 @@
 const axios = require('axios');
 
 const endpoints = [
-  'https://dhostel-backend.onrender.com/api',
+  'http://143.244.131.69:8081/api',
   'https://mhostel-backend.onrender.com/api'
 ];
 

@@ -63,7 +63,7 @@ export const IncomeScreen = ({ navigation }: any) => {
                 return;
             }
 
-            const baseURL = (api.defaults.baseURL || 'https://dhostel-backend.onrender.com/api').replace(/\/$/, '');
+            const baseURL = (api.defaults.baseURL || 'http://143.244.131.69:8081/api').replace(/\/$/, '');
             const exportUrl = `${baseURL}/income/export?token=${encodeURIComponent(token)}&all=true`;
             const filename = `Income_Report_${new Date().toISOString().slice(0, 10)}.xlsx`;
 

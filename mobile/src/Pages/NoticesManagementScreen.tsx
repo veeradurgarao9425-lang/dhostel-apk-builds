@@ -233,7 +233,7 @@ export default function NoticesManagementScreen({ navigation }: any) {
                                         
                                         {n.image_url && (
                                             <Image 
-                                                source={{ uri: `https://dhostel-backend.onrender.com${n.image_url}` }} 
+                                                source={{ uri: `http://143.244.131.69:8081${n.image_url}` }} 
                                                 style={styles.noticeImage} 
                                             />
                                         )}

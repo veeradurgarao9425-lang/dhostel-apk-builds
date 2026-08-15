@@ -9,7 +9,7 @@ import { navigate } from '../navigation/navigationRef';
 //      EXPO_PUBLIC_API_URL=http://192.168.x.x:5000/api (Physical device)
 const BASE_URL =
   (process.env.EXPO_PUBLIC_API_URL as string | undefined) ||
-  'https://dhostel-backend.onrender.com/api';
+  'http://143.244.131.69:8081/api';
 
 // ─── Axios Instance ───────────────────────────────────────────────────────────
 export const api = axios.create({

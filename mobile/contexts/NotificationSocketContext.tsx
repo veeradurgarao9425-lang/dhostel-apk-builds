@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DeviceEventEmitter, AppState, AppStateStatus } from 'react-native';
 import { useAuth } from './AuthContext';
 
-const BASE_URL = (process.env.EXPO_PUBLIC_API_URL as string | undefined) || 'https://dhostel-backend.onrender.com/api';
+const BASE_URL = (process.env.EXPO_PUBLIC_API_URL as string | undefined) || 'http://143.244.131.69:8081/api';
 const SOCKET_URL = BASE_URL.replace('/api', '');
 
 /**
