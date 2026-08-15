@@ -139,6 +139,7 @@ export default function HomeScreen() {
     const [showTour, setShowTour] = useState(false);
     const [tourStep, setTourStep] = useState(0);
     const [renewalStudents, setRenewalStudents] = useState<any[]>([]);
+    const [isPagerScrollEnabled, setIsPagerScrollEnabled] = useState(true);
 
     useEffect(() => {
         DeviceEventEmitter.emit('TOUR_STATE_CHANGE', showTour);
@@ -762,6 +763,7 @@ export default function HomeScreen() {
                 ref={horizontalScrollRef}
                 horizontal
                 pagingEnabled
+                scrollEnabled={isPagerScrollEnabled}
                 keyboardShouldPersistTaps="handled"
                 showsHorizontalScrollIndicator={false}
                 onMomentumScrollEnd={(e) => {
@@ -809,11 +811,27 @@ export default function HomeScreen() {
                             <View collapsable={false}>
                                 <StatisticsGrid data={data} fmt={fmt} />
                             </View>
-                            <TopOverdueStudents data={data} />
-                            <View collapsable={false}>
+                            <View
+                                onTouchStart={() => setIsPagerScrollEnabled(false)}
+                                onTouchEnd={() => setIsPagerScrollEnabled(true)}
+                                onTouchCancel={() => setIsPagerScrollEnabled(true)}
+                            >
+                                <TopOverdueStudents data={data} />
+                            </View>
+                            <View
+                                collapsable={false}
+                                onTouchStart={() => setIsPagerScrollEnabled(false)}
+                                onTouchEnd={() => setIsPagerScrollEnabled(true)}
+                                onTouchCancel={() => setIsPagerScrollEnabled(true)}
+                            >
                                 <UpcomingDues data={data} renewalStudents={renewalStudents} />
                             </View>
-                            <View collapsable={false}>
+                            <View
+                                collapsable={false}
+                                onTouchStart={() => setIsPagerScrollEnabled(false)}
+                                onTouchEnd={() => setIsPagerScrollEnabled(true)}
+                                onTouchCancel={() => setIsPagerScrollEnabled(true)}
+                            >
                                 <UpcomingCheckoutSchedules data={data} />
                             </View>
                             <OccupancyCard data={data} />

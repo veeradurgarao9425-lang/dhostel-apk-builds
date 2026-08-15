@@ -38,7 +38,7 @@ export const TopOverdueStudents = ({ data }: TopOverdueStudentsProps) => {
                     <Ionicons name="chevron-forward" size={12} color="#7C3AED" style={{ marginTop: 1 }} />
                 </TouchableOpacity>
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 2 }}>
+            <ScrollView horizontal nestedScrollEnabled={true} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 2 }}>
                 {data.unpaidStudents.map((item, idx) => {
                     const isUrgent = item.daysLate > 30;
                     
