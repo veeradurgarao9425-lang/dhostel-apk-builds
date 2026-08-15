@@ -819,6 +819,8 @@ export default function PendingPaymentsScreen() {
     const [payLoading, setPayLoading] = useState(false);
 
     const [bulkWhatsappModalVisible, setBulkWhatsappModalVisible] = useState(false);
+    const [showMetaWhatsAppModal, setShowMetaWhatsAppModal] = useState(false);
+    const [metaCloudStudents, setMetaCloudStudents] = useState<any[]>([]);
     const modesLoadedRef = useRef(false);
     const isFirstLoadRef = useRef(true);
 
@@ -1690,19 +1692,16 @@ export default function PendingPaymentsScreen() {
                 isDark={isDark}
                 activeTab={activeTab}
                 navigation={navigation}
-                onOpenMetaCloud={() => setShowMetaWhatsAppModal(true)}
+                onOpenMetaCloud={(selectedList) => {
+                    setMetaCloudStudents(selectedList);
+                    setShowMetaWhatsAppModal(true);
+                }}
             />
 
             <MetaWhatsAppModal
                 visible={showMetaWhatsAppModal}
                 onClose={() => setShowMetaWhatsAppModal(false)}
-                selectedStudents={tenants.map(t => ({
-                    id: t.id,
-                    name: t.name,
-                    phone: t.phone,
-                    room: t.room,
-                    dueAmount: t.dueAmount
-                }))}
+                selectedStudents={metaCloudStudents}
             />
         </View>
     );
