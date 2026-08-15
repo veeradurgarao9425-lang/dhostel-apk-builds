@@ -192,13 +192,6 @@ const StudentCard = React.memo(({ student, onPress, onWhatsApp, onCall, onToggle
             <View style={styles.cardActions}>
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                     <TouchableOpacity
-                        onPress={() => onWhatsApp(student.phone)}
-                        style={[styles.actionBtnIcon, { backgroundColor: isDark ? '#334155' : '#F8FAFC', borderColor: isDark ? '#475569' : '#E2E8F0' }]}
-                    >
-                        <MessageCircle size={14} color="#25D366" />
-                        <Text style={[styles.actionBtnIconText, { color: theme.textSecondary }]}>{t('students.whatsapp')}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
                         onPress={() => onCall(student.phone)}
                         style={[styles.actionBtnIcon, { backgroundColor: isDark ? '#334155' : '#F8FAFC', borderColor: isDark ? '#475569' : '#E2E8F0' }]}
                     >
@@ -642,18 +635,6 @@ export default function StudentsScreen({ navigation, route }: any) {
                 showBack={navigation.canGoBack()}
                 rightComponent={
                     <View style={styles.headerActions}>
-                        <TouchableOpacity
-                            onPress={() => setShowMetaWhatsAppModal(true)}
-                            activeOpacity={0.8}
-                            style={{
-                                flexDirection: 'row', alignItems: 'center', gap: 4,
-                                backgroundColor: '#25D366', paddingHorizontal: 10, paddingVertical: 6,
-                                borderRadius: 14, marginRight: 6
-                            }}
-                        >
-                            <Ionicons name="logo-whatsapp" size={14} color="#FFF" />
-                            <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '800' }}>Meta WA</Text>
-                        </TouchableOpacity>
                         <ProfileMenu />
                     </View>
                 }
