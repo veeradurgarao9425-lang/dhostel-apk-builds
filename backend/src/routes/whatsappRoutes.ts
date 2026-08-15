@@ -29,7 +29,7 @@ router.post('/send', async (req: AuthRequest, res: Response) => {
     // Fetch details of selected students from database
     const students = await db('students as s')
       .leftJoin('rooms as r', 's.room_id', '=', 'r.room_id')
-      .leftJoin('hostels as h', 's.hostel_id', '=', 'h.hostel_id')
+      .leftJoin('hostel_master as h', 's.hostel_id', '=', 'h.hostel_id')
       .leftJoin('monthly_fees as mf', function () {
         this.on('s.student_id', '=', 'mf.student_id').andOn('mf.balance', '>', db.raw('0'));
       })

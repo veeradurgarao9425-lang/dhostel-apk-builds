@@ -388,8 +388,10 @@ const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab, navig
     React.useEffect(() => {
         if (visible) {
             setSelectedIds(new Set(defaulters.map((d: any) => d.id)));
+        } else {
+            setSelectedIds(new Set());
         }
-    }, [visible, defaulters]);
+    }, [visible]);
 
     const toggleSelect = (id: number) => {
         setSelectedIds(prev => {
