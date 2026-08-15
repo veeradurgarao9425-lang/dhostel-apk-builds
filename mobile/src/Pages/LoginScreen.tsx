@@ -100,22 +100,19 @@ export default function LoginScreen({ navigation }: any) {
         setSubmitError(null);
         setErrorMessage(null);
         try {
+            console.log('[LOGIN_SCREEN] Attempting login with identifier:', identifier.trim());
             const { error, user } = await signIn(identifier.trim(), password);
             if (!error && user) {
+                console.log('[LOGIN_SCREEN] Login success!');
                 navigation.navigate('Main');
             } else {
-                const errMsg = error || 'Invalid credentials';
-                // Direct the error to the correct field
-                if (errMsg.toLowerCase().includes('password')) {
-                    setFieldErrors(prev => ({ ...prev, password: errMsg }));
-                } else if (errMsg.toLowerCase().includes('email') || errMsg.toLowerCase().includes('mobile') || errMsg.toLowerCase().includes('phone') || errMsg.toLowerCase().includes('not registered')) {
-                    setFieldErrors(prev => ({ ...prev, identifier: errMsg }));
-                } else {
-                    setSubmitError(errMsg);
-                }
+                const errMsg = typeof error === 'string' ? error : JSON.stringify(error) || 'Invalid credentials';
+                console.warn('[LOGIN_SCREEN] Login failed with error:', errMsg);
+                setSubmitError(errMsg);
             }
         } catch (err: any) {
-            setSubmitError('An unexpected error occurred. Please try again.');
+            console.error('[LOGIN_SCREEN] Exception during login:', err);
+            setSubmitError(`Login error: ${err.message || 'An unexpected error occurred.'}`);
         } finally {
             setIsLoading(false);
         }
@@ -258,8 +255,8 @@ export default function LoginScreen({ navigation }: any) {
                 {/* Submit level error alert */}
                 {submitError && (
                     <View style={styles.alertBox}>
-                        <Ionicons name="warning" size={16} color="#EF4444" />
-                        <Text style={[styles.alertText, { color: '#EF4444' }]}>{submitError}</Text>
+                        <Ionicons name="warning-outline" size={20} color="#EF4444" />
+                        <Text style={styles.alertText}>{submitError}</Text>
                     </View>
                 )}
 
@@ -509,5 +506,23 @@ const styles = StyleSheet.create({
         left: 16,
         padding: 8,
         zIndex: 50,
+    },
+    alertBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FEF2F2',
+        borderWidth: 1,
+        borderColor: '#FECACA',
+        borderRadius: 12,
+        padding: 12,
+        marginBottom: 16,
+        gap: 8,
+    },
+    alertText: {
+        flex: 1,
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#EF4444',
+        lineHeight: 18,
     },
 });

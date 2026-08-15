@@ -293,7 +293,7 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
         setLoading(true);
         try {
             const payload = {
-                hostel_id: user?.hostel_id,
+                hostel_id: user?.hostel_id || route?.params?.hostel_id,
                 room_number: formData.room_number,
                 room_type_id: parseInt(formData.room_type_id) || null,
                 floor_number: parseInt(formData.floor_number) || null,

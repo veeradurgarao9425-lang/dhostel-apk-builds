@@ -239,12 +239,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return { error: errorMessage };
       }
     } catch (error: any) {
-      // No response → server is sleeping (Render free-tier cold start takes 30-60 sec)
-      const isNetworkError = !error.response;
-      const errorMessage = isNetworkError
-        ? 'Server is starting up, please wait 30-60 seconds and try again.'
-        : (error.response?.data?.error || error.response?.data?.message || 'Authentication failed.');
-      return { error: errorMessage };
+      console.error('[SIGNIN_ERROR]', {
+        url: `${api.defaults.baseURL}/auth/login`,
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+        code: error.code,
+      });
+
+      let errorMessage = '';
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        errorMessage = `Server Timeout (15s): Cannot reach ${api.defaults.baseURL}. Please verify server at http://143.244.131.69:8081 is running.`;
+      } else if (!error.response) {
+        errorMessage = `Network Error: Cannot connect to ${api.defaults.baseURL}. (${error.message || 'Server offline or unreachable'})`;
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else {
+        errorMessage = `Server Error (${error.response.status}): ${error.message || 'Login failed'}`;
+      }
+      return { error: errorMessage, rawError: error.response?.data };
     }
   };
 

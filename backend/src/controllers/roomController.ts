@@ -49,10 +49,15 @@ const resolveHostelId = async (
     }
     return { hostelId: user.hostel_id };
   } else if (user?.role_id === 1) {
-    if (!hostel_id) {
-      return { status: 400, error: 'Admin must specify hostel_id' };
+    const targetHostelId = hostel_id || user?.hostel_id;
+    if (targetHostelId) {
+      return { hostelId: Number(targetHostelId) };
     }
-    return { hostelId: Number(hostel_id) };
+    const firstHostel = await db('hostel_master').where('is_active', 1).first();
+    if (firstHostel) {
+      return { hostelId: Number(firstHostel.hostel_id) };
+    }
+    return { status: 400, error: 'Admin must specify hostel_id' };
   }
   return { status: 403, error: 'Unauthorized to create rooms' };
 };

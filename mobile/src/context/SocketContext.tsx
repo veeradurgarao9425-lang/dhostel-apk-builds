@@ -4,7 +4,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DeviceEventEmitter, AppState, AppStateStatus } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 
-const BASE_URL = (process.env.EXPO_PUBLIC_API_URL as string | undefined) || 'http://143.244.131.69:8081/api';
+const envUrl = process.env.EXPO_PUBLIC_API_URL as string | undefined;
+const BASE_URL = (envUrl && !envUrl.includes('192.168.')) ? envUrl : 'http://143.244.131.69:8081/api';
 const SOCKET_URL = BASE_URL.replace('/api', '');
 
 /**

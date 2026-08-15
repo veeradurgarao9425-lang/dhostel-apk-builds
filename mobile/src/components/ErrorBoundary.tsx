@@ -16,8 +16,8 @@ type State = { hasError: boolean; error: Error | null };
 
 async function reportCrashToBackend(error: Error, componentStack: string | null | undefined) {
   try {
-    const API_URL = (process.env.EXPO_PUBLIC_API_URL || '').replace(/\/$/, '');
-    if (!API_URL) return; // no API configured, skip silently
+    const rawUrl = process.env.EXPO_PUBLIC_API_URL || '';
+    const API_URL = (rawUrl.includes('192.168.') ? 'http://143.244.131.69:8081/api' : (rawUrl || 'http://143.244.131.69:8081/api')).replace(/\/$/, '');
 
     // Read auth token from storage — best-effort, no throw
     const token = await AsyncStorage.getItem('authToken').catch(() => null);
