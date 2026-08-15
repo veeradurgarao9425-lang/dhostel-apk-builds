@@ -1475,7 +1475,7 @@ export const OwnerAssistant: React.FC = () => {
         {/* SafeAreaView handles top inset (status bar). Bottom inset is handled seamlessly inside inputBarWrapper */}
         <SafeAreaView style={s.safe} edges={['top']}>
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
             style={s.kav}
           >

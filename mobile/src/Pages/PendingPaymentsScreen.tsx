@@ -551,15 +551,16 @@ const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab, navig
 
     return (
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-            <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }} activeOpacity={1} onPress={onClose}>
-                <TouchableOpacity activeOpacity={1} style={{
-                    backgroundColor: isDark ? '#1E293B' : '#FFF',
-                    borderTopLeftRadius: 24, borderTopRightRadius: 24,
-                    maxHeight: '88%',
-                    paddingHorizontal: 20,
-                    paddingTop: 20,
-                    paddingBottom: Math.max(insets.bottom, 20)
-                }}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+                <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }} activeOpacity={1} onPress={onClose}>
+                    <TouchableOpacity activeOpacity={1} style={{
+                        backgroundColor: isDark ? '#1E293B' : '#FFF',
+                        borderTopLeftRadius: 24, borderTopRightRadius: 24,
+                        maxHeight: '88%',
+                        paddingHorizontal: 20,
+                        paddingTop: 20,
+                        paddingBottom: Math.max(insets.bottom, 20)
+                    }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                             <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: '#DCFCE7', alignItems: 'center', justifyContent: 'center' }}>
@@ -709,29 +710,11 @@ const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab, navig
                                 💬 Send Manually 1-by-1 ({selectedTenants.length} Tenants)
                             </Text>
                         </TouchableOpacity>
-
-                        <TouchableOpacity
-                            onPress={() => {
-                                onClose();
-                                if (onOpenMetaCloud) onOpenMetaCloud(selectedTenants);
-                            }}
-                            disabled={selectedTenants.length === 0}
-                            activeOpacity={0.85}
-                            style={{
-                                backgroundColor: '#2563EB',
-                                paddingVertical: 12, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
-                                flexDirection: 'row', gap: 6
-                            }}
-                        >
-                            <Ionicons name="logo-whatsapp" size={16} color="#FFF" />
-                            <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '800' }}>
-                                🌐 Official Meta WhatsApp Cloud API ({selectedTenants.length})
-                            </Text>
-                        </TouchableOpacity>
                     </View>
                 </TouchableOpacity>
             </TouchableOpacity>
-        </Modal>
+        </KeyboardAvoidingView>
+    </Modal>
     );
 };
 
