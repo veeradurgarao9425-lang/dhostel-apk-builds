@@ -1652,7 +1652,11 @@ export const OwnerAssistant: React.FC = () => {
                 </TouchableOpacity>
 
                 {/* Search / input pill */}
-                <View style={[s.inputWrap, isFocused && s.inputWrapFocused]}>
+                <TouchableOpacity
+                  activeOpacity={1}
+                  style={[s.inputWrap, isFocused && s.inputWrapFocused]}
+                  onPress={() => inputRef.current?.focus()}
+                >
                   <Ionicons name="search-outline" size={17} color={isFocused ? "#4F46E5" : "#94A3B8"} style={{ marginRight: 6 }} />
                   <TextInput
                     ref={inputRef}
@@ -1681,7 +1685,7 @@ export const OwnerAssistant: React.FC = () => {
                       <Ionicons name="close-circle" size={18} color="#94A3B8" />
                     </TouchableOpacity>
                   )}
-                </View>
+                </TouchableOpacity>
 
                 {/* Send button */}
                 <TouchableOpacity
