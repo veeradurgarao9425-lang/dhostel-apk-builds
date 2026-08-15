@@ -42,6 +42,7 @@ import growthRoutes from './routes/growthRoutes.js';
 import messSkipRoutes from './routes/messSkipRoutes.js';
 import ratingRoutes from './routes/ratingRoutes.js';
 import subscriptionRoutes from './routes/subscriptionRoutes.js';
+import whatsappRoutes from './routes/whatsappRoutes.js';
 import { startMonthlyFeesGenerationJob } from './jobs/monthlyFeesGeneration.js';
 import { startGuestOverstayJob } from './jobs/guestOverstay.js';
 import { startChatResetJob } from './jobs/chatReset.js';
@@ -208,6 +209,7 @@ app.use('/api/growth', growthRoutes);
 app.use('/api/mess', messSkipRoutes);
 app.use('/api/ratings', ratingRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/whatsapp', whatsappRoutes);
 // Multer storage for the public QR signup Aadhaar photos
 const qrSignupUpload = multer({
   storage: multer.diskStorage({
