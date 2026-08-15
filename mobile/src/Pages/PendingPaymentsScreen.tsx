@@ -97,6 +97,21 @@ const RemindModal = ({ visible, tenant, onClose }: {
         Linking.openURL(`whatsapp://send?phone=91${tenant.phone}&text=${encodeURIComponent(msg)}`);
     };
 
+    const whatsappBusinessRemind = async () => {
+        onClose();
+        if (!tenant.phone) { showError(t('pendingDues.noPhoneAvailable', 'No phone number available')); return; }
+        const msg = `Hi ${tenant.name.split(' ')[0]} 👋,\n\nThis is a friendly rent reminder from *Hostix PG*.\n• *Room:* ${tenant.room}\n• *Due Amount:* ₹${tenant.dueAmount.toLocaleString('en-IN')}\n\nPlease clear your pending rent at your earliest convenience.\n\nThank you!\n~ *powered by Hostix*`;
+
+        const bizUrl = `whatsapp-business://send?phone=91${tenant.phone}&text=${encodeURIComponent(msg)}`;
+        const canOpenBiz = await Linking.canOpenURL(bizUrl).catch(() => false);
+
+        if (canOpenBiz) {
+            Linking.openURL(bizUrl);
+        } else {
+            Linking.openURL(`whatsapp://send?phone=91${tenant.phone}&text=${encodeURIComponent(msg)}`);
+        }
+    };
+
     return (
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
             <TouchableOpacity style={rm.backdrop} activeOpacity={1} onPress={onClose} />
@@ -132,6 +147,19 @@ const RemindModal = ({ visible, tenant, onClose }: {
                     <Ionicons name="chevron-forward" size={16} color={isDark ? '#475569' : '#CBD5E1'} />
                 </TouchableOpacity>
 
+                {/* WhatsApp Business Option */}
+                <TouchableOpacity style={[rm.option, { borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]} onPress={whatsappBusinessRemind} activeOpacity={0.8}>
+                    <View style={[rm.optionIcon, { backgroundColor: isDark ? '#14532D' : '#DCFCE7' }]}>
+                        <Ionicons name="briefcase" size={20} color="#16A34A" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <Text style={[rm.optionLabel, { color: theme.textPrimary }]}>WhatsApp Business</Text>
+                        <Text style={[rm.optionSub, { color: theme.textSecondary }]}>Send via your HOSTIX Business account</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color={isDark ? '#475569' : '#CBD5E1'} />
+                </TouchableOpacity>
+
+                {/* Personal WhatsApp Option */}
                 <TouchableOpacity style={[rm.option, { borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]} onPress={whatsappRemind} activeOpacity={0.8}>
                     <View style={[rm.optionIcon, { backgroundColor: isDark ? '#14532D' : '#DCFCE7' }]}>
                         <Ionicons name="logo-whatsapp" size={22} color="#22C55E" />
