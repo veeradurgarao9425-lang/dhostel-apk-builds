@@ -221,10 +221,15 @@ export const OwnerAssistant: React.FC = () => {
     setIsAddMenuOpen(prev => !prev);
   }, [isKeyboardActive]);
 
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
   useEffect(() => {
     const showSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      () => {
+      (e) => {
+        if (e && e.endCoordinates && e.endCoordinates.height) {
+          setKeyboardHeight(e.endCoordinates.height);
+        }
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         setIsKeyboardActive(true);
       }
@@ -232,6 +237,7 @@ export const OwnerAssistant: React.FC = () => {
     const hideSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
       () => {
+        setKeyboardHeight(0);
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         setIsKeyboardActive(false);
       }
@@ -1471,7 +1477,7 @@ export const OwnerAssistant: React.FC = () => {
         {/* SafeAreaView handles top inset (status bar). Bottom inset is handled seamlessly inside inputBarWrapper */}
         <SafeAreaView style={s.safe} edges={['top']}>
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
             style={s.kav}
           >
