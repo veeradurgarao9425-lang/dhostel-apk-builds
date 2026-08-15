@@ -576,6 +576,8 @@ const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab, navig
 
                     {/* Action Buttons */}
                     <View style={{ gap: 8, marginTop: 14 }}>
+                        {/* Direct WhatsApp button commented out as requested */}
+                        {/*
                         <TouchableOpacity
                             onPress={handleDirectSendBulk}
                             disabled={selectedTenants.length === 0 || sendingDirect}
@@ -595,6 +597,7 @@ const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab, navig
                                 {sendingDirect ? 'Sending Direct WhatsApp...' : `⚡ Send Direct WhatsApp (${selectedTenants.length})`}
                             </Text>
                         </TouchableOpacity>
+                        */}
 
                         <TouchableOpacity
                             onPress={handleSendBulk}
