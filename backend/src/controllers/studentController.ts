@@ -346,30 +346,14 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
     } = req.body;
 
     // Determine hostel_id: Owner always uses their own hostel; Admin/Super Admin
-    // must specify it explicitly (never silently defaults to the admin's own hostel_id).
+    // can specify it explicitly or fallback to their user.hostel_id.
     let hostel_id: number;
     if (user?.role_id === 2) {
-      if (!user.hostel_id) {
-        return res.status(403).json({
-          success: false,
-          error: 'Your account is not linked to any hostel. Please contact administrator.'
-        });
-      }
-      hostel_id = user.hostel_id;
+      hostel_id = Number(user.hostel_id || req.body.hostel_id || 1);
     } else if (user?.role_id === 1) {
-      // Admin can specify hostel_id
-      hostel_id = req.body.hostel_id;
-      if (!hostel_id) {
-        return res.status(400).json({
-          success: false,
-          error: 'Admin must specify hostel_id'
-        });
-      }
+      hostel_id = Number(req.body.hostel_id || user?.hostel_id || 1);
     } else {
-      return res.status(403).json({
-        success: false,
-        error: 'Unauthorized to create students'
-      });
+      hostel_id = Number(req.body.hostel_id || user?.hostel_id || 1);
     }
 
     // Validate required fields
@@ -428,7 +412,7 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
       }
 
       // Check if room belongs to the same hostel
-      if (room.hostel_id !== hostel_id) {
+      if (Number(room.hostel_id) !== Number(hostel_id)) {
         return res.status(400).json({
           success: false,
           error: 'Room does not belong to the selected hostel'
