@@ -39,6 +39,7 @@
       "favicon": "./assets/HostixNew.png"
     },
     "plugins": [
+      "./plugins/withCleartextTraffic.js",
       "@react-native-community/datetimepicker",
       [
         "expo-notifications",
