@@ -242,6 +242,36 @@ export async function patchDatabaseSchema() {
       console.error('[schema-patch] Error creating id_proof_types table:', e.message);
     }
 
+    // 1.48 Ensure relations_master table exists
+    try {
+      if (!tableNamesLower.includes('relations_master')) {
+        console.log('[schema-patch] creating missing relations_master table...');
+        await db.raw(`
+          CREATE TABLE relations_master (
+            relation_id INT AUTO_INCREMENT PRIMARY KEY,
+            relation_name VARCHAR(100) NOT NULL UNIQUE,
+            description TEXT NULL,
+            display_order INT DEFAULT 1,
+            is_active TINYINT DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        await db.raw(`
+          INSERT IGNORE INTO relations_master (relation_id, relation_name, description, display_order, is_active) VALUES
+          (1, 'Father', 'Father', 1, 1),
+          (2, 'Mother', 'Mother', 2, 1),
+          (3, 'Brother', 'Brother', 3, 1),
+          (4, 'Sister', 'Sister', 4, 1),
+          (5, 'Guardian', 'Legal Guardian', 5, 1),
+          (6, 'Relative', 'Relative', 6, 1),
+          (7, 'Other', 'Other Relation', 7, 1)
+        `);
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error creating relations_master table:', e.message);
+    }
+
     // 1.5 Ensure room_amenities_master exists
     try {
       if (!tableNamesLower.includes('room_amenities_master')) {
