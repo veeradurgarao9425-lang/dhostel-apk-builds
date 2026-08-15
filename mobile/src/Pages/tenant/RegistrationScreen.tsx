@@ -17,7 +17,6 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../services/api';
 import { colors } from '../../theme/tenantTheme';
-import { FaceCaptureModal } from '../../components/FaceCaptureModal';
 
 const { width } = Dimensions.get('window');
 

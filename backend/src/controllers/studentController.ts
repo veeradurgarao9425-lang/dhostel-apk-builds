@@ -462,6 +462,10 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
       id_proof_back_url = await processFileUpload(files.id_proof_back[0], 'id_proofs');
     }
 
+    const isOldStudentVal = (is_old_student === 1 || is_old_student === '1' || is_old_student === true || is_old_student === 'true') ? 1 : 0;
+    const finalAdmissionStatus = (isOldStudentVal || admission_status === 1 || admission_status === '1' || admission_status === 'Paid') ? 1 : 0;
+    const finalStudentStatus = (status === 0 || status === '0' || status === 'Inactive') ? 0 : 1;
+
     // Insert student
     // Convert boolean/status values: id_proof_status, admission_status, status are now TINYINT (0/1)
     const [student_id] = await db('students').insert({
@@ -483,13 +487,13 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
       id_proof_front_url: id_proof_front_url || id_proof_document_url,
       id_proof_back_url,
       profile_photo_url,
-      id_proof_status: typeof id_proof_status === 'number' ? id_proof_status : (id_proof_status === 'Submitted' ? 1 : 0),
+      id_proof_status: (id_proof_status === 1 || id_proof_status === '1' || id_proof_status === 'Submitted') ? 1 : 0,
       admission_date: convertToDateOnly(admission_date),
       admission_fee: admission_fee || 0,
       refundable_deposit: refundable_deposit || 0,
-      is_old_student: is_old_student ? 1 : 0,
-      admission_status: (is_old_student || admission_status === 1 || admission_status === '1' || admission_status === 'Paid') ? 1 : 0,
-      status: typeof status === 'number' ? status : (status === 'Active' ? 1 : 0),
+      is_old_student: isOldStudentVal,
+      admission_status: finalAdmissionStatus,
+      status: finalStudentStatus,
       room_id: room_id || null,
       bed_id: bed_id || null,
       bed_number: bed_number || null,
@@ -502,7 +506,7 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
       created_at: new Date()
     });
 
-    const studentStatus = typeof status === 'number' ? status : (status === 'Active' ? 1 : 0);
+    const studentStatus = finalStudentStatus;
     const monthlyRent = roomDetails ? Number(roomDetails.rent_per_bed) : Number(monthly_rent || 0);
 
     // Update room occupied beds ONLY if a room is allocated and the student is Active.
