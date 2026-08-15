@@ -21,6 +21,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.durgarao2.hostixmobile",
+      "usesCleartextTraffic": true,
       "googleServicesFile": "./google-services.json",
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [
