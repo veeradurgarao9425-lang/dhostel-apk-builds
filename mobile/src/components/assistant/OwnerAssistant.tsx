@@ -1481,7 +1481,7 @@ export const OwnerAssistant: React.FC = () => {
               <View style={s.headerLeft}>
                 <View style={s.avatarBox}>
                   <Image
-                    source={require('../../../assets/HostixNew.jpeg')}
+                    source={require('../../../assets/HostixNew.png')}
                     style={s.avatarImg}
                     resizeMode="cover"
                   />
@@ -1610,23 +1610,24 @@ export const OwnerAssistant: React.FC = () => {
               isFocused && s.inputBarWrapperFocused,
               {
                 paddingBottom: isKeyboardActive
-                  ? (Platform.OS === 'android' ? 6 : 4)
-                  : Math.max(insets.bottom, 10)
+                  ? (Platform.OS === 'android' ? 8 : 6)
+                  : Math.max(insets.bottom, 12)
               }
             ]}>
-              {/* Quick Actions Mini Bar — Compact Horizontal Scroll (No big drawer) */}
+              {/* Quick Actions Grid — 2 Rows Grid (All 8 items visible, no clipping) */}
               {isAddMenuOpen && (
-                <View style={s.miniMenuWrapper}>
+                <View style={s.quickMenuWrapper}>
                   <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={s.miniMenuContent}
+                    nestedScrollEnabled={true}
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={s.quickMenuGrid}
                     keyboardShouldPersistTaps="handled"
+                    style={{ maxHeight: 150 }}
                   >
                     {menuItems.map((item, idx) => (
                       <TouchableOpacity
                         key={idx}
-                        style={[s.miniMenuChip, { backgroundColor: item.bg, borderColor: item.color + '40' }]}
+                        style={[s.quickMenuItem, { backgroundColor: item.bg, borderColor: item.color + '40' }]}
                         onPress={() => {
                           setIsAddMenuOpen(false);
                           if (item.intent) {
@@ -1635,8 +1636,8 @@ export const OwnerAssistant: React.FC = () => {
                         }}
                         activeOpacity={0.75}
                       >
-                        <Ionicons name={item.icon as any} size={13} color={item.color} />
-                        <Text style={[s.miniMenuChipText, { color: item.color }]}>
+                        <Ionicons name={item.icon as any} size={15} color={item.color} />
+                        <Text style={[s.quickMenuItemText, { color: '#1E293B' }]} numberOfLines={1}>
                           {item.label}
                         </Text>
                       </TouchableOpacity>
@@ -2041,31 +2042,36 @@ const s = StyleSheet.create({
   chipPanel: {
     display: 'none' as any, // no longer rendered — chips moved inline
   },
-  /* Compact horizontal quick-actions mini bar */
-  miniMenuWrapper: {
+  /* Quick-actions 2-row grid */
+  quickMenuWrapper: {
     backgroundColor: '#FFF',
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
     paddingVertical: 8,
-  },
-  miniMenuContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
     paddingHorizontal: 12,
   },
-  miniMenuChip: {
+  quickMenuGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 16,
-    borderWidth: 1,
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'space-between',
+    paddingVertical: 2,
   },
-  miniMenuChipText: {
-    fontSize: 11.5,
-    fontWeight: '700',
+  quickMenuItem: {
+    width: '23%',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 2,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 4,
+  },
+  quickMenuItemText: {
+    fontSize: 11,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   footerBranding: {
     flexDirection: 'row',
