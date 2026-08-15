@@ -114,18 +114,22 @@ const StudentCard = React.memo(({ student, onPress, onWhatsApp, onCall, onToggle
         >
             <View style={styles.cardHeader}>
                 <View style={[styles.avatarBox, { backgroundColor: avatarBg }]}>
-                    {student.photo && !imageError ? (
-                        <Image 
-                            source={{ uri: student.photo }} 
-                            style={styles.avatarImg} 
-                            fadeDuration={0} 
-                            onError={() => setImageError(true)}
-                        />
-                    ) : (
-                        <Text style={[styles.avatarTextInitials, { color: avatarTextColor }]}>
-                            {getInitials(student.first_name, student.last_name)}
-                        </Text>
-                    )}
+                    {(() => {
+                        const rawPhoto = student.profile_photo_url || student.photo || student.profile_photo;
+                        const photoUri = rawPhoto ? (rawPhoto.startsWith('http') ? rawPhoto : `http://143.244.131.69:8081${rawPhoto.startsWith('/') ? '' : '/'}${rawPhoto}`) : null;
+                        return photoUri && !imageError ? (
+                            <Image 
+                                source={{ uri: photoUri }} 
+                                style={styles.avatarImg} 
+                                fadeDuration={0} 
+                                onError={() => setImageError(true)}
+                            />
+                        ) : (
+                            <Text style={[styles.avatarTextInitials, { color: avatarTextColor }]}>
+                                {getInitials(student.first_name, student.last_name)}
+                            </Text>
+                        );
+                    })()}
                 </View>
                 <View style={styles.infoContainer}>
                     <Text style={[styles.nameText, { color: theme.textPrimary }]} numberOfLines={1}>
