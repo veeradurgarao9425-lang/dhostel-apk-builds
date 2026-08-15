@@ -97,81 +97,91 @@ jobs:
 
       - name: Publish APK to GitHub Releases (Bypasses Actions Storage Quota)
         uses: actions/github-script@v7
+        continue-on-error: true
         with:
           script: |
-            const fs = require('fs');
-            const tagName = 'v-latest';
-            const releaseName = 'Latest Android APK Release';
-            const apkPath = 'mobile/android/app/build/outputs/apk/release/app-release.apk';
-            const fileName = 'app-release.apk';
-
-            if (!fs.existsSync(apkPath)) {
-              throw new Error(`APK file not found at ${apkPath}`);
-            }
-
-            // 1. Get existing release or create a new one
-            let release;
             try {
-              const res = await github.rest.repos.getReleaseByTag({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                tag: tagName,
-              });
-              release = res.data;
-              console.log(`Found existing release ID: ${release.id}`);
-            } catch (e) {
-              console.log(`Release tag ${tagName} not found. Creating new release...`);
-              const created = await github.rest.repos.createRelease({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                tag_name: tagName,
-                name: releaseName,
-                body: 'Latest compiled Android release APK for dhostel app.',
-                draft: false,
-                prerelease: false,
-              });
-              release = created.data;
-              console.log(`Created release ID: ${release.id}`);
-            }
+              const fs = require('fs');
+              const tagName = 'v-latest';
+              const releaseName = 'Latest Android APK Release';
+              const apkPath = 'mobile/android/app/build/outputs/apk/release/app-release.apk';
+              const fileName = 'app-release.apk';
 
-            // 2. Delete any existing asset named app-release.apk to overwrite
-            const assets = await github.rest.repos.listReleaseAssets({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              release_id: release.id,
-            });
-            for (const asset of assets.data) {
-              if (asset.name === fileName) {
-                console.log(`Removing old release asset ID: ${asset.id}`);
-                await github.rest.repos.deleteReleaseAsset({
+              if (!fs.existsSync(apkPath)) {
+                console.warn(`APK file not found at ${apkPath}`);
+                return;
+              }
+
+              // 1. Get existing release or create a new one
+              let release;
+              try {
+                const res = await github.rest.repos.getReleaseByTag({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
-                  asset_id: asset.id,
+                  tag: tagName,
                 });
+                release = res.data;
+                console.log(`Found existing release ID: ${release.id}`);
+              } catch (e) {
+                console.log(`Release tag ${tagName} not found. Creating new release...`);
+                const created = await github.rest.repos.createRelease({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  tag_name: tagName,
+                  name: releaseName,
+                  body: 'Latest compiled Android release APK for dhostel app.',
+                  draft: false,
+                  prerelease: false,
+                });
+                release = created.data;
+                console.log(`Created release ID: ${release.id}`);
               }
+
+              // 2. Delete any existing asset named app-release.apk to overwrite
+              try {
+                const assets = await github.rest.repos.listReleaseAssets({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  release_id: release.id,
+                });
+                for (const asset of assets.data) {
+                  if (asset.name === fileName) {
+                    console.log(`Removing old release asset ID: ${asset.id}`);
+                    await github.rest.repos.deleteReleaseAsset({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      asset_id: asset.id,
+                    });
+                  }
+                }
+              } catch (assetErr) {
+                console.warn('Could not clear previous release asset:', assetErr.message);
+              }
+
+              // 3. Upload the new APK file
+              console.log(`Uploading ${fileName} to release ID ${release.id}...`);
+              const fileBuffer = fs.readFileSync(apkPath);
+              await github.rest.repos.uploadReleaseAsset({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                release_id: release.id,
+                name: fileName,
+                data: fileBuffer,
+                headers: {
+                  'content-type': 'application/vnd.android.package-archive',
+                  'content-length': fileBuffer.length,
+                },
+              });
+
+              console.log(`Successfully uploaded APK to release! URL: ${release.html_url}`);
+
+              // 4. Output download link in step summary
+              await core.summary
+                .addHeading('📱 Android APK Build Complete')
+                .addRaw('<p>Download the latest APK directly from GitHub Releases:</p>')
+                .addLink('⬇️ Download app-release.apk', release.html_url)
+                .write();
+            } catch (globalErr) {
+              console.error('Release publish step warning:', globalErr.message);
             }
-
-            // 3. Upload the new APK file
-            console.log(`Uploading ${fileName} to release ID ${release.id}...`);
-            const fileBuffer = fs.readFileSync(apkPath);
-            await github.rest.repos.uploadReleaseAsset({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              release_id: release.id,
-              name: fileName,
-              data: fileBuffer,
-              headers: {
-                'content-type': 'application/vnd.android.package-archive',
-                'content-length': fileBuffer.length,
-              },
-            });
-
-            console.log(`Successfully uploaded APK to release! URL: ${release.html_url}`);
-
-            // 4. Output download link in step summary
-            await core.summary
-              .addHeading('📱 Android APK Build Complete')
-              .addRaw('<p>Download the latest APK directly from GitHub Releases:</p>')
-              .addLink('⬇️ Download app-release.apk', release.html_url)
-              .write();
 
