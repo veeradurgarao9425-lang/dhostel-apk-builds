@@ -78,21 +78,21 @@ export const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: an
     return (
         <Modal transparent visible={visible || shouldRender} animationType="none" statusBarTranslucent onRequestClose={onClose}>
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-                <View style={{ flex: 1 }}>
+                <View style={{ flex: 1, justifyContent: 'flex-end' }}>
                     <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(15, 23, 42, 0.6)', opacity }]}>
                         <Pressable style={{ flex: 1 }} onPress={onClose} />
                     </Animated.View>
-                <Animated.View style={[
-                    styles.sheet,
-                    { 
-                        maxHeight, 
-                        transform: [{ translateY }],
-                        backgroundColor: isDark ? '#1E293B' : '#FFF' 
-                    }
-                ]}>
-                    <View style={styles.sheetHandle} />
-                    {children}
-                </Animated.View>
+                    <Animated.View style={[
+                        styles.sheet,
+                        { 
+                            maxHeight, 
+                            transform: [{ translateY }],
+                            backgroundColor: isDark ? '#1E293B' : '#FFF' 
+                        }
+                    ]}>
+                        <View style={styles.sheetHandle} />
+                        {children}
+                    </Animated.View>
                 </View>
             </KeyboardAvoidingView>
         </Modal>

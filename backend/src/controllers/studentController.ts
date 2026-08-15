@@ -1331,8 +1331,9 @@ export const submitVacateNotice = async (req: AuthRequest, res: Response) => {
 export const vacateSettlement = async (req: AuthRequest, res: Response) => {
   try {
     const { studentId } = req.params;
-    const { damageDeductions = 0, customDeductionReason = 'Damages' } = req.body;
-    
+    const { damageDeductions = 0, deductionReason, customDeductionReason, refundableDeposit } = req.body;
+    const finalReason = customDeductionReason || deductionReason || 'Damages';
+
     // Begin transaction
     await db.transaction(async (trx) => {
       const student = await trx('students').where({ student_id: studentId }).first();
@@ -1344,25 +1345,28 @@ export const vacateSettlement = async (req: AuthRequest, res: Response) => {
         throw new Error('FORBIDDEN: You do not have access to this student.');
       }
 
+      // Allow overriding deposit amount if specified (e.g. for old/existing tenants)
+      const originalDeposit = refundableDeposit !== undefined && refundableDeposit !== null && !isNaN(Number(refundableDeposit))
+        ? Number(refundableDeposit)
+        : Number(student.refundable_deposit || 0);
+
       // Calculate pending rent dues
       const pendingDuesQuery = await trx('monthly_fees')
         .where({ student_id: studentId })
         .whereIn('fee_status_id', [4, 5]) // Pending, Partial
         .sum('balance as total_dues')
         .first();
-        
+
       const pendingDues = Number(pendingDuesQuery?.total_dues || 0);
-      const originalDeposit = Number(student.refundable_deposit || 0);
-      
       const refundAmount = originalDeposit - pendingDues - Number(damageDeductions);
-      
-      // If there are damages, record it as income (Damage Recovery)
+
       // If there are damages, record it as income (Damage Recovery)
       if (Number(damageDeductions) > 0) {
         await trx('income').insert({
           hostel_id: student.hostel_id,
           amount: Number(damageDeductions),
-          source: `Deposit Deduction (${student.first_name}) - ${customDeductionReason}`,
+          source: `Deposit Deduction (${student.first_name}) - ${finalReason}`,
+          payment_mode_id: 1, // Default Cash
           income_date: new Date(),
           created_at: new Date()
         });
@@ -1370,19 +1374,12 @@ export const vacateSettlement = async (req: AuthRequest, res: Response) => {
 
       // If there is a refund to be given back to the student, record it as an expense automatically
       if (refundAmount > 0) {
-        let refundCat = await trx('expense_categories').where({ category_name: 'Deposit Refunds' }).first();
+        let refundCat = await trx('expense_categories').where({ category_name: 'Deposit Refunds' }).first().catch(() => null);
         if (!refundCat) {
-          // Fallback if category_name column name is different
           refundCat = await trx('expense_categories').where({ name: 'Deposit Refunds' }).first().catch(() => null);
         }
-        
-        let categoryId = refundCat?.category_id || refundCat?.id;
-        
-        if (!categoryId) {
-          // We will just insert it without category, or create a category if possible
-          // In some schemas it is 'category_name', in others 'name'. Let's use a safe raw insert or default to 1 (usually 'Others').
-          categoryId = 1; // Fallback category (e.g., General or Others)
-        }
+
+        const categoryId = refundCat?.category_id || refundCat?.id || 1;
 
         await trx('expenses').insert({
           hostel_id: student.hostel_id,
@@ -1395,10 +1392,10 @@ export const vacateSettlement = async (req: AuthRequest, res: Response) => {
           created_at: new Date()
         });
       }
-      
+
       // Mark student as inactive (vacated), clear deposit, remove from room
       const oldRoomId = student.room_id;
-      
+
       await trx('students')
         .where({ student_id: studentId })
         .update({

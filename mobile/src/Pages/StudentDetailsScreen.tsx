@@ -143,6 +143,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
 
     // Vacate Settlement State
     const [vacateModalVisible, setVacateModalVisible] = useState(false);
+    const [settleDepositAmount, setSettleDepositAmount] = useState('');
     const [damageDeductions, setDamageDeductions] = useState('');
     const [deductionReason, setDeductionReason] = useState('');
     const [vacateLoading, setVacateLoading] = useState(false);
@@ -366,6 +367,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
         let isDestructive = false;
 
         if (currentStatus === 1) {
+            setSettleDepositAmount(student?.refundable_deposit !== undefined && student?.refundable_deposit !== null ? student.refundable_deposit.toString() : '0');
             setVacateModalVisible(true);
             return;
         } else if (currentStatus === 2) {
@@ -427,13 +429,15 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
             setVacateLoading(true);
             const res = await api.post(`/students/${studentId}/vacate-settlement`, {
                 damageDeductions: damageDeductions ? parseFloat(damageDeductions) : 0,
-                deductionReason: deductionReason || null
+                deductionReason: deductionReason || null,
+                refundableDeposit: settleDepositAmount ? parseFloat(settleDepositAmount) : 0
             });
             if (res.data.success) {
                 showSuccess(`${student.first_name} has been vacated successfully.`);
                 setVacateModalVisible(false);
                 setDamageDeductions('');
                 setDeductionReason('');
+                setSettleDepositAmount('');
                 setStudent((prev: any) => ({ ...prev, status: 0 }));
                 fetchStudentDetails();
             }
@@ -1477,12 +1481,23 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                         </TouchableOpacity>
                     </View>
 
-                    <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-                        <View style={{ backgroundColor: '#F8FAFC', padding: 16, borderRadius: 12, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0' }}>
-                            <Text style={{ fontSize: 12, color: '#64748B', marginBottom: 4, fontWeight: '600' }}>Deposit Held</Text>
-                            <Text style={{ fontSize: 24, color: theme.textPrimary, fontWeight: '700' }}>
-                                ₹{student?.refundable_deposit || 0}
-                            </Text>
+                    <ScrollView
+                        style={styles.modalBody}
+                        showsVerticalScrollIndicator={false}
+                        keyboardShouldPersistTaps="handled"
+                        contentContainerStyle={{ paddingBottom: 160 }}
+                    >
+                        <Text style={styles.inputLabel}>Deposit Amount / Held (₹)</Text>
+                        <View style={styles.inputContainer}>
+                            <CreditCard size={18} color="#94A3B8" style={{ marginRight: 8 }} />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="e.g. 1000"
+                                placeholderTextColor="#94A3B8"
+                                keyboardType="numeric"
+                                value={settleDepositAmount}
+                                onChangeText={(t) => setSettleDepositAmount(t.replace(/\D/g, ''))}
+                            />
                         </View>
 
                         <Text style={styles.inputLabel}>Damage/Dues Deductions (₹)</Text>
@@ -1513,7 +1528,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                         <View style={{ backgroundColor: '#F0FDF4', padding: 16, borderRadius: 12, marginTop: 12, borderWidth: 1, borderColor: '#BBF7D0' }}>
                             <Text style={{ fontSize: 13, color: '#166534', marginBottom: 2, fontWeight: '600' }}>Final Refund to Tenant</Text>
                             <Text style={{ fontSize: 20, color: '#15803D', fontWeight: '800' }}>
-                                ₹{Math.max(0, (student?.refundable_deposit || 0) - (parseFloat(damageDeductions) || 0))}
+                                ₹{Math.max(0, (parseFloat(settleDepositAmount || '0') || 0) - (parseFloat(damageDeductions || '0') || 0))}
                             </Text>
                         </View>
 
@@ -1546,7 +1561,12 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                         </TouchableOpacity>
                     </View>
 
-                    <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+                    <ScrollView
+                        style={styles.modalBody}
+                        showsVerticalScrollIndicator={false}
+                        keyboardShouldPersistTaps="handled"
+                        contentContainerStyle={{ paddingBottom: 160 }}
+                    >
                         <Text style={styles.inputLabel}>Expected Vacate Date *</Text>
                         <TouchableOpacity
                             style={styles.dateSelector}
