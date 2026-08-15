@@ -38,6 +38,7 @@ import { COLORS } from '../theme/index';
 import { toLocalDateStr } from '../utils/dateUtils';
 import { useRefresh } from '../../contexts/RefreshContext';
 import { FullScreenLoader } from '../components/FullScreenLoader';
+import { MetaWhatsAppModal } from '../components/MetaWhatsAppModal';
 
 // if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
 //     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -325,6 +326,7 @@ export default function StudentsScreen({ navigation, route }: any) {
         action?: 'status' | 'reject' | 'pay_admission';
     }>({ visible: false, student: null, targetStatus: 0, title: '', message: '', action: 'status' });
     const [statusLoading, setStatusLoading] = useState(false);
+    const [showMetaWhatsAppModal, setShowMetaWhatsAppModal] = useState(false);
 
     // Update activeTab if passed via params
     useEffect(() => {
@@ -640,6 +642,18 @@ export default function StudentsScreen({ navigation, route }: any) {
                 showBack={navigation.canGoBack()}
                 rightComponent={
                     <View style={styles.headerActions}>
+                        <TouchableOpacity
+                            onPress={() => setShowMetaWhatsAppModal(true)}
+                            activeOpacity={0.8}
+                            style={{
+                                flexDirection: 'row', alignItems: 'center', gap: 4,
+                                backgroundColor: '#25D366', paddingHorizontal: 10, paddingVertical: 6,
+                                borderRadius: 14, marginRight: 6
+                            }}
+                        >
+                            <Ionicons name="logo-whatsapp" size={14} color="#FFF" />
+                            <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '800' }}>Meta WA</Text>
+                        </TouchableOpacity>
                         <ProfileMenu />
                     </View>
                 }
@@ -859,6 +873,17 @@ export default function StudentsScreen({ navigation, route }: any) {
                 }}
                 onCancel={() => setConfirmDialog(p => ({ ...p, visible: false }))}
                 destructive={confirmDialog.targetStatus === 0 || confirmDialog.action === 'reject'}
+            />
+
+            <MetaWhatsAppModal
+                visible={showMetaWhatsAppModal}
+                onClose={() => setShowMetaWhatsAppModal(false)}
+                selectedStudents={allStudents.map(s => ({
+                    id: s.student_id,
+                    name: `${s.first_name || ''} ${s.last_name || ''}`.trim(),
+                    phone: s.phone,
+                    room: s.room_number
+                }))}
             />
         </View>
     );

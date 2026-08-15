@@ -26,6 +26,7 @@ import { FilterDuesModal } from '../components/FilterDuesModal';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState } from '../components/ui/ErrorState';
 import { LoadMoreFooter } from '../components/ui/LoadMoreFooter';
+import { MetaWhatsAppModal } from '../components/MetaWhatsAppModal';
 
 const { width } = Dimensions.get('window');
 
@@ -355,7 +356,7 @@ const WaveDecoration = ({ color }: { color: string }) => (
 );
 
 // ─── Bulk WhatsApp Modal Component ──────────────────────────────────────────
-const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab, navigation }: any) => {
+const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab, navigation, onOpenMetaCloud }: any) => {
     const insets = useSafeAreaInsets();
     const { showSuccess } = useToast();
     const [modalFilter, setModalFilter] = useState<'All' | 'Overdue' | 'Partial'>('All');
@@ -669,6 +670,25 @@ const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab, navig
                                 📋 Copy Bulk Text & Open WhatsApp Business
                             </Text>
                         </TouchableOpacity>
+
+                        <TouchableOpacity
+                            onPress={() => {
+                                onClose();
+                                if (onOpenMetaCloud) onOpenMetaCloud(selectedTenants);
+                            }}
+                            disabled={selectedTenants.length === 0}
+                            activeOpacity={0.85}
+                            style={{
+                                backgroundColor: '#2563EB',
+                                paddingVertical: 12, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+                                flexDirection: 'row', gap: 6
+                            }}
+                        >
+                            <Ionicons name="logo-whatsapp" size={16} color="#FFF" />
+                            <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '800' }}>
+                                🌐 Official Meta WhatsApp Cloud API ({selectedTenants.length})
+                            </Text>
+                        </TouchableOpacity>
                     </View>
                 </TouchableOpacity>
             </TouchableOpacity>
@@ -691,6 +711,7 @@ export default function PendingPaymentsScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [remindTarget, setRemindTarget] = useState<DueTenant | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [showMetaWhatsAppModal, setShowMetaWhatsAppModal] = useState(false);
 
     const [page, setPage] = useState(1);
     const [loadingMore, setLoadingMore] = useState(false);
@@ -1629,6 +1650,19 @@ export default function PendingPaymentsScreen() {
                 isDark={isDark}
                 activeTab={activeTab}
                 navigation={navigation}
+                onOpenMetaCloud={() => setShowMetaWhatsAppModal(true)}
+            />
+
+            <MetaWhatsAppModal
+                visible={showMetaWhatsAppModal}
+                onClose={() => setShowMetaWhatsAppModal(false)}
+                selectedStudents={tenants.map(t => ({
+                    id: t.id,
+                    name: t.name,
+                    phone: t.phone,
+                    room: t.room,
+                    dueAmount: t.dueAmount
+                }))}
             />
         </View>
     );
