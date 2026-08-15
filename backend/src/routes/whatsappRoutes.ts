@@ -40,10 +40,10 @@ router.post('/send', async (req: AuthRequest, res: Response) => {
         's.last_name',
         's.phone',
         'r.room_number',
-        'h.name as hostel_name',
+        'h.hostel_name',
         db.raw('COALESCE(SUM(mf.balance), 0) as total_due')
       )
-      .groupBy('s.student_id', 's.first_name', 's.last_name', 's.phone', 'r.room_number', 'h.name');
+      .groupBy('s.student_id', 's.first_name', 's.last_name', 's.phone', 'r.room_number', 'h.hostel_name');
 
     if (!students || students.length === 0) {
       return res.status(404).json({
