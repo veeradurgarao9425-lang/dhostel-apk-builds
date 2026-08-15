@@ -47,6 +47,11 @@ api.interceptors.response.use(
     return response;
   },
   async (error) => {
+    // Ignore logging for intentionally canceled requests (e.g. AbortController on tab switch)
+    if (axios.isCancel(error) || error?.message === 'canceled' || error?.name === 'CanceledError') {
+      return Promise.reject(error);
+    }
+
     const status = error?.response?.status;
     console.error(`[API Error] ${error.config?.url} | Status: ${status || 'No Response'} | Message: ${error.message}`, error.response?.data || '');
 
