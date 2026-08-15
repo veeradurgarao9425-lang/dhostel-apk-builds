@@ -819,7 +819,6 @@ export default function PendingPaymentsScreen() {
     const [payLoading, setPayLoading] = useState(false);
 
     const [bulkWhatsappModalVisible, setBulkWhatsappModalVisible] = useState(false);
-    const [showMetaWhatsAppModal, setShowMetaWhatsAppModal] = useState(false);
     const [metaCloudStudents, setMetaCloudStudents] = useState<any[]>([]);
     const modesLoadedRef = useRef(false);
     const isFirstLoadRef = useRef(true);
