@@ -18,12 +18,14 @@
 export type AssistantIntent =
   | { type: 'SHOW_HOME' }
   | { type: 'SHOW_STUDENTS'; filter?: 'active' | 'inactive' | 'prebooked' | 'qr' | 'pending' | 'unallocated' | 'joined_this_month' | 'vacated_this_month' | 'all' }
+  | { type: 'SHOW_STUDENT_LIST_INLINE'; filter?: string }
   | { type: 'SHOW_STUDENT_SEARCH'; name: string }
   | { type: 'SHOW_ROOM_DETAIL'; roomNumber: number }
   | { type: 'SHOW_FLOOR_DETAIL'; floorNumber: number }
   | { type: 'SHOW_PAID_STUDENTS' }
   | { type: 'SHOW_DUES'; filter?: 'overdue' | 'pending' | 'all' }
   | { type: 'SHOW_ROOMS' }
+  | { type: 'SHOW_ROOM_LIST_INLINE' }
   | { type: 'SHOW_PAYMENTS' }
   | { type: 'SHOW_REPORTS' }
   | { type: 'SHOW_EXPENSES' }
@@ -51,6 +53,8 @@ export type HowToAction =
   | 'view_reports'
   | 'view_dues'
   | 'generate_receipt'
+  | 'download_receipt'
+  | 'prebook_room'
   | 'update_student'
   | 'add_staff'
   | 'add_notice'

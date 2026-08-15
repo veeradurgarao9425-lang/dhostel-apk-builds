@@ -141,12 +141,6 @@ const WELCOME_CHIPS: Array<{ icon: string; label: string; q: string }> = [
   { icon: 'receipt-outline',        label: 'Expenses',         q: 'Expense breakdown' },
 ];
 
-// ─── ChipsPanel — compact scrollable footer chip bar ─────────────────────────
-interface ChipsPanelProps {
-  handleQuery: (q: string) => void;
-}
-// Forward declaration - implementation injected after main stylesheet
-let ChipsPanel: React.FC<ChipsPanelProps>;
 
 // ─── Main Component ────────────────────────────────────────────────────────
 export const OwnerAssistant: React.FC = () => {
@@ -289,30 +283,9 @@ export const OwnerAssistant: React.FC = () => {
             text: `Welcome ${firstName}! 👋 Glad to assist you.\nI will show you information related to your hostel.`
           }
         ]
-      },
-      {
-        id: 'welcome_card_2_' + now,
-        sender: 'bot',
-        blocks: [
-          {
-            type: 'text',
-            text: `Here is the information you are looking for.\n\nType in your query or select one of the options below:`
-          },
-          {
-            type: 'action_buttons',
-            isWelcome: true,
-            buttons: [
-              { label: 'View Pending Dues', icon: 'alert-circle-outline', variant: 'outline', onPress: () => handleQuery("Who hasn't paid rent?") },
-              { label: 'Check Room Occupancy', icon: 'bed-outline', variant: 'outline', onPress: () => handleQuery("How many beds available?") },
-              { label: 'Monthly Financial Overview', icon: 'bar-chart-outline', variant: 'outline', onPress: () => handleQuery("Profit this month") },
-              { label: 'Active Students List', icon: 'people-outline', variant: 'outline', onPress: () => handleQuery("Total active students") },
-              { label: 'Monthly Expense Breakdown', icon: 'receipt-outline', variant: 'outline', onPress: () => handleQuery("Expense breakdown") },
-            ]
-          }
-        ]
       }
     ];
-  }, [user, handleQuery]);
+  }, [user]);
 
   useEffect(() => {
     if (isOpen && user?.role !== 'TENANT') {
@@ -1495,14 +1468,10 @@ export const OwnerAssistant: React.FC = () => {
       )}
 
       <Modal visible={isOpen} transparent={false} animationType="slide" onRequestClose={() => setIsOpen(false)} statusBarTranslucent={false}>
-        {/* BUG 1 FIX: include 'bottom' edge so SafeAreaView adds bottom inset
-            space for the home indicator / gesture nav bar on both platforms. */}
-        <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
-          {/* BUG 2 FIX: add keyboardVerticalOffset equal to the header height
-              (~64px) so KAV's 'padding' mode on iOS shifts content the right
-              amount.  On Android 'height' mode ignores this value. */}
+        {/* SafeAreaView handles top inset (status bar). Bottom inset is handled seamlessly inside inputBarWrapper */}
+        <SafeAreaView style={s.safe} edges={['top']}>
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
             style={s.kav}
           >
@@ -1636,18 +1605,13 @@ export const OwnerAssistant: React.FC = () => {
             </View>
 
             {/* ── Bottom input bar & Powered by HOSTIX branding ── */}
-            {/* BUG 1 FIX: paddingBottom uses the real bottomInset (which now
-                correctly returns a non-zero value on Android gesture-nav phones
-                too).  SafeAreaView already adds its own bottom inset so we use
-                a modest minimum (6px/4px) rather than the full inset again when
-                the keyboard is hidden; SafeAreaView handles the rest. */}
             <View style={[
               s.inputBarWrapper,
               isFocused && s.inputBarWrapperFocused,
               {
                 paddingBottom: isKeyboardActive
                   ? (Platform.OS === 'android' ? 6 : 4)
-                  : (Platform.OS === 'android' ? 6 : 4)
+                  : Math.max(insets.bottom, 10)
               }
             ]}>
               {/* Quick Actions Mini Bar — Compact Horizontal Scroll (No big drawer) */}
@@ -1698,8 +1662,14 @@ export const OwnerAssistant: React.FC = () => {
                   />
                 </TouchableOpacity>
 
-                {/* Search / input pill */}
-                <View style={[s.inputWrap, isFocused && s.inputWrapFocused]}>
+                {/* Search / input pill — Pressable wrapper explicitly focuses TextInput when tapped anywhere */}
+                <Pressable
+                  style={[s.inputWrap, isFocused && s.inputWrapFocused]}
+                  onPress={() => {
+                    inputRef.current?.focus();
+                  }}
+                  hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                >
                   <Ionicons name="search-outline" size={17} color={isFocused ? "#4F46E5" : "#94A3B8"} style={{ marginRight: 6 }} />
                   <TextInput
                     ref={inputRef}
@@ -1709,6 +1679,8 @@ export const OwnerAssistant: React.FC = () => {
                     placeholder="Ask me anything..."
                     placeholderTextColor="#94A3B8"
                     returnKeyType="send"
+                    editable={true}
+                    pointerEvents="auto"
                     onSubmitEditing={() => handleQuery(inputText)}
                     multiline={false}
                     maxFontSizeMultiplier={1.3}
@@ -1727,7 +1699,7 @@ export const OwnerAssistant: React.FC = () => {
                       <Ionicons name="close-circle" size={18} color="#94A3B8" />
                     </TouchableOpacity>
                   )}
-                </View>
+                </Pressable>
 
                 {/* Send button */}
                 <TouchableOpacity
@@ -1897,12 +1869,13 @@ const s = StyleSheet.create({
   inputBarWrapper: {
     backgroundColor: '#FFF',
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-    elevation: 8,
+    borderTopColor: '#E2E8F0',
+    zIndex: 100,
+    elevation: 10,
     shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: -2 },
   },
   inputBar: {
     flexDirection: 'row',
@@ -2115,10 +2088,7 @@ const s = StyleSheet.create({
   },
 });
 
-// ─── ChipsPanel — no longer rendered above the input bar.
-// Suggestions are now shown inline in the chat scroll area (WELCOME_CHIPS).
-// This stub satisfies the earlier forward-declaration without rendering anything.
-ChipsPanel = (_: { handleQuery: (q: string) => void }) => null;
+
 
 
 export default OwnerAssistant;

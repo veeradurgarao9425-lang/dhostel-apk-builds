@@ -2187,46 +2187,7 @@ const st = StyleSheet.create({
     color: '#1E293B',
   },
 
-  // Action Buttons
-  actionButtonsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 6,
-  },
-  actionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#7C3AED',
-    backgroundColor: '#FFF',
-    shadowColor: '#7C3AED',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  actionBtnPrimary: {
-    backgroundColor: '#7C3AED',
-    borderColor: '#7C3AED',
-  },
-  actionBtnOutline: {
-    backgroundColor: '#F3E8FF',
-    borderColor: '#DDD6FE',
-  },
-  actionBtnDanger: {
-    backgroundColor: '#FEF2F2',
-    borderColor: '#FCA5A5',
-  },
-  actionBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#7C3AED',
-  },
+
 });
 
 
