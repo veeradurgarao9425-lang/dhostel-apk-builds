@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.js';
 import db from '../config/database.js';
+import { processFileUpload } from '../utils/fileUpload.js';
 import { sendNotificationToHostelOwner, sendNotificationToStudent } from '../utils/notification.js';
 import { io } from '../socket/index.js';
 
@@ -18,9 +19,11 @@ export const createComplaint = async (req: AuthRequest, res: Response) => {
     }
 
     const files = (req as any).files as Express.Multer.File[] | undefined;
-    const image_urls = files && files.length > 0
-      ? JSON.stringify(files.map(f => `/uploads/${f.filename}`))
-      : null;
+    let image_urls: string | null = null;
+    if (files && files.length > 0) {
+      const uploadedUrls = await Promise.all(files.map(f => processFileUpload(f, 'complaints')));
+      image_urls = JSON.stringify(uploadedUrls);
+    }
 
     const [complaint_id] = await db('complaints').insert({
       hostel_id,

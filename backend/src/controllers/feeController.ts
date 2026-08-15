@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
+import { processFileUpload } from '../utils/fileUpload.js';
 import { sendNotificationToStudent, sendNotificationToHostelOwner } from '../utils/notification.js';
 import { io } from '../socket/index.js';
 import { resolveScopedHostelId } from '../utils/scope.js';
@@ -445,7 +446,7 @@ export const uploadPaymentProof = async (req: AuthRequest, res: Response) => {
     const student = await db('students').where('student_id', student_id).first();
     if (!student) return res.status(404).json({ success: false, message: 'Student not found' });
 
-    const proof_url = `/uploads/${req.file.filename}`;
+    const proof_url = await processFileUpload(req.file, 'payment_proofs');
     const receiptNumber = `RCP${Date.now()}${Math.floor(Math.random() * 1000)}`;
 
     const now = new Date();

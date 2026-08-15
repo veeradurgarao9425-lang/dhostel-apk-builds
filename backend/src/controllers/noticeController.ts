@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
+import { processFileUpload } from '../utils/fileUpload.js';
 import { sendNotificationToHostelOwner, sendNotificationToAllHostelStudents } from '../utils/notification.js';
 import { resolveScopedHostelId, resolveOwnerHostelId } from '../utils/scope.js';
 
@@ -61,7 +62,7 @@ export const createNotice = async (req: AuthRequest, res: Response) => {
     }
 
     const resolvedType = notice_type || 'General';
-    const imageUrl = file ? `/uploads/${file.filename}` : null;
+    const imageUrl = file ? await processFileUpload(file, 'notices') : null;
 
     let notice_id: number;
     try {
