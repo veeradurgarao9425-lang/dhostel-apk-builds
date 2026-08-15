@@ -769,7 +769,8 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                     <Text style={[styles.quickActionLabel, { color: theme.textPrimary }]}>Call</Text>
                                 </TouchableOpacity>
 
-                                {/* WHATSAPP — directly opens WhatsApp chat */}
+                                {/* WHATSAPP — directly opens WhatsApp chat (commented out as requested) */}
+                                {/*
                                 <TouchableOpacity
                                     style={styles.quickActionItem}
                                     onPress={() => student.phone && Linking.openURL(`https://wa.me/91${student.phone}`)}
@@ -781,6 +782,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                     </View>
                                     <Text style={[styles.quickActionLabel, { color: theme.textPrimary }]}>WhatsApp</Text>
                                 </TouchableOpacity>
+                                */}
 
                                 {/* MESSAGE — directly opens SMS app */}
                                 <TouchableOpacity

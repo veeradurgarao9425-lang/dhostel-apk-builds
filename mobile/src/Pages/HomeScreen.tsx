@@ -750,7 +750,7 @@ export default function HomeScreen() {
 
                 {/* Date strip */}
                 <View style={s.hdrDateStrip}>
-                    <Ionicons name="calendar-outline" size={11} color="rgba(255,255,255,0.6)" />
+                    <Ionicons name="calendar-outline" size={12} color="#FFFFFF" />
                     <Text style={s.hdrDateText}>
                         {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                     </Text>
@@ -1066,9 +1066,9 @@ const s = StyleSheet.create({
         borderTopColor: 'rgba(255,255,255,0.1)',
     },
     hdrDateText: {
-        fontSize: 11,
-        fontWeight: '600',
-        color: 'rgba(255,255,255,0.55)',
+        fontSize: 11.5,
+        fontWeight: '700',
+        color: '#FFFFFF',
     },
     // Row 1: left group + right icons
     headerRow1: {
