@@ -1483,9 +1483,9 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
 
                     <ScrollView
                         style={styles.modalBody}
-                        showsVerticalScrollIndicator={false}
+                        showsVerticalScrollIndicator={true}
                         keyboardShouldPersistTaps="handled"
-                        contentContainerStyle={{ paddingBottom: 160 }}
+                        contentContainerStyle={{ paddingBottom: 24 }}
                     >
                         <Text style={styles.inputLabel}>Deposit Amount / Held (₹)</Text>
                         <View style={styles.inputContainer}>
@@ -1563,9 +1563,9 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
 
                     <ScrollView
                         style={styles.modalBody}
-                        showsVerticalScrollIndicator={false}
+                        showsVerticalScrollIndicator={true}
                         keyboardShouldPersistTaps="handled"
-                        contentContainerStyle={{ paddingBottom: 160 }}
+                        contentContainerStyle={{ paddingBottom: 24 }}
                     >
                         <Text style={styles.inputLabel}>Expected Vacate Date *</Text>
                         <TouchableOpacity
