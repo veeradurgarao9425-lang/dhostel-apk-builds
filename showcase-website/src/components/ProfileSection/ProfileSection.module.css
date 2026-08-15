@@ -1,0 +1,6 @@
+.section {
+  padding: 100px 0 120px;
+  background:
+    radial-gradient(ellipse 900px 500px at 88% 0%, rgba(13, 148, 136, 0.07) 0%, transparent 60%),
+    var(--bg);
+}

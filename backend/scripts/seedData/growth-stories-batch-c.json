@@ -1,0 +1,336 @@
+{
+  "stories": [
+    {
+      "title": "The Nervous First Day",
+      "category": "business",
+      "reading_time_minutes": 5,
+      "sentences": [
+        "Riya reached the office one hour before her internship start time.",
+        "Her hands were cold, and her heart was beating fast.",
+        "She sat outside the glass door and rehearsed her introduction.",
+        "A tall man in a blue shirt smiled and asked her name.",
+        "He was Mr. Kapoor, the manager she would report to.",
+        "He gave her a warm welcome and a cup of tea.",
+        "Riya's nervous feeling slowly began to fade away.",
+        "He showed her to a small desk near the window.",
+        "Her colleague Aman explained how to log into the system.",
+        "By lunchtime, Riya had already finished her first small task.",
+        "She sent a short update email to Mr. Kapoor.",
+        "He replied with just one word: \"Excellent.\"",
+        "Riya walked home that evening feeling proud of herself.",
+        "She realized that everyone feels nervous on their first day.",
+        "The next morning, she arrived only ten minutes early."
+      ],
+      "vocabulary": [
+        { "word": "nervous", "meaning": "feeling worried or afraid before something important", "pronunciation": "NUR-vuhs", "synonyms": "anxious, tense, uneasy", "example_sentence": "He felt nervous before stepping onto the stage." },
+        { "word": "rehearsed", "meaning": "practiced something before doing it for real", "pronunciation": "ri-HURST", "synonyms": "practiced, prepared, drilled", "example_sentence": "The actors rehearsed their lines every evening." },
+        { "word": "colleague", "meaning": "a person you work with", "pronunciation": "KOL-eeg", "synonyms": "coworker, teammate, associate", "example_sentence": "My colleague helped me finish the report on time." },
+        { "word": "fade", "meaning": "to slowly disappear", "pronunciation": "FAYD", "synonyms": "vanish, dim, dissolve", "example_sentence": "The music began to fade as the train moved away." },
+        { "word": "proud", "meaning": "feeling happy about something you did well", "pronunciation": "PROWD", "synonyms": "pleased, satisfied, delighted", "example_sentence": "Her parents were proud when she won the scholarship." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "Who was Riya's manager?", "options": ["Mr. Kapoor", "Aman", "Mr. Sharma", "Mr. Verma"], "correct_answer": "Mr. Kapoor" },
+        { "question_type": "true_false", "question_text": "Riya arrived one hour before her start time.", "options": ["True", "False"], "correct_answer": "True" },
+        { "question_type": "fill_blank", "question_text": "By lunchtime, Riya had already finished her first small ____.", "options": null, "correct_answer": "task" },
+        { "question_type": "vocab", "question_text": "What does 'colleague' mean?", "options": ["a person you work with", "a type of tea", "a manager's title", "an office building"], "correct_answer": "a person you work with" },
+        { "question_type": "mcq", "question_text": "What did Mr. Kapoor reply to Riya's email?", "options": ["Excellent.", "Good job.", "Well done.", "Thank you."], "correct_answer": "Excellent." }
+      ]
+    },
+    {
+      "title": "The Email Mistake",
+      "category": "business",
+      "reading_time_minutes": 2,
+      "sentences": [
+        "Vikram was excited about his new job at a small marketing firm.",
+        "One evening, he wrote an angry email about a client to his friend.",
+        "He meant to send it only to his friend, not to the client.",
+        "By mistake, he clicked \"Reply All\" instead of a new message.",
+        "The angry email went straight to the client's inbox.",
+        "Vikram's face turned pale when he realized his error.",
+        "He quickly called his manager and explained everything honestly.",
+        "His manager helped him write a polite apology letter.",
+        "The client accepted the apology and even laughed about it later.",
+        "Vikram learned to always read an email twice before sending it."
+      ],
+      "vocabulary": [
+        { "word": "excited", "meaning": "feeling very happy and eager about something", "pronunciation": "ik-SY-tid", "synonyms": "thrilled, eager, enthusiastic", "example_sentence": "The children were excited about the school trip." },
+        { "word": "mistake", "meaning": "an error or something done wrong", "pronunciation": "mih-STAYK", "synonyms": "error, slip, blunder", "example_sentence": "It was a small mistake, but he fixed it quickly." },
+        { "word": "honestly", "meaning": "in a truthful and open way", "pronunciation": "ON-ist-lee", "synonyms": "truthfully, candidly, sincerely", "example_sentence": "She honestly told her friend that the plan would not work." },
+        { "word": "apology", "meaning": "words said to show you are sorry", "pronunciation": "uh-POL-uh-jee", "synonyms": "regret, pardon, excuse", "example_sentence": "He wrote a short apology after missing the meeting." },
+        { "word": "polite", "meaning": "showing good manners and respect", "pronunciation": "puh-LYTE", "synonyms": "courteous, respectful, well-mannered", "example_sentence": "The new intern was always polite to the security guards." }
+      ],
+      "quiz": [
+        { "question_type": "true_false", "question_text": "Vikram sent the angry email on purpose.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "mcq", "question_text": "What button did Vikram click by mistake?", "options": ["Reply All", "Forward", "Delete", "Save Draft"], "correct_answer": "Reply All" },
+        { "question_type": "fill_blank", "question_text": "His manager helped him write a polite ____ letter.", "options": null, "correct_answer": "apology" },
+        { "question_type": "vocab", "question_text": "What does 'honestly' mean?", "options": ["in a truthful and open way", "very loudly", "in a rush", "without thinking"], "correct_answer": "in a truthful and open way" },
+        { "question_type": "mcq", "question_text": "How did the client react in the end?", "options": ["Accepted the apology and laughed", "Fired the company", "Ignored the email", "Called the police"], "correct_answer": "Accepted the apology and laughed" }
+      ]
+    },
+    {
+      "title": "Five Minutes Early",
+      "category": "business",
+      "reading_time_minutes": 3,
+      "sentences": [
+        "Sameer had his first job interview at a software company.",
+        "His friends told him to reach exactly on time, not late.",
+        "Instead, Sameer decided to arrive fifteen minutes early.",
+        "He waited quietly in the lobby and watched people work.",
+        "The receptionist noticed how calm and patient he seemed.",
+        "When the interviewer arrived, she was five minutes late herself.",
+        "She apologized and thanked Sameer for his patience.",
+        "During the interview, she asked about his college projects.",
+        "Sameer answered clearly and gave honest examples.",
+        "He also asked thoughtful questions about the company's culture.",
+        "The interviewer was impressed by his confidence and preparation.",
+        "A week later, Sameer received an offer letter by email.",
+        "He remembered that small habits, like being early, matter a lot."
+      ],
+      "vocabulary": [
+        { "word": "interview", "meaning": "a formal meeting to check if someone is suitable for a job", "pronunciation": "IN-ter-vyoo", "synonyms": "meeting, evaluation, assessment", "example_sentence": "She practiced answers before her interview at the bank." },
+        { "word": "apologized", "meaning": "said sorry for something", "pronunciation": "uh-POL-uh-jyzd", "synonyms": "regretted, expressed regret, said sorry", "example_sentence": "The waiter apologized for the late order." },
+        { "word": "confidence", "meaning": "a feeling of trust in your own abilities", "pronunciation": "KON-fih-duhns", "synonyms": "self-assurance, belief, poise", "example_sentence": "Years of practice gave her confidence on stage." },
+        { "word": "preparation", "meaning": "getting ready for something in advance", "pronunciation": "prep-uh-RAY-shun", "synonyms": "readiness, planning, groundwork", "example_sentence": "Good preparation helped the team win the debate." },
+        { "word": "impressed", "meaning": "feeling admiration because something was done well", "pronunciation": "im-PREST", "synonyms": "amazed, moved, struck", "example_sentence": "The teacher was impressed by his neat handwriting." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "Where did Sameer have his interview?", "options": ["A software company", "A bank", "A hospital", "A school"], "correct_answer": "A software company" },
+        { "question_type": "true_false", "question_text": "The interviewer arrived exactly on time.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "fill_blank", "question_text": "He also asked thoughtful questions about the company's ____.", "options": null, "correct_answer": "culture" },
+        { "question_type": "vocab", "question_text": "What does 'confidence' mean?", "options": ["a feeling of trust in your own abilities", "a type of interview question", "a job offer", "a feeling of fear"], "correct_answer": "a feeling of trust in your own abilities" },
+        { "question_type": "mcq", "question_text": "What did Sameer receive a week later?", "options": ["An offer letter", "A rejection letter", "A phone call", "A gift"], "correct_answer": "An offer letter" }
+      ]
+    },
+    {
+      "title": "The Silent Meeting",
+      "category": "business",
+      "reading_time_minutes": 4,
+      "sentences": [
+        "Neha joined the team meeting every Monday but never spoke.",
+        "She had good ideas, but she was afraid to share them.",
+        "She worried that her ideas might sound silly to others.",
+        "One day, the team was stuck on a difficult problem.",
+        "Nobody in the room had a clear solution.",
+        "Neha's hands were shaking, but she raised her hand anyway.",
+        "She suggested a simple change to the marketing plan.",
+        "The room went quiet for a moment.",
+        "Then her manager smiled and said that could actually work.",
+        "The team tried her idea, and it solved the problem.",
+        "From that day, Neha spoke up in every meeting.",
+        "She learned that silence does not always mean safety.",
+        "Sometimes the best idea is hiding behind a little fear.",
+        "Her manager later asked her to lead the next project."
+      ],
+      "vocabulary": [
+        { "word": "afraid", "meaning": "feeling fear about something", "pronunciation": "uh-FRAYD", "synonyms": "scared, fearful, frightened", "example_sentence": "The boy was afraid of speaking in front of the class." },
+        { "word": "silly", "meaning": "foolish or not serious", "pronunciation": "SIL-ee", "synonyms": "foolish, ridiculous, unwise", "example_sentence": "He felt silly for forgetting his own phone number." },
+        { "word": "solution", "meaning": "an answer to a problem", "pronunciation": "suh-LOO-shun", "synonyms": "answer, fix, resolution", "example_sentence": "The engineer found a clever solution to the leak." },
+        { "word": "suggested", "meaning": "offered an idea for others to consider", "pronunciation": "suh-JES-tid", "synonyms": "proposed, recommended, offered", "example_sentence": "The doctor suggested more rest and less stress." },
+        { "word": "silence", "meaning": "complete quiet, with no sound", "pronunciation": "SY-luhns", "synonyms": "quiet, stillness, hush", "example_sentence": "A deep silence filled the room after the news." }
+      ],
+      "quiz": [
+        { "question_type": "true_false", "question_text": "Neha spoke up in every meeting from the very first day.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "mcq", "question_text": "What was the team stuck on?", "options": ["A difficult problem", "A holiday plan", "A lunch order", "A software bug"], "correct_answer": "A difficult problem" },
+        { "question_type": "fill_blank", "question_text": "She suggested a simple change to the marketing ____.", "options": null, "correct_answer": "plan" },
+        { "question_type": "vocab", "question_text": "What does 'solution' mean?", "options": ["an answer to a problem", "a type of meeting", "a marketing plan", "a feeling of fear"], "correct_answer": "an answer to a problem" },
+        { "question_type": "mcq", "question_text": "What did the manager ask Neha to do later?", "options": ["Lead the next project", "Leave the team", "Give a speech", "Write a report"], "correct_answer": "Lead the next project" }
+      ]
+    },
+    {
+      "title": "The Coffee Machine Lesson",
+      "category": "business",
+      "reading_time_minutes": 2,
+      "sentences": [
+        "On his first week, Arjun always ate lunch alone at his desk.",
+        "He thought talking to coworkers would waste valuable time.",
+        "One afternoon, he stood at the coffee machine next to a senior manager.",
+        "The manager asked him simple questions about his hometown and hobbies.",
+        "Arjun relaxed and shared a funny story about his college days.",
+        "They both laughed, and the short chat felt easy and warm.",
+        "The next week, that same manager remembered Arjun's name in a big meeting.",
+        "She recommended him for an exciting new project.",
+        "Arjun realized that small conversations can build real connections.",
+        "He started joining his team for lunch every single day."
+      ],
+      "vocabulary": [
+        { "word": "coworkers", "meaning": "people who work together in the same place", "pronunciation": "KOH-wur-kurz", "synonyms": "colleagues, teammates, associates", "example_sentence": "Her coworkers surprised her with a birthday cake." },
+        { "word": "senior", "meaning": "higher in rank or position", "pronunciation": "SEEN-yur", "synonyms": "high-ranking, superior, veteran", "example_sentence": "The senior editor reviewed every article before printing." },
+        { "word": "hobbies", "meaning": "activities you enjoy doing in free time", "pronunciation": "HOB-eez", "synonyms": "pastimes, interests, activities", "example_sentence": "Painting and cycling are her favorite hobbies." },
+        { "word": "connections", "meaning": "relationships or links between people", "pronunciation": "kuh-NEK-shunz", "synonyms": "relationships, links, ties", "example_sentence": "Volunteering helped him build new connections in the city." },
+        { "word": "recommended", "meaning": "suggested that someone or something is good for a purpose", "pronunciation": "rek-uh-MEN-did", "synonyms": "endorsed, suggested, advised", "example_sentence": "My teacher recommended a wonderful book on history." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "Where did Arjun meet the senior manager?", "options": ["At the coffee machine", "In the parking lot", "At the front desk", "In the elevator"], "correct_answer": "At the coffee machine" },
+        { "question_type": "true_false", "question_text": "Arjun always ate lunch with his team during his first week.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "fill_blank", "question_text": "She recommended him for an exciting new ____.", "options": null, "correct_answer": "project" },
+        { "question_type": "vocab", "question_text": "What does 'connections' mean?", "options": ["relationships or links between people", "a type of coffee", "a work schedule", "a college subject"], "correct_answer": "relationships or links between people" },
+        { "question_type": "mcq", "question_text": "What did Arjun start doing at the end of the story?", "options": ["Joining his team for lunch every day", "Avoiding meetings", "Working from home", "Changing his job"], "correct_answer": "Joining his team for lunch every day" }
+      ]
+    },
+    {
+      "title": "The Cracked Cup",
+      "category": "success",
+      "reading_time_minutes": 3,
+      "sentences": [
+        "Little Meera was helping her mother clean the kitchen shelves.",
+        "While reaching for a plate, she accidentally knocked down her grandmother's favorite cup.",
+        "The cup fell and cracked into two clean pieces.",
+        "Meera's heart sank, and she wanted to hide the pieces quietly.",
+        "Instead, she took a deep breath and walked to her grandmother.",
+        "\"Grandma, I broke your cup. I am really sorry,\" she said.",
+        "Her grandmother looked at the pieces and then at Meera's honest face.",
+        "\"Thank you for telling me the truth,\" her grandmother said gently.",
+        "They glued the cup back together, cracks and all.",
+        "Grandma placed it on the shelf, saying it now had a story.",
+        "Meera understood that honesty can turn a mistake into trust.",
+        "From then on, she never feared telling the truth."
+      ],
+      "vocabulary": [
+        { "word": "accidentally", "meaning": "by mistake, without meaning to", "pronunciation": "ak-sih-DEN-tuh-lee", "synonyms": "unintentionally, by accident, inadvertently", "example_sentence": "He accidentally deleted the file before saving it." },
+        { "word": "cracked", "meaning": "broken with a line or split, but not fully in pieces", "pronunciation": "KRAKT", "synonyms": "split, chipped, fractured", "example_sentence": "The old wall was cracked after the storm." },
+        { "word": "honest", "meaning": "telling the truth, not lying", "pronunciation": "ON-ist", "synonyms": "truthful, sincere, upright", "example_sentence": "Being honest with your friends builds a strong bond." },
+        { "word": "gently", "meaning": "in a soft, kind way", "pronunciation": "JENT-lee", "synonyms": "softly, tenderly, calmly", "example_sentence": "The nurse gently bandaged the child's arm." },
+        { "word": "trust", "meaning": "belief that someone is reliable and truthful", "pronunciation": "TRUHST", "synonyms": "faith, confidence, belief", "example_sentence": "Years of honesty built deep trust between the two friends." }
+      ],
+      "quiz": [
+        { "question_type": "true_false", "question_text": "Meera hid the broken pieces from her grandmother.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "mcq", "question_text": "Whose cup did Meera break?", "options": ["Her grandmother's", "Her mother's", "Her teacher's", "Her friend's"], "correct_answer": "Her grandmother's" },
+        { "question_type": "fill_blank", "question_text": "\"Thank you for telling me the ____,\" her grandmother said gently.", "options": null, "correct_answer": "truth" },
+        { "question_type": "vocab", "question_text": "What does 'trust' mean?", "options": ["belief that someone is reliable and truthful", "a type of glue", "a kitchen shelf", "a broken cup"], "correct_answer": "belief that someone is reliable and truthful" },
+        { "question_type": "mcq", "question_text": "What did Grandma do with the broken cup?", "options": ["Glued it back together", "Threw it away", "Bought a new one", "Gave it to Meera"], "correct_answer": "Glued it back together" }
+      ]
+    },
+    {
+      "title": "The Marathon Runner",
+      "category": "success",
+      "reading_time_minutes": 4,
+      "sentences": [
+        "Dev had never run more than two kilometers in his life.",
+        "His friends laughed when he said he would run a full marathon.",
+        "Every morning, he woke up early and ran a little farther than before.",
+        "Some days his legs hurt so much that he wanted to quit.",
+        "He reminded himself why he started, and he kept going.",
+        "Weeks turned into months, and two kilometers became ten.",
+        "On race day, Dev's legs were shaking with nerves at the starting line.",
+        "Halfway through, his energy dropped, and doubt filled his mind.",
+        "He remembered every small morning run that had brought him here.",
+        "Slowly, step by step, he pushed through the pain.",
+        "Dev crossed the finish line four hours after he started.",
+        "He was not the fastest runner, but he was one of the proudest.",
+        "Dev learned that consistent effort matters more than natural talent.",
+        "He signed up for his next marathon the very same week."
+      ],
+      "vocabulary": [
+        { "word": "marathon", "meaning": "a very long running race", "pronunciation": "MA-ruh-thon", "synonyms": "long-distance race, endurance race", "example_sentence": "Thousands of runners joined the city marathon this year." },
+        { "word": "quit", "meaning": "to stop doing something before finishing", "pronunciation": "KWIT", "synonyms": "give up, stop, abandon", "example_sentence": "She refused to quit even when the exam felt impossible." },
+        { "word": "doubt", "meaning": "a feeling of being unsure about something", "pronunciation": "DOWT", "synonyms": "uncertainty, hesitation, disbelief", "example_sentence": "A little doubt crept in before his big presentation." },
+        { "word": "consistent", "meaning": "happening regularly in the same way over time", "pronunciation": "kuhn-SIS-tuhnt", "synonyms": "steady, regular, reliable", "example_sentence": "Consistent practice helped her master the guitar." },
+        { "word": "talent", "meaning": "a natural ability to do something well", "pronunciation": "TAL-uhnt", "synonyms": "skill, gift, aptitude", "example_sentence": "He showed real talent for painting from a young age." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "How far had Dev run before he started training?", "options": ["Two kilometers", "Ten kilometers", "A full marathon", "He had never run at all"], "correct_answer": "Two kilometers" },
+        { "question_type": "true_false", "question_text": "Dev was the fastest runner in the race.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "fill_blank", "question_text": "Dev learned that consistent effort matters more than natural ____.", "options": null, "correct_answer": "talent" },
+        { "question_type": "vocab", "question_text": "What does 'doubt' mean?", "options": ["a feeling of being unsure about something", "a feeling of great joy", "a type of injury", "a running technique"], "correct_answer": "a feeling of being unsure about something" },
+        { "question_type": "mcq", "question_text": "How long did it take Dev to finish the marathon?", "options": ["Four hours", "One hour", "Two hours", "Ten hours"], "correct_answer": "Four hours" }
+      ]
+    },
+    {
+      "title": "Two Seeds",
+      "category": "success",
+      "reading_time_minutes": 2,
+      "sentences": [
+        "A farmer planted two seeds on the very same day.",
+        "He watered the first seed daily and checked it every hour.",
+        "When it did not grow fast enough, he dug it up to look at the roots.",
+        "The seed, disturbed again and again, soon died in his hands.",
+        "The second seed he watered gently and then left alone.",
+        "He trusted the soil and the sunlight to do their quiet work.",
+        "Weeks passed, and slowly a small green shoot appeared.",
+        "The plant grew steady and strong, without any interruption.",
+        "The farmer realized that some things simply need patience and space.",
+        "Rushing a good thing can sometimes ruin it completely."
+      ],
+      "vocabulary": [
+        { "word": "planted", "meaning": "put a seed into the ground to grow", "pronunciation": "PLAN-tid", "synonyms": "sowed, seeded, buried", "example_sentence": "They planted mango trees along the school fence." },
+        { "word": "disturbed", "meaning": "interrupted or bothered something that was at rest", "pronunciation": "dis-TURBD", "synonyms": "interrupted, unsettled, disrupted", "example_sentence": "The loud noise disturbed the sleeping baby." },
+        { "word": "trusted", "meaning": "believed in something without needing proof", "pronunciation": "TRUHS-tid", "synonyms": "relied on, believed in, had faith in", "example_sentence": "She trusted her instincts and took the new job." },
+        { "word": "shoot", "meaning": "a new, young part of a growing plant", "pronunciation": "SHOOT", "synonyms": "sprout, bud, sprig", "example_sentence": "A tiny shoot pushed up through the cracked pavement." },
+        { "word": "patience", "meaning": "the ability to wait calmly without complaining", "pronunciation": "PAY-shuhns", "synonyms": "calmness, endurance, tolerance", "example_sentence": "Learning a new language takes a lot of patience." }
+      ],
+      "quiz": [
+        { "question_type": "true_false", "question_text": "The farmer dug up the first seed to check its roots.", "options": ["True", "False"], "correct_answer": "True" },
+        { "question_type": "mcq", "question_text": "What happened to the first seed?", "options": ["It died", "It grew very fast", "It became a big tree", "It was eaten by birds"], "correct_answer": "It died" },
+        { "question_type": "fill_blank", "question_text": "The farmer realized that some things simply need ____ and space.", "options": null, "correct_answer": "patience" },
+        { "question_type": "vocab", "question_text": "What does 'trusted' mean?", "options": ["believed in something without needing proof", "watered something daily", "dug something up", "planted a new seed"], "correct_answer": "believed in something without needing proof" },
+        { "question_type": "mcq", "question_text": "What appeared after weeks with the second seed?", "options": ["A small green shoot", "A flower", "A fruit", "Nothing at all"], "correct_answer": "A small green shoot" }
+      ]
+    },
+    {
+      "title": "The Leader Who Listened",
+      "category": "success",
+      "reading_time_minutes": 3,
+      "sentences": [
+        "Kabir was made the captain of his college volleyball team.",
+        "At first, he gave orders and expected everyone to simply follow.",
+        "The team started losing matches, and players seemed unhappy.",
+        "One evening, a junior player asked if she could suggest something.",
+        "Kabir paused, took a breath, and said, \"Yes, please tell me.\"",
+        "She suggested a new rotation that used everyone's strengths better.",
+        "Kabir listened carefully instead of dismissing her idea.",
+        "He tried her rotation in the very next practice session.",
+        "The team's performance improved almost immediately.",
+        "Kabir began asking every player for their honest opinion each week.",
+        "Slowly, the team started winning matches again.",
+        "Kabir learned that a good leader listens more than he speaks.",
+        "His coach later said Kabir had grown into a true captain."
+      ],
+      "vocabulary": [
+        { "word": "captain", "meaning": "the leader of a sports team", "pronunciation": "KAP-tin", "synonyms": "leader, skipper, head", "example_sentence": "The captain called the team together before the final match." },
+        { "word": "orders", "meaning": "instructions that must be followed", "pronunciation": "OR-durz", "synonyms": "commands, instructions, directions", "example_sentence": "The soldiers followed their orders without question." },
+        { "word": "rotation", "meaning": "a system where positions change in a set pattern", "pronunciation": "roh-TAY-shun", "synonyms": "sequence, cycle, pattern", "example_sentence": "The nurses worked on a weekly rotation of shifts." },
+        { "word": "dismissing", "meaning": "refusing to consider an idea or person seriously", "pronunciation": "dis-MIS-ing", "synonyms": "rejecting, brushing off, ignoring", "example_sentence": "Instead of dismissing the intern's plan, the manager tried it." },
+        { "word": "opinion", "meaning": "what someone personally thinks about something", "pronunciation": "uh-PIN-yuhn", "synonyms": "view, belief, viewpoint", "example_sentence": "The teacher asked each student to share their opinion." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "What sport did Kabir's team play?", "options": ["Volleyball", "Cricket", "Football", "Basketball"], "correct_answer": "Volleyball" },
+        { "question_type": "true_false", "question_text": "Kabir ignored the junior player's suggestion.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "fill_blank", "question_text": "Kabir learned that a good leader listens more than he ____.", "options": null, "correct_answer": "speaks" },
+        { "question_type": "vocab", "question_text": "What does 'rotation' mean?", "options": ["a system where positions change in a set pattern", "a type of ball game", "a punishment for losing", "a coach's instruction"], "correct_answer": "a system where positions change in a set pattern" },
+        { "question_type": "mcq", "question_text": "What did Kabir start doing every week?", "options": ["Asking every player for their honest opinion", "Benching junior players", "Skipping practice", "Changing team captains"], "correct_answer": "Asking every player for their honest opinion" }
+      ]
+    },
+    {
+      "title": "The Kite That Fell",
+      "category": "success",
+      "reading_time_minutes": 3,
+      "sentences": [
+        "Every festival, young Aditya tried to fly the highest kite in his neighborhood.",
+        "This year, his kite crashed to the ground three times in a row.",
+        "Other children laughed, and Aditya felt his cheeks turn hot with shame.",
+        "His grandfather sat beside him and picked up the fallen kite.",
+        "\"Look,\" he said, \"the string was tangled, not your hands unskilled.\"",
+        "Together they patiently untangled the string, thread by thread.",
+        "Aditya launched the kite a fourth time, running steady against the wind.",
+        "This time, the kite rose smoothly and climbed above every rooftop.",
+        "The children who had laughed now cheered and waved at him.",
+        "Aditya learned that one failure does not decide the whole story.",
+        "He kept a small piece of that tangled string in his pocket, as a memory."
+      ],
+      "vocabulary": [
+        { "word": "crashed", "meaning": "fell or hit the ground suddenly and with force", "pronunciation": "KRASHT", "synonyms": "collided, fell, smashed", "example_sentence": "The toy plane crashed into the garden fence." },
+        { "word": "shame", "meaning": "an uncomfortable feeling caused by embarrassment", "pronunciation": "SHAYM", "synonyms": "embarrassment, humiliation, disgrace", "example_sentence": "He felt a wave of shame after forgetting her name." },
+        { "word": "tangled", "meaning": "twisted together in a messy way", "pronunciation": "TANG-guhld", "synonyms": "knotted, twisted, snarled", "example_sentence": "Her headphone wires were completely tangled in her bag." },
+        { "word": "patiently", "meaning": "in a calm way, without rushing or complaining", "pronunciation": "PAY-shuhnt-lee", "synonyms": "calmly, tolerantly, steadily", "example_sentence": "The teacher patiently explained the problem a second time." },
+        { "word": "failure", "meaning": "a lack of success in doing something", "pronunciation": "FAYL-yur", "synonyms": "setback, defeat, shortfall", "example_sentence": "He treated every failure as a lesson, not an ending." }
+      ],
+      "quiz": [
+        { "question_type": "true_false", "question_text": "Aditya's kite flew perfectly on the very first try.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "mcq", "question_text": "What was actually wrong with the kite?", "options": ["The string was tangled", "The kite was too heavy", "There was no wind", "The kite was torn"], "correct_answer": "The string was tangled" },
+        { "question_type": "fill_blank", "question_text": "Aditya learned that one ____ does not decide the whole story.", "options": null, "correct_answer": "failure" },
+        { "question_type": "vocab", "question_text": "What does 'patiently' mean?", "options": ["in a calm way, without rushing or complaining", "very quickly and angrily", "in a loud voice", "while running fast"], "correct_answer": "in a calm way, without rushing or complaining" },
+        { "question_type": "mcq", "question_text": "What did Aditya keep as a memory?", "options": ["A piece of the tangled string", "The broken kite", "A photo", "A trophy"], "correct_answer": "A piece of the tangled string" }
+      ]
+    }
+  ]
+}

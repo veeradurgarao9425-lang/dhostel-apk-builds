@@ -1,0 +1,54 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 3), 1fr);
+  gap: 16px;
+  margin-top: 48px;
+}
+
+@media (max-width: 900px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .grid { grid-template-columns: 1fr; } }
+
+.card {
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  border-radius: var(--r-md);
+  padding: 26px 22px;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.06);
+  transition:
+    transform 0.3s cubic-bezier(0.16, 0.84, 0.44, 1),
+    box-shadow 0.3s ease,
+    border-color 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 16px 48px rgba(var(--glow, 79, 70, 229), 0.18);
+  border-color: rgba(var(--glow, 79, 70, 229), 0.22);
+}
+
+.iconWrap {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  margin-bottom: 18px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.cardTitle {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--ink);
+  margin: 0 0 8px;
+}
+
+.cardDesc {
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  margin: 0;
+}

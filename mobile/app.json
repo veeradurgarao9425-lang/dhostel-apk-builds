@@ -1,0 +1,58 @@
+{
+  "expo": {
+    "name": "Hostix",
+    "slug": "stivo-mobile",
+    "scheme": "hostix",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/HostixNew.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/HostixNew.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/HostixNew.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.durgarao2.hostixmobile",
+      "googleServicesFile": "./google-services.json",
+      "softwareKeyboardLayoutMode": "resize",
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE",
+        "ACCESS_WIFI_STATE",
+        "RECEIVE_BOOT_COMPLETED",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "NOTIFICATIONS"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/HostixNew.png"
+    },
+    "plugins": [
+      "@react-native-community/datetimepicker",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/HostixNew.png",
+          "color": "#6366F1"
+        }
+      ],
+      "expo-web-browser",
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "7303856b-fde0-4922-baf9-c6487aa06e02"
+      }
+    }
+  }
+}

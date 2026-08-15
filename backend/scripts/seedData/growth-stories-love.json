@@ -1,0 +1,139 @@
+{
+  "stories": [
+    {
+      "title": "Letters Across the Distance",
+      "category": "love",
+      "reading_time_minutes": 3,
+      "sentences": [
+        "Aisha and Vikram met during their first year of college and became close friends instantly.",
+        "When Vikram moved abroad for higher studies, they promised to stay in touch no matter what.",
+        "Since video calls were often difficult because of the time difference, they began writing letters instead.",
+        "Every letter carried small details about their days, their dreams, and how much they missed each other.",
+        "Months turned into years, and their letters filled an entire wooden box Aisha kept by her bed.",
+        "When Vikram finally returned home, he brought all of Aisha's letters with him in his suitcase.",
+        "Sitting together on the same bench where they first met, they read the letters aloud and laughed.",
+        "They realized that distance had only made their bond stronger, not weaker.",
+        "A year later, they got married, with the box of letters displayed proudly at their wedding."
+      ],
+      "vocabulary": [
+        { "word": "distance", "meaning": "the amount of space between two places or people", "pronunciation": "DIS-tuhns", "synonyms": "gap, separation", "example_sentence": "The distance between the two cities is short." },
+        { "word": "bond", "meaning": "a close connection between people", "pronunciation": "BOND", "synonyms": "connection, tie", "example_sentence": "They shared a strong bond of friendship." },
+        { "word": "displayed", "meaning": "put on show for others to see", "pronunciation": "dis-PLAYD", "synonyms": "shown, exhibited", "example_sentence": "Her paintings were displayed at the gallery." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "How did Aisha and Vikram stay in touch after he moved abroad?", "options": ["By writing letters", "By sending gifts", "By calling every hour", "By meeting in person"], "correct_answer": "By writing letters" },
+        { "question_type": "true_false", "question_text": "Vikram left all the letters behind when he returned home.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "fill_blank", "question_text": "Aisha kept the letters in a wooden ______ by her bed.", "options": null, "correct_answer": "box" },
+        { "question_type": "vocab", "question_text": "What does 'bond' mean?", "options": ["a close connection between people", "a type of letter", "a wooden box", "a wedding gift"], "correct_answer": "a close connection between people" },
+        { "question_type": "mcq", "question_text": "What happened a year after Vikram returned?", "options": ["They got married", "They moved abroad together", "They stopped writing letters", "They lost touch"], "correct_answer": "They got married" }
+      ]
+    },
+    {
+      "title": "The Umbrella They Shared",
+      "category": "love",
+      "reading_time_minutes": 2,
+      "sentences": [
+        "It started raining suddenly while Meera was waiting for her bus after work.",
+        "She had forgotten her umbrella at home and stood helplessly under the small shelter.",
+        "A stranger named Dev, waiting nearby, offered to share his umbrella until her bus arrived.",
+        "They talked about their jobs and hobbies while waiting, and the ten minutes felt much shorter.",
+        "Before her bus came, Dev asked for her number so they could talk again sometime.",
+        "Over the next few weeks, they met for coffee whenever it rained, calling it their little tradition.",
+        "Years later, at their wedding, guests were surprised to see a big umbrella hanging above the stage.",
+        "Meera explained to everyone that the umbrella was where their story truly began."
+      ],
+      "vocabulary": [
+        { "word": "shelter", "meaning": "a place giving protection from weather", "pronunciation": "SHEL-ter", "synonyms": "cover, refuge", "example_sentence": "They took shelter under the tree during the storm." },
+        { "word": "tradition", "meaning": "a custom followed regularly", "pronunciation": "truh-DISH-un", "synonyms": "custom, ritual", "example_sentence": "Sunday lunch with family is our tradition." },
+        { "word": "stranger", "meaning": "a person one does not know", "pronunciation": "STRAYN-jer", "synonyms": "unknown person", "example_sentence": "A stranger helped her carry the bags." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "Why was Meera standing under the shelter?", "options": ["It was raining and she had no umbrella", "She was waiting for a friend", "She was selling umbrellas", "She was avoiding the sun"], "correct_answer": "It was raining and she had no umbrella" },
+        { "question_type": "true_false", "question_text": "Dev and Meera never met again after that rainy day.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "fill_blank", "question_text": "They met for coffee whenever it ______, calling it their tradition.", "options": null, "correct_answer": "rained" },
+        { "question_type": "vocab", "question_text": "What does 'tradition' mean?", "options": ["a custom followed regularly", "a sudden event", "a type of weather", "a public place"], "correct_answer": "a custom followed regularly" },
+        { "question_type": "mcq", "question_text": "What hung above the stage at their wedding?", "options": ["A big umbrella", "A framed photo", "A wedding banner", "A garden light"], "correct_answer": "A big umbrella" }
+      ]
+    },
+    {
+      "title": "The Recipe Card",
+      "category": "love",
+      "reading_time_minutes": 2,
+      "sentences": [
+        "Arjun had never been good at cooking, but he wanted to surprise his wife Kavita on her birthday.",
+        "He found her grandmother's old recipe card for a mango dessert tucked inside a kitchen drawer.",
+        "The handwriting was faded, so he had to guess a few of the measurements carefully.",
+        "After two failed attempts and a smoky kitchen, his third try finally looked right.",
+        "When Kavita came home, she found the table set with candles and the dessert waiting for her.",
+        "She took one bite and her eyes filled with tears, recognizing her grandmother's recipe instantly.",
+        "Arjun admitted it took three tries, and Kavita laughed, saying it tasted like love regardless.",
+        "That recipe card now hangs framed in their kitchen as a reminder of that special evening."
+      ],
+      "vocabulary": [
+        { "word": "faded", "meaning": "having lost color or clarity over time", "pronunciation": "FAY-did", "synonyms": "dim, worn", "example_sentence": "The old photograph had faded with age." },
+        { "word": "measurements", "meaning": "amounts of ingredients needed in a recipe", "pronunciation": "MEZH-er-ments", "synonyms": "quantities, proportions", "example_sentence": "Follow the exact measurements for the cake." },
+        { "word": "regardless", "meaning": "despite something; anyway", "pronunciation": "ri-GARD-lis", "synonyms": "anyway, nonetheless", "example_sentence": "She smiled regardless of the mistake." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "Whose recipe card did Arjun use?", "options": ["Kavita's grandmother's", "His own mother's", "A famous chef's", "A cookbook's"], "correct_answer": "Kavita's grandmother's" },
+        { "question_type": "true_false", "question_text": "Arjun made the dessert perfectly on his first attempt.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "fill_blank", "question_text": "The handwriting on the card was ______, so he had to guess some measurements.", "options": null, "correct_answer": "faded" },
+        { "question_type": "vocab", "question_text": "What does 'regardless' mean?", "options": ["despite something; anyway", "very carefully", "at exactly that moment", "with great fear"], "correct_answer": "despite something; anyway" },
+        { "question_type": "mcq", "question_text": "Where does the recipe card hang now?", "options": ["Framed in their kitchen", "In a photo album", "At Kavita's grandmother's house", "In a restaurant"], "correct_answer": "Framed in their kitchen" }
+      ]
+    },
+    {
+      "title": "Notes on the Fridge",
+      "category": "love",
+      "reading_time_minutes": 2,
+      "sentences": [
+        "Rohan and Simran both worked long shifts that rarely matched, so they barely saw each other on weekdays.",
+        "To stay connected, Rohan began leaving small sticky notes on the fridge every morning before work.",
+        "The notes were simple, sometimes just a joke, a reminder, or a small compliment about her day.",
+        "Simran started replying with her own notes, and soon the fridge was covered in colorful little messages.",
+        "Even during their busiest and most tiring weeks, the notes reminded them they were still a team.",
+        "One year, Simran saved every single note and turned them into a small handmade book.",
+        "She gave the book to Rohan on their anniversary, and he read it twice, smiling the whole time.",
+        "They still leave notes today, even though their schedules have finally started to match."
+      ],
+      "vocabulary": [
+        { "word": "shifts", "meaning": "scheduled periods of work", "pronunciation": "SHIFTS", "synonyms": "work hours, duty periods", "example_sentence": "Nurses often work night shifts." },
+        { "word": "compliment", "meaning": "a polite expression of praise", "pronunciation": "KOM-pli-ment", "synonyms": "praise, kind remark", "example_sentence": "He gave her a compliment on her cooking." },
+        { "word": "handmade", "meaning": "made by hand rather than machine", "pronunciation": "HAND-mayd", "synonyms": "homemade, crafted", "example_sentence": "She gave him a handmade card for his birthday." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "Why did Rohan and Simran rarely see each other on weekdays?", "options": ["Their work shifts rarely matched", "They lived in different cities", "They were always traveling", "They studied at different times"], "correct_answer": "Their work shifts rarely matched" },
+        { "question_type": "true_false", "question_text": "Only Rohan wrote notes; Simran never replied.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "fill_blank", "question_text": "Simran turned the notes into a small ______ book.", "options": null, "correct_answer": "handmade" },
+        { "question_type": "vocab", "question_text": "What does 'compliment' mean?", "options": ["a polite expression of praise", "a type of argument", "a work schedule", "a kitchen note"], "correct_answer": "a polite expression of praise" },
+        { "question_type": "mcq", "question_text": "What did Simran give Rohan on their anniversary?", "options": ["A handmade book of notes", "A new fridge", "A photo album", "A trip abroad"], "correct_answer": "A handmade book of notes" }
+      ]
+    },
+    {
+      "title": "Dancing in the Kitchen",
+      "category": "love",
+      "reading_time_minutes": 2,
+      "sentences": [
+        "After a long and tiring week, Farah and Imran often felt too exhausted to go out anywhere.",
+        "One evening, Imran turned on an old song from their college days while cooking dinner together.",
+        "Without thinking twice, Farah grabbed his hand and they began dancing slowly in the small kitchen.",
+        "They laughed at how clumsy they had become since their college dance classes years ago.",
+        "The rice nearly overcooked because they were too busy spinning around the kitchen island.",
+        "From that night, dancing in the kitchen became their favorite way to end a stressful week.",
+        "Even on their toughest days, that one song could instantly bring smiles back to their faces."
+      ],
+      "vocabulary": [
+        { "word": "exhausted", "meaning": "extremely tired", "pronunciation": "ig-ZAWS-tid", "synonyms": "worn out, drained", "example_sentence": "She felt exhausted after the long journey." },
+        { "word": "clumsy", "meaning": "lacking grace or skill in movement", "pronunciation": "KLUHM-zee", "synonyms": "awkward, ungraceful", "example_sentence": "He felt clumsy on the dance floor." },
+        { "word": "stressful", "meaning": "causing mental or emotional strain", "pronunciation": "STRES-fuhl", "synonyms": "tense, demanding", "example_sentence": "It had been a stressful week at work." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "What did Imran play while cooking dinner?", "options": ["An old song from college", "The evening news", "A cooking podcast", "Nothing at all"], "correct_answer": "An old song from college" },
+        { "question_type": "true_false", "question_text": "The rice was perfectly cooked because they focused only on cooking.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "fill_blank", "question_text": "They laughed at how ______ they had become since college.", "options": null, "correct_answer": "clumsy" },
+        { "question_type": "vocab", "question_text": "What does 'exhausted' mean?", "options": ["extremely tired", "very excited", "slightly hungry", "fully rested"], "correct_answer": "extremely tired" },
+        { "question_type": "mcq", "question_text": "What became their favorite way to end a stressful week?", "options": ["Dancing in the kitchen", "Going to the movies", "Cooking a big meal", "Watching TV together"], "correct_answer": "Dancing in the kitchen" }
+      ]
+    }
+  ]
+}

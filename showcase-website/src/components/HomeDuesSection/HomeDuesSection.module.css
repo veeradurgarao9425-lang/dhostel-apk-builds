@@ -1,0 +1,130 @@
+.section {
+  padding: 100px 0;
+  background:
+    radial-gradient(ellipse 900px 500px at 10% 0%, rgba(124, 58, 237, 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 700px 450px at 95% 100%, rgba(13, 148, 136, 0.06) 0%, transparent 60%),
+    var(--bg-tint);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 64px;
+  align-items: center;
+}
+
+@media (max-width: 940px) { .grid { grid-template-columns: 1fr; gap: 44px; } }
+
+.bullets { margin-top: 30px; display: flex; flex-direction: column; gap: 14px; }
+
+.bullet {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
+}
+
+.bullet:hover {
+  box-shadow: 0 8px 24px rgba(124, 58, 237, 0.12);
+  border-color: rgba(124, 58, 237, 0.15);
+  transform: translateX(4px);
+}
+
+.bulletTitle { font-weight: 700; color: var(--ink); font-size: 0.95rem; margin-bottom: 3px; }
+.bulletDesc { font-size: 0.88rem; color: var(--ink-soft); line-height: 1.55; }
+
+/* ─── Mock Card ────────────────────────────────── */
+.card {
+  background: #fff;
+  border-radius: var(--r-lg);
+  padding: 28px 26px;
+  max-width: 400px;
+  margin: 0 auto;
+  box-shadow: var(--shadow-card-lg);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--stayvix-purple), var(--hostix-teal));
+}
+
+.cardHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.roomLabel { font-size: 0.75rem; font-weight: 600; color: var(--ink-faint); margin-bottom: 4px; }
+.roomName { font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; color: var(--ink); }
+
+.duePill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 100px;
+  background: rgba(124, 58, 237, 0.1);
+  border: 1px solid rgba(124, 58, 237, 0.18);
+  color: var(--stayvix-purple);
+}
+
+.amount { font-family: var(--font-display); font-weight: 800; font-size: 2.2rem; color: var(--ink); margin-bottom: 4px; }
+.amountSub { font-size: 0.8rem; color: var(--ink-faint); margin-bottom: 22px; }
+
+.breakdown { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+.breakdownRow { display: flex; align-items: center; gap: 10px; }
+.breakdownLabel { width: 70px; flex-shrink: 0; font-size: 0.76rem; color: var(--ink-soft); }
+
+.barTrack {
+  flex: 1;
+  height: 6px;
+  border-radius: 100px;
+  background: var(--bg-tint);
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  border-radius: 100px;
+  background: linear-gradient(90deg, var(--stayvix-purple), var(--hostix-teal));
+}
+
+.breakdownValue { width: 56px; flex-shrink: 0; text-align: right; font-size: 0.76rem; font-weight: 700; color: var(--ink); }
+
+.history { border-top: 1px solid var(--border-soft); padding-top: 16px; }
+
+.historyTitle {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 12px;
+}
+
+.historyRow { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; }
+.historyMonth { font-size: 0.86rem; font-weight: 600; color: var(--ink); }
+.historyMeta { font-size: 0.74rem; color: var(--ink-faint); }
+
+.receiptChip {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--hostix-teal);
+  background: rgba(13, 148, 136, 0.1);
+  border: 1px solid rgba(13, 148, 136, 0.18);
+  padding: 4px 10px;
+  border-radius: 100px;
+}

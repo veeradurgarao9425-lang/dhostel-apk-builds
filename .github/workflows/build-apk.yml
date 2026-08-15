@@ -1,0 +1,177 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Free Disk Space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf /usr/local/.ghcup
+          sudo docker image prune --all --force
+
+      - name: Delete old artifacts to free storage quota
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              const artifacts = await github.rest.actions.listArtifactsForRepo({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                per_page: 100,
+              });
+              for (const artifact of artifacts.data.artifacts) {
+                console.log(`Deleting old artifact: ${artifact.id} (${artifact.name})`);
+                try {
+                  await github.rest.actions.deleteArtifact({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    artifact_id: artifact.id,
+                  });
+                } catch (e) {
+                  console.warn(`Could not delete artifact ${artifact.id}: ${e.message}`);
+                }
+              }
+              console.log('All old artifacts cleaned up successfully.');
+            } catch (err) {
+              console.warn('Could not delete old artifacts (non-fatal):', err.message);
+            }
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install dependencies
+        working-directory: mobile
+        run: npm ci || npm install
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Generate Native Android Project (Expo Prebuild)
+        working-directory: mobile
+        run: npx expo prebuild --platform android --clean
+
+      - name: Grant execute permission to gradlew
+        working-directory: mobile/android
+        run: chmod +x gradlew
+
+      - name: Build Release APK
+        working-directory: mobile/android
+        env:
+          EXPO_PUBLIC_API_URL: http://143.244.131.69:8081/api
+        run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --no-daemon
+
+      - name: Upload APK artifact (Non-blocking fallback)
+        uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: dhostel-release-apk
+          path: mobile/android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 1
+          overwrite: true
+
+      - name: Publish APK to GitHub Releases (Bypasses Actions Storage Quota)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const tagName = 'v-latest';
+            const releaseName = 'Latest Android APK Release';
+            const apkPath = 'mobile/android/app/build/outputs/apk/release/app-release.apk';
+            const fileName = 'app-release.apk';
+
+            if (!fs.existsSync(apkPath)) {
+              throw new Error(`APK file not found at ${apkPath}`);
+            }
+
+            // 1. Get existing release or create a new one
+            let release;
+            try {
+              const res = await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag: tagName,
+              });
+              release = res.data;
+              console.log(`Found existing release ID: ${release.id}`);
+            } catch (e) {
+              console.log(`Release tag ${tagName} not found. Creating new release...`);
+              const created = await github.rest.repos.createRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag_name: tagName,
+                name: releaseName,
+                body: 'Latest compiled Android release APK for dhostel app.',
+                draft: false,
+                prerelease: false,
+              });
+              release = created.data;
+              console.log(`Created release ID: ${release.id}`);
+            }
+
+            // 2. Delete any existing asset named app-release.apk to overwrite
+            const assets = await github.rest.repos.listReleaseAssets({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: release.id,
+            });
+            for (const asset of assets.data) {
+              if (asset.name === fileName) {
+                console.log(`Removing old release asset ID: ${asset.id}`);
+                await github.rest.repos.deleteReleaseAsset({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  asset_id: asset.id,
+                });
+              }
+            }
+
+            // 3. Upload the new APK file
+            console.log(`Uploading ${fileName} to release ID ${release.id}...`);
+            const fileBuffer = fs.readFileSync(apkPath);
+            await github.rest.repos.uploadReleaseAsset({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: release.id,
+              name: fileName,
+              data: fileBuffer,
+              headers: {
+                'content-type': 'application/vnd.android.package-archive',
+                'content-length': fileBuffer.length,
+              },
+            });
+
+            console.log(`Successfully uploaded APK to release! URL: ${release.html_url}`);
+
+            // 4. Output download link in step summary
+            await core.summary
+              .addHeading('📱 Android APK Build Complete')
+              .addRaw('<p>Download the latest APK directly from GitHub Releases:</p>')
+              .addLink('⬇️ Download app-release.apk', release.html_url)
+              .write();
+

@@ -1,0 +1,14 @@
+# Ignore non-mobile project folders
+/frontend/
+/backend/
+
+# Ignore massive temporary claude folders
+/tmpclaude-*
+
+# Standard ignores
+node_modules/
+android/
+ios/
+.expo/
+.git/
+dist/

@@ -1,0 +1,468 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { X } from 'lucide-react';
+import api from '../../services/api';
+import toast from 'react-hot-toast';
+import { useAuthStore } from '../../store/authStore';
+
+const INDIAN_STATES_AND_CITIES: Record<string, string[]> = {
+  'Andhra Pradesh': ['Visakhapatnam', 'Vijayawada', 'Guntur', 'Nellore', 'Tirupati', 'Kurnool', 'Rajahmundry', 'Kakinada', 'Kadapa', 'Anantapur'],
+  'Telangana': ['Hyderabad', 'Warangal', 'Nizamabad', 'Karimnagar', 'Ramagundam', 'Khammam', 'Mahbubnagar', 'Nalgonda', 'Adilabad'],
+  'Karnataka': ['Bengaluru', 'Mysuru', 'Hubli', 'Mangaluru', 'Belagavi', 'Davanagere', 'Ballari', 'Tumakuru', 'Shivamogga'],
+  'Tamil Nadu': ['Chennai', 'Coimbatore', 'Madurai', 'Tiruchirappalli', 'Salem', 'Tirunelveli', 'Tiruppur', 'Vellore', 'Erode', 'Thoothukudi'],
+  'Maharashtra': ['Mumbai', 'Pune', 'Nagpur', 'Thane', 'Pimpri-Chinchwad', 'Nashik', 'Kalyan-Dombivli', 'Vasai-Virar', 'Aurangabad', 'Navi Mumbai', 'Solapur', 'Kolhapur'],
+  'Delhi': ['New Delhi', 'Delhi Cantt', 'Dwarka', 'Rohini', 'Vasant Kunj'],
+  'Kerala': ['Thiruvananthapuram', 'Kochi', 'Kozhikode', 'Kollam', 'Thrissur', 'Alappuzha', 'Palakkad'],
+  'Gujarat': ['Ahmedabad', 'Surat', 'Vadodara', 'Rajkot', 'Bhavnagar', 'Jamnagar', 'Gandhinagar', 'Junagadh'],
+  'Rajasthan': ['Jaipur', 'Jodhpur', 'Kota', 'Bikaner', 'Ajmer', 'Udaipur', 'Bhilwara', 'Alwar'],
+  'Madhya Pradesh': ['Indore', 'Bhopal', 'Jabalpur', 'Gwalior', 'Ujjain', 'Sagar', 'Dewas', 'Satna'],
+  'Uttar Pradesh': ['Lucknow', 'Kanpur', 'Ghaziabad', 'Agra', 'Meerut', 'Varanasi', 'Allahabad', 'Amroha', 'Moradabad', 'Aligarh', 'Bareilly', 'Noida']
+};
+
+interface AddHostelModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+interface Owner {
+  user_id: number;
+  full_name: string;
+  email: string;
+}
+
+interface Amenity {
+  amenity_id: number;
+  amenity_name: string;
+  amenity_icon?: string;
+  description?: string;
+}
+
+export const AddHostelModal: React.FC<AddHostelModalProps> = ({ isOpen, onClose, onSuccess }) => {
+  const navigate = useNavigate();
+  const { user } = useAuthStore();
+  const isAdmin = user?.role_id === 1;
+  const [loading, setLoading] = useState(false);
+  const [owners, setOwners] = useState<Owner[]>([]);
+  const [amenitiesList, setAmenitiesList] = useState<Amenity[]>([]);
+  const [formData, setFormData] = useState({
+    hostel_name: '',
+    address: '',
+    city: '',
+    state: '',
+    pincode: '',
+    hostel_type: 'Boys',
+    owner_id: '',
+    admission_fee: '',
+    total_floors: '',
+    amenities: [] as string[],
+  });
+
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchOwners();
+      fetchAmenities();
+    }
+  }, [isOpen]);
+
+  const fetchOwners = async () => {
+    try {
+      const response = await api.get('/users/owners');
+      setOwners(response.data.data || []);
+    } catch (error) {
+      console.log('Failed to fetch owners, using dummy data');
+      // Dummy data for development
+      setOwners([
+        { user_id: 2, full_name: 'Mahendra Reddy', email: 'mahendra@gmail.com' },
+        { user_id: 3, full_name: 'Priya Sharma', email: 'priya@gmail.com' },
+        { user_id: 4, full_name: 'Rajesh Kumar', email: 'rajesh@gmail.com' },
+      ]);
+    }
+  };
+
+  const fetchAmenities = async () => {
+    try {
+      const response = await api.get('/amenities');
+      setAmenitiesList(response.data.data || []);
+    } catch (error) {
+      console.log('Failed to fetch amenities, using default data');
+      // Default amenities if API fails
+      setAmenitiesList([
+        { amenity_id: 1, amenity_name: 'WiFi' },
+        { amenity_id: 2, amenity_name: 'Laundry' },
+        { amenity_id: 3, amenity_name: 'Meals' },
+        { amenity_id: 4, amenity_name: 'AC' },
+        { amenity_id: 5, amenity_name: 'Hot Water' },
+        { amenity_id: 6, amenity_name: 'Gym' },
+        { amenity_id: 7, amenity_name: 'Parking' },
+      ]);
+    }
+  };
+
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.hostel_name || formData.hostel_name.length < 3) {
+      newErrors.hostel_name = 'Hostel name must be at least 3 characters';
+    }
+
+    if (!formData.address) {
+      newErrors.address = 'Address is required';
+    }
+
+    if (!formData.city) {
+      newErrors.city = 'City is required';
+    }
+
+    if (!formData.owner_id) {
+      newErrors.owner_id = 'Please select an owner';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!validate()) {
+      toast.error('Please fix validation errors');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const payload: any = {
+        hostel_name: formData.hostel_name,
+        address: formData.address,
+        city: formData.city,
+        state: formData.state || undefined,
+        pincode: formData.pincode || undefined,
+        hostel_type: formData.hostel_type,
+        owner_id: parseInt(formData.owner_id),
+        admission_fee: formData.admission_fee ? parseFloat(formData.admission_fee) : undefined,
+        amenities: formData.amenities.length > 0 ? formData.amenities : undefined,
+      };
+      
+      // Include total_floors only if provided and user is admin
+      if (isAdmin && formData.total_floors && formData.total_floors.trim() !== '') {
+        payload.total_floors = parseInt(formData.total_floors);
+      }
+      
+      await api.post('/hostels', payload);
+
+      toast.success('Hostel created successfully!');
+      onSuccess();
+      onClose();
+
+      // Reset form
+      setFormData({
+        hostel_name: '',
+        address: '',
+        city: '',
+        state: '',
+        pincode: '',
+        hostel_type: 'Boys',
+        owner_id: '',
+        admission_fee: '',
+        total_floors: '',
+        amenities: [],
+      });
+      setErrors({});
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Failed to create hostel');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    if (name === 'state') {
+      setFormData(prev => ({ ...prev, state: value, city: '' }));
+      if (errors.state) {
+        setErrors(prev => ({ ...prev, state: '' }));
+      }
+      if (errors.city) {
+        setErrors(prev => ({ ...prev, city: '' }));
+      }
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+      if (errors[name]) {
+        setErrors(prev => ({ ...prev, [name]: '' }));
+      }
+    }
+  };
+
+  const toggleAmenity = (amenity: string) => {
+    setFormData(prev => ({
+      ...prev,
+      amenities: prev.amenities.includes(amenity)
+        ? prev.amenities.filter(a => a !== amenity)
+        : [...prev.amenities, amenity]
+    }));
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fade-in">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-slate-800">
+        {/* Header */}
+        <div className="sticky top-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-6 py-5 flex items-center justify-between z-10">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Add New Hostel</h2>
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* Hostel Name */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+              Hostel Name <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="text"
+              name="hostel_name"
+              value={formData.hostel_name}
+              onChange={handleChange}
+              className={`w-full px-4 py-2.5 border rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all ${
+                errors.hostel_name ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'
+              }`}
+              placeholder="e.g., Sunrise Boys Hostel"
+            />
+            {errors.hostel_name && (
+              <p className="mt-1 text-sm text-rose-500">{errors.hostel_name}</p>
+            )}
+          </div>
+
+          {/* Address */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+              Address <span className="text-rose-500">*</span>
+            </label>
+            <textarea
+              name="address"
+              value={formData.address}
+              onChange={handleChange}
+              rows={2}
+              className={`w-full px-4 py-2.5 border rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all ${
+                errors.address ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'
+              }`}
+              placeholder="Plot No., Street, Area"
+            />
+            {errors.address && (
+              <p className="mt-1 text-sm text-rose-500">{errors.address}</p>
+            )}
+          </div>
+
+          {/* City, State, PIN */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                State
+              </label>
+              <select
+                name="state"
+                value={formData.state}
+                onChange={handleChange}
+                className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all"
+              >
+                <option value="">Select State</option>
+                {Object.keys(INDIAN_STATES_AND_CITIES).map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                City <span className="text-rose-500">*</span>
+              </label>
+              <select
+                name="city"
+                value={formData.city}
+                onChange={handleChange}
+                disabled={!formData.state}
+                className={`w-full px-4 py-2.5 border rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all disabled:opacity-50 ${
+                  errors.city ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'
+                }`}
+              >
+                <option value="">
+                  {formData.state ? 'Select City' : 'Select State First'}
+                </option>
+                {formData.state &&
+                  INDIAN_STATES_AND_CITIES[formData.state]?.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+              </select>
+              {errors.city && (
+                <p className="mt-1 text-sm text-rose-500">{errors.city}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">PIN Code</label>
+              <input
+                type="text"
+                name="pincode"
+                value={formData.pincode}
+                onChange={handleChange}
+                maxLength={6}
+                className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all"
+                placeholder="500032"
+              />
+            </div>
+          </div>
+
+          {/* Hostel Type & Admission Fee */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Hostel Type <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="hostel_type"
+                value={formData.hostel_type}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              >
+                <option value="Boys">Boys</option>
+                <option value="Girls">Girls</option>
+                <option value="Co-Ed">Co-Ed</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Admission Fee (₹)
+              </label>
+              <input
+                type="number"
+                name="admission_fee"
+                value={formData.admission_fee}
+                onChange={handleChange}
+                min="0"
+                step="100"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                placeholder="e.g., 5000"
+              />
+            </div>
+          </div>
+
+          {/* Number of Floors - Only show for Admin */}
+          {isAdmin && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Number of Floors
+              </label>
+              <input
+                type="number"
+                name="total_floors"
+                value={formData.total_floors}
+                onChange={handleChange}
+                min="1"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                placeholder="e.g., 3"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Total number of floors in the hostel
+              </p>
+            </div>
+          )}
+
+          {/* Owner Selection */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-gray-700">
+                Hostel Owner <span className="text-red-500">*</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  navigate('/owners', { state: { openAddModal: true } });
+                }}
+                className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+              >
+                + Add New Owner
+              </button>
+            </div>
+            <select
+              name="owner_id"
+              value={formData.owner_id}
+              onChange={handleChange}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
+                errors.owner_id ? 'border-red-500' : 'border-gray-300'
+              }`}
+            >
+              <option value="">Select owner...</option>
+              {owners.map(owner => (
+                <option key={owner.user_id} value={owner.user_id}>
+                  {owner.full_name} ({owner.email})
+                </option>
+              ))}
+            </select>
+            {errors.owner_id && (
+              <p className="mt-1 text-sm text-red-600">{errors.owner_id}</p>
+            )}
+            <p className="mt-1 text-xs text-gray-500">
+              Don't see the owner? Click "Add New Owner" to register them first
+            </p>
+          </div>
+
+          {/* Amenities */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Amenities</label>
+            <div className="flex flex-wrap gap-2">
+              {amenitiesList.map(amenity => (
+                <button
+                  key={amenity.amenity_id}
+                  type="button"
+                  onClick={() => toggleAmenity(amenity.amenity_name)}
+                  className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                    formData.amenities.includes(amenity.amenity_name)
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {amenity.amenity_name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Buttons */}
+          <div className="flex items-center justify-end gap-3 pt-6 pb-2 border-t border-slate-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-5 py-2.5 text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors font-medium"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-6 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 shadow-sm shadow-primary-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium flex items-center gap-2"
+            >
+              {loading && <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+              {loading ? 'Creating...' : 'Create Hostel'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};

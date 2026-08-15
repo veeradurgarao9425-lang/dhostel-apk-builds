@@ -1,0 +1,281 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Premium Light Theme */
+  --header-bg: #ffffff;
+  --header-text-color: #0f172a;
+  --sidebar-bg: #ffffff;
+  --sidebar-text-color: #334155;
+  --content-bg: #f4f6fa;
+  --primary-color: #0891b2; /* Premium Cyan-Teal */
+  --text-color: #1e293b;
+  --bg-color: #ffffff;
+  --border-color: #e2e8f0;
+  --card-bg: #ffffff;
+  --input-bg: #f8fafc;
+  --font-family: 'Outfit', 'Inter', sans-serif;
+  --base-font-size: 14px;
+}
+
+.dark {
+  /* Premium Dark Theme */
+  --header-bg: #0f172a;
+  --header-text-color: #f8fafc;
+  --sidebar-bg: #0f172a;
+  --sidebar-text-color: #e2e8f0;
+  --content-bg: #020617;
+  --text-color: #f8fafc;
+  --bg-color: #0f172a;
+  --border-color: #1e293b;
+  --card-bg: #0f172a;
+  --input-bg: #020617;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-family) !important;
+  font-size: var(--base-font-size) !important;
+  color: var(--text-color) !important;
+  background-color: var(--content-bg) !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Glassmorphism Utilities */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.dark .glass {
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Apply font size and family globally */
+html {
+  font-size: var(--base-font-size);
+}
+
+* {
+  font-family: var(--font-family) !important;
+}
+
+/* Apply base font size to all text elements */
+body, p, span, div, h1, h2, h3, h4, h5, h6, a, button, input, select, textarea, label, td, th, li {
+  font-size: inherit;
+}
+
+/* Ensure Tailwind uses the CSS variables */
+@layer base {
+  html {
+    font-family: var(--font-family);
+    font-size: var(--base-font-size);
+    background-color: var(--content-bg);
+    color: var(--text-color);
+    transition: background-color 0.2s ease, color 0.2s ease;
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    font-family: var(--font-family) !important;
+    font-size: var(--base-font-size) !important;
+    background-color: var(--content-bg) !important;
+    color: var(--text-color) !important;
+  }
+  
+/* Dark mode global styles */
+.dark {
+  color-scheme: dark;
+}
+
+/* Override common Tailwind classes for dark mode */
+.dark .bg-white,
+.dark [class*="bg-white"] {
+  background-color: var(--card-bg) !important;
+}
+
+.dark .text-gray-900,
+.dark [class*="text-gray-900"] {
+  color: var(--text-color) !important;
+}
+
+.dark .text-gray-800 {
+  color: #e5e7eb !important;
+}
+
+.dark .text-gray-700 {
+  color: #d1d5db !important;
+}
+
+.dark .text-gray-600 {
+  color: #9ca3af !important;
+}
+
+.dark .text-gray-500 {
+  color: #6b7280 !important;
+}
+
+.dark .text-gray-400 {
+  color: #9ca3af !important;
+}
+
+.dark .border-gray-200,
+.dark .border-gray-300 {
+  border-color: var(--border-color) !important;
+}
+
+.dark .bg-gray-50,
+.dark .bg-gray-100 {
+  background-color: var(--bg-color) !important;
+}
+
+.dark input[type="text"],
+.dark input[type="number"],
+.dark input[type="email"],
+.dark input[type="date"],
+.dark input[type="month"],
+.dark input[type="password"],
+.dark select,
+.dark textarea {
+  background-color: var(--input-bg) !important;
+  color: var(--text-color) !important;
+  border-color: var(--border-color) !important;
+}
+
+.dark table {
+  background-color: var(--card-bg) !important;
+}
+
+.dark thead {
+  background-color: var(--bg-color) !important;
+}
+
+.dark tbody tr {
+  background-color: var(--card-bg) !important;
+}
+
+.dark tbody tr:hover {
+  background-color: var(--bg-color) !important;
+}
+
+/* Apply dark mode to common elements */
+.dark * {
+  border-color: var(--border-color);
+}
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/* Theme-aware utility classes */
+.theme-header-bg {
+  background-color: var(--header-bg);
+}
+
+.theme-sidebar-bg {
+  background-color: var(--sidebar-bg);
+}
+
+.theme-content-bg {
+  background-color: var(--content-bg);
+}
+
+.theme-primary {
+  background-color: var(--primary-color);
+}
+
+.theme-primary-text {
+  color: var(--primary-color);
+}
+
+.theme-text {
+  color: var(--text-color);
+}
+
+/* Premium Custom Utilities */
+.premium-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 24px;
+  box-shadow: 0 4px 20px -2px rgba(148, 163, 184, 0.06), 0 2px 8px -1px rgba(148, 163, 184, 0.04);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dark .premium-card {
+  box-shadow: 0 4px 24px -3px rgba(0, 0, 0, 0.4);
+}
+
+.premium-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px -4px rgba(148, 163, 184, 0.12), 0 4px 12px -2px rgba(148, 163, 184, 0.08);
+}
+
+.dark .premium-card:hover {
+  box-shadow: 0 12px 36px -4px rgba(0, 0, 0, 0.5), 0 4px 16px -2px rgba(0, 0, 0, 0.4);
+}
+
+.premium-gradient-banner {
+  background: linear-gradient(135deg, #0891b2 0%, #0e7490 50%, #155e75 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.premium-gradient-banner::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -20%;
+  width: 140%;
+  height: 200%;
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.15) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.premium-shadow-sm {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+}
+
+.premium-shadow-md {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+}
+
+.premium-shadow-lg {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+}
+
+/* Smooth transition utility */
+.smooth-transition {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+

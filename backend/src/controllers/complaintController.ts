@@ -1,0 +1,175 @@
+import { Response } from 'express';
+import { AuthRequest } from '../middleware/auth.js';
+import db from '../config/database.js';
+import { processFileUpload } from '../utils/fileUpload.js';
+import { sendNotificationToHostelOwner, sendNotificationToStudent } from '../utils/notification.js';
+import { io } from '../socket/index.js';
+
+// =======================
+// TENANT ENDPOINTS
+// =======================
+
+export const createComplaint = async (req: AuthRequest, res: Response) => {
+  try {
+    const { hostel_id, category, title, description } = req.body;
+    const student_id = req.user?.user_id; // Assuming auth middleware sets req.user.user_id for tenant
+
+    if (!hostel_id || !student_id || !category || !title) {
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
+    }
+
+    const files = (req as any).files as Express.Multer.File[] | undefined;
+    let image_urls: string | null = null;
+    if (files && files.length > 0) {
+      const uploadedUrls = await Promise.all(files.map(f => processFileUpload(f, 'complaints')));
+      image_urls = JSON.stringify(uploadedUrls);
+    }
+
+    const [complaint_id] = await db('complaints').insert({
+      hostel_id,
+      student_id,
+      category,
+      title,
+      description: description || null,
+      image_urls,
+      status: 'Open'
+    });
+
+    // Fetch student info for notification
+    const student = await db('students').where('student_id', student_id).first();
+    const studentName = student ? `${student.first_name} ${student.last_name || ''}`.trim() : 'A student';
+    const bedInfo = student?.bed_id ? ` (Bed: ${student.bed_id})` : '';
+
+    // Notify Owner via Push & Sockets
+    try {
+      if (io) {
+        io.to(`hostel_${hostel_id}`).emit('new_complaint', {
+          complaint_id, title, category, studentName, bedInfo, created_at: new Date()
+        });
+        io.to(`hostel_${hostel_id}`).emit('REFRESH_NOTIFICATIONS');
+      }
+      await sendNotificationToHostelOwner(
+        hostel_id,
+        'Complaint',
+        'New Maintenance Complaint',
+        `${studentName}${bedInfo} raised a new complaint: ${title}`,
+        'Medium',
+        { complaint_id }
+      );
+    } catch (err) {
+      console.error('Failed to notify owner about new complaint:', err);
+    }
+
+    res.status(201).json({ success: true, message: 'Complaint raised successfully', complaint_id });
+  } catch (error: any) {
+    console.error('Error creating complaint:', error);
+    res.status(500).json({ success: false, message: 'Internal Server Error' });
+  }
+};
+
+export const getTenantComplaints = async (req: AuthRequest, res: Response) => {
+  try {
+    const student_id = req.user?.user_id;
+    const { hostel_id } = req.query;
+
+    if (!student_id) {
+      return res.status(400).json({ success: false, message: 'Missing student ID' });
+    }
+
+    let query = db('complaints').where('student_id', student_id);
+    if (hostel_id) {
+      query = query.andWhere('hostel_id', hostel_id);
+    }
+
+    const complaints = await query.orderBy('created_at', 'desc');
+    res.status(200).json({ success: true, complaints });
+  } catch (error: any) {
+    console.error('Error fetching tenant complaints:', error);
+    res.status(500).json({ success: false, message: 'Internal Server Error' });
+  }
+};
+
+// =======================
+// OWNER ENDPOINTS
+// =======================
+
+export const getHostelComplaints = async (req: AuthRequest, res: Response) => {
+  try {
+    const { hostelId } = req.params;
+    const user = req.user;
+
+    // Restrict Owner to their own hostel
+    if (user?.role_id === 2 && user.hostel_id !== Number(hostelId)) {
+      return res.status(403).json({ success: false, error: 'Access denied.' });
+    }
+    
+    // Join with students table to get name and room/bed
+    const complaints = await db('complaints')
+      .join('students', 'complaints.student_id', '=', 'students.student_id')
+      .leftJoin('rooms', 'students.room_id', '=', 'rooms.room_id')
+      .where('complaints.hostel_id', hostelId)
+      .select(
+        'complaints.*',
+        'students.first_name',
+        'students.last_name',
+        'students.phone',
+        'students.bed_id',
+        'rooms.room_number'
+      )
+      .orderBy('complaints.created_at', 'desc');
+
+    res.status(200).json({ success: true, complaints });
+  } catch (error: any) {
+    console.error('Error fetching hostel complaints:', error);
+    res.status(500).json({ success: false, message: 'Internal Server Error' });
+  }
+};
+
+export const updateComplaintStatus = async (req: AuthRequest, res: Response) => {
+  try {
+    const { complaintId } = req.params;
+    const { status } = req.body;
+    const user = req.user;
+
+    if (!status || !['Open', 'In Progress', 'Resolved'].includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid status' });
+    }
+
+    const complaint = await db('complaints').where('complaint_id', complaintId).first();
+    if (!complaint) {
+      return res.status(404).json({ success: false, message: 'Complaint not found' });
+    }
+
+    // Restrict Owner to their own hostel
+    if (user?.role_id === 2 && complaint.hostel_id !== user.hostel_id) {
+      return res.status(403).json({ success: false, error: 'Access denied.' });
+    }
+
+    await db('complaints').where('complaint_id', complaintId).update({ status });
+
+    // Notify Tenant via Push & Sockets
+    try {
+      if (io) {
+        io.to(`tenant_${complaint.student_id}`).emit('complaint_updated', {
+          complaint_id: complaint.complaint_id, status
+        });
+        io.to(`tenant_${complaint.student_id}`).emit('REFRESH_NOTIFICATIONS');
+      }
+      await sendNotificationToStudent(
+        complaint.student_id,
+        'Complaint',
+        'Complaint Update',
+        `Your complaint "${complaint.title}" is now ${status}.`,
+        'Medium',
+        { complaint_id: complaint.complaint_id }
+      );
+    } catch (err) {
+      console.error('Failed to notify student about complaint update:', err);
+    }
+
+    res.status(200).json({ success: true, message: 'Complaint status updated' });
+  } catch (error: any) {
+    console.error('Error updating complaint status:', error);
+    res.status(500).json({ success: false, message: 'Internal Server Error' });
+  }
+};

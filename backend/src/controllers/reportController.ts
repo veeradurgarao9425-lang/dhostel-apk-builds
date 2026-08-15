@@ -1,0 +1,1486 @@
+// @ts-nocheck
+import { Response } from 'express';
+import db from '../config/database.js';
+import { AuthRequest } from '../middleware/auth.js';
+import { resolveScopedHostelId, resolveOwnerHostelId } from '../utils/scope.js';
+
+const tableExists = async (tableName: string): Promise<boolean> => {
+  try {
+    const [rows] = await db.raw(
+      `
+        SELECT COUNT(*) as count
+        FROM information_schema.tables
+        WHERE table_schema = DATABASE()
+        AND table_name = ?
+      `,
+      [tableName]
+    );
+    return Number(rows?.[0]?.count || 0) > 0;
+  } catch (error) {
+    console.warn(`[reports] Could not check table "${tableName}":`, error);
+    return false;
+  }
+};
+
+// Get dashboard statistics for owner
+export const getDashboardStats = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user;
+
+    // Determine hostel filtering based on user role.
+    // Owner (role 2): always scoped to their own hostel_id.
+    // Admin/Super Admin (role 1): scoped to ?hostelId if given, otherwise global
+    // (hostelIds stays empty, which every query below already treats as "no filter").
+    let hostelIds: number[] = [];
+    const requestedHostelId = req.query.hostelId && !isNaN(Number(req.query.hostelId)) && Number(req.query.hostelId) > 0
+      ? Number(req.query.hostelId)
+      : null;
+
+    if (user?.user_id && (user?.role_id === 2 || user?.role_id === 1)) {
+      const ownerHostels = await db('hostel_master')
+        .where('owner_id', user.user_id)
+        .select('hostel_id');
+      const ids = ownerHostels.map(h => Number(h.hostel_id)).filter(Boolean);
+      if (user?.hostel_id && !ids.includes(Number(user.hostel_id))) {
+        ids.push(Number(user.hostel_id));
+      }
+
+      if (requestedHostelId !== null) {
+        // Admin/Super Admin may drill into any hostel; an Owner may only
+        // drill into a hostel they actually own — otherwise ?hostelId=<other>
+        // would leak another hostel's financials.
+        if (user.role_id === 1) {
+          hostelIds = [requestedHostelId];
+        } else if (ids.includes(requestedHostelId)) {
+          hostelIds = [requestedHostelId];
+        } else {
+          return res.status(403).json({ success: false, error: 'You do not have access to this hostel.' });
+        }
+      } else if (user?.hostel_id && ids.includes(Number(user.hostel_id))) {
+        hostelIds = [Number(user.hostel_id)];
+      } else if (ids.length > 0) {
+        hostelIds = [ids[0]];
+      } else {
+        hostelIds = [];
+      }
+    } else if (requestedHostelId !== null) {
+      hostelIds = [requestedHostelId];
+    } else if (user?.hostel_id) {
+      hostelIds = [Number(user.hostel_id)];
+    }
+
+    if (user?.role_id === 2 && hostelIds.length === 0) {
+      return res.json({
+        success: true,
+        data: {
+          totalRooms: 0,
+          availableRooms: 0,
+          totalStudentsCount: 0,
+          totalBeds: 0,
+          occupiedBeds: 0,
+          occupancyRate: 0,
+          monthlyRentCollected: 0,
+          monthlyRentPending: 0,
+          monthlyRentDue: 0,
+          pendingDuesAmount: 0,
+          todayRent: 0,
+          leftTenants: 0,
+          prebookingsCount: 0,
+          noticesCount: 0,
+          newAdmissionsCount: 0,
+          monthlyExpenses: 0,
+          staffCount: 0,
+          vacatedStudents: 0
+        }
+      });
+    }
+
+
+    // Get total rooms
+    let roomsQuery = db('rooms').count('* as count');
+    if (hostelIds.length > 0) {
+      roomsQuery = roomsQuery.whereIn('hostel_id', hostelIds);
+    }
+    const totalRooms = await roomsQuery.first();
+
+    // Get total available rooms (rooms where occupied_beds < capacity)
+    let availableRoomsQuery = db('rooms')
+      .whereRaw('occupied_beds < capacity')
+      .count('* as count');
+    if (hostelIds.length > 0) {
+      availableRoomsQuery = availableRoomsQuery.whereIn('hostel_id', hostelIds);
+    }
+    const availableRooms = await availableRoomsQuery.first();
+
+    // Get total students (active and allocated)
+    let studentsQuery = db('students')
+      .where('status', 1)
+      .whereNotNull('room_id')
+      .count('* as count');
+    if (hostelIds.length > 0) {
+      studentsQuery = studentsQuery.whereIn('hostel_id', hostelIds);
+    }
+    const totalStudents = await studentsQuery.first();
+
+    // Get total beds - Prioritize r.capacity column if it exists, otherwise use room_type parsing
+    let totalBedsQuery = db('rooms as r')
+      .leftJoin('room_types as rt', 'r.room_type_id', 'rt.room_type_id')
+      .select(db.raw(`
+        SUM(
+          COALESCE(
+            NULLIF(r.capacity, 0),
+            CASE 
+              WHEN rt.room_type_name REGEXP '^[0-9]+$' THEN CAST(rt.room_type_name AS UNSIGNED)
+              WHEN LOWER(rt.room_type_name) LIKE '%single%' THEN 1
+              WHEN LOWER(rt.room_type_name) LIKE '%double%' THEN 2
+              WHEN LOWER(rt.room_type_name) LIKE '%triple%' THEN 3
+              WHEN LOWER(rt.room_type_name) LIKE '%four%' OR LOWER(rt.room_type_name) LIKE '%4%' THEN 4
+              WHEN LOWER(rt.room_type_name) LIKE '%five%' OR LOWER(rt.room_type_name) LIKE '%5%' THEN 5
+              WHEN LOWER(rt.room_type_name) LIKE '%six%' OR LOWER(rt.room_type_name) LIKE '%6%' THEN 6
+              WHEN LOWER(rt.room_type_name) LIKE '%seven%' OR LOWER(rt.room_type_name) LIKE '%7%' THEN 7
+              WHEN LOWER(rt.room_type_name) LIKE '%eight%' OR LOWER(rt.room_type_name) LIKE '%8%' THEN 8
+              WHEN LOWER(rt.room_type_name) LIKE '%dormitory%' THEN 10
+              ELSE 0
+            END,
+            1 -- Default to 1 if everything else fails
+          )
+        ) as total_beds
+      `));
+    if (hostelIds.length > 0) {
+      totalBedsQuery = totalBedsQuery.whereIn('r.hostel_id', hostelIds);
+    }
+    const bedsData = await totalBedsQuery.first();
+
+    // Get occupied beds - count active students with room_id (room_allocations table was removed)
+    let occupiedBedsQuery = db('students')
+      .where('status', 1)
+      .whereNotNull('room_id')
+      .count('* as count');
+    if (hostelIds.length > 0) {
+      occupiedBedsQuery = occupiedBedsQuery.whereIn('hostel_id', hostelIds);
+    }
+    const occupiedData = await occupiedBedsQuery.first();
+    const occupiedBeds = occupiedData?.count || 0;
+
+    // Calculate occupancy rate
+    const totalBeds = bedsData?.total_beds || 0;
+    const occupancyRate = totalBeds > 0
+      ? ((Number(occupiedBeds) / Number(totalBeds)) * 100).toFixed(2)
+      : 0;
+
+    // Get current month start and end dates (use date strings to avoid timezone issues)
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1; // JavaScript months are 0-indexed
+    const monthStart = `${year}-${String(month).padStart(2, '0')}-01`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const monthEnd = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+    // Get monthly income from income table only (matches Income page)
+    let incomeQuery = db('income')
+      .whereBetween('income_date', [monthStart, monthEnd])
+      .sum('amount as total');
+    if (hostelIds.length > 0) {
+      incomeQuery = incomeQuery.whereIn('hostel_id', hostelIds);
+    }
+    const monthlyIncome = await incomeQuery.first();
+
+    const totalMonthlyIncome = Number(monthlyIncome?.total || 0);
+
+    // Get fee collection for current month (from fee_payments table)
+    let feeCollectionQuery = db('fee_payments as fp')
+      .join('students as s', 'fp.student_id', 's.student_id')
+      .whereNotNull('s.room_id')
+      .where('s.status', 1)
+      .whereBetween('fp.payment_date', [monthStart, monthEnd])
+      .sum('fp.amount as total')
+      .count('* as count');
+    if (hostelIds.length > 0) {
+      feeCollectionQuery = feeCollectionQuery.whereIn('fp.hostel_id', hostelIds);
+    }
+    const feeCollection = await feeCollectionQuery.first();
+
+    // Get monthly expenses
+    let expensesQuery = db('expenses')
+      .whereBetween('expense_date', [monthStart, monthEnd])
+      .sum('amount as total');
+    if (hostelIds.length > 0) {
+      expensesQuery = expensesQuery.whereIn('hostel_id', hostelIds);
+    }
+    const monthlyExpenses = await expensesQuery.first();
+
+    // Get staff wages for the month (stored separately from expenses)
+    let staffWages = 0;
+    try {
+      let staffWagesQuery = db('staff_payments')
+        .whereBetween('payment_date', [monthStart, monthEnd])
+        .sum('amount as total');
+      if (hostelIds.length > 0) {
+        staffWagesQuery = staffWagesQuery.whereIn('hostel_id', hostelIds);
+      }
+      const staffWagesResult = await staffWagesQuery.first();
+      staffWages = Number(staffWagesResult?.total || 0);
+    } catch (e) {
+      // staff_payments table may not exist on all deployments
+    }
+
+    // Calculate net profit
+    const income = Number(totalMonthlyIncome);
+    const expenses = Number(monthlyExpenses?.total || 0) + staffWages;
+    const netProfit = income - expenses;
+
+    const hasMonthlyFees = await tableExists('monthly_fees');
+    let monthlyRentDue = 0;
+    let monthlyRentPending = 0;
+    let pendingDuesCount = 0;
+    let pendingDuesAmount = 0;
+
+    // Monthly fee tables can be absent on databases that were partially consolidated.
+    // Report loading should still return the rest of the dashboard instead of 500ing.
+    if (hasMonthlyFees) {
+      let monthlyFeesDueQuery = db('monthly_fees as mf')
+        .join('students as s', 'mf.student_id', 's.student_id')
+        .whereNotNull('s.room_id')
+        .where('s.status', 1)
+        .where('mf.fee_month', `${year}-${String(month).padStart(2, '0')}`)
+        .sum('mf.total_due as total_due')
+        .sum('mf.balance as total_pending');
+      if (hostelIds.length > 0) {
+        monthlyFeesDueQuery = monthlyFeesDueQuery.whereIn('mf.hostel_id', hostelIds);
+      }
+      const monthlyFeesDue = await monthlyFeesDueQuery.first();
+      monthlyRentDue = Number(monthlyFeesDue?.total_due || 0);
+      monthlyRentPending = Number(monthlyFeesDue?.total_pending || 0);
+
+      let pendingDuesQuery = db('monthly_fees as mf')
+        .join('students as s', 'mf.student_id', 's.student_id')
+        .whereNotNull('s.room_id')
+        .where('s.status', 1)
+        .whereIn('mf.fee_status_id', [3, 4])
+        .count('* as count')
+        .sum('mf.balance as total');
+      if (hostelIds.length > 0) {
+        pendingDuesQuery = pendingDuesQuery.whereIn('mf.hostel_id', hostelIds);
+      }
+      const pendingDues = await pendingDuesQuery.first();
+      pendingDuesCount = Number(pendingDues?.count || 0);
+      pendingDuesAmount = Number(pendingDues?.total || 0);
+    }
+    const monthlyRentCollected = Number(feeCollection?.total || 0);
+
+    // Get unallocated students count (active status but no room assigned)
+    let unallocatedQuery = db('students')
+      .where('status', 1)
+      .whereNull('room_id')
+      .count('* as count');
+    if (hostelIds.length > 0) {
+      unallocatedQuery = unallocatedQuery.whereIn('hostel_id', hostelIds);
+    }
+    const unallocatedData = await unallocatedQuery.first();
+    const unallocatedCount = Number(unallocatedData?.count || 0);
+
+    // Get left tenants (inactive students) count
+    let leftTenantsQuery = db('students')
+      .where('status', 0)
+      .count('* as count');
+    if (hostelIds.length > 0) {
+      leftTenantsQuery = leftTenantsQuery.whereIn('hostel_id', hostelIds);
+    }
+    const leftTenantsData = await leftTenantsQuery.first();
+    const leftTenants = leftTenantsData?.count || 0;
+
+    // Get pre-booking count (status = 2)
+    let prebookingQuery = db('students')
+      .where('status', 2)
+      .count('* as count');
+    if (hostelIds.length > 0) {
+      prebookingQuery = prebookingQuery.whereIn('hostel_id', hostelIds);
+    }
+    const prebookingData = await prebookingQuery.first();
+    const prebookingsCount = prebookingData?.count || 0;
+
+    // Get vacate notices count (active students with a scheduled vacate date)
+    let noticesCountQuery = db('students')
+      .where('status', 1)
+      .whereNotNull('vacate_notice_date')
+      .count('* as count');
+    if (hostelIds.length > 0) {
+      noticesCountQuery = noticesCountQuery.whereIn('hostel_id', hostelIds);
+    }
+    const noticesCountData = await noticesCountQuery.first();
+    const noticesCount = noticesCountData?.count || 0;
+
+    // Get active staff count
+    let staffQuery = db('staff')
+      .where('status_id', 1)
+      .count('* as count');
+    if (hostelIds.length > 0) {
+      staffQuery = staffQuery.whereIn('hostel_id', hostelIds);
+    }
+    const staffData = await staffQuery.first();
+    const staffCount = Number(staffData?.count || 0);
+
+    // Get today's rent, other income, and guest collection
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    let todayRentQuery = db('fee_payments as fp')
+      .join('students as s', 'fp.student_id', 's.student_id')
+      .whereNotNull('s.room_id')
+      .where('s.status', 1)
+      .whereRaw('DATE(fp.payment_date) = ?', [today])
+      .sum('fp.amount as total')
+      .count('* as count');
+    if (hostelIds.length > 0) {
+      todayRentQuery = todayRentQuery.whereIn('fp.hostel_id', hostelIds);
+    }
+    const todayRent = await todayRentQuery.first();
+    const todayRentAmount = Number(todayRent?.total || 0);
+
+    let todayOtherQuery = db('income')
+      .whereRaw('DATE(income_date) = ?', [today])
+      .sum('amount as total');
+    if (hostelIds.length > 0) {
+      todayOtherQuery = todayOtherQuery.whereIn('hostel_id', hostelIds);
+    }
+    const todayOther = await todayOtherQuery.first();
+    const todayOtherAmount = Number(todayOther?.total || 0);
+
+    let todayGuestAmount = 0;
+    try {
+      let todayGuestQuery = db('guests')
+        .where('amount_paid', '>', 0)
+        .whereRaw('DATE(check_in_date) = ?', [today])
+        .sum('amount_paid as total');
+      if (hostelIds.length > 0) {
+        todayGuestQuery = todayGuestQuery.whereIn('hostel_id', hostelIds);
+      }
+      const todayGuest = await todayGuestQuery.first();
+      todayGuestAmount = Number(todayGuest?.total || 0);
+    } catch (e) {
+      // guests table may not exist
+    }
+
+    const totalTodayAmount = todayRentAmount + todayOtherAmount + todayGuestAmount;
+
+    // Get breakdown of today's collections by mode
+    let todaySplitQuery = db('fee_payments as fp')
+      .join('payment_modes as pm', 'fp.payment_mode_id', 'pm.payment_mode_id')
+      .join('students as s', 'fp.student_id', 's.student_id')
+      .whereNotNull('s.room_id')
+      .where('s.status', 1)
+      .whereRaw('DATE(fp.payment_date) = ?', [today])
+      .select('pm.payment_mode_name as mode')
+      .sum('fp.amount as total')
+      .groupBy('pm.payment_mode_name');
+    if (hostelIds.length > 0) {
+      todaySplitQuery = todaySplitQuery.whereIn('fp.hostel_id', hostelIds);
+    }
+    const todaySplit = await todaySplitQuery;
+
+    console.log('[DEBUG] Dashboard Stats Request for user:', user?.user_id, 'Role:', user?.role_id);
+    console.log('[DEBUG] totalRooms:', totalRooms?.count);
+    console.log('[DEBUG] totalStudents:', totalStudents?.count);
+    // Get new admissions count this week (using admission_date in the last 7 days)
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    const oneWeekAgoStr = `${oneWeekAgo.getFullYear()}-${String(oneWeekAgo.getMonth() + 1).padStart(2, '0')}-${String(oneWeekAgo.getDate()).padStart(2, '0')}`;
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    let newAdmissionsQuery = db('students')
+      .where('status', 1)
+      .whereNotNull('room_id')
+      .whereBetween('admission_date', [oneWeekAgoStr, todayStr])
+      .count('* as count');
+    if (hostelIds.length > 0) {
+      newAdmissionsQuery = newAdmissionsQuery.whereIn('hostel_id', hostelIds);
+    }
+    const newAdmissionsData = await newAdmissionsQuery.first();
+    const newAdmissionsCount = Number(newAdmissionsData?.count || 0);
+
+    console.log('[DEBUG] totalBedsRaw:', bedsData?.total_beds);
+    console.log('[DEBUG] occupiedBeds:', occupiedBeds);
+    console.log('[DEBUG] prebookingsCount:', prebookingsCount);
+    console.log('[DEBUG] noticesCount:', noticesCount);
+    console.log('[DEBUG] todayRent:', todayRent?.total);
+    console.log('[DEBUG] staffCount:', staffCount);
+    console.log('[DEBUG] newAdmissionsCount:', newAdmissionsCount);
+
+    res.json({
+      success: true,
+      data: {
+        totalRooms: Number(totalRooms?.count || 0),
+        availableRooms: Number(availableRooms?.count || 0),
+        totalStudents: Number(totalStudents?.count || 0),
+        occupancyRate: Number(occupancyRate),
+        totalBeds: Number(totalBeds),
+        occupiedBeds: Number(occupiedBeds),
+        staffCount,
+        monthlyIncome: Number(income),
+        monthlyExpenses: Number(expenses),
+        netProfit: Number(netProfit),
+        feeCollection: Number(feeCollection?.total || 0),
+        feeCollectionCount: Number(feeCollection?.count || 0),
+        pendingDuesCount,
+        pendingDuesAmount,
+        unallocatedCount,
+        leftTenants: Number(leftTenants),
+        prebookingsCount: Number(prebookingsCount),
+        noticesCount: Number(noticesCount),
+        monthlyRentDue,
+        monthlyRentPending,
+        monthlyRentCollected,
+        todayRent: Number(totalTodayAmount),
+        todayCount: Number(todayRent?.count || 0),
+        todaySplit: todaySplit.map(s => ({ mode: s.mode, total: Number(s.total) })),
+        newAdmissionsCount
+      }
+    });
+  } catch (error) {
+    console.error('Get dashboard stats error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch dashboard statistics'
+    });
+  }
+};
+
+// Get monthly income report
+export const getIncomeReport = async (req: AuthRequest, res: Response) => {
+  try {
+    const { hostelId, startDate, endDate, year, month } = req.query;
+    const user = req.user;
+
+    let query = db('fee_payments as fp')
+      .leftJoin('students as s', 'fp.student_id', 's.student_id')
+      .leftJoin('payment_modes as pm', 'fp.payment_mode_id', 'pm.payment_mode_id')
+      .select(
+        db.raw("DATE_FORMAT(fp.payment_date, '%Y-%m') as month"),
+        'pm.payment_mode_name',
+        db.raw('SUM(fp.amount) as total_amount'),
+        db.raw('COUNT(*) as payment_count')
+      )
+      .whereNotNull('s.room_id')
+      .where('s.status', 1)
+      .groupBy('month', 'pm.payment_mode_name')
+      .orderBy('month', 'desc');
+
+    // Owner: validate BOTH user_id AND hostel_id together in DB.
+    // Admin/Super Admin: scoped to ?hostelId if given, otherwise global (no filter).
+    const { hostelId: scopedHostelId, error: hostelError } = await resolveOwnerHostelId(user, hostelId as string | undefined);
+    if (hostelError) {
+      return res.status(403).json({ success: false, error: hostelError });
+    }
+    if (scopedHostelId) {
+      query = query.where('fp.hostel_id', scopedHostelId);
+    }
+
+    if (startDate && endDate) {
+      query = query.whereBetween('fp.payment_date', [startDate, endDate]);
+    } else if (year && month) {
+      const monthStart = new Date(Number(year), Number(month) - 1, 1);
+      const monthEnd = new Date(Number(year), Number(month), 0);
+      query = query.whereBetween('fp.payment_date', [monthStart, monthEnd]);
+    }
+
+    const incomeData = await query;
+
+    // Calculate total
+    const total = incomeData.reduce((sum, item) => sum + Number(item.total_amount), 0);
+
+    res.json({
+      success: true,
+      data: {
+        income: incomeData,
+        total: Number(total)
+      }
+    });
+  } catch (error) {
+    console.error('Get income report error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch income report'
+    });
+  }
+};
+
+// Get monthly expense report
+export const getExpenseReport = async (req: AuthRequest, res: Response) => {
+  try {
+    const { hostelId, startDate, endDate, year, month } = req.query;
+    const user = req.user;
+
+    let query = db('expenses as e')
+      .leftJoin('expense_categories as ec', 'e.category_id', 'ec.category_id')
+      .select(
+        db.raw("DATE_FORMAT(e.expense_date, '%Y-%m') as month"),
+        'ec.category_name',
+        db.raw('SUM(e.amount) as total_amount'),
+        db.raw('COUNT(*) as expense_count')
+      )
+      .groupBy('month', 'ec.category_name')
+      .orderBy('month', 'desc');
+
+    // Owner: validate BOTH user_id AND hostel_id together in DB.
+    // Admin/Super Admin: scoped to ?hostelId if given, otherwise global (no filter).
+    const { hostelId: scopedHostelId, error: hostelError } = await resolveOwnerHostelId(user, hostelId as string | undefined);
+    if (hostelError) {
+      return res.status(403).json({ success: false, error: hostelError });
+    }
+    if (scopedHostelId) {
+      query = query.where('e.hostel_id', scopedHostelId);
+    }
+
+    if (startDate && endDate) {
+      query = query.whereBetween('e.expense_date', [startDate, endDate]);
+    } else if (year && month) {
+      const monthStart = new Date(Number(year), Number(month) - 1, 1);
+      const monthEnd = new Date(Number(year), Number(month), 0);
+      query = query.whereBetween('e.expense_date', [monthStart, monthEnd]);
+    }
+
+    const expenseData = await query;
+
+    // Calculate total
+    const total = expenseData.reduce((sum, item) => sum + Number(item.total_amount), 0);
+
+    res.json({
+      success: true,
+      data: {
+        expenses: expenseData,
+        total: Number(total)
+      }
+    });
+  } catch (error) {
+    console.error('Get expense report error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch expense report'
+    });
+  }
+};
+
+// Get Profit & Loss statement
+export const getProfitLoss = async (req: AuthRequest, res: Response) => {
+  try {
+    const { hostelId, startDate, endDate, year } = req.query;
+    const user = req.user;
+
+    // Determine date range
+    let dateStart: Date;
+    let dateEnd: Date;
+
+    if (startDate && endDate) {
+      dateStart = new Date(startDate as string);
+      dateEnd = new Date(endDate as string);
+    } else if (year) {
+      dateStart = new Date(Number(year), 0, 1);
+      dateEnd = new Date(Number(year), 11, 31);
+    } else {
+      // Default to current year
+      const currentYear = new Date().getFullYear();
+      dateStart = new Date(currentYear, 0, 1);
+      dateEnd = new Date(currentYear, 11, 31);
+    }
+
+    // Get hostel IDs for owner. Owner (role 2): own hostel. Admin/Super Admin
+    // (role 1): the per-query `hostelId && role_id !== 2` checks below already
+    // apply an explicit ?hostelId; leave hostelIds empty here for Admin so an
+    // omitted hostelId means global (no filter), not the admin's own hostel_id.
+    let hostelIds: number[] = [];
+    if (user?.role_id === 2) {
+      if (user?.hostel_id) {
+        hostelIds = [user.hostel_id];
+      } else {
+        // Owner with no linked hostel — block rather than leak global data.
+        return res.status(403).json({
+          success: false,
+          error: 'Your account is not linked to any hostel.'
+        });
+      }
+    }
+
+    // Get income by month
+    let incomeQuery = db('fee_payments as fp')
+      .join('students as s', 'fp.student_id', 's.student_id')
+      .whereNotNull('s.room_id')
+      .where('s.status', 1)
+      .whereBetween('fp.payment_date', [dateStart, dateEnd])
+      .select(
+        db.raw("DATE_FORMAT(fp.payment_date, '%Y-%m') as month"),
+        db.raw('SUM(fp.amount) as total')
+      )
+      .groupBy('month')
+      .orderBy('month');
+
+    if (hostelId && user?.role_id !== 2) {
+      incomeQuery = incomeQuery.where('fp.hostel_id', hostelId);
+    } else if (hostelIds.length > 0) {
+      incomeQuery = incomeQuery.whereIn('fp.hostel_id', hostelIds);
+    }
+
+    const incomeByMonth = await incomeQuery;
+
+    // Get expenses by month
+    let expensesQuery = db('expenses')
+      .whereBetween('expense_date', [dateStart, dateEnd])
+      .select(
+        db.raw("DATE_FORMAT(expense_date, '%Y-%m') as month"),
+        db.raw('SUM(amount) as total')
+      )
+      .groupBy('month')
+      .orderBy('month');
+
+    if (hostelId && user?.role_id !== 2) {
+      expensesQuery = expensesQuery.where('hostel_id', hostelId);
+    } else if (hostelIds.length > 0) {
+      expensesQuery = expensesQuery.whereIn('hostel_id', hostelIds);
+    }
+
+    const expensesByMonth = await expensesQuery;
+
+    // Get staff wages by month (stored separately from expenses)
+    let staffWagesByMonth: any[] = [];
+    try {
+      let staffWagesQuery = db('staff_payments')
+        .whereBetween('payment_date', [dateStart, dateEnd])
+        .select(
+          db.raw("DATE_FORMAT(payment_date, '%Y-%m') as month"),
+          db.raw('SUM(amount) as total')
+        )
+        .groupBy('month')
+        .orderBy('month');
+      if (hostelId && user?.role_id !== 2) {
+        staffWagesQuery = staffWagesQuery.where('hostel_id', hostelId);
+      } else if (hostelIds.length > 0) {
+        staffWagesQuery = staffWagesQuery.whereIn('hostel_id', hostelIds);
+      }
+      staffWagesByMonth = await staffWagesQuery;
+    } catch (e) {
+      // staff_payments table may not exist on all deployments
+    }
+
+    // Merge income and expenses by month
+    const monthsMap = new Map();
+
+    incomeByMonth.forEach(item => {
+      monthsMap.set(item.month, {
+        month: item.month,
+        income: Number(item.total),
+        expenses: 0,
+        profit: 0
+      });
+    });
+
+    expensesByMonth.forEach(item => {
+      const existing = monthsMap.get(item.month);
+      if (existing) {
+        existing.expenses = Number(item.total);
+      } else {
+        monthsMap.set(item.month, {
+          month: item.month,
+          income: 0,
+          expenses: Number(item.total),
+          profit: 0
+        });
+      }
+    });
+
+    staffWagesByMonth.forEach(item => {
+      const existing = monthsMap.get(item.month);
+      if (existing) {
+        existing.expenses += Number(item.total);
+      } else {
+        monthsMap.set(item.month, {
+          month: item.month,
+          income: 0,
+          expenses: Number(item.total),
+          profit: 0
+        });
+      }
+    });
+
+    // Calculate profit for each month
+    const monthlyData = Array.from(monthsMap.values()).map(item => ({
+      ...item,
+      profit: item.income - item.expenses
+    }));
+
+    // Calculate totals
+    const totalIncome = monthlyData.reduce((sum, item) => sum + item.income, 0);
+    const totalExpenses = monthlyData.reduce((sum, item) => sum + item.expenses, 0);
+    const totalProfit = totalIncome - totalExpenses;
+
+    res.json({
+      success: true,
+      data: {
+        monthlyData,
+        summary: {
+          totalIncome: Number(totalIncome),
+          totalExpenses: Number(totalExpenses),
+          totalProfit: Number(totalProfit),
+          profitMargin: totalIncome > 0 ? ((totalProfit / totalIncome) * 100).toFixed(2) : 0
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get P&L error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch profit & loss statement'
+    });
+  }
+};
+
+// Get occupancy trends
+export const getOccupancyTrends = async (req: AuthRequest, res: Response) => {
+  try {
+    const { hostelId } = req.query;
+    const user = req.user;
+
+    // Get hostel IDs for owner. Owner (role 2): own hostel. Admin/Super Admin
+    // (role 1): the per-query `hostelId && role_id !== 2` checks below already
+    // apply an explicit ?hostelId; leave hostelIds empty here for Admin so an
+    // omitted hostelId means global (no filter), not the admin's own hostel_id.
+    let hostelIds: number[] = [];
+    if (user?.role_id === 2) {
+      if (user?.hostel_id) {
+        hostelIds = [user.hostel_id];
+      } else {
+        // Owner with no linked hostel — block rather than leak global data.
+        return res.status(403).json({
+          success: false,
+          error: 'Your account is not linked to any hostel.'
+        });
+      }
+    }
+
+    // Get current occupancy by hostel
+    let query = db('hostel_master as h')
+      .leftJoin('rooms as r', 'h.hostel_id', 'r.hostel_id')
+      .leftJoin('room_types as rt', 'r.room_type_id', 'rt.room_type_id')
+      .select(
+        'h.hostel_id',
+        'h.hostel_name',
+        db.raw(`
+          COALESCE(SUM(
+            CASE 
+              WHEN rt.room_type_name REGEXP '^[0-9]+$' THEN CAST(rt.room_type_name AS UNSIGNED)
+              WHEN LOWER(rt.room_type_name) LIKE '%single%' THEN 1
+              WHEN LOWER(rt.room_type_name) LIKE '%double%' THEN 2
+              WHEN LOWER(rt.room_type_name) LIKE '%triple%' THEN 3
+              WHEN LOWER(rt.room_type_name) LIKE '%four%' OR LOWER(rt.room_type_name) LIKE '%4%' THEN 4
+              WHEN LOWER(rt.room_type_name) LIKE '%five%' OR LOWER(rt.room_type_name) LIKE '%5%' THEN 5
+              WHEN LOWER(rt.room_type_name) LIKE '%six%' OR LOWER(rt.room_type_name) LIKE '%6%' THEN 6
+              WHEN LOWER(rt.room_type_name) LIKE '%dormitory%' THEN 10
+              ELSE COALESCE(r.room_type_id, 0)
+            END
+          ), 0) as total_beds
+        `),
+        db.raw('COALESCE(SUM(r.occupied_beds), 0) as occupied_beds')
+      )
+      .groupBy('h.hostel_id', 'h.hostel_name');
+
+    if (hostelId && user?.role_id !== 2) {
+      query = query.where('h.hostel_id', hostelId);
+    } else if (hostelIds.length > 0) {
+      query = query.whereIn('h.hostel_id', hostelIds);
+    }
+
+    const occupancyData = await query;
+
+    // Calculate occupancy rate for each hostel
+    const trendsData = occupancyData.map(item => ({
+      hostel_id: item.hostel_id,
+      hostel_name: item.hostel_name,
+      total_beds: Number(item.total_beds),
+      occupied_beds: Number(item.occupied_beds),
+      available_beds: Number(item.total_beds) - Number(item.occupied_beds),
+      occupancy_rate: item.total_beds > 0
+        ? ((item.occupied_beds / item.total_beds) * 100).toFixed(2)
+        : 0
+    }));
+
+    res.json({
+      success: true,
+      data: trendsData
+    });
+  } catch (error) {
+    console.error('Get occupancy trends error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch occupancy trends'
+    });
+  }
+};
+
+// Get payment collection report
+export const getPaymentCollectionReport = async (req: AuthRequest, res: Response) => {
+  try {
+    const { hostelId, startDate, endDate } = req.query;
+    const user = req.user;
+
+    // Get hostel IDs for owner. Owner (role 2): own hostel. Admin/Super Admin
+    // (role 1): the per-query `hostelId && role_id !== 2` checks below already
+    // apply an explicit ?hostelId; leave hostelIds empty here for Admin so an
+    // omitted hostelId means global (no filter), not the admin's own hostel_id.
+    let hostelIds: number[] = [];
+    if (user?.role_id === 2) {
+      if (user?.hostel_id) {
+        hostelIds = [user.hostel_id];
+      } else {
+        // Owner with no linked hostel — block rather than leak global data.
+        return res.status(403).json({
+          success: false,
+          error: 'Your account is not linked to any hostel.'
+        });
+      }
+    }
+
+    // Determine date range
+    let dateStart: Date;
+    let dateEnd: Date;
+
+    if (startDate && endDate) {
+      dateStart = new Date(startDate as string);
+      dateEnd = new Date(endDate as string);
+    } else {
+      // Default to current month
+      const now = new Date();
+      dateStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      dateEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    }
+
+    // Get total collected
+    let collectedQuery = db('fee_payments as fp')
+      .join('students as s', 'fp.student_id', 's.student_id')
+      .whereNotNull('s.room_id')
+      .where('s.status', 1)
+      .whereBetween('fp.payment_date', [dateStart, dateEnd])
+      .sum('fp.amount as total');
+
+    if (hostelId && user?.role_id !== 2) {
+      collectedQuery = collectedQuery.where('fp.hostel_id', hostelId);
+    } else if (hostelIds.length > 0) {
+      collectedQuery = collectedQuery.whereIn('fp.hostel_id', hostelIds);
+    }
+
+    const collected = await collectedQuery.first();
+
+    // Calculate pending dues amount safely (from monthly_fees table)
+    let totalDuesAmount = 0;
+    try {
+      let pendingQuery = db('monthly_fees as mf')
+        .join('students as s', 'mf.student_id', 's.student_id')
+        .whereNotNull('s.room_id')
+        .where('s.status', 1)
+        .whereIn('mf.fee_status_id', [3, 4])
+        .sum('mf.balance as total');
+      
+      if (hostelId && user?.role_id !== 2) {
+        pendingQuery = pendingQuery.where('mf.hostel_id', hostelId);
+      } else if (hostelIds.length > 0) {
+        pendingQuery = pendingQuery.whereIn('mf.hostel_id', hostelIds);
+      }
+      const pendingData = await pendingQuery.first();
+      totalDuesAmount = Number(pendingData?.total || 0);
+    } catch (e) {
+      totalDuesAmount = 0;
+    }
+
+    // Get collections grouped by payment mode
+    let modeQuery = db('fee_payments as fp')
+      .join('payment_modes as pm', 'fp.payment_mode_id', 'pm.payment_mode_id')
+      .join('students as s', 'fp.student_id', 's.student_id')
+      .whereNotNull('s.room_id')
+      .where('s.status', 1)
+      .whereBetween('fp.payment_date', [dateStart, dateEnd])
+      .select('pm.payment_mode_name as mode')
+      .sum('fp.amount as total')
+      .groupBy('pm.payment_mode_name');
+
+    if (hostelId && user?.role_id !== 2) {
+      modeQuery = modeQuery.where('fp.hostel_id', hostelId);
+    } else if (hostelIds.length > 0) {
+      modeQuery = modeQuery.whereIn('fp.hostel_id', hostelIds);
+    }
+
+    const collectionByMode = await modeQuery;
+
+    res.json({
+      success: true,
+      data: {
+        collected: {
+          total: Number(collected?.total || 0),
+        },
+        pending: {
+          total: totalDuesAmount
+        },
+        collectionByMode: collectionByMode.map(item => ({
+          mode: item.mode,
+          total: Number(item.total)
+        })),
+        collectionRate: (collected?.total && totalDuesAmount)
+          ? ((Number(collected.total) / (Number(collected.total) + totalDuesAmount)) * 100).toFixed(2)
+          : 0
+      }
+    });
+  } catch (error) {
+    console.error('Get payment collection report error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch payment collection report'
+    });
+  }
+};
+
+// Get owner stats for profile screen
+export const getOwnerStats = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user;
+    let hostelIds: number[] = [];
+    
+    // Find all active hostels owned by this user
+    const userHostels = await db('hostel_master')
+      .select('hostel_id')
+      .where({ owner_id: user.user_id, is_active: 1 });
+      
+    const hostelsCount = userHostels.length;
+
+    if (user?.role_id === 2) {
+      hostelIds = userHostels.map(h => h.hostel_id);
+    }
+
+    // 1. Get occupied beds
+    let occupiedBeds = 0;
+    if (user?.role_id !== 2 || hostelIds.length > 0) {
+      let occupiedBedsQuery = db('students')
+        .where('status', 1)
+        .whereNotNull('room_id')
+        .count('* as count');
+      if (user?.role_id === 2) {
+        occupiedBedsQuery = occupiedBedsQuery.whereIn('hostel_id', hostelIds);
+      }
+      const occupiedData = await occupiedBedsQuery.first();
+      occupiedBeds = Number(occupiedData?.count || 0);
+    }
+
+    // 2. Get total beds
+    let totalBeds = 0;
+    if (user?.role_id !== 2 || hostelIds.length > 0) {
+      let totalBedsQuery = db('rooms as r')
+        .leftJoin('room_types as rt', 'r.room_type_id', 'rt.room_type_id')
+        .select(db.raw(`
+          SUM(
+            COALESCE(
+              NULLIF(r.capacity, 0),
+              CASE 
+                WHEN rt.room_type_name REGEXP '^[0-9]+$' THEN CAST(rt.room_type_name AS UNSIGNED)
+                WHEN LOWER(rt.room_type_name) LIKE '%single%' THEN 1
+                WHEN LOWER(rt.room_type_name) LIKE '%double%' THEN 2
+                WHEN LOWER(rt.room_type_name) LIKE '%triple%' THEN 3
+                WHEN LOWER(rt.room_type_name) LIKE '%four%' OR LOWER(rt.room_type_name) LIKE '%4%' THEN 4
+                WHEN LOWER(rt.room_type_name) LIKE '%five%' OR LOWER(rt.room_type_name) LIKE '%5%' THEN 5
+                WHEN LOWER(rt.room_type_name) LIKE '%six%' OR LOWER(rt.room_type_name) LIKE '%6%' THEN 6
+                WHEN LOWER(rt.room_type_name) LIKE '%eight%' OR LOWER(rt.room_type_name) LIKE '%8%' THEN 8
+                WHEN LOWER(rt.room_type_name) LIKE '%dormitory%' THEN 10
+                ELSE 0
+              END,
+              1
+            )
+          ) as total_beds
+        `));
+      if (user?.role_id === 2) {
+        totalBedsQuery = totalBedsQuery.whereIn('r.hostel_id', hostelIds);
+      }
+      const bedsData = await totalBedsQuery.first();
+      totalBeds = Number(bedsData?.total_beds || 0);
+    }
+
+    // 3. Get today's collected rent/fees
+    let todayCollected = 0;
+    if (user?.role_id !== 2 || hostelIds.length > 0) {
+      const now = new Date();
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      
+      let todayRentQuery = db('fee_payments')
+        .whereRaw('DATE(payment_date) = ?', [today])
+        .sum('amount as total');
+      if (user?.role_id === 2) {
+        todayRentQuery = todayRentQuery.whereIn('hostel_id', hostelIds);
+      }
+      const todayRent = await todayRentQuery.first();
+      const todayRentAmt = Number(todayRent?.total || 0);
+
+      let todayOtherQuery = db('income')
+        .whereRaw('DATE(income_date) = ?', [today])
+        .sum('amount as total');
+      if (user?.role_id === 2) {
+        todayOtherQuery = todayOtherQuery.whereIn('hostel_id', hostelIds);
+      }
+      const todayOther = await todayOtherQuery.first();
+      const todayOtherAmt = Number(todayOther?.total || 0);
+
+      let todayGuestAmt = 0;
+      try {
+        let todayGuestQuery = db('guests')
+          .where('amount_paid', '>', 0)
+          .whereRaw('DATE(check_in_date) = ?', [today])
+          .sum('amount_paid as total');
+        if (user?.role_id === 2) {
+          todayGuestQuery = todayGuestQuery.whereIn('hostel_id', hostelIds);
+        }
+        const todayGuest = await todayGuestQuery.first();
+        todayGuestAmt = Number(todayGuest?.total || 0);
+      } catch (e) {
+        // guests table may not exist
+      }
+
+      todayCollected = todayRentAmt + todayOtherAmt + todayGuestAmt;
+    }
+
+    // 4. Rooms count
+    let roomsCount = 0;
+    if (user?.role_id !== 2 || hostelIds.length > 0) {
+      let roomsCountQuery = db('rooms').count('* as count');
+      if (user?.role_id === 2) {
+        roomsCountQuery = roomsCountQuery.whereIn('hostel_id', hostelIds);
+      }
+      const roomsCountData = await roomsCountQuery.first();
+      roomsCount = Number(roomsCountData?.count || 0);
+    }
+
+    // 5. Tenants count
+    let tenantsCount = 0;
+    if (user?.role_id !== 2 || hostelIds.length > 0) {
+      let tenantsCountQuery = db('students').where('status', 1).count('* as count');
+      if (user?.role_id === 2) {
+        tenantsCountQuery = tenantsCountQuery.whereIn('hostel_id', hostelIds);
+      }
+      const tenantsCountData = await tenantsCountQuery.first();
+      tenantsCount = Number(tenantsCountData?.count || 0);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        hostelsCount,
+        roomsCount,
+        tenantsCount,
+        rooms: {
+          occupied_beds: occupiedBeds,
+          total_beds: totalBeds
+        },
+        fees: {
+          today_collected: todayCollected
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get owner stats error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch owner statistics'
+    });
+  }
+};
+
+// Get monthly financial overview (P&L dashboard)
+export const getMonthlyOverview = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user;
+    const { month, hostelId } = req.query; // month expected format: YYYY-MM
+
+    // Owner: always scoped to their own hostel. Admin/Super Admin: scoped to
+    // ?hostelId if given, otherwise global (no filter) across all hostels.
+    let hostelIds: number[] = [];
+    const requestedHostelId = hostelId && !isNaN(Number(hostelId)) && Number(hostelId) > 0
+      ? Number(hostelId)
+      : null;
+
+    if (user?.user_id && (user?.role_id === 2 || user?.role_id === 1)) {
+      const ownerHostels = await db('hostel_master')
+        .where('owner_id', user.user_id)
+        .select('hostel_id');
+      const ids = ownerHostels.map(h => Number(h.hostel_id)).filter(Boolean);
+      if (user?.hostel_id && !ids.includes(Number(user.hostel_id))) {
+        ids.push(Number(user.hostel_id));
+      }
+
+      if (requestedHostelId !== null) {
+        // Admin/Super Admin may drill into any hostel; an Owner may only
+        // drill into a hostel they actually own — otherwise ?hostelId=<other>
+        // would leak another hostel's financials.
+        if (user.role_id === 1) {
+          hostelIds = [requestedHostelId];
+        } else if (ids.includes(requestedHostelId)) {
+          hostelIds = [requestedHostelId];
+        } else {
+          return res.status(403).json({ success: false, error: 'You do not have access to this hostel.' });
+        }
+      } else if (user?.hostel_id && ids.includes(Number(user.hostel_id))) {
+        hostelIds = [Number(user.hostel_id)];
+      } else if (ids.length > 0) {
+        hostelIds = [ids[0]];
+      } else {
+        hostelIds = [];
+      }
+    } else if (requestedHostelId !== null) {
+      hostelIds = [requestedHostelId];
+    } else if (user?.hostel_id) {
+      hostelIds = [Number(user.hostel_id)];
+    }
+
+    if (hostelIds.length === 0 && user?.role_id === 2) {
+      return res.json({
+        success: true,
+        data: {
+          currentMonth: { feeCollection: 0, totalIncome: 0, totalExpenses: 0, netProfit: 0 },
+          prevMonth: { feeCollection: 0, totalIncome: 0, totalExpenses: 0, netProfit: 0 },
+          comparison: { incomeChange: 0, expenseChange: 0, profitChange: 0 },
+          trend: [],
+          expenseCategories: []
+        }
+      });
+    }
+
+    // Parse the requested month or default to current
+    const now = new Date();
+    let targetYear: number, targetMonth: number;
+
+    if (month && typeof month === 'string' && /^\d{4}-\d{2}$/.test(month)) {
+      const parts = month.split('-').map(Number);
+      targetYear = parts[0];
+      targetMonth = parts[1];
+    } else {
+      targetYear = now.getFullYear();
+      targetMonth = now.getMonth() + 1;
+    }
+
+    const monthStart = `${targetYear}-${String(targetMonth).padStart(2, '0')}-01`;
+    const lastDay = new Date(targetYear, targetMonth, 0).getDate();
+    const monthEnd = `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    const feeMonthStr = `${targetYear}-${String(targetMonth).padStart(2, '0')}`;
+
+    // ── 1. Fee Collection for the month (from fee_payments) ──
+    let feeQuery = db('fee_payments as fp')
+      .join('students as s', 'fp.student_id', 's.student_id')
+      .whereNotNull('s.room_id')
+      .where('s.status', 1)
+      .whereBetween('fp.payment_date', [monthStart, monthEnd])
+      .sum('fp.amount as total')
+      .count('* as count');
+    
+    if (hostelIds.length > 0) {
+      feeQuery = feeQuery.whereIn('fp.hostel_id', hostelIds);
+    }
+    const feeResult = await feeQuery.first();
+    const feeCollection = Number(feeResult?.total || 0);
+    const feeCount = Number(feeResult?.count || 0);
+
+    // ── 2. Other Income (from income table) ──
+    let incomeQuery = db('income')
+      .whereBetween('income_date', [monthStart, monthEnd])
+      .sum('amount as total')
+      .count('* as count');
+    if (hostelIds.length > 0) {
+      incomeQuery = incomeQuery.whereIn('hostel_id', hostelIds);
+    }
+    const incomeResult = await incomeQuery.first();
+    let otherIncome = Number(incomeResult?.total || 0);
+
+    // ── 2b. Guest income (short-stay paying guests) ──
+    let guestIncome = 0;
+    try {
+      let guestQuery = db('guests')
+        .whereBetween('check_in_date', [monthStart, monthEnd])
+        .sum('amount_paid as total');
+      if (hostelIds.length > 0) guestQuery = guestQuery.whereIn('hostel_id', hostelIds);
+      const guestResult = await guestQuery.first();
+      guestIncome = Number(guestResult?.total || 0);
+    } catch (e) {
+      guestIncome = 0; // guests table may not exist on older databases
+    }
+    otherIncome += guestIncome;
+
+    // ── 2c. Admission fee collection (one-time fees paid during this month) ──
+    let admissionFeeCollection = 0;
+    let admissionFeeCount = 0;
+    let admissionStats = {
+      totalStudents: 0,
+      paidStudents: 0,
+      pendingStudents: 0,
+      totalExpectedAmount: 0,
+      totalPaidAmount: 0,
+      totalPendingAmount: 0,
+    };
+    try {
+      let admissionFeeQuery = db('students')
+        .whereBetween('admission_date', [monthStart, monthEnd])
+        .where('is_old_student', 0)
+        .where(function() {
+          this.where('admission_status', 1)
+            .orWhere('admission_status', 'Paid');
+        })
+        .sum('admission_fee as total')
+        .count('student_id as count');
+      if (hostelIds.length > 0) {
+        admissionFeeQuery = admissionFeeQuery.whereIn('hostel_id', hostelIds);
+      }
+      const admissionFeeResult = await admissionFeeQuery.first();
+      admissionFeeCollection = Number(admissionFeeResult?.total || 0);
+      admissionFeeCount = Number(admissionFeeResult?.count || 0);
+
+      // Per-student breakdown (all active and allocated students with a non-zero admission_fee set)
+      let breakdownQuery = db('students')
+        .where('status', 1)
+        .whereNotNull('room_id')
+        .where('admission_fee', '>', 0)
+        .where('is_old_student', 0)
+        .select(
+          db.raw('COUNT(student_id) as total_students'),
+          db.raw('SUM(admission_fee) as total_expected'),
+          db.raw(`SUM(CASE WHEN admission_status = 1 OR admission_status = 'Paid' THEN admission_fee ELSE 0 END) as total_paid`),
+          db.raw(`SUM(CASE WHEN admission_status = 1 OR admission_status = 'Paid' THEN 1 ELSE 0 END) as paid_count`),
+          db.raw(`SUM(CASE WHEN admission_status != 1 AND admission_status != 'Paid' THEN 1 ELSE 0 END) as pending_count`),
+          db.raw(`SUM(CASE WHEN admission_status != 1 AND admission_status != 'Paid' THEN admission_fee ELSE 0 END) as total_pending`)
+        );
+      if (hostelIds.length > 0) {
+        breakdownQuery = breakdownQuery.whereIn('hostel_id', hostelIds);
+      }
+      const statsResult = await breakdownQuery.first();
+      if (statsResult) {
+        admissionStats = {
+          totalStudents: Number(statsResult.total_students || 0),
+          paidStudents: Number(statsResult.paid_count || 0),
+          pendingStudents: Number(statsResult.pending_count || 0),
+          totalExpectedAmount: Number(statsResult.total_expected || 0),
+          totalPaidAmount: Number(statsResult.total_paid || 0),
+          totalPendingAmount: Number(statsResult.total_pending || 0),
+        };
+      }
+    } catch (e) {
+      admissionFeeCollection = 0;
+      admissionFeeCount = 0;
+    }
+
+    const totalIncome = feeCollection + otherIncome + admissionFeeCollection;
+
+    // ── 3. Expenses by category for the month ──
+    let expenseCatQuery = db('expenses as e')
+      .leftJoin('expense_categories as ec', 'e.category_id', 'ec.category_id')
+      .whereBetween('e.expense_date', [monthStart, monthEnd])
+      .select(
+        'ec.category_id',
+        'ec.category_name',
+        db.raw('SUM(e.amount) as total_amount'),
+        db.raw('COUNT(e.expense_id) as count')
+      )
+      .groupBy('ec.category_id', 'ec.category_name')
+      .orderBy('total_amount', 'desc');
+    if (hostelIds.length > 0) {
+      expenseCatQuery = expenseCatQuery.whereIn('e.hostel_id', hostelIds);
+    }
+    const expenseBreakdown = await expenseCatQuery;
+
+    // ── 3b. Staff wage payments (recorded separately, surfaced as an expense line) ──
+    let staffWages = 0;
+    let staffWageCount = 0;
+    try {
+      let wagesQuery = db('staff_payments')
+        .whereBetween('payment_date', [monthStart, monthEnd])
+        .sum('amount as total')
+        .count('* as count');
+      if (hostelIds.length > 0) wagesQuery = wagesQuery.whereIn('hostel_id', hostelIds);
+      const wagesResult = await wagesQuery.first();
+      staffWages = Number(wagesResult?.total || 0);
+      staffWageCount = Number(wagesResult?.count || 0);
+    } catch (e) {
+      staffWages = 0; // staff_payments table may not exist on older databases
+    }
+
+    const totalExpenses = expenseBreakdown.reduce(
+      (sum: number, item: any) => sum + Number(item.total_amount || 0), 0
+    ) + staffWages;
+
+    // Calculate percentages for each category
+    const expenseCategories = expenseBreakdown.map((item: any) => ({
+      category_id: item.category_id,
+      category_name: item.category_name || 'Uncategorized',
+      amount: Number(item.total_amount || 0),
+      count: Number(item.count || 0),
+      percentage: totalExpenses > 0
+        ? Number(((Number(item.total_amount) / totalExpenses) * 100).toFixed(1))
+        : 0
+    }));
+
+    // Surface staff wages as its own category line so it shows in the breakdown
+    if (staffWages > 0) {
+      expenseCategories.push({
+        category_id: -1,
+        category_name: 'Staff Wages',
+        amount: staffWages,
+        count: staffWageCount,
+        percentage: totalExpenses > 0 ? Number(((staffWages / totalExpenses) * 100).toFixed(1)) : 0,
+      });
+      expenseCategories.sort((a: any, b: any) => b.amount - a.amount);
+    }
+
+    const netProfit = totalIncome - totalExpenses;
+
+    // ── 4. Monthly rent due/collected/pending for context ──
+    let totalRentDue = 0;
+    let totalRentPending = 0;
+    if (await tableExists('monthly_fees')) {
+      let monthlyFeeQuery = db('monthly_fees as mf')
+        .join('students as s', 'mf.student_id', 's.student_id')
+        .whereNotNull('s.room_id')
+        .where('s.status', 1)
+        .where('mf.fee_month', feeMonthStr)
+        .sum('mf.total_due as total_due')
+        .sum('mf.balance as total_pending');
+      if (hostelIds.length > 0) {
+        monthlyFeeQuery = monthlyFeeQuery.whereIn('mf.hostel_id', hostelIds);
+      }
+      const monthlyFeeResult = await monthlyFeeQuery.first();
+      totalRentDue = Number(monthlyFeeResult?.total_due || 0);
+      totalRentPending = Number(monthlyFeeResult?.total_pending || 0);
+    }
+
+    // ── 5. 12-month trend (last 12 months including current) ──
+    const trend: any[] = [];
+    const trendStartDate = new Date(targetYear, targetMonth - 6, 1);
+    const trendStartDateStr = `${trendStartDate.getFullYear()}-${String(trendStartDate.getMonth() + 1).padStart(2, '0')}-01`;
+
+    // Fee collection
+    let feeTrendQuery = db('fee_payments as fp')
+      .join('students as s', 'fp.student_id', 's.student_id')
+      .whereNotNull('s.room_id')
+      .where('s.status', 1)
+      .whereBetween('fp.payment_date', [trendStartDateStr, monthEnd])
+      .select(db.raw("DATE_FORMAT(fp.payment_date, '%Y-%m') as month"), db.raw('SUM(fp.amount) as total'))
+      .groupBy('month');
+    if (hostelIds.length > 0) feeTrendQuery = feeTrendQuery.whereIn('fp.hostel_id', hostelIds);
+    const feeTrendRes = await feeTrendQuery;
+    const feeTrendMap = new Map(feeTrendRes.map((item: any) => [item.month, Number(item.total || 0)]));
+
+    // Other income
+    let incTrendQuery = db('income')
+      .whereBetween('income_date', [trendStartDateStr, monthEnd])
+      .select(db.raw("DATE_FORMAT(income_date, '%Y-%m') as month"), db.raw('SUM(amount) as total'))
+      .groupBy('month');
+    if (hostelIds.length > 0) incTrendQuery = incTrendQuery.whereIn('hostel_id', hostelIds);
+    const incTrendRes = await incTrendQuery;
+    const incTrendMap = new Map(incTrendRes.map((item: any) => [item.month, Number(item.total || 0)]));
+
+    // Expenses
+    let expTrendQuery = db('expenses')
+      .whereBetween('expense_date', [trendStartDateStr, monthEnd])
+      .select(db.raw("DATE_FORMAT(expense_date, '%Y-%m') as month"), db.raw('SUM(amount) as total'))
+      .groupBy('month');
+    if (hostelIds.length > 0) expTrendQuery = expTrendQuery.whereIn('hostel_id', hostelIds);
+    const expTrendRes = await expTrendQuery;
+    const expTrendMap = new Map(expTrendRes.map((item: any) => [item.month, Number(item.total || 0)]));
+
+    // Guests
+    let guestTrendMap = new Map();
+    try {
+      let guestTrendQuery = db('guests')
+        .whereBetween('check_in_date', [trendStartDateStr, monthEnd])
+        .select(db.raw("DATE_FORMAT(check_in_date, '%Y-%m') as month"), db.raw('SUM(amount_paid) as total'))
+        .groupBy('month');
+      if (hostelIds.length > 0) guestTrendQuery = guestTrendQuery.whereIn('hostel_id', hostelIds);
+      const guestTrendRes = await guestTrendQuery;
+      guestTrendMap = new Map(guestTrendRes.map((item: any) => [item.month, Number(item.total || 0)]));
+    } catch(e) { console.error('[trend] guests query failed:', e); }
+
+    // Wages
+    let wagesTrendMap = new Map();
+    try {
+      let wagesTrendQuery = db('staff_payments')
+        .whereBetween('payment_date', [trendStartDateStr, monthEnd])
+        .select(db.raw("DATE_FORMAT(payment_date, '%Y-%m') as month"), db.raw('SUM(amount) as total'))
+        .groupBy('month');
+      if (hostelIds.length > 0) wagesTrendQuery = wagesTrendQuery.whereIn('hostel_id', hostelIds);
+      const wagesTrendRes = await wagesTrendQuery;
+      wagesTrendMap = new Map(wagesTrendRes.map((item: any) => [item.month, Number(item.total || 0)]));
+    } catch(e) { console.error('[trend] staff_payments query failed:', e); }
+
+    // Admissions
+    let admissionTrendMap = new Map();
+    try {
+      let admissionTrendQuery = db('students')
+        .whereBetween('admission_date', [trendStartDateStr, monthEnd])
+        .where('is_old_student', 0)
+        .where(function() {
+          this.where('admission_status', 1).orWhere('admission_status', 'Paid');
+        })
+        .select(db.raw("DATE_FORMAT(admission_date, '%Y-%m') as month"), db.raw('SUM(admission_fee) as total'))
+        .groupBy('month');
+      if (hostelIds.length > 0) admissionTrendQuery = admissionTrendQuery.whereIn('hostel_id', hostelIds);
+      const admissionTrendRes = await admissionTrendQuery;
+      admissionTrendMap = new Map(admissionTrendRes.map((item: any) => [item.month, Number(item.total || 0)]));
+    } catch(e) { console.error('[trend] admissions query failed:', e); }
+
+    for (let i = 5; i >= 0; i--) {
+      const tDate = new Date(targetYear, targetMonth - 1 - i, 1);
+      const tYear = tDate.getFullYear();
+      const tMonth = tDate.getMonth() + 1;
+      const tMonthStr = `${tYear}-${String(tMonth).padStart(2, '0')}`;
+      const tMonthLabel = tDate.toLocaleString('en-US', { month: 'short' });
+
+      const tFee = feeTrendMap.get(tMonthStr) || 0;
+      const tInc = incTrendMap.get(tMonthStr) || 0;
+      const tExp = expTrendMap.get(tMonthStr) || 0;
+      const tGuest = guestTrendMap.get(tMonthStr) || 0;
+      const tWages = wagesTrendMap.get(tMonthStr) || 0;
+      const tAdmission = admissionTrendMap.get(tMonthStr) || 0;
+
+      const tIncome = tFee + tInc + tGuest + tAdmission;
+      const tExpenses = tExp + tWages;
+
+      trend.push({
+        month: tMonthStr,
+        monthLabel: tMonthLabel,
+        year: tYear,
+        income: tIncome,
+        feeCollection: tFee,
+        otherIncome: tInc,
+        expenses: tExpenses,
+        profit: tIncome - tExpenses
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        currentMonth: {
+          month: feeMonthStr,
+          monthLabel: new Date(targetYear, targetMonth - 1).toLocaleString('en-US', { month: 'long', year: 'numeric' }),
+          feeCollection,
+          feeCount,
+          otherIncome,
+          guestIncome,
+          admissionFeeCollection,
+          admissionFeeCount,
+          staffWages,
+          totalIncome,
+          totalExpenses,
+          netProfit,
+          profitMargin: totalIncome > 0 ? Number(((netProfit / totalIncome) * 100).toFixed(1)) : 0,
+          expenseBreakdown: expenseCategories,
+          rentDue: totalRentDue,
+          rentPending: totalRentPending,
+          rentCollected: feeCollection,
+          admissionStats,
+        },
+        trend
+      }
+    });
+  } catch (error) {
+    console.error('Get monthly overview error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch monthly overview'
+    });
+  }
+};
+

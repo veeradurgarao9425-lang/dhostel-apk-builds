@@ -1,0 +1,1118 @@
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import {
+    View,
+    Text,
+    StyleSheet,
+    FlatList,
+    TextInput,
+    TouchableOpacity,
+    StatusBar,
+    Image,
+    Linking,
+    LayoutAnimation,
+    Platform,
+    UIManager,
+    ScrollView,
+    RefreshControl,
+    ActivityIndicator,
+} from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { Search, Users, Plus, Phone, MessageCircle, X, Calendar } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
+import DateTimePickerModal from "react-native-modal-datetime-picker";
+import { LinearGradient } from 'expo-linear-gradient';
+import { useAuth } from '../../contexts/AuthContext';
+import api from '../services/api';
+import { ProfileMenu } from '../components/ProfileMenu';
+import { HeaderNotification } from '../components/HeaderNotification';
+import { useTheme } from '../../contexts/ThemeContext';
+import { useToast } from '../context/ToastContext';
+import { useTranslation } from 'react-i18next';
+import { EmptyState } from '../components/ui/EmptyState';
+import { ErrorState } from '../components/ui/ErrorState';
+import { AppHeader } from '../components/AppHeader';
+import { LoadMoreFooter } from '../components/ui/LoadMoreFooter';
+import { SkeletonList } from '../components/ui/SkeletonCard';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { COLORS } from '../theme/index';
+import { toLocalDateStr } from '../utils/dateUtils';
+import { useRefresh } from '../../contexts/RefreshContext';
+import { FullScreenLoader } from '../components/FullScreenLoader';
+
+// if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+//     UIManager.setLayoutAnimationEnabledExperimental(true);
+// }
+
+const PAGE_SIZE = 10;
+type TabType = 'Active' | 'Unallocated' | 'Inactive' | 'PreBooked' | 'QRRegister' | 'AdmissionPending' | 'All';
+
+const TABS: { key: TabType; label: string }[] = [
+    { key: 'Active', label: 'Active' },
+    { key: 'AdmissionPending', label: 'Admission Pending' },
+    { key: 'PreBooked', label: 'Pre-Booked' },
+    { key: 'QRRegister', label: 'QR Signups' },
+    { key: 'Inactive', label: 'Inactive' },
+    { key: 'All', label: 'Total' }
+];
+
+// ─── Memoized Student Card ────────────────────────────────────────────────────
+interface StudentCardProps {
+    student: any;
+    onPress: (id: number) => void;
+    onWhatsApp: (phone: string) => void;
+    onCall: (phone: string) => void;
+    onToggle: (student: any) => void;
+    onAllocateRoom: (student: any) => void;
+    onReject: (student: any) => void;
+    onPayAdmission: (student: any) => void;
+}
+
+const StudentCard = React.memo(({ student, onPress, onWhatsApp, onCall, onToggle, onAllocateRoom, onReject, onPayAdmission }: StudentCardProps) => {
+    const { theme, isDark } = useTheme();
+    const { t } = useTranslation();
+    const isActive = student.status === 1;
+    const isPreBooked = student.status === 2;
+    const isQRSignup = student.status === 3;
+    const [imageError, setImageError] = useState(false);
+
+    useEffect(() => {
+        setImageError(false);
+    }, [student.photo]);
+
+    const getInitials = (first: string, last: string) => {
+        const f = first ? first.charAt(0).toUpperCase() : '';
+        const l = last ? last.charAt(0).toUpperCase() : '';
+        return (f + l).trim() || '?';
+    };
+
+    // Determine colors based on status dynamically from theme
+    let statusColor = theme.error;
+    let statusLabel = t('students.inactive');
+
+    if (isActive) {
+        statusColor = theme.success;
+        statusLabel = t('students.active');
+    } else if (isPreBooked) {
+        statusColor = theme.warning;
+        statusLabel = t('students.prebooked');
+    } else if (isQRSignup) {
+        statusColor = theme.primary;
+        statusLabel = t('students.qrSignup');
+    }
+
+
+    const badgeBg = statusColor + '15';
+    const badgeText = statusColor;
+    const avatarBg = statusColor + '20';
+    const avatarTextColor = statusColor;
+
+    return (
+        <TouchableOpacity
+            style={[styles.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
+            onPress={() => onPress(student.student_id)}
+            activeOpacity={0.8}
+        >
+            <View style={styles.cardHeader}>
+                <View style={[styles.avatarBox, { backgroundColor: avatarBg }]}>
+                    {(() => {
+                        const rawPhoto = student.profile_photo_url || student.photo || student.profile_photo;
+                        let photoUri: string | null = null;
+                        if (rawPhoto) {
+                            if (rawPhoto.includes('r2.cloudflarestorage.com/hostix-media/')) {
+                                const key = rawPhoto.split('hostix-media/')[1];
+                                photoUri = `http://143.244.131.69:8081/api/media/${key}`;
+                            } else if (rawPhoto.startsWith('http://') || rawPhoto.startsWith('https://')) {
+                                photoUri = rawPhoto;
+                            } else {
+                                photoUri = `http://143.244.131.69:8081${rawPhoto.startsWith('/') ? '' : '/'}${rawPhoto}`;
+                            }
+                        }
+                        return photoUri && !imageError ? (
+                            <Image 
+                                source={{ uri: photoUri }} 
+                                style={styles.avatarImg} 
+                                fadeDuration={0} 
+                                onError={() => setImageError(true)}
+                            />
+                        ) : (
+                            <Text style={[styles.avatarTextInitials, { color: avatarTextColor }]}>
+                                {getInitials(student.first_name, student.last_name)}
+                            </Text>
+                        );
+                    })()}
+                </View>
+                <View style={styles.infoContainer}>
+                    <Text style={[styles.nameText, { color: theme.textPrimary }]} numberOfLines={1}>
+                        {student.first_name} {student.last_name || ''}
+                    </Text>
+                    <Text style={[styles.subDetailText, { color: theme.textSecondary }]}>
+                        {t('students.room')} {student.room_number || 'N/A'} • {student.phone || t('students.noPhone')}
+                    </Text>
+
+                    <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+                        {isActive && !student.room_id && (
+                            <TouchableOpacity
+                                style={[styles.smallActionBtn, { marginTop: 0, backgroundColor: '#FEF2F2', borderColor: '#FECACA' }]}
+                                onPress={() => onAllocateRoom(student)}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={[styles.smallActionBtnText, { color: '#DC2626' }]}>⚠ {t('students.allocateRoom', 'Allocate Room')}</Text>
+                            </TouchableOpacity>
+                        )}
+                        {(isActive || isQRSignup || isPreBooked) && student.admission_status === 0 && (
+                            <TouchableOpacity
+                                style={[styles.smallActionBtn, { marginTop: 0, backgroundColor: '#FFFBEB', borderColor: '#FDE68A' }]}
+                                onPress={() => onPayAdmission(student)}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={[styles.smallActionBtnText, { color: '#D97706' }]}>✓ Pay Admission</Text>
+                            </TouchableOpacity>
+                        )}
+                        {isQRSignup && (
+                            <TouchableOpacity
+                                style={[styles.smallActionBtn, { marginTop: 0, backgroundColor: '#FEF2F2', borderColor: '#FECACA' }]}
+                                onPress={() => onReject(student)}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={[styles.smallActionBtnText, { color: '#DC2626' }]}>✕ {t('students.reject', 'Reject')}</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                </View>
+                <View style={[styles.statusBadge, { backgroundColor: badgeBg }]}>
+                    <Text style={[styles.statusBadgeText, { color: badgeText }]}>
+                        {statusLabel}
+                    </Text>
+                </View>
+            </View>
+
+            <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
+
+            <View style={styles.cardActions}>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <TouchableOpacity
+                        onPress={() => onWhatsApp(student.phone)}
+                        style={[styles.actionBtnIcon, { backgroundColor: isDark ? '#334155' : '#F8FAFC', borderColor: isDark ? '#475569' : '#E2E8F0' }]}
+                    >
+                        <MessageCircle size={14} color="#25D366" />
+                        <Text style={[styles.actionBtnIconText, { color: theme.textSecondary }]}>{t('students.whatsapp')}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => onCall(student.phone)}
+                        style={[styles.actionBtnIcon, { backgroundColor: isDark ? '#334155' : '#F8FAFC', borderColor: isDark ? '#475569' : '#E2E8F0' }]}
+                    >
+                        <Phone size={14} color="#0EA5E9" />
+                        <Text style={[styles.actionBtnIconText, { color: theme.textSecondary }]}>{t('students.call')}</Text>
+                    </TouchableOpacity>
+                </View>
+                <TouchableOpacity
+                    onPress={() => onToggle(student)}
+                    style={[
+                        styles.statusToggleBtnNew,
+                        {
+                            backgroundColor: isQRSignup ? theme.primary + '15' : isPreBooked ? theme.warning + '15' : isActive ? theme.error + '15' : theme.success + '15',
+                            borderColor: isQRSignup ? theme.primary + '30' : isPreBooked ? theme.warning + '30' : isActive ? theme.error + '30' : theme.success + '30',
+                            borderWidth: 1
+                        }
+                    ]}
+                >
+                    {isQRSignup ? (
+                        <Text style={[styles.statusToggleTextNew, { color: theme.primary }]}>{t('students.checkIn')}</Text>
+                    ) : isPreBooked ? (
+                        <Text style={[styles.statusToggleTextNew, { color: theme.warning }]}>{t('students.checkIn')}</Text>
+                    ) : (
+                        <Text style={[styles.statusToggleTextNew, { color: isActive ? theme.error : theme.success }]}>
+                            {isActive ? t('students.deactivate') : t('students.activate')}
+                        </Text>
+                    )}
+
+                </TouchableOpacity>
+            </View>
+        </TouchableOpacity>
+    );
+});
+
+// ─── List Footer ──────────────────────────────────────────────────────────────
+// Spinner while loading more. "All N students loaded" pill when done.
+const ListFooter = React.memo(({ loading, hasMore, total }: {
+    loading: boolean;
+    hasMore: boolean;
+    total: number;
+}) => {
+    const { t } = useTranslation();
+    if (loading) {
+        return <ActivityIndicator size="small" color="#94A3B8" style={{ marginVertical: 20 }} />;
+    }
+    if (!hasMore && total > 0) {
+        return (
+            <View style={footerStyles.container}>
+                <View style={footerStyles.line} />
+                <View style={footerStyles.pill}>
+                    <Users size={12} color="#94A3B8" />
+                    <Text style={footerStyles.text}>{t('students.allLoaded', { count: total })}</Text>
+                </View>
+                <View style={footerStyles.line} />
+            </View>
+        );
+    }
+    return null;
+});
+
+
+const footerStyles = StyleSheet.create({
+    container: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 4,
+        marginBottom: 20,
+        paddingHorizontal: 4,
+    },
+    line: {
+        flex: 1,
+        height: 1,
+        backgroundColor: '#E2E8F0',
+    },
+    pill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 14,
+        paddingVertical: 7,
+        backgroundColor: '#F1F5F9',
+        borderRadius: 20,
+        marginHorizontal: 12,
+    },
+    text: {
+        fontSize: 12,
+        color: '#94A3B8',
+        fontWeight: '600',
+    },
+});
+
+// ─── Main Screen ──────────────────────────────────────────────────────────────
+export default function StudentsScreen({ navigation, route }: any) {
+    const { user } = useAuth();
+    const { theme, isDark } = useTheme();
+    const { showApiError, showSuccess } = useToast();
+    const { t } = useTranslation();
+    const { refreshCounter, refreshPayload } = useRefresh();
+
+
+    const [allStudents, setAllStudents] = useState<any[]>([]);
+    const [page, setPage] = useState(1);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState(true);
+    const [search, setSearch] = useState('');
+    const [activeTab, setActiveTab] = useState<TabType>('Active');
+    const [initialLoading, setInitialLoading] = useState(true);
+    const [error, setError] = useState(false);
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [counts, setCounts] = useState({ active: 0, inactive: 0, prebooked: 0, qrRegister: 0, total: 0, unallocated: 0, pendingAdmissions: 0 });
+    const [totalMatching, setTotalMatching] = useState(0);
+    const [dateFilter, setDateFilter] = useState<Date | null>(null);
+    const [startDateFilter, setStartDateFilter] = useState<string | null>(null);
+    const [endDateFilter, setEndDateFilter] = useState<string | null>(null);
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
+    const [backgroundLoading, setBackgroundLoading] = useState(false);
+    // Confirm dialog state
+    const [confirmDialog, setConfirmDialog] = useState<{
+        visible: boolean;
+        student: any | null;
+        targetStatus: number;
+        title: string;
+        message: string;
+        action?: 'status' | 'reject' | 'pay_admission';
+    }>({ visible: false, student: null, targetStatus: 0, title: '', message: '', action: 'status' });
+    const [statusLoading, setStatusLoading] = useState(false);
+
+    // Update activeTab if passed via params
+    useEffect(() => {
+        if (route?.params?.filterUnallocated) {
+            setActiveTab('Unallocated');
+            navigation.setParams({ filterUnallocated: undefined });
+        }
+        if (route?.params?.filter) {
+            setActiveTab(route.params.filter);
+            navigation.setParams({ filter: undefined });
+        }
+        if (route?.params?.startDate && route?.params?.endDate) {
+            setStartDateFilter(route.params.startDate);
+            setEndDateFilter(route.params.endDate);
+            setDateFilter(null);
+            setActiveTab('Active');
+            navigation.setParams({ startDate: undefined, endDate: undefined });
+        }
+    }, [route?.params]);
+
+    const abortRef = useRef<AbortController | null>(null);
+    const searchTimeout = useRef<NodeJS.Timeout | null>(null);
+
+    // ── Debounce search ───────────────────────────────────────────────────
+    useEffect(() => {
+        if (searchTimeout.current) clearTimeout(searchTimeout.current);
+        searchTimeout.current = setTimeout(() => setDebouncedSearch(search), 350);
+        return () => { if (searchTimeout.current) clearTimeout(searchTimeout.current); };
+    }, [search]);
+
+    // ── Core fetch ────────────────────────────────────────────────────────
+    const fetchPage = useCallback(async (pageNum: number, isSilent = false) => {
+        abortRef.current?.abort();
+        const controller = new AbortController();
+        abortRef.current = controller;
+
+        try {
+            if (pageNum === 1) {
+                if (!isSilent) {
+                    setInitialLoading(true);
+                    setAllStudents([]);
+                } else if (allStudents.length > 0) {
+                    setBackgroundLoading(true);
+                }
+                setError(false);
+            } else {
+                setLoadingMore(true);
+            }
+
+            const params: Record<string, any> = { page: pageNum, limit: PAGE_SIZE };
+            if (debouncedSearch) params.search = debouncedSearch;
+
+            const statusParam = activeTab === 'Active' ? 1 : activeTab === 'Inactive' ? 0 : activeTab === 'PreBooked' ? 2 : activeTab === 'QRRegister' ? 3 : undefined;
+            if (statusParam !== undefined) {
+                params.status = statusParam;
+            }
+            if (activeTab === 'Unallocated') {
+                params.unallocated = true;
+            }
+            if (activeTab === 'AdmissionPending') {
+                params.admissionPending = true;
+            }
+            if (dateFilter) {
+                params.date = toLocalDateStr(dateFilter);
+            } else if (startDateFilter && endDateFilter) {
+                params.startDate = startDateFilter;
+                params.endDate = endDateFilter;
+            }
+
+            const response = await api.get('/students', { params, signal: controller.signal });
+            if (controller.signal.aborted) return;
+
+            if (response.data.success) {
+                const newData: any[] = response.data.data || [];
+                const totalCount = response.data.total;
+                if (totalCount !== undefined) {
+                    setTotalMatching(totalCount);
+                }
+                if (newData.length < PAGE_SIZE) setHasMore(false);
+
+                setAllStudents(prev => {
+                    if (pageNum === 1) return newData;
+                    // Deduplicate to prevent duplicate key errors on re-fetch
+                    const existingIds = new Set(prev.map(s => s.student_id));
+                    const unique = newData.filter(s => !existingIds.has(s.student_id));
+                    return [...prev, ...unique];
+                });
+            }
+        } catch (error: any) {
+            if (error?.name === 'AbortError' || error?.code === 'ERR_CANCELED') return;
+            showApiError(error, 'Failed to fetch students');
+            if (pageNum === 1) setError(true);
+        } finally {
+            if (!controller.signal.aborted) {
+                setInitialLoading(false);
+                setLoadingMore(false);
+                setBackgroundLoading(false);
+            }
+        }
+    }, [activeTab, debouncedSearch, dateFilter, startDateFilter, endDateFilter]);
+
+    // ── Reset when tab or search changes ─────────────────────────────────
+    useEffect(() => {
+        setPage(1);
+        setHasMore(true);
+        fetchPage(1, false);
+        return () => { abortRef.current?.abort(); };
+    }, [activeTab, debouncedSearch, dateFilter, startDateFilter, endDateFilter]);
+
+    // ── Reload on focus, skip the very first mount ────────────────────────
+    const isMounted = useRef(false);
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('focus', () => {
+            if (!isMounted.current) { isMounted.current = true; return; }
+            // Skip focus reload if we have incoming route parameters (they will trigger their own fetch)
+            if (route?.params?.startDate || route?.params?.endDate || route?.params?.filter) {
+                return;
+            }
+            setPage(1);
+            setHasMore(true);
+            fetchPage(1, true);
+        });
+        return unsubscribe;
+    }, [navigation, fetchPage, route?.params]);
+
+    // ── Reload when global refresh triggered (e.g. after adding a student) ──
+    useEffect(() => {
+        if (refreshCounter === 0) return; // skip initial mount
+        if (refreshPayload?.studentAllocated) {
+            setActiveTab('Active');
+        }
+        setPage(1);
+        setHasMore(true);
+        fetchPage(1, false); // Change to false to show the loading screen/skeleton immediately
+        fetchCounts();
+    }, [refreshCounter, refreshPayload]);
+
+    // ── Fetch Counts ──────────────────────────────────────────────────────
+    const fetchCounts = async () => {
+        try {
+            // Check if /students/stats works (for when backend is deployed)
+            const res = await api.get('/students/stats').catch(() => null);
+            if (res?.data?.success && res.data.data) {
+                setCounts(res.data.data);
+            }
+            // Fallback removed because running 6 simultaneous DB queries 
+            // crashes the Render free tier backend connection pool.
+        } catch (e) {
+            console.log('Error fetching counts', e);
+        }
+    };
+
+    useFocusEffect(useCallback(() => {
+        fetchCounts();
+    }, []));
+
+    // ── Scroll to bottom → next page ──────────────────────────────────────
+    const handleEndReached = useCallback(() => {
+        if (loadingMore || !hasMore || initialLoading) return;
+        setPage(prev => {
+            const next = prev + 1;
+            fetchPage(next);
+            return next;
+        });
+    }, [loadingMore, hasMore, initialLoading, fetchPage]);
+
+    // ── Stable card callbacks ─────────────────────────────────────────────
+    const handleNavigate = useCallback((id: number) => {
+        navigation.navigate('StudentDetails', { studentId: id });
+    }, [navigation]);
+
+    const handleWhatsApp = useCallback((phone: string) => {
+        Linking.openURL(`whatsapp://send?phone=91${phone}`);
+    }, []);
+
+    const handleToggleStatus = useCallback((student: any) => {
+        const isCurrentlyActive = student.status === 1;
+        const isPreBooked = student.status === 2;
+        const isQRSignup = student.status === 3;
+
+        let title = '';
+        let msg = '';
+        let targetStatus = 1;
+
+        if (isQRSignup) {
+            title = t('students.confirmCheckIn');
+            msg = t('students.confirmCheckInMsg', { name: student.first_name });
+            targetStatus = 1;
+        } else if (isPreBooked) {
+            title = t('students.confirmCheckIn');
+            msg = t('students.confirmCheckInMsg', { name: student.first_name });
+            targetStatus = 1;
+        } else if (isCurrentlyActive) {
+            title = t('students.markInactive');
+            msg = t('students.markInactiveMsg', { name: student.first_name });
+            targetStatus = 0;
+        } else {
+            title = t('students.markActive');
+            msg = t('students.markActiveMsg', { name: student.first_name });
+            targetStatus = 1;
+        }
+
+
+        setConfirmDialog({ visible: true, student, targetStatus, title, message: msg });
+    }, []);
+
+    const handleCall = useCallback((phone: string) => {
+        Linking.openURL(`tel:${phone}`);
+    }, []);
+
+    const handleAllocateRoom = useCallback((student: any) => {
+        navigation.navigate('AddStudent', { student, isEdit: true });
+    }, [navigation]);
+
+    const handleRejectRegistration = useCallback((student: any) => {
+        setConfirmDialog({
+            visible: true,
+            student,
+            targetStatus: 4,
+            action: 'reject',
+            title: t('students.confirmReject', 'Reject Registration'),
+            message: t('students.confirmRejectMsg', `Reject ${student.first_name}'s registration request? They will be notified.`, { name: student.first_name }),
+        });
+    }, [t]);
+
+    const handlePayAdmission = useCallback((student: any) => {
+        setConfirmDialog({
+            visible: true,
+            student,
+            targetStatus: 0, // unused
+            action: 'pay_admission',
+            title: 'Pay Admission Fee',
+            message: `Mark admission fee as paid for ${student.first_name}? This will record the payment in your income.`,
+        });
+    }, []);
+
+    const renderItem = useCallback(({ item }: { item: any }) => (
+        <StudentCard
+            student={item}
+            onPress={handleNavigate}
+            onWhatsApp={handleWhatsApp}
+            onCall={handleCall}
+            onToggle={handleToggleStatus}
+            onAllocateRoom={handleAllocateRoom}
+            onReject={handleRejectRegistration}
+            onPayAdmission={handlePayAdmission}
+        />
+    ), [handleNavigate, handleWhatsApp, handleCall, handleToggleStatus, handleAllocateRoom, handleRejectRegistration, handlePayAdmission]);
+
+    const keyExtractor = useCallback((item: any) => item.student_id.toString(), []);
+
+    const subtitleText = useMemo(() => {
+        if (debouncedSearch) {
+            return `${totalMatching} matching result${totalMatching !== 1 ? 's' : ''}`;
+        }
+        if (activeTab === 'Unallocated') {
+            return `${counts.unallocated} Unallocated ${t('students.residents')}`;
+        }
+        const label = activeTab === 'All' ? t('students.total') : activeTab === 'AdmissionPending' ? 'Admission Pending' : activeTab;
+        const totalCount = activeTab === 'Active' ? counts.active :
+                           activeTab === 'Inactive' ? counts.inactive :
+                           activeTab === 'PreBooked' ? counts.prebooked :
+                           activeTab === 'QRRegister' ? counts.qrRegister :
+                           activeTab === 'AdmissionPending' ? counts.pendingAdmissions : counts.total;
+                           
+        if (activeTab === 'AdmissionPending') {
+            return `${totalCount} ${label}`;
+        }
+        return `${totalCount} ${label} ${t('students.residents')}`;
+    }, [counts, activeTab, debouncedSearch, totalMatching, t]);
+
+    const listHeader = useMemo(() => {
+        const countText = debouncedSearch
+            ? `${totalMatching} search result${totalMatching !== 1 ? 's' : ''} found`
+            : `Showing ${allStudents.length} of ${totalMatching} resident${totalMatching !== 1 ? 's' : ''}`;
+
+        return (
+            <View style={{ marginBottom: 12 }}>
+                <View style={[styles.countRow, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
+                    <Users size={14} color={isDark ? '#94A3B8' : '#64748B'} />
+                    <Text style={[styles.countRowText, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+                        {countText}
+                    </Text>
+                </View>
+
+                {counts.unallocated > 0 && activeTab !== 'Unallocated' && !debouncedSearch ? (
+                    <TouchableOpacity
+                        style={[styles.allocateBanner, { marginTop: 8 }]}
+                        activeOpacity={0.85}
+                        onPress={() => {
+                            setActiveTab('Unallocated');
+                        }}
+                    >
+                        <Text style={styles.allocateBannerText}>
+                            ⚠ {t('students.needRoom', { count: counts.unallocated, defaultValue: `${counts.unallocated} tenant(s) need a room` })}
+                        </Text>
+                        <Text style={styles.allocateBannerHint}>{t('students.allocateToBill', 'Allocate to start billing →')}</Text>
+                    </TouchableOpacity>
+                ) : null}
+            </View>
+        );
+    }, [totalMatching, allStudents.length, debouncedSearch, isDark, counts.unallocated, activeTab, t]);
+
+
+    return (
+        <View style={[styles.container, { backgroundColor: isDark ? theme.background : '#F8FAFC' }]}>
+            <StatusBar barStyle="light-content" />
+            <FullScreenLoader visible={statusLoading} />
+
+            <AppHeader
+                title={t('students.directory')}
+                subtitle={subtitleText}
+                showBack={navigation.canGoBack()}
+                rightComponent={
+                    <View style={styles.headerActions}>
+                        <ProfileMenu />
+                    </View>
+                }
+            >
+                <View style={styles.searchBox}>
+                    <Search color="rgba(255,255,255,0.7)" size={18} />
+                    <TextInput
+                        style={styles.input}
+                        placeholder={t('students.searchPlaceholder')}
+                        value={search}
+                        onChangeText={setSearch}
+                        placeholderTextColor="rgba(255,255,255,0.6)"
+                        autoCorrect={false}
+                        autoCapitalize="none"
+                    />
+
+                    {search.length > 0 && !backgroundLoading && (
+                        <TouchableOpacity onPress={() => setSearch('')}>
+                            <X size={18} color="rgba(255,255,255,0.7)" />
+                        </TouchableOpacity>
+                    )}
+                    {backgroundLoading && (
+                        <ActivityIndicator color="#FFF" size="small" />
+                    )}
+                    <View style={{ width: 1, height: 20, backgroundColor: 'rgba(255,255,255,0.2)', marginHorizontal: 8 }} />
+                    <TouchableOpacity onPress={() => setShowDatePicker(true)}>
+                        <Calendar size={18} color={(dateFilter || startDateFilter) ? '#FFF' : 'rgba(255,255,255,0.6)'} />
+                    </TouchableOpacity>
+                    {(dateFilter || startDateFilter) && (
+                        <TouchableOpacity onPress={() => {
+                            setDateFilter(null);
+                            setStartDateFilter(null);
+                            setEndDateFilter(null);
+                        }} style={{ marginLeft: 6 }}>
+                            <X size={18} color="#FFF" />
+                        </TouchableOpacity>
+                    )}
+                </View>
+
+                {(startDateFilter && endDateFilter) && (
+                    <View style={styles.activeFilterBadge}>
+                        <Text style={styles.activeFilterText}>Admissions: {startDateFilter} to {endDateFilter}</Text>
+                        <TouchableOpacity onPress={() => { setStartDateFilter(null); setEndDateFilter(null); }} style={{ marginLeft: 8 }}>
+                            <X size={14} color="#FFF" />
+                        </TouchableOpacity>
+                    </View>
+                )}
+                {(dateFilter) && (
+                    <View style={styles.activeFilterBadge}>
+                        <Text style={styles.activeFilterText}>Admissions: {dateFilter.toLocaleDateString()}</Text>
+                        <TouchableOpacity onPress={() => { setDateFilter(null); }} style={{ marginLeft: 8 }}>
+                            <X size={14} color="#FFF" />
+                        </TouchableOpacity>
+                    </View>
+                )}
+
+                <DateTimePickerModal
+                    isVisible={showDatePicker}
+                    mode="date"
+                    onConfirm={(date) => {
+                        setDateFilter(date);
+                        setStartDateFilter(null);
+                        setEndDateFilter(null);
+                        setShowDatePicker(false);
+                    }}
+                    onCancel={() => setShowDatePicker(false)}
+                />
+
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.tabScroll}
+                    contentContainerStyle={styles.tabScrollContent}
+                >
+                    {[
+                        { key: 'Active', label: t('students.active'), count: counts.active, show: true },
+                        { key: 'AdmissionPending', label: 'Admission Pending', count: counts.pendingAdmissions || 0, show: true },
+                        { key: 'Unallocated', label: t('students.unallocatedTab', 'No Room'), count: counts.unallocated, show: true },
+                        { key: 'PreBooked', label: t('students.prebooked'), count: counts.prebooked, show: counts.prebooked > 0 },
+                        { key: 'QRRegister', label: t('students.qrSignups'), count: counts.qrRegister, show: counts.qrRegister > 0 },
+                        { key: 'Inactive', label: t('students.inactive'), count: counts.inactive, show: true },
+                        { key: 'All', label: t('students.total'), count: counts.total, show: true }
+                    ].filter(tab => tab.show).map((tab: any) => (
+
+                        <TouchableOpacity
+                            key={tab.key}
+                            style={[
+                                styles.pillBtn,
+                                activeTab === tab.key ? styles.activePillBtn : styles.inactivePillBtn
+                            ]}
+                            onPress={() => {
+                                if (activeTab === tab.key) return;
+                                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                                setActiveTab(tab.key);
+                            }}
+                        >
+                            <Text style={[
+                                styles.pillLabel,
+                                activeTab === tab.key ? { color: COLORS.primary } : { color: '#FFF' }
+                            ]}>
+                                {tab.label} ({tab.count})
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+            </AppHeader>
+
+            <View style={styles.body}>
+                {initialLoading ? (
+                    <SkeletonList count={6} />
+                ) : error && allStudents.length === 0 ? (
+                    <ErrorState onRetry={() => fetchPage(1, false)} />
+                ) : (
+                    <FlatList
+                        data={allStudents}
+                        keyExtractor={keyExtractor}
+                        renderItem={renderItem}
+                        contentContainerStyle={[
+                            styles.listPadding,
+                            allStudents.length === 0 && { flex: 1 },
+                        ]}
+                        showsVerticalScrollIndicator={false}
+                        ListHeaderComponent={listHeader}
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={refreshing}
+                                onRefresh={() => {
+                                    setRefreshing(true);
+                                    fetchPage(1, true).finally(() => setRefreshing(false));
+                                }}
+                                tintColor={COLORS.primary}
+                            />
+                        }
+                        ListEmptyComponent={
+                            <EmptyState illustration="student"
+                                title={debouncedSearch ? t('students.noResults') : t('students.noStudents')}
+                                subtitle={
+                                    debouncedSearch
+                                        ? t('students.noMatch', { query: debouncedSearch })
+                                        : t('students.addFirst')
+                                }
+                                actionLabel={debouncedSearch ? undefined : t('students.addStudent')}
+                                onAction={debouncedSearch ? undefined : () => navigation.navigate('AddStudent')}
+                            />
+                        }
+
+                        onEndReached={handleEndReached}
+                        onEndReachedThreshold={0.2}
+                        ListFooterComponent={
+                            <LoadMoreFooter
+                                loading={loadingMore}
+                                hasMore={hasMore}
+                                total={allStudents.length}
+                                noun="students"
+                            />
+                        }
+                        windowSize={7}
+                        initialNumToRender={10}
+                        maxToRenderPerBatch={10}
+                        updateCellsBatchingPeriod={30}
+                        removeClippedSubviews={Platform.OS === 'android'}
+                    />
+                )}
+            </View>
+
+            {/* FAB */}
+            <TouchableOpacity
+                style={[styles.fab, { backgroundColor: COLORS.primary }]}
+                onPress={() => navigation.navigate('AddStudent')}
+            >
+                <Plus color="#FFF" size={20} strokeWidth={3.0} />
+            </TouchableOpacity>
+
+            {/* Confirm Dialog for status toggle */}
+            <ConfirmDialog
+                visible={confirmDialog.visible}
+                title={confirmDialog.title}
+                message={confirmDialog.message}
+                confirmLabel={t('students.yesProceed')}
+                loading={statusLoading}
+                onConfirm={async () => {
+                    const { student, targetStatus, action } = confirmDialog;
+                    if (!student) return;
+                    setStatusLoading(true);
+                    try {
+                        let res;
+                        if (action === 'reject') {
+                            res = await api.post(`/students/${student.student_id}/reject-registration`, {});
+                        } else if (action === 'pay_admission') {
+                            res = await api.put(`/students/${student.student_id}`, { admission_status: 1 });
+                        } else {
+                            res = await api.put(`/students/${student.student_id}`, { status: targetStatus });
+                        }
+                        
+                        if (res.data.success) {
+                            setAllStudents(prev => {
+                                if (action === 'pay_admission') {
+                                    if (activeTab === 'AdmissionPending') {
+                                        return prev.filter(s => s.student_id !== student.student_id);
+                                    }
+                                    return prev.map(s => s.student_id === student.student_id ? { ...s, admission_status: 1 } : s);
+                                }
+                                if (activeTab === 'All') {
+                                    return prev.map(s => s.student_id === student.student_id ? { ...s, status: targetStatus } : s);
+                                }
+                                return prev.filter(s => s.student_id !== student.student_id);
+                            });
+                            fetchCounts();
+                            showSuccess(action === 'reject' ? 'Registration rejected.' : action === 'pay_admission' ? 'Admission fee paid!' : 'Student status updated.');
+                        }
+                    } catch (e) {
+                        showApiError(e, action === 'reject' ? 'Failed to reject registration' : 'Failed to update status');
+                    } finally {
+                        setStatusLoading(false);
+                        setConfirmDialog(p => ({ ...p, visible: false }));
+                    }
+                }}
+                onCancel={() => setConfirmDialog(p => ({ ...p, visible: false }))}
+                destructive={confirmDialog.targetStatus === 0 || confirmDialog.action === 'reject'}
+            />
+        </View>
+    );
+};
+
+const CARD_HEIGHT = 88;
+
+const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#F8FAFC' },
+    header: {
+        paddingHorizontal: 20,
+        paddingTop: 50,
+        paddingBottom: 25,
+        borderBottomLeftRadius: 32,
+        borderBottomRightRadius: 32
+    },
+    headerRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20
+    },
+    backBtn: {
+        width: 40, height: 40, borderRadius: 20,
+        backgroundColor: 'rgba(255,255,255,0.18)',
+        alignItems: 'center', justifyContent: 'center',
+        marginRight: 12,
+    },
+    headerTitle: { fontSize: 24, fontWeight: '900', color: '#FFF' },
+    headerSubtitle: { fontSize: 12, color: 'rgba(255,255,255,0.8)', fontWeight: '600' },
+    headerActions: { flexDirection: 'row', gap: 12 },
+    searchBox: {
+        backgroundColor: 'rgba(255,255,255,0.16)',
+        borderRadius: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 15,
+        height: 48,
+        marginBottom: 15
+    },
+    input: { flex: 1, marginLeft: 10, fontWeight: '600', color: '#FFF' },
+    tabScroll: {
+        marginTop: 6,
+        width: '100%',
+    },
+    tabScrollContent: {
+        paddingHorizontal: 2,
+        gap: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    pillBtn: {
+        paddingVertical: 7,
+        paddingHorizontal: 16,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    activePillBtn: {
+        backgroundColor: '#FFF',
+    },
+    inactivePillBtn: {
+        backgroundColor: 'rgba(255,255,255,0.15)',
+    },
+    pillLabel: {
+        fontSize: 12,
+        fontWeight: '800',
+    },
+    body: { flex: 1 },
+    listPadding: { padding: 16, paddingBottom: 180 },
+    card: {
+        backgroundColor: '#FFF',
+        borderRadius: 16,
+        padding: 12,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+    },
+    cardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    avatarBox: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        justifyContent: 'center',
+        alignItems: 'center',
+        overflow: 'hidden',
+    },
+    avatarImg: {
+        width: 36,
+        height: 36,
+    },
+    addBtnText: {
+        color: '#FFF',
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    activeFilterBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 12,
+        alignSelf: 'flex-start',
+        marginLeft: 16,
+        marginTop: -6,
+        marginBottom: 8,
+    },
+    activeFilterText: {
+        color: '#FFF',
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    avatarTextInitials: {
+        fontSize: 13,
+        fontWeight: '700',
+    },
+    infoContainer: {
+        flex: 1,
+        marginLeft: 12,
+    },
+    nameText: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#1E293B',
+    },
+    subDetailText: {
+        fontSize: 11,
+        color: '#64748B',
+        fontWeight: '500',
+        marginTop: 4,
+    },
+    smallActionBtn: {
+        alignSelf: 'flex-start',
+        marginTop: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 6,
+        borderWidth: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 1,
+        elevation: 1,
+    },
+    smallActionBtnText: {
+        fontSize: 11,
+        fontWeight: '600'
+    },
+    allocateChip: {
+        alignSelf: 'flex-start',
+        marginTop: 6,
+        backgroundColor: '#FEF2F2',
+        borderColor: '#FECACA',
+        borderWidth: 1,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 8,
+    },
+    allocateChipText: { fontSize: 10, fontWeight: '700', color: '#DC2626' },
+    allocateBanner: {
+        backgroundColor: '#FEF2F2',
+        borderColor: '#FECACA',
+        borderWidth: 1,
+        borderRadius: 12,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        marginBottom: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    allocateBannerText: { fontSize: 13, fontWeight: '800', color: '#DC2626', flexShrink: 1 },
+    allocateBannerHint: { fontSize: 11, fontWeight: '700', color: '#B91C1C', marginLeft: 8 },
+    statusBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
+    },
+    statusBadgeText: {
+        fontSize: 10,
+        fontWeight: '700',
+    },
+    divider: {
+        height: 1,
+        backgroundColor: '#F1F5F9',
+        marginVertical: 10,
+    },
+    cardActions: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    actionBtnIcon: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: '#F8FAFC',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    actionBtnIconText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#475569',
+    },
+    statusToggleBtnNew: {
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    statusToggleTextNew: {
+        fontSize: 11,
+        fontWeight: '700',
+    },
+    fab: {
+        position: 'absolute', bottom: 140, right: 20,
+        width: 52, height: 52, borderRadius: 26,
+        justifyContent: 'center', alignItems: 'center', elevation: 10,
+        shadowColor: '#4F46E5', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 6,
+        zIndex: 99999,
+    },
+    countRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+        alignSelf: 'flex-start',
+    },
+    countRowText: {
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    warningActivePillBtn: {
+        backgroundColor: '#EF4444',
+        borderWidth: 1,
+        borderColor: '#EF4444',
+    },
+    warningInactivePillBtn: {
+        backgroundColor: 'rgba(239, 68, 68, 0.15)',
+        borderWidth: 1,
+        borderColor: 'rgba(239, 68, 68, 0.3)',
+    },
+});

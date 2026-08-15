@@ -1,0 +1,144 @@
+{
+  "stories": [
+    {
+      "title": "The Honest Woodcutter",
+      "category": "moral",
+      "reading_time_minutes": 2,
+      "sentences": [
+        "A poor woodcutter was cutting wood near a river when his old axe slipped from his hands.",
+        "The axe fell into the deep water, and he sat down sadly, unable to afford a new one.",
+        "A river spirit appeared and brought out a golden axe, asking if it belonged to him.",
+        "The woodcutter honestly said no, even though the golden axe was worth far more than his own.",
+        "The spirit then brought out a silver axe, and again the woodcutter said it was not his.",
+        "Finally, the spirit brought out his old, simple axe, and the woodcutter happily claimed it.",
+        "Impressed by his honesty, the spirit gave him all three axes as a reward.",
+        "The woodcutter returned home rich, not because of luck, but because of his honesty."
+      ],
+      "vocabulary": [
+        { "word": "honesty", "meaning": "the quality of being truthful", "pronunciation": "ON-es-tee", "synonyms": "truthfulness, integrity", "example_sentence": "Honesty is important in every relationship." },
+        { "word": "impressed", "meaning": "feeling admiration for something", "pronunciation": "im-PREST", "synonyms": "amazed, moved", "example_sentence": "The teacher was impressed by his effort." },
+        { "word": "reward", "meaning": "something given in recognition of good behavior", "pronunciation": "ri-WORD", "synonyms": "prize, gift", "example_sentence": "She received a reward for her honesty." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "What fell into the river first?", "options": ["The woodcutter's old axe", "A golden coin", "A silver ring", "A wooden basket"], "correct_answer": "The woodcutter's old axe" },
+        { "question_type": "true_false", "question_text": "The woodcutter claimed the golden axe as his own.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "fill_blank", "question_text": "The spirit gave him all three axes as a ______.", "options": null, "correct_answer": "reward" },
+        { "question_type": "vocab", "question_text": "What does 'honesty' mean?", "options": ["the quality of being truthful", "the ability to swim", "a type of tool", "great wealth"], "correct_answer": "the quality of being truthful" },
+        { "question_type": "mcq", "question_text": "Why did the woodcutter go home rich?", "options": ["Because of his honesty", "Because he found gold in the forest", "Because he sold his tools", "Because he won a prize"], "correct_answer": "Because of his honesty" }
+      ]
+    },
+    {
+      "title": "The Tortoise and the Hare",
+      "category": "moral",
+      "reading_time_minutes": 2,
+      "sentences": [
+        "A hare often made fun of a tortoise for being slow, so the tortoise challenged him to a race.",
+        "All the animals in the forest gathered to watch the unusual competition begin.",
+        "The hare sprinted ahead immediately, leaving the tortoise far behind within seconds.",
+        "Confident that he would win easily, the hare decided to rest under a shady tree along the way.",
+        "He fell asleep, believing he had more than enough time before the tortoise could catch up.",
+        "Meanwhile, the tortoise kept moving slowly and steadily, never stopping to rest.",
+        "When the hare woke up, he was shocked to see the tortoise already near the finish line.",
+        "He ran as fast as he could, but it was too late to catch up.",
+        "The tortoise won the race, teaching everyone that slow and steady wins the race."
+      ],
+      "vocabulary": [
+        { "word": "sprinted", "meaning": "ran at full speed for a short distance", "pronunciation": "SPRIN-tid", "synonyms": "dashed, raced", "example_sentence": "She sprinted to catch the bus." },
+        { "word": "confident", "meaning": "feeling sure about something", "pronunciation": "KON-fi-dent", "synonyms": "certain, assured", "example_sentence": "He felt confident about passing the exam." },
+        { "word": "steadily", "meaning": "in a consistent and gradual way", "pronunciation": "STED-i-lee", "synonyms": "consistently, gradually", "example_sentence": "She worked steadily until the project was done." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "Why did the tortoise challenge the hare?", "options": ["Because the hare made fun of him", "Because he wanted a prize", "Because the forest asked him to", "Because he was bored"], "correct_answer": "Because the hare made fun of him" },
+        { "question_type": "true_false", "question_text": "The hare ran the entire race without stopping.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "fill_blank", "question_text": "The tortoise kept moving slowly and ______, never stopping to rest.", "options": null, "correct_answer": "steadily" },
+        { "question_type": "vocab", "question_text": "What does 'confident' mean?", "options": ["feeling sure about something", "feeling very tired", "feeling scared", "feeling confused"], "correct_answer": "feeling sure about something" },
+        { "question_type": "mcq", "question_text": "What is the moral of the story?", "options": ["Slow and steady wins the race", "Speed always wins", "Never race a tortoise", "Sleeping is good before a race"], "correct_answer": "Slow and steady wins the race" }
+      ]
+    },
+    {
+      "title": "The Boy Who Cried Wolf",
+      "category": "moral",
+      "reading_time_minutes": 2,
+      "sentences": [
+        "A young shepherd boy grew bored while watching sheep alone on the hillside every day.",
+        "To entertain himself, he shouted that a wolf was attacking the sheep, even though it was not true.",
+        "The villagers rushed up the hill to help, only to find the boy laughing at his own trick.",
+        "A few days later, he played the same trick again, and the villagers came running once more.",
+        "Annoyed at being fooled twice, the villagers warned him not to lie again.",
+        "Then one day, a real wolf actually appeared and began attacking his sheep.",
+        "The boy shouted for help as loudly as he could, but nobody believed him this time.",
+        "Because no one came to help, he lost many of his sheep to the wolf that day.",
+        "He learned that no one trusts a liar, even when they are finally telling the truth."
+      ],
+      "vocabulary": [
+        { "word": "shepherd", "meaning": "a person who takes care of sheep", "pronunciation": "SHEP-erd", "synonyms": "herder", "example_sentence": "The shepherd guided his flock to the field." },
+        { "word": "villagers", "meaning": "people who live in a village", "pronunciation": "VIL-ij-erz", "synonyms": "residents, townsfolk", "example_sentence": "The villagers gathered for the festival." },
+        { "word": "trust", "meaning": "belief in the reliability of someone", "pronunciation": "TRUHST", "synonyms": "faith, confidence", "example_sentence": "It takes time to build trust." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "What did the boy shout falsely the first two times?", "options": ["That a wolf was attacking the sheep", "That he found treasure", "That the village was flooding", "That he was hurt"], "correct_answer": "That a wolf was attacking the sheep" },
+        { "question_type": "true_false", "question_text": "The villagers believed the boy when the real wolf appeared.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "fill_blank", "question_text": "No one ______ a liar, even when they finally tell the truth.", "options": null, "correct_answer": "trusts" },
+        { "question_type": "vocab", "question_text": "What does 'villagers' mean?", "options": ["people who live in a village", "wild animals", "shepherds only", "traveling merchants"], "correct_answer": "people who live in a village" },
+        { "question_type": "mcq", "question_text": "What happened when the real wolf came?", "options": ["He lost many sheep because no one came to help", "The villagers saved all the sheep", "The wolf ran away on its own", "The boy caught the wolf himself"], "correct_answer": "He lost many sheep because no one came to help" }
+      ]
+    },
+    {
+      "title": "The Ant and the Grasshopper",
+      "category": "moral",
+      "reading_time_minutes": 2,
+      "sentences": [
+        "All through the warm summer, a hardworking ant collected and stored food for the winter.",
+        "Nearby, a grasshopper spent his days singing and playing, mocking the ant for working so hard.",
+        "The grasshopper asked why the ant did not relax and enjoy the pleasant summer weather.",
+        "The ant replied that winter would come eventually, and food would become impossible to find.",
+        "The grasshopper laughed and continued enjoying his carefree days without a single worry.",
+        "When winter finally arrived, snow covered the ground and food became extremely scarce.",
+        "Cold and hungry, the grasshopper came to the ant's home, asking for help.",
+        "The ant kindly shared his stored food, but reminded the grasshopper to plan ahead next time.",
+        "The grasshopper realized that preparing for the future was wiser than enjoying only the present."
+      ],
+      "vocabulary": [
+        { "word": "mocking", "meaning": "making fun of someone in an unkind way", "pronunciation": "MOK-ing", "synonyms": "teasing, ridiculing", "example_sentence": "He stopped mocking his classmate after the teacher intervened." },
+        { "word": "scarce", "meaning": "not enough of something available", "pronunciation": "SKAIRS", "synonyms": "rare, limited", "example_sentence": "Water was scarce during the drought." },
+        { "word": "carefree", "meaning": "free from worry or responsibility", "pronunciation": "KAIR-free", "synonyms": "relaxed, easygoing", "example_sentence": "They enjoyed a carefree holiday by the beach." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "What did the ant do all summer?", "options": ["Collected and stored food", "Sang and played", "Slept all day", "Traveled to new places"], "correct_answer": "Collected and stored food" },
+        { "question_type": "true_false", "question_text": "The grasshopper prepared food for winter as well.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "fill_blank", "question_text": "When winter arrived, food became extremely ______.", "options": null, "correct_answer": "scarce" },
+        { "question_type": "vocab", "question_text": "What does 'carefree' mean?", "options": ["free from worry or responsibility", "always anxious", "extremely busy", "very poor"], "correct_answer": "free from worry or responsibility" },
+        { "question_type": "mcq", "question_text": "What lesson did the grasshopper learn?", "options": ["Preparing for the future is wise", "Singing is more important than working", "Winter never really comes", "Ants are unfriendly"], "correct_answer": "Preparing for the future is wise" }
+      ]
+    },
+    {
+      "title": "The Golden Touch",
+      "category": "moral",
+      "reading_time_minutes": 3,
+      "sentences": [
+        "King Midas loved gold more than anything else in his kingdom, including his own family.",
+        "One day, a magical spirit granted him a wish, and Midas asked for everything he touched to turn to gold.",
+        "Overjoyed, Midas ran through his palace turning chairs, tables, and flowers into shining gold.",
+        "At first, it felt like a wonderful dream come true for the gold-loving king.",
+        "But when he tried to eat, his food turned to hard, inedible gold the moment he touched it.",
+        "Growing hungry and worried, he called for his beloved daughter, forgetting about his golden touch.",
+        "The moment she ran into his arms, she too turned into a cold, golden statue.",
+        "Heartbroken, Midas realized that gold could never replace the people he truly loved.",
+        "He begged the spirit to take back the golden touch, promising to value his family above all riches.",
+        "The spirit agreed, and Midas learned that love and family matter more than any treasure."
+      ],
+      "vocabulary": [
+        { "word": "granted", "meaning": "agreed to give something requested", "pronunciation": "GRAN-tid", "synonyms": "given, allowed", "example_sentence": "Her wish was finally granted." },
+        { "word": "inedible", "meaning": "not fit to be eaten", "pronunciation": "in-ED-uh-buhl", "synonyms": "uneatable", "example_sentence": "The burnt food was completely inedible." },
+        { "word": "heartbroken", "meaning": "overwhelmed with grief or sadness", "pronunciation": "HART-bro-ken", "synonyms": "devastated, grief-stricken", "example_sentence": "She was heartbroken after losing her pet." }
+      ],
+      "quiz": [
+        { "question_type": "mcq", "question_text": "What did King Midas wish for?", "options": ["That everything he touched turn to gold", "Endless food", "A bigger kingdom", "Eternal youth"], "correct_answer": "That everything he touched turn to gold" },
+        { "question_type": "true_false", "question_text": "Midas was able to eat his food normally after receiving the golden touch.", "options": ["True", "False"], "correct_answer": "False" },
+        { "question_type": "fill_blank", "question_text": "Midas realized that gold could never replace the people he truly ______.", "options": null, "correct_answer": "loved" },
+        { "question_type": "vocab", "question_text": "What does 'heartbroken' mean?", "options": ["overwhelmed with grief or sadness", "extremely joyful", "very confused", "physically injured"], "correct_answer": "overwhelmed with grief or sadness" },
+        { "question_type": "mcq", "question_text": "What happened when his daughter ran to hug him?", "options": ["She turned into a golden statue", "She became rich", "Nothing happened", "She turned him back to normal"], "correct_answer": "She turned into a golden statue" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,373 @@
+import React, { useState, useMemo, useCallback } from 'react';
+import {
+  StyleSheet, Text, View, TouchableOpacity, ScrollView,
+  TextInput, StatusBar, RefreshControl, Modal,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  ChevronLeft, Search, SlidersHorizontal,
+  Utensils, Car, ShoppingBag, Receipt,
+  Film, HeartPulse, MoreHorizontal, Coffee,
+  Home, Plane, Zap, Gift, BookOpen,
+  Calendar, Check, X, Wallet, Dumbbell, Dog, Users, Fuel
+} from 'lucide-react-native';
+import { useFocusEffect } from '@react-navigation/native';
+
+import { useToast } from '../../../contexts/ToastContext';
+import { Phase3EmptyState, BaseBottomSheet } from '../../components/tenant/UIComponents';
+// import CategoryGlowBadge from '../../components/tenant/ui/CategoryGlowBadge';
+import { SkeletonExpenseCard } from '../../components/tenant/ui/SkeletonLoader';
+import api from '../../services/api';
+
+const BLUE      = '#2245D4';
+const BLUE_SOFT = '#EEF3FF';
+const WHITE     = '#FFFFFF';
+const TEXT_DARK = '#0D1B3E';
+const TEXT_MID  = '#4A5568';
+const TEXT_LIGHT= '#9CA3AF';
+const BG        = '#F8FAFD';
+const BORDER    = '#E8EDF5';
+
+const CATS: Record<string, { color: string; bg: string; Icon: any }> = {
+  Food:          { color: '#EF5350', bg: '#FDEAEA', Icon: Utensils },
+  Rent:          { color: '#546E7A', bg: '#ECEFF1', Icon: Home },
+  Transport:     { color: BLUE,      bg: BLUE_SOFT, Icon: Car },
+  Shopping:      { color: '#43A047', bg: '#EAF5EA', Icon: ShoppingBag },
+  Health:        { color: '#E53935', bg: '#FDEAEA', Icon: HeartPulse },
+  Entertainment: { color: '#8E24AA', bg: '#F4E5FA', Icon: Film },
+  Travel:        { color: '#0288D1', bg: '#E1F5FE', Icon: Plane },
+  Education:     { color: '#3949AB', bg: '#E8EAF6', Icon: BookOpen },
+  Coffee:        { color: '#795548', bg: '#EFEBE9', Icon: Coffee },
+  Gym:           { color: '#0D9488', bg: '#CCFBF1', Icon: Dumbbell },
+  Utilities:     { color: '#F9A825', bg: '#FFFDE7', Icon: Zap },
+  Gifts:         { color: '#00897B', bg: '#E0F2F1', Icon: Gift },
+  Pets:          { color: '#D97706', bg: '#FEF3C7', Icon: Dog },
+  Bills:         { color: '#FB8C00', bg: '#FFF3E0', Icon: Receipt },
+  Family:        { color: '#8B5CF6', bg: '#EDE9FE', Icon: Users },
+  Fuel:          { color: '#F59E0B', bg: '#FEF3C7', Icon: Fuel },
+  Payment:       { color: '#16A34A', bg: '#DCFCE7', Icon: Wallet },
+  Others:        { color: '#546E7A', bg: '#ECEFF1', Icon: MoreHorizontal },
+};
+
+const FILTER_CATS = ['All', 'Food', 'Rent', 'Transport', 'Shopping', 'Health', 'Entertainment', 'Travel', 'Education', 'Coffee', 'Gym', 'Utilities', 'Gifts', 'Pets', 'Bills', 'Family', 'Fuel', 'Payment', 'Others'];
+const GROUP_COLORS = ['#EEF3FF', '#FFF3E0', '#EAF5EA', '#E8EAF6', '#E0F2F1'];
+
+export default function AllExpensesScreen({ navigation }: any) {
+  const [query, setQuery]               = useState('');
+  const [activeFilter, setActiveFilter] = useState('All');
+  const [allData, setAllData]           = useState<any[]>([]);
+  const [loading, setLoading]           = useState(true);
+  const [refreshing, setRefreshing]     = useState(false);
+  const [sortOrder, setSortOrder]       = useState<'newest' | 'oldest' | 'highest' | 'lowest'>('newest');
+  const [dateFilter, setDateFilter]     = useState<'Any time' | 'Today' | 'This Month' | 'Last Month' | 'This Year'>('Any time');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  const { showError } = useToast();
+
+  const fetchExpenses = useCallback(async () => {
+    try {
+      const [expRes, feesRes] = await Promise.allSettled([
+        api.get('/tenant-expenses'),
+        api.get('/fees/my-fees'),
+      ]);
+
+      let combinedData: any[] = [];
+
+      if (feesRes.status === 'fulfilled' && feesRes.value?.data?.success) {
+        const fees = feesRes.value.data.data;
+        fees.forEach((f: any) => {
+          if (f.payments && Array.isArray(f.payments)) {
+            f.payments.forEach((p: any) => {
+              combinedData.push({
+                id: "pay_" + p.payment_id,
+                title: `Rent Payment: ${p.payment_mode || "Online"}`,
+                cat: "Payment",
+                time: new Date(p.payment_date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+                amt: Number(p.amount),
+                date: new Date(p.payment_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+                rawDate: p.payment_date,
+              });
+            });
+          }
+        });
+      }
+
+      if (expRes.status === 'fulfilled' && expRes.value?.data?.success) {
+        const fetched = expRes.value.data.data;
+        const formattedExp = fetched.map((e: any) => ({
+          id: "exp_" + e.expense_id,
+          title: e.title || e.category,
+          cat: e.category ? e.category.trim().charAt(0).toUpperCase() + e.category.trim().slice(1).toLowerCase() : "Others",
+          time: new Date(e.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+          amt: Number(e.amount),
+          date: new Date(e.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+          rawDate: e.date,
+        }));
+        combinedData = [...combinedData, ...formattedExp];
+      }
+
+      setAllData(combinedData);
+    } catch {
+      showError('Could not load expenses and payments.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useFocusEffect(useCallback(() => { fetchExpenses(); }, []));
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchExpenses();
+  }, [fetchExpenses]);
+
+  const cycleSortOrder = useCallback(() => {
+    // Deprecated sort functionality
+  }, []);
+
+  const grouped = useMemo(() => {
+    const filtered = allData.filter(item => {
+      const matchCat = activeFilter === 'All' || item.cat === activeFilter;
+      const matchQ   = item.title.toLowerCase().includes(query.toLowerCase()) || item.cat.toLowerCase().includes(query.toLowerCase());
+      
+      let matchDate = true;
+      if (dateFilter !== 'Any time') {
+        const itemDateStr = item.rawDate; // e.g. '2026-07-02'
+        if (typeof itemDateStr === 'string') {
+          const [y, m, d] = itemDateStr.split('-').map(Number);
+          
+          if (dateFilter === 'Today') {
+            const today = new Date();
+            matchDate = y === today.getFullYear() && (m - 1) === today.getMonth() && d === today.getDate();
+          } else if (dateFilter === 'This Month') {
+            const today = new Date();
+            matchDate = y === today.getFullYear() && (m - 1) === today.getMonth();
+          } else if (dateFilter === 'Last Month') {
+            const today = new Date();
+            const lm = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+            matchDate = y === lm.getFullYear() && (m - 1) === lm.getMonth();
+          } else if (dateFilter === 'This Year') {
+            const today = new Date();
+            matchDate = y === today.getFullYear();
+          }
+        }
+      }
+      return matchCat && matchQ && matchDate;
+    });
+    const sortFn = (a: any, b: any) => {
+      return new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime();
+    };
+    const sorted = [...filtered].sort(sortFn);
+    const map: Record<string, typeof allData> = {};
+    sorted.forEach(item => { if (!map[item.date]) map[item.date] = []; map[item.date].push(item); });
+    return Object.entries(map);
+  }, [query, activeFilter, allData, sortOrder, dateFilter]);
+
+  return (
+    <View style={s.root}>
+      <StatusBar barStyle="light-content" backgroundColor={BLUE} />
+      <View style={s.headerWrap}>
+        <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingRight: 16 }}>
+                <ChevronLeft size={28} color={WHITE} strokeWidth={2.5} />
+              </TouchableOpacity>
+              <View>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: WHITE }}>Expenses & Payments</Text>
+                <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 2 }}>
+                  Track and review transactions
+                </Text>
+              </View>
+            </View>
+            
+            <TouchableOpacity 
+              onPress={() => setShowDatePicker(true)}
+              style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Calendar size={18} color={WHITE} strokeWidth={2} />
+              {dateFilter !== 'Any time' && (
+                <View style={{ position: 'absolute', top: -2, right: -2, width: 10, height: 10, borderRadius: 5, backgroundColor: '#EF4444', borderWidth: 2, borderColor: '#2245D4' }} />
+              )}
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </View>
+
+      <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8, backgroundColor: WHITE }}>
+        <View style={[s.searchBox, { marginHorizontal: 0, marginBottom: 0, backgroundColor: BG, borderColor: BORDER }]}>
+          <Search size={16} color={TEXT_LIGHT} strokeWidth={2} />
+          <TextInput style={[s.searchInput, { color: TEXT_DARK }]} placeholder="Search expenses..." placeholderTextColor={TEXT_LIGHT} value={query} onChangeText={setQuery} />
+          {query.length > 0 && (
+            <TouchableOpacity onPress={() => setQuery('')}>
+              <X size={16} color={TEXT_LIGHT} strokeWidth={2} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filterRow} style={s.filterBar}>
+        {dateFilter !== 'Any time' && (
+          <View style={[s.filterPill, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE', paddingRight: 8 }]}>
+            <TouchableOpacity 
+              onPress={() => setShowDatePicker(true)}
+              activeOpacity={0.7}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+            >
+              <View style={[s.filterPillDot, { backgroundColor: '#DBEAFE' }]}>
+                <Calendar size={12} color="#2563EB" strokeWidth={2} />
+              </View>
+              <Text style={[s.filterPillText, { color: '#2563EB', fontWeight: '700', marginRight: 4 }]}>{dateFilter}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setDateFilter('Any time')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <X size={14} color="#2563EB" strokeWidth={2.5} />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {FILTER_CATS.map(cat => {
+          const meta = CATS[cat]; const active = activeFilter === cat;
+          return (
+            <TouchableOpacity key={cat} style={[s.filterPill, active && { backgroundColor: meta ? meta.bg : BLUE, borderColor: meta ? meta.color : BLUE }]} onPress={() => setActiveFilter(cat)} activeOpacity={0.7}>
+              {meta && <meta.Icon size={14} color={active ? meta.color : '#94A3B8'} strokeWidth={2.5} />}
+              <Text style={[s.filterPillText, active && { color: meta ? meta.color : WHITE, fontWeight: '700' }]}>{cat}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={s.listContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={BLUE} colors={[BLUE]} />}
+      >
+        {loading ? (
+          <View style={{ paddingTop: 4 }}>
+            <SkeletonExpenseCard />
+            <SkeletonExpenseCard />
+            <SkeletonExpenseCard />
+            <SkeletonExpenseCard />
+            <SkeletonExpenseCard />
+          </View>
+        ) : (
+          grouped.length === 0 ? (
+            allData.length === 0 ? (
+              <View style={{ marginTop: 40 }}>
+                <Phase3EmptyState variant="expenses" onAction={() => navigation.navigate('AddExpense')} />
+              </View>
+            ) : (
+              <View style={{ marginTop: 40 }}>
+                <Phase3EmptyState variant="search" />
+              </View>
+            )
+          ) : (
+            grouped.map(([date, items], groupIdx) => {
+              const dayTotal   = items.reduce((sum: number, i: any) => sum + i.amt, 0);
+              const groupColor = GROUP_COLORS[groupIdx % GROUP_COLORS.length];
+              return (
+                <View key={date} style={s.group}>
+                  <View style={s.groupHeader}>
+                    <View><Text style={s.groupDate}>{date}</Text><Text style={s.groupCount}>{items.length} transaction{items.length > 1 ? 's' : ''}</Text></View>
+                    <View style={[s.groupTotalBadge, { backgroundColor: groupColor }]}>
+                      <Text style={s.groupTotalLabel}>Spent</Text>
+                      <Text style={s.groupTotalAmt}>₹ {dayTotal.toLocaleString('en-IN')}</Text>
+                    </View>
+                  </View>
+                  <View style={{ gap: 12 }}>
+                    {items.map((item: any) => {
+                      const meta = CATS[item.cat] || CATS.Others;
+                      return (
+                        <TouchableOpacity key={item.id} style={[s.row, { backgroundColor: WHITE, borderColor: 'rgba(0,0,0,0.04)', borderWidth: 1, borderRadius: 16 }]} activeOpacity={0.7}>
+                          <View style={{ width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: meta.bg, marginRight: 12 }}>
+                            <meta.Icon size={22} color={meta.color} strokeWidth={2.2} />
+                          </View>
+                          <View style={{ flex: 1 }}><Text style={s.rowTitle}>{item.title}</Text><Text style={s.rowTime}>{item.time}</Text></View>
+                          <View style={{ alignItems: 'flex-end' }}>
+                            <Text style={s.rowAmt}>- ₹{item.amt}</Text>
+                            <View style={[s.catPill, { backgroundColor: meta.bg }]}><Text style={[s.catPillText, { color: meta.color }]}>{item.cat}</Text></View>
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              );
+            })
+          )
+        )}
+        <View style={{ height: 60 }} />
+      </ScrollView>
+      {/* ── Date Filter Modal (using reusable BaseBottomSheet) ── */}
+      <BaseBottomSheet visible={showDatePicker} onClose={() => setShowDatePicker(false)} height="auto">
+        <View style={{ padding: 20, paddingBottom: 40 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <Text style={{ fontSize: 16, fontWeight: '800', color: TEXT_DARK }}>Filter by Date</Text>
+            <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+              <X size={20} color={TEXT_MID} />
+            </TouchableOpacity>
+          </View>
+          
+          {(['Any time', 'Today', 'This Month', 'Last Month', 'This Year'] as const).map((filter) => {
+            const active = dateFilter === filter;
+            return (
+              <TouchableOpacity
+                key={filter}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  paddingVertical: 16,
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#F3F4F6',
+                }}
+                onPress={() => {
+                  setDateFilter(filter);
+                  setShowDatePicker(false);
+                }}
+              >
+                <Text style={{ fontSize: 15, fontWeight: active ? '700' : '500', color: active ? BLUE : TEXT_DARK }}>
+                  {filter}
+                </Text>
+                {active && <Check size={18} color={BLUE} strokeWidth={2.5} />}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </BaseBottomSheet>
+    </View>
+  );
+}
+
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: BG },
+  headerWrap: { backgroundColor: BLUE },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 },
+  iconBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 17, fontWeight: '800', color: WHITE },
+  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 12, marginHorizontal: 16, marginBottom: 14, paddingHorizontal: 14, height: 42, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
+  searchInput: { flex: 1, fontSize: 14, color: WHITE, fontWeight: '500' },
+  filterBar: { backgroundColor: WHITE, maxHeight: 56, borderBottomWidth: 1, borderBottomColor: BORDER },
+  filterRow: { paddingHorizontal: 14, paddingVertical: 10, gap: 8, alignItems: 'center' },
+  filterPill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: BG, borderWidth: 1, borderColor: BORDER },
+  filterPillDot: { width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  filterPillText: { fontSize: 13, fontWeight: '600', color: TEXT_MID },
+  listContent: { paddingHorizontal: 16, paddingTop: 14 },
+  group: { marginBottom: 20 },
+  groupHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  groupDate: { fontSize: 14, fontWeight: '800', color: TEXT_DARK, marginBottom: 2 },
+  groupCount: { fontSize: 11, color: TEXT_LIGHT, fontWeight: '500' },
+  groupTotalBadge: { borderRadius: 14, paddingHorizontal: 14, paddingVertical: 8, alignItems: 'flex-end', borderWidth: 1, borderColor: 'rgba(0,0,0,0.06)' },
+  groupTotalLabel: { fontSize: 10, color: TEXT_MID, fontWeight: '600', marginBottom: 1 },
+  groupTotalAmt: { fontSize: 18, fontWeight: '900', color: TEXT_DARK, letterSpacing: -0.5 },
+  groupCard: { backgroundColor: WHITE, borderRadius: 18, borderWidth: 1, borderColor: BORDER, overflow: 'hidden', shadowColor: BLUE, shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 1 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
+  rowDivider: { borderBottomWidth: 1, borderBottomColor: BORDER },
+  iconWrap: { width: 44, height: 44, borderRadius: 13, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  rowTitle: { fontSize: 14, fontWeight: '700', color: TEXT_DARK, marginBottom: 2 },
+  rowTime: { fontSize: 11, color: TEXT_LIGHT, fontWeight: '500' },
+  rowAmt: { fontSize: 15, fontWeight: '800', color: TEXT_DARK, letterSpacing: -0.3, marginBottom: 4 },
+  catPill: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
+  catPillText: { fontSize: 10, fontWeight: '700' },
+});

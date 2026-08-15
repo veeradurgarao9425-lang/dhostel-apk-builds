@@ -1,0 +1,202 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Sora:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+
+:root {
+  color-scheme: light;
+
+  /* Brand — Hostix */
+  --hostix-indigo: #4f46e5;
+  --hostix-indigo-2: #6366f1;
+  --hostix-blue: #3b82f6;
+  --hostix-orange: #f97316;
+  --hostix-teal: #0d9488;
+
+  /* Brand — Stayvix */
+  --stayvix-purple: #7c3aed;
+  --stayvix-teal: #0d9488;
+  --stayvix-rose: #e11d8c;
+
+  /* Ink */
+  --ink: #0f172a;
+  --ink-soft: #475569;
+  --ink-faint: #94a3b8;
+
+  /* Surfaces */
+  --bg: #f8faff;
+  --bg-tint: #f1f5fd;
+  --bg-tint-2: #eef2fb;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f8faff;
+  --bg-dark: #0f172a;
+  --bg-dark-2: #1e293b;
+  --border-soft: rgba(15, 23, 42, 0.09);
+  --border-soft-2: rgba(15, 23, 42, 0.15);
+  --border-glow: rgba(79, 70, 229, 0.25);
+
+  /* Shadows */
+  --shadow-card: 0 0 0 1px rgba(15,23,42,0.06), 0 8px 24px -8px rgba(15,23,42,0.12);
+  --shadow-card-lg: 0 0 0 1px rgba(15,23,42,0.06), 0 24px 60px -16px rgba(15,23,42,0.18);
+  --shadow-glow-indigo: 0 8px 40px -10px rgba(79, 70, 229, 0.35);
+
+  /* Radii */
+  --r-lg: 28px;
+  --r-md: 18px;
+  --r-sm: 12px;
+
+  /* Type */
+  --font-display: 'Sora', -apple-system, 'Segoe UI', sans-serif;
+  --font-body: 'Inter', -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --container: 1200px;
+
+  font-family: var(--font-body);
+  color: var(--ink-soft);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  min-width: 320px;
+  overflow-x: clip;
+  background: var(--bg);
+}
+
+#root { overflow-x: clip; }
+
+img { max-width: 100%; display: block; }
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  color: var(--ink);
+  margin: 0;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+}
+
+p { margin: 0; }
+
+a { color: inherit; text-decoration: none; }
+
+button { font-family: inherit; }
+
+ul { margin: 0; padding: 0; list-style: none; }
+
+::selection { background: var(--hostix-indigo); color: #fff; }
+
+/* ─── Fluid Type Scale ─────────────────────────── */
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--hostix-indigo);
+}
+
+.h2 {
+  font-size: clamp(1.8rem, 1.2rem + 2.2vw, 3rem);
+  font-weight: 700;
+}
+
+.h1 {
+  font-size: clamp(2.4rem, 1.2rem + 4.8vw, 5rem);
+  font-weight: 800;
+}
+
+.body-lg {
+  font-size: clamp(1rem, 0.95rem + 0.3vw, 1.2rem);
+  line-height: 1.7;
+}
+
+.container {
+  width: 100%;
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+@media (max-width: 640px) {
+  .container { padding: 0 16px; }
+}
+
+/* ─── Scroll Progress Bar ──────────────────────── */
+#scroll-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--hostix-indigo), var(--stayvix-purple), var(--hostix-teal));
+  z-index: 9999;
+  transform-origin: left;
+  transform: scaleX(0);
+  transition: transform 0.1s linear;
+  border-radius: 0 2px 2px 0;
+}
+
+/* ─── Scroll to Top Button ─────────────────────── */
+#scroll-top-btn {
+  position: fixed;
+  bottom: 32px;
+  right: 28px;
+  z-index: 500;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--hostix-indigo), var(--stayvix-purple));
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 32px rgba(79,70,229,0.4);
+  opacity: 0;
+  transform: translateY(20px) scale(0.9);
+  transition: opacity 0.35s cubic-bezier(0.16,0.84,0.44,1), transform 0.35s cubic-bezier(0.16,0.84,0.44,1);
+  pointer-events: none;
+}
+
+#scroll-top-btn.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+#scroll-top-btn:hover {
+  transform: translateY(-3px) scale(1.08);
+  box-shadow: 0 12px 40px rgba(79,70,229,0.55);
+}
+
+#scroll-top-btn svg {
+  width: 20px;
+  height: 20px;
+  stroke: #fff;
+  stroke-width: 2.2;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@media (max-width: 640px) {
+  #scroll-top-btn { bottom: 20px; right: 16px; width: 42px; height: 42px; }
+}
+
+/* ─── Reduced Motion ───────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

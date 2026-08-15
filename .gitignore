@@ -1,0 +1,62 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+backend/node_modules/
+
+# Build outputs
+dist/
+build/
+frontend/dist/
+backend/dist/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+nul
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Uploads
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# TypeScript
+*.tsbuildinfo
+
+# Misc
+.cache/
+coverage/
+*.zip
+.wwebjs_auth/
+inspect_dues.*
+test_*.js
+test_*.ts
+test_*.cjs
+patch_*.js
+update_*.js
+update_*.py
+update_*.sql
+old_*
+qr_signup_*
+restore_qr.js
+server_test.js
+
