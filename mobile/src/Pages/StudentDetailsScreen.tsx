@@ -682,7 +682,17 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                 <View style={styles.avatarWrapper}>
                                     {(() => {
                                         const rawPhoto = student.profile_photo_url || student.photo || student.profile_photo;
-                                        const photoUri = rawPhoto ? (rawPhoto.startsWith('http') ? rawPhoto : `http://143.244.131.69:8081${rawPhoto.startsWith('/') ? '' : '/'}${rawPhoto}`) : null;
+                                        let photoUri: string | null = null;
+                                        if (rawPhoto) {
+                                            if (rawPhoto.includes('r2.cloudflarestorage.com/hostix-media/')) {
+                                                const key = rawPhoto.split('hostix-media/')[1];
+                                                photoUri = `http://143.244.131.69:8081/api/media/${key}`;
+                                            } else if (rawPhoto.startsWith('http://') || rawPhoto.startsWith('https://')) {
+                                                photoUri = rawPhoto;
+                                            } else {
+                                                photoUri = `http://143.244.131.69:8081${rawPhoto.startsWith('/') ? '' : '/'}${rawPhoto}`;
+                                            }
+                                        }
                                         return photoUri && !avatarError ? (
                                             <Image
                                                 source={{ uri: photoUri }}

@@ -714,12 +714,6 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
       const isActive = req.body.status === 1 || req.body.status === 'Active';
 
       if (isInactive) {
-        // Set inactive_date to current date when marking student as inactive
-        // Only set if student was previously active (to avoid overwriting existing date)
-        if (oldStatus === 1 || oldStatus === 'Active') {
-          updateData.inactive_date = new Date();
-        }
-
         // When changing to Inactive, ALWAYS clear room assignment
         // Inactive students should not have room assignments
         if (oldRoomId) {
@@ -730,9 +724,6 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
         // Convert to 0
         updateData.status = 0;
       } else if (isActive) {
-        // Clear inactive_date when reactivating student
-        updateData.inactive_date = null;
-
         // If student was previously inactive, update admission_date to current date (re-admission)
         if (oldStatus === 0 || oldStatus === 'Inactive') {
           updateData.admission_date = new Date();
