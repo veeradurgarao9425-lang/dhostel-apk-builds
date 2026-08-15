@@ -28,6 +28,11 @@ export const TopOverdueStudents = ({ data }: TopOverdueStudentsProps) => {
                     <Text style={[s.sectionTitle, { fontSize: fontSize - 1, color: theme.textSecondary }]}>
                         TOP OVERDUE
                     </Text>
+                    {/* Green lightbulb tip badge */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10, borderWidth: 1, borderColor: isDark ? 'rgba(16, 185, 129, 0.3)' : '#A7F3D0', marginLeft: 4 }}>
+                        <Ionicons name="bulb" size={10} color="#10B981" />
+                        <Text style={{ fontSize: 9.5, fontWeight: '700', color: isDark ? '#34D399' : '#047857' }}>Drag cards left & right</Text>
+                    </View>
                 </View>
                 <TouchableOpacity
                     onPress={() => navigation.navigate('PendingTab')}

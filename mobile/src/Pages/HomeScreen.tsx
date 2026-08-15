@@ -802,13 +802,28 @@ export default function HomeScreen() {
                             {(data.unallocatedCount > 0 || data.qrRegisterCount > 0 || data.openComplaintsCount > 0 || data.pendingAdmissionsCount > 0) && (
                                 <WarningCards data={data} />
                             )}
-                            <View collapsable={false}>
+                            <View
+                                collapsable={false}
+                                onTouchStart={() => setIsPagerScrollEnabled(false)}
+                                onTouchEnd={() => setIsPagerScrollEnabled(true)}
+                                onTouchCancel={() => setIsPagerScrollEnabled(true)}
+                            >
                                 <OverviewCard data={data} setShowCollectionSheet={setShowCollectionSheet} pulseValue={pulseValue} fmt={fmt} />
                             </View>
-                            <View collapsable={false}>
+                            <View
+                                collapsable={false}
+                                onTouchStart={() => setIsPagerScrollEnabled(false)}
+                                onTouchEnd={() => setIsPagerScrollEnabled(true)}
+                                onTouchCancel={() => setIsPagerScrollEnabled(true)}
+                            >
                                 <QuickActionsGrid data={data} />
                             </View>
-                            <View collapsable={false}>
+                            <View
+                                collapsable={false}
+                                onTouchStart={() => setIsPagerScrollEnabled(false)}
+                                onTouchEnd={() => setIsPagerScrollEnabled(true)}
+                                onTouchCancel={() => setIsPagerScrollEnabled(true)}
+                            >
                                 <StatisticsGrid data={data} fmt={fmt} />
                             </View>
                             <View
