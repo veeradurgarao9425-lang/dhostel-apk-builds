@@ -377,8 +377,8 @@ export const HostelChatbot: React.FC = () => {
                 <View style={s.headerInfoRow}>
                   <View style={s.avatarContainer}>
                     <View style={[s.avatar, { backgroundColor: 'transparent' }]}>
-                      <Image source={require('../../assets/durgarao-bot.jpeg')}
-                        style={{ width: '100%', height: '100%', transform: [{ scale: 1.8 }, { translateY: 4 }] }}
+                      <Image source={require('../../assets/HostixNew.jpeg')}
+                        style={{ width: '100%', height: '100%' }}
                         resizeMode="cover" />
                     </View>
                     <View style={s.pulseDot} />
@@ -540,11 +540,11 @@ export const HostelChatbot: React.FC = () => {
                               <Text style={s.welcomeTitle}>Hostix AI Assistant</Text>
                               <Text style={s.welcomeSubtitle}>{getTimeGreeting()}</Text>
                             </View>
-                            <Image 
-                              source={require('../../assets/durgarao-bot.jpeg')} 
-                              style={s.welcomeBotImg} 
-                              resizeMode="cover" 
-                            />
+                             <Image 
+                               source={require('../../assets/HostixNew.jpeg')} 
+                               style={s.welcomeBotImg} 
+                               resizeMode="cover" 
+                             />
                           </View>
                         </LinearGradient>
                         <View style={s.welcomeContent}>

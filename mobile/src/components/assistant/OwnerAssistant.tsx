@@ -1481,7 +1481,7 @@ export const OwnerAssistant: React.FC = () => {
               <View style={s.headerLeft}>
                 <View style={s.avatarBox}>
                   <Image
-                    source={require('../../../assets/durgarao-bot.jpeg')}
+                    source={require('../../../assets/HostixNew.jpeg')}
                     style={s.avatarImg}
                     resizeMode="cover"
                   />
