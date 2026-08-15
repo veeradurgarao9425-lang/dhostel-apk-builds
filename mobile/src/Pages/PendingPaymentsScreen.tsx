@@ -360,6 +360,7 @@ const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab, navig
     const insets = useSafeAreaInsets();
     const { showSuccess } = useToast();
     const [modalFilter, setModalFilter] = useState<'All' | 'Overdue' | 'Partial'>('All');
+    const [searchModalQuery, setSearchModalQuery] = useState('');
 
     const defaulters = React.useMemo(() => {
         return tenants.filter((t: any) => {
@@ -367,12 +368,20 @@ const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab, navig
             const isPaid = t.status === 'Fully Paid' || t.status === 'paid' || t.fee_status === 'Fully Paid';
             if (due <= 0 || isPaid) return false;
 
-            if (modalFilter === 'Overdue') return t.isOverdue;
-            if (modalFilter === 'Partial') return t.paidAmount > 0 && due > 0 && !t.isOverdue;
+            if (modalFilter === 'Overdue' && !t.isOverdue) return false;
+            if (modalFilter === 'Partial' && !(t.paidAmount > 0 && due > 0 && !t.isOverdue)) return false;
+
+            if (searchModalQuery.trim()) {
+                const q = searchModalQuery.trim().toLowerCase();
+                const nameMatch = (t.name || '').toLowerCase().includes(q);
+                const roomMatch = (t.room || '').toLowerCase().includes(q);
+                const phoneMatch = (t.phone || '').includes(q);
+                return nameMatch || roomMatch || phoneMatch;
+            }
 
             return true; // All Dues
         });
-    }, [tenants, modalFilter]);
+    }, [tenants, modalFilter, searchModalQuery]);
 
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
@@ -403,6 +412,7 @@ const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab, navig
     const totalSelectedDues = selectedTenants.reduce((sum: number, d: any) => sum + d.dueAmount, 0);
 
     const [sendingDirect, setSendingDirect] = useState(false);
+    const [customMessage, setCustomMessage] = useState('');
 
     const handleCopyBulkAndOpenWhatsApp = async () => {
         if (selectedTenants.length === 0) {
@@ -414,9 +424,13 @@ const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab, navig
             `${i + 1}. *${t.name}* (Room ${t.room}) — Due: ₹${Number(t.dueAmount || 0).toLocaleString('en-IN')}`
         ).join('\n');
 
-        const msg = `🚨 *RENT REMINDER NOTICE*\n\nDear Students,\nThis is a friendly reminder to clear your pending rent dues at the earliest:\n\n${tenantListStr}\n\n• *Total Defaulters:* ${selectedTenants.length} Students\n• *Total Pending Amount:* ₹${totalSelectedDues.toLocaleString('en-IN')}\n\n💳 Please pay online via GPay / PhonePe / Paytm.\n\nThank you,\n~ *HOSTIX Hostel Management*`;
+        const defaultMsg = `🚨 *RENT REMINDER NOTICE*\n\nDear Students,\nThis is a friendly reminder to clear your pending rent dues at the earliest:\n\n${tenantListStr}\n\n• *Total Defaulters:* ${selectedTenants.length} Students\n• *Total Pending Amount:* ₹${totalSelectedDues.toLocaleString('en-IN')}\n\n💳 Please pay online via GPay / PhonePe / Paytm.\n\nThank you,\n~ *HOSTIX Hostel Management*`;
 
-        await Clipboard.setStringAsync(msg);
+        const finalMsg = customMessage.trim() 
+            ? `${customMessage.trim()}\n\n${tenantListStr}`
+            : defaultMsg;
+
+        await Clipboard.setStringAsync(finalMsg);
         showSuccess('📋 Bulk Reminder Copied! Paste into your WhatsApp Business Broadcast List.');
         onClose();
 
@@ -433,6 +447,52 @@ const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab, navig
         }
     };
 
+    const handleSendManuallyOneByOne = async () => {
+        if (selectedTenants.length === 0) {
+            Alert.alert('No Students Selected', 'Please select at least one student.');
+            return;
+        }
+
+        onClose();
+
+        for (let i = 0; i < selectedTenants.length; i++) {
+            const tenant = selectedTenants[i];
+            if (!tenant.phone) continue;
+
+            const phone = tenant.phone.replace(/\D/g, '').slice(-10);
+            const due = Number(tenant.dueAmount || 0).toLocaleString('en-IN');
+
+            const msg = customMessage.trim()
+                ? `Hi ${tenant.name.split(' ')[0]} 👋,\n\n${customMessage.trim()}\n\n• *Due Amount:* ₹${due}\n• *Room:* ${tenant.room}\n\nThank you!\n~ *Hostix PG*`
+                : `Hi ${tenant.name.split(' ')[0]} 👋,\n\nThis is a friendly rent reminder from *Hostix PG*.\n• *Room:* ${tenant.room}\n• *Due Amount:* ₹${due}\n\nPlease clear your pending rent at your earliest convenience.\n\nThank you!\n~ *powered by Hostix*`;
+
+            const waUrl = `whatsapp://send?phone=91${phone}&text=${encodeURIComponent(msg)}`;
+            const bizUrl = `whatsapp-business://send?phone=91${phone}&text=${encodeURIComponent(msg)}`;
+
+            const canBiz = await Linking.canOpenURL(bizUrl).catch(() => false);
+            const targetUrl = canBiz ? bizUrl : waUrl;
+
+            await Linking.openURL(targetUrl).catch(() => {
+                Linking.openURL(`https://wa.me/91${phone}?text=${encodeURIComponent(msg)}`);
+            });
+
+            if (i < selectedTenants.length - 1) {
+                const proceed = await new Promise((resolve) => {
+                    Alert.alert(
+                        `Sent (${i + 1}/${selectedTenants.length})`,
+                        `Next tenant: ${selectedTenants[i + 1].name} (Room ${selectedTenants[i + 1].room})`,
+                        [
+                            { text: 'Stop', style: 'cancel', onPress: () => resolve(false) },
+                            { text: `Send to ${selectedTenants[i + 1].name} →`, onPress: () => resolve(true) }
+                        ]
+                    );
+                });
+
+                if (!proceed) break;
+            }
+        }
+    };
+
     const handleDirectSendBulk = async () => {
         if (selectedTenants.length === 0) {
             Alert.alert('No Students Selected', 'Please select at least one student.');
@@ -446,43 +506,19 @@ const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab, navig
                 student_ids: studentIds
             });
 
-            if (res.data.success) {
-                Alert.alert(
-                    '⚡ Direct WhatsApp Sent!',
-                    res.data.message || `Successfully sent WhatsApp reminders directly to ${res.data.sentCount || selectedTenants.length} students in background!`
-                );
+            if (res.data?.success) {
+                showSuccess(`⚡ Direct WhatsApp sent to ${res.data.sentCount || selectedTenants.length} selected students!`);
                 onClose();
             } else {
                 Alert.alert(
-                    '📲 WhatsApp Bot Not Linked Yet',
-                    'Your WhatsApp account is not linked yet. Please go to Settings ➔ Link Device to generate your 8-digit code and activate 1-click automated messaging.',
-                    [
-                        { text: 'Cancel', style: 'cancel' },
-                        {
-                            text: 'Link Now (Settings)',
-                            onPress: () => {
-                                onClose();
-                                if (navigation?.navigate) navigation.navigate('Settings');
-                            }
-                        }
-                    ]
+                    'WhatsApp Status',
+                    res.data?.error || `Processed ${selectedTenants.length} student WhatsApp reminders.`
                 );
+                onClose();
             }
-        } catch (err: any) {
-            Alert.alert(
-                '📲 WhatsApp Bot Not Linked Yet',
-                'Your WhatsApp account is not linked yet. Please go to Settings ➔ Link Device to generate your 8-digit code and activate 1-click automated messaging.',
-                [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                        text: 'Link Now (Settings)',
-                        onPress: () => {
-                            onClose();
-                            if (navigation?.navigate) navigation.navigate('Settings');
-                        }
-                    }
-                ]
-            );
+        } catch (e: any) {
+            const msg = e.response?.data?.error || e.message || 'Error sending direct WhatsApp messages';
+            Alert.alert('WhatsApp Dispatch', msg);
         } finally {
             setSendingDirect(false);
         }
@@ -580,6 +616,29 @@ const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab, navig
                         </TouchableOpacity>
                     </View>
 
+                    {/* Search Input Inside WhatsApp Modal */}
+                    <View style={{
+                        flexDirection: 'row', alignItems: 'center',
+                        backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
+                        borderColor: isDark ? '#334155' : '#E2E8F0',
+                        borderWidth: 1, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6,
+                        marginBottom: 10
+                    }}>
+                        <Ionicons name="search-outline" size={16} color="#94A3B8" />
+                        <TextInput
+                            style={{ flex: 1, marginLeft: 6, fontSize: 13, color: isDark ? '#F8FAFC' : '#1F2937' }}
+                            placeholder="Search tenant name or room..."
+                            placeholderTextColor="#94A3B8"
+                            value={searchModalQuery}
+                            onChangeText={setSearchModalQuery}
+                        />
+                        {searchModalQuery.length > 0 && (
+                            <TouchableOpacity onPress={() => setSearchModalQuery('')}>
+                                <Ionicons name="close-circle" size={16} color="#94A3B8" />
+                            </TouchableOpacity>
+                        )}
+                    </View>
+
                     {/* Select All Row */}
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: isDark ? '#0F172A' : '#F8FAFC', padding: 12, borderRadius: 12, marginBottom: 12 }}>
                         <TouchableOpacity onPress={toggleAll} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -634,40 +693,18 @@ const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab, navig
                     {/* Action Buttons */}
                     <View style={{ gap: 10, marginTop: 14 }}>
                         <TouchableOpacity
-                            onPress={handleDirectSendBulk}
-                            disabled={selectedTenants.length === 0 || sendingDirect}
-                            activeOpacity={0.85}
-                            style={{
-                                backgroundColor: selectedTenants.length > 0 ? '#25D366' : '#94A3B8',
-                                paddingVertical: 14, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
-                                flexDirection: 'row', gap: 8
-                            }}
-                        >
-                            {sendingDirect ? (
-                                <ActivityIndicator color="#FFF" size="small" />
-                            ) : (
-                                <Ionicons name="flash" size={18} color="#FFF" />
-                            )}
-                            <Text style={{ color: '#FFF', fontSize: 15, fontWeight: '800' }}>
-                                {sendingDirect ? 'Sending Direct WhatsApp...' : `⚡ Send Direct WhatsApp (${selectedTenants.length} Tenants)`}
-                            </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            onPress={handleCopyBulkAndOpenWhatsApp}
+                            onPress={handleSendManuallyOneByOne}
                             disabled={selectedTenants.length === 0}
                             activeOpacity={0.85}
                             style={{
-                                backgroundColor: 'transparent',
-                                borderWidth: 1.5,
-                                borderColor: isDark ? '#334155' : '#E2E8F0',
-                                paddingVertical: 10, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+                                backgroundColor: '#25D366',
+                                paddingVertical: 12, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
                                 flexDirection: 'row', gap: 6
                             }}
                         >
-                            <Ionicons name="copy-outline" size={16} color={isDark ? '#F8FAFC' : '#475569'} />
-                            <Text style={{ color: isDark ? '#F8FAFC' : '#475569', fontSize: 13, fontWeight: '700' }}>
-                                📋 Copy Bulk Text & Open WhatsApp Business
+                            <Ionicons name="logo-whatsapp" size={18} color="#FFF" />
+                            <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '800' }}>
+                                💬 Send Manually 1-by-1 ({selectedTenants.length} Tenants)
                             </Text>
                         </TouchableOpacity>
 
@@ -1321,6 +1358,7 @@ export default function PendingPaymentsScreen() {
                                 </TouchableOpacity>
                             )}
                         </View>
+
 
                         {(() => {
                             const activeFiltersCount = Object.entries(activeFilters).filter(([k, v]) =>

@@ -1,12 +1,12 @@
 import express, { Response } from 'express';
-import { authenticateToken, AuthRequest } from '../middleware/auth.js';
+import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import db from '../config/database.js';
 import { metaWhatsAppService, WhatsAppSendResult } from '../services/metaWhatsappService.js';
 
 const router = express.Router();
 
 // Apply authentication middleware to all WhatsApp routes
-router.use(authenticateToken);
+router.use(authMiddleware);
 
 /**
  * POST /api/whatsapp/send

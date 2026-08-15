@@ -462,64 +462,6 @@ export const SettingsScreen = ({ navigation }: any) => {
                     )}
                 </Card>
 
-                {/* ── AUTOMATED WHATSAPP REMINDERS ── */}
-                <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>Automated WhatsApp Reminders</Text>
-
-                <Card style={[styles.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
-                    <SettingRow
-                        icon={<MessageSquare size={20} color="#25D366" />}
-                        label="Direct WhatsApp Link"
-                        type="custom"
-                        rightElement={
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: waStatus?.isReady ? '#ECFDF5' : '#FEF2F2', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
-                                <Text style={{ fontSize: 12, fontWeight: '700', color: waStatus?.isReady ? '#16A34A' : '#DC2626' }}>
-                                    {waStatus?.isReady ? '✅ Linked' : 'Link Device'}
-                                </Text>
-                                {showWaDetails ? (
-                                    <ChevronDown size={18} color={waStatus?.isReady ? '#16A34A' : '#DC2626'} />
-                                ) : (
-                                    <ChevronRight size={18} color={waStatus?.isReady ? '#16A34A' : '#DC2626'} />
-                                )}
-                            </View>
-                        }
-                        onPress={() => { setShowWaDetails(!showWaDetails); fetchWaStatus(); }}
-                    />
-
-                    {showWaDetails && (
-                        <View style={{ padding: 16, borderTopWidth: 1, borderTopColor: isDark ? '#334155' : '#F1F5F9', alignItems: 'center' }}>
-                            {/* Privacy & Security Guarantee Banner */}
-                            <View style={{ backgroundColor: isDark ? '#064E3B30' : '#ECFDF5', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: isDark ? '#047857' : '#A7F3D0', marginBottom: 14, width: '100%' }}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                                    <Shield size={18} color="#059669" />
-                                    <Text style={{ fontSize: 13, fontWeight: '800', color: isDark ? '#34D399' : '#065F46' }}>
-                                        🔒 100% Private & Secure Connection
-                                    </Text>
-                                </View>
-                                <Text style={{ fontSize: 11, color: isDark ? '#A7F3D0' : '#047857', lineHeight: 16 }}>
-                                    This linkage is <Text style={{ fontWeight: '800' }}>ONLY used to send automated rent reminders</Text> to your students. Our app <Text style={{ fontWeight: '800' }}>NEVER accesses your personal chats, personal messages, or photos</Text>. Your privacy is 100% safe & protected!
-                                </Text>
-                            </View>
-
-                            {renderWaContent()}
-
-                            <TouchableOpacity
-                                onPress={handleRestartWa}
-                                activeOpacity={0.85}
-                                style={{
-                                    flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12,
-                                    paddingVertical: 10, paddingHorizontal: 18,
-                                    backgroundColor: '#25D366', borderRadius: 20
-                                }}
-                            >
-                                <RefreshCw size={16} color="#FFF" />
-                                <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFF' }}>
-                                    {waLoading ? 'Generating QR Code...' : (waStatus?.qrCodeDataUrl ? 'Refresh QR Code' : 'Generate Pairing QR Code')}
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-                    )}
-                </Card>
-
                 {/* ── PREFERENCES SECTION ── */}
                 <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>{t('settings.appPreferences', 'Preferences')}</Text>
 
