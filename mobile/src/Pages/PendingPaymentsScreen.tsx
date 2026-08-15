@@ -21,6 +21,7 @@ import { useToast } from '../context/ToastContext';
 import { toLocalDateStr } from '../utils/dateUtils';
 import { AppHeader } from '../components/AppHeader';
 import { useTranslation } from 'react-i18next';
+import * as Clipboard from 'expo-clipboard';
 import { FilterDuesModal } from '../components/FilterDuesModal';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState } from '../components/ui/ErrorState';
@@ -328,6 +329,7 @@ const WaveDecoration = ({ color }: { color: string }) => (
 // ─── Bulk WhatsApp Modal Component ──────────────────────────────────────────
 const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab, navigation }: any) => {
     const insets = useSafeAreaInsets();
+    const { showSuccess } = useToast();
     const [modalFilter, setModalFilter] = useState<'All' | 'Overdue' | 'Partial'>('All');
 
     const defaulters = React.useMemo(() => {
@@ -372,6 +374,35 @@ const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab, navig
     const totalSelectedDues = selectedTenants.reduce((sum: number, d: any) => sum + d.dueAmount, 0);
 
     const [sendingDirect, setSendingDirect] = useState(false);
+
+    const handleCopyBulkAndOpenWhatsApp = async () => {
+        if (selectedTenants.length === 0) {
+            Alert.alert('No Students Selected', 'Please select at least one student.');
+            return;
+        }
+
+        const tenantListStr = selectedTenants.map((t: any, i: number) => 
+            `${i + 1}. *${t.name}* (Room ${t.room}) — Due: ₹${Number(t.dueAmount || 0).toLocaleString('en-IN')}`
+        ).join('\n');
+
+        const msg = `🚨 *RENT REMINDER NOTICE*\n\nDear Students,\nThis is a friendly reminder to clear your pending rent dues at the earliest:\n\n${tenantListStr}\n\n• *Total Defaulters:* ${selectedTenants.length} Students\n• *Total Pending Amount:* ₹${totalSelectedDues.toLocaleString('en-IN')}\n\n💳 Please pay online via GPay / PhonePe / Paytm.\n\nThank you,\n~ *HOSTIX Hostel Management*`;
+
+        await Clipboard.setStringAsync(msg);
+        showSuccess('📋 Bulk Reminder Copied! Paste into your WhatsApp Business Broadcast List.');
+        onClose();
+
+        try {
+            const waUrl = 'whatsapp://';
+            const supported = await Linking.canOpenURL(waUrl);
+            if (supported) {
+                await Linking.openURL(waUrl);
+            } else {
+                await Linking.openURL('https://wa.me');
+            }
+        } catch (e) {
+            Linking.openURL('https://wa.me');
+        }
+    };
 
     const handleDirectSendBulk = async () => {
         if (selectedTenants.length === 0) {
@@ -572,10 +603,10 @@ const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab, navig
                     />
 
                     {/* Action Buttons */}
-                    <View style={{ gap: 8, marginTop: 14 }}>
+                    <View style={{ gap: 10, marginTop: 14 }}>
                         <TouchableOpacity
-                            onPress={handleDirectSendBulk}
-                            disabled={selectedTenants.length === 0 || sendingDirect}
+                            onPress={handleCopyBulkAndOpenWhatsApp}
+                            disabled={selectedTenants.length === 0}
                             activeOpacity={0.85}
                             style={{
                                 backgroundColor: selectedTenants.length > 0 ? '#25D366' : '#94A3B8',
@@ -583,19 +614,15 @@ const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab, navig
                                 flexDirection: 'row', gap: 8
                             }}
                         >
-                            {sendingDirect ? (
-                                <ActivityIndicator color="#FFF" size="small" />
-                            ) : (
-                                <Ionicons name="flash" size={18} color="#FFF" />
-                            )}
+                            <Ionicons name="copy-outline" size={18} color="#FFF" />
                             <Text style={{ color: '#FFF', fontSize: 15, fontWeight: '800' }}>
-                                {sendingDirect ? 'Sending Direct WhatsApp...' : `⚡ Send Direct WhatsApp (${selectedTenants.length})`}
+                                📋 Copy Bulk Text & Open WhatsApp Business
                             </Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                            onPress={handleSendBulk}
-                            disabled={selectedTenants.length === 0}
+                            onPress={handleDirectSendBulk}
+                            disabled={selectedTenants.length === 0 || sendingDirect}
                             activeOpacity={0.85}
                             style={{
                                 backgroundColor: 'transparent',
@@ -605,9 +632,13 @@ const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab, navig
                                 flexDirection: 'row', gap: 6
                             }}
                         >
-                            <Ionicons name="logo-whatsapp" size={16} color="#25D366" />
+                            {sendingDirect ? (
+                                <ActivityIndicator color="#25D366" size="small" />
+                            ) : (
+                                <Ionicons name="flash" size={16} color="#25D366" />
+                            )}
                             <Text style={{ color: isDark ? '#F8FAFC' : '#475569', fontSize: 13, fontWeight: '700' }}>
-                                Open WhatsApp App (Manual)
+                                {sendingDirect ? 'Sending Direct WhatsApp...' : `⚡ Automated Server Send (${selectedTenants.length})`}
                             </Text>
                         </TouchableOpacity>
                     </View>
