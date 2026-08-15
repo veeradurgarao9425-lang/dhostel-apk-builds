@@ -695,11 +695,13 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                             }
                                         }
                                         return photoUri && !avatarError ? (
-                                            <Image
-                                                source={{ uri: photoUri }}
-                                                style={styles.avatar}
-                                                onError={() => setAvatarError(true)}
-                                            />
+                                            <TouchableOpacity activeOpacity={0.85} onPress={() => setPreviewImageModalUrl(photoUri)}>
+                                                <Image
+                                                    source={{ uri: photoUri }}
+                                                    style={styles.avatar}
+                                                    onError={() => setAvatarError(true)}
+                                                />
+                                            </TouchableOpacity>
                                         ) : (
                                             <View style={[styles.avatarPlaceholder, { backgroundColor: theme.primary + '15', borderColor: theme.primary + '30' }]}>
                                                 <Text style={{ fontSize: 18, fontWeight: '700', color: theme.primary }}>
@@ -1172,6 +1174,65 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                                 </View>
                                             )}
                                         </View>
+                                         {/* ID Proof Document Attachments (Front & Back) */}
+                                         {(() => {
+                                             const resolveUrl = (raw?: string | null) => {
+                                                 if (!raw) return null;
+                                                 if (raw.includes('r2.cloudflarestorage.com/hostix-media/')) {
+                                                     const key = raw.split('hostix-media/')[1];
+                                                     return `http://143.244.131.69:8081/api/media/${key}`;
+                                                 }
+                                                 if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+                                                 return `http://143.244.131.69:8081${raw.startsWith('/') ? '' : '/'}${raw}`;
+                                             };
+
+                                             const docFront = resolveUrl(student.id_proof_front_url || student.id_proof_document_url || student.id_proof_front);
+                                             const docBack = resolveUrl(student.id_proof_back_url || student.id_proof_back);
+
+                                             if (!docFront && !docBack) return null;
+
+                                             return (
+                                                 <View style={{ marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: isDark ? '#334155' : '#E2E8F0' }}>
+                                                     <Text style={{ fontSize: 13, fontWeight: '700', color: theme.textPrimary, marginBottom: 10 }}>
+                                                         {student.id_proof_type_name || 'ID Proof'} Attachments
+                                                     </Text>
+                                                     <View style={{ flexDirection: 'row', gap: 12 }}>
+                                                         {docFront && (
+                                                             <TouchableOpacity
+                                                                 style={{ flex: 1, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: isDark ? '#334155' : '#E2E8F0' }}
+                                                                 onPress={() => setPreviewImageModalUrl(docFront)}
+                                                                 activeOpacity={0.85}
+                                                             >
+                                                                 <Image
+                                                                     source={{ uri: docFront }}
+                                                                     style={{ width: '100%', height: 140, backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }}
+                                                                     resizeMode="cover"
+                                                                 />
+                                                                 <View style={{ padding: 6, backgroundColor: isDark ? '#1E293B' : '#F1F5F9', alignItems: 'center' }}>
+                                                                     <Text style={{ fontSize: 11, fontWeight: '600', color: theme.textSecondary }}>Front Side (Tap to zoom)</Text>
+                                                                 </View>
+                                                             </TouchableOpacity>
+                                                         )}
+                                                         {docBack && (
+                                                             <TouchableOpacity
+                                                                 style={{ flex: 1, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: isDark ? '#334155' : '#E2E8F0' }}
+                                                                 onPress={() => setPreviewImageModalUrl(docBack)}
+                                                                 activeOpacity={0.85}
+                                                             >
+                                                                 <Image
+                                                                     source={{ uri: docBack }}
+                                                                     style={{ width: '100%', height: 140, backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }}
+                                                                     resizeMode="cover"
+                                                                 />
+                                                                 <View style={{ padding: 6, backgroundColor: isDark ? '#1E293B' : '#F1F5F9', alignItems: 'center' }}>
+                                                                     <Text style={{ fontSize: 11, fontWeight: '600', color: theme.textSecondary }}>Back Side (Tap to zoom)</Text>
+                                                                 </View>
+                                                             </TouchableOpacity>
+                                                         )}
+                                                     </View>
+                                                 </View>
+                                             );
+                                         })()}
                                     </View>
                                 </View>
 

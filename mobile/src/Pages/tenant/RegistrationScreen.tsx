@@ -17,6 +17,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../services/api';
 import { colors } from '../../theme/tenantTheme';
+import { FaceCaptureModal } from '../../components/FaceCaptureModal';
 
 const { width } = Dimensions.get('window');
 
@@ -133,13 +134,13 @@ const PhotoUpload = ({ uri, onCapture, label = 'Add Photo' }: any) => {
         const perm = await ImagePicker.requestCameraPermissionsAsync();
         if (!perm.granted) { Alert.alert('Permission needed', 'Allow camera access.'); return; }
         const res = await ImagePicker.launchCameraAsync({ quality: 0.8, aspect: [1, 1] });
-        if (!res.canceled) onCapture(res.assets[0].uri);
+        if (!res.canceled && res.assets && res.assets.length > 0) onCapture(res.assets[0].uri);
       }},
       { text: 'Gallery', onPress: async () => {
         const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (!perm.granted) { Alert.alert('Permission needed', 'Allow media access.'); return; }
         const res = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, aspect: [1, 1] });
-        if (!res.canceled) onCapture(res.assets[0].uri);
+        if (!res.canceled && res.assets && res.assets.length > 0) onCapture(res.assets[0].uri);
       }},
       { text: 'Cancel', style: 'cancel' }
     ]);
@@ -167,13 +168,13 @@ const DocBox = ({ label, uri, onCapture, onRemove, error }: any) => {
         const perm = await ImagePicker.requestCameraPermissionsAsync();
         if (!perm.granted) { Alert.alert('Permission needed', 'Allow camera access.'); return; }
         const res = await ImagePicker.launchCameraAsync({ quality: 0.7 });
-        if (!res.canceled) onCapture(res.assets[0].uri);
+        if (!res.canceled && res.assets && res.assets.length > 0) onCapture(res.assets[0].uri);
       }},
       { text: 'Gallery', onPress: async () => {
         const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (!perm.granted) { Alert.alert('Permission needed', 'Allow media access.'); return; }
         const res = await ImagePicker.launchImageLibraryAsync({ quality: 0.7 });
-        if (!res.canceled) onCapture(res.assets[0].uri);
+        if (!res.canceled && res.assets && res.assets.length > 0) onCapture(res.assets[0].uri);
       }},
       { text: 'Cancel', style: 'cancel' }
     ]);
@@ -194,6 +195,8 @@ const DocBox = ({ label, uri, onCapture, onRemove, error }: any) => {
           </>
         )}
       </TouchableOpacity>
+        mode="document"
+      />
     </View>
   );
 };

@@ -444,6 +444,8 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
 
     let profile_photo_url: string | null = req.body.profile_photo_url || null;
     let id_proof_document_url: string | null = req.body.id_proof_document_url || null;
+    let id_proof_front_url: string | null = req.body.id_proof_front_url || null;
+    let id_proof_back_url: string | null = req.body.id_proof_back_url || null;
 
     if (files?.profile_photo?.[0]) {
       profile_photo_url = await processFileUpload(files.profile_photo[0], 'avatars');
@@ -452,7 +454,12 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
     }
 
     if (files?.id_proof_front?.[0]) {
-      id_proof_document_url = await processFileUpload(files.id_proof_front[0], 'id_proofs');
+      id_proof_front_url = await processFileUpload(files.id_proof_front[0], 'id_proofs');
+      id_proof_document_url = id_proof_front_url;
+    }
+
+    if (files?.id_proof_back?.[0]) {
+      id_proof_back_url = await processFileUpload(files.id_proof_back[0], 'id_proofs');
     }
 
     // Insert student
@@ -473,6 +480,8 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
       id_proof_type,
       id_proof_number,
       id_proof_document_url,
+      id_proof_front_url: id_proof_front_url || id_proof_document_url,
+      id_proof_back_url,
       profile_photo_url,
       id_proof_status: typeof id_proof_status === 'number' ? id_proof_status : (id_proof_status === 'Submitted' ? 1 : 0),
       admission_date: convertToDateOnly(admission_date),
@@ -787,6 +796,27 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
           updateData.admission_date = new Date();
         }
       }
+    }
+
+    // Process file uploads if present
+    const files = req.files as { [field: string]: Express.Multer.File[] } | undefined;
+    const singleFile = req.file as Express.Multer.File | undefined;
+
+    if (files?.profile_photo?.[0]) {
+      updateData.profile_photo_url = await processFileUpload(files.profile_photo[0], 'avatars');
+    } else if (singleFile) {
+      updateData.profile_photo_url = await processFileUpload(singleFile, 'avatars');
+    }
+
+    if (files?.id_proof_front?.[0]) {
+      const frontUrl = await processFileUpload(files.id_proof_front[0], 'id_proofs');
+      updateData.id_proof_front_url = frontUrl;
+      updateData.id_proof_document_url = frontUrl;
+    }
+
+    if (files?.id_proof_back?.[0]) {
+      const backUrl = await processFileUpload(files.id_proof_back[0], 'id_proofs');
+      updateData.id_proof_back_url = backUrl;
     }
 
     // Now perform the single database update with all changes

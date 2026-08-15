@@ -23,7 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
     User, Phone, Mail, Home, MapPin,
-    CreditCard, Users, Fingerprint, Check,
+    CreditCard, Users, Fingerprint, Check, CheckCircle,
     ChevronDown, Camera, X, BedDouble, Calendar, Search,
     Upload, AlertTriangle, Info, Plus, QrCode, ChevronRight
 } from 'lucide-react-native';
@@ -352,23 +352,35 @@ const DocumentUploadBox = ({ label, uri, onCapture, onRemove, isFront, error }: 
     const [permError, setPermError] = useState({ visible: false, title: '', message: '' });
 
     const onSelectCamera = async () => {
-        const p = await ImagePicker.requestCameraPermissionsAsync();
-        if (!p.granted) {
-            setPermError({ visible: true, title: 'Permission Required', message: 'Camera permission is needed to upload documents. Please enable it in your device settings.' });
-            return;
+        try {
+            const p = await ImagePicker.requestCameraPermissionsAsync();
+            if (!p.granted) {
+                setPermError({ visible: true, title: 'Permission Required', message: 'Camera permission is needed to upload documents. Please enable it in your device settings.' });
+                return;
+            }
+            const r = await ImagePicker.launchCameraAsync({ quality: 0.75 });
+            if (!r.canceled && r.assets && r.assets.length > 0) {
+                onCapture(r.assets[0].uri);
+            }
+        } catch (err) {
+            console.error('Document camera error:', err);
         }
-        const r = await ImagePicker.launchCameraAsync({ quality: 0.7 });
-        if (!r.canceled) onCapture(r.assets[0].uri);
     };
 
     const onSelectGallery = async () => {
-        const p = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (!p.granted) {
-            setPermError({ visible: true, title: 'Permission Required', message: 'Media library permission is needed to upload documents. Please enable it in your device settings.' });
-            return;
+        try {
+            const p = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (!p.granted) {
+                setPermError({ visible: true, title: 'Permission Required', message: 'Media library permission is needed to upload documents. Please enable it in your device settings.' });
+                return;
+            }
+            const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.75 });
+            if (!r.canceled && r.assets && r.assets.length > 0) {
+                onCapture(r.assets[0].uri);
+            }
+        } catch (err) {
+            console.error('Document gallery error:', err);
         }
-        const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.7 });
-        if (!r.canceled) onCapture(r.assets[0].uri);
     };
 
     return (
@@ -502,26 +514,37 @@ const IdentityUploadCard = ({
 // ─── Profile avatar capture at top ───────────────────────────────────────────
 const ProfilePhotoCapture = ({ uri, onCapture, onRemove, error }: any) => {
     const { theme, isDark, fontSize } = useTheme();
-    const [permError, setPermError] = useState({ visible: false, title: '', message: '' });
 
     const openCamera = async () => {
-        const p = await ImagePicker.requestCameraPermissionsAsync();
-        if (!p.granted) {
-            setPermError({ visible: true, title: 'Permission Required', message: 'Camera permission is needed to take a profile photo.' });
-            return;
+        try {
+            const p = await ImagePicker.requestCameraPermissionsAsync();
+            if (!p.granted) {
+                Alert.alert('Permission Required', 'Camera permission is needed to take a profile photo.');
+                return;
+            }
+            const r = await ImagePicker.launchCameraAsync({ quality: 0.8, allowsEditing: false });
+            if (!r.canceled && r.assets && r.assets.length > 0) {
+                onCapture(r.assets[0].uri);
+            }
+        } catch (err) {
+            console.error('Camera error:', err);
         }
-        const r = await ImagePicker.launchCameraAsync({ quality: 0.8, allowsEditing: false });
-        if (!r.canceled) onCapture(r.assets[0].uri);
     };
 
     const openGallery = async () => {
-        const p = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (!p.granted) {
-            setPermError({ visible: true, title: 'Permission Required', message: 'Media library permission is needed to pick a profile photo.' });
-            return;
+        try {
+            const p = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (!p.granted) {
+                Alert.alert('Permission Required', 'Gallery permission is needed to pick a photo.');
+                return;
+            }
+            const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, allowsEditing: false });
+            if (!r.canceled && r.assets && r.assets.length > 0) {
+                onCapture(r.assets[0].uri);
+            }
+        } catch (err) {
+            console.error('Gallery error:', err);
         }
-        const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, allowsEditing: false });
-        if (!r.canceled) onCapture(r.assets[0].uri);
     };
 
     return (
@@ -551,22 +574,27 @@ const ProfilePhotoCapture = ({ uri, onCapture, onRemove, error }: any) => {
                 <Text style={[styles.profilePhotoTitle, { color: theme.textPrimary, fontSize: fontSize + 1 }]}>Add Profile Photo</Text>
                 <Text style={[styles.profilePhotoSubtitle, { color: theme.textSecondary }]}>Upload a clear photo of the tenant</Text>
                 {error && <Text style={{ color: '#EF4444', fontSize: 11, fontWeight: '600', marginBottom: 8 }}>{error}</Text>}
-                <TouchableOpacity
-                    style={[styles.profileUploadBtn, { borderColor: error ? '#EF4444' : theme.primary }]}
-                    onPress={openGallery}
-                    activeOpacity={0.7}
-                >
-                    <Upload size={14} color={error ? '#EF4444' : theme.primary} />
-                    <Text style={[styles.profileUploadBtnText, { color: error ? '#EF4444' : theme.primary }]}>{uri ? 'Change Photo' : 'Upload Photo'}</Text>
-                </TouchableOpacity>
-            </View>
+                
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+                    <TouchableOpacity
+                        style={[styles.profileUploadBtn, { borderColor: theme.primary, flex: 1 }]}
+                        onPress={openCamera}
+                        activeOpacity={0.7}
+                    >
+                        <Camera size={14} color={theme.primary} />
+                        <Text style={[styles.profileUploadBtnText, { color: theme.primary }]}>Camera</Text>
+                    </TouchableOpacity>
 
-            <CustomAlertModal
-                visible={permError.visible}
-                title={permError.title}
-                message={permError.message}
-                onClose={() => setPermError({ ...permError, visible: false })}
-            />
+                    <TouchableOpacity
+                        style={[styles.profileUploadBtn, { borderColor: isDark ? '#475569' : '#CBD5E1', flex: 1 }]}
+                        onPress={openGallery}
+                        activeOpacity={0.7}
+                    >
+                        <Upload size={14} color={theme.textSecondary} />
+                        <Text style={[styles.profileUploadBtnText, { color: theme.textSecondary }]}>Gallery</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
         </View>
     );
 };
@@ -691,7 +719,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
         }
         const val = formData[name as keyof typeof formData];
         if (name === 'phone' || name === 'guardian_phone' || name === 'id_proof_number') {
-            if (val && val.length > 0) return err;
+            if (val && typeof val === 'string' && val.length > 0) return err;
         }
         if (touched[name]) return err;
         return '';
@@ -788,7 +816,15 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 fee_plan: student.fee_plan ? student.fee_plan.toString() : '1',
                 plan_amount: student.plan_amount ? student.plan_amount.toString() : '',
             });
-            if (student.photo) setProfilePhoto(student.photo);
+            if (student.photo || student.profile_photo_url || student.profile_photo) {
+                setProfilePhoto(student.photo || student.profile_photo_url || student.profile_photo);
+            }
+            if (student.id_proof_front_url || student.id_proof_document_url || student.id_proof_front) {
+                setAadhaarFront(student.id_proof_front_url || student.id_proof_document_url || student.id_proof_front);
+            }
+            if (student.id_proof_back_url || student.id_proof_back) {
+                setAadhaarBack(student.id_proof_back_url || student.id_proof_back);
+            }
         }
     }, [isEdit, student]);
 
@@ -1067,7 +1103,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
             }
 
             if (aadhaarFront && aadhaarFront.startsWith('file:')) {
-                const filename = aadhaarFront.split('/').pop() || 'id_proof.jpg';
+                const filename = aadhaarFront.split('/').pop() || 'id_proof_front.jpg';
                 const match = /\.(\w+)$/.exec(filename);
                 const type = match ? `image/${match[1]}` : 'image/jpeg';
                 bodyFormData.append('id_proof_front', {
@@ -1077,10 +1113,32 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 } as any);
             }
 
+            if (aadhaarBack && aadhaarBack.startsWith('file:')) {
+                const filename = aadhaarBack.split('/').pop() || 'id_proof_back.jpg';
+                const match = /\.(\w+)$/.exec(filename);
+                const type = match ? `image/${match[1]}` : 'image/jpeg';
+                bodyFormData.append('id_proof_back', {
+                    uri: aadhaarBack,
+                    name: filename,
+                    type,
+                } as any);
+            }
+
             const res = isEdit
                 ? await api.put(`/students/${student.student_id}`, bodyFormData, { headers: { 'Content-Type': 'multipart/form-data' } })
                 : await api.post('/students', bodyFormData, { headers: { 'Content-Type': 'multipart/form-data' } });
             if (res.data.success) {
+                const createdId = res.data?.data?.student_id || student?.student_id;
+
+                const navigateAfterSave = () => {
+                    if (createdId) {
+                        navigation.replace('StudentDetails', { studentId: createdId });
+                    } else {
+                        navigation.navigate('Main', { screen: 'StudentsTab' });
+                    }
+                    setTimeout(() => triggerRefresh({ studentAllocated: !!payload.room_id }), 50);
+                };
+
                 if (!isEdit && payload.admission_fee > 0 && payload.admission_status === 0) {
                     setPageAlert({
                         visible: true,
@@ -1091,15 +1149,13 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                             label: 'Okay',
                             onPress: () => {
                                 setPageAlert({ visible: false });
-                                navigation.goBack();
-                                setTimeout(() => triggerRefresh({ studentAllocated: !!payload.room_id }), 50);
+                                navigateAfterSave();
                             }
                         }
                     });
                 } else {
                     showSuccess(`Tenant ${isEdit ? 'updated' : 'registered'} successfully!`);
-                    navigation.goBack();
-                    setTimeout(() => triggerRefresh({ studentAllocated: !!payload.room_id }), 50);
+                    navigateAfterSave();
                 }
             }
         } catch (error: any) {
