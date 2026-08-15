@@ -483,6 +483,14 @@ export async function patchDatabaseSchema() {
           console.log('[schema-patch] adding profile_photo_url to students...');
           await db.raw("ALTER TABLE students ADD COLUMN profile_photo_url VARCHAR(500) NULL");
         }
+        if (!columnNames.includes('id_proof_front_url')) {
+          console.log('[schema-patch] adding id_proof_front_url to students...');
+          await db.raw("ALTER TABLE students ADD COLUMN id_proof_front_url VARCHAR(500) NULL");
+        }
+        if (!columnNames.includes('id_proof_back_url')) {
+          console.log('[schema-patch] adding id_proof_back_url to students...');
+          await db.raw("ALTER TABLE students ADD COLUMN id_proof_back_url VARCHAR(500) NULL");
+        }
         // ── Fee Plan columns (lump-sum billing cycle support) ──────────────────
         if (!columnNames.includes('fee_plan')) {
           console.log('[schema-patch] adding fee_plan to students...');
