@@ -134,11 +134,11 @@ interface HomeProps {
 // These replace both the old HomeContent pill-grid AND the separate ChipsPanel.
 // Only the most-used queries — 5 chips, icon + short label each.
 const WELCOME_CHIPS: Array<{ icon: string; label: string; q: string }> = [
-  { icon: 'alert-circle-outline',   label: 'Pending dues',     q: "Who hasn't paid this month?" },
-  { icon: 'bed-outline',            label: 'Available beds',   q: 'How many beds available?' },
-  { icon: 'cash-outline',           label: 'Month profit',     q: 'Profit this month' },
-  { icon: 'people-outline',         label: 'Active students',  q: 'Total students count' },
-  { icon: 'receipt-outline',        label: 'Expenses',         q: 'Expense breakdown' },
+  { icon: 'alert-circle-outline', label: 'Pending dues', q: "Who hasn't paid this month?" },
+  { icon: 'bed-outline', label: 'Available beds', q: 'How many beds available?' },
+  { icon: 'cash-outline', label: 'Month profit', q: 'Profit this month' },
+  { icon: 'people-outline', label: 'Active students', q: 'Total students count' },
+  { icon: 'receipt-outline', label: 'Expenses', q: 'Expense breakdown' },
 ];
 
 
@@ -1477,27 +1477,51 @@ export const OwnerAssistant: React.FC = () => {
           >
 
             {/* ── Header ── */}
-            <LinearGradient colors={['#7C3AED', '#6D28D9']} style={s.header} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+            <LinearGradient
+              colors={['#6D28D9', '#7C3AED', '#8B5CF6']}
+              style={s.header}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            >
+              {/* Decorative circles */}
+              <View style={s.headerDecorCircle1} />
+              <View style={s.headerDecorCircle2} />
+
               <View style={s.headerLeft}>
-                <View style={s.avatarBox}>
-                  <Image
-                    source={require('../../../assets/HostixNew.png')}
-                    style={s.avatarImg}
-                    resizeMode="cover"
-                  />
+                {/* Avatar with glowing ring */}
+                <View style={s.avatarRing}>
+                  <View style={s.avatarBox}>
+                    <Image
+                      source={require('../../../assets/chatbot.jpeg')}
+                      style={s.avatarImg}
+                      resizeMode="cover"
+                    />
+                  </View>
                   <View style={s.onlineDot} />
                 </View>
+
                 <View style={{ flex: 1 }}>
+                  {/* Greeting line */}
+                  <Text style={s.headerGreeting} numberOfLines={1}>
+                    {getGreeting(user?.full_name)}
+                  </Text>
                   <Text style={s.headerTitle}>HOSTIX Assistant</Text>
-                  <Text style={s.headerSub} numberOfLines={1}>{user?.hostel_name || 'Your Hostel'}</Text>
+                  {/* Welcome + hostel pill */}
+                  <View style={s.aiBadge}>
+                    <Text style={s.aiBadgeText}>Welcome</Text>
+                    <Text style={s.aiBadgeSep}>·</Text>
+                    <Ionicons name="business-outline" size={10} color="#C4B5FD" />
+                    <Text style={s.aiBadgeText} numberOfLines={1}>{user?.hostel_name || 'Your Hostel'}</Text>
+                  </View>
                 </View>
               </View>
-              <View style={{ flexDirection: 'row', gap: 4 }}>
-                <TouchableOpacity style={s.iconBtn} onPress={handleReset}>
-                  <Ionicons name="refresh-outline" size={20} color="#C7D2FE" />
+
+              {/* Action buttons — side by side */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <TouchableOpacity style={s.headerActionBtn} onPress={handleReset}>
+                  <Ionicons name="refresh-outline" size={16} color="#DDD6FE" />
                 </TouchableOpacity>
-                <TouchableOpacity style={s.iconBtn} onPress={() => setIsOpen(false)}>
-                  <Ionicons name="close" size={22} color="#FFF" />
+                <TouchableOpacity style={s.headerActionBtn} onPress={() => setIsOpen(false)}>
+                  <Ionicons name="close" size={18} color="#FFF" />
                 </TouchableOpacity>
               </View>
             </LinearGradient>
@@ -1511,70 +1535,30 @@ export const OwnerAssistant: React.FC = () => {
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
               >
-                {/* Context bar — owner name | date | hostel selector */}
-                <TouchableOpacity
-                  style={s.topSmallCard}
-                  onPress={() => triggerMenuAction('Show My Hostels', { type: 'SHOW_HOSTELS' })}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name="person-circle-outline" size={14} color="#4F46E5" />
-                  <Text style={[s.topSmallCardText, { fontWeight: '700', color: '#1E293B' }]}>
-                    {user?.full_name?.split(' ')[0] || 'Admin'}
-                  </Text>
-                  <View style={s.topSmallCardDivider} />
-                  <Ionicons name="calendar-outline" size={13} color="#64748B" />
-                  <Text style={s.topSmallCardText}>
-                    {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                  </Text>
-                  <View style={s.topSmallCardDivider} />
-                  <Ionicons name="business-outline" size={13} color="#4F46E5" />
-                  <Text style={[s.topSmallCardText, { fontWeight: '600', color: '#334155' }]} numberOfLines={1}>
-                    {user?.hostel_name || 'Your Hostel'}
-                  </Text>
-                  <Ionicons name="chevron-down" size={12} color="#94A3B8" />
-                </TouchableOpacity>
 
-                {/* Welcome bubble — shown only when there are no conversation messages yet */}
-                {messages.length <= 2 && (
-                  <View style={s.welcomeBubble}>
-                    <Text style={s.welcomeText}>
-                      Hi {user?.full_name?.split(' ')[0] || 'there'} 👋{'  '}Ask me anything about your hostel.
-                    </Text>
-                  </View>
-                )}
 
-                {/* Suggestion chip row — single merged horizontal strip with right-edge fade */}
+                {/* Quick-ask chips — 2-col grid */}
                 {messages.length <= 2 && (
-                  <View style={s.chipRowOuter}>
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={s.chipRowContent}
-                      keyboardShouldPersistTaps="handled"
-                    >
+                  <View style={s.chipsSection}>
+                    <Text style={s.chipsSectionLabel}>💬 Ask me about</Text>
+                    <View style={s.chipsGrid}>
                       {WELCOME_CHIPS.map((chip, i) => (
                         <TouchableOpacity
                           key={i}
-                          style={s.welcomeChip}
+                          style={s.chipsGridItem}
                           onPress={() => {
-                            Haptics.selectionAsync().catch(() => {});
+                            Haptics.selectionAsync().catch(() => { });
                             handleQuery(chip.q);
                           }}
-                          activeOpacity={0.7}
+                          activeOpacity={0.75}
                         >
-                          <Ionicons name={chip.icon as any} size={14} color="#4F46E5" />
-                          <Text style={s.welcomeChipText}>{chip.label}</Text>
+                          <View style={s.chipsGridIconBox}>
+                            <Ionicons name={chip.icon as any} size={16} color="#6366F1" />
+                          </View>
+                          <Text style={s.chipsGridLabel} numberOfLines={1}>{chip.label}</Text>
                         </TouchableOpacity>
                       ))}
-                    </ScrollView>
-                    {/* Right-edge fade — pointer-events none so chips stay tappable */}
-                    <LinearGradient
-                      colors={['rgba(248,250,252,0)', 'rgba(248,250,252,0.92)', '#F8FAFC']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={s.chipRowFade}
-                      pointerEvents="none"
-                    />
+                    </View>
                   </View>
                 )}
 
@@ -1769,23 +1753,89 @@ const s = StyleSheet.create({
   /* Header */
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 12,
-  },
-  headerLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  avatarBox: {
-    width: 40, height: 40, borderRadius: 20, overflow: 'hidden',
-    backgroundColor: '#E0E7FF', borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)',
+    paddingHorizontal: 16, paddingTop: 14, paddingBottom: 14,
+    overflow: 'hidden',
     position: 'relative',
   },
-  avatarImg: { width: '100%', height: '100%', transform: [{ scale: 1.8 }, { translateY: 4 }] },
+  headerDecorCircle1: {
+    position: 'absolute', width: 100, height: 100, borderRadius: 50,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    top: -30, right: 60,
+  },
+  headerDecorCircle2: {
+    position: 'absolute', width: 70, height: 70, borderRadius: 35,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    bottom: -20, right: 10,
+  },
+  headerLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  avatarRing: {
+    width: 48, height: 48, borderRadius: 24,
+    borderWidth: 2, borderColor: 'rgba(255,255,255,0.5)',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center', justifyContent: 'center',
+    position: 'relative',
+  },
+  avatarBox: {
+    width: 40, height: 40, borderRadius: 20, overflow: 'hidden',
+    backgroundColor: '#E0E7FF',
+  },
+  avatarImg: { width: '100%', height: '100%', transform: [{ scale: 1.4 }, { translateY: 4 }] },
   onlineDot: {
     position: 'absolute', bottom: 1, right: 1,
     width: 10, height: 10, borderRadius: 5,
     backgroundColor: '#4ADE80', borderWidth: 1.5, borderColor: '#FFF',
   },
+  headerGreeting: { color: '#DDD6FE', fontSize: 11, fontWeight: '500', marginBottom: 1 },
   headerTitle: { color: '#FFF', fontWeight: '800', fontSize: 15, letterSpacing: 0.2 },
-  headerSub: { color: '#A5B4FC', fontSize: 11, fontWeight: '500' },
+  aiBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3,
+  },
+  aiBadgeDot: {
+    width: 6, height: 6, borderRadius: 3, backgroundColor: '#4ADE80',
+  },
+  aiBadgeText: { color: '#C4B5FD', fontSize: 10, fontWeight: '500' },
+  aiBadgeSep: { color: '#7C6FCD', fontSize: 10 },
+  headerActionBtn: {
+    width: 30, height: 30, borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center', justifyContent: 'center',
+  },
   iconBtn: { padding: 6, borderRadius: 8 },
+
+  /* Session card */
+  sessionCard: {
+    alignSelf: 'center',
+    borderRadius: 14,
+    marginBottom: 8,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+    shadowColor: '#7C3AED',
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  sessionCardGrad: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    gap: 8,
+  },
+  sessionCardItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+  },
+  sessionCardIcon: {
+    width: 20, height: 20, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  sessionCardLabel: {
+    fontSize: 11.5, fontWeight: '600', color: '#334155',
+  },
+  sessionCardDivider: {
+    width: 1, height: 14, backgroundColor: '#C4B5FD', opacity: 0.5,
+  },
 
   /* Messages */
   msgList: { padding: 16, gap: 16, paddingBottom: 8 },
@@ -1872,7 +1922,7 @@ const s = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#E2E8F0',
     zIndex: 100,
-    elevation: 10,
+    elevation: 2,
     shadowColor: '#000',
     shadowOpacity: 0.04,
     shadowRadius: 4,
@@ -1997,47 +2047,60 @@ const s = StyleSheet.create({
     color: '#1E293B',
     lineHeight: 20,
   },
-  /* Suggestion chip row */
-  chipRowOuter: {
-    position: 'relative',
-    overflow: 'hidden',
+  /* Quick-ask chips grid */
+  chipsSection: {
+    marginTop: 4,
+    marginBottom: 4,
   },
-  chipRowContent: {
+  chipsSectionLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748B',
+    marginBottom: 8,
+    letterSpacing: 0.3,
+  },
+  chipsGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
-    paddingHorizontal: 0,
-    paddingVertical: 2,
-    paddingRight: 40, // leave room for fade to not cut last chip hard
-    alignItems: 'center',
   },
-  welcomeChip: {
+  chipsGridItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 8,
+    width: '47%',
     backgroundColor: '#FFF',
-    borderRadius: 20,
-    paddingVertical: 7,
+    borderRadius: 12,
+    paddingVertical: 10,
     paddingHorizontal: 12,
     borderWidth: 1,
     borderColor: '#E2E8F0',
     elevation: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowRadius: 3,
+    shadowColor: '#6366F1',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
     shadowOffset: { width: 0, height: 1 },
   },
-  welcomeChipText: {
+  chipsGridIconBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chipsGridLabel: {
+    flex: 1,
     fontSize: 12.5,
     fontWeight: '600',
-    color: '#334155',
+    color: '#1E293B',
   },
-  chipRowFade: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: 44,
-  },
+  /* Legacy chip styles kept for reference */
+  chipRowOuter: { position: 'relative', overflow: 'hidden' },
+  chipRowContent: { flexDirection: 'row', gap: 8, paddingVertical: 2, alignItems: 'center' },
+  welcomeChip: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#FFF', borderRadius: 20, paddingVertical: 7, paddingHorizontal: 12, borderWidth: 1, borderColor: '#E2E8F0' },
+  welcomeChipText: { fontSize: 12.5, fontWeight: '600', color: '#334155' },
+  chipRowFade: { position: 'absolute', right: 0, top: 0, bottom: 0, width: 44 },
   /* Legacy chipPanel kept for any remaining reference */
   chipPanel: {
     display: 'none' as any, // no longer rendered — chips moved inline

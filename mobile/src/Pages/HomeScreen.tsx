@@ -690,51 +690,49 @@ export default function HomeScreen() {
             {/* ─────────────────── HEADER ─────────────────── */}
             <LinearGradient
                 colors={[theme.gradientStart, theme.gradientEnd]}
-                style={[s.newHeader, { paddingTop: Math.max(insets.top + 6, 44) }]}
+                style={[s.newHeader, { paddingTop: Math.max(insets.top + 8, 48) }]}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
             >
+                {/* Decorative glow orbs */}
+                <View style={s.hdrOrb1} />
+                <View style={s.hdrOrb2} />
+
                 <View style={s.headerRow1}>
-                    {/* LEFT: Avatar + Owner Name & Hostel Selector */}
-                    <View style={s.headerLeft}>
+                    {/* LEFT: Avatar + greeting + hostel pill */}
+                    <TouchableOpacity
+                        style={s.avatarCircle}
+                        onPress={() => navigation.navigate('Profile')}
+                        activeOpacity={0.8}
+                    >
+                        {(user as any)?.photo && typeof (user as any).photo === 'string' && (user as any).photo.trim() !== '' && (user as any).photo.trim() !== 'null' && (user as any).photo.startsWith('http') ? (
+                            <Image source={{ uri: (user as any).photo }} style={s.avatarImage} />
+                        ) : (
+                            <Text style={s.avatarLetter}>{avatarLetter(user?.full_name || 'O')}</Text>
+                        )}
+                    </TouchableOpacity>
+
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                        {/* Greeting + name row */}
+                        <Text style={s.hdrGreeting}>{t(getGreetingKey())} 👋</Text>
+                        <Text style={s.headerOwnerName} numberOfLines={1} ellipsizeMode="tail">
+                            {user?.full_name?.split(' ')[0] || 'Admin'}
+                        </Text>
+                        {/* Hostel selector pill */}
                         <TouchableOpacity
-                            onPress={() => navigation.navigate('Profile')}
-                            activeOpacity={0.8}
+                            ref={headerSelectorRef}
+                            onPress={() => { setShowHostelSelector(true); loadHostels(); }}
+                            activeOpacity={0.75}
+                            style={s.hostelNameBtn}
                         >
-                            <View style={s.avatarCircle}>
-                                {(user as any)?.photo && typeof (user as any).photo === 'string' && (user as any).photo.trim() !== '' && (user as any).photo.trim() !== 'null' && (user as any).photo.startsWith('http') ? (
-                                    <Image source={{ uri: (user as any).photo }} style={s.avatarImage} />
-                                ) : (
-                                    <Text style={s.avatarLetter}>
-                                        {avatarLetter(user?.full_name || 'O')}
-                                    </Text>
-                                )}
-                            </View>
-                        </TouchableOpacity>
-
-                        <View style={{ gap: 3, justifyContent: 'center' }}>
-                            <Text style={s.headerOwnerName} numberOfLines={1}>
-                                {user?.full_name || 'Admin'}
+                            <Ionicons name="business" size={11} color="rgba(255,255,255,0.9)" />
+                            <Text style={s.hostelNameLabel} numberOfLines={1}>
+                                {data.hostelName || 'My Hostel'}
                             </Text>
-
-                            {/* Hostel selector drop-down pill */}
-                            <TouchableOpacity
-                                ref={headerSelectorRef}
-                                onPress={() => {
-                                    setShowHostelSelector(true);
-                                    loadHostels();
-                                }}
-                                activeOpacity={0.75}
-                                style={s.hostelNameBtn}
-                            >
-                                <Ionicons name="business" size={11} color="rgba(255,255,255,0.9)" />
-                                <Text style={s.hostelNameLabel} numberOfLines={1}>
-                                    {data.hostelName || 'My Hostel'}
-                                </Text>
-                                <Ionicons name="chevron-down" size={10} color="rgba(255,255,255,0.85)" />
-                            </TouchableOpacity>
-                        </View>
+                            <Ionicons name="chevron-down" size={10} color="rgba(255,255,255,0.85)" />
+                        </TouchableOpacity>
                     </View>
 
-                    {/* RIGHT: Toggle Page + Loader + Bell */}
+                    {/* RIGHT: actions */}
                     <View style={s.headerActions}>
                         <TouchableOpacity
                             style={s.headerIconBtn}
@@ -743,12 +741,19 @@ export default function HomeScreen() {
                         >
                             <Ionicons name={activePageIndex === 0 ? "apps-outline" : "grid-outline"} size={19} color="#FFF" />
                         </TouchableOpacity>
-
                         {backgroundLoading && (
                             <ActivityIndicator size="small" color="rgba(255,255,255,0.8)" style={{ marginRight: 2 }} />
                         )}
                         <HeaderNotification navigation={navigation} />
                     </View>
+                </View>
+
+                {/* Date strip */}
+                <View style={s.hdrDateStrip}>
+                    <Ionicons name="calendar-outline" size={11} color="rgba(255,255,255,0.6)" />
+                    <Text style={s.hdrDateText}>
+                        {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                    </Text>
                 </View>
             </LinearGradient>
 
@@ -1017,12 +1022,53 @@ export default function HomeScreen() {
 const s = StyleSheet.create({
     root: { flex: 1, backgroundColor: '#F8F7FF' },
 
-    // ── New Header ──────────────────────────────────────────────────────────
+    // ── Premium Header ──────────────────────────────────────────────────────
     newHeader: {
-        paddingBottom: 14,
+        paddingBottom: 10,
         paddingHorizontal: 18,
-        borderBottomLeftRadius: 24,
-        borderBottomRightRadius: 24,
+        position: 'relative',
+        overflow: 'hidden',
+        borderBottomLeftRadius: 28,
+        borderBottomRightRadius: 28,
+    },
+    hdrOrb1: {
+        position: 'absolute',
+        width: 160,
+        height: 160,
+        borderRadius: 80,
+        backgroundColor: 'rgba(255,255,255,0.05)',
+        top: -60,
+        right: -30,
+    },
+    hdrOrb2: {
+        position: 'absolute',
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        backgroundColor: 'rgba(255,255,255,0.04)',
+        bottom: -20,
+        left: 20,
+    },
+    hdrGreeting: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: 'rgba(255,255,255,0.65)',
+        marginBottom: 1,
+        letterSpacing: 0.2,
+    },
+    hdrDateStrip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        marginTop: 10,
+        paddingTop: 8,
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(255,255,255,0.1)',
+    },
+    hdrDateText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: 'rgba(255,255,255,0.55)',
     },
     // Row 1: left group + right icons
     headerRow1: {
