@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, Animated, Pressable, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, Animated, Pressable, FlatList, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
 import { ChevronDown, Check } from 'lucide-react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -54,6 +54,26 @@ export const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: an
     const [shouldRender, setShouldRender] = useState(visible);
     const translateY = useRef(new Animated.Value(600)).current;
     const opacity = useRef(new Animated.Value(0)).current;
+    const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+    useEffect(() => {
+        const showSub = Keyboard.addListener(
+            Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+            (e) => {
+                if (e && e.endCoordinates && e.endCoordinates.height) {
+                    setKeyboardHeight(e.endCoordinates.height);
+                }
+            }
+        );
+        const hideSub = Keyboard.addListener(
+            Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+            () => setKeyboardHeight(0)
+        );
+        return () => {
+            showSub.remove();
+            hideSub.remove();
+        };
+    }, []);
 
     useEffect(() => {
         if (visible) {
@@ -87,7 +107,8 @@ export const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: an
                         { 
                             maxHeight, 
                             transform: [{ translateY }],
-                            backgroundColor: isDark ? '#1E293B' : '#FFF' 
+                            backgroundColor: isDark ? '#1E293B' : '#FFF',
+                            marginBottom: Platform.OS === 'android' ? keyboardHeight : 0,
                         }
                     ]}>
                         <View style={styles.sheetHandle} />
