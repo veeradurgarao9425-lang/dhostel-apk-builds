@@ -146,6 +146,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
     const [damageDeductions, setDamageDeductions] = useState('');
     const [deductionReason, setDeductionReason] = useState('');
     const [vacateLoading, setVacateLoading] = useState(false);
+    const [previewImageModalUrl, setPreviewImageModalUrl] = useState<string | null>(null);
 
     // Guard against concurrent fetches
     const isFetching = useRef(false);
@@ -1529,6 +1530,32 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                 }}
                 onCancel={() => setNoticeDatePickerVisible(false)}
             />
+            <Modal
+                visible={!!previewImageModalUrl}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setPreviewImageModalUrl(null)}
+            >
+                <TouchableOpacity
+                    style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', justifyContent: 'center', alignItems: 'center', padding: 16 }}
+                    activeOpacity={1}
+                    onPress={() => setPreviewImageModalUrl(null)}
+                >
+                    <TouchableOpacity
+                        style={{ position: 'absolute', top: 50, right: 20, zIndex: 10, padding: 10, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20 }}
+                        onPress={() => setPreviewImageModalUrl(null)}
+                    >
+                        <X color="#FFF" size={24} />
+                    </TouchableOpacity>
+                    {previewImageModalUrl && (
+                        <Image
+                            source={{ uri: previewImageModalUrl }}
+                            style={{ width: '100%', height: '80%' }}
+                            resizeMode="contain"
+                        />
+                    )}
+                </TouchableOpacity>
+            </Modal>
         </View>
     );
 };
