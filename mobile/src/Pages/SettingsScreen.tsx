@@ -462,8 +462,10 @@ export const SettingsScreen = ({ navigation }: any) => {
                     )}
                 </Card>
 
-                {/* ── AUTOMATED WHATSAPP REMINDERS ── */}
-                <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>Automated WhatsApp Reminders</Text>
+                {/* ── AUTOMATED WHATSAPP REMINDERS (Hidden for this release) ── */}
+                {false && (
+                  <>
+                    <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>Automated WhatsApp Reminders</Text>
 
                 <Card style={[styles.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
                     <SettingRow
@@ -519,6 +521,8 @@ export const SettingsScreen = ({ navigation }: any) => {
                         </View>
                     )}
                 </Card>
+              </>
+            )}
 
                 {/* ── PREFERENCES SECTION ── */}
                 <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>{t('settings.appPreferences', 'Preferences')}</Text>

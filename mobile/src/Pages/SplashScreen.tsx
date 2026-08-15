@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, StatusBar, Image, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
 import { COLORS, FONT } from '../theme/index';
 import { ONBOARDING_KEY } from './OnboardingScreen';
@@ -17,6 +18,7 @@ const ALWAYS_SHOW_INTRO_IN_DEV = true;
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function SplashScreen({ navigation }: any) {
   const { user, loading } = useAuth();
+  const insets = useSafeAreaInsets();
 
   // Animated dots pulse effect
   const dot1 = useRef(new Animated.Value(0.3)).current;
@@ -93,7 +95,7 @@ export default function SplashScreen({ navigation }: any) {
       <StatusBar hidden />
       <LinearGradient
         colors={[COLORS.gradientStart, COLORS.gradientEnd, COLORS.primaryDark]}
-        style={styles.gradient}
+        style={[styles.gradient, { paddingBottom: Math.max(insets.bottom + 24, 48) }]}
         start={{ x: 0.2, y: 0 }}
         end={{ x: 0.8, y: 1 }}
       >
@@ -102,7 +104,7 @@ export default function SplashScreen({ navigation }: any) {
           {/* Logo */}
           <View style={styles.logoContainer}>
             <Image 
-                source={require('../../assets/HostixNew.jpeg')}
+                source={require('../../assets/HostixNew.png')}
                 style={{ width: '100%', height: '100%', borderRadius: 28 }}
                 resizeMode="cover"
             />

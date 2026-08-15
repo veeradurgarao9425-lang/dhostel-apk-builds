@@ -224,17 +224,17 @@ export function PaymentDrawer({
                                         </View>
 
                                         <View style={{ borderTopWidth: 1, borderTopColor: isDark ? '#334155' : '#E2E8F0', marginTop: 6, paddingTop: 6, flexDirection: 'row', justifyContent: 'space-between' }}>
-                                            <Text style={{ fontSize: 13, fontWeight: '800', color: themeColor }}>
-                                                Remaining Balance After Payment:
-                                            </Text>
-                                            <Text style={{ fontSize: 13, fontWeight: '800', color: remainingBal === 0 ? '#10B981' : '#EF4444' }}>
-                                                {amount === 0 
-                                                    ? `₹${maxDue.toLocaleString('en-IN')}` 
-                                                    : (remainingBal === 0 
-                                                        ? '₹0 (Fully Cleared)' 
-                                                        : `₹${remainingBal.toLocaleString('en-IN')} (Partial)`)}
-                                            </Text>
-                                        </View>
+                                             <Text style={{ fontSize: 13, fontWeight: '800', color: themeColor }}>
+                                                 {amount > 0 ? 'Remaining Balance After Payment:' : 'Total Amount Due:'}
+                                             </Text>
+                                             <Text style={{ fontSize: 13, fontWeight: '800', color: amount > 0 ? (remainingBal === 0 ? '#10B981' : '#EF4444') : '#EF4444' }}>
+                                                 {amount === 0 
+                                                     ? `₹${maxDue.toLocaleString('en-IN')}` 
+                                                     : (remainingBal === 0 
+                                                         ? '₹0 (Fully Cleared)' 
+                                                         : `₹${remainingBal.toLocaleString('en-IN')} (Partial)`)}
+                                             </Text>
+                                         </View>
 
                                         {isExceeding && (
                                             <View style={{ backgroundColor: '#FEF2F2', borderColor: '#FCA5A5', borderWidth: 1, padding: 8, borderRadius: 6, marginTop: 8 }}>
