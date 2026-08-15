@@ -7,7 +7,8 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "build-apk": "git checkout --orphan temp-build-apk && git add . && git commit -m \"Trigger APK Build\" && git push build-repo temp-build-apk:main -f && git checkout main && git branch -D temp-build-apk"
+    "build-apk": "git push origin main",
+    "build-apk:secondary": "git checkout --orphan temp-build-apk && git add . && git commit -m \"Trigger APK Build\" && git push build-repo temp-build-apk:main -f && git checkout main && git branch -D temp-build-apk"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",
