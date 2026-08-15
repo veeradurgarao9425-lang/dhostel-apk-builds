@@ -605,8 +605,8 @@ const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab, navig
                     {/* Action Buttons */}
                     <View style={{ gap: 10, marginTop: 14 }}>
                         <TouchableOpacity
-                            onPress={handleCopyBulkAndOpenWhatsApp}
-                            disabled={selectedTenants.length === 0}
+                            onPress={handleDirectSendBulk}
+                            disabled={selectedTenants.length === 0 || sendingDirect}
                             activeOpacity={0.85}
                             style={{
                                 backgroundColor: selectedTenants.length > 0 ? '#25D366' : '#94A3B8',
@@ -614,15 +614,19 @@ const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab, navig
                                 flexDirection: 'row', gap: 8
                             }}
                         >
-                            <Ionicons name="copy-outline" size={18} color="#FFF" />
+                            {sendingDirect ? (
+                                <ActivityIndicator color="#FFF" size="small" />
+                            ) : (
+                                <Ionicons name="flash" size={18} color="#FFF" />
+                            )}
                             <Text style={{ color: '#FFF', fontSize: 15, fontWeight: '800' }}>
-                                📋 Copy Bulk Text & Open WhatsApp Business
+                                {sendingDirect ? 'Sending Direct WhatsApp...' : `⚡ Send Direct WhatsApp (${selectedTenants.length} Tenants)`}
                             </Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                            onPress={handleDirectSendBulk}
-                            disabled={selectedTenants.length === 0 || sendingDirect}
+                            onPress={handleCopyBulkAndOpenWhatsApp}
+                            disabled={selectedTenants.length === 0}
                             activeOpacity={0.85}
                             style={{
                                 backgroundColor: 'transparent',
@@ -632,13 +636,9 @@ const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab, navig
                                 flexDirection: 'row', gap: 6
                             }}
                         >
-                            {sendingDirect ? (
-                                <ActivityIndicator color="#25D366" size="small" />
-                            ) : (
-                                <Ionicons name="flash" size={16} color="#25D366" />
-                            )}
+                            <Ionicons name="copy-outline" size={16} color={isDark ? '#F8FAFC' : '#475569'} />
                             <Text style={{ color: isDark ? '#F8FAFC' : '#475569', fontSize: 13, fontWeight: '700' }}>
-                                {sendingDirect ? 'Sending Direct WhatsApp...' : `⚡ Automated Server Send (${selectedTenants.length})`}
+                                📋 Copy Bulk Text & Open WhatsApp Business
                             </Text>
                         </TouchableOpacity>
                     </View>
