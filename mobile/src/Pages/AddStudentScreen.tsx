@@ -1127,32 +1127,10 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
             const res = isEdit
                 ? await api.put(`/students/${student.student_id}`, bodyFormData, { headers: { 'Content-Type': 'multipart/form-data' } })
                 : await api.post('/students', bodyFormData, { headers: { 'Content-Type': 'multipart/form-data' } });
-            if (res.data.success) {
-                const createdId = res.data?.data?.student_id || student?.student_id;
-
-                const navigateAfterSave = () => {
-                    navigation.goBack();
-                    setTimeout(() => triggerRefresh({ studentAllocated: !!payload.room_id }), 50);
-                };
-
-                if (!isEdit && payload.admission_fee > 0 && payload.admission_status === 0) {
-                    setPageAlert({
-                        visible: true,
-                        title: 'Admission Fee Pending',
-                        message: 'Tenant registered successfully, but the Admission Fee is still pending. Please collect it soon.',
-                        icon: Info,
-                        primaryAction: {
-                            label: 'Okay',
-                            onPress: () => {
-                                setPageAlert({ visible: false });
-                                navigateAfterSave();
-                            }
-                        }
-                    });
-                } else {
-                    showSuccess(`Tenant ${isEdit ? 'updated' : 'registered'} successfully!`);
-                    navigateAfterSave();
-                }
+            if (res.status === 200 || res.status === 201 || res.data?.success || res.data?.data) {
+                showSuccess(`Tenant ${isEdit ? 'updated' : 'registered'} successfully!`);
+                navigation.goBack();
+                setTimeout(() => triggerRefresh({ studentAllocated: !!payload.room_id }), 50);
             }
         } catch (error: any) {
             const msg = error.response?.data?.error || '';
