@@ -680,19 +680,23 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                         <Card style={[styles.profileCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
                             <View style={styles.profileSection}>
                                 <View style={styles.avatarWrapper}>
-                                    {student.photo && !avatarError ? (
-                                        <Image
-                                            source={{ uri: student.photo }}
-                                            style={styles.avatar}
-                                            onError={() => setAvatarError(true)}
-                                        />
-                                    ) : (
-                                        <View style={[styles.avatarPlaceholder, { backgroundColor: theme.primary + '15', borderColor: theme.primary + '30' }]}>
-                                            <Text style={{ fontSize: 18, fontWeight: '700', color: theme.primary }}>
-                                                {getInitials(student.first_name, student.last_name)}
-                                            </Text>
-                                        </View>
-                                    )}
+                                    {(() => {
+                                        const rawPhoto = student.profile_photo_url || student.photo || student.profile_photo;
+                                        const photoUri = rawPhoto ? (rawPhoto.startsWith('http') ? rawPhoto : `http://143.244.131.69:8081${rawPhoto.startsWith('/') ? '' : '/'}${rawPhoto}`) : null;
+                                        return photoUri && !avatarError ? (
+                                            <Image
+                                                source={{ uri: photoUri }}
+                                                style={styles.avatar}
+                                                onError={() => setAvatarError(true)}
+                                            />
+                                        ) : (
+                                            <View style={[styles.avatarPlaceholder, { backgroundColor: theme.primary + '15', borderColor: theme.primary + '30' }]}>
+                                                <Text style={{ fontSize: 18, fontWeight: '700', color: theme.primary }}>
+                                                    {getInitials(student.first_name, student.last_name)}
+                                                </Text>
+                                            </View>
+                                        );
+                                    })()}
                                     <View style={[styles.avatarStatusBadge, { backgroundColor: student.status === 1 ? theme.success : student.status === 2 ? theme.warning : student.status === 3 ? theme.primary : theme.error }]} />
                                 </View>
 

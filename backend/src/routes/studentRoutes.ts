@@ -28,10 +28,23 @@ router.get('/pending-registrations', isOwnerOrAdmin, getPendingRegistrations);
 router.get('/check-unique', checkUnique); // Accessible by both owner (adding student) and tenant (registering)
 router.get('/stats', isOwnerOrAdmin, getStudentStats);
 router.post('/vacate', submitVacateNotice); // Tenant route
+import multer from 'multer';
+
+const upload = multer({
+  dest: 'uploads/',
+  limits: { fileSize: 10 * 1024 * 1024 }
+});
+
+const studentUpload = upload.fields([
+  { name: 'profile_photo', maxCount: 1 },
+  { name: 'id_proof_front', maxCount: 1 },
+  { name: 'id_proof_back', maxCount: 1 }
+]);
+
 router.get('/', isOwnerOrAdmin, getStudents);
 router.get('/:studentId', isOwnerOrAdmin, getStudentById);
-router.post('/', isOwnerOrAdmin, createStudent);
-router.put('/:studentId', isOwnerOrAdmin, updateStudent);
+router.post('/', isOwnerOrAdmin, studentUpload, createStudent);
+router.put('/:studentId', isOwnerOrAdmin, studentUpload, updateStudent);
 router.delete('/:studentId', isOwnerOrAdmin, deleteStudent);
 router.post('/:studentId/allocate-room', isOwnerOrAdmin, allocateRoom);
 router.post('/:studentId/reject-registration', isOwnerOrAdmin, rejectRegistration);

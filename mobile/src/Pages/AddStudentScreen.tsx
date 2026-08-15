@@ -1047,7 +1047,39 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                     return end.toISOString().split('T')[0];
                 })(),
             };
-            const res = isEdit ? await api.put(`/students/${student.student_id}`, payload) : await api.post('/students', payload);
+            const bodyFormData = new FormData();
+            Object.keys(payload).forEach(key => {
+                const val = (payload as any)[key];
+                if (val !== null && val !== undefined) {
+                    bodyFormData.append(key, String(val));
+                }
+            });
+
+            if (profilePhoto && profilePhoto.startsWith('file:')) {
+                const filename = profilePhoto.split('/').pop() || 'profile.jpg';
+                const match = /\.(\w+)$/.exec(filename);
+                const type = match ? `image/${match[1]}` : 'image/jpeg';
+                bodyFormData.append('profile_photo', {
+                    uri: profilePhoto,
+                    name: filename,
+                    type,
+                } as any);
+            }
+
+            if (aadhaarFront && aadhaarFront.startsWith('file:')) {
+                const filename = aadhaarFront.split('/').pop() || 'id_proof.jpg';
+                const match = /\.(\w+)$/.exec(filename);
+                const type = match ? `image/${match[1]}` : 'image/jpeg';
+                bodyFormData.append('id_proof_front', {
+                    uri: aadhaarFront,
+                    name: filename,
+                    type,
+                } as any);
+            }
+
+            const res = isEdit
+                ? await api.put(`/students/${student.student_id}`, bodyFormData, { headers: { 'Content-Type': 'multipart/form-data' } })
+                : await api.post('/students', bodyFormData, { headers: { 'Content-Type': 'multipart/form-data' } });
             if (res.data.success) {
                 if (!isEdit && payload.admission_fee > 0 && payload.admission_status === 0) {
                     setPageAlert({
