@@ -211,6 +211,37 @@ export async function patchDatabaseSchema() {
       console.error('[schema-patch] Error creating fee_history table:', e.message);
     }
 
+    // 1.45 Ensure id_proof_types table exists
+    try {
+      if (!tableNamesLower.includes('id_proof_types')) {
+        console.log('[schema-patch] creating missing id_proof_types table...');
+        await db.raw(`
+          CREATE TABLE id_proof_types (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            code VARCHAR(50) NOT NULL UNIQUE,
+            name VARCHAR(100) NOT NULL,
+            regex_pattern VARCHAR(255) NULL,
+            min_length INT DEFAULT 1,
+            max_length INT DEFAULT 50,
+            display_order INT DEFAULT 1,
+            is_active TINYINT DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        await db.raw(`
+          INSERT IGNORE INTO id_proof_types (id, code, name, regex_pattern, min_length, max_length, display_order, is_active) VALUES
+          (1, 'AADHAAR', 'Aadhaar Card', '^[0-9]{12}$', 12, 12, 1, 1),
+          (2, 'PAN', 'PAN Card', '^[A-Z]{5}[0-9]{4}[A-Z]{1}$', 10, 10, 2, 1),
+          (3, 'DRIVING_LICENSE', 'Driving License', '^[A-Z]{2}[0-9]{13}$', 10, 15, 3, 1),
+          (4, 'VOTER_ID', 'Voter ID', '^[A-Z]{3}[0-9]{7}$', 10, 10, 4, 1),
+          (5, 'PASSPORT', 'Passport', '^[A-Z]{1}[0-9]{7}$', 8, 8, 5, 1)
+        `);
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error creating id_proof_types table:', e.message);
+    }
+
     // 1.5 Ensure room_amenities_master exists
     try {
       if (!tableNamesLower.includes('room_amenities_master')) {

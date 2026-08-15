@@ -507,22 +507,4 @@ const styles = StyleSheet.create({
         padding: 8,
         zIndex: 50,
     },
-    alertBox: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#FEF2F2',
-        borderWidth: 1,
-        borderColor: '#FECACA',
-        borderRadius: 12,
-        padding: 12,
-        marginBottom: 16,
-        gap: 8,
-    },
-    alertText: {
-        flex: 1,
-        fontSize: 13,
-        fontWeight: '600',
-        color: '#EF4444',
-        lineHeight: 18,
-    },
 });
