@@ -230,7 +230,6 @@ export const OwnerAssistant: React.FC = () => {
         if (e && e.endCoordinates && e.endCoordinates.height) {
           setKeyboardHeight(e.endCoordinates.height);
         }
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         setIsKeyboardActive(true);
       }
     );
@@ -238,7 +237,6 @@ export const OwnerAssistant: React.FC = () => {
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
       () => {
         setKeyboardHeight(0);
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         setIsKeyboardActive(false);
       }
     );
@@ -1653,14 +1651,8 @@ export const OwnerAssistant: React.FC = () => {
                   />
                 </TouchableOpacity>
 
-                {/* Search / input pill — Pressable wrapper explicitly focuses TextInput when tapped anywhere */}
-                <Pressable
-                  style={[s.inputWrap, isFocused && s.inputWrapFocused]}
-                  onPress={() => {
-                    inputRef.current?.focus();
-                  }}
-                  hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-                >
+                {/* Search / input pill */}
+                <View style={[s.inputWrap, isFocused && s.inputWrapFocused]}>
                   <Ionicons name="search-outline" size={17} color={isFocused ? "#4F46E5" : "#94A3B8"} style={{ marginRight: 6 }} />
                   <TextInput
                     ref={inputRef}
@@ -1678,7 +1670,6 @@ export const OwnerAssistant: React.FC = () => {
                     underlineColorAndroid="transparent"
                     onFocus={() => {
                       if (isAddMenuOpen) {
-                        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                         setIsAddMenuOpen(false);
                       }
                       setIsFocused(true);
@@ -1690,7 +1681,7 @@ export const OwnerAssistant: React.FC = () => {
                       <Ionicons name="close-circle" size={18} color="#94A3B8" />
                     </TouchableOpacity>
                   )}
-                </Pressable>
+                </View>
 
                 {/* Send button */}
                 <TouchableOpacity
