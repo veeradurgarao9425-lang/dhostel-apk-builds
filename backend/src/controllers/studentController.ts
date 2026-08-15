@@ -823,6 +823,12 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
       updateData.id_proof_back_url = backUrl;
     }
 
+    // Check if inactive_date column exists before updating
+    const hasInactiveDateCol = await db.schema.hasColumn('students', 'inactive_date');
+    if (!hasInactiveDateCol && 'inactive_date' in updateData) {
+      delete updateData.inactive_date;
+    }
+
     // Now perform the single database update with all changes
     await db('students')
       .where({ student_id: studentId })

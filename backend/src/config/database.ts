@@ -508,6 +508,10 @@ export async function patchDatabaseSchema() {
           console.log('[schema-patch] adding plan_amount to students...');
           await db.raw("ALTER TABLE students ADD COLUMN plan_amount DECIMAL(10,2) NULL COMMENT 'Total amount collected for current plan cycle'");
         }
+        if (!columnNames.includes('inactive_date')) {
+          console.log('[schema-patch] adding inactive_date to students...');
+          await db.raw("ALTER TABLE students ADD COLUMN inactive_date DATE NULL COMMENT 'Date student became inactive/vacated'");
+        }
       }
     } catch (e: any) {
       console.error('[schema-patch] Error updating students columns:', e.message);
