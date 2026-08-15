@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
+import { processFileUpload } from '../utils/fileUpload.js';
 import { sendNotificationToHostelOwner, sendNotificationToStudent } from '../utils/notification.js';
 import { kickUserFromRoomChat } from '../socket/index.js';
 import { checkHostelUniqueIdentifiers } from '../utils/validation.js';
@@ -437,7 +438,21 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
       endDate.setMonth(endDate.getMonth() + resolvedFeePlan);
       resolvedPlanEnd = plan_end_date ? convertToDateOnly(plan_end_date) : endDate.toISOString().split('T')[0];
     }
-    const resolvedPlanAmount: number | null = plan_amount ? Number(plan_amount) : null;
+    const files = req.files as { [field: string]: Express.Multer.File[] } | undefined;
+    const singleFile = req.file as Express.Multer.File | undefined;
+
+    let profile_photo_url: string | null = req.body.profile_photo_url || null;
+    let id_proof_document_url: string | null = req.body.id_proof_document_url || null;
+
+    if (files?.profile_photo?.[0]) {
+      profile_photo_url = await processFileUpload(files.profile_photo[0], 'avatars');
+    } else if (singleFile) {
+      profile_photo_url = await processFileUpload(singleFile, 'avatars');
+    }
+
+    if (files?.id_proof_front?.[0]) {
+      id_proof_document_url = await processFileUpload(files.id_proof_front[0], 'id_proofs');
+    }
 
     // Insert student
     // Convert boolean/status values: id_proof_status, admission_status, status are now TINYINT (0/1)
@@ -456,6 +471,8 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
       present_working_address,
       id_proof_type,
       id_proof_number,
+      id_proof_document_url,
+      profile_photo_url,
       id_proof_status: typeof id_proof_status === 'number' ? id_proof_status : (id_proof_status === 'Submitted' ? 1 : 0),
       admission_date: convertToDateOnly(admission_date),
       admission_fee: admission_fee || 0,
