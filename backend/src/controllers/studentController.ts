@@ -438,6 +438,7 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
       endDate.setMonth(endDate.getMonth() + resolvedFeePlan);
       resolvedPlanEnd = plan_end_date ? convertToDateOnly(plan_end_date) : endDate.toISOString().split('T')[0];
     }
+    const resolvedPlanAmount: number | null = plan_amount ? Number(plan_amount) : null;
     const files = req.files as { [field: string]: Express.Multer.File[] } | undefined;
     const singleFile = req.file as Express.Multer.File | undefined;
 
