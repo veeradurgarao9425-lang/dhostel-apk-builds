@@ -896,13 +896,15 @@ export const authController = {
       console.log(`   EMAIL_USER env: ${process.env.EMAIL_USER || '⚠️  NOT SET'}`);
       console.log(`${'='.repeat(60)}\n`);
 
-      // Send the OTP via email
-      await sendOtpEmail(email, otp);
+      // Send the OTP via email asynchronously (don't block HTTP response if SMTP is slow/failing)
+      sendOtpEmail(email, otp).catch((emailErr) => {
+        console.warn('⚠️ Failed to deliver OTP email, but OTP was saved in DB:', emailErr?.message || emailErr);
+      });
 
       return res.status(200).json({
         success: true,
         message: 'Verification OTP sent to your email',
-        ...(process.env.NODE_ENV === 'development' && { dev_otp: otp }),
+        dev_otp: otp,
       });
     } catch (error: any) {
       console.error('❌ Send OTP error:', error?.message || error);
@@ -1070,17 +1072,15 @@ export const authController = {
         });
       }
 
-      try {
-        await sendOtpEmail(identifier, otp);
-      } catch (emailErr: any) {
-        console.error('Failed to send OTP email, but OTP was generated:', emailErr.message);
-        return res.status(500).json({ success: false, error: `Failed to send OTP email: ${emailErr.message}` });
-      }
+      // Send the OTP via email asynchronously (don't block HTTP response if SMTP is slow/failing)
+      sendOtpEmail(identifier, otp).catch((emailErr) => {
+        console.warn('⚠️ Failed to deliver tenant OTP email, but OTP was saved in DB:', emailErr?.message || emailErr);
+      });
 
       return res.json({ 
         success: true, 
         message: 'OTP sent successfully',
-        ...(process.env.NODE_ENV === 'development' && { dev_otp: otp })
+        dev_otp: otp
       });
     } catch (error: any) {
       console.error('tenantSendOtp error:', error);

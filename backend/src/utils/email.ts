@@ -36,12 +36,11 @@ const createTransporter = () => {
   return nodemailer.createTransport({
     service,
     auth: { user, pass },
-    // Fail fast instead of hanging forever when the SMTP socket can't connect
-    // (e.g. host blocks outbound 465/587). Without these, sendMail() hangs until
-    // the client's HTTP timeout fires and the user sees a misleading network error.
-    connectionTimeout: 15000, // 15s to establish the TCP connection
-    greetingTimeout: 10000,   // 10s to receive the SMTP greeting
-    socketTimeout: 20000,     // 20s of socket inactivity
+    // Fail fast (3-5s) instead of hanging when SMTP credentials or port 587/465 is blocked.
+    // Prevents HTTP request timeouts / Network Errors in client app.
+    connectionTimeout: 4000, // 4s to establish TCP connection
+    greetingTimeout: 3000,   // 3s to receive greeting
+    socketTimeout: 5000,     // 5s of socket inactivity
   });
 };
 
