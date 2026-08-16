@@ -89,7 +89,43 @@ const sendViaBrevo = async (options: EmailOptions): Promise<void> => {
   console.log(`✅ Email sent via Brevo: ${data.messageId || '(no id)'}`);
 };
 
-// ─── Send via SMTP (nodemailer) — local-dev fallback when no Brevo key is set ────
+// ─── Send via Resend HTTP API (port 443) — Instant zero-wait email delivery ──────
+const sendViaResend = async (options: EmailOptions): Promise<void> => {
+  const fromAddress = process.env.RESEND_FROM || 'Hostix <onboarding@resend.dev>';
+  console.log(`📨 Sending via Resend HTTP API  |  from: ${fromAddress}  to: ${options.to}`);
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: fromAddress,
+      to: [options.to],
+      subject: options.subject,
+      html: options.html,
+      ...(options.attachments?.length && {
+        attachments: options.attachments.map((a) => ({
+          filename: a.filename,
+          content: Buffer.isBuffer(a.content)
+            ? a.content.toString('base64')
+            : Buffer.from(a.content).toString('base64'),
+        })),
+      }),
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    console.error(`❌ Resend send FAILED (${res.status}):`, body);
+    throw new Error(`Resend API ${res.status}: ${body}`);
+  }
+  const data: any = await res.json().catch(() => ({}));
+  console.log(`✅ Email sent via Resend: ${data.id || '(no id)'}`);
+};
+
+// ─── Send via SMTP (nodemailer) — local-dev fallback when no API key is set ──────
 const sendViaSmtp = async (options: EmailOptions): Promise<void> => {
   const from = process.env.EMAIL_FROM || `"Hostix Hostel" <${process.env.EMAIL_USER}>`;
 
@@ -110,14 +146,14 @@ const sendViaSmtp = async (options: EmailOptions): Promise<void> => {
 import db from '../config/database.js';
 
 // ─── Core send function ────────────────────────────────────────────────────────
-// Prefers the Brevo HTTP API (works on hosts like Render that block SMTP ports).
-// Falls back to SMTP when BREVO_API_KEY is not configured (e.g. local dev).
 export const sendEmail = async (options: EmailOptions): Promise<void> => {
   let deliveryStatus = 'Sent';
   let errorMessage = null;
 
   try {
-    if (process.env.BREVO_API_KEY) {
+    if (process.env.RESEND_API_KEY) {
+      await sendViaResend(options);
+    } else if (process.env.BREVO_API_KEY) {
       await sendViaBrevo(options);
     } else if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
       await sendViaSmtp(options);
