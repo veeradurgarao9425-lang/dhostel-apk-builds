@@ -221,24 +221,19 @@ export const OwnerAssistant: React.FC = () => {
     setIsAddMenuOpen(prev => !prev);
   }, [isKeyboardActive]);
 
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
-
+  // NOTE: keyboardHeight state removed — KAV handles the layout shift.
+  // LayoutAnimation was also removed from keyboard listeners as it conflicts
+  // with KAV's own layout pass on Android release builds.
   useEffect(() => {
     const showSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      (e) => {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        if (e && e.endCoordinates && e.endCoordinates.height) {
-          setKeyboardHeight(e.endCoordinates.height);
-        }
+      () => {
         setIsKeyboardActive(true);
       }
     );
     const hideSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
       () => {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        setKeyboardHeight(0);
         setIsKeyboardActive(false);
       }
     );
@@ -1475,10 +1470,20 @@ export const OwnerAssistant: React.FC = () => {
 
       <Modal visible={isOpen} transparent={false} animationType="slide" onRequestClose={() => setIsOpen(false)} statusBarTranslucent={false}>
         {/* SafeAreaView handles top inset (status bar). Bottom inset is handled seamlessly inside inputBarWrapper */}
-        <SafeAreaView style={s.safe} edges={['top']}>
+        {/* iOS: handle both top & bottom inset via SafeAreaView so the
+            input bar clears the home indicator. Android: non-transparent
+            Modal dialogs don't expose the gesture nav bar to SafeAreaView,
+            so we only claim the top inset there and handle the bottom
+            manually in inputBarWrapper. */}
+        <SafeAreaView style={s.safe} edges={Platform.OS === 'ios' ? ['top', 'bottom'] : ['top']}>
+          {/* behavior='height' on Android: shrinks the KAV container by the
+              keyboard height so the input bar is pushed up inside the layout.
+              behavior='padding' on iOS: adds bottom padding equal to keyboard
+              height. Both are more reliable in release APKs than undefined.
+              On Android release builds, behavior=undefined = no-op (KAV does
+              nothing) which is why it broke after APK build. */}
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={0}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={s.kav}
           >
 
@@ -1595,13 +1600,23 @@ export const OwnerAssistant: React.FC = () => {
             </View>
 
             {/* ── Bottom input bar & Powered by HOSTIX branding ── */}
+            {/* inputBarWrapper bottom padding:
+                - iOS: SafeAreaView(edges=['top','bottom']) already handles the
+                  home indicator, so we only need a small aesthetic padding.
+                - Android: The Modal dialog window does NOT clip the gesture nav
+                  bar area for us, so we use insets.bottom (from
+                  useSafeAreaInsets) with a minimum of 8px to ensure the bar is
+                  never clipped on gesture-nav phones. When the keyboard is up,
+                  KAV shrinks the container so no extra padding is needed. */}
             <View style={[
               s.inputBarWrapper,
               isFocused && s.inputBarWrapperFocused,
               {
                 paddingBottom: isKeyboardActive
-                  ? (Platform.OS === 'android' ? 6 : 4)
-                  : (Platform.OS === 'ios' ? Math.max(insets.bottom, 10) : 6)
+                  ? 4
+                  : (Platform.OS === 'ios'
+                    ? 4  // iOS SafeAreaView(bottom) already handles home indicator
+                    : Math.max(insets.bottom, 8))  // Android gesture-nav clearance
               }
             ]}>
               {/* Quick Actions Grid — 2 Rows Grid (All 8 items visible, no clipping) */}
