@@ -227,6 +227,7 @@ export const OwnerAssistant: React.FC = () => {
     const showSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
       (e) => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         if (e && e.endCoordinates && e.endCoordinates.height) {
           setKeyboardHeight(e.endCoordinates.height);
         }
@@ -236,6 +237,7 @@ export const OwnerAssistant: React.FC = () => {
     const hideSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
       () => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         setKeyboardHeight(0);
         setIsKeyboardActive(false);
       }
@@ -304,7 +306,7 @@ export const OwnerAssistant: React.FC = () => {
     if (messages.length) {
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120);
     }
-  }, [messages, isTyping]);
+  }, [messages, isTyping, isKeyboardActive]);
 
   const loadSnap = async () => {
     setSnapLoading(true);
@@ -1476,7 +1478,7 @@ export const OwnerAssistant: React.FC = () => {
         <SafeAreaView style={s.safe} edges={['top']}>
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+            keyboardVerticalOffset={0}
             style={s.kav}
           >
 
@@ -1597,10 +1599,9 @@ export const OwnerAssistant: React.FC = () => {
               s.inputBarWrapper,
               isFocused && s.inputBarWrapperFocused,
               {
-                marginBottom: Platform.OS === 'android' && isKeyboardActive ? keyboardHeight : 0,
                 paddingBottom: isKeyboardActive
-                  ? (Platform.OS === 'android' ? 8 : 6)
-                  : Math.max(insets.bottom, 12)
+                  ? (Platform.OS === 'android' ? 6 : 4)
+                  : (Platform.OS === 'ios' ? Math.max(insets.bottom, 10) : 6)
               }
             ]}>
               {/* Quick Actions Grid — 2 Rows Grid (All 8 items visible, no clipping) */}
@@ -1658,7 +1659,7 @@ export const OwnerAssistant: React.FC = () => {
                   style={[s.inputWrap, isFocused && s.inputWrapFocused]}
                   onPress={() => inputRef.current?.focus()}
                 >
-                  <Ionicons name="search-outline" size={17} color={isFocused ? "#4F46E5" : "#94A3B8"} style={{ marginRight: 6 }} />
+                  <Ionicons name="chatbubble-ellipses-outline" size={17} color={isFocused ? "#4F46E5" : "#94A3B8"} style={{ marginRight: 6 }} />
                   <TextInput
                     ref={inputRef}
                     style={s.input}

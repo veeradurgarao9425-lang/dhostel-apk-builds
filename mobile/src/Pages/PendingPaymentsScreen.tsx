@@ -3,7 +3,7 @@ import {
     View, Text, StyleSheet, TouchableOpacity, StatusBar,
     FlatList, Linking, Modal, Image, ImageBackground,
     RefreshControl, ActivityIndicator, Alert, TextInput,
-    Dimensions,
+    Dimensions, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -551,7 +551,7 @@ const BulkWhatsappModal = ({ visible, onClose, tenants, isDark, activeTab, navig
 
     return (
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
                 <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }} activeOpacity={1} onPress={onClose}>
                     <TouchableOpacity activeOpacity={1} style={{
                         backgroundColor: isDark ? '#1E293B' : '#FFF',
@@ -1018,16 +1018,17 @@ export default function PendingPaymentsScreen() {
     // ── Filtered list ─────────────────────────────────────────────────────────
     const filteredTenants = tenants.filter(t => {
         // 1. Search filter
-        if (searchQuery.trim()) {
-            const matchesSearch = t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                t.room.toLowerCase().includes(searchQuery.toLowerCase());
-            if (!matchesSearch) return false;
+        if (searchQuery && searchQuery.trim()) {
+            const nameStr = (t.name || t.first_name || '').toLowerCase();
+            const roomStr = (t.room || t.room_number || '').toLowerCase();
+            const q = searchQuery.toLowerCase();
+            if (!nameStr.includes(q) && !roomStr.includes(q)) return false;
         }
 
         // 2. Status filter
         if (activeFilters.status !== 'All') {
-            if (activeFilters.status === 'Partial' && t.paidAmount === 0) return false;
-            if (activeFilters.status === 'Pending' && t.paidAmount > 0) return false;
+            if (activeFilters.status === 'Partial' && (t.paidAmount || 0) === 0) return false;
+            if (activeFilters.status === 'Pending' && (t.paidAmount || 0) > 0) return false;
         }
 
         // 3. Room filter
@@ -1038,8 +1039,9 @@ export default function PendingPaymentsScreen() {
         }
 
         // 4. Date Filter
+        const rawDate = t.rawDueDate || t.due_date || t.dueDate || new Date().toISOString();
         if (activeFilters.datePreset !== 'All Time') {
-            const dueDateObj = new Date(t.rawDueDate);
+            const dueDateObj = new Date(rawDate);
             dueDateObj.setHours(0, 0, 0, 0);
 
             const now = new Date();
@@ -1096,7 +1098,8 @@ export default function PendingPaymentsScreen() {
         // 5. Tab Filter
         const now = new Date();
         now.setHours(0, 0, 0, 0);
-        const dueObj = new Date(t.rawDueDate);
+        const dueObj = new Date(rawDate);
+        dueObj.setHours(0, 0, 0, 0);
         dueObj.setHours(0, 0, 0, 0);
         const diffDays = Math.floor((dueObj.getTime() - now.getTime()) / 86400000);
 
