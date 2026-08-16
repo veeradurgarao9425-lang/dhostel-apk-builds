@@ -142,7 +142,7 @@ export default function LoginScreen({ navigation }: any) {
                     {/* Back Button */}
                     <TouchableOpacity
                         activeOpacity={0.8}
-                        onPress={() => navigation.goBack()}
+                        onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.replace('RoleSelect')}
                         style={[styles.backBtn, { top: insets.top > 0 ? insets.top + 10 : 20 }]}
                     >
                         <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
@@ -371,7 +371,7 @@ const styles = StyleSheet.create({
     formContent: {
         paddingHorizontal: 28,
         paddingTop: isSmall ? 18 : 30,
-        paddingBottom: isSmall ? 120 : 200,
+        paddingBottom: 16,
         flexGrow: 1,
     },
     signInTitle: {

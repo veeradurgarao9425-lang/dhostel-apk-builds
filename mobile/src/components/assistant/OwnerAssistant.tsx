@@ -301,7 +301,7 @@ export const OwnerAssistant: React.FC = () => {
     if (messages.length) {
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120);
     }
-  }, [messages, isTyping, isKeyboardActive]);
+  }, [messages, isTyping]); // isKeyboardActive removed — it caused scroll-jump when keyboard closed
 
   const loadSnap = async () => {
     setSnapLoading(true);

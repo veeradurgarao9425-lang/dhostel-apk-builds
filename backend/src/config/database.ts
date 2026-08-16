@@ -909,18 +909,34 @@ export async function patchDatabaseSchema() {
       console.error('[schema-patch] Error checking/creating staff_payments table:', e.message);
     }
 
-    // 11. Ensure otps table has a 'verified' column (used to enforce email verification on register)
+    // 11. Ensure otps table exists and has all required columns
+    // (used for email verification on owner register + tenant forgot-password OTP)
     try {
-      if (tableNamesLower.includes('otps')) {
+      if (!tableNamesLower.includes('otps')) {
+        console.log('[schema-patch] creating missing otps table...');
+        await db.raw(`
+          CREATE TABLE otps (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            email VARCHAR(255) NOT NULL,
+            otp VARCHAR(10) NOT NULL,
+            expires_at DATETIME NOT NULL,
+            verified TINYINT(1) NOT NULL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_otps_email (email)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        console.log('[schema-patch] otps table created.');
+      } else {
+        // Table exists — ensure verified column is present (older deployments may lack it)
         const [otpCols] = await db.raw("SHOW COLUMNS FROM otps");
-        const otpColNames = (otpCols as any[]).map(c => c.Field);
+        const otpColNames = (otpCols as any[]).map((c: any) => c.Field);
         if (!otpColNames.includes('verified')) {
           console.log('[schema-patch] adding verified column to otps...');
           await db.raw("ALTER TABLE otps ADD COLUMN verified TINYINT(1) NOT NULL DEFAULT 0");
         }
       }
     } catch (e: any) {
-      console.error('[schema-patch] Error checking/updating otps columns:', e.message);
+      console.error('[schema-patch] Error checking/creating otps table:', e.message);
     }
 
     // 12. Make guardian fields optional on students (avoid '0000000000'/'N/A' placeholder pollution)

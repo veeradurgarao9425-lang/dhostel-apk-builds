@@ -337,7 +337,7 @@ export default function RegisterScreen({ navigation }: any) {
                 <View style={styles.headerTopRow}>
                     <TouchableOpacity
                         style={styles.backBtn}
-                        onPress={() => navigation.goBack()}
+                        onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.replace('RoleSelect')}
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
                         <Ionicons name="arrow-back" size={22} color="#FFF" />
@@ -752,7 +752,7 @@ const styles = StyleSheet.create({
     headerTitle: { fontSize: 26, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.3 },
     headerSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.85)', fontWeight: '500', marginTop: 4 },
     formSection: { flex: 1 },
-    formContent: { paddingHorizontal: 24, paddingTop: 22, paddingBottom: 150 },
+    formContent: { paddingHorizontal: 24, paddingTop: 22, paddingBottom: 32 },
     alertBox: {
         flexDirection: 'row',
         alignItems: 'center',
