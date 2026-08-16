@@ -125,6 +125,33 @@ const sendViaResend = async (options: EmailOptions): Promise<void> => {
   console.log(`✅ Email sent via Resend: ${data.id || '(no id)'}`);
 };
 
+// ─── Send via SendGrid HTTP API (port 443) — $0 cost, 0 domain needed ─────────────
+const sendViaSendGrid = async (options: EmailOptions): Promise<void> => {
+  const sender = parseSender();
+  console.log(`📨 Sending via SendGrid HTTP API  |  from: ${sender.email}  to: ${options.to}`);
+
+  const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      personalizations: [{ to: [{ email: options.to }] }],
+      from: { email: sender.email, name: sender.name },
+      subject: options.subject,
+      content: [{ type: 'text/html', value: options.html }],
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    console.error(`❌ SendGrid send FAILED (${res.status}):`, body);
+    throw new Error(`SendGrid API ${res.status}: ${body}`);
+  }
+  console.log(`✅ Email sent via SendGrid successfully`);
+};
+
 // ─── Send via SMTP (nodemailer) — local-dev fallback when no API key is set ──────
 const sendViaSmtp = async (options: EmailOptions): Promise<void> => {
   const from = process.env.EMAIL_FROM || `"Hostix Hostel" <${process.env.EMAIL_USER}>`;
@@ -151,7 +178,9 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
   let errorMessage = null;
 
   try {
-    if (process.env.RESEND_API_KEY) {
+    if (process.env.SENDGRID_API_KEY) {
+      await sendViaSendGrid(options);
+    } else if (process.env.RESEND_API_KEY) {
       await sendViaResend(options);
     } else if (process.env.BREVO_API_KEY) {
       await sendViaBrevo(options);

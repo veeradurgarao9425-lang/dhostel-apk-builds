@@ -332,7 +332,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         hostel_id: connectedHostel.hostel_id,
       });
       if (response.data?.success || response.status === 200) {
-        return { error: null, message: response.data?.message || 'OTP sent' };
+        return { error: null, message: response.data?.message || 'OTP sent', dev_otp: response.data?.dev_otp };
       }
       return { error: response.data?.error || response.data?.message || 'Failed to send OTP' };
     } catch (error: any) {

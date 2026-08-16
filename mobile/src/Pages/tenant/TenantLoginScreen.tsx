@@ -146,7 +146,12 @@ export function TenantLoginScreen({ navigation }: any) {
     } else {
       setOtpSent(true);
       setCountdown(120);
-      setOtp(['', '', '', '', '', '']);
+      if (res.dev_otp && typeof res.dev_otp === 'string' && res.dev_otp.length === 6) {
+        setOtp(res.dev_otp.split(''));
+        setGeneralError(`[Testing] OTP code: ${res.dev_otp}`);
+      } else {
+        setOtp(['', '', '', '', '', '']);
+      }
       setTimeout(() => inputRefs.current[0]?.focus(), 300);
     }
   };
