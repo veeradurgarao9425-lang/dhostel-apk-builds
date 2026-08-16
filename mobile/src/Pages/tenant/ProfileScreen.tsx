@@ -12,16 +12,19 @@ import { ConfirmationDialog } from '../../components/tenant/UIComponents';
 import VacateModal from '../../components/tenant/VacateModal';
 import api from '../../services/api';
 
-const BLUE      = '#2245D4';
-const BLUE_SOFT = '#EEF2FF';
-const WHITE     = '#FFFFFF';
-const TEXT_DARK = '#1A1A1A';
-const TEXT_MID  = '#666666';
-const TEXT_LIGHT= '#9CA3AF';
-const BG        = '#F8FAFD';
-const BORDER    = '#E2E8F0';
-const SUCCESS   = '#22C55E';
-const SUCCESS_BG= '#DCFCE7';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const INDIGO     = '#4F46E5';
+const INDIGO_SOFT= '#EEF2FF';
+const PURPLE     = '#7C3AED';
+const WHITE      = '#FFFFFF';
+const TEXT_DARK  = '#1F2937';
+const TEXT_MID   = '#6B7280';
+const TEXT_LIGHT = '#9CA3AF';
+const BG         = '#F9FAFB';
+const BORDER     = '#E5E7EB';
+const SUCCESS    = '#10B981';
+const SUCCESS_BG = '#D1FAE5';
 
 export default function ProfileScreen({ navigation }: any) {
   const { user, signOut, updateTokenAndUser } = useAuth();
@@ -58,21 +61,21 @@ export default function ProfileScreen({ navigation }: any) {
 
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
-      <StatusBar barStyle="light-content" backgroundColor={BLUE} />
+      <StatusBar barStyle="light-content" backgroundColor={INDIGO} />
       
       {/* ── HEADER ── */}
-      <View style={s.headerSection}>
+      <LinearGradient colors={['#4F46E5', '#7C3AED']} style={s.headerSection}>
         <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
           <View style={s.headerTop}>
             <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtnLight} activeOpacity={0.7}>
-              <ArrowLeft size={24} color={WHITE} strokeWidth={2.5} />
+              <ArrowLeft size={22} color={WHITE} strokeWidth={2.5} />
             </TouchableOpacity>
-            <View style={{ flex: 1, marginLeft: 16 }}>
-              <Text style={s.headerGreeting}>Profile</Text>
+            <View style={{ flex: 1, marginLeft: 14 }}>
+              <Text style={s.headerGreeting}>Profile & Account</Text>
             </View>
           </View>
         </SafeAreaView>
-      </View>
+      </LinearGradient>
 
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
         
@@ -92,11 +95,11 @@ export default function ProfileScreen({ navigation }: any) {
               <Text style={s.nameTxt} numberOfLines={1}>{name}</Text>
               <Text style={[s.roomTxt, { marginBottom: 0 }]}>{roomNumber}</Text>
               <TouchableOpacity
-                style={{ marginTop: 10, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 10, borderWidth: 1, borderColor: BLUE, backgroundColor: BLUE_SOFT }}
+                style={{ marginTop: 10, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 10, borderWidth: 1, borderColor: INDIGO, backgroundColor: INDIGO_SOFT }}
                 onPress={() => { setShowEdit(true); setEditName(name); setEditPhone(user?.phone || ''); }}
                 activeOpacity={0.7}
               >
-                <Text style={{ fontSize: 13, fontWeight: '700', color: BLUE }}>Edit Profile</Text>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: INDIGO }}>Edit Profile</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -117,8 +120,8 @@ export default function ProfileScreen({ navigation }: any) {
         <Text style={s.sectionLbl}>ACCOUNT & STAY</Text>
         <View style={s.menuCard}>
           <TouchableOpacity style={s.menuRow} activeOpacity={0.7} onPress={() => navigation.navigate('RoomInfo')}>
-            <View style={[s.menuIconWrap, { backgroundColor: BLUE_SOFT }]}>
-              <BedDouble size={20} color={BLUE} />
+            <View style={[s.menuIconWrap, { backgroundColor: INDIGO_SOFT }]}>
+              <BedDouble size={20} color={INDIGO} />
             </View>
             <Text style={s.menuTxt}>Room & Stay Details</Text>
             <ChevronRight size={18} color={TEXT_LIGHT} />
@@ -174,7 +177,7 @@ export default function ProfileScreen({ navigation }: any) {
 
           <TouchableOpacity style={s.menuRow} activeOpacity={0.7} onPress={() => navigation.navigate('Messages')}>
             <View style={[s.menuIconWrap, { backgroundColor: '#EEF2FF' }]}>
-              <MessageSquare size={20} color={BLUE} />
+              <MessageSquare size={20} color={INDIGO} />
             </View>
             <Text style={s.menuTxt}>Messages</Text>
             <ChevronRight size={18} color={TEXT_LIGHT} />
@@ -269,7 +272,7 @@ export default function ProfileScreen({ navigation }: any) {
                   <Text style={{ fontSize: 15, fontWeight: '700', color: TEXT_MID }}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={{ flex: 1, height: 52, borderRadius: 14, backgroundColor: BLUE, justifyContent: 'center', alignItems: 'center', opacity: editSaving ? 0.6 : 1 }}
+                  style={{ flex: 1, height: 52, borderRadius: 14, backgroundColor: INDIGO, justifyContent: 'center', alignItems: 'center', opacity: editSaving ? 0.6 : 1 }}
                   onPress={saveProfile}
                   disabled={editSaving}
                 >
@@ -285,23 +288,23 @@ export default function ProfileScreen({ navigation }: any) {
 }
 
 const s = StyleSheet.create({
-  headerSection: { backgroundColor: BLUE, paddingBottom: 24, borderBottomLeftRadius: 32, borderBottomRightRadius: 32, shadowColor: BLUE, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8, zIndex: 10 },
-  headerTop: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 12 },
-  backBtnLight: { padding: 8, marginLeft: -8, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 12 },
-  headerGreeting: { fontSize: 22, fontWeight: '800', color: WHITE },
+  headerSection: { paddingBottom: 20, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, shadowColor: INDIGO, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8, zIndex: 10 },
+  headerTop: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 10 },
+  backBtnLight: { padding: 8, marginLeft: -8, backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 12 },
+  headerGreeting: { fontSize: 20, fontWeight: '800', color: WHITE },
   
-  scroll: { padding: 20, paddingBottom: 60 },
+  scroll: { padding: 16, paddingBottom: 60 },
 
-  profileCard: { backgroundColor: WHITE, borderRadius: 24, padding: 24, alignItems: 'center', marginBottom: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.05, shadowRadius: 16, elevation: 4, borderWidth: 1, borderColor: BORDER, marginTop: 10 },
-  avatarWrap: { position: 'relative', marginBottom: 16 },
-  avatarCircle: { width: 88, height: 88, borderRadius: 44, backgroundColor: BLUE_SOFT, justifyContent: 'center', alignItems: 'center', borderWidth: 4, borderColor: WHITE, shadowColor: BLUE, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
-  avatarInitials: { fontSize: 32, fontWeight: '900', color: BLUE, letterSpacing: 1 },
-  verifiedBadge: { position: 'absolute', bottom: 4, right: 4, backgroundColor: SUCCESS, width: 24, height: 24, borderRadius: 12, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: WHITE },
+  profileCard: { backgroundColor: WHITE, borderRadius: 20, padding: 20, alignItems: 'center', marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 3, borderWidth: 1, borderColor: BORDER, marginTop: 8 },
+  avatarWrap: { position: 'relative', marginBottom: 14 },
+  avatarCircle: { width: 76, height: 76, borderRadius: 38, backgroundColor: INDIGO_SOFT, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: WHITE, shadowColor: INDIGO, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 3 },
+  avatarInitials: { fontSize: 28, fontWeight: '900', color: INDIGO, letterSpacing: 1 },
+  verifiedBadge: { position: 'absolute', bottom: 2, right: 2, backgroundColor: SUCCESS, width: 22, height: 22, borderRadius: 11, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: WHITE },
   
-  nameTxt: { fontSize: 24, fontWeight: '900', color: TEXT_DARK, marginBottom: 4 },
-  roomTxt: { fontSize: 14, fontWeight: '600', color: BLUE, marginBottom: 16, backgroundColor: BLUE_SOFT, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, overflow: 'hidden' },
+  nameTxt: { fontSize: 22, fontWeight: '900', color: TEXT_DARK, marginBottom: 4 },
+  roomTxt: { fontSize: 13, fontWeight: '700', color: INDIGO, marginBottom: 12, backgroundColor: INDIGO_SOFT, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, overflow: 'hidden' },
   
-  contactRow: { flexDirection: 'row', gap: 12 },
+  contactRow: { flexDirection: 'row', gap: 10 },
   contactPill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: BG, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: BORDER },
   contactTxt: { fontSize: 12, fontWeight: '600', color: TEXT_MID },
 

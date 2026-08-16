@@ -904,7 +904,6 @@ export const authController = {
       return res.status(200).json({
         success: true,
         message: 'Verification OTP sent to your email',
-        dev_otp: otp,
       });
     } catch (error: any) {
       console.error('❌ Send OTP error:', error?.message || error);
@@ -1079,8 +1078,7 @@ export const authController = {
 
       return res.json({ 
         success: true, 
-        message: 'OTP sent successfully',
-        dev_otp: otp
+        message: 'OTP sent successfully'
       });
     } catch (error: any) {
       console.error('tenantSendOtp error:', error);

@@ -44,6 +44,9 @@ const PATH_THEMES: Record<string, { bg: string; text: string; emoji: string }> =
   love_stories: { bg: '#FFE4E6', text: '#E11D48', emoji: '💕' },
 };
 
+import { LinearGradient } from 'expo-linear-gradient';
+import { StatusBar } from 'react-native';
+
 export function GrowthHomeScreen({ navigation }: any) {
   const { user } = useAuth();
   const firstName = (user?.name || 'there').split(' ')[0];
@@ -87,19 +90,33 @@ export function GrowthHomeScreen({ navigation }: any) {
   }
 
   return (
-    <SafeAreaView style={styles.screen} edges={['top']}>
-      {/* Header bar */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 4, marginRight: 12 }} hitSlop={12}>
-          <Ionicons name="arrow-back" size={24} color="#1E293B" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Growth Journey</Text>
-        <View style={{ width: 40 }} />
-      </View>
+    <View style={styles.screen}>
+      <StatusBar barStyle="light-content" backgroundColor="#4F46E5" />
+
+      {/* Header bar with Indigo Gradient */}
+      <LinearGradient colors={['#4F46E5', '#7C3AED']} style={styles.gradientHeader}>
+        <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
+          <View style={styles.headerInner}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={12}>
+              <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+            </TouchableOpacity>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={styles.headerTitleLight}>Growth Journey</Text>
+              <Text style={styles.headerSubLight}>Daily English & Mindset Practice</Text>
+            </View>
+            <TouchableOpacity 
+              style={styles.headerIconBtn}
+              onPress={() => navigation.navigate('GrowthVocabularyList')}
+            >
+              <Ionicons name="book-outline" size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
 
       <ScrollView
         contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4F46E5" />}
         showsVerticalScrollIndicator={false}
       >
         {/* Profile / Streaks Row */}
@@ -127,7 +144,7 @@ export function GrowthHomeScreen({ navigation }: any) {
             activeOpacity={0.8}
             onPress={() => navigation.navigate('GrowthVocabularyList')}
           >
-            <Ionicons name="book-outline" size={16} color="#5B39E0" />
+            <Ionicons name="book-outline" size={16} color="#4F46E5" />
             <Text style={styles.quickLinkText}>Vocabulary</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -148,11 +165,11 @@ export function GrowthHomeScreen({ navigation }: any) {
           </TouchableOpacity>
         </View>
 
-        {/* Continue Reading Section */}
-        <Text style={styles.sectionTitle}>Continue Reading</Text>
+        {/* Continue Reading Section (Sleek Resume Card) */}
+        <Text style={styles.sectionTitle}>Continue Learning</Text>
         <TouchableOpacity
           activeOpacity={0.88}
-          style={styles.continueCard}
+          style={styles.continueCardSleek}
           onPress={() => {
             const activeCategory = data?.todaysChallenge.category;
             const matchedPath = paths.find((p) => p.path_key === activeCategory) || paths[0];
@@ -165,24 +182,26 @@ export function GrowthHomeScreen({ navigation }: any) {
             }
           }}
         >
-          <View style={styles.continueIllustrationWrap}>
-            <GrowthIllustration illustrationKey={data?.todaysChallenge.title || ''} size={92} />
-          </View>
-          <View style={styles.continueCardDetails}>
-            <Text style={styles.continueTitle}>
-              {data?.todaysChallenge.title.replace('Finish: ', '') || 'My First Cooking Disaster'}
-            </Text>
-            <View style={styles.progressRow}>
-              <View style={styles.progressBarBg}>
-                <View style={[styles.progressBarFill, { width: '60%' }]} />
+          <LinearGradient colors={['#EEF2FF', '#E0E7FF']} style={styles.continueCardGrad}>
+            <View style={styles.continueLeft}>
+              <View style={styles.resumeBadge}>
+                <Ionicons name="play-circle" size={14} color="#4F46E5" />
+                <Text style={styles.resumeBadgeTxt}>RESUME</Text>
               </View>
-              <Text style={styles.progressPercent}>60%</Text>
+              <Text style={styles.continueTitleSleek} numberOfLines={2}>
+                {data?.todaysChallenge.title.replace('Finish: ', '') || 'The New Hostel Beginning'}
+              </Text>
+              <View style={styles.progressRowSleek}>
+                <View style={styles.progressBarBgSleek}>
+                  <View style={[styles.progressBarFillSleek, { width: '50%' }]} />
+                </View>
+                <Text style={styles.progressPercentSleek}>50%</Text>
+              </View>
             </View>
-            <View style={styles.continueMeta}>
-              <Ionicons name="time-outline" size={13} color="#64748B" />
-              <Text style={styles.continueMetaText}>3 min read</Text>
+            <View style={styles.continueRightBtn}>
+              <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
             </View>
-          </View>
+          </LinearGradient>
         </TouchableOpacity>
 
         {/* Categories Section */}
@@ -262,7 +281,7 @@ export function GrowthHomeScreen({ navigation }: any) {
           )}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -313,32 +332,123 @@ const styles = StyleSheet.create({
     borderColor: '#5B39E0',
   },
   avatarText: { fontSize: 13, fontWeight: '800', color: '#5B39E0' },
-  sectionTitle: { fontSize: 15, fontWeight: '800', color: '#1E293B', marginTop: theme.spacing.xl, marginBottom: theme.spacing.md },
-  continueCard: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: theme.spacing.md,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    ...theme.shadow.subtle,
+  gradientHeader: {
+    paddingBottom: 16,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 6,
   },
-  continueIllustrationWrap: {
+  headerInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 10,
+  },
+  backBtn: {
+    padding: 6,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  headerTitleLight: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  headerSubLight: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.85)',
+    marginTop: 1,
+  },
+  headerIconBtn: {
+    padding: 8,
     borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  continueCardSleek: {
+    borderRadius: 18,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+    elevation: 3,
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+  },
+  continueCardGrad: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    justifyContent: 'space-between',
+  },
+  continueLeft: {
+    flex: 1,
+    marginRight: 12,
+  },
+  resumeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#E0E7FF',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginBottom: 6,
+  },
+  resumeBadgeTxt: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#4F46E5',
+    letterSpacing: 0.5,
+  },
+  continueTitleSleek: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#1E1B4B',
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  progressRowSleek: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  progressBarBgSleek: {
+    flex: 1,
+    height: 6,
+    backgroundColor: '#C7D2FE',
+    borderRadius: 3,
     overflow: 'hidden',
   },
-  continueCardDetails: {
-    flex: 1,
-    marginLeft: theme.spacing.md,
-    justifyContent: 'center',
+  progressBarFillSleek: {
+    height: '100%',
+    backgroundColor: '#4F46E5',
+    borderRadius: 3,
   },
-  continueTitle: { fontSize: 15, fontWeight: '800', color: '#1E293B', lineHeight: 20 },
-  progressRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
-  progressBarBg: { flex: 1, height: 6, backgroundColor: '#F1F5F9', borderRadius: 3, overflow: 'hidden' },
-  progressBarFill: { height: '100%', backgroundColor: '#5B39E0', borderRadius: 3 },
-  progressPercent: { fontSize: 11, fontWeight: '700', color: '#5B39E0', marginLeft: 8 },
-  continueMeta: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 4 },
-  continueMetaText: { fontSize: 11, fontWeight: '600', color: '#64748B' },
+  progressPercentSleek: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#4F46E5',
+  },
+  continueRightBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#4F46E5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 3,
+  },
   categoriesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',

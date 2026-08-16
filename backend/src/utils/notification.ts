@@ -1,4 +1,5 @@
 import db from '../config/database.js';
+import { io } from '../socket/index.js';
 
 // Map of notification types to DB enum values (Now VARCHAR in DB)
 export type NotificationType = 'Payment Due' | 'New Admission' | 'Expense Alert' | 'System Alert' | 'General' | 'Complaint' | 'Leave' | 'Visitor' | 'Notice' | 'Payment Proof';
@@ -40,6 +41,27 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
     });
 
     console.log(`[Notification] In-app notification saved. ID: ${notificationId} for User: ${userId || 'N/A'}, Student: ${studentId || 'N/A'}`);
+
+    // 1b. Real-time Socket.IO emission
+    try {
+      if (io) {
+        const payload = { notificationId, type, title, message, priority, data };
+        if (userId) {
+          io.to(`user_${userId}`).emit('REFRESH_NOTIFICATIONS', payload);
+          io.to(`user_${userId}`).emit('new_notification', payload);
+        }
+        if (studentId) {
+          io.to(`tenant_${studentId}`).emit('REFRESH_NOTIFICATIONS', payload);
+          io.to(`tenant_${studentId}`).emit('new_notification', payload);
+        }
+        if (hostelId) {
+          io.to(`hostel_${hostelId}`).emit('REFRESH_NOTIFICATIONS', payload);
+          io.to(`hostel_${hostelId}`).emit('new_notification', payload);
+        }
+      }
+    } catch (socErr) {
+      console.error('[Notification] Socket emission error:', socErr);
+    }
 
     // 2. Fetch push tokens for this user/student
     let userTokens: any[] = [];

@@ -156,11 +156,6 @@ export default function RegisterScreen({ navigation }: any) {
                 setOtpSent(true);
                 setOtp('');
                 setFieldErrors(prev => ({ ...prev, otp: '', email: '' }));
-                // Dev mode: backend returns the OTP directly — auto-fill for testing
-                if (data?.dev_otp) {
-                    setOtp(data.dev_otp);
-                    setSubmitError(`[Dev] OTP auto-filled: ${data.dev_otp}`);
-                }
                 setResendTimer(120); // 2 minutes
                 setTimeout(() => otpRef.current?.focus(), 100);
             } else {

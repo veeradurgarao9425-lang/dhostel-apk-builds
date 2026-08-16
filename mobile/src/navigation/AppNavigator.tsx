@@ -321,16 +321,23 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen name="ChatRoom" component={ChatRoomScreen} />
                     <Stack.Screen name="Messages" component={MessagesScreen} />
                     <Stack.Screen name="Complaints" component={TenantComplaintsScreen} />
+                    <Stack.Screen name="TenantComplaints" component={TenantComplaintsScreen} />
                     <Stack.Screen name="RoomInfo" component={RoomInfoScreen} />
+                    <Stack.Screen name="TenantRoomInfo" component={RoomInfoScreen} />
                     <Stack.Screen name="VisitorPass" component={VisitorPassScreen} />
+                    <Stack.Screen name="TenantVisitorPass" component={VisitorPassScreen} />
                     <Stack.Screen name="GatePass" component={GatePassScreen} />
+                    <Stack.Screen name="TenantGatePass" component={GatePassScreen} />
                     <Stack.Screen name="Documents" component={TenantDocumentsScreen} />
+                    <Stack.Screen name="TenantDocuments" component={TenantDocumentsScreen} />
                     <Stack.Screen name="Notes" component={NotesScreen} />
+                    <Stack.Screen name="TenantNotes" component={NotesScreen} />
                     <Stack.Screen name="HelpScreen" component={TenantHelpScreen} />
                     <Stack.Screen name="PaymentReceipt" component={PaymentReceiptScreen} />
                     <Stack.Screen name="Rating" component={RatingScreen} />
                     <Stack.Screen name="SplitHistory" component={SplitHistoryScreen} />
                     <Stack.Screen name="Splits" component={SplitsScreen} />
+                    <Stack.Screen name="TenantSplits" component={SplitsScreen} />
                     <Stack.Screen name="CategoryDetail" component={CategoryDetailScreen} />
                     <Stack.Screen name="AllExpenses" component={AllExpensesScreen} />
                     <Stack.Screen name="FullMenu" component={FullMenuScreen} />

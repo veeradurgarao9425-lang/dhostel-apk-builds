@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -122,7 +122,10 @@ export function GrowthStoryScreen({ navigation, route }: any) {
     if (!data) return false;
     const cat = data.story.category?.toLowerCase() || '';
     if (cat.includes('dialogue') || cat.includes('conversation')) return true;
-    return sentences.some(s => SPEAKER_LINE.test(s.text));
+    return sentences.some(s => {
+      const txt = typeof s === 'string' ? s : (s?.text || '');
+      return SPEAKER_LINE.test(txt);
+    });
   }, [data, sentences]);
 
   const speakerColors = React.useMemo(() => {
@@ -136,7 +139,8 @@ export function GrowthStoryScreen({ navigation, route }: any) {
     ];
     let colorIndex = 0;
     for (const s of sentences) {
-      const { speaker } = parseSpeakerLine(s.text);
+      const txt = typeof s === 'string' ? s : (s?.text || '');
+      const { speaker } = parseSpeakerLine(txt);
       if (speaker && !map.has(speaker)) {
         map.set(speaker, {
           ...colors[colorIndex % colors.length],
@@ -149,7 +153,7 @@ export function GrowthStoryScreen({ navigation, route }: any) {
   }, [sentences, isDialogue]);
 
   const renderTokens = (text: string, keyPrefix: string, onDark = false) =>
-    text.split(/(\s+)/).map((token, ti) => {
+    (text || '').split(/(\s+)/).map((token, ti) => {
       const clean = token.replace(/[^a-zA-Z']/g, '').toLowerCase();
       const vocab = clean ? vocabByWord.current.get(clean) : undefined;
       if (vocab) {
@@ -286,9 +290,11 @@ export function GrowthStoryScreen({ navigation, route }: any) {
         {/* Story Text / Dialogue bubbles */}
         {isDialogue ? (
           <View style={styles.dialogueWrap}>
-            {sentences.map((sentence, i) => {
-              const { speaker, line } = parseSpeakerLine(sentence.text);
-              const colorConfig = (speaker && speakerColors.get(speaker)) || {
+            {sentences.map((sentence: any, i: number) => {
+              const sentenceText = typeof sentence === 'string' ? sentence : (sentence?.text || String(sentence || ''));
+              const key = sentence?.order ?? i;
+              const { speaker, line } = parseSpeakerLine(sentenceText);
+              const colorConfig = speakerColors.get(speaker) || {
                 bg: '#F1F5F9',
                 text: '#0F172A',
                 speaker: '#475569',
@@ -297,7 +303,7 @@ export function GrowthStoryScreen({ navigation, route }: any) {
               const isRight = colorConfig.isRight;
               return (
                 <View
-                  key={sentence.order}
+                  key={key}
                   style={[styles.bubbleRow, isRight && styles.bubbleRowRight]}
                 >
                   <View
@@ -321,7 +327,7 @@ export function GrowthStoryScreen({ navigation, route }: any) {
                         { color: isNightMode ? '#E2E8F0' : colorConfig.text },
                       ]}
                     >
-                      {renderTokens(line, String(sentence.order))}
+                      {renderTokens(line || sentenceText, String(key))}
                     </Text>
                   </View>
                 </View>
@@ -330,23 +336,27 @@ export function GrowthStoryScreen({ navigation, route }: any) {
           </View>
         ) : (
           <View style={[styles.storyCard, isNightMode && { backgroundColor: '#1E1E1E', borderColor: '#2D3748' }]}>
-            {sentences.map((sentence, i) => (
-              <Text
-                key={sentence.order}
-                style={[
-                  styles.sentence,
-                  { fontSize: textSize, lineHeight: textSize + 10 },
-                  isNightMode ? { color: '#E2E8F0' } : { color: '#334155' },
-                  playing && i === activeSentence && styles.sentenceActive,
-                  playing && i === activeSentence && isNightMode && { backgroundColor: '#2E1A47' },
-                  i === activeSentence && styles.sentenceFocused,
-                  i === activeSentence && isNightMode && { color: '#FFFFFF' },
-                ]}
-              >
-                {renderTokens(sentence.text, String(sentence.order))}
-                {' '}
-              </Text>
-            ))}
+            {sentences.map((sentence: any, i: number) => {
+              const sentenceText = typeof sentence === 'string' ? sentence : (sentence?.text || String(sentence || ''));
+              const key = sentence?.order ?? i;
+              return (
+                <Text
+                  key={key}
+                  style={[
+                    styles.sentence,
+                    { fontSize: textSize, lineHeight: textSize + 10 },
+                    isNightMode ? { color: '#E2E8F0' } : { color: '#334155' },
+                    playing && i === activeSentence && styles.sentenceActive,
+                    playing && i === activeSentence && isNightMode && { backgroundColor: '#2E1A47' },
+                    i === activeSentence && styles.sentenceFocused,
+                    i === activeSentence && isNightMode && { color: '#FFFFFF' },
+                  ]}
+                >
+                  {renderTokens(sentenceText, String(key))}
+                  {' '}
+                </Text>
+              );
+            })}
           </View>
         )}
 
@@ -437,15 +447,15 @@ const styles = StyleSheet.create({
   progressionPercent: { fontSize: 11, fontWeight: '700', color: '#64748B', width: 32, textAlign: 'right' },
   content: { padding: theme.spacing.lg, paddingBottom: theme.spacing['4xl'], alignItems: 'center' },
   detailsHeader: { width: '100%', alignItems: 'flex-start', marginBottom: theme.spacing.md },
-  title: { fontSize: 28, fontWeight: '800', color: '#1E293B', fontFamily: 'serif', lineHeight: 36, marginBottom: 8 },
+  title: { fontSize: 26, fontWeight: '800', color: '#1E293B', fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', lineHeight: 34, marginBottom: 8 },
   tagPill: {
-    backgroundColor: '#FFE4E6',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 10,
     marginBottom: 10,
   },
-  tagText: { fontSize: 11, fontWeight: '800', color: '#EF4444' },
+  tagText: { fontSize: 11, fontWeight: '800', color: '#4F46E5' },
   meta: { fontSize: 11, fontWeight: '700', color: '#64748B', textTransform: 'capitalize' },
   coverIllustrationWrap: {
     width: '100%',
@@ -461,17 +471,31 @@ const styles = StyleSheet.create({
   storyCard: {
     width: '100%',
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: theme.spacing.lg,
+    borderRadius: 24,
+    padding: 22,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    ...theme.shadow.subtle,
+    minHeight: 450,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.04,
+    shadowRadius: 16,
+    elevation: 3,
   },
-  sentence: { fontSize: 16, lineHeight: 28, color: '#334155', borderRadius: 6, paddingVertical: 2, paddingHorizontal: 4 },
+  sentence: { 
+    fontSize: 17, 
+    lineHeight: 32, 
+    color: '#1F2937', 
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    borderRadius: 6, 
+    paddingVertical: 3, 
+    paddingHorizontal: 4,
+    marginBottom: 12,
+  },
   sentenceActive: { backgroundColor: '#F5F3FF' },
-  sentenceFocused: { color: '#1E293B', fontWeight: '500' },
+  sentenceFocused: { color: '#111827', fontWeight: '600' },
   tapWord: {
-    color: '#5B39E0',
+    color: '#4F46E5',
     backgroundColor: '#EEF2FF',
     paddingHorizontal: 4,
     paddingVertical: 1,
@@ -480,8 +504,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   tapWordOnDark: {
-    color: '#5B39E0',
-    backgroundColor: '#EEF2FF',
+    color: '#A78BFA',
+    backgroundColor: '#2E1A47',
     paddingHorizontal: 4,
     paddingVertical: 1,
     borderRadius: 6,
@@ -492,11 +516,15 @@ const styles = StyleSheet.create({
   bubbleRow: { flexDirection: 'row', justifyContent: 'flex-start' },
   bubbleRowRight: { justifyContent: 'flex-end' },
   bubble: {
-    maxWidth: '82%',
-    borderRadius: 16,
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
-    ...theme.shadow.subtle,
+    maxWidth: '85%',
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 2,
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
@@ -506,9 +534,9 @@ const styles = StyleSheet.create({
   bubbleRight: {
     borderBottomRightRadius: 4,
   },
-  bubbleActive: { borderWidth: 2, borderColor: '#5B39E0' },
+  bubbleActive: { borderWidth: 2, borderColor: '#4F46E5' },
   bubbleSpeaker: { fontSize: 11, fontWeight: '800', marginBottom: 4, letterSpacing: 0.3 },
-  bubbleText: { fontSize: 15, lineHeight: 22 },
+  bubbleText: { fontSize: 15, lineHeight: 24 },
   floatingToolbar: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -522,7 +550,11 @@ const styles = StyleSheet.create({
     marginVertical: theme.spacing.md,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    ...theme.shadow.subtle,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
   },
   toolbarItem: {
     alignItems: 'center',
@@ -530,15 +562,23 @@ const styles = StyleSheet.create({
   },
   toolbarText: { fontSize: 10, fontWeight: '700', color: '#64748B', marginTop: 4 },
   quizButton: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: theme.colors.success,
-    borderRadius: theme.radius.pill,
-    paddingVertical: 14,
-    marginTop: theme.spacing.xl,
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    gap: 8,
+    backgroundColor: '#4F46E5',
+    borderRadius: 16,
+    paddingVertical: 16,
+    marginTop: 24,
+    marginBottom: 16,
     width: '100%',
-    ...theme.shadow.card,
+    elevation: 4,
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
   },
-  quizButtonText: { color: '#FFFFFF', fontWeight: '800', fontSize: 14 },
+  quizButtonText: { color: '#FFFFFF', fontWeight: '800', fontSize: 15 },
 });
 
 export default GrowthStoryScreen;

@@ -482,29 +482,24 @@ export function TenantHomeScreen({ navigation }: any) {
 
         <Animated.View style={{ opacity: enterAnims[2], transform: [{ translateY: enterAnims[2].interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
           <TouchableOpacity
-            activeOpacity={0.88}
+            activeOpacity={0.85}
             onPress={() => navigation.navigate("GrowthHome")}
             style={styles.growthCardTouchable}
           >
-            <LinearGradient
-              colors={["#6D4AFF", "#5B39E0"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.growthCard}
-            >
-              <View style={styles.growthIconWrap}>
-                <Ionicons name="trending-up-outline" size={22} color="#FFFFFF" />
+            <View style={styles.growthCardCompact}>
+              <View style={styles.growthIconWrapCompact}>
+                <Ionicons name="trending-up-outline" size={16} color="#4F46E5" />
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.growthTitle}>Growth Journey</Text>
-                <Text style={styles.growthSubtitle}>
+              <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Text style={styles.growthTitleCompact}>Growth Journey</Text>
+                <Text style={styles.growthSubtitleCompact}>
                   {growthTeaser
-                    ? `🔥 ${growthTeaser.streak} day streak · Level ${growthTeaser.level}`
-                    : "Grow your English & mindset daily"}
+                    ? `🔥 ${growthTeaser.streak}d streak · Level ${growthTeaser.level}`
+                    : "Daily English & Mindset"}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.85)" />
-            </LinearGradient>
+              <Ionicons name="chevron-forward" size={16} color="#6366F1" />
+            </View>
           </TouchableOpacity>
         </Animated.View>
 
@@ -711,6 +706,35 @@ const styles = StyleSheet.create({
   growthCardTouchable: {
     marginHorizontal: 16,
     borderRadius: 18,
+  },
+  growthCardCompact: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: '#EEF2FF',
+    borderWidth: 1,
+    borderColor: '#E0E7FF',
+  },
+  growthIconWrapCompact: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: "#E0E7FF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  growthTitleCompact: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#312E81",
+  },
+  growthSubtitleCompact: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#4F46E5",
   },
   growthCard: {
     flexDirection: "row",

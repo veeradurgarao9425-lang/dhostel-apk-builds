@@ -85,40 +85,56 @@ export const NotificationScreen = () => {
  
     const handleNotifClick = (notif: Notification) => {
         markAsRead(notif.id);
- 
+
         const data = notif.data;
         const title = (notif.title || '').toLowerCase();
         const type = notif.type;
- 
-        // Smart navigation based on payload structure and titles
-        if (title.includes('payment') || title.includes('collect') || title.includes('fee')) {
-            navigation.navigate('CollectedPayments');
-        } else if (title.includes('due') || title.includes('pending')) {
-            navigation.navigate('PendingPayments');
-        } else if (title.includes('verify') || title.includes('verification')) {
-            navigation.navigate('PaymentVerification');
-        } else if (title.includes('notice') || title.includes('publish')) {
-            navigation.navigate('Notices');
-        } else if (title.includes('subscription') || title.includes('trial')) {
-            navigation.navigate('SubscriptionExpired');
-        } else if (title.includes('report')) {
-            navigation.navigate('Reports');
-        } else if (data?.student_id) {
-            navigation.navigate('Notices');
-        } else if (title.includes('maintenance') || title.includes('complaint')) {
-            navigation.navigate('ComplaintsManagement');
-        } else if (title.includes('room') || title.includes('assign')) {
-            navigation.navigate('Rooms');
-        } else if (title.includes('admission') || title.includes('tenant') || type === 'info') {
-            if (data && (data.id || data.student_id)) {
-                navigation.navigate('StudentDetails', { studentId: data.id || data.student_id });
-            } else {
-                navigation.navigate('Students');
+        const isTenant = user?.role_id === 3 || user?.role === 'TENANT';
+
+        try {
+            if (isTenant) {
+                if (title.includes('payment') || title.includes('collect') || title.includes('fee') || title.includes('due')) {
+                    navigation.navigate('Payments');
+                } else if (title.includes('complaint') || title.includes('maintenance')) {
+                    navigation.navigate('Complaints');
+                } else if (title.includes('notice')) {
+                    navigation.navigate('Notices');
+                } else {
+                    navigation.navigate('Main');
+                }
+                return;
             }
-        } else if (type === 'warning' && title.includes('expense')) {
-            navigation.navigate('Expenses');
-        } else {
-            navigation.navigate('Main', { screen: 'HomeTab' });
+
+            // Owner navigation
+            if (title.includes('verify') || title.includes('proof')) {
+                navigation.navigate('FeeManagement');
+            } else if (title.includes('payment') || title.includes('collect') || title.includes('fee')) {
+                navigation.navigate('FeeManagement');
+            } else if (title.includes('due') || title.includes('pending')) {
+                navigation.navigate('PendingPayments');
+            } else if (title.includes('notice') || title.includes('publish')) {
+                navigation.navigate('Notices');
+            } else if (title.includes('subscription') || title.includes('trial')) {
+                navigation.navigate('SubscriptionExpired');
+            } else if (title.includes('report')) {
+                navigation.navigate('Reports');
+            } else if (title.includes('maintenance') || title.includes('complaint')) {
+                navigation.navigate('ComplaintsManagement');
+            } else if (title.includes('room') || title.includes('assign')) {
+                navigation.navigate('Rooms');
+            } else if (title.includes('admission') || title.includes('tenant') || type === 'info') {
+                if (data && (data.id || data.student_id)) {
+                    navigation.navigate('StudentDetails', { studentId: data.id || data.student_id });
+                } else {
+                    navigation.navigate('Students');
+                }
+            } else if (type === 'warning' && title.includes('expense')) {
+                navigation.navigate('Expenses');
+            } else {
+                navigation.navigate('Main');
+            }
+        } catch (navErr) {
+            console.error('Notification navigation error:', navErr);
         }
     };
 

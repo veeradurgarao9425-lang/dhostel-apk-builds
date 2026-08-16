@@ -1,5 +1,6 @@
 import knex from 'knex';
 import dotenv from 'dotenv';
+import { seedBulkGrowthStories } from '../seedBulkStories.js';
 
 dotenv.config();
 
@@ -209,6 +210,27 @@ export async function patchDatabaseSchema() {
       }
     } catch (e: any) {
       console.error('[schema-patch] Error creating fee_history table:', e.message);
+    }
+
+    // Ensure email_logs table exists
+    try {
+      if (!tableNamesLower.includes('email_logs')) {
+        console.log('[schema-patch] creating missing email_logs table...');
+        await db.raw(`
+          CREATE TABLE email_logs (
+            log_id INT AUTO_INCREMENT PRIMARY KEY,
+            hostel_id INT NULL,
+            recipient_email VARCHAR(255) NOT NULL,
+            email_type VARCHAR(50) NOT NULL,
+            subject VARCHAR(255) NULL,
+            delivery_status VARCHAR(50) NOT NULL DEFAULT 'Sent',
+            error_message TEXT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error creating email_logs table:', e.message);
     }
 
     // 1.45 Ensure id_proof_types table exists
@@ -1649,9 +1671,94 @@ export async function patchDatabaseSchema() {
             color_hex: '#F43F5E',
           });
         }
+
+        // Seed initial growth levels & stories if growth_stories is empty
+        const storiesCountRow = await db('growth_stories').count<{ count: string }[]>('* as count');
+        const storiesCount = Number(storiesCountRow[0]?.count || 0);
+
+        if (storiesCount === 0) {
+          console.log('[schema-patch] seeding initial Growth Journey levels and stories...');
+          const activePath = await db('growth_paths').where({ is_active: 1 }).orderBy('sort_order', 'asc').first();
+          if (activePath) {
+            const pathId = activePath.path_id;
+
+            // Story 1
+            const [level1Id] = await db('growth_levels').insert({
+              path_id: pathId,
+              section_title: 'Chapter 1: New Beginnings',
+              level_number: 1,
+              title: 'The New Hostel Beginning',
+              xp_reward: 50,
+              sort_order: 1,
+            });
+
+            const [story1Id] = await db('growth_stories').insert({
+              level_id: level1Id,
+              title: 'The New Hostel Beginning',
+              category: 'Life Skills',
+              reading_time_minutes: 3,
+              sentences: JSON.stringify([
+                'Moving into a new hostel is an exciting adventure.',
+                'You meet new roommates and create lifelong friendships.',
+                'Every day brings opportunities to learn, grow, and build independence.'
+              ]),
+            });
+
+            await db('growth_vocabulary').insert([
+              { story_id: story1Id, word: 'Adventure', meaning: 'An exciting or unusual experience', example_sentence: 'Moving to a new city is a great adventure.' },
+              { story_id: story1Id, word: 'Independence', meaning: 'The state of being self-reliant', example_sentence: 'Hostel life teaches you true independence.' }
+            ]);
+
+            await db('growth_quiz_questions').insert({
+              story_id: story1Id,
+              question_type: 'mcq',
+              question_text: 'What does hostel life teach you?',
+              options: JSON.stringify(['Independence', 'Cooking only', 'Nothing new', 'Sleeping all day']),
+              correct_answer: 'Independence',
+              sort_order: 1,
+            });
+
+            // Story 2
+            const [level2Id] = await db('growth_levels').insert({
+              path_id: pathId,
+              section_title: 'Chapter 1: New Beginnings',
+              level_number: 2,
+              title: 'Unlocking Your Full Potential',
+              xp_reward: 50,
+              sort_order: 2,
+            });
+
+            const [story2Id] = await db('growth_stories').insert({
+              level_id: level2Id,
+              title: 'Unlocking Your Full Potential',
+              category: 'Personal Growth',
+              reading_time_minutes: 4,
+              sentences: JSON.stringify([
+                'Consistency is the secret to mastering any skill.',
+                'When you spend 15 minutes a day reading or learning, your knowledge expands exponentially.',
+                'Believe in yourself and take small steps every single day.'
+              ]),
+            });
+
+            await db('growth_vocabulary').insert([
+              { story_id: story2Id, word: 'Consistency', meaning: 'Conformity in the application of something', example_sentence: 'Consistency is key to success.' },
+              { story_id: story2Id, word: 'Exponentially', meaning: 'At a very rapid rate', example_sentence: 'Her confidence grew exponentially.' }
+            ]);
+
+            await db('growth_quiz_questions').insert({
+              story_id: story2Id,
+              question_type: 'mcq',
+              question_text: 'What is the secret to mastering any skill?',
+              options: JSON.stringify(['Consistency', 'Luck', 'Procrastination', 'Giving up']),
+              correct_answer: 'Consistency',
+              sort_order: 1,
+            });
+          }
+        }
+        await seedBulkGrowthStories();
       }
     } catch (e: any) {
-      console.error('[schema-patch] Error activating extra Growth Journey paths:', e.message);
+      console.error('[schema-patch] Error seeding Growth Journey stories:', e.message);
     }
 
     console.log('[schema-patch] Schema check and patch complete.');

@@ -125,10 +125,48 @@ const sendViaResend = async (options: EmailOptions): Promise<void> => {
   console.log(`✅ Email sent via Resend: ${data.id || '(no id)'}`);
 };
 
+// ─── Send via EmailJS HTTP API (port 443) — Direct Google Gmail API (100% Primary Inbox) ────
+const sendViaEmailJS = async (options: EmailOptions): Promise<void> => {
+  console.log(`📨 Sending via EmailJS (Google API)  |  to: ${options.to}`);
+
+  const otpMatch = options.subject.match(/\d{6}/) || options.html.match(/\d{6}/);
+  const passcode = otpMatch ? otpMatch[0] : '';
+
+  const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    },
+    body: JSON.stringify({
+      service_id: process.env.EMAILJS_SERVICE_ID,
+      template_id: process.env.EMAILJS_TEMPLATE_ID,
+      user_id: process.env.EMAILJS_PUBLIC_KEY,
+      accessToken: process.env.EMAILJS_PRIVATE_KEY,
+      template_params: {
+        email: options.to,
+        passcode: passcode,
+        from_name: 'HostixHelp',
+        time: '10 minutes',
+      },
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    console.error(`❌ EmailJS send FAILED (${res.status}):`, body);
+    throw new Error(`EmailJS API ${res.status}: ${body}`);
+  }
+  console.log(`✅ Email sent via EmailJS (Google API) successfully!`);
+};
+
 // ─── Send via SendGrid HTTP API (port 443) — $0 cost, 0 domain needed ─────────────
 const sendViaSendGrid = async (options: EmailOptions): Promise<void> => {
   const sender = parseSender();
   console.log(`📨 Sending via SendGrid HTTP API  |  from: ${sender.email}  to: ${options.to}`);
+
+  // Create clean plain text version (prevents HTML-only spam penalties)
+  const plainText = options.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 
   const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
     method: 'POST',
@@ -137,10 +175,21 @@ const sendViaSendGrid = async (options: EmailOptions): Promise<void> => {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      personalizations: [{ to: [{ email: options.to }] }],
-      from: { email: sender.email, name: sender.name },
-      subject: options.subject,
-      content: [{ type: 'text/html', value: options.html }],
+      personalizations: [{ 
+        to: [{ email: options.to }],
+        subject: options.subject
+      }],
+      from: { email: sender.email, name: sender.name || 'Hostix' },
+      reply_to: { email: sender.email, name: sender.name || 'Hostix' },
+      content: [
+        { type: 'text/plain', value: plainText },
+        { type: 'text/html', value: options.html }
+      ],
+      headers: {
+        'X-Priority': '1',
+        'X-MSMail-Priority': 'High',
+        'Importance': 'High',
+      }
     }),
   });
 
@@ -178,7 +227,9 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
   let errorMessage = null;
 
   try {
-    if (process.env.SENDGRID_API_KEY) {
+    if (process.env.EMAILJS_SERVICE_ID) {
+      await sendViaEmailJS(options);
+    } else if (process.env.SENDGRID_API_KEY) {
       await sendViaSendGrid(options);
     } else if (process.env.RESEND_API_KEY) {
       await sendViaResend(options);
@@ -281,26 +332,39 @@ export const sendOtpEmail = async (
   email: string,
   otp: string
 ): Promise<void> => {
+  const subject = `${otp} is your Hostix verification code`;
   const html = `
-    <div style="font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;">
-      <div style="max-width: 600px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-        <h2 style="color: #333; margin-bottom: 20px; text-align: center;">Verify Your Email</h2>
-        <p style="color: #666; line-height: 1.6;">Hello,</p>
-        <p style="color: #666; line-height: 1.6;">
-          Your One Time Password (OTP) for account verification is:
-        </p>
-        <div style="text-align: center; margin: 30px 0;">
-          <span style="font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #7C3AED; background-color: #F3EEFF; padding: 16px 28px; border-radius: 12px; border: 2px dashed #7C3AED; display: inline-block;">
-            ${otp}
-          </span>
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 24px;">
+      <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 32px; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <h2 style="color: #6366f1; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">Hostix</h2>
+          <p style="color: #64748b; font-size: 13px; margin-top: 4px; margin-bottom: 0;">Smart PG & Hostel Management</p>
         </div>
-        <p style="color: #999; font-size: 13px; margin-top: 30px; text-align: center;">
-          ⏱ This OTP is valid for <strong>10 minutes</strong>. Do not share this code with anyone.
-        </p>
-        <p style="color: #999; font-size: 12px; text-align: center;">Hostix System</p>
+        <div style="border-top: 1px solid #f1f5f9; padding-top: 24px;">
+          <h3 style="color: #0f172a; margin-top: 0; font-size: 18px; font-weight: 700; text-align: center;">Account Verification Code</h3>
+          <p style="color: #475569; font-size: 14px; line-height: 22px; text-align: center; margin-bottom: 24px;">Please use the following one-time password (OTP) to complete your verification:</p>
+          <div style="text-align: center; margin: 24px 0;">
+            <div style="font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #4f46e5; background-color: #f1f5f9; padding: 16px 28px; border-radius: 12px; display: inline-block; font-family: 'Courier New', Courier, monospace;">
+              ${otp}
+            </div>
+          </div>
+          <p style="color: #94a3b8; font-size: 12px; text-align: center; margin-top: 24px; margin-bottom: 0;">
+            This code will expire in 10 minutes. If you did not request this code, you can safely ignore this email.
+          </p>
+        </div>
+        <div style="border-top: 1px solid #f1f5f9; margin-top: 28px; padding-top: 16px; text-align: center;">
+          <p style="color: #94a3b8; font-size: 11px; margin: 0;">&copy; Hostix Systems. All rights reserved.</p>
+        </div>
       </div>
-    </div>
+    </body>
+    </html>
   `;
 
-  await sendEmail({ to: email, subject: 'Your Verification Code - Hostix', html });
+  await sendEmail({ to: email, subject, html, emailType: 'OTP' });
 };

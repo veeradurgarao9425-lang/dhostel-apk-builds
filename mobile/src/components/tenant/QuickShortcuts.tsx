@@ -28,11 +28,11 @@ function chunk<T>(arr: T[], size: number): T[][] {
 
 const NAV_MAP: Record<string, string> = {
     Dues: 'Dues',
-    Splits: 'TenantSplits',
-    Complaints: 'TenantComplaints',
-    RoomInfo: 'TenantRoomInfo',
-    VisitorPass: 'TenantVisitorPass',
-    GatePass: 'TenantGatePass',
+    Splits: 'Splits',
+    Complaints: 'Complaints',
+    RoomInfo: 'RoomInfo',
+    VisitorPass: 'VisitorPass',
+    GatePass: 'VisitorPass',
     Documents: 'TenantDocuments',
     Notes: 'TenantNotes',
 };
