@@ -117,7 +117,9 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
   let errorMessage = null;
 
   try {
-    if (process.env.BREVO_API_KEY) {
+    if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
+      await sendViaSmtp(options);
+    } else if (process.env.BREVO_API_KEY) {
       await sendViaBrevo(options);
     } else {
       await sendViaSmtp(options);
