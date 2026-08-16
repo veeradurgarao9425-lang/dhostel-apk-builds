@@ -1,9 +1,12 @@
 name: Build Android APK
 
 on:
+  workflow_dispatch:  # Always build when triggered manually from GitHub Actions UI
   push:
     branches: [main, master]
-  workflow_dispatch:
+    # NOTE: APK only builds when commit message contains [build] or [apk]
+    # Example: "fix: keyboard fix [build]"
+    # Plain commits (backend fixes, etc.) will be SKIPPED automatically
 
 permissions:
   actions: write
@@ -12,6 +15,11 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Skip build unless commit message has [build] or [apk], or it's a manual trigger
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.head_commit.message, '[build]') ||
+      contains(github.event.head_commit.message, '[apk]')
 
     steps:
       - name: Checkout code
