@@ -70,7 +70,7 @@ startDailyExcelReportsJob();
 
 const app = express();
 
-// Trust the first hop (Render/Railway/nginx etc. sit in front of this process).
+// Trust the first hop (Nginx/reverse proxy in front of this process).
 // Without this, express-rate-limit keys every request off the proxy's IP
 // instead of the real client IP, so ALL users share one rate-limit bucket —
 // a handful of logins/OTP sends across the whole user base would lock
@@ -94,8 +94,7 @@ const getAllowedOrigins = (): string[] => {
     'http://localhost:3000', 
     'http://localhost:5173',
     'http://localhost:5174',
-    'http://localhost:5175',
-    'https://dhostel-frontend.onrender.com' // Example production domain
+    'http://localhost:5175'
   ];
 };
 

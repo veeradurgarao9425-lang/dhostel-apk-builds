@@ -79,7 +79,10 @@ export default function MoreScreen({ hideHeader = false }: MoreScreenProps) {
         }
     };
 
-    useFocusEffect(React.useCallback(() => { fetchStats(); }, []));
+    useFocusEffect(React.useCallback(() => {
+        fetchStats();
+        loadHostels();
+    }, [loadHostels]));
 
     const hostelsAttemptedRef = React.useRef(false);
     useEffect(() => {

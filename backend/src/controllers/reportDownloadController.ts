@@ -46,22 +46,27 @@ export const downloadPDFReport = async (req: AuthRequest, res: Response) => {
     let hostelIds: number[] = [];
     let hostelName = 'All Hostels';
 
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
-      if (!user.hostel_id) {
-        return res.status(403).json({
-          success: false,
-          error: 'Your account is not linked to any hostel.'
-        });
+    if (user?.role_id === 2 || user?.role_id === 1) {
+      let activeHostelId = user.hostel_id;
+      if (!activeHostelId) {
+        const firstHostel = await db('hostel_master')
+          .where('owner_id', user.user_id)
+          .where('is_active', 1)
+          .first();
+        if (firstHostel) {
+          activeHostelId = firstHostel.hostel_id;
+        }
       }
-      hostelIds = [user.hostel_id];
-      
-      const hostel = await db('hostel_master')
-        .where('hostel_id', user.hostel_id)
-        .first();
-      if (hostel) {
-        hostelName = hostel.hostel_name || 'Hostel';
+      if (activeHostelId) {
+        hostelIds = [activeHostelId];
+        const hostel = await db('hostel_master')
+          .where('hostel_id', activeHostelId)
+          .first();
+        if (hostel) {
+          hostelName = hostel.hostel_name || 'Hostel';
+        }
       }
-    } else if (user?.role_id !== 1) {
+    } else {
       return res.status(403).json({
         success: false,
         error: 'This feature is only available for Hostel Owners and Admins.'
@@ -423,22 +428,27 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
     let hostelIds: number[] = [];
     let hostelName = 'All Hostels';
 
-    if ((user?.role_id === 2 || (user?.role_id === 1 && user?.hostel_id))) {
-      if (!user.hostel_id) {
-        return res.status(403).json({
-          success: false,
-          error: 'Your account is not linked to any hostel.'
-        });
+    if (user?.role_id === 2 || user?.role_id === 1) {
+      let activeHostelId = user.hostel_id;
+      if (!activeHostelId) {
+        const firstHostel = await db('hostel_master')
+          .where('owner_id', user.user_id)
+          .where('is_active', 1)
+          .first();
+        if (firstHostel) {
+          activeHostelId = firstHostel.hostel_id;
+        }
       }
-      hostelIds = [user.hostel_id];
-      
-      const hostel = await db('hostel_master')
-        .where('hostel_id', user.hostel_id)
-        .first();
-      if (hostel) {
-        hostelName = hostel.hostel_name || 'Hostel';
+      if (activeHostelId) {
+        hostelIds = [activeHostelId];
+        const hostel = await db('hostel_master')
+          .where('hostel_id', activeHostelId)
+          .first();
+        if (hostel) {
+          hostelName = hostel.hostel_name || 'Hostel';
+        }
       }
-    } else if (user?.role_id !== 1) {
+    } else {
       return res.status(403).json({
         success: false,
         error: 'This feature is only available for Hostel Owners and Admins.'

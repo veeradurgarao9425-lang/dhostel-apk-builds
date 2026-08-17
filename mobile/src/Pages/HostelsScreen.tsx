@@ -9,9 +9,10 @@ import {
     RefreshControl,
     Modal,
     TouchableWithoutFeedback,
-    Image
+    Image,
+    DeviceEventEmitter
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Plus } from 'lucide-react-native';
 import { useAuth } from '../../contexts/AuthContext';
@@ -80,8 +81,23 @@ export const HostelsScreen = () => {
         }
     };
 
+    useFocusEffect(
+        React.useCallback(() => {
+            fetchHostels();
+        }, [])
+    );
+
     useEffect(() => {
-        fetchHostels();
+        const sub = DeviceEventEmitter.addListener('HOSTEL_UPDATED', () => {
+            fetchHostels();
+        });
+        const refreshSub = DeviceEventEmitter.addListener('REFRESH_DATA', () => {
+            fetchHostels();
+        });
+        return () => {
+            sub.remove();
+            refreshSub.remove();
+        };
     }, []);
 
     const handleSwitchHostel = async (hostelId: number) => {
@@ -276,32 +292,46 @@ export const HostelsScreen = () => {
                                         </TouchableOpacity>
                                     </View>
 
-                                    {/* Hostel quick specs row */}
-                                    <View style={styles.metaRow}>
-                                        <View style={[styles.metaItem, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                                            <Ionicons name="business-outline" size={13} color={theme.primary} />
-                                            <Text style={[styles.metaText, { color: theme.textPrimary }]}>{h.hostel_type || 'Co-Living'}</Text>
-                                        </View>
-                                        <View style={[styles.metaItem, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                                            <Ionicons name="layers-outline" size={13} color={theme.primary} />
-                                            <Text style={[styles.metaText, { color: theme.textPrimary }]}>{h.total_floors} Floors</Text>
-                                        </View>
-                                        {h.hostel_code && (
-                                            <TouchableOpacity 
-                                                onPress={(e) => {
-                                                    e.stopPropagation();
-                                                    handleCopyHostelCode(h.hostel_code, h.hostel_id);
-                                                }}
-                                                style={[styles.metaItem, { backgroundColor: copiedHostelId === h.hostel_id ? (isDark ? '#064E3B' : '#D1FAE5') : (isDark ? '#334155' : '#F1F5F9'), borderColor: copiedHostelId === h.hostel_id ? '#10B981' : 'transparent', borderWidth: 1 }]}
-                                                activeOpacity={0.7}
-                                            >
-                                                <Ionicons name={copiedHostelId === h.hostel_id ? "checkmark-circle" : "key-outline"} size={13} color={copiedHostelId === h.hostel_id ? '#10B981' : theme.primary} />
-                                                <Text style={[styles.metaText, { color: copiedHostelId === h.hostel_id ? (isDark ? '#A7F3D0' : '#064E3B') : theme.textPrimary }]}>
-                                                    {copiedHostelId === h.hostel_id ? 'Copied!' : h.hostel_code}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        )}
-                                    </View>
+                                     {/* Hostel quick specs & contact row */}
+                                     <View style={[styles.metaRow, { flexWrap: 'wrap', gap: 6 }]}>
+                                         <View style={[styles.metaItem, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                             <Ionicons name="business-outline" size={13} color={theme.primary} />
+                                             <Text style={[styles.metaText, { color: theme.textPrimary }]}>{h.hostel_type || 'Co-Living'}</Text>
+                                         </View>
+                                         <View style={[styles.metaItem, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                             <Ionicons name="layers-outline" size={13} color={theme.primary} />
+                                             <Text style={[styles.metaText, { color: theme.textPrimary }]}>{h.total_floors || 1} Floors</Text>
+                                         </View>
+                                         {(h.contact_number || h.phone || user?.phone) ? (
+                                             <View style={[styles.metaItem, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                                 <Ionicons name="call-outline" size={13} color={theme.primary} />
+                                                 <Text style={[styles.metaText, { color: theme.textPrimary }]}>{h.contact_number || h.phone || user?.phone}</Text>
+                                             </View>
+                                         ) : null}
+                                         <View style={[styles.metaItem, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                             <Ionicons name="wallet-outline" size={13} color="#10B981" />
+                                             <Text style={[styles.metaText, { color: theme.textPrimary }]}>Fee: ₹{h.admission_fee || 0}</Text>
+                                         </View>
+                                         <View style={[styles.metaItem, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                             <Ionicons name="shield-checkmark-outline" size={13} color="#F59E0B" />
+                                             <Text style={[styles.metaText, { color: theme.textPrimary }]}>Deposit: ₹{h.default_refundable_deposit || 0}</Text>
+                                         </View>
+                                         {h.hostel_code && (
+                                             <TouchableOpacity 
+                                                 onPress={(e) => {
+                                                     e.stopPropagation();
+                                                     handleCopyHostelCode(h.hostel_code, h.hostel_id);
+                                                 }}
+                                                 style={[styles.metaItem, { backgroundColor: copiedHostelId === h.hostel_id ? (isDark ? '#064E3B' : '#D1FAE5') : (isDark ? '#334155' : '#F1F5F9'), borderColor: copiedHostelId === h.hostel_id ? '#10B981' : 'transparent', borderWidth: 1 }]}
+                                                 activeOpacity={0.7}
+                                             >
+                                                 <Ionicons name={copiedHostelId === h.hostel_id ? "checkmark-circle" : "key-outline"} size={13} color={copiedHostelId === h.hostel_id ? '#10B981' : theme.primary} />
+                                                 <Text style={[styles.metaText, { color: copiedHostelId === h.hostel_id ? (isDark ? '#A7F3D0' : '#064E3B') : theme.textPrimary }]}>
+                                                     {copiedHostelId === h.hostel_id ? 'Copied!' : h.hostel_code}
+                                                 </Text>
+                                             </TouchableOpacity>
+                                         )}
+                                     </View>
 
                                     <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
 

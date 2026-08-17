@@ -12,7 +12,8 @@ import {
     Keyboard,
     Modal,
     FlatList,
-    TextInput
+    TextInput,
+    DeviceEventEmitter
 } from 'react-native';
 import { ChevronDown } from 'lucide-react-native';
 import Toast from 'react-native-toast-message';
@@ -23,6 +24,7 @@ import { FullScreenLoader } from '../components/FullScreenLoader';
 import api from '../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useRefresh } from '../../contexts/RefreshContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const STATES_CITIES: Record<string, string[]> = {
@@ -38,15 +40,14 @@ const STATES_CITIES: Record<string, string[]> = {
     'Madhya Pradesh': ['Indore', 'Bhopal', 'Jabalpur', 'Gwalior', 'Ujjain', 'Sagar', 'Dewas', 'Satna', 'Ratlam', 'Rewa'],
     'West Bengal': ['Kolkata', 'Howrah', 'Darjeeling', 'Siliguri', 'Asansol', 'Durgapur', 'Bardhaman', 'Malda', 'Kharagpur', 'Haldia'],
     'Bihar': ['Patna', 'Gaya', 'Bhagalpur', 'Muzaffarpur', 'Purnia', 'Darbhanga', 'Bihar Sharif', 'Arrah', 'Begusarai', 'Katihar'],
-    'Punjab': ['Ludhiana', 'Amritsar', 'Jalandhar', 'Patiala', 'Bathinda', 'Mohali', 'Pathankot', 'Hoshiarpur', 'Batala'],
-    'Haryana': ['Gurugram', 'Faridabad', 'Panipat', 'Ambala', 'Yamunanagar', 'Rohtak', 'Hisar', 'Karnal', 'Sonipat', 'Panchkula'],
-    'Kerala': ['Thiruvananthapuram', 'Kochi', 'Kozhikode', 'Thrissur', 'Kollam', 'Alappuzha', 'Palakkad', 'Kannur', 'Kottayam'],
 };
 
 const CITY_PINCODE_PREFIXES: Record<string, string[]> = {
-    Hyderabad: ['5'],
-    Chennai: ['6'],
+    Hyderabad: ['50'],
     Bengaluru: ['56'],
+    Chennai: ['60'],
+    Visakhapatnam: ['53'],
+    Vijayawada: ['52'],
     Mumbai: ['4'],
     Delhi: ['11', '12', '13', '14', '15'],
     Kolkata: ['70'],
@@ -56,6 +57,7 @@ const CITY_PINCODE_PREFIXES: Record<string, string[]> = {
 export const AddHostelScreen = ({ navigation, route }: any) => {
     const { theme, isDark } = useTheme();
     const { user, updateTokenAndUser, loadHostels } = useAuth();
+    const { triggerRefresh } = useRefresh();
     const insets = useSafeAreaInsets();
     const [loading, setLoading] = useState(false);
     const [isKeyboardVisible, setKeyboardVisible] = useState(false);
@@ -117,6 +119,10 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
             errs.hostel_name = 'Hostel name must be at least 3 characters';
         if (!address || address.trim().length === 0)
             errs.address = 'Address is required';
+        if (!state || state.trim().length === 0)
+            errs.state = 'State is required';
+        if (!city || city.trim().length === 0)
+            errs.city = 'City is required';
 
         if (pincode) {
             if (!/^\d{6}$/.test(pincode.trim())) {
@@ -196,9 +202,12 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
             if (response.data.success) {
                 if (isEdit && editHostel) {
                     if (editHostel.hostel_id === user?.hostel_id) {
-                        await updateTokenAndUser(undefined, { hostel_id: editHostel.hostel_id, hostel_name });
+                        await updateTokenAndUser(undefined, { hostel_id: editHostel.hostel_id, hostel_name: hostel_name.trim() });
                     }
                     await loadHostels();
+                    triggerRefresh();
+                    DeviceEventEmitter.emit('REFRESH_DATA');
+                    DeviceEventEmitter.emit('HOSTEL_UPDATED', response.data.data);
                     Toast.show({
                         type: 'success',
                         text1: 'Success',
@@ -209,13 +218,11 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
                     const newTokenFromCreate = response.data.data.token;
 
                     if (newTokenFromCreate) {
-                        // Backend now returns a fresh token after creation — use it directly
                         await updateTokenAndUser(newTokenFromCreate, {
                             hostel_id: newHostelId,
                             hostel_name: response.data.data.hostel_name || hostel_name,
                         });
                     } else {
-                        // Fallback: make a switch-hostel call
                         const switchRes = await api.put('/auth/active-hostel', { hostel_id: newHostelId });
                         if (switchRes.data?.success) {
                             const { token, hostel_name: activeHostelName } = switchRes.data.data;
@@ -224,6 +231,9 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
                     }
 
                     await loadHostels();
+                    triggerRefresh();
+                    DeviceEventEmitter.emit('REFRESH_DATA');
+                    DeviceEventEmitter.emit('HOSTEL_UPDATED', response.data.data);
 
                     Toast.show({
                         type: 'success',

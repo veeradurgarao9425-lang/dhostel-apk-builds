@@ -7,9 +7,10 @@ import {
     TouchableOpacity,
     ActivityIndicator,
     StatusBar,
-    Image
+    Image,
+    DeviceEventEmitter
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -72,26 +73,38 @@ export const HostelDetailsScreen = () => {
         }
     };
 
-useEffect(() => {
-        const fetchSelectedHostel = async () => {
-            if (!hostelId) return;
-            if (selectedHostelDetails?.hostel_code && selectedHostelDetails?.hostel_name) return;
+    const fetchSelectedHostel = async () => {
+        const targetId = hostelId || selectedHostelDetails?.hostel_id || hostel?.hostel_id;
+        if (!targetId) return;
 
-            try {
-                setLoadingHostel(true);
-                const res = await api.get(`/hostels/${hostelId}`);
-                if (res.data?.success && res.data.data) {
-                    setSelectedHostelDetails((prev: any) => ({ ...prev, ...res.data.data }));
-                }
-            } catch (err: any) {
-                console.error('Hostel details fetch error:', err);
-            } finally {
-                setLoadingHostel(false);
+        try {
+            setLoadingHostel(true);
+            const res = await api.get(`/hostels/${targetId}`);
+            if (res.data?.success && res.data.data) {
+                setSelectedHostelDetails(res.data.data);
             }
-        };
+        } catch (err: any) {
+            console.error('Hostel details fetch error:', err);
+        } finally {
+            setLoadingHostel(false);
+        }
+    };
 
-        fetchSelectedHostel();
-    }, [hostelId, selectedHostelDetails]);
+    useFocusEffect(
+        React.useCallback(() => {
+            fetchSelectedHostel();
+        }, [hostelId, selectedHostelDetails?.hostel_id])
+    );
+
+    useEffect(() => {
+        const sub = DeviceEventEmitter.addListener('HOSTEL_UPDATED', (updatedData) => {
+            if (updatedData) {
+                setSelectedHostelDetails((prev: any) => ({ ...prev, ...updatedData }));
+            }
+            fetchSelectedHostel();
+        });
+        return () => sub.remove();
+    }, [hostelId, selectedHostelDetails?.hostel_id]);
 
     if (!selectedHostelDetails || loadingHostel) {
         return (
@@ -192,8 +205,12 @@ useEffect(() => {
                                 <Text style={[styles.premiumValue, { color: theme.textPrimary }]}>₹{selectedHostelDetails.admission_fee || '0'}</Text>
                             </View>
                             <View style={[styles.premiumGridItem, { flex: 1, backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                <Text style={styles.premiumLabel}>Refundable Deposit</Text>
+                                <Text style={[styles.premiumValue, { color: theme.textPrimary }]}>₹{selectedHostelDetails.default_refundable_deposit || '0'}</Text>
+                            </View>
+                            <View style={[styles.premiumGridItem, { flex: 1, backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
                                 <Text style={styles.premiumLabel}>Total Floors</Text>
-                                <Text style={[styles.premiumValue, { color: theme.textPrimary }]}>{selectedHostelDetails.total_floors || 'N/A'}</Text>
+                                <Text style={[styles.premiumValue, { color: theme.textPrimary }]}>{selectedHostelDetails.total_floors || '1'}</Text>
                             </View>
                         </View>
                         {selectedHostelDetails.hostel_code && (
@@ -241,16 +258,16 @@ useEffect(() => {
                     <View style={styles.premiumGrid}>
                         <View style={[styles.premiumGridItem, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
                             <Text style={styles.premiumLabel}>Owner Name</Text>
-                            <Text style={[styles.premiumValue, { color: theme.textPrimary }]}>{selectedHostelDetails.owner_name || 'N/A'}</Text>
+                            <Text style={[styles.premiumValue, { color: theme.textPrimary }]}>{selectedHostelDetails.owner_name || user?.full_name || 'N/A'}</Text>
                         </View>
                         <View style={styles.premiumGridRow}>
                             <View style={[styles.premiumGridItem, { flex: 1, backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
                                 <Text style={styles.premiumLabel}>Phone Number</Text>
-                                <Text style={[styles.premiumValue, { color: theme.textPrimary }]}>{selectedHostelDetails.contact_number || 'N/A'}</Text>
+                                <Text style={[styles.premiumValue, { color: theme.textPrimary }]}>{selectedHostelDetails.contact_number || selectedHostelDetails.phone || user?.phone || 'N/A'}</Text>
                             </View>
                             <View style={[styles.premiumGridItem, { flex: 1, backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
                                 <Text style={styles.premiumLabel}>Email Address</Text>
-                                <Text style={[styles.premiumValue, { color: theme.textPrimary }]} numberOfLines={1}>{selectedHostelDetails.email || 'N/A'}</Text>
+                                <Text style={[styles.premiumValue, { color: theme.textPrimary }]} numberOfLines={1}>{selectedHostelDetails.email || user?.email || 'N/A'}</Text>
                             </View>
                         </View>
                     </View>
