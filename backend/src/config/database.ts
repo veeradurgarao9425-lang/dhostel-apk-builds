@@ -486,6 +486,11 @@ export async function patchDatabaseSchema() {
             await db.raw("ALTER TABLE students ADD COLUMN status INT DEFAULT 1 COMMENT '1=Active, 0=Vacated, 2=Inactive, 3=Pending'");
           }
         }
+        if (!columnNames.includes('is_active')) {
+          console.log('[schema-patch] adding is_active to students...');
+          await db.raw("ALTER TABLE students ADD COLUMN is_active TINYINT DEFAULT 1");
+          await db.raw("UPDATE students SET is_active = IF(status = 1, 1, 0)");
+        }
         if (!columnNames.includes('floor_number')) {
           console.log('[schema-patch] adding floor_number to students...');
           if (columnNames.includes('floor')) {
@@ -699,6 +704,14 @@ export async function patchDatabaseSchema() {
         const [columns] = await db.raw("SHOW COLUMNS FROM rooms");
         const columnNames = (columns as any[]).map(col => col.Field.toLowerCase());
 
+        if (!columnNames.includes('capacity')) {
+          console.log('[schema-patch] adding capacity to rooms...');
+          await db.raw("ALTER TABLE rooms ADD COLUMN capacity INT DEFAULT 1");
+        }
+        if (!columnNames.includes('occupied_beds')) {
+          console.log('[schema-patch] adding occupied_beds to rooms...');
+          await db.raw("ALTER TABLE rooms ADD COLUMN occupied_beds INT DEFAULT 0");
+        }
         if (!columnNames.includes('floor_number')) {
           console.log('[schema-patch] adding floor_number to rooms...');
           if (columnNames.includes('floor')) {
