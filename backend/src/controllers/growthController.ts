@@ -94,7 +94,7 @@ export const getDashboard = async (req: AuthRequest, res: Response) => {
         'gup.status'
       )
       .orderBy('gup.updated_at', 'desc')
-      .limit(3);
+      .limit(10);
 
     if (!recentlyRead.length) {
       recentlyRead = await db('growth_levels as gl')
@@ -110,7 +110,7 @@ export const getDashboard = async (req: AuthRequest, res: Response) => {
           db.raw("COALESCE(gup.status, 'locked') as status")
         )
         .orderBy('gl.level_id', 'asc')
-        .limit(3);
+        .limit(10);
     }
 
     const dayOfYear = Math.floor(

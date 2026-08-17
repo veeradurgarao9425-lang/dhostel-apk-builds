@@ -1717,46 +1717,11 @@ export async function patchDatabaseSchema() {
               correct_answer: 'Independence',
               sort_order: 1,
             });
-
-            // Story 2
-            const [level2Id] = await db('growth_levels').insert({
-              path_id: pathId,
-              section_title: 'Chapter 1: New Beginnings',
-              level_number: 2,
-              title: 'Unlocking Your Full Potential',
-              xp_reward: 50,
-              sort_order: 2,
-            });
-
-            const [story2Id] = await db('growth_stories').insert({
-              level_id: level2Id,
-              title: 'Unlocking Your Full Potential',
-              category: 'Personal Growth',
-              reading_time_minutes: 4,
-              sentences: JSON.stringify([
-                'Consistency is the secret to mastering any skill.',
-                'When you spend 15 minutes a day reading or learning, your knowledge expands exponentially.',
-                'Believe in yourself and take small steps every single day.'
-              ]),
-            });
-
-            await db('growth_vocabulary').insert([
-              { story_id: story2Id, word: 'Consistency', meaning: 'Conformity in the application of something', example_sentence: 'Consistency is key to success.' },
-              { story_id: story2Id, word: 'Exponentially', meaning: 'At a very rapid rate', example_sentence: 'Her confidence grew exponentially.' }
-            ]);
-
-            await db('growth_quiz_questions').insert({
-              story_id: story2Id,
-              question_type: 'mcq',
-              question_text: 'What is the secret to mastering any skill?',
-              options: JSON.stringify(['Consistency', 'Luck', 'Procrastination', 'Giving up']),
-              correct_answer: 'Consistency',
-              sort_order: 1,
-            });
           }
         }
+
+        // Always run bulk stories seeding to guarantee all full-page stories are up to date
         await seedBulkGrowthStories();
-      }
     } catch (e: any) {
       console.error('[schema-patch] Error seeding Growth Journey stories:', e.message);
     }

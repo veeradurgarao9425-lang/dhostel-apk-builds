@@ -34,9 +34,16 @@ function getCategoryConfig(category?: string) {
 }
 
 export function GrowthSavedStoriesScreen({ navigation, route }: any) {
-  const [activeTab, setActiveTab] = useState<'saved' | 'liked'>(route.params?.tab || 'saved');
+  const initialTab = route?.params?.tab === 'liked' ? 'liked' : 'saved';
+  const [activeTab, setActiveTab] = useState<'saved' | 'liked'>(initialTab);
   const [stories, setStories] = useState<StoryItem[]>([]);
   const [loading, setLoading] = useState(true);
+
+  React.useEffect(() => {
+    if (route?.params?.tab && (route.params.tab === 'saved' || route.params.tab === 'liked')) {
+      setActiveTab(route.params.tab);
+    }
+  }, [route?.params?.tab]);
 
   const loadData = useCallback(async (tab: 'saved' | 'liked') => {
     setLoading(true);
@@ -65,8 +72,14 @@ export function GrowthSavedStoriesScreen({ navigation, route }: any) {
     }
   }, []);
 
+  React.useEffect(() => {
+    loadData(activeTab);
+  }, [activeTab, loadData]);
+
   useFocusEffect(
-    useCallback(() => { loadData(activeTab); }, [activeTab, loadData])
+    useCallback(() => {
+      loadData(activeTab);
+    }, [activeTab, loadData])
   );
 
   const toggleItem = async (levelId: number) => {
@@ -84,7 +97,7 @@ export function GrowthSavedStoriesScreen({ navigation, route }: any) {
         <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
           <View style={styles.headerRow}>
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={12}>
-              <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+              <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
             </TouchableOpacity>
             <View style={{ flex: 1, marginLeft: 12 }}>
               <Text style={styles.headerTitle}>My Library</Text>
