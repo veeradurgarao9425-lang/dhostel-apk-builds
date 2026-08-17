@@ -181,7 +181,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                 unsubscribe();
             };
         }
-    }, [user]);
+    }, [user?.user_id || (user as any)?.id]);
 
     return (
         <>

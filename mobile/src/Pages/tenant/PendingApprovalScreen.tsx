@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   View,
-  Image,
   ScrollView,
   StatusBar,
   Dimensions,
@@ -19,12 +18,10 @@ import {
   CheckCircle2,
   User2,
   Home as HomeIcon,
-  MessageSquare,
-  AlertCircle,
   FileText,
-  Wallet,
   ChevronRight,
   TrendingUp,
+  Wallet,
   Clock,
   HelpCircle,
   ShieldCheck,
@@ -36,39 +33,18 @@ import IconGlowBadge from '../../components/tenant/ui/IconGlowBadge';
 
 const { width } = Dimensions.get("window");
 
-const BLUE = "#2245D4";
-const BLUE_DARK = "#1A35A8";
+const BRAND = "#4F46E5";
+const BRAND_DARK = "#3730A3";
 const WHITE = "#FFFFFF";
-const TEXT_DARK = "#1A1A1A";
-const TEXT_MID = "#6B7280";
-const PAGE_BG = "#F0F4FF";
+const TEXT_DARK = "#0F172A";
+const TEXT_MID = "#64748B";
+const PAGE_BG = "#F8FAFC";
 
 export default function PendingApprovalScreen({ navigation }: any) {
   const { user, refreshUser } = useAuth();
   const insets = useSafeAreaInsets();
   const firstName = (user?.name || "Tenant").split(" ")[0];
   const [refreshing, setRefreshing] = useState(false);
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await refreshUser();
-    setRefreshing(false);
-  }, [refreshUser]);
-
-  // Fast auto-polling every 3 seconds so the redirect is nearly instant upon owner approval
-  useEffect(() => {
-    const interval = setInterval(() => {
-      refreshUser();
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [refreshUser]);
-
-  const helpShortcuts = [
-    { id: 'features', name: 'How it works', icon: Sparkles, nav: 'HowItWorksScreen', bg: '#FEF3C7', color: '#D97706', gradient: ['#D97706', '#F59E0B'] as [string, string] },
-    { id: 'documents', name: 'My\nDocuments', icon: FileText, nav: 'Documents', bg: '#EDE9FE', color: '#8B5CF6', gradient: ['#7C3AED', '#A78BFA'] as [string, string] },
-    { id: 'help', name: 'Need help', icon: HelpCircle, nav: 'HelpScreen', bg: '#E0F2FE', color: '#0EA5E9', gradient: ['#0284C7', '#38BDF8'] as [string, string] },
-    { id: 'security', name: 'Security\n& Policy', icon: ShieldCheck, nav: 'PrivacyPolicyScreen', bg: '#DCFCE7', color: '#22C55E', gradient: ['#16A34A', '#4ADE80'] as [string, string] },
-  ];
 
   const [budget, setBudget] = useState(0);
   const [spent, setSpent] = useState(0);
@@ -81,41 +57,56 @@ export default function PendingApprovalScreen({ navigation }: any) {
   useEffect(() => {
     Animated.timing(progressAnim, {
       toValue: percentage,
-      duration: 1200,
+      duration: 1000,
       useNativeDriver: false,
     }).start();
   }, [percentage]);
 
+  const loadExpenses = async () => {
+    try {
+      const budgetRes = await api.get("/tenant-expenses/budget");
+      if (budgetRes.data?.success) setBudget(Number(budgetRes.data.data.amount));
+    } catch { }
+    try {
+      const res = await api.get("/tenant-expenses");
+      if (res.data?.success) {
+        const now = new Date();
+        const monthly = (res.data.data || []).filter((e: any) => {
+          const d = new Date(e.date);
+          return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        });
+        setSpent(monthly.reduce((s: number, e: any) => s + Number(e.amount), 0));
+      }
+    } catch { }
+  };
+
   useFocusEffect(
     useCallback(() => {
-      const load = async () => {
-        try {
-          const budgetRes = await api.get("/tenant-expenses/budget");
-          if (budgetRes.data?.success) setBudget(Number(budgetRes.data.data.amount));
-        } catch { }
-        try {
-          const res = await api.get("/tenant-expenses");
-          if (res.data?.success) {
-            const now = new Date();
-            const monthly = (res.data.data || []).filter((e: any) => {
-              const d = new Date(e.date);
-              return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-            });
-            setSpent(monthly.reduce((s: number, e: any) => s + Number(e.amount), 0));
-          }
-        } catch { }
-      };
-      load();
+      loadExpenses();
     }, [])
   );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refreshUser();
+    await loadExpenses();
+    setRefreshing(false);
+  }, [refreshUser]);
+
+  const helpShortcuts = [
+    { id: 'features', name: 'How it works', icon: Sparkles, nav: 'HowItWorksScreen', bg: '#FEF3C7', color: '#D97706', gradient: ['#D97706', '#F59E0B'] as [string, string] },
+    { id: 'documents', name: 'My\nDocuments', icon: FileText, nav: 'Documents', bg: '#EDE9FE', color: '#8B5CF6', gradient: ['#7C3AED', '#A78BFA'] as [string, string] },
+    { id: 'help', name: 'Need help', icon: HelpCircle, nav: 'HelpScreen', bg: '#E0F2FE', color: '#0EA5E9', gradient: ['#0284C7', '#38BDF8'] as [string, string] },
+    { id: 'security', name: 'Security\n& Policy', icon: ShieldCheck, nav: 'PrivacyPolicyScreen', bg: '#DCFCE7', color: '#22C55E', gradient: ['#16A34A', '#4ADE80'] as [string, string] },
+  ];
 
   const barColor = isOver ? "#EF4444" : percentage > 80 ? "#F59E0B" : "#22C55E";
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={BLUE_DARK} />
+      <StatusBar barStyle="light-content" backgroundColor={BRAND_DARK} />
 
-      {/* ── SafeAreaView: ONLY handles the top bar ── */}
+      {/* ── Top Header ── */}
       <SafeAreaView edges={["top"]} style={styles.safeHeader}>
         <View style={styles.topBar}>
           <View>
@@ -137,17 +128,16 @@ export default function PendingApprovalScreen({ navigation }: any) {
         style={styles.sheet}
         contentContainerStyle={styles.sheetContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[BLUE]} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[BRAND]} />
         }
       >
-
-        {/* ── Budget Card ── */}
+        {/* ── Top Budget / Monthly Spending Card ── */}
         <View>
           {budget === 0 ? (
             <TouchableOpacity style={styles.budgetCard} onPress={() => navigation?.navigate?.("Expenses")} activeOpacity={0.85}>
               <View style={styles.budgetCardInner}>
                 <View style={styles.budgetIconWrap}>
-                  <Wallet size={20} color={BLUE} strokeWidth={2.5} />
+                  <Wallet size={20} color={BRAND} strokeWidth={2.5} />
                 </View>
                 <View style={{ flex: 1, marginLeft: 12, justifyContent: 'center' }}>
                   <Text style={styles.state1Title}>Set Monthly Budget</Text>
@@ -160,7 +150,7 @@ export default function PendingApprovalScreen({ navigation }: any) {
             <TouchableOpacity style={styles.budgetCard} onPress={() => navigation?.navigate?.("Expenses")} activeOpacity={0.85}>
               <View style={[styles.budgetCardInner, { alignItems: 'flex-start' }]}>
                 <View style={styles.budgetIconWrap}>
-                  <TrendingUp size={20} color={BLUE} strokeWidth={2.5} />
+                  <TrendingUp size={20} color={BRAND} strokeWidth={2.5} />
                 </View>
                 <View style={{ flex: 1, marginLeft: 12 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
@@ -190,24 +180,15 @@ export default function PendingApprovalScreen({ navigation }: any) {
           )}
         </View>
 
-        {/* ── Illustration — enclosed in a white card to avoid background mixing ── */}
+        {/* ── Illustration / Status Pill ── */}
         <View style={[styles.card, styles.illustrationCard, styles.sectionGap]}>
-          {/* Status pill — placed at top right corner */}
           <View style={styles.pillContent}>
             <View style={styles.pillDotContent} />
             <Text style={styles.pillTextContent}>Application Under Review</Text>
           </View>
-
-          {/* 
-          <Image
-            source={require("../../../assets/house_hourglass_3d.png")}
-            style={styles.heroImgLarge}
-            resizeMode="contain"
-          /> 
-          */}
         </View>
 
-        {/* Title & subtitle moved here */}
+        {/* Title & subtitle */}
         <View style={styles.sectionGap}>
           <Text style={styles.title}>We're reviewing your application</Text>
           <Text style={styles.subtitle}>
@@ -222,7 +203,7 @@ export default function PendingApprovalScreen({ navigation }: any) {
           <View style={styles.stepsRow}>
             {/* Step 1 — done */}
             <View style={styles.step}>
-              <View style={[styles.stepCircle, { backgroundColor: BLUE }]}>
+              <View style={[styles.stepCircle, { backgroundColor: BRAND }]}>
                 <FileSignature size={18} color={WHITE} strokeWidth={2} />
               </View>
               <Text style={styles.stepLabel}>Application{"\n"}Submitted</Text>
@@ -238,11 +219,11 @@ export default function PendingApprovalScreen({ navigation }: any) {
               <View style={[styles.stepCircle, styles.stepCircleActive]}>
                 <User2 size={18} color={WHITE} strokeWidth={2} />
               </View>
-              <Text style={[styles.stepLabel, { color: BLUE, fontWeight: "700" }]}>
+              <Text style={[styles.stepLabel, { color: BRAND, fontWeight: "700" }]}>
                 Owner{"\n"}Review
               </Text>
               <View style={styles.stepActive}>
-                <Clock size={10} color={BLUE} strokeWidth={2.5} />
+                <Clock size={10} color={BRAND} strokeWidth={2.5} />
               </View>
             </View>
 
@@ -295,44 +276,40 @@ export default function PendingApprovalScreen({ navigation }: any) {
         </View>
       </ScrollView>
 
-      {/* ── Fixed Bottom Tab Bar (Only Home and Expenses) ── */}
-      <View
-        style={[
-          styles.bottomTabBar,
-          { paddingBottom: Math.max(insets.bottom, 8) }
-        ]}
-      >
-        <TouchableOpacity
-          style={styles.tabItem}
-          activeOpacity={0.8}
-          // Do nothing on tap because we are already on the PendingApproval "Home"
-          onPress={() => { }}
-        >
-          <View style={[styles.iconWrap, styles.iconWrapActive]}>
-            <HomeIcon size={24} color={BLUE} strokeWidth={2.5} />
-          </View>
-          <Text style={[styles.tabLabel, styles.tabLabelActive]}>Home</Text>
-        </TouchableOpacity>
+      {/* ── Fixed Bottom Tab Bar (Home & Growth Journey) ── */}
+      <SafeAreaView edges={['bottom']} style={styles.bottomTabBarWrap}>
+        <View style={styles.bottomTabBar}>
+          <TouchableOpacity
+            style={styles.tabItem}
+            activeOpacity={0.8}
+            onPress={() => { }}
+          >
+            <View style={[styles.iconWrap, styles.iconWrapActive]}>
+              <HomeIcon size={22} color={BRAND} strokeWidth={2.5} />
+            </View>
+            <Text style={[styles.tabLabel, styles.tabLabelActive]}>Home</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.tabItem}
-          activeOpacity={0.7}
-          onPress={() => navigation?.navigate?.("Expenses")}
-        >
-          <View style={styles.iconWrap}>
-            <TrendingUp size={24} color={TEXT_MID} strokeWidth={2} />
-          </View>
-          <Text style={styles.tabLabel}>Expenses</Text>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity
+            style={styles.tabItem}
+            activeOpacity={0.7}
+            onPress={() => navigation?.navigate?.("GrowthHome")}
+          >
+            <View style={styles.iconWrap}>
+              <Sparkles size={22} color={TEXT_MID} strokeWidth={2} />
+            </View>
+            <Text style={styles.tabLabel}>Growth</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     </View>
   );
 }
 
 const CARD_SHADOW = {
   elevation: 3,
-  shadowColor: "#1A35A8",
-  shadowOpacity: 0.08,
+  shadowColor: "#000",
+  shadowOpacity: 0.05,
   shadowRadius: 10,
   shadowOffset: { width: 0, height: 4 },
 };
@@ -340,8 +317,7 @@ const CARD_SHADOW = {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: PAGE_BG },
 
-  // ── SafeAreaView — top bar only ───────────────────────
-  safeHeader: { backgroundColor: BLUE },
+  safeHeader: { backgroundColor: BRAND },
 
   topBar: {
     flexDirection: "row",
@@ -352,7 +328,7 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   greeting: { fontSize: 18, fontWeight: "800", color: WHITE },
-  subLabel: { fontSize: 12, color: "rgba(255,255,255,0.7)", marginTop: 2 },
+  subLabel: { fontSize: 12, color: "rgba(255,255,255,0.75)", marginTop: 2 },
   avatar: {
     width: 38, height: 38, borderRadius: 19,
     backgroundColor: "rgba(255,255,255,0.18)",
@@ -360,22 +336,18 @@ const styles = StyleSheet.create({
   },
   avatarText: { color: WHITE, fontWeight: "700", fontSize: 15 },
 
-  // Illustration inside white card
   illustrationCard: {
     alignItems: "center",
-    paddingVertical: 24,
+    paddingVertical: 20,
   },
-  heroImgLarge: { width: 220, height: 195 },
 
-  // ── Scroll area ──────────────────────────────────────────────
   sheet: { flex: 1 },
   sheetContent: {
     paddingTop: 16,
     paddingHorizontal: 16,
-    paddingBottom: 120, // increased to ensure content is not hidden behind the absolute tab bar
+    paddingBottom: 24,
   },
 
-  // Pill content style
   pillContent: {
     position: "absolute",
     top: 12,
@@ -407,17 +379,18 @@ const styles = StyleSheet.create({
 
   sectionGap: { marginTop: 16 },
 
-  // ── Shared card ──────────────────────────────────────────────
   card: {
     backgroundColor: WHITE,
     borderRadius: 16,
     padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     ...CARD_SHADOW,
   },
   cardTitle: {
     fontSize: 13,
     fontWeight: "700",
-    color: BLUE_DARK,
+    color: BRAND,
     textAlign: "center",
     marginBottom: 16,
   },
@@ -428,15 +401,20 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0', // subtle 1px border as requested
+    borderColor: '#E2E8F0',
+    ...CARD_SHADOW,
   },
   budgetCardInner: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   budgetIconWrap: {
-    width: 44, height: 44, borderRadius: 12,
-    backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center',
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   state1Title: { fontSize: 15, fontWeight: '700', color: TEXT_DARK },
   state1Sub: { fontSize: 12, color: TEXT_MID, marginTop: 2 },
@@ -444,8 +422,10 @@ const styles = StyleSheet.create({
   state2LabelLeft: { fontSize: 13, fontWeight: '800', color: TEXT_DARK },
   state2LabelRight: { fontSize: 12, fontWeight: '600', color: TEXT_MID },
   barTrack: {
-    height: 8, backgroundColor: '#F1F5F9', // light neutral gray
-    borderRadius: 4, overflow: 'hidden',
+    height: 8,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 4,
+    overflow: 'hidden',
     marginBottom: 6,
   },
   barFill: { height: '100%', borderRadius: 4 },
@@ -459,9 +439,8 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center", marginBottom: 6,
   },
   stepCircleActive: {
-    backgroundColor: BLUE,
-    borderWidth: 2, borderColor: "#BFDBFE",
-    // optical compensation: border doesn't change outer size because we account for it
+    backgroundColor: BRAND,
+    borderWidth: 2, borderColor: "#C7D2FE",
   },
   stepLabel: {
     fontSize: 10, color: "#64748B", textAlign: "center",
@@ -474,17 +453,16 @@ const styles = StyleSheet.create({
   },
   stepActive: {
     width: 18, height: 18, borderRadius: 9,
-    backgroundColor: "#EEF2FF", borderWidth: 2, borderColor: "#93C5FD",
+    backgroundColor: "#EEF2FF", borderWidth: 2, borderColor: "#A5B4FC",
     alignItems: "center", justifyContent: "center", marginTop: 6,
   },
   stepPending: {
     width: 18, height: 18, borderRadius: 9,
     borderWidth: 2, borderColor: "#CBD5E1", marginTop: 6,
   },
-  // connector centers on circle: marginTop = circleHeight/2 = 44/2 = 22
   connector: {
     flex: 1, height: 0,
-    borderTopWidth: 1.5, borderColor: BLUE,
+    borderTopWidth: 1.5, borderColor: BRAND,
     borderStyle: "dashed",
     marginTop: 22, marginHorizontal: 2,
   },
@@ -518,25 +496,22 @@ const styles = StyleSheet.create({
   shortcutText: { fontSize: 11, color: TEXT_DARK, fontWeight: "600", textAlign: "center", lineHeight: 14 },
 
   // ── Fixed Bottom Tab Bar ───────────────────────────────────────────
-  bottomTabBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'flex-start',
+  bottomTabBarWrap: {
     backgroundColor: WHITE,
     borderTopWidth: 1,
     borderTopColor: '#E2E8F0',
-    paddingTop: 8,
-    minHeight: 64,
-    // Add shadow so it looks elevated above the scroll content
     elevation: 8,
     shadowColor: "#000",
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: -4 },
+  },
+  bottomTabBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingVertical: 6,
+    minHeight: 56,
   },
   tabItem: {
     flex: 1,
@@ -553,7 +528,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconWrapActive: {
-    backgroundColor: '#EEF2FF', // primarySoft
+    backgroundColor: '#EEF2FF',
   },
   tabLabel: {
     fontSize: 11,
@@ -563,6 +538,6 @@ const styles = StyleSheet.create({
   },
   tabLabelActive: {
     fontWeight: '800',
-    color: BLUE, // primary
+    color: BRAND,
   },
 });

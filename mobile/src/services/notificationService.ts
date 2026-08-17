@@ -69,13 +69,19 @@ export const notificationService = {
     return token;
   },
 
+  _lastRegisteredToken: null as string | null,
+
   async sendTokenToBackend(token: string) {
+    if (this._lastRegisteredToken === token) {
+      return;
+    }
     try {
       const response = await api.post('/notifications/register-token', {
         push_token: token,
         device_name: Device.modelName || 'Unknown Device',
         platform: Platform.OS,
       });
+      this._lastRegisteredToken = token;
       console.log('Push token registered on backend successfully:', response.data);
     } catch (error) {
       console.error('Error registering push token on backend:', error);
