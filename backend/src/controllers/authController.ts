@@ -37,7 +37,7 @@ export const authController = {
           'users.is_active',
           'user_roles.role_name'
         )
-        .join('user_roles', 'users.role_id', 'user_roles.role_id')
+        .leftJoin('user_roles', 'users.role_id', 'user_roles.role_id')
         .where('users.email', identifier)
         .where('users.is_active', true)
         .first();
@@ -173,7 +173,9 @@ export const authController = {
         email: resolvedEmail,
         phone: phone || null,
         full_name,
+        password: password_hash,
         password_hash,
+        role: 'OWNER',
         role_id: 2, // Hostel Owner role
         is_active: true,
       });
@@ -291,7 +293,9 @@ export const authController = {
           email: resolvedEmail,
           phone: phone || null,
           full_name,
+          password: password_hash,
           password_hash,
+          role: 'OWNER',
           role_id: 2,
           is_active: true,
         });
@@ -307,6 +311,7 @@ export const authController = {
             hostel_code: crypto.randomBytes(3).toString('hex'),
             owner_id: user_id,
             hostel_type_id: 1,
+            subscription_status: 1,
             subscription_status_id: 1,
             address: String(address).trim(),
             total_floors: parseInt(total_floors, 10) || 1,
@@ -377,7 +382,7 @@ export const authController = {
       });
     } catch (error: any) {
       console.error('Register error:', error);
-      return res.status(500).json({ success: false, error: 'Internal server error' });
+      return res.status(500).json({ success: false, error: error?.message || 'Internal server error' });
     }
   },
 
@@ -396,7 +401,7 @@ export const authController = {
           'users.hostel_id',
           'user_roles.role_name as role'
         )
-        .join('user_roles', 'users.role_id', 'user_roles.role_id')
+        .leftJoin('user_roles', 'users.role_id', 'user_roles.role_id')
         .where('users.user_id', userId)
         .first();
 

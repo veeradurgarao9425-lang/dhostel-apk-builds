@@ -542,8 +542,8 @@ export const updateHostel = async (req: AuthRequest, res: Response) => {
     }
 
     // Add total_floors if provided
-    if (total_floors !== undefined) {
-      updateData.total_floors = total_floors;
+    if (total_floors !== undefined && total_floors !== null && total_floors !== '') {
+      updateData.total_floors = parseInt(String(total_floors), 10) || 1;
     }
 
     // Add admission_fee if provided

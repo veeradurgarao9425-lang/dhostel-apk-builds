@@ -201,19 +201,29 @@ const sendViaSendGrid = async (options: EmailOptions): Promise<void> => {
   console.log(`✅ Email sent via SendGrid successfully`);
 };
 
-// ─── Send via SMTP (nodemailer) — local-dev fallback when no API key is set ──────
+// ─── Send via SMTP (nodemailer) — direct Google SMTP for 100% Primary Inbox ──────
 const sendViaSmtp = async (options: EmailOptions): Promise<void> => {
-  const from = process.env.EMAIL_FROM || `"Hostix Hostel" <${process.env.EMAIL_USER}>`;
+  const from = process.env.EMAIL_FROM || `"Hostix PG App" <${process.env.EMAIL_USER}>`;
 
   console.log(`📧 Sending email via SMTP to: ${options.to}  |  Subject: ${options.subject}`);
   console.log(`   EMAIL_USER=${process.env.EMAIL_USER || '(not set)'}`);
+
+  // Create clean plain text version (prevents HTML-only spam penalties)
+  const plainText = options.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 
   const transporter = createTransporter();
   const info = await transporter.sendMail({
     from,
     to: options.to,
     subject: options.subject,
+    text: plainText,
     html: options.html,
+    headers: {
+      'X-Auto-Response-Suppress': 'All',
+      'Auto-Submitted': 'auto-generated',
+      'X-Priority': '1',
+      'Importance': 'High',
+    },
     attachments: options.attachments,
   });
   console.log(`✅ Email sent successfully: ${info.messageId}`);
@@ -227,7 +237,12 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
   let errorMessage = null;
 
   try {
-    if (process.env.EMAILJS_SERVICE_ID) {
+    const isGmailSender = (process.env.EMAIL_USER || '').toLowerCase().includes('@gmail.com') || (process.env.EMAIL_FROM || '').toLowerCase().includes('@gmail.com');
+
+    // Prioritize direct Gmail SMTP when sender is @gmail.com to pass SPF/DKIM and reach Primary Inbox
+    if (isGmailSender && process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
+      await sendViaSmtp(options);
+    } else if (process.env.EMAILJS_SERVICE_ID) {
       await sendViaEmailJS(options);
     } else if (process.env.SENDGRID_API_KEY) {
       await sendViaSendGrid(options);

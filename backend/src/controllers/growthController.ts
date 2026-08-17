@@ -185,6 +185,7 @@ export const getPaths = async (req: AuthRequest, res: Response) => {
       .count<{ path_id: number; count: string }[]>('* as count');
 
     const totals = await db('growth_levels').groupBy('path_id').select('path_id').count<{ path_id: number; count: string }[]>('* as count');
+    const totalByPath = new Map(totals.map((t: any) => [t.path_id, Number(t.count)]));
 
     const completedByPath = new Map(progress.map((p: any) => [p.path_id, Number(p.count)]));
     // If english_stories has fewer than 15 levels, automatically trigger bulk seeding

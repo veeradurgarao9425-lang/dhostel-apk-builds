@@ -133,8 +133,6 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
             errs.total_floors = 'Total floors is required';
         } else if (isNaN(Number(total_floors)) || Number(total_floors) < 1) {
             errs.total_floors = 'Total floors must be a positive number';
-        } else if (hostelFloorLimit !== null && Number(total_floors) > hostelFloorLimit) {
-            errs.total_floors = `Maximum allowed floors for this hostel is ${hostelFloorLimit}`;
         }
 
         if (!admission_fee || admission_fee.trim().length === 0) {
@@ -200,6 +198,7 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
                     if (editHostel.hostel_id === user?.hostel_id) {
                         await updateTokenAndUser(undefined, { hostel_id: editHostel.hostel_id, hostel_name });
                     }
+                    await loadHostels();
                     Toast.show({
                         type: 'success',
                         text1: 'Success',
