@@ -167,26 +167,26 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
             let response;
             if (isEdit && editHostel) {
                 response = await api.put(`/hostels/${editHostel.hostel_id}`, {
-                    hostel_name,
-                    address,
-                    city,
-                    state,
-                    pincode,
+                    hostel_name: hostel_name.trim(),
+                    address: address.trim(),
+                    city: city.trim() || editHostel.city || 'City',
+                    state: state ? state.trim() : (editHostel.state || ''),
+                    pincode: pincode ? pincode.trim() : '',
                     hostel_type: hostelType,
-                    total_floors: total_floors ? parseInt(total_floors) : 1,
+                    total_floors: total_floors ? parseInt(total_floors, 10) : 1,
                     admission_fee: admission_fee ? parseFloat(admission_fee) : 0,
                     default_refundable_deposit: default_refundable_deposit ? parseFloat(default_refundable_deposit) : 0,
                     owner_id: editHostel.owner_id || user?.user_id,
                 });
             } else {
                 response = await api.post('/hostels', {
-                    hostel_name,
-                    address,
-                    city,
-                    state,
-                    pincode,
+                    hostel_name: hostel_name.trim(),
+                    address: address.trim(),
+                    city: city.trim() || 'City',
+                    state: state ? state.trim() : '',
+                    pincode: pincode ? pincode.trim() : '',
                     hostel_type: hostelType,
-                    total_floors: total_floors ? parseInt(total_floors) : 1,
+                    total_floors: total_floors ? parseInt(total_floors, 10) : 1,
                     admission_fee: admission_fee ? parseFloat(admission_fee) : 0,
                     default_refundable_deposit: default_refundable_deposit ? parseFloat(default_refundable_deposit) : 0,
                     owner_id: user?.user_id,

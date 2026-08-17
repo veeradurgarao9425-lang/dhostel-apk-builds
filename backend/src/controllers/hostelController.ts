@@ -436,14 +436,14 @@ export const updateHostel = async (req: AuthRequest, res: Response) => {
     } = req.body;
 
     // Validate required fields
-    const finalHostelName = hostel_name || existingHostel.hostel_name;
-    const finalAddress = address !== undefined ? address : existingHostel.address;
-    const finalCity = city !== undefined ? city : existingHostel.city;
+    const finalHostelName = String(hostel_name || existingHostel.hostel_name || '').trim();
+    const finalAddress = String(address !== undefined && address !== null && address !== '' ? address : (existingHostel.address || 'Address')).trim();
+    const finalCity = String(city !== undefined && city !== null && city !== '' ? city : (existingHostel.city || 'City')).trim();
 
-    if (!finalHostelName || !finalAddress || !finalCity) {
+    if (!finalHostelName) {
       return res.status(400).json({
         success: false,
-        error: 'Required fields: hostel_name, address, city'
+        error: 'Hostel name is required'
       });
     }
 
