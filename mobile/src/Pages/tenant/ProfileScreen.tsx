@@ -1,37 +1,49 @@
 import React, { useState } from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View, ScrollView, StatusBar, Image, Modal, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  User2, Lock, Bell, HelpCircle, MessageSquare, Info,
-  LogOut, ChevronRight, CreditCard, Building2, BedDouble,
-  Settings, ArrowLeft, ShieldCheck, Mail, Phone, Star,
-} from 'lucide-react-native';
-
+  Alert,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  ScrollView,
+  StatusBar,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../../contexts/AuthContext';
 import { ConfirmationDialog } from '../../components/tenant/UIComponents';
 import VacateModal from '../../components/tenant/VacateModal';
 import api from '../../services/api';
 
-import { LinearGradient } from 'expo-linear-gradient';
-
-const INDIGO     = '#4F46E5';
-const INDIGO_SOFT= '#EEF2FF';
-const PURPLE     = '#7C3AED';
-const WHITE      = '#FFFFFF';
-const TEXT_DARK  = '#1F2937';
-const TEXT_MID   = '#6B7280';
-const TEXT_LIGHT = '#9CA3AF';
-const BG         = '#F9FAFB';
-const BORDER     = '#E5E7EB';
-const SUCCESS    = '#10B981';
-const SUCCESS_BG = '#D1FAE5';
+const BRAND = '#7C3AED';
+const WHITE = '#FFFFFF';
+const BG = '#F8FAFC';
+const CARD_BG = '#FFFFFF';
+const BORDER = '#E2E8F0';
+const TEXT_DARK = '#0F172A';
+const TEXT_MID = '#64748B';
+const TEXT_MUTED = '#94A3B8';
 
 export default function ProfileScreen({ navigation }: any) {
   const { user, signOut, updateTokenAndUser } = useAuth();
 
-  const name = user?.name || 'Guest User';
-  const initials = name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase();
-  const roomNumber = user?.room_number ? `Room ${user.room_number}` : 'No Room Assigned';
+  const name = user?.name || user?.full_name || 'Tenant';
+  const firstName = name.split(' ')[0];
+  const initials = name
+    .split(' ')
+    .map((w: string) => w[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+  const roomNumber = user?.room_number ? `Room ${user.room_number}` : 'No Room';
+  const phone = user?.phone || user?.mobile || 'No phone added';
+  const email = user?.email || 'No email added';
+  const hostelName = (user as any)?.hostel_name || 'My Hostel';
 
   const [showLogout, setShowLogout] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
@@ -40,11 +52,11 @@ export default function ProfileScreen({ navigation }: any) {
   const [editSaving, setEditSaving] = useState(false);
   const [showVacateModal, setShowVacateModal] = useState(false);
 
-  const confirmLogout = () => {
-    setShowLogout(true);
-  };
-
   const saveProfile = async () => {
+    if (!editName.trim()) {
+      Alert.alert('Validation Error', 'Please enter your name');
+      return;
+    }
     setEditSaving(true);
     try {
       const res = await api.put('/auth/tenant/profile', { name: editName, phone: editPhone });
@@ -54,181 +66,243 @@ export default function ProfileScreen({ navigation }: any) {
       }
     } catch (e) {
       console.error('Profile update failed:', e);
+      Alert.alert('Error', 'Failed to update profile. Please try again.');
     } finally {
       setEditSaving(false);
     }
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: BG }}>
-      <StatusBar barStyle="light-content" backgroundColor={INDIGO} />
-      
-      {/* ── HEADER ── */}
-      <LinearGradient colors={['#4F46E5', '#7C3AED']} style={s.headerSection}>
-        <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
-          <View style={s.headerTop}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtnLight} activeOpacity={0.7}>
-              <ArrowLeft size={22} color={WHITE} strokeWidth={2.5} />
-            </TouchableOpacity>
-            <View style={{ flex: 1, marginLeft: 14 }}>
-              <Text style={s.headerGreeting}>Profile & Account</Text>
-            </View>
-          </View>
-        </SafeAreaView>
-      </LinearGradient>
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor={BG} />
 
-      <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
-        
-        {/* ── PROFILE CARD ── */}
-        <View style={s.profileCard}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20, width: '100%' }}>
-            <View style={[s.avatarWrap, { marginBottom: 0, marginRight: 20 }]}>
-              <View style={s.avatarCircle}>
-                <Text style={s.avatarInitials}>{initials}</Text>
-              </View>
-              <View style={s.verifiedBadge}>
-                <ShieldCheck size={14} color={WHITE} strokeWidth={3} />
-              </View>
-            </View>
-            
-            <View style={{ flex: 1, alignItems: 'flex-start' }}>
-              <Text style={s.nameTxt} numberOfLines={1}>{name}</Text>
-              <Text style={[s.roomTxt, { marginBottom: 0 }]}>{roomNumber}</Text>
-              <TouchableOpacity
-                style={{ marginTop: 10, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 10, borderWidth: 1, borderColor: INDIGO, backgroundColor: INDIGO_SOFT }}
-                onPress={() => { setShowEdit(true); setEditName(name); setEditPhone(user?.phone || ''); }}
-                activeOpacity={0.7}
-              >
-                <Text style={{ fontSize: 13, fontWeight: '700', color: INDIGO }}>Edit Profile</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-          
-          <View style={s.contactRow}>
-            <View style={s.contactPill}>
-              <Phone size={14} color={TEXT_MID} />
-              <Text style={s.contactTxt}>{user?.phone || 'No Phone'}</Text>
-            </View>
-            <View style={s.contactPill}>
-              <Mail size={14} color={TEXT_MID} />
-              <Text style={s.contactTxt}>{user?.email || 'No Email'}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* ── MENU SECTIONS ── */}
-        <Text style={s.sectionLbl}>ACCOUNT & STAY</Text>
-        <View style={s.menuCard}>
-          <TouchableOpacity style={s.menuRow} activeOpacity={0.7} onPress={() => navigation.navigate('RoomInfo')}>
-            <View style={[s.menuIconWrap, { backgroundColor: INDIGO_SOFT }]}>
-              <BedDouble size={20} color={INDIGO} />
-            </View>
-            <Text style={s.menuTxt}>Room & Stay Details</Text>
-            <ChevronRight size={18} color={TEXT_LIGHT} />
-          </TouchableOpacity>
-          <View style={s.divider} />
-          
-          <TouchableOpacity style={s.menuRow} activeOpacity={0.7} onPress={() => navigation.navigate('Payments')}>
-            <View style={[s.menuIconWrap, { backgroundColor: '#FEF3C7' }]}>
-              <CreditCard size={20} color="#D97706" />
-            </View>
-            <Text style={s.menuTxt}>Payment Methods</Text>
-            <ChevronRight size={18} color={TEXT_LIGHT} />
-          </TouchableOpacity>
-          <View style={s.divider} />
-          
-          <TouchableOpacity style={s.menuRow} activeOpacity={0.7} onPress={() => navigation.navigate('Documents')}>
-            <View style={[s.menuIconWrap, { backgroundColor: '#F3E8FF' }]}>
-              <Lock size={20} color="#9333EA" />
-            </View>
-            <Text style={s.menuTxt}>KYC & Documents</Text>
-            <ChevronRight size={18} color={TEXT_LIGHT} />
-          </TouchableOpacity>
-          <View style={s.divider} />
-
-          <TouchableOpacity style={s.menuRow} activeOpacity={0.7} onPress={() => navigation.navigate('Complaints')}>
-            <View style={[s.menuIconWrap, { backgroundColor: '#FEF3C7' }]}>
-              <MessageSquare size={20} color="#D97706" />
-            </View>
-            <Text style={s.menuTxt}>Complaints</Text>
-            <ChevronRight size={18} color={TEXT_LIGHT} />
-          </TouchableOpacity>
-        </View>
-
-        <Text style={s.sectionLbl}>PREFERENCES</Text>
-        <View style={s.menuCard}>
-          <TouchableOpacity style={s.menuRow} activeOpacity={0.7} onPress={() => navigation.navigate('Settings')}>
-            <View style={[s.menuIconWrap, { backgroundColor: '#F1F5F9' }]}>
-              <Settings size={20} color={TEXT_MID} />
-            </View>
-            <Text style={s.menuTxt}>App Settings</Text>
-            <ChevronRight size={18} color={TEXT_LIGHT} />
-          </TouchableOpacity>
-          <View style={s.divider} />
-
-          <TouchableOpacity style={s.menuRow} activeOpacity={0.7} onPress={() => navigation.navigate('Notifications')}>
-            <View style={[s.menuIconWrap, { backgroundColor: '#F1F5F9' }]}>
-              <Bell size={20} color={TEXT_MID} />
-            </View>
-            <Text style={s.menuTxt}>Notifications</Text>
-            <ChevronRight size={18} color={TEXT_LIGHT} />
-          </TouchableOpacity>
-          <View style={s.divider} />
-
-          <TouchableOpacity style={s.menuRow} activeOpacity={0.7} onPress={() => navigation.navigate('Messages')}>
-            <View style={[s.menuIconWrap, { backgroundColor: '#EEF2FF' }]}>
-              <MessageSquare size={20} color={INDIGO} />
-            </View>
-            <Text style={s.menuTxt}>Messages</Text>
-            <ChevronRight size={18} color={TEXT_LIGHT} />
-          </TouchableOpacity>
-        </View>
-
-        <Text style={s.sectionLbl}>SUPPORT</Text>
-        <View style={s.menuCard}>
-          <TouchableOpacity style={s.menuRow} activeOpacity={0.7} onPress={() => navigation.navigate('Rating')}>
-            <View style={[s.menuIconWrap, { backgroundColor: '#FFF7ED' }]}>
-              <Star size={20} color="#F59E0B" />
-            </View>
-            <Text style={s.menuTxt}>Rate Your Stay</Text>
-            <ChevronRight size={18} color={TEXT_LIGHT} />
-          </TouchableOpacity>
-          <View style={s.divider} />
-          <TouchableOpacity style={s.menuRow} activeOpacity={0.7} onPress={() => navigation.navigate('HelpScreen')}>
-            <View style={[s.menuIconWrap, { backgroundColor: '#E0F2FE' }]}>
-              <HelpCircle size={20} color="#0284C7" />
-            </View>
-            <Text style={s.menuTxt}>Help & Support</Text>
-            <ChevronRight size={18} color={TEXT_LIGHT} />
-          </TouchableOpacity>
-        </View>
-
-        <Text style={s.sectionLbl}>STAY</Text>
-        <View style={s.menuCard}>
-          <TouchableOpacity style={s.menuRow} activeOpacity={0.7} onPress={() => setShowVacateModal(true)}>
-            <View style={[s.menuIconWrap, { backgroundColor: '#FEE2E2' }]}>
-              <LogOut size={20} color="#EF4444" />
-            </View>
-            <Text style={[s.menuTxt, { color: '#EF4444' }]}>Vacate Room</Text>
-            <ChevronRight size={18} color={TEXT_LIGHT} />
-          </TouchableOpacity>
-        </View>
-
-        <VacateModal
-          visible={showVacateModal}
-          onClose={() => setShowVacateModal(false)}
-          onSuccess={() => setShowVacateModal(false)}
-        />
-
-        {/* LOGOUT BUTTON */}
-        <TouchableOpacity style={s.logoutBtn} activeOpacity={0.8} onPress={confirmLogout}>
-          <LogOut size={20} color="#EF4444" strokeWidth={2.5} />
-          <Text style={s.logoutTxt}>Log Out</Text>
+      {/* ── Top Header with '<' Back Button ── */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="chevron-back" size={24} color={TEXT_DARK} />
         </TouchableOpacity>
 
-        <Text style={s.versionTxt}>Stayvix Mobile v2.0.0</Text>
+        <View style={styles.headerTitleWrap}>
+          <Text style={styles.headerTitle}>Profile & Account</Text>
+          <Text style={styles.headerSubtitle}>{hostelName}</Text>
+        </View>
+
+        <TouchableOpacity
+          style={styles.editIconBtn}
+          onPress={() => {
+            setShowEdit(true);
+            setEditName(name);
+            setEditPhone(user?.phone || '');
+          }}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="create-outline" size={20} color={BRAND} />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {/* ── Compact Profile Summary Card ── */}
+        <View style={styles.compactCard}>
+          <View style={styles.avatarWrap}>
+            <Text style={styles.avatarText}>{initials}</Text>
+            <View style={styles.onlineDot} />
+          </View>
+
+          <View style={styles.profileInfo}>
+            <View style={styles.nameRow}>
+              <Text style={styles.profileName} numberOfLines={1}>
+                {name}
+              </Text>
+              <View style={styles.roomBadge}>
+                <Ionicons name="bed-outline" size={12} color={BRAND} />
+                <Text style={styles.roomBadgeText}>{roomNumber}</Text>
+              </View>
+            </View>
+
+            <View style={styles.metaRow}>
+              <View style={styles.metaItem}>
+                <Ionicons name="call-outline" size={13} color={TEXT_MUTED} />
+                <Text style={styles.metaText} numberOfLines={1}>
+                  {phone}
+                </Text>
+              </View>
+              <View style={styles.metaItem}>
+                <Ionicons name="mail-outline" size={13} color={TEXT_MUTED} />
+                <Text style={styles.metaText} numberOfLines={1}>
+                  {email}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* ── SECTION 1: Stay & Accommodation ── */}
+        <Text style={styles.sectionTitle}>STAY DETAILS</Text>
+        <View style={styles.menuBox}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('RoomInfo')}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: '#F3E8FF' }]}>
+              <Ionicons name="business" size={18} color="#9333EA" />
+            </View>
+            <View style={styles.menuContent}>
+              <Text style={styles.menuTitle}>Room & Stay Info</Text>
+              <Text style={styles.menuSub}>Bed allocation, fees & room rules</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={TEXT_MUTED} />
+          </TouchableOpacity>
+
+          <View style={styles.menuDivider} />
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('Documents')}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: '#E0F2FE' }]}>
+              <Ionicons name="document-text" size={18} color="#0284C7" />
+            </View>
+            <View style={styles.menuContent}>
+              <Text style={styles.menuTitle}>KYC & Documents</Text>
+              <Text style={styles.menuSub}>ID proofs & verification status</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={TEXT_MUTED} />
+          </TouchableOpacity>
+
+          <View style={styles.menuDivider} />
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            activeOpacity={0.7}
+            onPress={() => setShowVacateModal(true)}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: '#FEE2E2' }]}>
+              <Ionicons name="exit-outline" size={18} color="#EF4444" />
+            </View>
+            <View style={styles.menuContent}>
+              <Text style={[styles.menuTitle, { color: '#EF4444' }]}>Vacate Room</Text>
+              <Text style={styles.menuSub}>Submit room vacation request</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={TEXT_MUTED} />
+          </TouchableOpacity>
+        </View>
+
+        {/* ── SECTION 2: Finance & Payments ── */}
+        <Text style={styles.sectionTitle}>FINANCE & SUPPORT</Text>
+        <View style={styles.menuBox}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('Dues')}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: '#DCFCE7' }]}>
+              <Ionicons name="wallet" size={18} color="#16A34A" />
+            </View>
+            <View style={styles.menuContent}>
+              <Text style={styles.menuTitle}>Hostel Fees & Dues</Text>
+              <Text style={styles.menuSub}>View receipts and pay rent</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={TEXT_MUTED} />
+          </TouchableOpacity>
+
+          <View style={styles.menuDivider} />
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('Complaints')}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: '#FEF3C7' }]}>
+              <Ionicons name="chatbubbles" size={18} color="#D97706" />
+            </View>
+            <View style={styles.menuContent}>
+              <Text style={styles.menuTitle}>Complaints & Requests</Text>
+              <Text style={styles.menuSub}>Track maintenance issues</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={TEXT_MUTED} />
+          </TouchableOpacity>
+
+          <View style={styles.menuDivider} />
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('HelpScreen')}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: '#EDE9FE' }]}>
+              <Ionicons name="help-buoy" size={18} color="#7C3AED" />
+            </View>
+            <View style={styles.menuContent}>
+              <Text style={styles.menuTitle}>Help & Support</Text>
+              <Text style={styles.menuSub}>FAQs and contact warden</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={TEXT_MUTED} />
+          </TouchableOpacity>
+        </View>
+
+        {/* ── SECTION 3: App & Notifications ── */}
+        <Text style={styles.sectionTitle}>APP PREFERENCES</Text>
+        <View style={styles.menuBox}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('Notifications')}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: '#F1F5F9' }]}>
+              <Ionicons name="notifications" size={18} color={TEXT_MID} />
+            </View>
+            <View style={styles.menuContent}>
+              <Text style={styles.menuTitle}>Notifications</Text>
+              <Text style={styles.menuSub}>Alerts, meal updates & notices</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={TEXT_MUTED} />
+          </TouchableOpacity>
+
+          <View style={styles.menuDivider} />
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('Settings')}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: '#F1F5F9' }]}>
+              <Ionicons name="settings" size={18} color={TEXT_MID} />
+            </View>
+            <View style={styles.menuContent}>
+              <Text style={styles.menuTitle}>Settings</Text>
+              <Text style={styles.menuSub}>Password, language & display</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={TEXT_MUTED} />
+          </TouchableOpacity>
+        </View>
+
+        {/* ── Logout Button ── */}
+        <TouchableOpacity
+          style={styles.logoutBtn}
+          activeOpacity={0.8}
+          onPress={() => setShowLogout(true)}
+        >
+          <Ionicons name="log-out-outline" size={18} color="#EF4444" />
+          <Text style={styles.logoutBtnText}>Log Out</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.versionText}>Stayvix App v2.4.0</Text>
       </ScrollView>
 
+      {/* ── Vacate Modal ── */}
+      <VacateModal
+        visible={showVacateModal}
+        onClose={() => setShowVacateModal(false)}
+        onSuccess={() => setShowVacateModal(false)}
+      />
+
+      {/* ── Confirmation Logout Dialog ── */}
       <ConfirmationDialog
         visible={showLogout}
         onClose={() => setShowLogout(false)}
@@ -238,85 +312,348 @@ export default function ProfileScreen({ navigation }: any) {
         primaryAction={{ label: 'Log Out', onPress: signOut }}
       />
 
-      <Modal visible={showEdit} transparent animationType="slide" onRequestClose={() => setShowEdit(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-            <View style={{ backgroundColor: WHITE, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 28 }}>
-              <Text style={{ fontSize: 20, fontWeight: '800', color: TEXT_DARK, marginBottom: 24 }}>Edit Profile</Text>
+      {/* ── Edit Profile Modal ── */}
+      <Modal visible={showEdit} transparent animationType="fade" onRequestClose={() => setShowEdit(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalBackdrop}>
+          <View style={styles.modalBox}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Edit Profile</Text>
+              <TouchableOpacity onPress={() => setShowEdit(false)} hitSlop={8}>
+                <Ionicons name="close" size={22} color={TEXT_MID} />
+              </TouchableOpacity>
+            </View>
 
-              <Text style={{ fontSize: 13, fontWeight: '700', color: TEXT_MID, marginBottom: 8 }}>Full Name</Text>
-              <TextInput
-                style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 14, paddingHorizontal: 16, height: 52, fontSize: 15, color: TEXT_DARK, marginBottom: 16 }}
-                value={editName}
-                onChangeText={setEditName}
-                placeholder="Your full name"
-                placeholderTextColor={TEXT_LIGHT}
-              />
+            <Text style={styles.inputLabel}>Full Name</Text>
+            <TextInput
+              style={styles.input}
+              value={editName}
+              onChangeText={setEditName}
+              placeholder="Your full name"
+              placeholderTextColor={TEXT_MUTED}
+            />
 
-              <Text style={{ fontSize: 13, fontWeight: '700', color: TEXT_MID, marginBottom: 8 }}>Phone Number</Text>
-              <TextInput
-                style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 14, paddingHorizontal: 16, height: 52, fontSize: 15, color: TEXT_DARK, marginBottom: 28 }}
-                value={editPhone}
-                onChangeText={setEditPhone}
-                placeholder="10-digit mobile number"
-                placeholderTextColor={TEXT_LIGHT}
-                keyboardType="phone-pad"
-                maxLength={10}
-              />
+            <Text style={styles.inputLabel}>Phone Number</Text>
+            <TextInput
+              style={styles.input}
+              value={editPhone}
+              onChangeText={setEditPhone}
+              placeholder="10-digit phone number"
+              placeholderTextColor={TEXT_MUTED}
+              keyboardType="phone-pad"
+              maxLength={10}
+            />
 
-              <View style={{ flexDirection: 'row', gap: 12 }}>
-                <TouchableOpacity
-                  style={{ flex: 1, height: 52, borderRadius: 14, borderWidth: 1, borderColor: BORDER, justifyContent: 'center', alignItems: 'center' }}
-                  onPress={() => setShowEdit(false)}
-                >
-                  <Text style={{ fontSize: 15, fontWeight: '700', color: TEXT_MID }}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={{ flex: 1, height: 52, borderRadius: 14, backgroundColor: INDIGO, justifyContent: 'center', alignItems: 'center', opacity: editSaving ? 0.6 : 1 }}
-                  onPress={saveProfile}
-                  disabled={editSaving}
-                >
-                  {editSaving ? <ActivityIndicator color={WHITE} /> : <Text style={{ fontSize: 15, fontWeight: '700', color: WHITE }}>Save</Text>}
-                </TouchableOpacity>
-              </View>
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => setShowEdit(false)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.saveBtn}
+                onPress={saveProfile}
+                disabled={editSaving}
+                activeOpacity={0.8}
+              >
+                {editSaving ? (
+                  <ActivityIndicator color={WHITE} size="small" />
+                ) : (
+                  <Text style={styles.saveBtnText}>Save Changes</Text>
+                )}
+              </TouchableOpacity>
             </View>
           </View>
         </KeyboardAvoidingView>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
-const s = StyleSheet.create({
-  headerSection: { paddingBottom: 20, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, shadowColor: INDIGO, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8, zIndex: 10 },
-  headerTop: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 10 },
-  backBtnLight: { padding: 8, marginLeft: -8, backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 12 },
-  headerGreeting: { fontSize: 20, fontWeight: '800', color: WHITE },
-  
-  scroll: { padding: 16, paddingBottom: 60 },
+const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: BG,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: WHITE,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+  },
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: BG,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+  headerTitleWrap: {
+    flex: 1,
+    marginHorizontal: 12,
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: TEXT_DARK,
+  },
+  headerSubtitle: {
+    fontSize: 11,
+    color: TEXT_MID,
+    marginTop: 1,
+  },
+  editIconBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#F3E8FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 
-  profileCard: { backgroundColor: WHITE, borderRadius: 20, padding: 20, alignItems: 'center', marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 3, borderWidth: 1, borderColor: BORDER, marginTop: 8 },
-  avatarWrap: { position: 'relative', marginBottom: 14 },
-  avatarCircle: { width: 76, height: 76, borderRadius: 38, backgroundColor: INDIGO_SOFT, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: WHITE, shadowColor: INDIGO, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 3 },
-  avatarInitials: { fontSize: 28, fontWeight: '900', color: INDIGO, letterSpacing: 1 },
-  verifiedBadge: { position: 'absolute', bottom: 2, right: 2, backgroundColor: SUCCESS, width: 22, height: 22, borderRadius: 11, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: WHITE },
-  
-  nameTxt: { fontSize: 22, fontWeight: '900', color: TEXT_DARK, marginBottom: 4 },
-  roomTxt: { fontSize: 13, fontWeight: '700', color: INDIGO, marginBottom: 12, backgroundColor: INDIGO_SOFT, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, overflow: 'hidden' },
-  
-  contactRow: { flexDirection: 'row', gap: 10 },
-  contactPill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: BG, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: BORDER },
-  contactTxt: { fontSize: 12, fontWeight: '600', color: TEXT_MID },
+  scroll: {
+    padding: 16,
+    paddingBottom: 40,
+  },
 
-  sectionLbl: { fontSize: 12, fontWeight: '800', color: TEXT_MID, letterSpacing: 1, marginBottom: 12, marginLeft: 4, marginTop: 8 },
-  menuCard: { backgroundColor: WHITE, borderRadius: 24, paddingHorizontal: 16, marginBottom: 24, borderWidth: 1, borderColor: BORDER, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 12, elevation: 2 },
-  menuRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16 },
-  menuIconWrap: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 16 },
-  menuTxt: { flex: 1, fontSize: 15, fontWeight: '600', color: TEXT_DARK },
-  divider: { height: 1, backgroundColor: BORDER, marginLeft: 56 },
+  // Compact Profile Card
+  compactCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: CARD_BG,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: BORDER,
+    marginBottom: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+  },
+  avatarWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: BRAND,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  avatarText: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: WHITE,
+  },
+  onlineDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#10B981',
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    borderWidth: 2,
+    borderColor: WHITE,
+  },
+  profileInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  profileName: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: TEXT_DARK,
+    flex: 1,
+  },
+  roomBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F3E8FF',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  roomBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: BRAND,
+  },
+  metaRow: {
+    marginTop: 4,
+    gap: 2,
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  metaText: {
+    fontSize: 11.5,
+    color: TEXT_MID,
+    fontWeight: '500',
+  },
 
-  logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#FEF2F2', paddingVertical: 18, borderRadius: 24, marginTop: 12, borderWidth: 1, borderColor: '#FEE2E2' },
-  logoutTxt: { fontSize: 16, fontWeight: '800', color: '#EF4444' },
+  // Sections & Menus
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: TEXT_MUTED,
+    letterSpacing: 0.8,
+    marginBottom: 8,
+    marginLeft: 4,
+    marginTop: 4,
+  },
+  menuBox: {
+    backgroundColor: CARD_BG,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: BORDER,
+    marginBottom: 16,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  menuIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  menuContent: {
+    flex: 1,
+  },
+  menuTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: TEXT_DARK,
+  },
+  menuSub: {
+    fontSize: 11,
+    color: TEXT_MUTED,
+    marginTop: 1,
+  },
+  menuDivider: {
+    height: 1,
+    backgroundColor: '#F1F5F9',
+    marginLeft: 48,
+  },
 
-  versionTxt: { textAlign: 'center', fontSize: 12, fontWeight: '600', color: TEXT_LIGHT, marginTop: 24 },
+  // Logout
+  logoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
+    borderRadius: 14,
+    paddingVertical: 12,
+    marginTop: 4,
+  },
+  logoutBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#EF4444',
+  },
+  versionText: {
+    textAlign: 'center',
+    fontSize: 11,
+    color: TEXT_MUTED,
+    marginTop: 16,
+  },
+
+  // Modal
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalBox: {
+    backgroundColor: WHITE,
+    borderRadius: 20,
+    padding: 20,
+    elevation: 6,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: TEXT_DARK,
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: TEXT_MID,
+    marginBottom: 6,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    height: 44,
+    fontSize: 14,
+    color: TEXT_DARK,
+    marginBottom: 14,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 8,
+  },
+  cancelBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: BORDER,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: TEXT_MID,
+  },
+  saveBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: BRAND,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: WHITE,
+  },
 });

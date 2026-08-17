@@ -267,7 +267,7 @@ export default function RoomInfoScreen({ route, navigation }: any) {
                     onPress={() => navigation.navigate('PaymentReceipt', { fee, isPaid })}
                     style={[
                       styles.historyCard,
-                      { paddingVertical: 12, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 12, borderLeftWidth: 4, borderLeftColor: accentColor, borderRadius: 14 }
+                      { paddingVertical: 12, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 14 }
                     ]}
                   >
                     <View style={[{ width: 44, height: 44, borderRadius: 14, backgroundColor: accentSoft, justifyContent: 'center', alignItems: 'center' }]}>
@@ -398,7 +398,7 @@ const styles = StyleSheet.create({
   noteFormActions: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginTop: 12, gap: 8 },
   saveBtn: { backgroundColor: '#4F46E5', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10 },
 
-  noteCard: { backgroundColor: '#FFF', borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2, borderWidth: 1, borderColor: '#F1F5F9', borderLeftWidth: 4, borderLeftColor: '#4F46E5' },
+  noteCard: { backgroundColor: '#FFF', borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2, borderWidth: 1, borderColor: '#F1F5F9' },
   noteCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   noteCardDate: { fontSize: 12, fontWeight: '700', color: TEXT_MID },
   noteCardText: { fontSize: 14, color: TEXT_DARK, lineHeight: 22, fontWeight: '500' },

@@ -80,7 +80,15 @@ const CATEGORY_STYLES: Record<string, { bg: string; darkBg: string; color: strin
   },
 };
 
-export function GrowthHomeScreen({ navigation }: any) {
+export function GrowthHomeScreen({
+  navigation,
+  embedded = false,
+  onSwipeToDashboard,
+}: {
+  navigation: any;
+  embedded?: boolean;
+  onSwipeToDashboard?: () => void;
+}) {
   const { user } = useAuth();
   const firstName = (user?.name || 'Reader').split(' ')[0];
   const insets = useSafeAreaInsets();
@@ -171,10 +179,10 @@ export function GrowthHomeScreen({ navigation }: any) {
     <SafeAreaView style={[styles.screen, { backgroundColor: c.bg }]} edges={['top']}>
       <StatusBar barStyle={isNightMode ? 'light-content' : 'dark-content'} backgroundColor={c.bg} />
 
-      {/* Top Navigation Bar with Back Button '<' */}
+      {/* Top Navigation Bar */}
       <View style={[styles.header, { backgroundColor: c.bg, borderBottomColor: c.border }]}>
         <TouchableOpacity
-          onPress={() => navigation.goBack()}
+          onPress={() => (embedded && onSwipeToDashboard ? onSwipeToDashboard() : navigation.goBack())}
           style={[styles.iconBtn, { backgroundColor: c.card, borderColor: c.border }]}
           activeOpacity={0.7}
         >
@@ -186,17 +194,30 @@ export function GrowthHomeScreen({ navigation }: any) {
           <Text style={[styles.headerSubtitle, { color: c.textSub }]}>Hi {firstName}, ready to learn?</Text>
         </View>
 
-        <TouchableOpacity
-          style={[styles.iconBtn, { backgroundColor: c.card, borderColor: c.border }]}
-          onPress={toggleNight}
-          activeOpacity={0.7}
-        >
-          <Ionicons
-            name={isNightMode ? 'sunny' : 'moon-outline'}
-            size={20}
-            color={isNightMode ? '#FBBF24' : '#6D4AFF'}
-          />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          {/* Dashboard Switch Button Added Before Day and Night Icon */}
+          {embedded && (
+            <TouchableOpacity
+              style={[styles.iconBtn, { backgroundColor: c.card, borderColor: c.border }]}
+              onPress={onSwipeToDashboard}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="grid-outline" size={18} color={isNightMode ? '#F8FAFC' : '#6D4AFF'} />
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={[styles.iconBtn, { backgroundColor: c.card, borderColor: c.border }]}
+            onPress={toggleNight}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name={isNightMode ? 'sunny' : 'moon-outline'}
+              size={20}
+              color={isNightMode ? '#FBBF24' : '#6D4AFF'}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView

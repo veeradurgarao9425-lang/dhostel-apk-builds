@@ -4,10 +4,12 @@ import {
   Text,
   TouchableOpacity,
   View,
+  ScrollView,
   RefreshControl,
   StatusBar,
   Animated,
   DeviceEventEmitter,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
@@ -22,6 +24,9 @@ import { MessMenuCard } from "../../components/tenant/MessMenuCard";
 import { QuickShortcuts } from "../../components/tenant/QuickShortcuts";
 import { RecentActivity } from "../../components/tenant/RecentActivity";
 import { QuickTips } from "../../components/tenant/QuickTips";
+import { GrowthHomeScreen } from "./growth/GrowthHomeScreen";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const BRAND = '#7C3AED';      
 const BRAND_DARK = '#5F2EEA'; 
@@ -58,6 +63,9 @@ export function TenantHomeScreen({ navigation }: any) {
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [activePageIndex, setActivePageIndex] = useState(0);
+  const [isPagerScrollEnabled, setIsPagerScrollEnabled] = useState(true);
+  const horizontalScrollRef = useRef<ScrollView>(null);
   const [recentNotices, setRecentNotices] = useState<any[]>([]);
   const [recentPayments, setRecentPayments] = useState<any[]>([]);
   const [dueAmount, setDueAmount] = useState<number>(0);
@@ -373,195 +381,244 @@ export function TenantHomeScreen({ navigation }: any) {
     );
   }
 
+  const scrollToPage = (pageIndex: number) => {
+    setActivePageIndex(pageIndex);
+    horizontalScrollRef.current?.scrollTo({ x: pageIndex * SCREEN_WIDTH, animated: true });
+  };
+
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={BRAND} />
-
-      <LinearGradient
-        colors={[BRAND, BRAND_DARK]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.headerSection}
+      {/* ── Side-by-Side Horizontal Swipe Pager between Dashboard & Growth Journey ── */}
+      <ScrollView
+        ref={horizontalScrollRef}
+        horizontal
+        pagingEnabled
+        scrollEnabled={isPagerScrollEnabled}
+        keyboardShouldPersistTaps="handled"
+        showsHorizontalScrollIndicator={false}
+        onMomentumScrollEnd={(e) => {
+          const page = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+          setActivePageIndex(page);
+        }}
+        style={{ flex: 1 }}
       >
-        <View style={styles.headerAccentCircle} />
-        <View style={styles.headerAccentCircle2} />
+        {/* ══════════════════════════════════════════════════════
+            PAGE 0: MAIN TENANT DASHBOARD (with purple gradient header)
+        ══════════════════════════════════════════════════════ */}
+        <View style={{ width: SCREEN_WIDTH, flex: 1, backgroundColor: '#F8FAFC' }}>
+          <StatusBar barStyle="light-content" backgroundColor={BRAND} />
 
-        <SafeAreaView edges={["top"]} style={{ backgroundColor: "transparent" }}>
-          <View style={styles.headerRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.headerGreeting} numberOfLines={1} ellipsizeMode="tail">
-                {greeting}, {firstName}! 👋
-              </Text>
-              <View style={styles.hostelRow}>
-                <Ionicons name="location-outline" size={12} color="rgba(255,255,255,0.7)" />
-                <Text style={styles.hostelName} numberOfLines={1}>
-                  {(user as any)?.hostel_name ?? "Welcome Back"}
-                </Text>
-              </View>
-            </View>
+          <LinearGradient
+            colors={[BRAND, BRAND_DARK]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.headerSection}
+          >
+            <View style={styles.headerAccentCircle} />
+            <View style={styles.headerAccentCircle2} />
 
-            <View style={styles.headerActions}>
-              <TouchableOpacity
-                style={styles.headerIconBtn}
-                onPress={() => navigation.navigate("Notifications")}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="notifications" size={20} color={WHITE} />
-                {unreadNotifCount > 0 && (
-                  <View style={styles.notifBadge}>
-                    <Text style={styles.notifBadgeText}>
-                      {unreadNotifCount > 9 ? "9+" : unreadNotifCount}
+            <SafeAreaView edges={["top"]} style={{ backgroundColor: "transparent" }}>
+              <View style={styles.headerRow}>
+                <View style={{ flex: 1, marginRight: 12, minWidth: 0, justifyContent: 'center' }}>
+                  <Text
+                    style={styles.headerGreeting}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.75}
+                  >
+                    {greeting}, {firstName}! 👋
+                  </Text>
+                  <View style={styles.hostelRow}>
+                    <Ionicons name="location-outline" size={12} color="rgba(255,255,255,0.7)" />
+                    <Text style={styles.hostelName} numberOfLines={1} ellipsizeMode="tail">
+                      {(user as any)?.hostel_name ?? "Welcome Back"}
                     </Text>
                   </View>
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.avatarBtn}
-                onPress={() => navigation.navigate("Profile")}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.avatarText}>{initials}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={styles.headerDateStrip}>
-            <View style={styles.datePill}>
-              <Ionicons name="calendar-outline" size={11} color="rgba(255,255,255,0.8)" />
-              <Text style={styles.datePillText}>
-                {new Date().toLocaleDateString('en-IN', {
-                  weekday: 'short',
-                  day: 'numeric',
-                  month: 'long',
-                })}
-              </Text>
-            </View>
-            {user?.room_number && (
-              <View style={styles.roomPill}>
-                <Ionicons name="bed-outline" size={11} color="rgba(255,255,255,0.8)" />
-                <Text style={styles.datePillText}>Room {user.room_number}</Text>
-              </View>
-            )}
-          </View>
-        </SafeAreaView>
-      </LinearGradient>
-
-      <Animated.ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        scrollEventThrottle={16}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[BRAND]}
-            tintColor={BRAND}
-          />
-        }
-      >
-        <Animated.View style={{ opacity: enterAnims[0], transform: [{ translateY: enterAnims[0].interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
-          <BudgetOverview
-            budget={budget}
-            spent={spent}
-            progressAnim={progressAnim}
-            dueAmount={dueAmount}
-            totalRentAmount={totalRentAmount}
-            rentDueDate={rentDueDate}
-            formatDate={formatDate}
-          />
-        </Animated.View>
-
-        <View style={styles.divider} />
-
-        <Animated.View style={{ opacity: enterAnims[1], transform: [{ translateY: enterAnims[1].interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
-          <MessMenuCard meals={meals} recentNotices={recentNotices} BLUE={BRAND} />
-        </Animated.View>
-
-        <View style={styles.divider} />
-
-        <Animated.View style={{ opacity: enterAnims[2], transform: [{ translateY: enterAnims[2].interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={() => navigation.navigate("GrowthHome")}
-            style={styles.growthCardTouchable}
-          >
-            <View style={styles.growthCardCompact}>
-              <View style={styles.growthIconWrapCompact}>
-                <Ionicons name="trending-up-outline" size={16} color="#4F46E5" />
-              </View>
-              <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Text style={styles.growthTitleCompact}>Growth Journey</Text>
-                <Text style={styles.growthSubtitleCompact}>
-                  {growthTeaser
-                    ? `🔥 ${growthTeaser.streak}d streak · Level ${growthTeaser.level}`
-                    : "Daily English & Mindset"}
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color="#6366F1" />
-            </View>
-          </TouchableOpacity>
-        </Animated.View>
-
-        <View style={styles.divider} />
-
-        <Animated.View style={{ opacity: enterAnims[3], transform: [{ translateY: enterAnims[3].interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
-          <QuickShortcuts shortcuts={shortcuts} />
-        </Animated.View>
-
-        <View style={styles.divider} />
-
-        <Animated.View style={{ opacity: enterAnims[4], transform: [{ translateY: enterAnims[4].interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={() => navigation.navigate("Notices")}
-            style={styles.noticeRow}
-          >
-            <View style={styles.noticeIconWrap}>
-              <Ionicons name="megaphone" size={18} color="#D97706" />
-            </View>
-            {recentNotices.length > 0 ? (
-              <View style={{ flex: 1 }}>
-                <View style={styles.noticeTitleRow}>
-                  <Text style={styles.noticeTitle} numberOfLines={1}>
-                    {recentNotices[0]?.title || "New Notice"}
-                  </Text>
-                  <View style={styles.newChip}>
-                    <Text style={styles.newChipText}>NEW</Text>
-                  </View>
                 </View>
-                <Text style={styles.noticeBody} numberOfLines={1}>
-                  {recentNotices[0]?.body || "Check here for hostel updates."}
-                </Text>
+
+                <View style={styles.headerActions}>
+                  <TouchableOpacity
+                    style={styles.headerIconBtn}
+                    onPress={() => navigation.navigate("Notifications")}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="notifications" size={20} color={WHITE} />
+                    {unreadNotifCount > 0 && (
+                      <View style={styles.notifBadge}>
+                        <Text style={styles.notifBadgeText}>
+                          {unreadNotifCount > 9 ? "9+" : unreadNotifCount}
+                        </Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.avatarBtn}
+                    onPress={() => navigation.navigate("Profile")}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.avatarText}>{initials}</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            ) : (
-              <View style={{ flex: 1 }}>
-                <Text style={styles.noticeTitle}>Announcements</Text>
-                <Text style={styles.noticeBody}>No new notices from hostel</Text>
+
+              <View style={styles.headerDateStrip}>
+                <View style={styles.datePill}>
+                  <Ionicons name="calendar-outline" size={11} color="rgba(255,255,255,0.8)" />
+                  <Text style={styles.datePillText}>
+                    {new Date().toLocaleDateString('en-IN', {
+                      weekday: 'short',
+                      day: 'numeric',
+                      month: 'long',
+                    })}
+                  </Text>
+                </View>
+                {user?.room_number && (
+                  <View style={styles.roomPill}>
+                    <Ionicons name="bed-outline" size={11} color="rgba(255,255,255,0.8)" />
+                    <Text style={styles.datePillText}>Room {user.room_number}</Text>
+                  </View>
+                )}
               </View>
-            )}
-            <View style={styles.noticeArrow}>
-              <Ionicons name="chevron-forward" size={14} color="#B45309" />
-            </View>
-          </TouchableOpacity>
-        </Animated.View>
+            </SafeAreaView>
+          </LinearGradient>
 
-        <View style={styles.divider} />
+          <Animated.ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+            scrollEventThrottle={16}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={[BRAND]}
+                tintColor={BRAND}
+              />
+            }
+          >
+            <Animated.View style={{ opacity: enterAnims[0], transform: [{ translateY: enterAnims[0].interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
+              <BudgetOverview
+                budget={budget}
+                spent={spent}
+                progressAnim={progressAnim}
+                dueAmount={dueAmount}
+                totalRentAmount={totalRentAmount}
+                rentDueDate={rentDueDate}
+                formatDate={formatDate}
+              />
+            </Animated.View>
 
-        <Animated.View style={{ opacity: enterAnims[5], transform: [{ translateY: enterAnims[5].interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
-          <QuickTips />
-        </Animated.View>
+            <View style={styles.divider} />
 
-        <View style={styles.divider} />
+            <Animated.View style={{ opacity: enterAnims[1], transform: [{ translateY: enterAnims[1].interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
+              <MessMenuCard meals={meals} recentNotices={recentNotices} BLUE={BRAND} />
+            </Animated.View>
 
-        <Animated.View style={{ opacity: enterAnims[6], transform: [{ translateY: enterAnims[6].interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
-          <RecentActivity
-            recentPayments={recentPayments}
-            formatDate={formatDate}
-            formatTime={formatTime}
+            <View style={styles.divider} />
+
+            <Animated.View style={{ opacity: enterAnims[2], transform: [{ translateY: enterAnims[2].interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => scrollToPage(1)}
+                style={styles.growthCardTouchable}
+              >
+                <View style={styles.growthCardCompact}>
+                  <View style={styles.growthIconWrapCompact}>
+                    <Ionicons name="trending-up-outline" size={16} color="#4F46E5" />
+                  </View>
+                  <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Text style={styles.growthTitleCompact}>Growth Journey</Text>
+                    <Text style={styles.growthSubtitleCompact}>
+                      {growthTeaser
+                        ? `🔥 ${growthTeaser.streak}d streak · Level ${growthTeaser.level}`
+                        : "Swipe right to open →"}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color="#6366F1" />
+                </View>
+              </TouchableOpacity>
+            </Animated.View>
+
+            <View style={styles.divider} />
+
+            <Animated.View style={{ opacity: enterAnims[3], transform: [{ translateY: enterAnims[3].interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
+              <View
+                collapsable={false}
+                onTouchStart={() => setIsPagerScrollEnabled(false)}
+                onTouchEnd={() => setIsPagerScrollEnabled(true)}
+                onTouchCancel={() => setIsPagerScrollEnabled(true)}
+              >
+                <QuickShortcuts shortcuts={shortcuts} />
+              </View>
+            </Animated.View>
+
+            <View style={styles.divider} />
+
+            <Animated.View style={{ opacity: enterAnims[4], transform: [{ translateY: enterAnims[4].interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => navigation.navigate("Notices")}
+                style={styles.noticeRow}
+              >
+                <View style={styles.noticeIconWrap}>
+                  <Ionicons name="megaphone" size={18} color="#D97706" />
+                </View>
+                {recentNotices.length > 0 ? (
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.noticeTitleRow}>
+                      <Text style={styles.noticeTitle} numberOfLines={1}>
+                        {recentNotices[0]?.title || "New Notice"}
+                      </Text>
+                      <View style={styles.newChip}>
+                        <Text style={styles.newChipText}>NEW</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.noticeBody} numberOfLines={1}>
+                      {recentNotices[0]?.body || "Check here for hostel updates."}
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.noticeTitle}>Announcements</Text>
+                    <Text style={styles.noticeBody}>No new notices from hostel</Text>
+                  </View>
+                )}
+                <View style={styles.noticeArrow}>
+                  <Ionicons name="chevron-forward" size={14} color="#B45309" />
+                </View>
+              </TouchableOpacity>
+            </Animated.View>
+
+            <View style={styles.divider} />
+
+            <Animated.View style={{ opacity: enterAnims[5], transform: [{ translateY: enterAnims[5].interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
+              <QuickTips />
+            </Animated.View>
+
+            <View style={styles.divider} />
+
+            <Animated.View style={{ opacity: enterAnims[6], transform: [{ translateY: enterAnims[6].interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
+              <RecentActivity
+                recentPayments={recentPayments}
+                formatDate={formatDate}
+                formatTime={formatTime}
+              />
+            </Animated.View>
+          </Animated.ScrollView>
+        </View>
+
+        {/* ══════════════════════════════════════════════════════
+            PAGE 1: GROWTH JOURNEY (with its own separate header)
+        ══════════════════════════════════════════════════════ */}
+        <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
+          <GrowthHomeScreen
+            navigation={navigation}
+            embedded={true}
+            onSwipeToDashboard={() => scrollToPage(0)}
           />
-        </Animated.View>
-      </Animated.ScrollView>
+        </View>
+      </ScrollView>
     </View>
   );
 }
@@ -616,12 +673,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
     color: "rgba(255,255,255,0.75)",
-    maxWidth: 200,
+    flexShrink: 1,
   },
   headerActions: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
+    flexShrink: 0,
   },
   headerIconBtn: {
     width: 42,

@@ -14,17 +14,19 @@ import {
 
 const router = express.Router();
 
-// All routes require authentication and owner/admin access
-router.use(authMiddleware, requireActiveSubscription, isOwnerOrAdmin);
+// All routes require authentication and active subscription
+router.use(authMiddleware, requireActiveSubscription);
 
-// Room routes
-router.get('/', getRooms);
+// Read-only routes (accessible by owners, admins, and tenants of the hostel)
 router.get('/types', getRoomTypes);
 router.get('/:roomId/beds', getRoomBeds);
 router.get('/:roomId', getRoomById);
-router.post('/', createRoom);
-router.post('/bulk', bulkCreateRooms);
-router.put('/:roomId', updateRoom);
-router.delete('/:roomId', deleteRoom);
+
+// Owner/Admin restricted management routes
+router.get('/', isOwnerOrAdmin, getRooms);
+router.post('/', isOwnerOrAdmin, createRoom);
+router.post('/bulk', isOwnerOrAdmin, bulkCreateRooms);
+router.put('/:roomId', isOwnerOrAdmin, updateRoom);
+router.delete('/:roomId', isOwnerOrAdmin, deleteRoom);
 
 export default router;

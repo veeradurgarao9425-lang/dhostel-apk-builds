@@ -72,10 +72,8 @@ export default function AppHeader({
 const styles = StyleSheet.create({
     header: {
         paddingTop: 50,
-        paddingBottom: 20,
-        paddingHorizontal: 20,
-        borderBottomLeftRadius: 0,
-        borderBottomRightRadius: 0,
+        paddingBottom: 18,
+        paddingHorizontal: 16,
         overflow: 'hidden',
     },
     headerAccentCircle: {
@@ -102,21 +100,20 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
     },
     backBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 38,
+        height: 38,
+        borderRadius: 12,
         backgroundColor: 'rgba(255,255,255,0.2)',
         alignItems: 'center',
         justifyContent: 'center',
     },
     titleContainer: {
         flex: 1,
-        alignItems: 'center',
-        paddingHorizontal: 10,
+        paddingHorizontal: 8,
     },
     headerTitle: {
-        fontSize: 20,
-        fontWeight: '900',
+        fontSize: 18,
+        fontWeight: '800',
         color: '#FFF',
     },
     headerSubtitle: {
@@ -126,6 +123,6 @@ const styles = StyleSheet.create({
         marginTop: 2,
     },
     placeholder: {
-        width: 40,
+        width: 38,
     }
 });

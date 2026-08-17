@@ -51,13 +51,22 @@ export const RecentActivity = ({ recentPayments, formatDate }: RecentActivityPro
                 <View style={styles.listContainer}>
                     {recentPayments.map((p, idx) => {
                         const isPayment = p.mode === 'Payment';
+                        const isRejected =
+                            p.status === 'Rejected' ||
+                            p.verification_status === 'Rejected' ||
+                            (p.title || '').toLowerCase().includes('rejected');
                         const cat = isPayment ? 'Payment' : (p.cat || 'Others');
-                        const iconName: keyof typeof Ionicons.glyphMap = IONICON_MAP[cat] || 'ellipsis-horizontal-outline';
-                        const accentColor = isPayment ? '#16A34A' : '#7C3AED';
-                        const iconBg = isPayment ? '#DCFCE7' : '#F4F1FF';
+                        const iconName: keyof typeof Ionicons.glyphMap = isRejected
+                            ? 'close-circle-outline'
+                            : IONICON_MAP[cat] || 'ellipsis-horizontal-outline';
+                        const accentColor = isRejected ? '#EF4444' : isPayment ? '#16A34A' : '#7C3AED';
+                        const iconBg = isRejected ? '#FEE2E2' : isPayment ? '#DCFCE7' : '#F4F1FF';
                         const sign = '−';
-                        const amtColor = isPayment ? '#7C3AED' : '#EF4444';
-                        const categoryLabel = isPayment ? 'Rent Payment' : cat;
+                        const amtColor = '#EF4444';
+                        const badgeBg = isRejected ? '#FEE2E2' : isPayment ? '#DCFCE7' : '#FEE2E2';
+                        const badgeTextColor = isRejected ? '#EF4444' : isPayment ? '#16A34A' : '#EF4444';
+                        const badgeText = isRejected ? 'Rejected' : isPayment ? 'Rent Paid' : 'Spent';
+                        const categoryLabel = isRejected ? 'Payment Rejected' : isPayment ? 'Rent Payment' : cat;
 
                         return (
                             <View key={p.id}>
@@ -67,12 +76,12 @@ export const RecentActivity = ({ recentPayments, formatDate }: RecentActivityPro
                                     </View>
 
                                     <View style={styles.txMeta}>
-                                        <Text style={styles.txTitle} numberOfLines={1}>
+                                        <Text style={[styles.txTitle, isRejected && { color: '#EF4444' }]} numberOfLines={1}>
                                             {p.title}
                                         </Text>
                                         <View style={styles.txSubRow}>
                                             <View style={[styles.catDot, { backgroundColor: accentColor }]} />
-                                            <Text style={styles.txCategory}>{categoryLabel}</Text>
+                                            <Text style={[styles.txCategory, isRejected && { color: '#EF4444' }]}>{categoryLabel}</Text>
                                             <Text style={styles.txDot}>·</Text>
                                             <Text style={styles.txDate}>{formatDate(p.date)}</Text>
                                         </View>
@@ -82,9 +91,9 @@ export const RecentActivity = ({ recentPayments, formatDate }: RecentActivityPro
                                         <Text style={[styles.txAmount, { color: amtColor }]}>
                                             {sign}₹{Number(p.amount).toLocaleString('en-IN')}
                                         </Text>
-                                        <View style={[styles.txBadge, { backgroundColor: isPayment ? '#EDE9FF' : '#FEE2E2' }]}>
-                                            <Text style={[styles.txBadgeText, { color: amtColor }]}>
-                                                {isPayment ? 'Rent Paid' : 'Spent'}
+                                        <View style={[styles.txBadge, { backgroundColor: badgeBg }]}>
+                                            <Text style={[styles.txBadgeText, { color: badgeTextColor }]}>
+                                                {badgeText}
                                             </Text>
                                         </View>
                                     </View>
