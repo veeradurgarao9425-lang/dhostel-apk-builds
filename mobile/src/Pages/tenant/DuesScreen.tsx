@@ -23,6 +23,7 @@ import { formatCurrency } from '../../utils/format';
 import api from '../../services/api';
 import AppHeader from '../../components/tenant/ui/AppHeader';
 import { QuickTips } from '../../components/tenant/QuickTips';
+import { TenantHeaderNotification } from '../../components/tenant/TenantHeaderNotification';
 
 const BLUE      = colors.primary;       // #6D4AFF — brand purple
 const BLUE_DARK = colors.primaryDark;   // #5B39E0
@@ -348,11 +349,8 @@ export default function DuesScreen({ route, navigation }: any) {
         subtitle="Manage your monthly rent and fees"
         showBack={false}
         rightComponent={
-          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-            <TouchableOpacity style={styles.hBtn} onPress={() => navigation.navigate('Notifications')}>
-              <Bell size={22} color={WHITE} strokeWidth={1.5} />
-              <View style={styles.notificationDot} />
-            </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+            <TenantHeaderNotification navigation={navigation} />
             <TouchableOpacity style={styles.hAvatar} onPress={() => navigation.navigate('Profile')}>
               <Text style={styles.hAvatarText}>{initials}</Text>
             </TouchableOpacity>

@@ -11,6 +11,7 @@ import { theme } from '../../theme/tenantTheme';
 import { Phase3EmptyState } from '../../components/tenant/UIComponents';
 import { SkeletonNotificationRow } from '../../components/tenant/ui';
 import AppHeader from '../../components/tenant/ui/AppHeader';
+import { TenantHeaderNotification } from '../../components/tenant/TenantHeaderNotification';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -90,7 +91,7 @@ export default function NoticesScreen({ navigation }: any) {
           : 'Alerts, updates, and announcements'}
         showBack={false}
         rightComponent={
-          <View style={{ flexDirection: 'row', gap: 10 }}>
+          <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
             <TouchableOpacity style={styles.hBtn} onPress={() => setShowPicker(true)}>
               <Ionicons name="calendar-outline" size={20} color="#FFFFFF" />
               {selectedMonth && <View style={styles.filterDot} />}
@@ -100,6 +101,7 @@ export default function NoticesScreen({ navigation }: any) {
                 <Ionicons name="close" size={20} color="#FFFFFF" />
               </TouchableOpacity>
             )}
+            <TenantHeaderNotification navigation={navigation} />
           </View>
         }
       />

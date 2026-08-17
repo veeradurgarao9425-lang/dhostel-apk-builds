@@ -29,6 +29,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { useToast } from '../../../contexts/ToastContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AppHeader from '../../components/tenant/ui/AppHeader';
+import { TenantHeaderNotification } from '../../components/tenant/TenantHeaderNotification';
 
 const { width } = Dimensions.get('window');
 
@@ -762,6 +763,7 @@ export default function ExpensesScreen({ navigation }: any) {
                 {selectedDate.toLocaleString('en-US', { month: 'short' })}
               </Text>
             </TouchableOpacity>
+            <TenantHeaderNotification navigation={navigation} />
           </View>
         }
       />

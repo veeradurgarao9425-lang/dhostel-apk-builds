@@ -375,9 +375,9 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
             title = 'Check In Tenant?';
             message = 'Activate this tenant, start billing, and allocate occupied bed from today?';
             confirmText = 'Yes, Check In';
-        } else if (currentStatus === 3) {
+        } else if (currentStatus === 3 || currentStatus === 4) {
             nextStatus = 1;
-            title = 'Approve QR Signup?';
+            title = currentStatus === 4 ? 'Approve Registration?' : 'Approve QR Signup?';
             message = 'Approve this tenant signup? They will be active and you will need to allocate a room to start billing.';
             confirmText = 'Approve & Check In';
         } else {
@@ -404,8 +404,8 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                         showSuccess(`${student.first_name} is now ${nextStatus === 1 ? 'active' : 'inactive'}.`);
                         fetchStudentDetails(); // refresh details to sync billing fee histories
 
-                        // Automatically prompt for room allocation if approving a QR signup
-                        if (currentStatus === 3 && nextStatus === 1) {
+                        // Automatically prompt for room allocation if approving a QR signup or rejected registration
+                        if ((currentStatus === 3 || currentStatus === 4) && nextStatus === 1) {
                             setTimeout(() => {
                                 goAllocateRoom();
                             }, 500);
@@ -724,7 +724,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                         </Text>
                                         <View style={[styles.activeStatusPill, { backgroundColor: student.status === 1 ? '#E6F9F3' : student.status === 2 ? '#FFF3E0' : student.status === 3 ? '#E0F2FE' : '#FFEBEE' }]}>
                                             <Text style={[styles.activeStatusPillText, { color: student.status === 1 ? '#00B074' : student.status === 2 ? '#FF9800' : student.status === 3 ? '#0EA5E9' : '#E53935' }]}>
-                                                {student.status === 1 ? 'Active' : student.status === 2 ? 'Pre-Booked' : student.status === 3 ? 'Pending Approval' : 'Inactive'}
+                                                {student.status === 1 ? 'Active' : student.status === 2 ? 'Pre-Booked' : student.status === 3 ? 'Pending Approval' : student.status === 4 ? 'Registration Rejected' : 'Left / Inactive'}
                                             </Text>
                                         </View>
                                     </View>
@@ -886,15 +886,15 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                         {/* ── Active / Inactive Status Card ── */}
                         <Card style={[styles.actionCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
                             <View style={styles.actionCardRow}>
-                                <View style={[styles.actionCardIconCircle, { backgroundColor: student.status === 1 ? '#E6F9F3' : student.status === 2 ? '#FFF3E0' : student.status === 3 ? '#E0F2FE' : '#FFEBEE' }]}>
-                                    <View style={[styles.actionStatusInnerDot, { backgroundColor: student.status === 1 ? '#00B074' : student.status === 2 ? '#FF9800' : student.status === 3 ? '#0EA5E9' : '#E53935' }]} />
+                                <View style={[styles.actionCardIconCircle, { backgroundColor: student.status === 1 ? '#E6F9F3' : student.status === 2 ? '#FFF3E0' : student.status === 3 ? '#E0F2FE' : student.status === 4 ? '#FFEBEE' : '#FFEBEE' }]}>
+                                    <View style={[styles.actionStatusInnerDot, { backgroundColor: student.status === 1 ? '#00B074' : student.status === 2 ? '#FF9800' : student.status === 3 ? '#0EA5E9' : student.status === 4 ? '#E53935' : '#E53935' }]} />
                                 </View>
                                 <View style={styles.actionCardContent}>
                                     <Text style={[styles.actionCardTitle, { color: theme.textPrimary }]}>
-                                        {student.status === 1 ? 'Active Tenant' : student.status === 2 ? 'Pre-Booked Tenant' : student.status === 3 ? 'Pending Application' : 'Inactive Tenant'}
+                                        {student.status === 1 ? 'Active Tenant' : student.status === 2 ? 'Pre-Booked Tenant' : student.status === 3 ? 'Pending Application' : student.status === 4 ? 'Rejected Registration' : 'Inactive Tenant'}
                                     </Text>
                                     <Text style={[styles.actionCardSubtitle, { color: theme.textSecondary }]}>
-                                        {student.status === 1 ? 'Tenant is currently active' : student.status === 2 ? 'Tenant is pre-booked' : student.status === 3 ? 'Tenant registered via QR, awaiting approval' : 'Tenant is currently inactive'}
+                                        {student.status === 1 ? 'Tenant is currently active' : student.status === 2 ? 'Tenant is pre-booked' : student.status === 3 ? 'Tenant registered via QR, awaiting approval' : student.status === 4 ? 'Registration was rejected — tap below to approve' : 'Tenant is currently inactive'}
                                     </Text>
                                 </View>
                                 {statusLoading ? (
@@ -914,8 +914,8 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                         style={[
                                             styles.actionCardButton,
                                             {
-                                                backgroundColor: student.status === 2 ? '#E6F9F3' : student.status === 3 ? '#E0F2FE' : '#E6F9F3',
-                                                borderColor: student.status === 2 ? '#E6F9F3' : student.status === 3 ? '#E0F2FE' : '#E6F9F3',
+                                                backgroundColor: student.status === 2 ? '#E6F9F3' : (student.status === 3 || student.status === 4) ? '#E0F2FE' : '#E6F9F3',
+                                                borderColor: student.status === 2 ? '#E6F9F3' : (student.status === 3 || student.status === 4) ? '#E0F2FE' : '#E6F9F3',
                                             }
                                         ]}
                                         onPress={handleToggleStatus}

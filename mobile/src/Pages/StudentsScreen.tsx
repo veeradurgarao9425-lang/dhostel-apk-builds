@@ -45,13 +45,14 @@ import { MetaWhatsAppModal } from '../components/MetaWhatsAppModal';
 // }
 
 const PAGE_SIZE = 10;
-type TabType = 'Active' | 'Unallocated' | 'Inactive' | 'PreBooked' | 'QRRegister' | 'AdmissionPending' | 'All';
+type TabType = 'Active' | 'Unallocated' | 'Inactive' | 'PreBooked' | 'QRRegister' | 'AdmissionPending' | 'Rejected' | 'All';
 
 const TABS: { key: TabType; label: string }[] = [
     { key: 'Active', label: 'Active' },
     { key: 'AdmissionPending', label: 'Admission Pending' },
     { key: 'PreBooked', label: 'Pre-Booked' },
     { key: 'QRRegister', label: 'QR Signups' },
+    { key: 'Rejected', label: 'Rejected' },
     { key: 'Inactive', label: 'Inactive' },
     { key: 'All', label: 'Total' }
 ];
@@ -74,6 +75,7 @@ const StudentCard = React.memo(({ student, onPress, onWhatsApp, onCall, onToggle
     const isActive = student.status === 1;
     const isPreBooked = student.status === 2;
     const isQRSignup = student.status === 3;
+    const isRejected = student.status === 4;
     const [imageError, setImageError] = useState(false);
 
     useEffect(() => {
@@ -88,17 +90,20 @@ const StudentCard = React.memo(({ student, onPress, onWhatsApp, onCall, onToggle
 
     // Determine colors based on status dynamically from theme
     let statusColor = theme.error;
-    let statusLabel = t('students.inactive');
+    let statusLabel = t('students.inactive', 'Left');
 
     if (isActive) {
         statusColor = theme.success;
-        statusLabel = t('students.active');
+        statusLabel = t('students.active', 'Active');
     } else if (isPreBooked) {
         statusColor = theme.warning;
-        statusLabel = t('students.prebooked');
+        statusLabel = t('students.prebooked', 'Pre-Booked');
     } else if (isQRSignup) {
         statusColor = theme.primary;
-        statusLabel = t('students.qrSignup');
+        statusLabel = t('students.qrSignup', 'Pending');
+    } else if (isRejected) {
+        statusColor = '#EF4444';
+        statusLabel = 'Rejected';
     }
 
 
@@ -176,6 +181,15 @@ const StudentCard = React.memo(({ student, onPress, onWhatsApp, onCall, onToggle
                                 activeOpacity={0.7}
                             >
                                 <Text style={[styles.smallActionBtnText, { color: '#DC2626' }]}>✕ {t('students.reject', 'Reject')}</Text>
+                            </TouchableOpacity>
+                        )}
+                        {(isQRSignup || isRejected) && (
+                            <TouchableOpacity
+                                style={[styles.smallActionBtn, { marginTop: 0, backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}
+                                onPress={() => onAllocateRoom(student)}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={[styles.smallActionBtnText, { color: '#2563EB' }]}>✓ {t('students.approve', 'Approve & Allocate')}</Text>
                             </TouchableOpacity>
                         )}
                     </View>
@@ -301,7 +315,7 @@ export default function StudentsScreen({ navigation, route }: any) {
     const [initialLoading, setInitialLoading] = useState(true);
     const [error, setError] = useState(false);
     const [debouncedSearch, setDebouncedSearch] = useState('');
-    const [counts, setCounts] = useState({ active: 0, inactive: 0, prebooked: 0, qrRegister: 0, total: 0, unallocated: 0, pendingAdmissions: 0 });
+    const [counts, setCounts] = useState({ active: 0, inactive: 0, prebooked: 0, qrRegister: 0, rejected: 0, total: 0, unallocated: 0, pendingAdmissions: 0 });
     const [totalMatching, setTotalMatching] = useState(0);
     const [dateFilter, setDateFilter] = useState<Date | null>(null);
     const [startDateFilter, setStartDateFilter] = useState<string | null>(null);
@@ -372,7 +386,7 @@ export default function StudentsScreen({ navigation, route }: any) {
             const params: Record<string, any> = { page: pageNum, limit: PAGE_SIZE };
             if (debouncedSearch) params.search = debouncedSearch;
 
-            const statusParam = activeTab === 'Active' ? 1 : activeTab === 'Inactive' ? 0 : activeTab === 'PreBooked' ? 2 : activeTab === 'QRRegister' ? 3 : undefined;
+            const statusParam = activeTab === 'Active' ? 1 : activeTab === 'Inactive' ? 0 : activeTab === 'PreBooked' ? 2 : activeTab === 'QRRegister' ? 3 : activeTab === 'Rejected' ? 4 : undefined;
             if (statusParam !== undefined) {
                 params.status = statusParam;
             }
@@ -583,6 +597,7 @@ export default function StudentsScreen({ navigation, route }: any) {
                            activeTab === 'Inactive' ? counts.inactive :
                            activeTab === 'PreBooked' ? counts.prebooked :
                            activeTab === 'QRRegister' ? counts.qrRegister :
+                           activeTab === 'Rejected' ? counts.rejected :
                            activeTab === 'AdmissionPending' ? counts.pendingAdmissions : counts.total;
                            
         if (activeTab === 'AdmissionPending') {
@@ -715,6 +730,7 @@ export default function StudentsScreen({ navigation, route }: any) {
                         { key: 'Unallocated', label: t('students.unallocatedTab', 'No Room'), count: counts.unallocated, show: true },
                         { key: 'PreBooked', label: t('students.prebooked'), count: counts.prebooked, show: counts.prebooked > 0 },
                         { key: 'QRRegister', label: t('students.qrSignups'), count: counts.qrRegister, show: counts.qrRegister > 0 },
+                        { key: 'Rejected', label: 'Rejected', count: counts.rejected, show: counts.rejected > 0 || activeTab === 'Rejected' },
                         { key: 'Inactive', label: t('students.inactive'), count: counts.inactive, show: true },
                         { key: 'All', label: t('students.total'), count: counts.total, show: true }
                     ].filter(tab => tab.show).map((tab: any) => (

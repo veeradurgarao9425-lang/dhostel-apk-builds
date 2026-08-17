@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import {
   StyleSheet,
   Text,
@@ -7,11 +7,9 @@ import {
   ScrollView,
   StatusBar,
   Dimensions,
-  Animated,
   RefreshControl,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { useFocusEffect } from "@react-navigation/native";
 import {
   Bell,
   FileSignature,
@@ -20,16 +18,16 @@ import {
   Home as HomeIcon,
   FileText,
   ChevronRight,
-  TrendingUp,
-  Wallet,
   Clock,
   HelpCircle,
   ShieldCheck,
   Sparkles,
+  XCircle,
+  RefreshCw,
 } from "lucide-react-native";
 import { useAuth } from '../../../contexts/AuthContext';
-import api from '../../services/api';
 import IconGlowBadge from '../../components/tenant/ui/IconGlowBadge';
+import { TenantHeaderNotification } from '../../components/tenant/TenantHeaderNotification';
 
 const { width } = Dimensions.get("window");
 
@@ -41,57 +39,29 @@ const TEXT_MID = "#64748B";
 const PAGE_BG = "#F8FAFC";
 
 export default function PendingApprovalScreen({ navigation }: any) {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, disconnectHostel } = useAuth();
   const insets = useSafeAreaInsets();
   const firstName = (user?.name || "Tenant").split(" ")[0];
   const [refreshing, setRefreshing] = useState(false);
-
-  const [budget, setBudget] = useState(0);
-  const [spent, setSpent] = useState(0);
-  const progressAnim = useRef(new Animated.Value(0)).current;
-
-  const percentage = budget > 0 ? Math.min((spent / budget) * 100, 100) : 0;
-  const isOver = spent > budget && budget > 0;
-  const remaining = budget - spent;
-
-  useEffect(() => {
-    Animated.timing(progressAnim, {
-      toValue: percentage,
-      duration: 1000,
-      useNativeDriver: false,
-    }).start();
-  }, [percentage]);
-
-  const loadExpenses = async () => {
-    try {
-      const budgetRes = await api.get("/tenant-expenses/budget");
-      if (budgetRes.data?.success) setBudget(Number(budgetRes.data.data.amount));
-    } catch { }
-    try {
-      const res = await api.get("/tenant-expenses");
-      if (res.data?.success) {
-        const now = new Date();
-        const monthly = (res.data.data || []).filter((e: any) => {
-          const d = new Date(e.date);
-          return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-        });
-        setSpent(monthly.reduce((s: number, e: any) => s + Number(e.amount), 0));
-      }
-    } catch { }
-  };
-
-  useFocusEffect(
-    useCallback(() => {
-      loadExpenses();
-    }, [])
-  );
+  const isRejected = Number(user?.status) === 4;
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await refreshUser();
-    await loadExpenses();
     setRefreshing(false);
   }, [refreshUser]);
+
+  const handleRegisterAgain = async () => {
+    try {
+      await disconnectHostel();
+      navigation?.reset({
+        index: 0,
+        routes: [{ name: 'RoleSelect' }],
+      });
+    } catch (e) {
+      console.error('Failed to reset registration', e);
+    }
+  };
 
   const helpShortcuts = [
     { id: 'features', name: 'How it works', icon: Sparkles, nav: 'HowItWorksScreen', bg: '#FEF3C7', color: '#D97706', gradient: ['#D97706', '#F59E0B'] as [string, string] },
@@ -99,8 +69,6 @@ export default function PendingApprovalScreen({ navigation }: any) {
     { id: 'help', name: 'Need help', icon: HelpCircle, nav: 'HelpScreen', bg: '#E0F2FE', color: '#0EA5E9', gradient: ['#0284C7', '#38BDF8'] as [string, string] },
     { id: 'security', name: 'Security\n& Policy', icon: ShieldCheck, nav: 'PrivacyPolicyScreen', bg: '#DCFCE7', color: '#22C55E', gradient: ['#16A34A', '#4ADE80'] as [string, string] },
   ];
-
-  const barColor = isOver ? "#EF4444" : percentage > 80 ? "#F59E0B" : "#22C55E";
 
   return (
     <View style={styles.root}>
@@ -113,12 +81,15 @@ export default function PendingApprovalScreen({ navigation }: any) {
             <Text style={styles.greeting}>Hi, {firstName} 👋</Text>
             <Text style={styles.subLabel}>Application Status</Text>
           </View>
-          <TouchableOpacity
-            style={styles.avatar}
-            onPress={() => navigation?.navigate?.("Profile")}
-          >
-            <Text style={styles.avatarText}>{firstName[0].toUpperCase()}</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <TenantHeaderNotification navigation={navigation} />
+            <TouchableOpacity
+              style={styles.avatar}
+              onPress={() => navigation?.navigate?.("Profile")}
+            >
+              <Text style={styles.avatarText}>{firstName[0].toUpperCase()}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </SafeAreaView>
 
@@ -131,75 +102,43 @@ export default function PendingApprovalScreen({ navigation }: any) {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[BRAND]} />
         }
       >
-        {/* ── Top Budget / Monthly Spending Card ── */}
-        <View>
-          {budget === 0 ? (
-            <TouchableOpacity style={styles.budgetCard} onPress={() => navigation?.navigate?.("Expenses")} activeOpacity={0.85}>
-              <View style={styles.budgetCardInner}>
-                <View style={styles.budgetIconWrap}>
-                  <Wallet size={20} color={BRAND} strokeWidth={2.5} />
-                </View>
-                <View style={{ flex: 1, marginLeft: 12, justifyContent: 'center' }}>
-                  <Text style={styles.state1Title}>Set Monthly Budget</Text>
-                  <Text style={styles.state1Sub}>Track your personal spending this month</Text>
-                </View>
-                <ChevronRight size={18} color="#94A3B8" strokeWidth={2.5} />
-              </View>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity style={styles.budgetCard} onPress={() => navigation?.navigate?.("Expenses")} activeOpacity={0.85}>
-              <View style={[styles.budgetCardInner, { alignItems: 'flex-start' }]}>
-                <View style={styles.budgetIconWrap}>
-                  <TrendingUp size={20} color={BRAND} strokeWidth={2.5} />
-                </View>
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
-                    <Text style={styles.state2LabelLeft}>₹{spent.toLocaleString("en-IN")} of ₹{budget.toLocaleString("en-IN")} spent</Text>
-                    <Text style={styles.state2LabelRight}>
-                      {isOver ? "⚠️ Over" : `₹${remaining.toLocaleString("en-IN")} left`}
-                    </Text>
-                  </View>
-                  <View style={styles.barTrack}>
-                    <Animated.View
-                      style={[
-                        styles.barFill,
-                        {
-                          width: progressAnim.interpolate({
-                            inputRange: [0, 100],
-                            outputRange: ["0%", "100%"],
-                          }),
-                          backgroundColor: barColor,
-                        },
-                      ]}
-                    />
-                  </View>
-                  <Text style={styles.state2Percent}>{Math.round(percentage)}%</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          )}
-        </View>
-
         {/* ── Illustration / Status Pill ── */}
-        <View style={[styles.card, styles.illustrationCard, styles.sectionGap]}>
-          <View style={styles.pillContent}>
-            <View style={styles.pillDotContent} />
-            <Text style={styles.pillTextContent}>Application Under Review</Text>
+        <View style={[styles.card, styles.illustrationCard]}>
+          <View style={[styles.pillContent, isRejected && { backgroundColor: '#FEE2E2' }]}>
+            <View style={[styles.pillDotContent, isRejected && { backgroundColor: '#DC2626' }]} />
+            <Text style={[styles.pillTextContent, isRejected && { color: '#DC2626' }]}>
+              {isRejected ? 'Application Not Approved' : 'Application Under Review'}
+            </Text>
           </View>
         </View>
 
         {/* Title & subtitle */}
         <View style={styles.sectionGap}>
-          <Text style={styles.title}>We're reviewing your application</Text>
+          <Text style={[styles.title, isRejected && { color: '#B91C1C' }]}>
+            {isRejected ? "Registration Not Approved" : "We're reviewing your application"}
+          </Text>
           <Text style={styles.subtitle}>
-            Your application is pending owner approval. Once approved and a room
-            is assigned, you'll get full access.
+            {isRejected
+              ? "Your application was not approved by the hostel owner. You can register again with updated details or connect with another hostel."
+              : "Your application is pending owner approval. Once approved and a room is assigned, you'll get full access."}
           </Text>
         </View>
 
-        {/* ── What happens next ── */}
+        {/* Re-apply CTA Button if rejected */}
+        {isRejected && (
+          <TouchableOpacity
+            style={styles.reapplyBtn}
+            onPress={handleRegisterAgain}
+            activeOpacity={0.85}
+          >
+            <RefreshCw size={18} color="#FFFFFF" strokeWidth={2.5} />
+            <Text style={styles.reapplyBtnText}>Register Again / Connect Hostel</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* ── Timeline / What happens next ── */}
         <View style={[styles.card, styles.sectionGap]}>
-          <Text style={styles.cardTitle}>What happens next?</Text>
+          <Text style={styles.cardTitle}>{isRejected ? "Application Timeline" : "What happens next?"}</Text>
           <View style={styles.stepsRow}>
             {/* Step 1 — done */}
             <View style={styles.step}>
@@ -214,16 +153,20 @@ export default function PendingApprovalScreen({ navigation }: any) {
 
             <View style={styles.connector} />
 
-            {/* Step 2 — active */}
+            {/* Step 2 — active/rejected */}
             <View style={styles.step}>
-              <View style={[styles.stepCircle, styles.stepCircleActive]}>
+              <View style={[styles.stepCircle, isRejected ? { backgroundColor: '#EF4444' } : styles.stepCircleActive]}>
                 <User2 size={18} color={WHITE} strokeWidth={2} />
               </View>
-              <Text style={[styles.stepLabel, { color: BRAND, fontWeight: "700" }]}>
-                Owner{"\n"}Review
+              <Text style={[styles.stepLabel, { color: isRejected ? '#DC2626' : BRAND, fontWeight: "700" }]}>
+                {isRejected ? "Owner\nRejected" : "Owner\nReview"}
               </Text>
-              <View style={styles.stepActive}>
-                <Clock size={10} color={BRAND} strokeWidth={2.5} />
+              <View style={[styles.stepActive, isRejected && { backgroundColor: '#FEE2E2', borderColor: '#FCA5A5' }]}>
+                {isRejected ? (
+                  <XCircle size={10} color="#DC2626" strokeWidth={2.5} />
+                ) : (
+                  <Clock size={10} color={BRAND} strokeWidth={2.5} />
+                )}
               </View>
             </View>
 
@@ -243,13 +186,18 @@ export default function PendingApprovalScreen({ navigation }: any) {
         </View>
 
         {/* ── Notification Banner ── */}
-        <View style={[styles.notifBanner, styles.sectionGap]}>
-          <View style={styles.notifIcon}>
-            <Bell size={16} color="#D97706" strokeWidth={2} />
+        <View style={[styles.notifBanner, styles.sectionGap, isRejected && { backgroundColor: '#FEF2F2', borderColor: '#FECACA' }]}>
+          <View style={[styles.notifIcon, isRejected && { backgroundColor: '#FEE2E2' }]}>
+            {isRejected ? (
+              <XCircle size={16} color="#DC2626" strokeWidth={2} />
+            ) : (
+              <Bell size={16} color="#D97706" strokeWidth={2} />
+            )}
           </View>
-          <Text style={styles.notifText}>
-            You'll receive a notification as soon as your application is
-            approved.
+          <Text style={[styles.notifText, isRejected && { color: '#991B1B' }]}>
+            {isRejected
+              ? "If you believe this was a mistake, please reach out to the hostel owner or tap the button above to start a fresh registration."
+              : "You'll receive a notification as soon as your application is approved."}
           </Text>
         </View>
 
@@ -465,6 +413,27 @@ const styles = StyleSheet.create({
     borderTopWidth: 1.5, borderColor: BRAND,
     borderStyle: "dashed",
     marginTop: 22, marginHorizontal: 2,
+  },
+
+  // ── Re-apply Button ──────────────────────────────────────────
+  reapplyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#4F46E5',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    marginTop: 16,
+    ...CARD_SHADOW,
+    shadowColor: '#4F46E5',
+    shadowOpacity: 0.25,
+  },
+  reapplyBtnText: {
+    color: WHITE,
+    fontSize: 15,
+    fontWeight: '700',
   },
 
   // ── Notification ─────────────────────────────────────────────

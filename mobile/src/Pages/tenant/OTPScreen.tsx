@@ -97,6 +97,12 @@ export default function OTPScreen({ route, navigation }: any) {
             {countdown > 0 ? `Resend OTP in ${countdown}s` : 'Resend OTP'}
           </Text>
         </TouchableOpacity>
+
+        {countdown <= 15 && (
+          <Text style={styles.spamHintText}>
+            Didn't receive email? Check your <Text style={{ fontWeight: 'bold' }}>Spam</Text> or Junk folder.
+          </Text>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -177,6 +183,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   resendTextDisabled: {
-    color: '#BDBDBD',
+    color: '#9E9E9E',
+  },
+  spamHintText: {
+    fontSize: 12,
+    color: '#757575',
+    textAlign: 'center',
+    marginTop: 14,
   },
 });

@@ -393,6 +393,16 @@ export function TenantLoginScreen({ navigation }: any) {
                 </View>
               </View>
 
+              {/* Delayed Spam/Junk hint (appears after 15s) */}
+              {countdown <= 105 && (
+                <View style={s.spamHintRow}>
+                  <Ionicons name="information-circle-outline" size={15} color="#64748B" />
+                  <Text style={s.spamHintText}>
+                    Didn't receive email? Check your <Text style={{ fontWeight: '700', color: TEXT_MID }}>Spam</Text> or Junk folder.
+                  </Text>
+                </View>
+              )}
+
               <TouchableOpacity
                 style={[s.mainBtnWrap, (!otpFilled || verifyLoading) && { opacity: 0.7 }]}
                 onPress={handleVerify}
@@ -470,9 +480,27 @@ const s = StyleSheet.create({
   otpBoxFilled: { borderColor: PURPLE, backgroundColor: PURPLE_SOFT, color: PURPLE },
   otpBoxError: { borderColor: '#EF4444', backgroundColor: '#FEE2E2', color: '#EF4444' },
   sentBanner: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: PURPLE_SOFT, borderRadius: 12, borderWidth: 1, borderColor: '#E2D9FF', paddingHorizontal: 14, paddingVertical: 12, marginBottom: 16 },
-  sentBannerText: { color: TEXT_DARK, fontSize: 12 },
-  sentBannerEmail: { color: PURPLE, fontWeight: '700', fontSize: 14 },
-  mainBtnWrap: { borderRadius: 16, marginBottom: 14 },
+  sentBannerText: { color: TEXT_MID, fontSize: 12 },
+  sentBannerEmail: { color: TEXT_DARK, fontSize: 13, fontWeight: '700' },
+  spamHintRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 16,
+  },
+  spamHintText: {
+    fontSize: 12,
+    color: '#64748B',
+    flexShrink: 1,
+  },
+  mainBtnWrap: { borderRadius: 14, marginBottom: 14 },
   mainBtn: { borderRadius: 16, height: 58, justifyContent: 'center', alignItems: 'center' },
   btnInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   btnText: { color: WHITE, fontSize: 16, fontWeight: '700', letterSpacing: 0.3 },

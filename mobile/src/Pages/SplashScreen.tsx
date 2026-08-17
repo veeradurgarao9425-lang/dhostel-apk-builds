@@ -7,24 +7,77 @@ import { useAuth } from '../../contexts/AuthContext';
 import { COLORS, FONT } from '../theme/index';
 import { ONBOARDING_KEY } from './OnboardingScreen';
 
-// While developing, always show the intro on a cold start so you don't have to
-// reinstall to see it. In production builds (__DEV__ === false) this has no
-// effect — the intro stays "once per device". Flip to false to test the
-// once-per-device behavior inside a dev build too.
 const ALWAYS_SHOW_INTRO_IN_DEV = true;
 
-
+// App name broken down into individual letters
+const LETTERS = [
+  { char: 'H', highlight: false },
+  { char: 'o', highlight: false },
+  { char: 's', highlight: false },
+  { char: 't', highlight: false },
+  { char: 'i', highlight: true },
+  { char: 'x', highlight: true },
+];
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function SplashScreen({ navigation }: any) {
   const { user, loading } = useAuth();
   const insets = useSafeAreaInsets();
 
+  // Animation values for Logo & Container
+  const logoAnim = useRef(new Animated.Value(0)).current;
+  const taglineAnim = useRef(new Animated.Value(0)).current;
+
+  // Individual animated values for each letter: [H, o, s, t, i, x]
+  const letterAnims = useRef(LETTERS.map(() => new Animated.Value(0))).current;
+
   // Animated dots pulse effect
   const dot1 = useRef(new Animated.Value(0.3)).current;
   const dot2 = useRef(new Animated.Value(0.3)).current;
   const dot3 = useRef(new Animated.Value(0.3)).current;
 
+  // Run the Netflix-style cinematic reveal
+  useEffect(() => {
+    // 1. Logo Scale & Fade-in
+    Animated.timing(logoAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
+
+    // 2. Letter animations:
+    // 'H' (Letter 0) pops first with impactful spring (like Netflix 'N')
+    const firstLetterAnim = Animated.spring(letterAnims[0], {
+      toValue: 1,
+      friction: 5,
+      tension: 65,
+      useNativeDriver: true,
+    });
+
+    // Remaining letters ('o', 's', 't', 'i', 'x') stagger sequentially
+    const remainingLetterAnims = letterAnims.slice(1).map((anim) =>
+      Animated.spring(anim, {
+        toValue: 1,
+        friction: 6,
+        tension: 55,
+        useNativeDriver: true,
+      })
+    );
+
+    // Sequence: First letter -> stagger remaining -> tagline fade up
+    Animated.sequence([
+      Animated.delay(150),
+      firstLetterAnim,
+      Animated.stagger(90, remainingLetterAnims),
+      Animated.timing(taglineAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  // Dots pulsating loop
   useEffect(() => {
     const createPulse = (dot: Animated.Value, delay: number) => {
       return Animated.loop(
@@ -59,6 +112,7 @@ export default function SplashScreen({ navigation }: any) {
     };
   }, [dot1, dot2, dot3]);
 
+  // Navigation redirection after animation
   useEffect(() => {
     if (loading) return;
 
@@ -82,7 +136,7 @@ export default function SplashScreen({ navigation }: any) {
       }
       if (cancelled) return;
       navigation.replace(seenIntro ? 'Login' : 'Onboarding');
-    }, 600);
+    }, 1700);
 
     return () => {
       cancelled = true;
@@ -95,35 +149,102 @@ export default function SplashScreen({ navigation }: any) {
       <StatusBar hidden />
       <LinearGradient
         colors={[COLORS.gradientStart, COLORS.gradientEnd, COLORS.primaryDark]}
-        style={[styles.gradient, { paddingBottom: Math.max(insets.bottom + 24, 48) }]}
+        style={[styles.gradient, { paddingBottom: Math.max(insets.bottom + 12, 24) }]}
         start={{ x: 0.2, y: 0 }}
         end={{ x: 0.8, y: 1 }}
       >
         <View style={styles.content}>
-
-          {/* Logo */}
-          <View style={styles.logoContainer}>
-            <Image 
-                source={require('../../assets/HostixNew.png')}
-                style={{ width: '100%', height: '100%', borderRadius: 28 }}
-                resizeMode="cover"
+          {/* Logo with scale & fade animation */}
+          <Animated.View
+            style={[
+              styles.logoContainer,
+              {
+                opacity: logoAnim,
+                transform: [
+                  {
+                    scale: logoAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.75, 1],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <Image
+              source={require('../../assets/HostixNew.png')}
+              style={{ width: '100%', height: '100%', borderRadius: 28 }}
+              resizeMode="cover"
             />
+          </Animated.View>
+
+          {/* Staggered Letter-by-Letter Animated Name (Netflix Style) */}
+          <View style={styles.nameRow}>
+            {LETTERS.map((item, index) => {
+              const animVal = letterAnims[index];
+
+              // Fade in from transparent to full opacity
+              const opacity = animVal;
+
+              // Slide up: starts 22px below and pops into place
+              const translateY = animVal.interpolate({
+                inputRange: [0, 1],
+                outputRange: [22, 0],
+              });
+
+              // Bouncy scale: pops slightly larger then settles to 1.0
+              const scale = animVal.interpolate({
+                inputRange: [0, 0.6, 1],
+                outputRange: [index === 0 ? 0.3 : 0.5, 1.25, 1],
+              });
+
+              return (
+                <Animated.Text
+                  key={index}
+                  style={[
+                    styles.letter,
+                    item.highlight && styles.highlightLetter,
+                    {
+                      opacity,
+                      transform: [{ translateY }, { scale }],
+                    },
+                  ]}
+                >
+                  {item.char}
+                </Animated.Text>
+              );
+            })}
           </View>
 
-          {/* App name */}
-          <Text style={styles.appName}>Host<Text style={{ color: '#FCD34D' }}>ix</Text></Text>
-          <Text style={styles.tagline}>Smart PG Management</Text>
+          {/* Tagline fading up */}
+          <Animated.Text
+            style={[
+              styles.tagline,
+              {
+                opacity: taglineAnim,
+                transform: [
+                  {
+                    translateY: taglineAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [12, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            Smart PG Management
+          </Animated.Text>
 
-          {/* Animated dots */}
-          <View style={styles.dotsContainer}>
+          {/* Animated dots (commented out) */}
+          {/* <View style={styles.dotsContainer}>
             {[dot1, dot2, dot3].map((dotAnim, i) => (
               <Animated.View
                 key={i}
                 style={[styles.dot, { opacity: dotAnim, transform: [{ scale: dotAnim }] }]}
               />
             ))}
-          </View>
-
+          </View> */}
         </View>
 
         {/* Footer */}
@@ -140,7 +261,7 @@ const styles = StyleSheet.create({
   gradient: {
     flex: 1,
     justifyContent: 'space-between',
-    paddingBottom: 40,
+    paddingBottom: 24,
   },
   content: {
     flex: 1,
@@ -148,30 +269,49 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logoContainer: {
-    width: 110,
-    height: 110,
-    borderRadius: 28,
+    width: 104,
+    height: 104,
+    borderRadius: 26,
     backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 28,
+    marginBottom: 16,
     // Glass effect border
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.25)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 8,
   },
-  appName: {
-    fontSize: FONT.xxxl + 4,
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  letter: {
+    fontSize: FONT.xxxl + 6,
     fontWeight: FONT.black,
     color: '#FFFFFF',
     letterSpacing: 1.5,
-    marginBottom: 8,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 6,
+  },
+  highlightLetter: {
+    color: '#FCD34D', // Gold/Amber signature highlight for 'ix'
+    textShadowColor: 'rgba(252, 211, 77, 0.4)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 10,
   },
   tagline: {
     fontSize: FONT.md,
-    color: 'rgba(255,255,255,0.8)',
+    color: 'rgba(255,255,255,0.85)',
     fontWeight: FONT.medium,
     letterSpacing: 0.5,
-    marginBottom: 60,
+    marginBottom: 0,
   },
   dotsContainer: {
     flexDirection: 'row',

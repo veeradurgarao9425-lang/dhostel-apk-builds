@@ -25,6 +25,7 @@ import { QuickShortcuts } from "../../components/tenant/QuickShortcuts";
 import { RecentActivity } from "../../components/tenant/RecentActivity";
 import { QuickTips } from "../../components/tenant/QuickTips";
 import { GrowthHomeScreen } from "./growth/GrowthHomeScreen";
+import { TenantHeaderNotification } from "../../components/tenant/TenantHeaderNotification";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -438,20 +439,7 @@ export function TenantHomeScreen({ navigation }: any) {
                 </View>
 
                 <View style={styles.headerActions}>
-                  <TouchableOpacity
-                    style={styles.headerIconBtn}
-                    onPress={() => navigation.navigate("Notifications")}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="notifications" size={20} color={WHITE} />
-                    {unreadNotifCount > 0 && (
-                      <View style={styles.notifBadge}>
-                        <Text style={styles.notifBadgeText}>
-                          {unreadNotifCount > 9 ? "9+" : unreadNotifCount}
-                        </Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
+                  <TenantHeaderNotification navigation={navigation} />
 
                   <TouchableOpacity
                     style={styles.avatarBtn}

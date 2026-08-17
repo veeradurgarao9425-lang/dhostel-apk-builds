@@ -99,7 +99,7 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
     }
 
     // Filter by status if provided
-    if (status !== undefined) {
+    if (status !== undefined && status !== '') {
       query = query.where('s.status', status);
     }
 
@@ -222,6 +222,7 @@ export const getStudentStats = async (req: AuthRequest, res: Response) => {
         db.raw('sum(case when status = 0 then 1 else 0 end) as inactive'),
         db.raw('sum(case when status = 2 then 1 else 0 end) as prebooked'),
         db.raw('sum(case when status = 3 then 1 else 0 end) as qr_register'),
+        db.raw('sum(case when status = 4 then 1 else 0 end) as rejected'),
         db.raw('sum(case when status = 1 and room_id is null then 1 else 0 end) as unallocated'),
         db.raw('sum(case when admission_status = 0 and status in (1, 2, 3) then 1 else 0 end) as pendingAdmissions')
       )
@@ -235,6 +236,7 @@ export const getStudentStats = async (req: AuthRequest, res: Response) => {
         inactive: parseInt(stats?.inactive || 0),
         prebooked: parseInt(stats?.prebooked || 0),
         qrRegister: parseInt(stats?.qr_register || 0),
+        rejected: parseInt(stats?.rejected || 0),
         unallocated: parseInt(stats?.unallocated || 0),
         pendingAdmissions: parseInt(stats?.pendingAdmissions || 0)
       }

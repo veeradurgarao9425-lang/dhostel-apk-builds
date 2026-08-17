@@ -494,6 +494,16 @@ export default function RegisterScreen({ navigation }: any) {
                                 : <Text style={styles.verifyBtnText}>Confirm</Text>}
                         </TouchableOpacity>
                         </Field>
+
+                        {/* Delayed Spam/Junk hint (appears after 15s) */}
+                        {resendTimer <= 105 && (
+                            <View style={styles.spamHintBox}>
+                                <Ionicons name="information-circle-outline" size={14} color="#64748B" />
+                                <Text style={styles.spamHintText}>
+                                    Didn't receive email? Check your <Text style={{ fontWeight: '700', color: '#475569' }}>Spam</Text> or Junk folder.
+                                </Text>
+                            </View>
+                        )}
                     </View>
                 )}
 
@@ -894,5 +904,24 @@ const styles = StyleSheet.create({
         marginTop: 4,
         marginLeft: 4,
         fontWeight: '600',
+    },
+    spamHintBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: '#F8FAFC',
+        paddingHorizontal: 10,
+        paddingVertical: 7,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        marginTop: -6,
+        marginBottom: 12,
+        marginLeft: 2,
+    },
+    spamHintText: {
+        fontSize: 11.5,
+        color: '#64748B',
+        flexShrink: 1,
     },
 });
