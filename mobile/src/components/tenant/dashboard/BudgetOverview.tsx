@@ -48,10 +48,6 @@ export const BudgetOverview = ({
                 onPress={() => isRentDue && navigation.navigate('Dues')}
                 style={styles.card}
             >
-                <View style={[styles.accentStrip, {
-                    backgroundColor: isRentDue ? '#EF4444' : '#22C55E',
-                }]} />
-
                 <View style={[styles.iconBox, {
                     backgroundColor: isRentDue ? '#FEF2F2' : '#F0FDF4',
                 }]}>
@@ -104,10 +100,6 @@ export const BudgetOverview = ({
                 onPress={() => navigation.navigate('Expenses')}
                 style={styles.card}
             >
-                <View style={[styles.accentStrip, {
-                    backgroundColor: overBudget ? '#EF4444' : theme.colors.primary,
-                }]} />
-
                 <View style={[styles.iconBox, {
                     backgroundColor: overBudget ? '#FEF2F2' : theme.colors.primarySoft,
                 }]}>
