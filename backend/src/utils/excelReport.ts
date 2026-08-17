@@ -317,10 +317,10 @@ export const sendDailyOwnerReportEmail = async (userId: number, hostelId: number
 
     const collectionsList = await db('fee_payments as fp')
       .join('students as s', 'fp.student_id', 's.student_id')
-      .leftJoin('payment_modes as pm', 'fp.payment_mode_id', 'pm.mode_id')
+      .leftJoin('payment_modes as pm', 'fp.payment_mode_id', 'pm.payment_mode_id')
       .where('fp.hostel_id', hostelId)
       .whereRaw("DATE_FORMAT(fp.payment_date, '%Y-%m') = ?", [currentMonthStr])
-      .select('s.first_name', 's.last_name', 'fp.amount', 'fp.payment_date', 'pm.mode_name', 'fp.transaction_id', 'fp.notes')
+      .select('s.first_name', 's.last_name', 'fp.amount', 'fp.payment_date', 'pm.payment_mode_name', 'fp.transaction_id', 'fp.notes')
       .orderBy('fp.payment_date', 'desc');
 
     let colRowIdx = 3;
@@ -333,7 +333,7 @@ export const sendDailyOwnerReportEmail = async (userId: number, hostelId: number
         name,
         amount,
         payDate,
-        payment.mode_name || 'N/A',
+        payment.payment_mode_name || 'N/A',
         payment.transaction_id || 'N/A',
         payment.notes || ''
       ];

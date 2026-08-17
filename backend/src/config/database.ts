@@ -151,13 +151,13 @@ export async function patchDatabaseSchema() {
         await db.raw(`
           CREATE TABLE payment_modes (
             payment_mode_id INT AUTO_INCREMENT PRIMARY KEY,
-            mode_name VARCHAR(100) NOT NULL UNIQUE,
+            payment_mode_name VARCHAR(100) NOT NULL UNIQUE,
             is_active BOOLEAN DEFAULT TRUE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         `);
         await db.raw(`
-          INSERT IGNORE INTO payment_modes (payment_mode_id, mode_name) VALUES
+          INSERT IGNORE INTO payment_modes (payment_mode_id, payment_mode_name) VALUES
           (1, 'Cash'), (2, 'UPI'), (3, 'Bank Transfer'), (4, 'Card'), (5, 'Cheque')
         `);
       }
