@@ -741,6 +741,15 @@ app.get('/', (req, res) => {
   });
 });
 
+// Handle Expo dev client / Metro bundler internal requests silently (e.g. /_expo/loading, /symbolicate)
+app.use((req, res, next) => {
+  const url = (req.originalUrl || req.url || '').toLowerCase();
+  if (url.includes('/_expo/') || url.includes('/symbolicate')) {
+    return res.status(200).json({ status: 'ok' });
+  }
+  next();
+});
+
 // 404 handler
 app.use((req, res) => {
   console.log(`[404] No route found for ${req.method} ${req.url}`);
