@@ -342,6 +342,8 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen name="AllExpenses" component={AllExpensesScreen} />
                     <Stack.Screen name="FullMenu" component={FullMenuScreen} />
                     <Stack.Screen name="Payments" component={TenantPaymentScreen} />
+                    <Stack.Screen name="Dues" component={DuesScreen} />
+                    <Stack.Screen name="TenantDues" component={DuesScreen} />
 
                     {/* Growth Journey — tenant-only, pushed on top of the shared tab bar */}
                     <Stack.Screen name="GrowthHome" component={GrowthHomeScreen} />

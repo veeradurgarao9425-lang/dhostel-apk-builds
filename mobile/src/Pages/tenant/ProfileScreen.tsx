@@ -12,9 +12,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../../contexts/AuthContext';
 import { ConfirmationDialog } from '../../components/tenant/UIComponents';
 import VacateModal from '../../components/tenant/VacateModal';
@@ -33,7 +36,6 @@ export default function ProfileScreen({ navigation }: any) {
   const { user, signOut, updateTokenAndUser } = useAuth();
 
   const name = user?.name || user?.full_name || 'Tenant';
-  const firstName = name.split(' ')[0];
   const initials = name
     .split(' ')
     .map((w: string) => w[0])
@@ -45,12 +47,40 @@ export default function ProfileScreen({ navigation }: any) {
   const email = user?.email || 'No email added';
   const hostelName = (user as any)?.hostel_name || 'My Hostel';
 
+  const [avatarUri, setAvatarUri] = useState<string | null>(
+    (user as any)?.avatar_url || (user as any)?.profile_image || null
+  );
   const [showLogout, setShowLogout] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [editName, setEditName] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editSaving, setEditSaving] = useState(false);
   const [showVacateModal, setShowVacateModal] = useState(false);
+
+  const handlePickAvatar = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Please grant permission to access your photo gallery.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const selectedUri = result.assets[0].uri;
+        setAvatarUri(selectedUri);
+        await AsyncStorage.setItem(`tenant_avatar_${user?.user_id || 'me'}`, selectedUri);
+      }
+    } catch (e) {
+      console.error('Error picking avatar:', e);
+    }
+  };
 
   const saveProfile = async () => {
     if (!editName.trim()) {
@@ -107,10 +137,20 @@ export default function ProfileScreen({ navigation }: any) {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* ── Compact Profile Summary Card ── */}
         <View style={styles.compactCard}>
-          <View style={styles.avatarWrap}>
-            <Text style={styles.avatarText}>{initials}</Text>
-            <View style={styles.onlineDot} />
-          </View>
+          <TouchableOpacity
+            style={styles.avatarWrap}
+            activeOpacity={0.8}
+            onPress={handlePickAvatar}
+          >
+            {avatarUri ? (
+              <Image source={{ uri: avatarUri }} style={styles.avatarImg} />
+            ) : (
+              <Text style={styles.avatarText}>{initials}</Text>
+            )}
+            <View style={styles.cameraBadge}>
+              <Ionicons name="camera" size={10} color={WHITE} />
+            </View>
+          </TouchableOpacity>
 
           <View style={styles.profileInfo}>
             <View style={styles.nameRow}>
@@ -440,27 +480,34 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
   },
   avatarWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: BRAND,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
   },
+  avatarImg: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+  },
   avatarText: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '800',
     color: WHITE,
   },
-  onlineDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#10B981',
+  cameraBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: BRAND,
     position: 'absolute',
-    bottom: 0,
-    right: 0,
+    bottom: -2,
+    right: -2,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 2,
     borderColor: WHITE,
   },

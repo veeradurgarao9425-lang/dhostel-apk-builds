@@ -111,9 +111,11 @@ function ComplaintDetailView({ complaint, onClose }: { complaint: any; onClose: 
         title="Complaint Details" 
         onBack={onClose}
         rightComponent={
-          <TouchableOpacity style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }} activeOpacity={0.7}>
-            <Edit2 size={20} color={WHITE} />
-          </TouchableOpacity>
+          (statusKey !== 'Resolved' && statusKey !== 'Rejected') ? (
+            <TouchableOpacity style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }} activeOpacity={0.7}>
+              <Edit2 size={18} color={WHITE} />
+            </TouchableOpacity>
+          ) : null
         }
       />
 
@@ -179,55 +181,37 @@ function ComplaintDetailView({ complaint, onClose }: { complaint: any; onClose: 
 
 function StepperForm({ visible, onClose, onSubmit, hostelId }: { visible: boolean; onClose: () => void; onSubmit: () => void; hostelId?: number }) {
   const { showError, showSuccess } = useToast();
-  const [step, setStep] = useState(1);
   const [priority, setPriority] = useState('Medium');
-  const [category, setCategory] = useState('');
+  const [category, setCategory] = useState('Maintenance');
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
-  const [showCatPicker, setShowCatPicker] = useState(false);
-  const [prefDate, setPrefDate] = useState(new Date().toLocaleString());
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const [images, setImages] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const [errors, setErrors] = useState<{ category?: boolean, title?: boolean, desc?: boolean }>({});
+  const [errors, setErrors] = useState<{ title?: boolean, desc?: boolean }>({});
   const categories = ['Maintenance', 'WiFi', 'Electrical', 'Food', 'Cleaning', 'Other'];
   
+  const handleReset = () => {
+    setPriority('Medium');
+    setCategory('Maintenance');
+    setTitle('');
+    setDesc('');
+    setImages([]);
+    setErrors({});
+  };
+
   // Reset form when opened
   React.useEffect(() => {
     if (visible) {
-      setStep(1);
-      setPriority('Medium');
-      setCategory('');
-      setTitle('');
-      setDesc('');
-      setPrefDate(new Date().toLocaleString());
-      setImages([]);
-      setErrors({});
+      handleReset();
     }
   }, [visible]);
 
   if (!visible) return null;
 
-  const nextStep = () => {
-    if (step === 1) {
-      const newErrors = {
-        category: !category,
-        title: !title.trim(),
-        desc: !desc.trim(),
-      };
-      setErrors(newErrors);
-      if (newErrors.category || newErrors.title || newErrors.desc) {
-        return;
-      }
-    }
-    setStep(s => Math.min(3, s + 1));
-  };
-  const prevStep = () => setStep(s => Math.max(1, s - 1));
-
   const handleUpload = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: 'images',
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsMultipleSelection: true,
         selectionLimit: 3 - images.length,
         quality: 0.8,
@@ -245,231 +229,174 @@ function StepperForm({ visible, onClose, onSubmit, hostelId }: { visible: boolea
     setImages(prev => prev.filter((_, i) => i !== index));
   };
 
+  const handleSubmit = async () => {
+    const newErrors = {
+      title: !title.trim(),
+      desc: !desc.trim(),
+    };
+    setErrors(newErrors);
+    if (newErrors.title || newErrors.desc) return;
+
+    setSubmitting(true);
+    try {
+      const formData = new FormData();
+      formData.append('hostel_id', String(hostelId || ''));
+      formData.append('category', category);
+      formData.append('title', title);
+      formData.append('description', desc);
+      images.forEach((uri, i) => {
+        const ext = uri.split('.').pop() || 'jpg';
+        formData.append('images', {
+          uri,
+          name: `complaint-${i}.${ext}`,
+          type: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
+        } as any);
+      });
+      await api.post('/complaints/tenant', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      onSubmit();
+      onClose();
+    } catch (e) {
+      console.error('Failed to submit complaint', e);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={[s.modalOverlayFull, { backgroundColor: WHITE }]}>
+      <View style={s.modalContainerFull}>
+        <StatusBar barStyle="light-content" backgroundColor="#4F46E5" />
+        
+        {/* Colored Top Header with Left '<' Back Button */}
+        <LinearGradient colors={['#4F46E5', '#7C3AED']} style={s.slimModalHeader}>
+          <SafeAreaView edges={['top']} style={s.headerInnerRow}>
+            <TouchableOpacity onPress={onClose} style={s.backBtnHeader} activeOpacity={0.7}>
+              <ChevronLeft size={22} color={WHITE} strokeWidth={2.5} />
+            </TouchableOpacity>
+            <Text style={s.slimModalTitle}>New Complaint</Text>
+          </SafeAreaView>
+        </LinearGradient>
+
         {submitting && (
-          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.7)', zIndex: 10, justifyContent: 'center', alignItems: 'center' }}>
-            <ActivityIndicator size="large" color={BLUE} />
-            <Text style={{ marginTop: 12, fontSize: 16, fontWeight: '600', color: TEXT_DARK }}>Submitting Complaint...</Text>
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.75)', zIndex: 10, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="large" color="#4F46E5" />
+            <Text style={{ marginTop: 12, fontSize: 15, fontWeight: '700', color: TEXT_DARK }}>Submitting Complaint...</Text>
           </View>
         )}
-        <StatusBar barStyle="light-content" backgroundColor={BLUE} />
-        <AppHeader 
-          title="New Complaint" 
-          onBack={onClose} 
-          showBack={true}
-        />
-        <SafeAreaView style={s.modalContainerFull} edges={['bottom']}>
-          {/* Stepper Indicator */}
-          <View style={s.stepperWrap}>
-            <View style={s.stepLineWrap}>
-              <View style={[s.stepLine, step >= 2 && s.stepLineActive]} />
-              <View style={[s.stepLine, step >= 3 && s.stepLineActive]} />
-            </View>
-            <View style={s.stepNodes}>
-              <View style={[s.stepNode, step >= 1 && s.stepNodeActive]}>
-                <Text style={[s.stepNodeTxt, step >= 1 && s.stepNodeTxtActive]}>1</Text>
-              </View>
-              <View style={[s.stepNode, step >= 2 && s.stepNodeActive]}>
-                <Text style={[s.stepNodeTxt, step >= 2 && s.stepNodeTxtActive]}>2</Text>
-              </View>
-              <View style={[s.stepNode, step >= 3 && s.stepNodeActive]}>
-                <Text style={[s.stepNodeTxt, step >= 3 && s.stepNodeTxtActive]}>3</Text>
-              </View>
-            </View>
-          </View>
 
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.formBody}>
-            {step === 1 && (
-              <View style={s.stepContent}>
-                <View style={s.stepHero}>
-                  <View style={s.heroIconWrap}><ClipboardList size={36} color={BLUE} /></View>
-                  <Text style={s.heroTitle}>Raise a Complaint</Text>
-                  <Text style={s.heroSub}>Let us know what's not working so we can fix it.</Text>
-                </View>
-
-                <Text style={s.inputLbl}>Category <Text style={{color: '#EF4444'}}>*</Text></Text>
-                <TouchableOpacity style={[s.inputBox, errors.category && { borderColor: '#EF4444' }]} onPress={() => setShowCatPicker(true)} activeOpacity={0.7}>
-                  <Text style={{ color: category ? TEXT_DARK : TEXT_MID, fontSize: 15 }}>{category || 'Select Category'}</Text>
-                  <ChevronDown size={20} color={TEXT_MID} />
-                </TouchableOpacity>
-                {errors.category && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Please select a category</Text>}
-
-                <Text style={s.inputLbl}>Priority</Text>
-                <View style={s.priorityRow}>
-                  {['Low', 'Medium', 'High'].map(p => (
-                    <TouchableOpacity key={p} style={[s.priorityBtn, priority === p && s.priorityBtnActive]} onPress={() => setPriority(p)}>
-                      <Text style={[s.priorityTxt, priority === p && s.priorityTxtActive]}>{p}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-
-                <Text style={s.inputLbl}>Title <Text style={{color: '#EF4444'}}>*</Text></Text>
-                <TextInput 
-                  style={[s.inputBoxStyle, errors.title && { borderColor: '#EF4444' }]} 
-                  placeholder="e.g. Broken tap" 
-                  placeholderTextColor={TEXT_MID}
-                  value={title}
-                  onChangeText={(t) => { setTitle(t.replace(/[^a-zA-Z0-9.,!? '"-]/g, '')); setErrors(e => ({...e, title: false})); }}
-                />
-                {errors.title && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Please enter a title</Text>}
-
-                <Text style={s.inputLbl}>Description <Text style={{color: '#EF4444'}}>*</Text></Text>
-                <View style={[s.textAreaWrap, errors.desc && { borderColor: '#EF4444' }]}>
-                  <TextInput
-                    style={s.textAreaStyle}
-                    placeholder="Describe the issue..."
-                    placeholderTextColor={TEXT_MID}
-                    multiline
-                    value={desc}
-                    onChangeText={(t) => { setDesc(t.replace(/[^a-zA-Z0-9.,!? \n'"-]/g, '')); setErrors(e => ({...e, desc: false})); }}
-                    maxLength={300}
-                  />
-                  <Text style={s.charCount}>{desc.length}/300</Text>
-                </View>
-                {errors.desc && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Please enter a description</Text>}
-              </View>
-            )}
-
-            {step === 2 && (
-              <View style={s.stepContent}>
-                <Text style={s.inputLbl}>Upload Photo</Text>
-                {images.length > 0 ? (
-                  <View style={{ flexDirection: 'row', gap: 12, flexWrap: 'wrap' }}>
-                    {images.map((imgUri, i) => (
-                      <View key={i} style={[s.largeImgBox, { width: 100, height: 100, flex: 0 }]}>
-                        <Image source={{ uri: imgUri }} style={{ width: '100%', height: '100%', borderRadius: 16 }} />
-                        <TouchableOpacity 
-                          style={{ position: 'absolute', top: -8, right: -8, backgroundColor: '#EF4444', borderRadius: 12, padding: 4 }}
-                          onPress={() => removeImage(i)}
-                        >
-                          <X size={14} color="#FFF" />
-                        </TouchableOpacity>
-                      </View>
-                    ))}
-                    {images.length < 3 && (
-                      <TouchableOpacity style={[s.largeImgBox, { width: 100, height: 100, flex: 0, borderStyle: 'dashed' }]} onPress={handleUpload}>
-                        <Plus size={32} color={TEXT_MID} />
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                ) : (
-                  <TouchableOpacity style={s.uploadArea} onPress={handleUpload} activeOpacity={0.7}>
-                    <UploadCloud size={28} color={BLUE} style={{ marginBottom: 8 }} />
-                    <Text style={s.uploadTxt}>Tap to upload photo</Text>
-                    <Text style={s.uploadSub}>PNG, JPG up to 5MB</Text>
+            <View style={s.stepContent}>
+              {/* Category Quick Pills */}
+              <Text style={s.inputLbl}>Category <Text style={{color: '#EF4444'}}>*</Text></Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 2 }}>
+                {categories.map((cat) => (
+                  <TouchableOpacity
+                    key={cat}
+                    style={[
+                      { paddingHorizontal: 13, paddingVertical: 7, borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' },
+                      category === cat && { backgroundColor: BLUE, borderColor: BLUE },
+                    ]}
+                    onPress={() => setCategory(cat)}
+                  >
+                    <Text style={[{ fontSize: 13, fontWeight: '700', color: TEXT_DARK }, category === cat && { color: WHITE }]}>
+                      {cat}
+                    </Text>
                   </TouchableOpacity>
-                )}
+                ))}
+              </ScrollView>
 
-                <Text style={s.inputLbl}>Preferred Date & Time</Text>
-                <TouchableOpacity style={s.inputBox} onPress={() => setShowDatePicker(true)} activeOpacity={0.7}>
-                  <Text style={{ color: prefDate ? TEXT_DARK : TEXT_MID, fontSize: 15 }}>{prefDate || 'Select date and time'}</Text>
-                  <Calendar size={20} color={TEXT_MID} />
-                </TouchableOpacity>
+              {/* Priority Selection */}
+              <Text style={[s.inputLbl, { marginTop: 12 }]}>Priority</Text>
+              <View style={s.priorityRow}>
+                {['Low', 'Medium', 'High'].map((p) => (
+                  <TouchableOpacity key={p} style={[s.priorityBtn, priority === p && s.priorityBtnActive]} onPress={() => setPriority(p)}>
+                    <Text style={[s.priorityTxt, priority === p && s.priorityTxtActive]}>{p}</Text>
+                  </TouchableOpacity>
+                ))}
               </View>
-            )}
 
-            {step === 3 && (
-              <View style={s.stepContent}>
-                <View style={s.stepHero}>
-                  <View style={s.heroIconWrap}><CheckCircle2 size={36} color={SUCCESS} /></View>
-                  <Text style={s.heroTitle}>Review & Submit</Text>
-                  <Text style={s.heroSub}>Please review your complaint before submitting.</Text>
-                </View>
+              {/* Title Input */}
+              <Text style={[s.inputLbl, { marginTop: 12 }]}>Title <Text style={{color: '#EF4444'}}>*</Text></Text>
+              <TextInput 
+                style={[s.inputBoxStyle, errors.title && { borderColor: '#EF4444' }]} 
+                placeholder="e.g. WiFi not connecting" 
+                placeholderTextColor={TEXT_MID}
+                value={title}
+                onChangeText={(t) => { setTitle(t); setErrors(e => ({...e, title: false})); }}
+              />
+              {errors.title && <Text style={{ color: '#EF4444', fontSize: 11, marginTop: 4 }}>Please enter a title</Text>}
 
-                <View style={s.summaryCard}>
-                  <View style={s.sumRow}><Text style={s.sumLbl}>Category</Text><Text style={s.sumVal}>{category || 'Not specified'}</Text></View>
-                  <View style={s.sumRow}>
-                    <Text style={s.sumLbl}>Priority</Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: WARN, marginRight: 6 }} />
-                      <Text style={[s.sumVal, { color: priority === 'High' ? '#EF4444' : priority === 'Medium' ? WARN : SUCCESS }]}>{priority}</Text>
+              {/* Description Input */}
+              <Text style={[s.inputLbl, { marginTop: 12 }]}>Description <Text style={{color: '#EF4444'}}>*</Text></Text>
+              <View style={[s.textAreaWrap, errors.desc && { borderColor: '#EF4444' }]}>
+                <TextInput
+                  style={s.textAreaStyle}
+                  placeholder="Explain the issue..."
+                  placeholderTextColor={TEXT_MID}
+                  multiline
+                  value={desc}
+                  onChangeText={(t) => { setDesc(t); setErrors(e => ({...e, desc: false})); }}
+                  maxLength={300}
+                />
+                <Text style={s.charCount}>{desc.length}/300</Text>
+              </View>
+              {errors.desc && <Text style={{ color: '#EF4444', fontSize: 11, marginTop: 4 }}>Please enter a description</Text>}
+
+              {/* Photo Upload */}
+              <Text style={[s.inputLbl, { marginTop: 12 }]}>Attach Photos (Optional)</Text>
+              {images.length > 0 ? (
+                <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
+                  {images.map((imgUri, i) => (
+                    <View key={i} style={[s.largeImgBox, { width: 72, height: 72, flex: 0 }]}>
+                      <Image source={{ uri: imgUri }} style={{ width: '100%', height: '100%', borderRadius: 10 }} />
+                      <TouchableOpacity 
+                        style={{ position: 'absolute', top: -6, right: -6, backgroundColor: '#EF4444', borderRadius: 10, padding: 3 }}
+                        onPress={() => removeImage(i)}
+                      >
+                        <X size={12} color="#FFF" />
+                      </TouchableOpacity>
                     </View>
-                  </View>
-                  <View style={s.sumRow}><Text style={s.sumLbl}>Title</Text><Text style={s.sumVal}>{title || 'Not specified'}</Text></View>
-                  <View style={s.sumRow}><Text style={s.sumLbl}>Description</Text><Text style={[s.sumVal, { textAlign: 'right', flex: 1, marginLeft: 16 }]}>{desc || 'Not specified'}</Text></View>
-                  <View style={s.sumRow}><Text style={s.sumLbl}>Preferred Time</Text><Text style={s.sumVal}>{prefDate || 'Not specified'}</Text></View>
-                  {images.length > 0 && (
-                    <View style={[s.sumRow, { borderBottomWidth: 0, flexDirection: 'column' }]}>
-                      <Text style={s.sumLbl}>Attachments</Text>
-                      <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
-                        {images.map((imgUri, i) => (
-                          <View key={i} style={[s.largeImgBox, { width: 80, height: 80, flex: 0 }]}>
-                            <Image source={{ uri: imgUri }} style={{ width: '100%', height: '100%', borderRadius: 16 }} />
-                          </View>
-                        ))}
-                      </View>
-                    </View>
+                  ))}
+                  {images.length < 3 && (
+                    <TouchableOpacity style={[s.largeImgBox, { width: 72, height: 72, flex: 0, borderStyle: 'dashed' }]} onPress={handleUpload}>
+                      <Plus size={22} color={TEXT_MID} />
+                    </TouchableOpacity>
                   )}
                 </View>
-              </View>
-            )}
+              ) : (
+                <TouchableOpacity style={[s.uploadArea, { paddingVertical: 14 }]} onPress={handleUpload} activeOpacity={0.7}>
+                  <UploadCloud size={22} color={BLUE} style={{ marginBottom: 4 }} />
+                  <Text style={s.uploadTxt}>Tap to upload photos</Text>
+                  <Text style={s.uploadSub}>PNG, JPG up to 5MB</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </ScrollView>
 
-          <View style={[s.formFooter, { paddingBottom: Platform.OS === 'ios' ? 40 : 24 }]}>
+          {/* Bottom Action Footer with Reset & Submit */}
+          <View style={s.formFooter}>
             <TouchableOpacity 
-              style={[s.btnBlue, { flex: 1, marginLeft: step > 1 ? 12 : 0 }, submitting && { opacity: 0.7 }]} 
-              disabled={submitting}
-              onPress={step < 3 ? nextStep : async () => {
-                setSubmitting(true);
-                try {
-                  const formData = new FormData();
-                  formData.append('hostel_id', String(hostelId));
-                  formData.append('category', category);
-                  formData.append('title', title);
-                  formData.append('description', desc);
-                  if (prefDate) formData.append('pref_date', prefDate);
-                  images.forEach((uri, i) => {
-                    const ext = uri.split('.').pop() || 'jpg';
-                    formData.append('images', {
-                      uri,
-                      name: `complaint-${i}.${ext}`,
-                      type: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
-                    } as any);
-                  });
-                  await api.post('/complaints/tenant', formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' },
-                  });
-                  onSubmit();
-                  onClose();
-                } catch (e) {
-                  console.error('Failed to submit complaint', e);
-                } finally {
-                  setSubmitting(false);
-                }
-              }}
+              style={s.btnReset} 
+              onPress={handleReset}
+              activeOpacity={0.7}
             >
-              {submitting ? <ActivityIndicator color={WHITE} /> : <Text style={s.btnBlueTxt}>{step < 3 ? 'Next' : 'Submit'}</Text>}
+              <Text style={s.btnResetTxt}>Reset</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[s.btnBlue, { flex: 1 }, submitting && { opacity: 0.7 }]} 
+              disabled={submitting}
+              onPress={handleSubmit}
+              activeOpacity={0.8}
+            >
+              {submitting ? <ActivityIndicator color={WHITE} /> : <Text style={s.btnBlueTxt}>Submit Complaint</Text>}
             </TouchableOpacity>
           </View>
-        </SafeAreaView>
+        </KeyboardAvoidingView>
       </View>
-      
-      {/* Category Picker Modal */}
-      <Modal visible={showCatPicker} transparent animationType="fade">
-        <TouchableOpacity style={s.catOverlay} activeOpacity={1} onPress={() => setShowCatPicker(false)}>
-          <View style={s.catBox}>
-            <Text style={s.catTitle}>Select Category</Text>
-            {categories.map(c => (
-              <TouchableOpacity key={c} style={s.catOption} onPress={() => { setCategory(c); setShowCatPicker(false); }}>
-                <Text style={[s.catOptionTxt, category === c && { color: BLUE, fontWeight: '700' }]}>{c}</Text>
-                {category === c && <Check size={18} color={BLUE} />}
-              </TouchableOpacity>
-            ))}
-          </View>
-        </TouchableOpacity>
-      </Modal>
-
-      <CustomDateTimePicker
-        visible={showDatePicker}
-        title="Preferred Date & Time"
-        onConfirm={(date) => {
-          setPrefDate(date.toLocaleString());
-          setShowDatePicker(false);
-        }}
-        onClose={() => setShowDatePicker(false)}
-      />
     </Modal>
   );
 }
@@ -633,7 +560,6 @@ export default function ComplaintsScreen({ navigation }: any) {
                   onPress={() => setSelectedComplaint({ ...c, date: dateStr, note: c.description })}
                   activeOpacity={0.85}
                 >
-                  <View style={[s.accentLine, { backgroundColor: status.text }]} />
                   <View style={s.cardContent}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, paddingRight: 12 }}>
@@ -762,46 +688,34 @@ const s = StyleSheet.create({
   // Stepper Modal
   modalOverlayFull: { flex: 1, backgroundColor: WHITE },
   modalContainerFull: { flex: 1, backgroundColor: WHITE },
-  formHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 12 },
-  stepperWrap: { alignItems: 'center', marginVertical: 12, paddingHorizontal: 60 },
-  stepLineWrap: { position: 'absolute', top: 14, left: 80, right: 80, flexDirection: 'row' },
-  stepLine: { flex: 1, height: 2, backgroundColor: '#E5E7EB' },
-  stepLineActive: { backgroundColor: BLUE },
-  stepNodes: { flexDirection: 'row', justifyContent: 'space-between', width: '100%' },
-  stepNode: { width: 30, height: 30, borderRadius: 15, backgroundColor: WHITE, borderWidth: 2, borderColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' },
-  stepNodeActive: { backgroundColor: BLUE, borderColor: BLUE },
-  stepNodeTxt: { fontSize: 12, fontWeight: '800', color: TEXT_MID },
-  stepNodeTxtActive: { color: WHITE },
-
-  formBody: { padding: 24 },
+  slimModalHeader: { paddingHorizontal: 16, paddingVertical: 12, borderBottomLeftRadius: 18, borderBottomRightRadius: 18 },
+  headerInnerRow: { flexDirection: 'row', alignItems: 'center' },
+  backBtnHeader: { width: 36, height: 36, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  slimModalTitle: { fontSize: 18, fontWeight: '800', color: WHITE },
+  
+  formBody: { padding: 20, paddingBottom: 40 },
   stepContent: { flex: 1 },
-  stepHero: { alignItems: 'center', marginBottom: 32 },
-  heroIconWrap: { width: 80, height: 80, borderRadius: 24, backgroundColor: BLUE_LIGHT, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
-  heroTitle: { fontSize: 20, fontWeight: '800', color: TEXT_DARK, marginBottom: 8 },
-  heroSub: { fontSize: 14, color: TEXT_MID, textAlign: 'center' },
 
-  inputLbl: { fontSize: 13, fontWeight: '800', color: TEXT_DARK, marginBottom: 8, marginTop: 16 },
-  inputBox: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: BORDER, borderRadius: 16, paddingHorizontal: 16, height: 56 },
-  inputBoxStyle: { borderWidth: 1, borderColor: BORDER, borderRadius: 16, paddingHorizontal: 16, height: 56, fontSize: 15, color: TEXT_DARK },
-  priorityRow: { flexDirection: 'row', gap: 12 },
-  priorityBtn: { flex: 1, height: 48, borderRadius: 16, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F9FAFB' },
+  inputLbl: { fontSize: 13, fontWeight: '800', color: TEXT_DARK, marginBottom: 8, marginTop: 12 },
+  inputBoxStyle: { borderWidth: 1, borderColor: BORDER, borderRadius: 14, paddingHorizontal: 14, height: 48, fontSize: 14, color: TEXT_DARK },
+  priorityRow: { flexDirection: 'row', gap: 10 },
+  priorityBtn: { flex: 1, height: 42, borderRadius: 12, borderWidth: 1, borderColor: BORDER, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F9FAFB' },
   priorityBtnActive: { borderColor: BLUE, backgroundColor: WHITE, borderWidth: 1.5 },
-  priorityTxt: { fontSize: 14, fontWeight: '600', color: TEXT_MID },
-  priorityTxtActive: { color: BLUE },
-  textAreaWrap: { borderWidth: 1, borderColor: BORDER, borderRadius: 16, backgroundColor: WHITE },
-  textAreaStyle: { height: 120, padding: 16, fontSize: 15, color: TEXT_DARK },
-  charCount: { position: 'absolute', bottom: 12, right: 16, fontSize: 12, color: TEXT_MID },
+  priorityTxt: { fontSize: 13, fontWeight: '600', color: TEXT_MID },
+  priorityTxtActive: { color: BLUE, fontWeight: '700' },
+  textAreaWrap: { borderWidth: 1, borderColor: BORDER, borderRadius: 14, backgroundColor: WHITE },
+  textAreaStyle: { height: 90, padding: 12, fontSize: 14, color: TEXT_DARK },
+  charCount: { position: 'absolute', bottom: 8, right: 12, fontSize: 11, color: TEXT_MID },
 
-  uploadArea: { borderWidth: 1, borderColor: BORDER, borderStyle: 'dashed', borderRadius: 24, padding: 32, alignItems: 'center', backgroundColor: '#FAFAFA' },
-  uploadTxt: { fontSize: 15, fontWeight: '700', color: TEXT_DARK, marginBottom: 4 },
-  uploadSub: { fontSize: 13, color: TEXT_MID },
+  uploadArea: { borderWidth: 1, borderColor: BORDER, borderStyle: 'dashed', borderRadius: 16, padding: 18, alignItems: 'center', backgroundColor: '#FAFAFA' },
+  uploadTxt: { fontSize: 14, fontWeight: '700', color: TEXT_DARK, marginBottom: 2 },
+  uploadSub: { fontSize: 12, color: TEXT_MID },
 
-  summaryCard: { },
-  sumRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: BORDER },
-  sumLbl: { fontSize: 14, color: TEXT_MID, fontWeight: '500' },
-  sumVal: { fontSize: 14, color: TEXT_DARK, fontWeight: '700' },
-
-  formFooter: { flexDirection: 'row', padding: 20, paddingBottom: Platform.OS === 'ios' ? 40 : 20 },
+  formFooter: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingVertical: 14, borderTopWidth: 1, borderTopColor: '#F1F5F9', backgroundColor: WHITE },
+  btnReset: { paddingHorizontal: 20, height: 48, borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8FAFC' },
+  btnResetTxt: { fontSize: 14, fontWeight: '700', color: TEXT_MID },
+  btnBlue: { backgroundColor: BLUE, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  btnBlueTxt: { color: WHITE, fontSize: 15, fontWeight: '700' },
   
   // Category Picker
   catOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: 20 },
