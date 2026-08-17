@@ -236,22 +236,44 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
   let deliveryStatus = 'Sent';
   let errorMessage = null;
 
+  const tryHttpFallback = async (originalError: any) => {
+    console.warn(`⚠️ Primary email transport failed (${originalError.message}) — attempting HTTP API fallback (Brevo/Resend/SendGrid)...`);
+    if (process.env.BREVO_API_KEY) {
+      await sendViaBrevo(options);
+    } else if (process.env.RESEND_API_KEY) {
+      await sendViaResend(options);
+    } else if (process.env.SENDGRID_API_KEY) {
+      await sendViaSendGrid(options);
+    } else if (process.env.EMAILJS_SERVICE_ID) {
+      await sendViaEmailJS(options);
+    } else {
+      throw originalError;
+    }
+  };
+
   try {
     const isGmailSender = (process.env.EMAIL_USER || '').toLowerCase().includes('@gmail.com') || (process.env.EMAIL_FROM || '').toLowerCase().includes('@gmail.com');
 
-    // Prioritize direct Gmail SMTP when sender is @gmail.com to pass SPF/DKIM and reach Primary Inbox
     if (isGmailSender && process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
-      await sendViaSmtp(options);
-    } else if (process.env.EMAILJS_SERVICE_ID) {
-      await sendViaEmailJS(options);
-    } else if (process.env.SENDGRID_API_KEY) {
-      await sendViaSendGrid(options);
-    } else if (process.env.RESEND_API_KEY) {
-      await sendViaResend(options);
+      try {
+        await sendViaSmtp(options);
+      } catch (smtpErr: any) {
+        await tryHttpFallback(smtpErr);
+      }
     } else if (process.env.BREVO_API_KEY) {
       await sendViaBrevo(options);
+    } else if (process.env.RESEND_API_KEY) {
+      await sendViaResend(options);
+    } else if (process.env.SENDGRID_API_KEY) {
+      await sendViaSendGrid(options);
+    } else if (process.env.EMAILJS_SERVICE_ID) {
+      await sendViaEmailJS(options);
     } else if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
-      await sendViaSmtp(options);
+      try {
+        await sendViaSmtp(options);
+      } catch (smtpErr: any) {
+        await tryHttpFallback(smtpErr);
+      }
     } else {
       await sendViaSmtp(options);
     }
