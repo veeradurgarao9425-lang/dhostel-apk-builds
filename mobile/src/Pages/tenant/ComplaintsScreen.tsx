@@ -654,8 +654,7 @@ const s = StyleSheet.create({
   // List Cards
   listContent: { padding: 16, paddingTop: 8, paddingBottom: 100 },
   listCard: { backgroundColor: WHITE, borderRadius: 16, overflow: 'hidden', marginBottom: 16, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: BLUE, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
-  accentLine: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 },
-  cardContent: { padding: 16, paddingLeft: 20 },
+  cardContent: { padding: 16 },
   iconWrap: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#EEF2FF', justifyContent: 'center', alignItems: 'center' },
   cardTitle: { fontSize: 16, fontWeight: '800', color: '#0F172A' },
   cardDate: { fontSize: 12, color: TEXT_MID, fontWeight: '600' },

@@ -82,7 +82,6 @@ export const MessMenuCard = ({ meals }: MessMenuCardProps) => {
             <View style={styles.card}>
                 <View style={styles.cardHeader}>
                     <View style={styles.titleRow}>
-                        <View style={styles.accentBar} />
                         <Text style={styles.cardTitle}>Today's Menu</Text>
                     </View>
                     <TouchableOpacity

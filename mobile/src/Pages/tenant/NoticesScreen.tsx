@@ -161,9 +161,6 @@ export default function NoticesScreen({ navigation }: any) {
               const meta = categoryMeta[notice.category] || categoryMeta.General;
               return (
                 <TouchableOpacity activeOpacity={0.85} style={styles.noticeCard}>
-                  {/* Category Accent */}
-                  <View style={[styles.accentLine, { backgroundColor: meta.iconColor }]} />
-
                   <View style={styles.cardContent}>
                     <View style={[styles.iconWrap, { backgroundColor: meta.iconBg }]}>
                       <Ionicons name={meta.icon as any} size={22} color={meta.iconColor} />
@@ -254,43 +251,37 @@ const styles = StyleSheet.create({
   noticeCard: {
     backgroundColor: theme.colors.surface,
     borderRadius: 16,
-    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: theme.colors.borderSoft,
-    shadowColor: theme.colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
     elevation: 2,
-  },
-  accentLine: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 4,
   },
   cardContent: {
     flexDirection: 'row',
-    padding: 16,
-    gap: 14,
+    alignItems: 'center',
+    padding: 14,
+    gap: 12,
   },
   iconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   noticeTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   noticeCategory: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '800',
     color: theme.colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -299,13 +290,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: theme.colors.surfaceAlt,
+    backgroundColor: '#F1F5F9',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
   },
   noticeDate: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '600',
     color: theme.colors.textMuted,
   },
@@ -313,7 +304,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
     color: theme.colors.text,
-    marginBottom: 6,
+    marginBottom: 4,
     lineHeight: 20,
   },
   noticeBody: {
