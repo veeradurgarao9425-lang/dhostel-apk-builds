@@ -1261,7 +1261,6 @@ export const authController = {
         guardian_relation: guardian_relation || null,
         current_address: current_address || null,
         permanent_address: permanent_address || null,
-        id_proof_type: id_proof_type || null,
         id_proof_number: id_proof_number || null,
         id_proof_front_url: idProofFrontUrl,
         id_proof_back_url: idProofBackUrl,

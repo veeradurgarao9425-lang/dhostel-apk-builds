@@ -9,61 +9,12 @@ export interface VocabWord {
   vocab_id: number;
   word: string;
   meaning: string;
+  telugu_meaning?: string;
+  simple_meaning?: string;
   pronunciation?: string;
   synonyms?: string;
   example_sentence?: string;
 }
-
-const TELUGU_DICT: Record<string, string> = {
-  panicked: 'కంగారుపడ్డారు (Felt sudden fear or worry)',
-  rushed: 'త్వరపడ్డారు (Moved very quickly)',
-  disappointed: 'నిరాశపడ్డారు (Feeling sad because hopes failed)',
-  recipe: 'వంట విధానం (Instructions for preparing a dish)',
-  distracted: 'దృష్టి మరలింది (Unable to focus)',
-  bland: 'చప్పగా ఉంది (Having little or no flavor)',
-  honestly: 'నిజాయితీగా (In a truthful way)',
-  embarrassed: 'అసౌకర్యంగా ఫీలయ్యాడు (Feeling awkward or ashamed)',
-  groaned: 'మూలిగాడు (Low sound of pain or annoyance)',
-  immediately: 'వెంటనే (At once, without delay)',
-  dim: 'మసకగా (Not bright, low light)',
-  gathered: 'సమీకరించబడ్డారు (Assembled in one place)',
-  cherished: 'ఎంతో ఇష్టపడే (Treasured and loved)',
-  refreshing: 'సేదతీర్చే (Pleasantly energizing)',
-  stall: 'చిన్న కొట్టు (A small shop or stand)',
-  sipped: 'చిన్నగా తాగాడు (Drank slowly in small amounts)',
-  strangers: 'అపరిచితులు (People you do not know)',
-  grateful: 'కృతజ్ఞత కలిగి ఉండటం (Feeling thankful)',
-  borrowed: 'అప్పుగా తీసుకున్నారు (Took to use and return)',
-  vanished: 'మాయమయ్యాడు (Disappeared suddenly)',
-  fine: 'జరిమానా (Money paid as penalty)',
-  apologized: 'క్షమాపణలు కోరాడు (Said sorry for a mistake)',
-  relieved: 'ఉపశమనం పొందాడు (No longer worried)',
-  mysterious: 'రహస్యమైన (Difficult to explain)',
-  ingredients: 'పదార్ధాలు (Items used to prepare food)',
-  revealed: 'బయటపెట్టారు (Made something known)',
-  surprised: 'ఆశ్చర్యపోయారు (Feeling shock or wonder)',
-  proud: 'గర్వంగా ఉంది (Feeling pleased about achievement)',
-  nervous: 'ఆందోళనగా (Anxious or uneasy)',
-  arrange: 'అమర్చడం (Put in organized order)',
-  homesick: 'ఇంటి బెంగ (Longing for home)',
-  inseparable: 'విడదీయరాని (Devoted, tight-knit)',
-  thankful: 'కృతజ్ఞతతో (Feeling grateful)',
-  stressed: 'ఒత్తిడికి గురయ్యాడు (Feeling strain)',
-  whispered: 'గుసగుసలాడాడు (Spoke very softly)',
-  delicious: 'రుచికరమైన (Very pleasant to taste)',
-  burst: 'బద్దలైంది (Suddenly started with force)',
-  risky: 'ప్రమాదకరమైన (Dangerous, uncertain)',
-  gasped: 'ఉచ్ఛ్వాసపడ్డాడు (Caught breath in shock)',
-  giggling: 'నవ్వుకోవడం (Laughing sillily)',
-  spare: 'అదనపు (Extra backup)',
-  wobbling: 'ఊగడం (Moving unsteadily)',
-  teases: 'ఎగతాళి చేయడం (Makes fun playfully)',
-  secretly: 'రహస్యంగా (In a hidden way)',
-  handmade: 'చేతితో చేసినది (Crafted by hand)',
-  heartfelt: 'హృదయపూర్వక (Deeply sincere)',
-  empty: 'ఖాళీగా ఉంది (Containing nothing)',
-  keepsake: 'జ్ఞాపిక (Memento, keepsake)',
-};
 
 interface Props {
   word: VocabWord | null;
@@ -121,7 +72,8 @@ export function VocabularyModal({ word, onClose, initiallySaved }: Props) {
     });
   };
 
-  const teluguMeaning = TELUGU_DICT[word.word.toLowerCase()];
+  const teluguMeaning = word.telugu_meaning;
+  const simpleMeaning = word.simple_meaning;
 
   return (
     <Modal visible={!!word} transparent animationType="slide" onRequestClose={onClose}>
@@ -157,7 +109,11 @@ export function VocabularyModal({ word, onClose, initiallySaved }: Props) {
 
           <View style={styles.infoCard}>
             <Text style={styles.sectionLabel}>Meaning</Text>
-            <Text style={styles.bodyText}>{word.meaning}</Text>
+            {simpleMeaning ? (
+              <Text style={styles.bodyText}>{simpleMeaning}</Text>
+            ) : (
+              <Text style={styles.bodyText}>{word.meaning}</Text>
+            )}
           </View>
 
           {teluguMeaning ? (

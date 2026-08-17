@@ -763,6 +763,9 @@ export default function HomeScreen() {
                 ref={horizontalScrollRef}
                 horizontal
                 pagingEnabled
+                directionalLockEnabled={true}
+                disableIntervalMomentum={true}
+                decelerationRate="fast"
                 scrollEnabled={isPagerScrollEnabled}
                 keyboardShouldPersistTaps="handled"
                 showsHorizontalScrollIndicator={false}

@@ -1483,7 +1483,7 @@ export const OwnerAssistant: React.FC = () => {
               On Android release builds, behavior=undefined = no-op (KAV does
               nothing) which is why it broke after APK build. */}
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={s.kav}
           >
 

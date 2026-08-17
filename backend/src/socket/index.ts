@@ -98,6 +98,9 @@ export const setupSocket = (httpServer: HttpServer) => {
     // Also let all users join their personal room for direct notifications
     if (user.user_id) {
       socket.join(`user_${user.user_id}`);
+      if (user.role_id === 3) {
+        socket.join(`tenant_${user.user_id}`);
+      }
     }
 
     if (user.role_id === 3) {

@@ -7,10 +7,7 @@
     "orientation": "portrait",
     "icon": "./assets/HostixNew.png",
     "userInterfaceStyle": "automatic",
-    "notification": {
-      "icon": "./assets/notification-icon.png",
-      "color": "#6D4AFF"
-    },
+
     "splash": {
       "image": "./assets/HostixNew.png",
       "resizeMode": "contain",
@@ -47,10 +44,6 @@
       "@react-native-community/datetimepicker",
       [
         "expo-notifications",
-        {
-          "icon": "./assets/notification-icon.png",
-          "color": "#6D4AFF"
-        }
       ],
       "expo-web-browser",
       "expo-font"

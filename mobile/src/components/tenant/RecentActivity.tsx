@@ -61,8 +61,8 @@ export const RecentActivity = ({ recentPayments, formatDate }: RecentActivityPro
                             : IONICON_MAP[cat] || 'ellipsis-horizontal-outline';
                         const accentColor = isRejected ? '#EF4444' : isPayment ? '#16A34A' : '#7C3AED';
                         const iconBg = isRejected ? '#FEE2E2' : isPayment ? '#DCFCE7' : '#F4F1FF';
-                        const sign = '−';
-                        const amtColor = '#EF4444';
+                        const sign = isRejected ? '' : isPayment ? '+' : '−';
+                        const amtColor = isRejected ? '#EF4444' : isPayment ? '#16A34A' : '#EF4444';
                         const badgeBg = isRejected ? '#FEE2E2' : isPayment ? '#DCFCE7' : '#FEE2E2';
                         const badgeTextColor = isRejected ? '#EF4444' : isPayment ? '#16A34A' : '#EF4444';
                         const badgeText = isRejected ? 'Rejected' : isPayment ? 'Rent Paid' : 'Spent';

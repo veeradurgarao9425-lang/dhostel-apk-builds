@@ -1654,6 +1654,8 @@ export async function patchDatabaseSchema() {
             story_id INT NOT NULL,
             word VARCHAR(100) NOT NULL,
             meaning VARCHAR(500) NOT NULL,
+            telugu_meaning VARCHAR(500) NULL,
+            simple_meaning VARCHAR(500) NULL,
             pronunciation VARCHAR(150) NULL,
             synonyms VARCHAR(255) NULL,
             example_sentence VARCHAR(500) NULL,
@@ -1662,6 +1664,17 @@ export async function patchDatabaseSchema() {
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         `);
         await db.raw("CREATE INDEX idx_growth_vocabulary_story ON growth_vocabulary(story_id)");
+      } else {
+        const columns: any[] = await db.raw('SHOW COLUMNS FROM growth_vocabulary');
+        const columnNames = columns[0].map((c: any) => c.Field.toLowerCase());
+        if (!columnNames.includes('telugu_meaning')) {
+          console.log('[schema-patch] Adding telugu_meaning to growth_vocabulary');
+          await db.raw('ALTER TABLE growth_vocabulary ADD COLUMN telugu_meaning VARCHAR(500) NULL');
+        }
+        if (!columnNames.includes('simple_meaning')) {
+          console.log('[schema-patch] Adding simple_meaning to growth_vocabulary');
+          await db.raw('ALTER TABLE growth_vocabulary ADD COLUMN simple_meaning VARCHAR(500) NULL');
+        }
       }
 
       if (!tableNamesLower.includes('growth_quiz_questions')) {
