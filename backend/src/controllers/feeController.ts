@@ -438,15 +438,24 @@ export const getAvailableMonths = async (req: AuthRequest, res: Response) => {
 export const uploadPaymentProof = async (req: AuthRequest, res: Response) => {
   try {
     const student_id = req.user?.user_id;
-    const { amount_paid, payment_mode_id, transaction_reference } = req.body;
+    const { amount_paid, payment_mode_id, transaction_reference, proof, proof_url: body_proof_url } = req.body;
     
     if (!student_id) return res.status(401).json({ success: false, message: 'Unauthorized' });
-    if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
+
+    let proof_url: string | null = null;
+    if (req.file) {
+      proof_url = await processFileUpload(req.file, 'payment_proofs');
+    } else if (body_proof_url || proof) {
+      proof_url = body_proof_url || proof;
+    }
+
+    if (!proof_url) {
+      return res.status(400).json({ success: false, message: 'No payment proof file or screenshot was provided' });
+    }
 
     const student = await db('students').where('student_id', student_id).first();
     if (!student) return res.status(404).json({ success: false, message: 'Student not found' });
 
-    const proof_url = await processFileUpload(req.file, 'payment_proofs');
     const receiptNumber = `RCP${Date.now()}${Math.floor(Math.random() * 1000)}`;
 
     const now = new Date();

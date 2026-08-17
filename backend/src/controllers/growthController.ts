@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
+import { seedBulkGrowthStories } from '../seedBulkStories.js';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const WEEKLY_GOAL_LEVELS = 5;
@@ -186,11 +187,15 @@ export const getPaths = async (req: AuthRequest, res: Response) => {
     const totals = await db('growth_levels').groupBy('path_id').select('path_id').count<{ path_id: number; count: string }[]>('* as count');
 
     const completedByPath = new Map(progress.map((p: any) => [p.path_id, Number(p.count)]));
-    const totalByPath = new Map(totals.map((t: any) => [t.path_id, Number(t.count)]));
+    // If english_stories has fewer than 15 levels, automatically trigger bulk seeding
+    const engTotal = totalByPath.get(1) || 0;
+    if (engTotal < 15) {
+      await seedBulkGrowthStories().catch((e) => console.error('[growth] Auto-seed error:', e?.message));
+      const freshTotals = await db('growth_levels').groupBy('path_id').select('path_id').count<{ path_id: number; count: string }[]>('* as count');
+      freshTotals.forEach((t: any) => totalByPath.set(t.path_id, Number(t.count)));
+    }
 
-    // Only ever show paths that actually have seeded content — an is_active
-    // path with no levels yet (e.g. activated before its seed script ran)
-    // would otherwise render as an empty, broken-looking tile.
+    // Only ever show paths that actually have seeded content
     const withContent = paths
       .map((p: any) => ({
         ...p,
