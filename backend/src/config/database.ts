@@ -684,6 +684,10 @@ export async function patchDatabaseSchema() {
           console.log('[schema-patch] adding username to users...');
           await db.raw("ALTER TABLE users ADD COLUMN username VARCHAR(255) NULL");
         }
+        if (!columnNames.includes('role')) {
+          console.log('[schema-patch] adding role to users...');
+          await db.raw("ALTER TABLE users ADD COLUMN role VARCHAR(50) NULL DEFAULT 'OWNER'");
+        }
         if (!columnNames.includes('is_active')) {
           console.log('[schema-patch] adding is_active to users...');
           await db.raw("ALTER TABLE users ADD COLUMN is_active TINYINT DEFAULT 1");
